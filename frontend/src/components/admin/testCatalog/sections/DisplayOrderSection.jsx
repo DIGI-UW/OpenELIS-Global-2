@@ -19,7 +19,7 @@ import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 
 /**
  * OGC-949 M12 / OGC-983..985 — Display Order section.

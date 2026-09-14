@@ -67,8 +67,9 @@ Detailed instructions found
 
 1. Open terminal to the OpenELIS-Global-2 directory
 2. `docker compose up -d --build`
-3. Access the application at
-   [https://localhost:8443/OpenELIS-Global](https://localhost:8443/OpenELIS-Global)
+3. Access the application at [https://localhost/](https://localhost/). The
+   legacy UI and the REST base sit under
+   [https://localhost/api/OpenELIS-Global/](https://localhost/api/OpenELIS-Global/)
 4. Might need to dismiss a security warning
 
 ## Developing in Eclipse

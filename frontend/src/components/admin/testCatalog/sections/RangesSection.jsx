@@ -17,7 +17,7 @@ import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import RangeModal from "./RangeModal";
 import CoverageValidationPanel from "./CoverageValidationPanel";
 import { formatAgeDays } from "./rangeUtils";

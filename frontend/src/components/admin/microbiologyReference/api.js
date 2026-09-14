@@ -1,7 +1,8 @@
 import config from "../../../config.json";
+import { apiFetch } from "../../utils/Utils";
 
 const request = async (path, options = {}) => {
-  const response = await fetch(config.serverBaseUrl + path, {
+  const response = await apiFetch(config.serverBaseUrl + path, {
     credentials: "include",
     ...options,
     headers: {
@@ -9,9 +10,6 @@ const request = async (path, options = {}) => {
         localStorage.getItem("locale") || navigator.language || "en",
       ...(options.body && !(options.body instanceof FormData)
         ? { "Content-Type": "application/json" }
-        : {}),
-      ...(options.method && options.method !== "GET"
-        ? { "X-CSRF-Token": localStorage.getItem("CSRF") }
         : {}),
       ...options.headers,
     },

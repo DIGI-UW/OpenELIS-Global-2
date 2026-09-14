@@ -1,4 +1,5 @@
 import config from "../../../config.json";
+import { apiFetch } from "../../utils/Utils";
 import type {
   PatientMergeApiError,
   PatientMergeRequest,
@@ -61,14 +62,13 @@ export const getPatientMergeDetails = async (
 export const validatePatientMerge = async (
   request: PatientMergeRequest,
 ): Promise<PatientMergeResult> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${config.serverBaseUrl}/rest/patient/merge/validate`,
     {
       credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: JSON.stringify({
         patient1Id: request.patient1Id,
@@ -99,14 +99,13 @@ export const validatePatientMerge = async (
 export const executePatientMerge = async (
   request: PatientMergeRequest,
 ): Promise<PatientMergeResult> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${config.serverBaseUrl}/rest/patient/merge/execute`,
     {
       credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: JSON.stringify({
         patient1Id: request.patient1Id,

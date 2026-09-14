@@ -5,7 +5,7 @@ import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import AutoComplete from "../../common/AutoComplete";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 
 const NonConformityNotification = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);

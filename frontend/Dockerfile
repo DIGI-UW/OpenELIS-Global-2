@@ -39,6 +39,10 @@ CMD ["npm", "start"]
 # ---- build: produce dist/ (intermediate stage, never shipped directly) ----
 FROM base AS build
 RUN npm run build
+# Pre-compress for gzip_static. Done once here rather than per request at the
+# edge, where the largest chunk would cost real CPU on every cold client.
+RUN find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' \
+      -o -name '*.json' -o -name '*.svg' \) -size +1k -exec gzip -9 -k {} +
 
 # ---- runtime: nginx serving static SPA on HTTP :80 (edge-termination pattern) ----
 FROM nginx:1.27-alpine AS runtime

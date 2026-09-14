@@ -4,7 +4,7 @@ import { Form, Grid, Column, Section, Button } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import AutoComplete from "../../common/AutoComplete";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import { encodeDate } from "../../utils/Utils";
 

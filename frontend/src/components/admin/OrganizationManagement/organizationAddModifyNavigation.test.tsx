@@ -16,7 +16,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import OrganizationAddModify from "./OrganizationAddModify";
 
 vi.mock("../../utils/Utils", async () => {

@@ -18,7 +18,7 @@ import {
   postToOpenElisServerJsonResponse,
   postToOpenElisServerFormData,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { NotificationKinds } from "../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import NceFileAttachment from "./NceFileAttachment";

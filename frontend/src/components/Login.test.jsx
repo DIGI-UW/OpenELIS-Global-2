@@ -7,14 +7,14 @@ import { IntlProvider } from "react-intl";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import messages from "../languages/en.json";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
-import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { ConfigurationContext, NotificationContext } from "./layout/contexts";
 import Login from "./Login";
 
 vi.mock("./utils/BrandingUtils", () => ({
   getBranding: vi.fn((callback) => callback(null)),
 }));
 
-const renderLogin = () =>
+const renderLogin = ({ enabledLanguages, onChangeLanguage } = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <UserSessionDetailsContext.Provider
@@ -30,6 +30,7 @@ const renderLogin = () =>
               useOauth: "false",
               useSaml: "false",
             },
+            enabledLanguages,
           }}
         >
           <NotificationContext.Provider
@@ -39,7 +40,7 @@ const renderLogin = () =>
               setNotificationVisible: vi.fn(),
             }}
           >
-            <Login />
+            <Login onChangeLanguage={onChangeLanguage} />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
       </UserSessionDetailsContext.Provider>
@@ -56,6 +57,30 @@ describe("Login", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  // Guards the selector Login carries in its own right, because it renders
+  // outside Layout and so cannot reach the header's.
+  test("offers the enabled languages and switches to the one picked", async () => {
+    const user = userEvent.setup();
+    const onChangeLanguage = vi.fn();
+    renderLogin({
+      enabledLanguages: {
+        en: { label: "English" },
+        fr: { label: "Français" },
+      },
+      onChangeLanguage,
+    });
+
+    const selector = screen.getByLabelText("Select Locale");
+    expect([...selector.options].map((option) => option.value)).toEqual([
+      "en",
+      "fr",
+    ]);
+
+    await user.selectOptions(selector, "fr");
+
+    expect(onChangeLanguage).toHaveBeenCalledWith("fr");
   });
 
   test("submits the credentials entered in the Carbon login fields", async () => {

@@ -15,7 +15,6 @@ import {
   useAutocomplete,
   type PatientSearchResult,
 } from "./searchService";
-import "./searchBar.css";
 
 const SearchBar: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");

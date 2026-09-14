@@ -28,7 +28,7 @@ vi.mock("../../api/sampleAcceptanceApi", () => ({
   resampleSample: (...args) => apiMock.resampleSample(...args),
 }));
 
-vi.mock("../../../layout/Layout", () => ({
+vi.mock("../../../layout/contexts", () => ({
   NotificationContext: React.createContext(notificationMock),
 }));
 

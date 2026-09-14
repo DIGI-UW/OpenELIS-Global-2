@@ -28,7 +28,7 @@ import {
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
 import config from "../../../config.json";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import WeekendConfig from "./WeekendConfig";
 import CsvImportPreview from "./CsvImportPreview";
 import PageBreadCrumb from "../../common/PageBreadCrumb";

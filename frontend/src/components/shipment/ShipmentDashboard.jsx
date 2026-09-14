@@ -28,12 +28,11 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { getFromOpenElisServer } from "../utils/Utils";
 import AddToBoxModal from "./AddToBoxModal";
 import CancelReferralModal from "./CancelReferralModal";
 import MarkAsLostModal from "./MarkAsLostModal";
-import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 
 const TAB_ROUTES = ["boxes", "unassigned"];

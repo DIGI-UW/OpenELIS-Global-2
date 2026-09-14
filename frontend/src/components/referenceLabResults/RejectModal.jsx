@@ -7,7 +7,7 @@ import {
 } from "@carbon/react";
 import { useContext, useState } from "react";
 import { useIntl } from "react-intl";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { putToOpenElisServer } from "../utils/Utils";
 
 const REASON_CODES = [

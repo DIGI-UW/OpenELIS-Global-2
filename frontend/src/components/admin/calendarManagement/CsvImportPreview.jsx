@@ -14,7 +14,8 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";
-import { NotificationContext } from "../../layout/Layout";
+import { apiFetch } from "../../utils/Utils";
+import { NotificationContext } from "../../layout/contexts";
 
 function CsvImportPreview({ year, onClose, onImportComplete }) {
   const intl = useIntl();
@@ -59,15 +60,14 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
     formData.append("file", file);
 
     try {
-      // Note: postToOpenElisServerFormData only returns status code, not response
-      // body. We need the JSON body (imported/skipped/errors) for user feedback,
-      // so we use fetch directly here with the standard CSRF/credentials pattern.
-      const response = await fetch(
+      // postToOpenElisServerFormData returns only the status code; the JSON
+      // body (imported/skipped/errors) is what the user is shown, so this goes
+      // through apiFetch to keep the CSRF refresh-and-replay.
+      const response = await apiFetch(
         `${config.serverBaseUrl}/rest/calendar/holidays/import?year=${year}`,
         {
           method: "POST",
           credentials: "include",
-          headers: { "X-CSRF-Token": localStorage.getItem("CSRF") },
           body: formData,
         },
       );

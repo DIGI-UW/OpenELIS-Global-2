@@ -15,7 +15,7 @@ vi.mock("../../../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
-vi.mock("../../../layout/Layout", async () => {
+vi.mock("../../../layout/contexts", async () => {
   const React = await import("react");
   return {
     NotificationContext: React.createContext({

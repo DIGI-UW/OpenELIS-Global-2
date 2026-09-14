@@ -12,7 +12,7 @@ import { createQueryClient } from "../../../utils/queryClient";
 import {
   NotificationContext,
   ConfigurationContext,
-} from "../../../layout/Layout";
+} from "../../../layout/contexts";
 import UserAddModify from "../UserAddModify";
 
 vi.mock("../../../utils/Utils", async () => {

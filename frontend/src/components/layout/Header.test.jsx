@@ -7,7 +7,7 @@ import { MemoryRouter, Route } from "react-router-dom";
 import { vi } from "vitest";
 import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { ConfigurationContext, NotificationContext } from "./Layout";
+import { ConfigurationContext, NotificationContext } from "./contexts";
 import messages from "../../languages/en.json";
 import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
 

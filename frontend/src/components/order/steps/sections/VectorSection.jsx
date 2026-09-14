@@ -21,7 +21,7 @@ import {
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
-import { ConfigurationContext } from "../../../layout/Layout";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 const todayIso = () => {
   const d = new Date();

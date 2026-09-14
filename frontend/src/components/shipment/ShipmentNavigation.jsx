@@ -9,7 +9,6 @@ import {
 import { Tab, TabList, Tabs } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import "./ShipmentNavigation.css";
 
 const ShipmentNavigation = () => {
   const intl = useIntl();

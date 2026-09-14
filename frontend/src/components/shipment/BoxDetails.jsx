@@ -27,14 +27,13 @@ import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
   putToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import "./BoxDetails.css";
 import SampleAssignmentModal from "./SampleAssignmentModal";
 import ShipmentNavigation from "./ShipmentNavigation";
 import { generateLabelPDF, generateManifestPDF } from "./utils/pdfGenerator";

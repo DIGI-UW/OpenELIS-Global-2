@@ -4,7 +4,6 @@ import { Grid, Column, ClickableTile } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "./components/BreadcrumbNav";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
-import "./StorageDashboard.css";
 
 /**
  * StorageDashboard — /Storage landing page.

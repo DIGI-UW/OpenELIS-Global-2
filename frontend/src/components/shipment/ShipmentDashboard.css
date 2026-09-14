@@ -83,10 +83,6 @@
   white-space: nowrap;
 }
 
-.cds--data-table-container {
-  padding-top: 0;
-}
-
 .cds--data-table {
   margin-top: 1rem;
 }
@@ -123,12 +119,6 @@
   justify-content: center;
   align-items: center;
   min-height: 300px;
-}
-
-/* Tag styling adjustments */
-.cds--tag {
-  min-width: 100px;
-  justify-content: center;
 }
 
 .tab-label-with-badge {

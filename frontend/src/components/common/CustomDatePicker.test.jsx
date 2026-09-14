@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import CustomDatePicker from "./CustomDatePicker";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 
 const renderWithConfig = (props, locale = "en-US") =>
   render(

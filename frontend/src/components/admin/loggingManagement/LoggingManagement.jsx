@@ -15,7 +15,7 @@ import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

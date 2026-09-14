@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
@@ -6,18 +6,20 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import Admin from "../admin/Admin";
-import Layout, { ConfigurationContext, NotificationContext } from "./Layout";
+import Layout from "./Layout";
+import LayoutProvider from "./LayoutProvider";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import enMessages from "../../languages/en.json";
-import { getFromOpenElisServer } from "../utils/Utils";
 
 /**
- * Integration tests for Layout.js
+ * Integration tests for Layout.jsx
  *
- * These tests verify that Layout.js correctly wraps content with
- * TwoModeLayout while preserving all contexts and header actions.
+ * These tests verify the chrome Layout renders around its children: the header
+ * actions, the route-driven nav context, and the viewport and pin behaviour of
+ * the sidenav. The two contexts moved to LayoutProvider and are covered by
+ * LayoutProvider.test.jsx; Layout is rendered inside it here because Header
+ * reads them.
  *
- * @see spec.md FR-012: Preserve ConfigurationContext and NotificationContext
  * @see spec.md FR-013: Apply refactored layout globally
  * @see plan.md D5: Header Action Preservation Strategy
  */
@@ -80,7 +82,7 @@ const renderWithProviders = (
     <MemoryRouter initialEntries={[route]}>
       <IntlProvider locale="en" messages={messages}>
         <UserSessionDetailsContext.Provider value={userContext}>
-          {ui}
+          <LayoutProvider>{ui}</LayoutProvider>
         </UserSessionDetailsContext.Provider>
       </IntlProvider>
     </MemoryRouter>,
@@ -175,116 +177,6 @@ describe("Layout", () => {
       // Should have search icon (from HeaderActions)
       const searchIcon = document.querySelector("#search-Icon");
       expect(searchIcon).toBeTruthy();
-    });
-  });
-
-  describe("context preservation", () => {
-    /**
-     * Test: ConfigurationContext is available to children
-     * @see spec.md FR-012: Preserve ConfigurationContext
-     */
-    test("testLayout_ConfigurationContext_AvailableToChildren", () => {
-      // Component that consumes ConfigurationContext
-      const ConfigConsumer = () => {
-        const config = useContext(ConfigurationContext);
-        return (
-          <div data-testid="config-consumer">
-            {config ? "context-available" : "no-context"}
-          </div>
-        );
-      };
-
-      renderWithProviders(
-        <Layout>
-          <ConfigConsumer />
-        </Layout>,
-      );
-
-      // ConfigurationContext should be available (actual value loads async)
-      expect(screen.getByTestId("config-consumer").textContent).toBe(
-        "context-available",
-      );
-    });
-
-    test("testLayout_ReloadConfiguration_PerformsOneAuthenticatedFetch", async () => {
-      const ConfigReloader = () => {
-        const config = useContext(ConfigurationContext);
-        return (
-          <button type="button" onClick={() => config.reloadConfiguration()}>
-            Reload configuration
-          </button>
-        );
-      };
-
-      renderWithProviders(
-        <Layout>
-          <ConfigReloader />
-        </Layout>,
-      );
-
-      const configurationFetches = () =>
-        getFromOpenElisServer.mock.calls.filter(
-          ([url]) => url === "/rest/configuration-properties",
-        ).length;
-      const initialFetches = configurationFetches();
-
-      fireEvent.click(screen.getByText("Reload configuration"));
-
-      await waitFor(() => {
-        expect(configurationFetches()).toBe(initialFetches + 1);
-      });
-    });
-
-    /**
-     * Test: NotificationContext is available to children
-     * @see spec.md FR-012: Preserve NotificationContext
-     */
-    test("testLayout_NotificationContext_AvailableToChildren", () => {
-      // Component that consumes NotificationContext
-      const NotificationConsumer = () => {
-        const notificationCtx = useContext(NotificationContext);
-        return (
-          <div data-testid="notification-consumer">
-            {notificationCtx ? "context-available" : "no-context"}
-          </div>
-        );
-      };
-
-      renderWithProviders(
-        <Layout>
-          <NotificationConsumer />
-        </Layout>,
-      );
-
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
-        "context-available",
-      );
-    });
-
-    /**
-     * Test: NotificationContext provides addNotification function
-     */
-    test("testLayout_NotificationContext_ProvidesAddNotification", () => {
-      const NotificationConsumer = () => {
-        const notificationCtx = useContext(NotificationContext);
-        return (
-          <div data-testid="notification-consumer">
-            {typeof notificationCtx?.addNotification === "function"
-              ? "has-add"
-              : "no-add"}
-          </div>
-        );
-      };
-
-      renderWithProviders(
-        <Layout>
-          <NotificationConsumer />
-        </Layout>,
-      );
-
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
-        "has-add",
-      );
     });
   });
 

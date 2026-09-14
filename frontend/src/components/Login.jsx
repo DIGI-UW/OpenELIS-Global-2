@@ -20,19 +20,22 @@ import {
   TextInput,
   PasswordInput,
   Button,
+  Select,
+  SelectItem,
   Stack,
   Loading,
 } from "@carbon/react";
 import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
-import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { ConfigurationContext, NotificationContext } from "./layout/contexts";
 import { getBranding } from "./utils/BrandingUtils";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties, enabledLanguages } =
+    useContext(ConfigurationContext);
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
@@ -204,6 +207,25 @@ function Login(props) {
       });
   };
 
+  // Login is the one route that renders outside Layout, so the Header's locale
+  // selector is not on this page. Someone who cannot read the default language
+  // has to be able to change it before they can sign in.
+  const renderLocaleSelector = () => (
+    <Select
+      id="loginLocaleSelector"
+      name="selectLocale"
+      className="selectLocale"
+      invalidText="A valid locale value is required"
+      labelText={<FormattedMessage id="header.label.selectlocale" />}
+      onChange={(event) => props.onChangeLanguage(event.target.value)}
+      value={props.intl.locale}
+    >
+      {Object.entries(enabledLanguages || {}).map(([code, { label }]) => (
+        <SelectItem key={code} text={label} value={code} />
+      ))}
+    </Select>
+  );
+
   const renderOauthButtons = () => {
     return (
       <span id="oauth-buttons">
@@ -240,6 +262,7 @@ function Login(props) {
             <Column lg={6} md={0} sm={0} />
             <Column lg={4} md={8} sm={4}>
               <Section>
+                {renderLocaleSelector()}
                 {shouldAutoRedirectToSaml ? (
                   <Stack gap={5}>
                     <FormLabel>

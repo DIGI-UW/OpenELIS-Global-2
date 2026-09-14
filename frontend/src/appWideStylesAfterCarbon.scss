@@ -1,0 +1,21 @@
+// The other half of appWideStyles.scss: the route stylesheets develop's entry
+// bundle emitted AFTER Carbon.
+//
+// App.jsx imports this immediately after ./index.scss, so these rules keep the
+// source-order win over Carbon they had on develop at their own specificity.
+// Moving one of them into appWideStyles.scss puts it before Carbon, where it
+// silently loses - and adding !important to compensate would beat Carbon's
+// higher-specificity :hover and [disabled] rules too.
+//
+// Same rules as appWideStyles.scss: extensionless imports, develop's emission
+// order, later files override earlier ones.
+@import "./components/patient/patientMerge/PatientMerge";
+@import "./components/workplan/wpStyle";
+@import "./components/barcodeWorkflow/LabelsSection";
+@import "./components/addOrder/add-order";
+@import "./components/barcodeWorkflow/PostSavePrintDialog";
+@import "./components/pathology/PathologyDashboard";
+@import "./components/notebook/NoteBook";
+@import "./components/nonconform/common/ReportNonConformingEvent";
+@import "./components/nonconform/common/NceDashboard";
+@import "./components/program/programCaseView";

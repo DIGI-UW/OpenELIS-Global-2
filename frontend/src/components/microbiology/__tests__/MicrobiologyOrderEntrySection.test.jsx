@@ -9,7 +9,7 @@ import {
   formatAdmissionDateForPicker,
 } from "../MicrobiologyOrderDetailFields";
 import messages from "../../../languages/en.json";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 
 const { getFromOpenElisServer } = vi.hoisted(() => ({
   getFromOpenElisServer: vi.fn(),

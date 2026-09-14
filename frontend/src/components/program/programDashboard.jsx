@@ -21,7 +21,6 @@ import {
   Section,
 } from "@carbon/react";
 
-import "./programCaseView.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";

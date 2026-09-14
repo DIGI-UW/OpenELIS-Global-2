@@ -30,7 +30,6 @@ import {
 } from "./sectionConfig";
 import { useReferenceQuery } from "./useReferenceQuery";
 import { buildReferenceQuery } from "./queryState";
-import "./microbiologyReference.scss";
 
 const MicrobiologyReferenceAdmin = () => {
   const intl = useIntl();

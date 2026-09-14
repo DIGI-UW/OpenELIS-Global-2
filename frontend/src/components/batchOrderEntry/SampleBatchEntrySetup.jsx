@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import {
   Select,
   SelectItem,
@@ -17,7 +17,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import SampleType from "./SampleType";
 import BatchOrderEntryFormValues from "../formModel/innitialValues/BatchOrderEntryFormValues";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import "../Style.css";

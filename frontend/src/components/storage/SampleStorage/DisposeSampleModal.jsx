@@ -12,7 +12,6 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Location } from "@carbon/icons-react";
-import "./DisposeSampleModal.css";
 
 /**
  * Modal for disposing a sample

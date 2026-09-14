@@ -1,14 +1,12 @@
 import { createContext } from "react";
 
 /**
- * The contexts Layout provides, declared apart from it.
+ * The two contexts LayoutProvider provides, declared apart from it.
  *
- * <p>Layout still creates nothing and still provides both — its own spec requires
- * that (FR-012) and the fifty-odd modules that import them from "./Layout" keep
- * working through the re-export there. Declaring them here lets a component
- * Layout itself renders read one of them without importing Layout back, which
- * would be a cycle resolved only by the timing of when the reference is
- * dereferenced.
+ * <p>Declaring them here lets a component LayoutProvider renders read one
+ * without importing the provider back, which would be a cycle resolved only by
+ * the timing of when the reference is dereferenced. Every consumer in the app
+ * imports them from here.
  */
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);

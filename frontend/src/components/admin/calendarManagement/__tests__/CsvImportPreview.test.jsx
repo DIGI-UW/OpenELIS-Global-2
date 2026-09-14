@@ -7,7 +7,7 @@ import messages from "../../../../languages/en.json";
 import CsvImportPreview from "../CsvImportPreview";
 
 // Mock Layout context
-vi.mock("../../../layout/Layout", () => ({
+vi.mock("../../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     setNotificationVisible: vi.fn(),
     addNotification: vi.fn(),

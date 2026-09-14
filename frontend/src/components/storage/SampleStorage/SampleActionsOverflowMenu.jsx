@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 import { useIntl } from "react-intl";
-import "./SampleActionsOverflowMenu.css";
 
 /**
  * Overflow menu for sample row actions

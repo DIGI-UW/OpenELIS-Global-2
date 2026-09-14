@@ -1,4 +1,5 @@
 import {
+  apiFetch,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
@@ -68,12 +69,11 @@ const post = (endpoint, data) => {
 // Helper for PUT requests
 const put = (endpoint, data) => {
   return new Promise((resolve, reject) => {
-    fetch(`${config.serverBaseUrl}${BASE_PATH}${endpoint}`, {
+    apiFetch(`${config.serverBaseUrl}${BASE_PATH}${endpoint}`, {
       credentials: "include",
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: data ? JSON.stringify(data) : null,
     })

@@ -14,7 +14,6 @@ import {
 import { Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { clampToMax, normalizeQuantity } from "./quantity";
-import "./PostSavePrintDialog.scss";
 
 // Normalise one incoming row into the dialog's preset-driven shape.
 //

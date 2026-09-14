@@ -8,7 +8,7 @@ import {
   Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 

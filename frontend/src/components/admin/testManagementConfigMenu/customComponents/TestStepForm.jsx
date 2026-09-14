@@ -25,7 +25,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { CustomCommonSortableOrderList } from "./../sortableListComponent/SortableList";
 import { getFromOpenElisServer } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { extractAgeRangeParts } from "./TestFormData";
 import {
   hydrateDictionaryFromInitial,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { useHistory, useLocation } from "react-router-dom";
 import { Loading } from "@carbon/react";
 import PageBreadCrumb from "../../common/PageBreadCrumb";

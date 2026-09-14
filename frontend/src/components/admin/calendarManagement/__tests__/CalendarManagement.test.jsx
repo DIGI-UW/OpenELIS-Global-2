@@ -15,7 +15,7 @@ vi.mock("../../../../components/common/PageBreadCrumb", () => {
   };
 });
 
-vi.mock("../../../layout/Layout", () => ({
+vi.mock("../../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     setNotificationVisible: vi.fn(),
     addNotification: vi.fn(),

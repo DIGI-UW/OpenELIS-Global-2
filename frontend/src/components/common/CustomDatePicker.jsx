@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 
 const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(

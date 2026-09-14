@@ -4,7 +4,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import ReportIndex from "../Index";
 import RoutineIndex from "../routine/Index";
 import StudyIndex from "../study/index";

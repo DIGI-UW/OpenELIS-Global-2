@@ -6,7 +6,7 @@ import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEn
 import { sampleObject } from "./Index";
 import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 

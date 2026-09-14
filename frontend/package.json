@@ -51,6 +51,7 @@
     "check-format": "prettier ./ --check",
     "lint": "eslint --max-warnings=0 playwright/",
     "lint:all": "eslint playwright/ src/ || exit 0",
+    "lint:routes": "node scripts/route-component-guard.mjs",
     "cy:run": "unset ELECTRON_RUN_AS_NODE && cypress run --headless --browser chrome",
     "cy:open": "unset ELECTRON_RUN_AS_NODE && cypress open --browser chrome",
     "cy:spec": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec",

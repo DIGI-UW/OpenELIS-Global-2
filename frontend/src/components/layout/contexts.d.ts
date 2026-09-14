@@ -31,7 +31,6 @@ export const ConfigurationContext: Context<{
     string,
     {
       label: string;
-      messages: Record<string, string>;
       fallback?: boolean;
     }
   >;

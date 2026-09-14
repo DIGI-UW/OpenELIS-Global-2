@@ -4,7 +4,7 @@ import { fireEvent, render, screen, wait } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import FreezerMonitoringDashboard from "./FreezerMonitoringDashboard";
 import { deleteAlert, fetchFreezerStatus, fetchOpenAlerts } from "./api";

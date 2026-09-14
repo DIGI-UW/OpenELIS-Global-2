@@ -20,7 +20,7 @@ import { useLocation, useHistory } from "react-router-dom";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import SlideOver from "../notifications/SlideOver";
 import { languages as defaultLanguages } from "../../languages";
 

@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { createQueryClient } from "../../utils/queryClient";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import ExternalConnectionMenu from "../externalConnections/ExternalConnectionMenu";
 import OrganizationManagement from "../OrganizationManagement/OrganizationManagement";
 

@@ -21,6 +21,7 @@ import pwCountComparisonMatcher from "./eslint-local-rules/pw-count-comparison-m
 import pwDemoNoBackendAccess from "./eslint-local-rules/pw-demo-no-backend-access.js";
 import noUseEffectTimerLeaks from "./eslint-local-rules/no-useeffect-timer-leaks.js";
 import noRawReactLazy from "./eslint-local-rules/no-raw-react-lazy.js";
+import noInlineRouteComponent from "./eslint-local-rules/no-inline-route-component.js";
 
 export default [
   // ─── Global ignores ─────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export default [
           "pw-demo-no-backend-access": pwDemoNoBackendAccess,
           "no-useeffect-timer-leaks": noUseEffectTimerLeaks,
           "no-raw-react-lazy": noRawReactLazy,
+          "no-inline-route-component": noInlineRouteComponent,
         },
       },
     },
@@ -102,6 +104,9 @@ export default [
       // splitting; raw React.lazy doesn't retry on chunk-fetch blips
       // (ERR_NETWORK_CHANGED). See App.jsx helper.
       "local/no-raw-react-lazy": "error",
+      // Ban an inline arrow as a route `component` prop; it is a new component
+      // type every render, so React remounts the page and drops its state.
+      "local/no-inline-route-component": "error",
     },
   },
 

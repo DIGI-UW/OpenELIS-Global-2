@@ -29,7 +29,7 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 
 /**
  * OGC-949 M5 / OGC-749 — Sample & Results section.

@@ -1,4 +1,5 @@
 import {
+  apiFetch,
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
@@ -61,12 +62,11 @@ const postColdStorageJson = (path, payload) =>
 
 export const acknowledgeAlert = async (alertId, notes) => {
   return new Promise((resolve, reject) => {
-    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/acknowledge`, {
+    apiFetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/acknowledge`, {
       credentials: "include",
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: JSON.stringify({ notes }),
     })
@@ -94,12 +94,11 @@ export const acknowledgeAlert = async (alertId, notes) => {
 
 export const resolveAlert = async (alertId, resolutionNotes) => {
   return new Promise((resolve, reject) => {
-    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/resolve`, {
+    apiFetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/resolve`, {
       credentials: "include",
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: JSON.stringify({ resolutionNotes }),
     })
@@ -457,12 +456,9 @@ export const fetchFilteredAlerts = async (filters = {}) => {
 
 export const deleteAlert = async (alertId) => {
   return new Promise((resolve, reject) => {
-    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}`, {
+    apiFetch(`${config.serverBaseUrl}/rest/alerts/${alertId}`, {
       credentials: "include",
       method: "DELETE",
-      headers: {
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
     })
       .then((response) => {
         if (!response.ok) {

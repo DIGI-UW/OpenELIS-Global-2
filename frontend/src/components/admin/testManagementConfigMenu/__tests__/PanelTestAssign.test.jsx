@@ -12,7 +12,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { createQueryClient } from "../../../utils/queryClient";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import PanelTestAssign from "../PanelTestAssign";
 
 vi.mock("../../../utils/Utils", async () => {

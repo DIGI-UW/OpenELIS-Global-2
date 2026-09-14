@@ -39,7 +39,7 @@ vi.mock("../../utils/Utils", () => ({
   resolveApiErrorMessage: vi.fn((err) => String(err)),
 }));
 
-vi.mock("../../layout/Layout", () => ({
+vi.mock("../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: () => {},

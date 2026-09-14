@@ -42,7 +42,7 @@ import { Formik, Field, ErrorMessage } from "formik";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 import PatientFormObserver from "./PatientFormObserver";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/contexts";
 import { createPatientValidationSchema } from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";

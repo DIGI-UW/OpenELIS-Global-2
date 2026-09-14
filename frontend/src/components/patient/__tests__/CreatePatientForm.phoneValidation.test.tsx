@@ -53,7 +53,7 @@ vi.mock("../../utils/Utils", () => ({
   resolveApiErrorMessage: vi.fn(() => "Save failed"),
 }));
 
-vi.mock("../../layout/Layout", () => ({
+vi.mock("../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: () => {},

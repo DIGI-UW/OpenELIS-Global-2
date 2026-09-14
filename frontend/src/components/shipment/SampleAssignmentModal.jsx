@@ -15,9 +15,8 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { getFromOpenElisServerV2 } from "../utils/Utils";
-import "./SampleAssignmentModal.css";
 
 const SampleAssignmentModal = ({
   open,

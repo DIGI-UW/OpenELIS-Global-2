@@ -11,7 +11,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import AutoComplete from "../common/AutoComplete";
 
 export default function PushNotificationPage() {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import "../admin/reflexTests/ReflexStyles.css";
 import { TextInput } from "@carbon/react";
 
 function AutoComplete(props) {

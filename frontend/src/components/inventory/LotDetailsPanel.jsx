@@ -17,7 +17,6 @@ import {
 import { Close } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { TransactionAPI, UsageAPI } from "./InventoryService";
-import "./LotDetailsPanel.css";
 
 const LotDetailsPanel = ({ open, onClose, lot }) => {
   const intl = useIntl();

@@ -15,7 +15,6 @@ import {
 import { Locked } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { clampToMax, normalizeQuantity } from "./quantity";
-import "./LabelsSection.scss";
 
 // ===========================================================================
 // Legacy order/specimen-count model (OGC-284).

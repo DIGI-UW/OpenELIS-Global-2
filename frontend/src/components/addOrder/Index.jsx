@@ -12,11 +12,11 @@ import {
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
-import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
+  apiFetch,
   getFromOpenElisServer,
   postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
@@ -158,15 +158,12 @@ const Index = () => {
       };
     }
 
-    fetch(
+    apiFetch(
       config.serverBaseUrl +
         "/ajaxQueryXML?asJSON=true&provider=LabOrderSearchProvider&orderNumber=" +
         orderNumber,
       {
         method: "get",
-        headers: {
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
-        },
       },
     )
       .then((response) => response.json())

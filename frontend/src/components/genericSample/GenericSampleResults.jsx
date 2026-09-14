@@ -24,7 +24,7 @@ import {
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/contexts";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
 import { jpSet } from "../utils/JsonPath";

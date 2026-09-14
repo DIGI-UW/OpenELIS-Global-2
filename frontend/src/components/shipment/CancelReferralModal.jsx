@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import { Modal, TextArea, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { putToOpenElisServerFullResponse } from "../utils/Utils";
 
 const CancelReferralModal = ({ open, onClose, sample, onSuccess }) => {

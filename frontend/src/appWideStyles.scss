@@ -1,0 +1,42 @@
+// Route stylesheets the whole app depends on, the ones develop loaded before Carbon.
+//
+// Each carries unscoped rules - .orderLegendBody, .section-title,
+// #order_requestDate - that components in other feature areas already use. They
+// reached those components because App.jsx imported their routes statically;
+// lazy routes moved that CSS into chunks those components never load, and
+// nothing in the build or the test suite can see the difference.
+//
+// The ten sheets develop emitted AFTER Carbon live in
+// appWideStylesAfterCarbon.scss instead. Keeping each sheet on the side of
+// Carbon it was on is what lets add-order.scss win the accordion background
+// without !important, which would also beat Carbon's :hover and [disabled].
+//
+// Import without the extension: `@import "x.css"` is a plain-CSS import that
+// Sass hoists above everything else, which reorders the cascade. The order
+// below is the order develop's entry bundle emitted these files in, and later
+// files here override earlier ones.
+//
+// These two files are each sheet's only importer, and appWideStyles.test.js
+// asserts that directly: importing one of them next to its component again
+// emits it into the entry AND into that route's lazy chunk. The same test
+// covers the other direction from reach, failing on 26 of the 27 possible
+// @import removals. It misses StorageDashboard, because
+// StorageLocationsMetricCard.css also styles .storage-dashboard and stays in
+// the entry - re-run that mutation before trusting the guard further.
+@import "./components/layout/search/searchBar";
+@import "./components/shipment/ShipmentDashboard";
+@import "./components/shipment/ShipmentNavigation";
+@import "./components/admin/reflexTests/ReflexStyles";
+@import "./components/admin/microbiologyReference/microbiologyReference";
+@import "./components/home/Dashboard";
+@import "./components/storage/StorageDashboard/StorageLocationsMetricCard";
+@import "./components/storage/StorageDashboard";
+@import "./components/storage/SampleStorage/SampleActionsOverflowMenu";
+@import "./components/storage/SampleStorage/DisposeSampleModal";
+@import "./components/inventory/LotDetailsPanel";
+@import "./components/inventory/InventoryList";
+@import "./components/shipment/BoxCreation";
+@import "./components/shipment/BoxDetails";
+@import "./components/shipment/SampleAssignmentModal";
+@import "./components/shipment/ReceptionWorkflow";
+@import "./components/referenceLabResults/ReferenceLabResults";

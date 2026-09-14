@@ -94,7 +94,7 @@ vi.mock("../../utils/Utils", () => ({
   resolveApiErrorMessage: vi.fn((err) => String(err)),
 }));
 
-vi.mock("../../layout/Layout", () => ({
+vi.mock("../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: () => {},
@@ -131,7 +131,7 @@ vi.mock("../../common/CustomDatePicker", () => ({
 }));
 
 import CreatePatientForm from "../CreatePatientForm";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 
 const renderForm = (configurationProperties = madagascarRegistrationConfig) =>
   render(

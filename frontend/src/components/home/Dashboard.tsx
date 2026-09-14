@@ -21,7 +21,6 @@ import {
   TabList,
   Tag,
 } from "@carbon/react";
-import "./Dashboard.css";
 import {
   Minimize,
   Maximize,
@@ -61,7 +60,7 @@ import {
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
 interface DashBoardProps {}

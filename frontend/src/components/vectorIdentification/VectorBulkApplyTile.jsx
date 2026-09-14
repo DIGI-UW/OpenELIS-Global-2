@@ -12,7 +12,7 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import {
   VectorIdentificationAPI,
   VectorSpeciesAPI,

@@ -19,6 +19,7 @@ import { Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import config from "../../config.json";
+import { apiFetch } from "../utils/Utils";
 
 /**
  * GenericSampleOrderImport - Configurable sample order import component
@@ -118,12 +119,9 @@ export default function GenericSampleOrderImport({
     const formData = new FormData();
     formData.append("file", file);
 
-    fetch(config.serverBaseUrl + validateEndpoint, {
+    apiFetch(config.serverBaseUrl + validateEndpoint, {
       credentials: "include",
       method: "POST",
-      headers: {
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
       body: formData,
     })
       .then((response) => response.json())
@@ -164,12 +162,9 @@ export default function GenericSampleOrderImport({
     const formData = new FormData();
     formData.append("file", file);
 
-    fetch(config.serverBaseUrl + importEndpoint, {
+    apiFetch(config.serverBaseUrl + importEndpoint, {
       credentials: "include",
       method: "POST",
-      headers: {
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
       body: formData,
     })
       .then((response) => response.json())

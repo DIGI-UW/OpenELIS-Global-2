@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import VectorSection from "./VectorSection";
-import { ConfigurationContext } from "../../../layout/Layout";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 const { getFromOpenElisServerMock } = vi.hoisted(() => ({
   getFromOpenElisServerMock: vi.fn(),

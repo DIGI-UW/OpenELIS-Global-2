@@ -20,7 +20,7 @@ vi.mock("./Index", () => ({
 }));
 
 // Layout.jsx pulls in the full app shell — we only consume NotificationContext.
-vi.mock("../layout/Layout", () => ({
+vi.mock("../layout/contexts", () => ({
   NotificationContext: React.createContext(notificationMock),
 }));
 

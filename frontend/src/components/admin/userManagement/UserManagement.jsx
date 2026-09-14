@@ -22,7 +22,7 @@ import {
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { serverQuery } from "../../utils/queryClient";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

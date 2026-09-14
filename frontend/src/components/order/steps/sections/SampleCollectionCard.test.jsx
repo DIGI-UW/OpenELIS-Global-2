@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../../languages/en.json";
-import { ConfigurationContext } from "../../../layout/Layout";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 // Brings its own Notification/Configuration context needs; exercised in its
 // own suite, not here.

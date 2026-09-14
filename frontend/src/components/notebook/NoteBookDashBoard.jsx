@@ -22,10 +22,9 @@ import {
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
-import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import {
@@ -42,7 +41,6 @@ import {
   View,
   List,
 } from "@carbon/react/icons";
-import "./NoteBook.css";
 
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);

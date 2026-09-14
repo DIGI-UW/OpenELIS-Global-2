@@ -5,7 +5,6 @@ import PatientHeader from "../common/PatientHeader";
 import { getFromOpenElisServer } from "../utils/Utils";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import "./programCaseView.css";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

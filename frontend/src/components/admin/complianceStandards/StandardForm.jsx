@@ -25,7 +25,7 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { NotificationKinds } from "../../common/CustomNotification";
 import ParameterGroupAccordionItem from "./ParameterGroupAccordionItem";
 import { toDateString } from "./dateUtils";

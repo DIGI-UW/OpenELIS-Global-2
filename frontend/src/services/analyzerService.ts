@@ -2,12 +2,13 @@
  * Analyzer Service API Client
  *
  * Provides the lab-facing analyzer instance and Analyzer Type operations.
- * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
+ * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and apiFetch for its other writes
  *
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
  */
 
 import {
+  apiFetch,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../components/utils/Utils";
@@ -387,12 +388,11 @@ const putAnalyzerJson = (
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
-  fetch(config.serverBaseUrl + endpoint, {
+  apiFetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
     body: JSON.stringify(data),
   })
@@ -553,12 +553,11 @@ const postAnalyzerLifecycle = <T extends object>(
   callback: ApiCallback<T>,
   networkFailure: (error: string) => T,
 ) => {
-  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/${action}`, {
+  apiFetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/${action}`, {
     credentials: "include",
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
     body: JSON.stringify({}),
   })
@@ -646,12 +645,11 @@ const mutateAnalyzerType = <T>(
   body: JsonObject,
   callback: ApiCallback<T & AnalyzerApiError>,
 ) => {
-  fetch(config.serverBaseUrl + endpoint, {
+  apiFetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method,
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
     body: JSON.stringify(body),
   })

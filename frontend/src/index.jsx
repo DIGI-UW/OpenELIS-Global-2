@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
+import "./appWideStyles.scss";
 import App from "./App";
 import { createQueryClient } from "./components/utils/queryClient";
 import * as ServiceWorker from "./serviceWorkerRegistration";

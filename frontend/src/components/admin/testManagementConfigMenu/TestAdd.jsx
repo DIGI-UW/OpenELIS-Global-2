@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { Heading, Loading, Grid, Column, Section, Toggle } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

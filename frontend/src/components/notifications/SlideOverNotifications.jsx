@@ -15,7 +15,7 @@ import {
 import Spinner from "../common/Spinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog } from "../common/CustomNotification";
 import NoNotificationSVG from "./NoNotificationSVG";
 import { getServiceWorkerUrl } from "../../serviceWorkerRegistration";

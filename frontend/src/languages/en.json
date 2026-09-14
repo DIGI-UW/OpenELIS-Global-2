@@ -2872,6 +2872,8 @@
   "error.save.order": "Error while saving order",
   "error.save.patient": "Error While Saving Patient",
   "error.title": "Error",
+  "errorBoundary.default.message": "This page could not be loaded. Reload to try again.",
+  "errorBoundary.default.title": "Something went wrong",
   "errorBoundary.reload": "Reload",
   "errorBoundary.route.patientResultsViewer.message": "Something went wrong while showing this patient's results. Reload to try again.",
   "errorBoundary.route.patientResultsViewer.title": "Patient results could not be loaded",

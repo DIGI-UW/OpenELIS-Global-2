@@ -4,7 +4,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { AlertDialog } from "../../common/CustomNotification";
 import {
   Grid,

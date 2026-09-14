@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { Loading } from "@carbon/react";
 import { injectIntl, useIntl } from "react-intl";
 import PatientStatusReport from "../common/PatientStatusReport";

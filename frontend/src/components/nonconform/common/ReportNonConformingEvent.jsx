@@ -25,7 +25,7 @@ import {
   NotificationKinds,
   AlertDialog,
 } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -33,7 +33,6 @@ import {
 } from "../../utils/Utils";
 import NceFileAttachment from "./NceFileAttachment";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import "./ReportNonConformingEvent.css";
 
 const initialReportFormValues = {
   type: undefined,

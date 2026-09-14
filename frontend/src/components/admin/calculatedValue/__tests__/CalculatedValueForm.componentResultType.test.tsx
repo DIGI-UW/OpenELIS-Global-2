@@ -111,7 +111,7 @@ vi.mock("../../../utils/Utils", () => ({
   }),
 }));
 
-vi.mock("../../../layout/Layout", () => ({
+vi.mock("../../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: () => {},

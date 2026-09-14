@@ -25,7 +25,7 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import BarcodeScannerBar from "./BarcodeScannerBar";

@@ -10,7 +10,7 @@ import TestCatalogEditor from "./TestCatalogEditor";
 
 vi.mock("../../utils/Utils", () => ({ getFromOpenElisServer: vi.fn() }));
 
-vi.mock("../../layout/Layout", async () => {
+vi.mock("../../layout/contexts", async () => {
   const ReactModule = await import("react");
   return {
     NotificationContext: ReactModule.createContext({

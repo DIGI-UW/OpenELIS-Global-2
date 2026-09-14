@@ -13,7 +13,6 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryDashboard from "./InventoryDashboard";
 import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
-import "./InventoryList.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/", defaultMessage: "Home" },

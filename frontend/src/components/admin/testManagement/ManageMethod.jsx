@@ -12,7 +12,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
   AlertDialog,

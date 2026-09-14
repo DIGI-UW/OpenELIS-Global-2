@@ -16,11 +16,12 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
+  apiFetch,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
-import { ConfigurationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
+import { ConfigurationContext } from "../layout/contexts";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
@@ -255,14 +256,13 @@ const Validation = (props) => {
     if (!qcAckRequired) {
       return Promise.resolve();
     }
-    return fetch(
+    return apiFetch(
       config.serverBaseUrl + "/rest/AccessionValidation/qc-acknowledgment",
       {
         credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
         body: JSON.stringify({
           accessionNumber: qcBatchAccession,

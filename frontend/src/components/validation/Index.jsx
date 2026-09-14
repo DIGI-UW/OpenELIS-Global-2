@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useRef, useState } from "react";
 import SearchForm from "./SearchForm";
 import Validation from "./Validation";
 import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";

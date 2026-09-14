@@ -15,10 +15,10 @@ import CustomTimePicker from "../common/CustomTimePicker";
 import CustomSelect from "../common/CustomSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { apiFetch, getFromOpenElisServer } from "../utils/Utils";
 import config from "../../config.json";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 /**
  * GenericSampleOrderEdit - Configurable sample order edit component
@@ -296,12 +296,11 @@ export default function GenericSampleOrderEdit({
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: JSON.stringify(submissionData),
     };
 
-    fetch(
+    apiFetch(
       config.serverBaseUrl +
         `${saveEndpoint}/${encodeURIComponent(searchAccessionNumber)}`,
       options,

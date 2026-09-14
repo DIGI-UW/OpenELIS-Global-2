@@ -6,6 +6,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import Layout from "./Layout";
+import LayoutProvider from "./LayoutProvider";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import messages from "../../languages/en.json";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -121,9 +122,11 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           <UserSessionDetailsContext.Provider
             value={{ userSessionDetails: mockUserSessionDetails }}
           >
-            <Layout onChangeLanguage={vi.fn()}>
-              <div data-testid="test-content">Test Content</div>
-            </Layout>
+            <LayoutProvider>
+              <Layout onChangeLanguage={vi.fn()}>
+                <div data-testid="test-content">Test Content</div>
+              </Layout>
+            </LayoutProvider>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
       </BrowserRouter>,
@@ -165,9 +168,11 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           <UserSessionDetailsContext.Provider
             value={{ userSessionDetails: mockUserSessionDetails }}
           >
-            <Layout onChangeLanguage={vi.fn()}>
-              <div>Test Content</div>
-            </Layout>
+            <LayoutProvider>
+              <Layout onChangeLanguage={vi.fn()}>
+                <div>Test Content</div>
+              </Layout>
+            </LayoutProvider>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
       </BrowserRouter>,
@@ -196,9 +201,11 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           <UserSessionDetailsContext.Provider
             value={{ userSessionDetails: mockUserSessionDetails }}
           >
-            <Layout onChangeLanguage={vi.fn()}>
-              <div>Test Content</div>
-            </Layout>
+            <LayoutProvider>
+              <Layout onChangeLanguage={vi.fn()}>
+                <div>Test Content</div>
+              </Layout>
+            </LayoutProvider>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
       </BrowserRouter>,
@@ -221,9 +228,11 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           <UserSessionDetailsContext.Provider
             value={{ userSessionDetails: mockUserSessionDetails }}
           >
-            <Layout onChangeLanguage={vi.fn()}>
-              <div>Test Content</div>
-            </Layout>
+            <LayoutProvider>
+              <Layout onChangeLanguage={vi.fn()}>
+                <div>Test Content</div>
+              </Layout>
+            </LayoutProvider>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
       </BrowserRouter>,
@@ -257,9 +266,11 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           <UserSessionDetailsContext.Provider
             value={{ userSessionDetails: mockUserSessionDetails }}
           >
-            <Layout onChangeLanguage={vi.fn()}>
-              <div>Test Content</div>
-            </Layout>
+            <LayoutProvider>
+              <Layout onChangeLanguage={vi.fn()}>
+                <div>Test Content</div>
+              </Layout>
+            </LayoutProvider>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
       </BrowserRouter>,

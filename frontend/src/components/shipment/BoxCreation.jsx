@@ -28,14 +28,13 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import {
   getFromOpenElisServer,
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../utils/Utils";
-import "./BoxCreation.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 
 const BoxCreation = () => {

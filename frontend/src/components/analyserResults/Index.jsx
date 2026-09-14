@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import AnalyserResults from "./AnalyserResults";
 import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
   Heading,

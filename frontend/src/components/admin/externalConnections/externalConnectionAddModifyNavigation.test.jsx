@@ -14,7 +14,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import ExternalConnectionAddModify from "./ExternalConnectionAddModify";
 
 vi.mock("../../utils/Utils", async () => {

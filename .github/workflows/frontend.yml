@@ -107,6 +107,12 @@ jobs:
         run: npm run lint
         working-directory: frontend
 
+      - name: Guard route component props (blocking)
+        # "Run ESLint on src/" is advisory and cannot fail, so the rule that stops
+        # the WHONET remount defect returning is enforced here on its own.
+        run: npm run lint:routes
+        working-directory: frontend
+
       - name: Run ESLint on src/ (advisory — non-blocking)
         # Surfaces latent src/ lint debt without blocking the frontend
         # gate. Tracked separately for wholesale cleanup; see the

@@ -46,6 +46,10 @@ jobs:
               - '.github/ci/ci.analyzer-harness.yml'
               - '.github/workflows/backend.yml'
               - '.github/scripts/publish-checkpoints*.cjs'
+              - 'tomcat/**'
+              - 'volume/tomcat/**'
+              - 'dev/tomcat/**'
+              - 'install/installerTemplate/**'
 
   backend-verify:
     name: Build + Test

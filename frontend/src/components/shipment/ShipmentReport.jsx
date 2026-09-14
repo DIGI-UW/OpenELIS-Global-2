@@ -26,10 +26,9 @@ import { applyPlugin } from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { getFromOpenElisServer } from "../utils/Utils";
 import ShipmentNavigation from "./ShipmentNavigation";
-import "./ShipmentDashboard.css";
 
 // jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
 applyPlugin(jsPDF);

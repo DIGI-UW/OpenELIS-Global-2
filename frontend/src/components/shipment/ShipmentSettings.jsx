@@ -13,12 +13,11 @@ import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import {
   getFromOpenElisServer,
   putToOpenElisServerFullResponse,
 } from "../utils/Utils";
-import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 
 const ShipmentSettings = () => {
