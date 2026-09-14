@@ -1,8 +1,11 @@
 package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.hibernate.ObjectNotFoundException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,16 +19,18 @@ import org.springframework.beans.factory.annotation.Autowired;
  * (OGC-264, FR-2.1). The test database is migrated by the full changelog before
  * any test runs, so by the time this class executes, the changeset under test
  * has already run against an empty pathology_sample table and has nothing left
- * to prove. Its three statements are therefore run again here, verbatim,
- * against rows this test inserts itself on the retired names, to show each one
- * lands on its bench stage, that nothing is left on a retired name (AC-5), that
- * an unrelated value is untouched, and that a migrated row loads again through
- * the service, which a row on a retired name did not.
+ * to prove. The SQL equivalent of the changeset's three update elements is
+ * therefore run again here, against rows this test inserts itself on the
+ * retired names, to show each one lands on its bench stage, that nothing is
+ * left on a retired name (AC-5), that an unrelated value is untouched, and that
+ * a migrated row loads again through the service, which a row on a retired name
+ * did not.
  */
 public class PathologyStatusMigrationTest extends BaseWebContextSensitiveTest {
 
     /**
-     * The changeset's statements (001-pathology-status-bench-stages), run verbatim.
+     * The SQL equivalent of the changeset's three update elements
+     * (001-pathology-status-bench-stages).
      */
     private static final String MAP_CUTTING_TO_GROSSING = "UPDATE clinlims.pathology_sample"
             + " SET status = 'GROSSING' WHERE status = 'CUTTING'";
@@ -92,10 +97,11 @@ public class PathologyStatusMigrationTest extends BaseWebContextSensitiveTest {
 
         runMigration();
 
-        assertEquals("GROSSING", statusOf(FORMERLY_CUTTING));
-        assertEquals("MICROTOMY", statusOf(FORMERLY_SLICING));
-        assertEquals("READY_PATHOLOGIST", statusOf(FORMERLY_ADDITIONAL_REQUEST));
-        assertEquals("PROCESSING", statusOf(STILL_PROCESSING));
+        assertEquals("a second run leaves the already-migrated row unchanged", "GROSSING", statusOf(FORMERLY_CUTTING));
+        assertEquals("a second run leaves the already-migrated row unchanged", "MICROTOMY", statusOf(FORMERLY_SLICING));
+        assertEquals("a second run leaves the already-migrated row unchanged", "READY_PATHOLOGIST",
+                statusOf(FORMERLY_ADDITIONAL_REQUEST));
+        assertEquals("a second run leaves an unrelated value unchanged", "PROCESSING", statusOf(STILL_PROCESSING));
     }
 
     @Test
@@ -110,12 +116,22 @@ public class PathologyStatusMigrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void aRowStillOnARetiredName_cannotBeLoaded() {
+        assertEquals("the row exists and still holds the retired name, so the load below fails on"
+                + " hydration and not because the row is missing", "CUTTING", statusOf(FORMERLY_CUTTING));
+
         try {
             pathologySampleService.get(FORMERLY_CUTTING);
             fail("a row on a retired name must not hydrate");
         } catch (RuntimeException expected) {
-            // Hibernate cannot map the stored name to a PathologyStatus constant.
-            // This is the hazard the migration exists to remove.
+            assertFalse("the row is present, so BaseObjectServiceImpl.get's ObjectNotFoundException would mean"
+                    + " the wrong thing failed", expected instanceof ObjectNotFoundException);
+            // Hibernate's EnumType.STRING mapping resolves a stored name through
+            // Enum.valueOf, whose failure message names both the constant and the enum
+            // class it could not find it on.
+            assertTrue(
+                    "Hibernate cannot map the stored name to a PathologyStatus constant, which is the"
+                            + " hazard the migration exists to remove",
+                    causeChainNamesAll(expected, "CUTTING", "PathologyStatus"));
         }
     }
 
@@ -138,5 +154,28 @@ public class PathologyStatusMigrationTest extends BaseWebContextSensitiveTest {
     private void cleanup() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_sample WHERE id IN (?, ?, ?, ?)", FORMERLY_CUTTING,
                 FORMERLY_SLICING, FORMERLY_ADDITIONAL_REQUEST, STILL_PROCESSING);
+    }
+
+    /** Walks getCause() for one message that names every given word. */
+    private boolean causeChainNamesAll(Throwable throwable, String... allOf) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            String message = cause.getMessage();
+            if (message != null) {
+                boolean namesAll = true;
+                for (String candidate : allOf) {
+                    if (!message.contains(candidate)) {
+                        namesAll = false;
+                        break;
+                    }
+                }
+                if (namesAll) {
+                    return true;
+                }
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return false;
     }
 }

@@ -1,7 +1,6 @@
 package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 import org.junit.After;
 import org.junit.Before;
@@ -19,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * exist on the bench purely to record that a request was open, so for as long
  * as the request stood the case no longer reported where its tissue actually
  * was. The dashboard's "additional requests" tile now counts the cases holding
- * a pathology_request at OPENED instead (OGC-264, FR-2.2, AC-6), and the case
+ * a pathology_request at OPENED instead (OGC-264, FR-2.1, AC-6), and the case
  * keeps its real stage.
  *
  * <p>
@@ -63,10 +62,14 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
 
     @Test
     public void getCountWithOpenRequests_ignoresACaseWhoseRequestsAreAllClosed() {
+        // Case 1's requests, previously open, are closed here so it stands alongside
+        // case 2 as a second case whose requests are all COMPLETED or CANCELLED.
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE pathology_sample_id = 1");
+
         Long count = pathologySampleService.getCountWithOpenRequests();
 
-        assertEquals("only the case holding an open request is counted", Long.valueOf(1L), count);
-        assertNotEquals("a case whose requests are all COMPLETED or CANCELLED is not counted", Long.valueOf(2L), count);
+        assertEquals("case 2, which still holds only COMPLETED and CANCELLED requests, is not counted",
+                Long.valueOf(0L), count);
     }
 
     @Test
@@ -100,6 +103,12 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
                 id, pathologySampleId, status, "Request " + id);
     }
 
+    /**
+     * Only the ids this class inserts are removed here. A test that mutates the
+     * fixture row (id 301) leaves that mutation in place; the next
+     * {@code executeDataSetWithStateManagement} load, run by every consumer of
+     * testdata/pathology-sample.xml in its own {@code @Before}, restores it.
+     */
     private void cleanup() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_request WHERE id BETWEEN 9301 AND 9304");
     }
