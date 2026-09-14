@@ -109,7 +109,9 @@ public class TestCatalogActivationRestController {
 
     /**
      * FR-57 — a test may only go Active when it is safe to order and result: it
-     * must have a name, at least one active PRIMARY component carrying a result
+     * must have a name, a lab unit (order entry filters and routes tests by their
+     * lab unit, and a sectionless active test used to fail the whole sample type's
+     * test list, OGC-1120), at least one active PRIMARY component carrying a result
      * type, and every dictionary-backed active component must have at least one
      * result option. Returns a {@link CompletenessReport} listing every gap;
      * {@code complete} is true only when nothing is missing.
@@ -119,6 +121,9 @@ public class TestCatalogActivationRestController {
         String name = test.getName();
         if (name == null || name.isBlank()) {
             rep.add("NO_NAME", "The test has no name.");
+        }
+        if (test.getTestSection() == null) {
+            rep.add("NO_LAB_UNIT", "The test has no lab unit. Choose one in Basic Info before activating.");
         }
 
         List<TestResultComponent> components = componentService.getActiveComponentsByTestId(test.getId());
