@@ -33,6 +33,77 @@
       "elementId": "menu_sample",
       "childMenus": [
         {
+          "elementId": "menu_clinical_workflow",
+          "childMenus": [
+            {
+              "elementId": "menu_clinical_dashboard",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_clinical_enter",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_clinical_collect",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_clinical_label",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_clinical_qa",
+              "childMenus": []
+            }
+          ]
+        },
+        {
+          "elementId": "menu_environmental_workflow",
+          "childMenus": [
+            {
+              "elementId": "menu_environmental_dashboard",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_environmental_enter",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_environmental_collect",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_environmental_label",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_environmental_qa",
+              "childMenus": []
+            }
+          ]
+        },
+        {
+          "elementId": "menu_vector_workflow",
+          "childMenus": [
+            {
+              "elementId": "menu_vector_dashboard",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_vector_enter",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_vector_label",
+              "childMenus": []
+            },
+            {
+              "elementId": "menu_vector_qa",
+              "childMenus": []
+            }
+          ]
+        },
+        {
           "elementId": "menu_sample_add",
           "childMenus": []
         },
@@ -161,6 +232,15 @@
       ]
     },
     {
+      "elementId": "menu_microbiology",
+      "childMenus": [
+        {
+          "elementId": "menu_microbiology_worklist",
+          "childMenus": []
+        }
+      ]
+    },
+    {
       "elementId": "menu_pathology",
       "childMenus": []
     },
@@ -276,6 +356,10 @@
     {
       "elementId": "menu_reports",
       "childMenus": [
+        {
+          "elementId": "menu_microbiology_whonet",
+          "childMenus": []
+        },
         {
           "elementId": "menu_reports_routine",
           "childMenus": [
@@ -501,16 +585,21 @@
               "childMenus": []
             }
           ]
-        },
-        {
-          "elementId": "menu_reports_whonet_export",
-          "childMenus": []
         }
       ]
     },
     {
       "elementId": "menu_administration",
-      "childMenus": []
+      "childMenus": [
+        {
+          "elementId": "menu_administration_dashboard",
+          "childMenus": []
+        },
+        {
+          "elementId": "menu_administration_stuck_analyzer_events",
+          "childMenus": []
+        }
+      ]
     },
     {
       "elementId": "menu_billing",
@@ -555,6 +644,66 @@
         }
       ]
     }
+  ],
+  "menus": [
+    {
+      "elementId": "menu_microbiology",
+      "displayKey": "sidenav.label.microbiology",
+      "presentationOrder": 6,
+      "isActive": true,
+      "hideInOldUI": true,
+      "childMenus": [
+        {
+          "elementId": "menu_microbiology_worklist",
+          "actionURL": "/Microbiology/worklist",
+          "displayKey": "sidenav.label.microbiology.worklist",
+          "toolTipKey": "sidenav.label.microbiology.worklist",
+          "presentationOrder": 1,
+          "isActive": true,
+          "hideInOldUI": true,
+          "childMenus": []
+        }
+      ]
+    },
+    {
+      "elementId": "menu_reports",
+      "childMenus": [
+        {
+          "elementId": "menu_microbiology_whonet",
+          "actionURL": "/Microbiology/whonet",
+          "displayKey": "sidenav.label.microbiology.whonet",
+          "toolTipKey": "sidenav.label.microbiology.whonet",
+          "presentationOrder": 1,
+          "isActive": true,
+          "hideInOldUI": true,
+          "childMenus": []
+        }
+      ]
+    },
+    {
+      "elementId": "menu_administration",
+      "childMenus": [
+        {
+          "elementId": "menu_administration_dashboard",
+          "actionURL": "/MasterListsPage",
+          "displayKey": "admin.dashboard.title",
+          "toolTipKey": "admin.dashboard.title",
+          "presentationOrder": 1,
+          "isActive": true,
+          "hideInOldUI": true,
+          "childMenus": []
+        },
+        {
+          "elementId": "menu_administration_stuck_analyzer_events",
+          "actionURL": "/AnalyzerResults?view=import-issues",
+          "displayKey": "analyzer.importIssues.events.title",
+          "toolTipKey": "analyzer.importIssues.events.title",
+          "presentationOrder": 2,
+          "isActive": true,
+          "hideInOldUI": true,
+          "childMenus": []
+        }
+      ]
+    }
   ]
 }
-

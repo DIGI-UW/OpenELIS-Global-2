@@ -95,7 +95,20 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * {@code nextval()} returns {@code 4}) as it does for every sequence in the
      * schema on a fresh test DB.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset" };
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset",
+            "observation_history_type" };
+
+    /**
+     * Legacy entities whose Hibernate generators use standalone sequences and whose
+     * fixtures are followed by service-created records in this test suite. Keep
+     * this list explicit: resetting every inferred table sequence can rewind
+     * unrelated PostgreSQL sequences while other pooled connections still hold
+     * cached values.
+     */
+    private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
+            { "patient", "patient_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
+            { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -139,6 +152,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     @Before
     public void setDefaultTestAuthentication() throws Exception {
+        // A cached test context is reused without another ApplicationContextAware
+        // callback. Restore the legacy lookup after tests using another context.
+        webApplicationContext.getBean(org.openelisglobal.spring.util.SpringContext.class)
+                .setApplicationContext(webApplicationContext);
         // Ensure the "admin" SystemUser row exists so UserContextHolder can
         // resolve the principal set below (or by @WithMockUser(username="admin")
         // on individual tests). Without this, fillSysUserIdIfMissing throws
@@ -253,6 +270,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
                 truncateTablesInConnection(jdbcConn, dataset.getTableNames());
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+                synchronizeFixtureSequences(jdbcConn, dataset.getTableNames());
                 jdbcConn.commit();
 
                 // truncateTablesInConnection TRUNCATEs every table the dataset names
@@ -343,6 +361,28 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             for (String tableName : tableNames) {
                 stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
                 logger.debug("Truncating table: {}", tableName);
+            }
+        }
+    }
+
+    /**
+     * Advances standalone Hibernate sequences after DbUnit imports explicit IDs.
+     * Without this, generated inserts depend on test order and can reuse a fixture
+     * primary key.
+     */
+    private void synchronizeFixtureSequences(Connection conn, String[] tableNames) throws SQLException {
+        Set<String> loadedTables = Arrays.stream(tableNames).map(name -> name.toLowerCase(java.util.Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+        try (Statement stmt = conn.createStatement()) {
+            for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
+                String tableName = mapping[0];
+                if (!loadedTables.contains(tableName)) {
+                    continue;
+                }
+                String sequenceName = mapping[1];
+                stmt.execute("SELECT setval('clinlims." + sequenceName + "',"
+                        + " CAST(COALESCE((SELECT MAX(id) FROM clinlims." + tableName + "), 0) + 1 AS BIGINT), false)");
+                logger.debug("Synchronized fixture sequence {} for table {}", sequenceName, tableName);
             }
         }
     }

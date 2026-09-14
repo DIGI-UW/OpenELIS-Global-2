@@ -9,6 +9,8 @@ on:
       - develop
       - fix/madagascar-accession-results-file-e2e
       - codex/ogc-1054-*
+      - spec/782-*
+      - feat/782-*
   push:
     branches: [develop]
   release:

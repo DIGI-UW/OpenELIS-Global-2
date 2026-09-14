@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { registerServiceWorker } from "./serviceWorkerRegistration";
+import {
+  getServiceWorkerUrl,
+  registerServiceWorker,
+} from "./serviceWorkerRegistration";
 
 describe("registerServiceWorker", () => {
   let loadHandler;
@@ -34,5 +37,17 @@ describe("registerServiceWorker", () => {
     await Promise.resolve();
 
     expect(register).toHaveBeenCalledWith("/service-worker.js");
+  });
+});
+
+describe("getServiceWorkerUrl", () => {
+  test("uses the application root instead of the current route", () => {
+    expect(getServiceWorkerUrl("/")).toBe("/service-worker.js");
+  });
+
+  test("preserves a configured application context path", () => {
+    expect(getServiceWorkerUrl("/openelis")).toBe(
+      "/openelis/service-worker.js",
+    );
   });
 });

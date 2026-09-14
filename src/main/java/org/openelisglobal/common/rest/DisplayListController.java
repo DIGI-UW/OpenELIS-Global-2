@@ -18,6 +18,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.rest.provider.bean.TestDisplayBean;
 import org.openelisglobal.common.rest.provider.form.DisplayListPagingForm;
 import org.openelisglobal.common.rest.util.DisplayListPaging;
@@ -358,6 +359,15 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
         configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        // Required-field settings the order-entry lanes must honour. These have
+        // always existed as FormFields, consulted only by the legacy JSP screens,
+        // so the React lanes silently overrode what every shipped profile sets.
+        configs.put(Property.CONSENT_REQUIRED_FOR_COLLECTION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.CONSENT_REQUIRED_FOR_COLLECTION));
+        configs.put(FormFields.Field.PatientRequired.name(),
+                String.valueOf(FormFields.getInstance().useField(FormFields.Field.PatientRequired)));
+        configs.put(FormFields.Field.SampleEntryReferralSiteNameRequired.name(), String
+                .valueOf(FormFields.getInstance().useField(FormFields.Field.SampleEntryReferralSiteNameRequired)));
         return configs;
     }
 

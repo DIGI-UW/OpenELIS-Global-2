@@ -19,6 +19,16 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import ImportIssuesPanel from "./ImportIssuesPanel";
+
+const importIssuesBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+  {
+    label: "analyzer.importIssues.title",
+    link: "/AnalyzerResults?view=import-issues",
+  },
+];
 
 /**
  * The page title for an analyzer worklist. The URL carries the analyzer's id;
@@ -27,6 +37,9 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
  */
 export const analyzerPageTitle = (label, analyzerName) =>
   analyzerName ? `${label}: ${analyzerName}` : label;
+
+export const getAnalyzerResultsView = (search) =>
+  new URLSearchParams(search).get("view") || "";
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -45,10 +58,10 @@ const Index = () => {
   const [sampleGroup, setSampleGroup] = useState([]);
   const [searchTermToPage, setSearchTermToPage] = useState([]);
   const [labNumber, setLabNumber] = useState("");
-  const intl = useIntl();
-
   const location = useLocation();
   const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
+  const view = getAnalyzerResultsView(location.search);
+  const intl = useIntl();
 
   useEffect(() => {
     if (!selectedAnalyzerId) {
@@ -140,6 +153,14 @@ const Index = () => {
       }
     }
   };
+  if (view === "import-issues") {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={importIssuesBreadcrumbs} />
+        <ImportIssuesPanel />
+      </>
+    );
+  }
 
   if (!selectedAnalyzerId) {
     return <Redirect to="/analyzers" />;

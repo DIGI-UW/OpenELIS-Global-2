@@ -235,8 +235,7 @@ public class UserServiceImpl implements UserService {
 
                     });
                 }
-                List<IdValuePair> allTestSections = DisplayListService.getInstance()
-                        .getList(ListType.TEST_SECTION_ACTIVE);
+                List<IdValuePair> allTestSections = activeTestSections();
                 if (isadmin || userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
                     return allTestSections;
                 } else {
@@ -253,8 +252,7 @@ public class UserServiceImpl implements UserService {
                     String[] authorityExplode = authority.getAuthority().split("-");
                     if (authorityExplode.length == 3) {
                         if (roleId == null || roleService.get(roleId).getName().trim().equals(authorityExplode[1])) {
-                            List<IdValuePair> allTestSections = DisplayListService.getInstance()
-                                    .getList(ListType.TEST_SECTION_ACTIVE);
+                            List<IdValuePair> allTestSections = activeTestSections();
                             if (UnifiedSystemUserController.ALL_LAB_UNITS.equals(authorityExplode[2])) {
                                 return allTestSections;
                             } else {
@@ -272,6 +270,15 @@ public class UserServiceImpl implements UserService {
         }
 
         return new ArrayList<>();
+    }
+
+    private List<IdValuePair> activeTestSections() {
+        List<IdValuePair> cached = DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
+        if (cached != null && !cached.isEmpty()) {
+            return cached;
+        }
+        return testSectionService.getAllActiveTestSections().stream()
+                .map(section -> new IdValuePair(section.getId(), section.getLocalizedName())).toList();
     }
 
     @Override

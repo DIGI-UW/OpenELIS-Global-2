@@ -3,11 +3,13 @@ package org.openelisglobal.analyzer;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -16,6 +18,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
@@ -23,6 +26,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.w3c.dom.NodeList;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -47,6 +51,7 @@ public class HibernateMappingValidationTest {
 
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class);
+        configuration.addAnnotatedClass(AnalyzerEvent.class);
         configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
@@ -82,6 +87,7 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerMappingsLoadSuccessfully() {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class));
+        assertNotNull("AnalyzerEvent should be registered", sessionFactory.getMetamodel().entity(AnalyzerEvent.class));
         assertNotNull("AnalyzerActivationRecord should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerActivationRecord.class));
         assertNotNull("AnalyzerProfileBinding should be registered",
@@ -111,7 +117,8 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { Analyzer.class, AnalyzerActivationRecord.class, AnalyzerProfileBinding.class,
                 AnalyzerSiteBinding.class, AnalyzerSiteBindingConfirmation.class, AnalyzerSiteBindingRevision.class,
-                AnalyzerSiteBindingTest.class, AnalyzerSiteBindingResult.class, AnalyzerResults.class };
+                AnalyzerSiteBindingTest.class, AnalyzerSiteBindingResult.class, AnalyzerResults.class,
+                AnalyzerEvent.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts
@@ -137,6 +144,27 @@ public class HibernateMappingValidationTest {
                             + " should not have conflicting getters: " + getters);
                 }
             }
+        }
+    }
+
+    @Test
+    public void analyzerEventIsRegisteredInRuntimeAndTestPersistenceUnits() throws Exception {
+        assertPersistenceUnitContains("persistence/persistence.xml", AnalyzerEvent.class.getName());
+        assertPersistenceUnitContains("persistence/test-persistence.xml", AnalyzerEvent.class.getName());
+    }
+
+    private void assertPersistenceUnitContains(String resource, String entityClass) throws Exception {
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream(resource)) {
+            assertNotNull(resource + " should exist", input);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            NodeList classes = factory.newDocumentBuilder().parse(input).getElementsByTagNameNS("*", "class");
+            for (int index = 0; index < classes.getLength(); index++) {
+                if (entityClass.equals(classes.item(index).getTextContent().trim())) {
+                    return;
+                }
+            }
+            fail(entityClass + " should be registered in " + resource);
         }
     }
 }

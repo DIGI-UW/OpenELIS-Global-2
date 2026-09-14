@@ -46,12 +46,15 @@ describe("analyzer harness nginx template", () => {
   test("forwards Vite HMR WebSocket upgrades through every frontend proxy", () => {
     const template = fs.readFileSync(nginxTemplatePath, "utf8");
     const frontendBlocks = locationBlocks(template).filter((block) =>
-      block.includes("proxy_pass http://frontend.openelis.org;"),
+      block.includes("proxy_pass http://$frontend_upstream;"),
     );
 
     expect(template).toContain("map $http_upgrade $connection_upgrade");
     expect(frontendBlocks).toHaveLength(2);
     for (const block of frontendBlocks) {
+      expect(block).toContain(
+        'set $frontend_upstream "frontend.openelis.org";',
+      );
       expect(block).toContain("proxy_http_version 1.1;");
       expect(block).toContain("proxy_set_header Upgrade $http_upgrade;");
       expect(block).toContain(
