@@ -3450,6 +3450,7 @@
   "label.results.subject.vector": "Sample / Trap",
   "label.results.table.caption": "Results worklist",
   "label.results.test": "Test",
+  "label.results.titer.placeholder": "e.g. 1:10",
   "label.results.method": "Method",
   "label.results.analyzer": "Analyzer",
   "label.results.analyzer.none": "Not from an instrument",
