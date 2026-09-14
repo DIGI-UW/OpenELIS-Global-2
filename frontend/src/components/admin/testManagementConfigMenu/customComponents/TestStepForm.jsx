@@ -889,17 +889,7 @@ export const StepOneTestNameAndTestSection = ({
                   <Button type="submit">
                     <FormattedMessage id="next.action.button" />
                   </Button>{" "}
-                  <Button
-                    onClick={() => {
-                      if (cancelCall) {
-                        cancelCall();
-                      } else {
-                        window.location.reload();
-                      }
-                    }}
-                    kind="tertiary"
-                    type="button"
-                  >
+                  <Button onClick={cancelCall} kind="tertiary" type="button">
                     <FormattedMessage id="label.button.cancel" />
                   </Button>
                 </Column>

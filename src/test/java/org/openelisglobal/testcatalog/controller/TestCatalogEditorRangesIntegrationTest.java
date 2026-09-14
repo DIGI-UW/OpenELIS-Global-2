@@ -64,9 +64,6 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
 
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -91,8 +88,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"

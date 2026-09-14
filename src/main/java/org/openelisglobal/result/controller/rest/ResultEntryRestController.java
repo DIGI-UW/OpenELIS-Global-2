@@ -166,7 +166,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION')")
     public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(required = false) String componentId) {

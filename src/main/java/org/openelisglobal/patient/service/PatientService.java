@@ -1,6 +1,7 @@
 package org.openelisglobal.patient.service;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -18,6 +19,9 @@ public interface PatientService extends BaseObjectService<Patient, String> {
     Patient getPatientByNationalId(String subjectNumber);
 
     List<Patient> getPatientsByNationalId(String nationalId);
+
+    /** The merged patients among the given ids, in one query. */
+    List<Patient> getMergedPatientsIn(Collection<String> patientIds);
 
     Patient getPatientByPerson(Person person);
 

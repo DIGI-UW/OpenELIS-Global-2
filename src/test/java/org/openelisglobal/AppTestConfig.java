@@ -15,12 +15,13 @@ import org.itech.fhir.dataexport.core.dao.DataExportTaskDAO;
 import org.itech.fhir.dataexport.core.service.DataExportTaskService;
 import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
@@ -37,6 +38,7 @@ import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
+import org.openelisglobal.reports.service.WHONetReportService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
@@ -51,6 +53,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
@@ -65,6 +69,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+@Import(org.openelisglobal.common.rest.provider.SampleEntryTestsForTypeProviderRestController.class)
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
         "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
         "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
@@ -113,16 +118,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.labelpreset", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
         "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
-        "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
-        "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
-        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.qachecklist",
-        "org.openelisglobal.esig", "org.openelisglobal.compliance", "org.openelisglobal.vector",
-        "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
-        "org.openelisglobal.resultreporting.service", "org.openelisglobal.security",
-        "org.openelisglobal.genericsample" }, excludeFilters = {
+        "org.openelisglobal.fhir.providers", "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao",
+        "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
+        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
+        "org.openelisglobal.qachecklist", "org.openelisglobal.esig", "org.openelisglobal.compliance",
+        "org.openelisglobal.vector", "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
+        "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
+        "org.openelisglobal.questionnaire", "org.openelisglobal.microbiology" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.vector.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.result.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.login.controller.*"),
@@ -134,22 +139,52 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.SecurityConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.DaemonUserConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org\\.openelisglobal\\..*Test\\$TestConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerTypeRestControllerSecurityTest.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerWorkflowAuthorizationSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PrintBarcodeController.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class),
                 // Nested test-only @Configuration classes must not be picked up by this
-                // shared component scan. ComplianceReportReissueSecurityTest.TestConfig
-                // registers a mock SampleComplianceStandardDAO @Bean for its isolated
-                // MockMvc slice; if scanned here it collides with the real
-                // sampleComplianceStandardDAOImpl (NoUniqueBeanDefinitionException) and
-                // breaks the shared integration ApplicationContext. Matched by REGEX on
-                // its binary name because the nested config is package-private.
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*") })
+                // shared component scan. They register mocks for isolated MockMvc slices
+                // that otherwise collide with production services.
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerPluginConfigRestControllerSecurityTest.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.alert.controller.rest.AlertRestControllerSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
+
+    @Bean
+    @Primary
+    @Profile("test")
+    public BridgeProfileCatalogService bridgeProfileCatalogService() {
+        return new BridgeProfileCatalogService() {
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog getCatalog() {
+                return AnalyzerTestProfileCatalog.catalog();
+            }
+
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog.ProfileRevision getProfile(String profileId,
+                    int revision) {
+                return AnalyzerTestProfileCatalog.catalog().profiles().stream()
+                        .filter(candidate -> profileId
+                                .equals(candidate.profile().path("profileMeta").path("id").asText()))
+                        .filter(candidate -> revision == candidate.profile().path("catalog").path("revision").asInt())
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                                "Unknown test analyzer profile revision: " + profileId + "@" + revision));
+            }
+        };
+    }
+
+    @Bean
+    @Profile("test")
+    public WHONetReportService whonetReportService() {
+        return mock(WHONetReportService.class);
+    }
 
     @Bean
     @Profile("test")
@@ -171,12 +206,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TruststoreService truststoreService() {
         return mock(TruststoreService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public PluginAnalyzerService pluginAnalyzerService() {
-        return mock(PluginAnalyzerService.class);
     }
 
     @Bean()
@@ -407,7 +436,6 @@ public class AppTestConfig implements WebMvcConfigurer {
             org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService,
             org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService,
             org.openelisglobal.analyzer.service.AnalyzerService analyzerService,
-            org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService,
             org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService,
             org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService,
             org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService,
@@ -415,8 +443,8 @@ public class AppTestConfig implements WebMvcConfigurer {
             org.openelisglobal.panelitem.service.PanelItemService panelItemService) {
         return new org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController(testService,
                 componentService, interpretationService, testResultService, resultLimitService, coverageService,
-                handlingService, analyzerService, analyzerTestMappingService, typeOfSampleService,
-                typeOfSampleTestService, terminologyService, panelService, panelItemService);
+                handlingService, analyzerService, typeOfSampleService, typeOfSampleTestService, terminologyService,
+                panelService, panelItemService);
     }
 
     @Bean

@@ -9,6 +9,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
+import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,57 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryUsageService usageService;
+
+    @Override
+    @Transactional
+    public InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
+            String sysUserId) {
+        if (quantityNeeded == null || quantityNeeded <= 0) {
+            throw new IllegalArgumentException("Quantity needed must be greater than 0");
+        }
+
+        InventoryLot lot = inventoryLotService.getForUpdate(lotId);
+        if (lot == null) {
+            throw new IllegalArgumentException("Lot not found: " + lotId);
+        }
+        validateSelectedLot(lot, quantityNeeded);
+
+        double remaining = lot.getCurrentQuantity() - quantityNeeded;
+        lot.setCurrentQuantity(remaining);
+        if (remaining == 0) {
+            lot.setStatus(LotStatus.CONSUMED);
+        }
+        lot.setSysUserId(sysUserId);
+        lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        inventoryLotService.update(lot);
+
+        String referenceType = testResultId == null ? ReferenceType.MANUAL.name() : ReferenceType.TEST_RESULT.name();
+        String notes = analysisId == null ? "Consumed selected inventory lot"
+                : "Consumed selected lot for analysis " + analysisId;
+        transactionService.recordTransaction(lot.getId(), TransactionType.CONSUMPTION, -quantityNeeded, remaining,
+                testResultId, referenceType, notes, sysUserId);
+        return usageService.recordUsage(lot, quantityNeeded, testResultId, analysisId, sysUserId);
+    }
+
+    private void validateSelectedLot(InventoryLot lot, Double quantityNeeded) {
+        String lotNumber = lot.getLotNumber();
+        if (lot.isExpired()) {
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_EXPIRED", lotNumber);
+        }
+        if (lot.getQcStatus() != org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus.PASSED) {
+            String code = lot.getQcStatus() == org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus.FAILED
+                    ? "INVENTORY_LOT_QC_FAILED"
+                    : "INVENTORY_LOT_QC_NOT_PASSED";
+            throw new InventoryLotUnavailableException(code, lotNumber);
+        }
+        if (lot.getStatus() != LotStatus.ACTIVE && lot.getStatus() != LotStatus.IN_USE) {
+            String status = lot.getStatus() == null ? "STATUS_UNKNOWN" : lot.getStatus().name();
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_" + status, lotNumber);
+        }
+        if (lot.getCurrentQuantity() == null || lot.getCurrentQuantity() < quantityNeeded) {
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_INSUFFICIENT_QUANTITY", lotNumber);
+        }
+    }
 
     @Override
     @Transactional

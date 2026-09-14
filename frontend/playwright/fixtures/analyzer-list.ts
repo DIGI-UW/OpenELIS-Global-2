@@ -32,15 +32,18 @@ export class AnalyzerListPage {
 
   /** Navigate to the analyzers list page */
   async goto() {
-    await this.page.goto("analyzers", { waitUntil: "domcontentloaded" });
+    await this.page.goto("/analyzers", {
+      waitUntil: "domcontentloaded",
+      timeout: NAV_TIMEOUT,
+    });
   }
 
-  /** Assert the page has loaded (root + header + stats visible) */
+  /** Assert the page and analyzer data have loaded. */
   async expectLoaded() {
-    // Wait for analyzers API to complete (stats grid populated)
     await expect(this.root).toBeVisible({ timeout: NAV_TIMEOUT });
     await expect(this.header).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(this.statsGrid).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(this.tableContainer).toBeVisible({ timeout: LONG_TIMEOUT });
   }
 
   /** Get a stat tile value by testid suffix (total, active, inactive) */
@@ -90,11 +93,11 @@ export class AnalyzerListPage {
   async clickAction(
     id: string,
     action:
-      | "mappings"
-      | "test-connection"
-      | "edit"
-      | "delete"
-      | "copy-mappings",
+      | "edit-setup"
+      | "configure-connection"
+      | "quality-control"
+      | "deactivate"
+      | "reactivate",
   ) {
     const actionItem = this.page.locator(
       `[data-testid="analyzer-action-${action}-${id}"]`,

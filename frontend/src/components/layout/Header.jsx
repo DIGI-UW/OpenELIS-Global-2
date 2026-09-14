@@ -144,19 +144,6 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
-      const findMenu = (items, elementId) => {
-        for (const item of items || []) {
-          if (item?.menu?.elementId === elementId) {
-            return item;
-          }
-          const childMatch = findMenu(item?.childMenus, elementId);
-          if (childMatch) {
-            return childMatch;
-          }
-        }
-        return null;
-      };
-      const billingMenuBeforeInit = findMenu(res, "menu_billing");
       // FIX: Initialize expanded property for all menu items
       const initializeExpanded = (items) => {
         return items.map((item) => ({
@@ -169,7 +156,6 @@ function OEHeader({
       };
 
       const initializedMenus = initializeExpanded(res);
-      const billingMenuAfterInit = findMenu(initializedMenus, "menu_billing");
 
       // IMPORTANT: use functional setState so we never drop other menu buckets due to stale closures
       setMenus((prev) => ({ ...prev, [tag]: initializedMenus }));
@@ -244,12 +230,16 @@ function OEHeader({
   };
 
   useEffect(() => {
+    if (!userSessionDetails.authenticated) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       getNotifications();
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [userSessionDetails.authenticated]);
 
   // Click-outside handler: close the drawer whenever the nav is an overlay
   // (small viewports, or desktop with the nav unpinned)
@@ -321,7 +311,7 @@ function OEHeader({
    * Returns true if ANY child/grandchild matches currentPath.
    *
    * Important: Do NOT match the item itself here. Otherwise a parent item like
-   * /analyzers would be considered an "active child" for /analyzers/errors.
+   * /analyzers would be considered an "active child" for /analyzers/types.
    */
   const hasActiveDescendant = (item, currentPath) => {
     const normalizePath = (url) => {
@@ -352,7 +342,7 @@ function OEHeader({
 
   /**
    * Check if a menu item has siblings with paths that start with its own path.
-   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/errors).
+   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/types).
    */
   const hasSiblingWithLongerPath = (menuItem, parentMenuItems) => {
     if (!parentMenuItems || !menuItem.menu.actionURL) return false;
@@ -438,7 +428,7 @@ function OEHeader({
     const hasChildren = menuItem.childMenus.length > 0;
 
     // Check if this menu item has siblings with paths that start with its own path.
-    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/errors).
+    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/types).
     const hasSiblingConflict = hasChildren
       ? false // Parent items don't need this check
       : hasSiblingWithLongerPath(menuItem, parentMenuItems);
@@ -526,146 +516,85 @@ function OEHeader({
       // Use controlled expanded prop instead of defaultExpanded to ensure proper collapse behavior
       const carbonExpanded = !!menuItem.expanded || hasActiveChild;
       return (
-        // Wrapper span with ID for backward compatibility with Cypress selectors (span#menu_xxx)
-        <span key={itemId} id={menuItem.menu.elementId}>
-          <SideNavMenu
-            // IMPORTANT: use stable key (elementId) to prevent React from reusing the wrong subtree
-            // when the menu list shape changes (roles/plugins/async load).
-            // plugin-contributed menus (analyzers) carry a literal name as their
-            // display key, not a message id — fall back to it instead of erroring
-            title={intl.formatMessage({
-              id: menuItem.menu.displayKey,
-              defaultMessage: menuItem.menu.displayKey,
-            })}
-            defaultExpanded={carbonExpanded}
-            isActive={carbonIsActive}
-            onToggle={() => {
-              setMenuItemExpanded(menuItem);
-            }}
-            className={
-              level === 0
-                ? "top-level-menu-item"
-                : "reduced-padding-nav-menu-item"
+        <SideNavMenu
+          key={itemId}
+          ref={(button) => {
+            if (button) {
+              button.id = menuItem.menu.elementId;
+              button.dataset.cy = menuItem.menu.elementId?.replace(
+                /[^\w\s]/gi,
+                "_",
+              );
             }
-          >
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
-              {menuItem.childMenus.map((childMenuItem, childIndex) => {
-                return generateMenuItems(
-                  childMenuItem,
-                  childIndex,
-                  level + 1,
-                  path + ".childMenus[" + childIndex + "]",
-                  menuItem.childMenus, // Pass parent's children for sibling check
-                );
-              })}
-            </span>
-          </SideNavMenu>
-        </span>
-      );
-    }
-
-    // Leaf item - wrapped in span for backward compatibility with Cypress selectors
-    return (
-      <span
-        key={itemId}
-        id={menuItem.menu.elementId}
-        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-      >
-        <SideNavMenuItem
-          id={menuItem.menu.elementId + "_nav"}
+          }}
+          title={intl.formatMessage({
+            id: menuItem.menu.displayKey,
+            defaultMessage: menuItem.menu.displayKey,
+          })}
+          defaultExpanded={carbonExpanded}
+          isActive={carbonIsActive}
           className={
             level === 0
               ? "top-level-menu-item"
               : "reduced-padding-nav-menu-item"
           }
-          isActive={isLeafActive}
-          href={menuItem.menu.actionURL || undefined}
-          target={
-            menuItem.menu.openInNewWindow &&
-            !menuItem.menu.actionURL?.startsWith("/")
-              ? "_blank"
-              : undefined
-          }
-          rel={
-            menuItem.menu.openInNewWindow &&
-            !menuItem.menu.actionURL?.startsWith("/")
-              ? "noreferrer"
-              : undefined
-          }
-          onClick={handleLabelClick}
-          aria-current={isLeafActive ? "page" : undefined}
-          style={level === 0 ? undefined : { width: "100%" }}
         >
-          <span
-            style={{
-              display: "flex",
-              width: "100%",
-              marginLeft: level === 0 ? 0 : `${(level - 1) * 0.5}rem`,
-            }}
-          >
-            <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
-              <FormattedMessage
-                id={menuItem.menu.displayKey}
-                defaultMessage={menuItem.menu.displayKey}
-              />
-            </span>
+          {menuItem.childMenus.map((childMenuItem, childIndex) => {
+            return generateMenuItems(
+              childMenuItem,
+              childIndex,
+              level + 1,
+              path + ".childMenus[" + childIndex + "]",
+              menuItem.childMenus, // Pass parent's children for sibling check
+            );
+          })}
+        </SideNavMenu>
+      );
+    }
+
+    return (
+      <SideNavMenuItem
+        key={itemId}
+        id={menuItem.menu.elementId + "_nav"}
+        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+        className={
+          level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"
+        }
+        isActive={isLeafActive}
+        href={menuItem.menu.actionURL || undefined}
+        target={
+          menuItem.menu.openInNewWindow &&
+          !menuItem.menu.actionURL?.startsWith("/")
+            ? "_blank"
+            : undefined
+        }
+        rel={
+          menuItem.menu.openInNewWindow &&
+          !menuItem.menu.actionURL?.startsWith("/")
+            ? "noreferrer"
+            : undefined
+        }
+        onClick={handleLabelClick}
+        aria-current={isLeafActive ? "page" : undefined}
+        style={level === 0 ? undefined : { width: "100%" }}
+      >
+        <span
+          id={menuItem.menu.elementId}
+          style={{
+            display: "flex",
+            width: "100%",
+            marginLeft: level === 0 ? 0 : `${(level - 1) * 0.5}rem`,
+          }}
+        >
+          <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
+            <FormattedMessage
+              id={menuItem.menu.displayKey}
+              defaultMessage={menuItem.menu.displayKey}
+            />
           </span>
-        </SideNavMenuItem>
-      </span>
+        </span>
+      </SideNavMenuItem>
     );
-  };
-
-  const setMenuItemExpanded = (menuItem) => {
-    // IMPORTANT: functional update avoids stale-state races that can scramble expansion state.
-    setMenus((prev) => {
-      const newMenus = { ...prev };
-      const targetId = menuItem?.menu?.elementId;
-
-      // IMPORTANT: toggle expansion by stable elementId, NOT by index-based JSONPath.
-      // Index-based paths can point at the wrong node if the menu shape changes.
-      const toggleById = (items) => {
-        return (items || []).map((it) => {
-          const id = it?.menu?.elementId;
-          if (!id) return it;
-          if (id === targetId) {
-            return { ...it, expanded: !it.expanded };
-          }
-          if (it.childMenus && it.childMenus.length > 0) {
-            return { ...it, childMenus: toggleById(it.childMenus) };
-          }
-          return it;
-        });
-      };
-
-      newMenus.menu = toggleById(newMenus.menu || []);
-
-      // Persist expanded state map for this context
-      try {
-        const expandedMap = {};
-        const captureExpanded = (items) => {
-          (items || []).forEach((it) => {
-            expandedMap[it.menu.elementId] = !!it.expanded;
-            if (it.childMenus) {
-              captureExpanded(it.childMenus);
-            }
-          });
-        };
-        captureExpanded(newMenus.menu || []);
-        localStorage.setItem(
-          `${storageKeyPrefix}ExpandedMap`,
-          JSON.stringify(expandedMap),
-        );
-      } catch {
-        // ignore
-      }
-
-      return newMenus;
-    });
   };
 
   return (
@@ -792,6 +721,7 @@ function OEHeader({
               <HelpMenu
                 helpOpen={helpOpen}
                 handlePanelToggle={handlePanelToggle}
+                enabled={userSessionDetails.authenticated === true}
               />
             </HeaderGlobalBar>
             <HeaderPanel
@@ -934,26 +864,30 @@ function OEHeader({
               </>
             )}
           </Header>
-          <div style={{ flex: 1 }}>
-            <SlideOver
-              open={notificationsOpen}
-              setOpen={(open) => setNotificationsOpen(open)}
-              slideFrom="right"
-              title="Notifications"
-            >
-              <SlideOverNotifications
-                loading={loading}
-                notifications={
-                  showRead ? readNotifications : unReadNotifications
-                }
-                showRead={showRead}
-                markNotificationAsRead={markNotificationAsRead}
-                getNotifications={getNotifications}
-                setShowRead={setShowRead}
-                markAllNotificationsAsRead={markAllNotificationsAsRead}
-              />
-            </SlideOver>
-          </div>
+          {userSessionDetails.authenticated && (
+            <div style={{ flex: 1 }}>
+              <SlideOver
+                open={notificationsOpen}
+                setOpen={(open) => setNotificationsOpen(open)}
+                slideFrom="right"
+                title="Notifications"
+              >
+                {notificationsOpen && (
+                  <SlideOverNotifications
+                    loading={loading}
+                    notifications={
+                      showRead ? readNotifications : unReadNotifications
+                    }
+                    showRead={showRead}
+                    markNotificationAsRead={markNotificationAsRead}
+                    getNotifications={getNotifications}
+                    setShowRead={setShowRead}
+                    markAllNotificationsAsRead={markAllNotificationsAsRead}
+                  />
+                )}
+              </SlideOver>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useState, useRef, useMemo } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import {
@@ -32,7 +39,6 @@ import SearchResultFormValues from "../formModel/innitialValues/SearchResultForm
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
-import SendToAnalyzerButton from "../modifyOrder/SendToAnalyzerButton";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -78,6 +84,10 @@ function ResultSearchPage() {
     testResult: [],
   });
   const [resultForm, setResultForm] = useState(originalResultForm);
+  // A response replaces the complete work queue.  SearchResults has draft
+  // state for rows (including text inputs), so it gets a fresh editing session
+  // only at this response boundary, not on each individual field edit.
+  const [resultSetVersion, setResultSetVersion] = useState(0);
   const [searchBy, setSearchBy] = useState({ type: "", doRange: false });
   const [param, setParam] = useState("&accessionNumber=");
 
@@ -90,7 +100,7 @@ function ResultSearchPage() {
   useEffect(() => {
     setPoolLotFilter("");
     setPoolIdFilter("");
-  }, [resultForm]);
+  }, [resultSetVersion]);
 
   const allRows = resultForm?.testResult ?? [];
 
@@ -183,27 +193,27 @@ function ResultSearchPage() {
   const setResults = (resultForm) => {
     setOriginalResultForm(resultForm);
     setResultForm(resultForm);
+    setResultSetVersion((version) => version + 1);
   };
 
-  // Single-accession context → offer LIS-initiated dispatch of this order to an
-  // analyzer. Derived from the active accession-number search param (set when the
-  // page is loaded/searched by accession, e.g. /AccessionResults?accessionNumber=…);
-  // suppressed for range/logbook/patient searches that span multiple accessions.
-  const accessionMatch = /accessionNumber=([^&]+)/.exec(param || "");
-  const loadedAccession =
-    accessionMatch &&
-    accessionMatch[1] &&
-    !(param || "").includes("upperAccessionNumber")
-      ? decodeURIComponent(accessionMatch[1])
-      : "";
-  const hasResults = (resultForm?.testResult?.length || 0) > 0;
-
+  /**
+   * The results table re-runs the current search after a write instead of
+   * sending the browser back to the URL it is already on. SearchResultForm
+   * owns the search and publishes its refresh here whenever the endpoint
+   * changes; SearchResults calls it after a save.
+   */
+  const refreshRun = useRef(null);
+  const registerRefresh = useCallback((run) => {
+    refreshRun.current = run;
+  }, []);
+  const refreshResults = useCallback(() => refreshRun.current?.(), []);
   return (
     <>
       <SearchResultForm
         setParam={setParam}
         setSearchBy={setSearchBy}
         setResults={setResults}
+        registerRefresh={registerRefresh}
         poolLotOptions={poolLotOptions}
         poolOptions={poolOptions}
         poolLotFilter={poolLotFilter}
@@ -217,21 +227,14 @@ function ResultSearchPage() {
         totalRows={allRows.length}
         filteredRowCount={filteredRowCount}
       />
-      {loadedAccession && hasResults && (
-        <Grid>
-          <Column lg={16} md={8} sm={4}>
-            <div style={{ margin: "0.5rem 0" }}>
-              <SendToAnalyzerButton accessionNumber={loadedAccession} />
-            </div>
-          </Column>
-        </Grid>
-      )}
       <SearchResults
+        key={`result-set-${resultSetVersion}`}
         extraParams={param}
         searchBy={searchBy}
         results={resultForm}
         setResultForm={setResultForm}
         refreshOnSubmit={true}
+        refreshResults={refreshResults}
         poolLotFilter={poolLotFilter}
         poolIdFilter={poolIdFilter}
       />
@@ -274,9 +277,10 @@ export function SearchResultForm(props) {
     if (results.testResult) {
       // /AccessionResults is a patient-result view; QC duplicates/blanks belong
       // on the QC review surfaces (/LogbookResults, /RangeResults) instead.
-      if (window.location.pathname === "/AccessionResults") {
-        results.testResult = results.testResult.filter((row) => !row.qcType);
-      }
+      const visibleResults =
+        window.location.pathname === "/AccessionResults"
+          ? results.testResult.filter((row) => !row.qcType)
+          : results.testResult;
       // Group each QC row directly beneath its client parent so the table
       // reads as parent → children rather than scattering BLANKs to the end.
       // Key 1: groupId binds QC rows (parentSampleItemId) to their parent
@@ -287,39 +291,42 @@ export function SearchResultForm(props) {
         Number.MAX_SAFE_INTEGER;
       const seqKey = (row) =>
         parseInt(row.sequenceNumber, 10) || Number.MAX_SAFE_INTEGER;
-      results.testResult = results.testResult.slice().sort((a, b) => {
-        return (
-          groupKey(a) - groupKey(b) ||
-          (a.qcType ? 1 : 0) - (b.qcType ? 1 : 0) ||
-          seqKey(a) - seqKey(b)
-        );
-      });
-      var i = 0;
-      if (results.testResult) {
-        results.testResult.forEach((item) => (item.id = "" + i++));
-      }
-      props.setResults?.(results);
+      const testResult = visibleResults
+        .slice()
+        .sort(
+          (a, b) =>
+            groupKey(a) - groupKey(b) ||
+            (a.qcType ? 1 : 0) - (b.qcType ? 1 : 0) ||
+            seqKey(a) - seqKey(b),
+        )
+        // The form payload addresses rows by position. Keep that compatibility
+        // value in the response-derived form without mutating the response.
+        .map((item, index) => ({
+          ...item,
+          id: String(index),
+          note: item.note ?? "",
+        }));
+      props.setResults?.({ ...results, testResult });
       setLoading(false);
-      if (results.paging) {
-        var { totalPages, currentPage } = results.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
-      }
+      const totalPages = Number(results.paging?.totalPages) || 1;
+      const currentPage = Number(results.paging?.currentPage) || 1;
+      const hasMultiplePages = totalPages > 1;
+      setPagination(hasMultiplePages);
+      setCurrentApiPage(hasMultiplePages ? currentPage : null);
+      setTotalApiPages(hasMultiplePages ? totalPages : null);
+      setNextPage(
+        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
+      );
+      setPreviousPage(
+        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
+      );
     } else {
       props.setResults?.({ testResult: [] });
+      setPagination(false);
+      setCurrentApiPage(null);
+      setTotalApiPages(null);
+      setNextPage(null);
+      setPreviousPage(null);
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "patient.search.nopatient" }),
@@ -445,6 +452,20 @@ export function SearchResultForm(props) {
     setPagination(false);
     querySearch(values);
   };
+
+  useEffect(() => {
+    if (!props.registerRefresh) {
+      return;
+    }
+    props.registerRefresh(
+      url
+        ? () => {
+            setLoading(true);
+            getFromOpenElisServer(url, setResultsWithId);
+          }
+        : null,
+    );
+  }, [url, props.registerRefresh]);
 
   const getTests = (tests) => {
     if (componentMounted.current) {
@@ -1741,7 +1762,7 @@ export function SearchResults(props) {
               <TextArea
                 id={"testResult" + row.id + ".note"}
                 name={"testResult[" + row.id + "].note"}
-                //value={props.results.testResult[row.id]?.pastNotes}
+                value={row.note || ""}
                 disabled={false}
                 type="text"
                 labelText=""
@@ -2750,12 +2771,7 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        window.location.href =
-          "/result?type=" +
-          props.searchBy.type +
-          "&doRange=" +
-          props.searchBy.doRange +
-          props.extraParams;
+        props.refreshResults?.();
       }
     } else {
       addNotification({
@@ -2857,6 +2873,7 @@ export function SearchResults(props) {
             >
               <DataTable
                 data={displayRows.slice((page - 1) * pageSize, page * pageSize)}
+                keyField="id"
                 columns={columns}
                 isSortable
                 expandableRows

@@ -1574,7 +1574,7 @@ public class ResultsLoadUtility {
      * unified panel can render each with its context (subject) and visibility
      * (noteType) tags. pastNotes remains the legacy flat string.
      */
-    private List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
+    public List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
         List<TestResultItem.AnalysisNote> items = new ArrayList<>();
         NoteService noteService = SpringContext.getBean(NoteService.class);
         for (Note note : noteService.getNotes(analysis)) {

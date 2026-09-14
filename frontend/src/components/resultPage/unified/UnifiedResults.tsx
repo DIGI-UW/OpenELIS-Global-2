@@ -76,7 +76,22 @@ import Avatar from "./Avatar";
 // @ts-ignore
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import config from "../../../config.json";
+import SearchPatientForm from "../../patient/SearchPatientForm";
+import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+
+const replaceResultsUrl = (urlState: URLSearchParams) => {
+  const query = urlState.toString();
+  window.history.replaceState(
+    null,
+    "",
+    query ? `/Results?${query}` : "/Results",
+  );
+};
+
+const patientDisplayName = (patient: PatientRecord) =>
+  [patient.firstName, patient.lastName].filter(Boolean).join(" ") +
+  (patient.subjectNumber ? ` (${patient.subjectNumber})` : "");
 
 /**
  * OGC-1020 (R1 of OGC-811) — unified /Results worklist.
@@ -161,6 +176,10 @@ const UnifiedResults: React.FC = () => {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [searchText, setSearchText] = useState<string>("");
   const [collectionDate, setCollectionDate] = useState<string>("");
+  const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(
+    null,
+  );
+  const [showPatientSearch, setShowPatientSearch] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [rowStates, setRowStates] = useState<Record<string, RowEditState>>({});
@@ -305,22 +324,36 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
+  /**
+   * Loads the worklist for the current filters, or for one patient. A patient
+   * search sends only {@code patientPK}: /rest/LogbookResults treats a lab
+   * unit or date sent alongside as the primary criterion and never reaches
+   * its patient branch. {@code patientOverride} {@code null} forces the filter
+   * mode while the state still holds a patient (the Clear button).
+   */
   const loadWorklist = useCallback(
-    (labNumberOverride?: string) => {
+    (labNumberOverride?: string, patientOverride?: PatientRecord | null) => {
       setLoading(true);
       const params = new URLSearchParams();
       // guard: when wired directly to onClick the argument is the click
       // event — only a string counts as an override
       const labNumber =
         typeof labNumberOverride === "string" ? labNumberOverride : searchText;
-      if (labNumber) {
-        params.set("labNumber", labNumber);
-      }
-      if (selectedLabUnit) {
-        params.set("testSectionId", selectedLabUnit);
-      }
-      if (collectionDate) {
-        params.set("collectionDate", collectionDate);
+      const patient =
+        patientOverride === undefined ? selectedPatient : patientOverride;
+      const patientPK = patient?.patientPK || "";
+      if (patientPK) {
+        params.set("patientPK", patientPK);
+      } else {
+        if (labNumber) {
+          params.set("labNumber", labNumber);
+        }
+        if (selectedLabUnit) {
+          params.set("testSectionId", selectedLabUnit);
+        }
+        if (collectionDate) {
+          params.set("collectionDate", collectionDate);
+        }
       }
       params.set("doRange", "false");
       params.set("finished", "false");
@@ -334,18 +367,48 @@ const UnifiedResults: React.FC = () => {
       const urlState = new URLSearchParams(window.location.search);
       const setOrDrop = (key: string, value: string) =>
         value ? urlState.set(key, value) : urlState.delete(key);
-      setOrDrop("accessionNumber", labNumber);
-      setOrDrop("testSectionId", selectedLabUnit);
-      setOrDrop("collectionDate", collectionDate);
-      const query = urlState.toString();
-      window.history.replaceState(
-        null,
-        "",
-        query ? `/Results?${query}` : "/Results",
-      );
+      setOrDrop("patientId", patientPK);
+      setOrDrop("accessionNumber", patientPK ? "" : labNumber);
+      setOrDrop("testSectionId", patientPK ? "" : selectedLabUnit);
+      setOrDrop("collectionDate", patientPK ? "" : collectionDate);
+      replaceResultsUrl(urlState);
     },
-    [searchText, selectedLabUnit, collectionDate, applyLoadedRows],
+    [
+      searchText,
+      selectedLabUnit,
+      collectionDate,
+      selectedPatient,
+      applyLoadedRows,
+    ],
   );
+
+  /** The patient form auto-selects any ?patientId= it finds on mount, so the parameter goes before the form opens. */
+  const openPatientSearch = () => {
+    const urlState = new URLSearchParams(window.location.search);
+    urlState.delete("patientId");
+    replaceResultsUrl(urlState);
+    setShowPatientSearch(true);
+  };
+
+  const selectPatient = (patient: PatientRecord) => {
+    setSelectedPatient(patient);
+    setShowPatientSearch(false);
+    loadWorklist(undefined, patient);
+  };
+
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setShowPatientSearch(false);
+    if (selectedLabUnit || searchText) {
+      loadWorklist(undefined, null);
+      return;
+    }
+    setRows([]);
+    setRowStates({});
+    const urlState = new URLSearchParams(window.location.search);
+    urlState.delete("patientId");
+    replaceResultsUrl(urlState);
+  };
 
   useEffect(() => {
     if (selectedLabUnit) {
@@ -362,11 +425,24 @@ const UnifiedResults: React.FC = () => {
     const unit = urlState.get("testSectionId");
     const date = urlState.get("collectionDate");
     const status = urlState.get("status");
-    if (date) {
-      setCollectionDate(date);
-    }
+    const patientId = urlState.get("patientId");
     if (status) {
       setStatusFilter(status);
+    }
+    if (patientId) {
+      getFromOpenElisServer(
+        "/rest/patient-details?patientID=" + encodeURIComponent(patientId),
+        (details: PatientRecord | undefined) => {
+          if (details?.patientPK) {
+            setSelectedPatient(details);
+            loadWorklist(undefined, details);
+          }
+        },
+      );
+      return;
+    }
+    if (date) {
+      setCollectionDate(date);
     }
     if (accession) {
       setSearchText(accession);
@@ -921,8 +997,8 @@ const UnifiedResults: React.FC = () => {
           </Section>
         </Column>
 
-        {/* Toolbar: search + Lab Unit + date (FR worklist toolbar) */}
-        <Column lg={4} md={4} sm={4}>
+        {/* Toolbar: search + Lab Unit + date + patient (FR worklist toolbar) */}
+        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
           {/* Carbon Search's labelText is visually hidden; render an explicit
               label so the toolbar fields align on one horizontal level */}
           <div className="cds--label">
@@ -933,6 +1009,7 @@ const UnifiedResults: React.FC = () => {
             labelText={intl.formatMessage({ id: "label.results.search" })}
             placeholder={intl.formatMessage({ id: "label.results.search" })}
             value={searchText}
+            disabled={Boolean(selectedPatient)}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setSearchText(e.target.value)
             }
@@ -943,11 +1020,12 @@ const UnifiedResults: React.FC = () => {
             }}
           />
         </Column>
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
           <Select
             id="unifiedResultsLabUnit"
             labelText={intl.formatMessage({ id: "label.results.labUnit" })}
             value={selectedLabUnit}
+            disabled={Boolean(selectedPatient)}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setSelectedLabUnit(e.target.value)
             }
@@ -958,7 +1036,7 @@ const UnifiedResults: React.FC = () => {
             ))}
           </Select>
         </Column>
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
           <DatePicker
             datePickerType="single"
             dateFormat="d/m/Y"
@@ -979,16 +1057,95 @@ const UnifiedResults: React.FC = () => {
               id="unifiedResultsDate"
               labelText={intl.formatMessage({ id: "label.results.date" })}
               placeholder="dd/mm/yyyy"
+              disabled={Boolean(selectedPatient)}
             />
           </DatePicker>
         </Column>
-        <Column lg={4} md={4} sm={4} className="unifiedResultsLoadColumn">
+        <Column
+          lg={3}
+          md={2}
+          sm={4}
+          className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
+        >
+          <div className="cds--label">&nbsp;</div>
+          <Button
+            kind="tertiary"
+            size="md"
+            data-testid="search-by-patient"
+            onClick={() =>
+              showPatientSearch
+                ? setShowPatientSearch(false)
+                : openPatientSearch()
+            }
+            disabled={loading}
+          >
+            <FormattedMessage id="label.results.searchByPatient" />
+          </Button>
+        </Column>
+        <Column
+          lg={4}
+          md={2}
+          sm={4}
+          className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
+        >
           {/* spacer keeps the button on the same level as the labeled fields */}
           <div className="cds--label">&nbsp;</div>
-          <Button onClick={() => loadWorklist()} disabled={loading}>
+          <Button size="md" onClick={() => loadWorklist()} disabled={loading}>
             <FormattedMessage id="label.results.load" />
           </Button>
         </Column>
+
+        {(showPatientSearch || selectedPatient) && (
+          <Column lg={16} md={8} sm={4}>
+            <div
+              className="bordered-section-panel unifiedResultsPatientPanel"
+              data-testid="patient-search-panel"
+            >
+              <div className="unifiedResultsPatientPanelHeader">
+                <Tag
+                  type={selectedPatient?.patientPK ? "blue" : "gray"}
+                  data-testid="selected-patient"
+                >
+                  <FormattedMessage id="label.results.selectedPatient" />:{" "}
+                  {selectedPatient?.patientPK
+                    ? patientDisplayName(selectedPatient)
+                    : intl.formatMessage({
+                        id: "label.results.selectedPatient.none",
+                      })}
+                </Tag>
+                {selectedPatient?.patientPK && (
+                  <>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      data-testid="select-another-patient"
+                      onClick={() =>
+                        showPatientSearch
+                          ? setShowPatientSearch(false)
+                          : openPatientSearch()
+                      }
+                    >
+                      <FormattedMessage id="label.results.selectAnotherPatient" />
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      data-testid="clear-patient"
+                      onClick={clearPatient}
+                    >
+                      <FormattedMessage id="label.button.clear" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {showPatientSearch && (
+                <div className="unifiedResultsPatientSearch">
+                  <SearchPatientForm getSelectedPatient={selectPatient} />
+                </div>
+              )}
+            </div>
+          </Column>
+        )}
 
         {/* Status filter chips with counts */}
         <Column lg={16} md={8} sm={4} className="unifiedResultsChips">

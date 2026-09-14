@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  DataTableSkeleton,
   Search,
   Grid,
   Column,
@@ -17,23 +18,26 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
-  InlineNotification,
+  Callout,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzers,
+  getAnalyzerLabUnits,
+  getAnalyzerTypeCatalog,
   type AnalyzerFilters,
   type AnalyzersResponse,
+  type AnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
-// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
-import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
-import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
-// QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
-import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
+import AnalyzerLifecycleModal, {
+  type AnalyzerLifecycleAction,
+} from "../AnalyzerLifecycleModal/AnalyzerLifecycleModal";
+import AnalyzerSetup, {
+  type AnalyzerSetupStep,
+} from "../AnalyzerSetup/AnalyzerSetup";
 
-import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
 import "./AnalyzersList.css";
@@ -41,41 +45,63 @@ import "./AnalyzersList.css";
 interface AnalyzerStats {
   total: number;
   active: number;
-  inactive: number;
-  pluginWarnings: number;
-}
-
-interface AnalyzerModalState {
-  open: boolean;
-  analyzer: Analyzer | null;
-}
-
-interface ListNotification {
-  kind: "success" | "error" | "info" | "warning";
-  title: string;
-  subtitle?: string;
+  setup: number;
+  needsAttention: number;
 }
 
 interface AnalyzerTableRow {
   id: string;
   name: string;
-  type: string;
   connection: string;
-  testUnits: string;
+  labUnits: string;
+  type: string;
   status: AnalyzerStatus;
-  lastModified: string;
   actions: string;
   _analyzer: Analyzer;
 }
 
+const profileRevisionKey = (profileId: string, revision: number) =>
+  `${profileId}@${revision}`;
+
+const hasHeldResults = (analyzer: Analyzer) =>
+  Number(analyzer.heldResultCount || 0) > 0;
+
+const isAnalyzerSetupStep = (
+  value: string | null,
+): value is AnalyzerSetupStep =>
+  value === "instrument" || value === "verify" || value === "connect";
+
+const isAnalyzerLifecycleAction = (
+  value: string | null,
+): value is AnalyzerLifecycleAction =>
+  value === "deactivate" || value === "reactivate";
+
+const lifecycleActionsFor = (
+  status: AnalyzerStatus,
+): AnalyzerLifecycleAction[] => {
+  if (status === "INACTIVE") {
+    return ["reactivate"];
+  }
+  if (status === "ERROR_PENDING" || status === "OFFLINE") {
+    return ["reactivate", "deactivate"];
+  }
+  return ["deactivate"];
+};
+
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [, setAnalyzers] = useState<Analyzer[]>([]);
+  const [analyzers, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
-  const [, setLoading] = useState(false);
+  const [profileNames, setProfileNames] = useState<Record<
+    string,
+    string
+  > | null>(null);
+  const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
@@ -85,29 +111,102 @@ const AnalyzersList = () => {
   const [stats, setStats] = useState<AnalyzerStats>({
     total: 0,
     active: 0,
-    inactive: 0,
-    pluginWarnings: 0,
+    setup: 0,
+    needsAttention: 0,
   });
-  const [testConnectionModal, setTestConnectionModal] =
-    useState<AnalyzerModalState>({
-      open: false,
-      analyzer: null,
+  const queryParams = new URLSearchParams(location.search);
+  const setupStep = queryParams.get("setup");
+  const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
+  const setupAnalyzerId = queryParams.get("analyzerId");
+  const lifecycleActionParam = queryParams.get("lifecycle");
+  const lifecycleAction = isAnalyzerLifecycleAction(lifecycleActionParam)
+    ? lifecycleActionParam
+    : null;
+  const lifecycleAnalyzerId = queryParams.get("lifecycleAnalyzerId");
+  const lifecycleAnalyzer = lifecycleAnalyzerId
+    ? analyzers.find((analyzer) => analyzer.id === lifecycleAnalyzerId) || null
+    : null;
+  const listSearch = queryParams.get("search") || "";
+  const listStatus = queryParams.get("status") || "";
+  const listTestUnit = queryParams.get("testUnit") || "";
+  const listAnalyzerType = queryParams.get("analyzerType") || "";
+  const firstAttentionAnalyzer = analyzers.find(hasHeldResults);
+
+  const openSetup = () => {
+    const params = new URLSearchParams(location.search);
+    ["analyzerId", "profile", "revision"].forEach((key) => params.delete(key));
+    params.set("setup", "instrument");
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const openExistingSetup = (analyzer: Analyzer, step: AnalyzerSetupStep) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("setup", step);
+    params.set("analyzerId", analyzer.id);
+
+    if (
+      analyzer.profileId &&
+      Number.isInteger(Number(analyzer.profileRevision)) &&
+      Number(analyzer.profileRevision) >= 1
+    ) {
+      params.set("profile", analyzer.profileId);
+      params.set("revision", String(analyzer.profileRevision));
+    } else {
+      params.delete("profile");
+      params.delete("revision");
+    }
+
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const openQualityControl = (analyzer: Analyzer) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const returnTo = `${location.pathname}${location.search}`;
+    const params = new URLSearchParams({ returnTo });
+    history.push({
+      pathname: `/analyzers/qc/instruments/${encodeURIComponent(analyzer.id)}`,
+      search: params.toString(),
     });
-  const [deleteModal, setDeleteModal] = useState<AnalyzerModalState>({
-    open: false,
-    analyzer: null,
-  });
-  const [copyMappingsModal, setCopyMappingsModal] =
-    useState<AnalyzerModalState>({
-      open: false,
-      analyzer: null,
+  };
+
+  const openResults = (analyzer: Analyzer) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    history.push({
+      pathname: "/AnalyzerResults",
+      search: new URLSearchParams({ id: analyzer.id }).toString(),
     });
-  // Banner shown in the list view after a successful save from AnalyzerForm.
-  // The form's own InlineNotification disappears when the modal closes 1s
-  // after save, and then loadAnalyzers() re-sorts the table — users had no
-  // way to see what was just edited. This persists for 5s in the list view.
-  const [listNotification, setListNotification] =
-    useState<ListNotification | null>(null);
+  };
+
+  const openLifecycle = (
+    analyzer: Analyzer,
+    action: AnalyzerLifecycleAction,
+  ) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("lifecycle", action);
+    params.set("lifecycleAnalyzerId", analyzer.id);
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const closeLifecycle = () => {
+    const params = new URLSearchParams(location.search);
+    params.delete("lifecycle");
+    params.delete("lifecycleAnalyzerId");
+    history.replace({ pathname: "/analyzers", search: params.toString() });
+  };
 
   const loadAnalyzers = useCallback(
     (
@@ -125,17 +224,15 @@ const AnalyzersList = () => {
 
           // Calculate statistics based on unified status
           const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-          const inactiveCount = list.filter(
-            (a) => a.status === "INACTIVE",
+          const setupCount = list.filter(
+            (a) => a.status === "SETUP" || a.status === "VALIDATION",
           ).length;
-          const pluginWarningCount = list.filter(
-            (a) => a.pluginLoaded === false,
-          ).length;
+          const needsAttentionCount = list.filter(hasHeldResults).length;
           setStats({
             total: list.length,
             active: activeCount,
-            inactive: inactiveCount,
-            pluginWarnings: pluginWarningCount,
+            setup: setupCount,
+            needsAttention: needsAttentionCount,
           });
           setLoading(false);
         },
@@ -145,28 +242,65 @@ const AnalyzersList = () => {
     [],
   );
 
+  const closeSetup = () => {
+    const params = new URLSearchParams(location.search);
+    ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
+      params.delete(key),
+    );
+    loadAnalyzers({
+      status: listStatus,
+      testUnit: listTestUnit,
+      analyzerType: listAnalyzerType,
+      ...(listSearch ? { search: listSearch } : {}),
+    });
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams(window.location.search);
-    const initialSearch = params.get("search") || "";
-    const initialStatus = params.get("status") || "";
-    const initialTestUnit = params.get("testUnit") || "";
-    const initialAnalyzerType = params.get("analyzerType") || "";
-    setSearchTerm(initialSearch);
+    getAnalyzerTypeCatalog((data: AnalyzerTypeCatalog | undefined) => {
+      const names = Object.fromEntries(
+        (data?.types || []).map((type) => [
+          profileRevisionKey(type.profileId, type.revision),
+          type.displayName,
+        ]),
+      );
+      setProfileNames(names);
+    }, controller.signal);
+    getAnalyzerLabUnits((units) => {
+      setLabUnitNames(
+        Object.fromEntries(
+          (Array.isArray(units) ? units : []).map((unit) => [
+            String(unit.id),
+            unit.name,
+          ]),
+        ),
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setSearchTerm(listSearch);
     const initialFilters = {
-      status: initialStatus,
-      testUnit: initialTestUnit,
-      analyzerType: initialAnalyzerType,
+      status: listStatus,
+      testUnit: listTestUnit,
+      analyzerType: listAnalyzerType,
     };
     setFilters(initialFilters);
     loadAnalyzers(
       {
         ...initialFilters,
-        ...(initialSearch ? { search: initialSearch } : {}),
+        ...(listSearch ? { search: listSearch } : {}),
       },
       controller.signal,
     );
 
+    return () => controller.abort();
+  }, [listAnalyzerType, listSearch, listStatus, listTestUnit, loadAnalyzers]);
+
+  useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
       try {
@@ -181,11 +315,13 @@ const AnalyzersList = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      controller.abort();
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
-  }, [loadAnalyzers]);
+  }, []);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -195,18 +331,16 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const searchFilters: AnalyzerFilters = { ...filters };
-      if (value.trim()) {
-        searchFilters.search = value.trim();
-      }
-      loadAnalyzers(searchFilters);
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(location.search);
       if (value.trim()) {
         params.set("search", value.trim());
       } else {
         params.delete("search");
       }
-      history.replace({ search: params.toString() });
+      history.replace({
+        pathname: location.pathname,
+        search: params.toString(),
+      });
     }, 300);
   };
 
@@ -216,14 +350,16 @@ const AnalyzersList = () => {
   ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
-    loadAnalyzers(newFilters);
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     if (value) {
       params.set(filterName, value);
     } else {
       params.delete(filterName);
     }
-    history.replace({ search: params.toString() });
+    history.push({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
   };
 
   const headers = [
@@ -232,24 +368,20 @@ const AnalyzersList = () => {
       header: intl.formatMessage({ id: "analyzer.table.header.name" }),
     },
     {
-      key: "type",
-      header: intl.formatMessage({ id: "analyzer.table.header.type" }),
-    },
-    {
       key: "connection",
       header: intl.formatMessage({ id: "analyzer.table.header.connection" }),
     },
     {
-      key: "testUnits",
+      key: "labUnits",
       header: intl.formatMessage({ id: "analyzer.table.header.testUnits" }),
+    },
+    {
+      key: "type",
+      header: intl.formatMessage({ id: "analyzer.table.header.type" }),
     },
     {
       key: "status",
       header: intl.formatMessage({ id: "analyzer.table.header.status" }),
-    },
-    {
-      key: "lastModified",
-      header: intl.formatMessage({ id: "analyzer.table.header.lastModified" }),
     },
     {
       key: "actions",
@@ -258,30 +390,41 @@ const AnalyzersList = () => {
   ];
 
   const rows: AnalyzerTableRow[] = filteredAnalyzers.map((analyzer) => {
-    // Connection column: TCP analyzers show ip:port; FILE analyzers show
-    // the watched import directory so lab techs can verify the data source.
-    const connection =
-      analyzer.ipAddress && analyzer.port
-        ? `${analyzer.ipAddress}:${analyzer.port}`
-        : analyzer.importDirectory
-          ? analyzer.importDirectory
-          : "-";
+    const connection = intl.formatMessage({
+      id: analyzer.bridgeConnectionId
+        ? "analyzer.connection.reference.configured"
+        : "analyzer.connection.reference.missing",
+    });
 
     const unifiedStatus = analyzer.status || "SETUP";
+    const profileName =
+      analyzer.profileId && analyzer.profileRevision && profileNames
+        ? profileNames[
+            profileRevisionKey(analyzer.profileId, analyzer.profileRevision)
+          ]
+        : undefined;
 
     return {
       id: analyzer.id || "",
       name: analyzer.name || "-",
-      type: analyzer.analyzerType || analyzer.type || "-",
       connection: connection,
-      testUnits:
+      labUnits:
         analyzer.testUnitIds && analyzer.testUnitIds.length > 0
-          ? `${analyzer.testUnitIds.length} unit(s)`
+          ? analyzer.testUnitIds
+              .map((id) => labUnitNames[String(id)] || String(id))
+              .join(", ")
           : "-",
+      type:
+        profileName ||
+        (analyzer.profileId
+          ? intl.formatMessage({
+              id:
+                profileNames === null
+                  ? "analyzer.table.type.loading"
+                  : "analyzer.table.type.unavailable",
+            })
+          : analyzer.analyzerType || analyzer.type || "-"),
       status: unifiedStatus,
-      lastModified: analyzer.lastModified
-        ? new Date(analyzer.lastModified).toLocaleDateString()
-        : "-",
       actions: "",
       _analyzer: analyzer, // Store full analyzer object for actions (prefixed with _ to avoid conflicts)
     };
@@ -297,35 +440,62 @@ const AnalyzersList = () => {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "analyzer.page.hierarchy.root", link: "" },
-              { label: "analyzer.page.hierarchy.list", link: "" },
-            ]}
-          />
-          <PageTitle
-            breadcrumbs={[
               {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-              },
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.list",
-                }),
+                label: "analyzer.page.hierarchy.root",
+                link: "/analyzers",
+                isCurrentPage: true,
               },
             ]}
-            subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
           />
+          <h1>{intl.formatMessage({ id: "analyzer.list.title" })}</h1>
+          <p className="analyzers-list-subtitle">
+            {intl.formatMessage({ id: "analyzer.list.subtitle" })}
+          </p>
         </div>
         <Button
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers/new")}
+          onClick={openSetup}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {visibleSetupStep && (
+        <AnalyzerSetup
+          key={setupAnalyzerId || "new-analyzer"}
+          currentStep={visibleSetupStep}
+          onClose={closeSetup}
+        />
+      )}
+
+      {firstAttentionAnalyzer && (
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="held-results-attention"
+          title={intl.formatMessage(
+            {
+              id:
+                stats.needsAttention === 1
+                  ? "analyzer.attention.title.one"
+                  : "analyzer.attention.title.many",
+            },
+            {
+              name: firstAttentionAnalyzer.name,
+              count: stats.needsAttention,
+            },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.attention.subtitle",
+          })}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.attention.review",
+          })}
+          onActionButtonClick={() => openResults(firstAttentionAnalyzer)}
+        />
+      )}
 
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>
@@ -345,25 +515,23 @@ const AnalyzersList = () => {
           </Tile>
         </Column>
         <Column lg={4} md={2} sm={2}>
-          <Tile data-testid="stat-inactive">
+          <Tile data-testid="stat-setup">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.stat.inactive" })}
+              {intl.formatMessage({ id: "analyzer.stat.setup" })}
             </div>
-            <div className="stat-value">{stats.inactive}</div>
+            <div className="stat-value">{stats.setup}</div>
           </Tile>
         </Column>
-        {stats.pluginWarnings > 0 && (
-          <Column lg={4} md={2} sm={2}>
-            <Tile data-testid="stat-plugin-warnings">
-              <div className="stat-label">
-                {intl.formatMessage({ id: "analyzer.stat.pluginWarnings" })}
-              </div>
-              <div className="stat-value stat-value--warning">
-                {stats.pluginWarnings}
-              </div>
-            </Tile>
-          </Column>
-        )}
+        <Column lg={4} md={2} sm={2}>
+          <Tile data-testid="stat-needs-attention">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.stat.needsAttention" })}
+            </div>
+            <div className="stat-value stat-value--warning">
+              {stats.needsAttention}
+            </div>
+          </Tile>
+        </Column>
       </Grid>
 
       <div
@@ -438,12 +606,6 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
-                {
-                  id: "PENDING_REGISTRATION",
-                  text: intl.formatMessage({
-                    id: "analyzer.status.pending_registration",
-                  }),
-                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -475,258 +637,218 @@ const AnalyzersList = () => {
         </Grid>
       </div>
 
-      {listNotification && (
-        <InlineNotification
-          kind={listNotification.kind}
-          title={listNotification.title}
-          subtitle={listNotification.subtitle}
-          onCloseButtonClick={() => setListNotification(null)}
-          lowContrast
-          data-testid="analyzer-list-notification"
-          style={{ maxWidth: "100%", marginBottom: "1rem" }}
-        />
-      )}
-
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          <TableContainer
-            data-testid="analyzers-table-container"
-            className="analyzers-list-table-container"
-          >
-            <DataTable rows={rows} headers={headers} isSortable>
-              {({
-                rows,
-                headers,
-                getHeaderProps,
-                getRowProps,
-                getTableProps,
-              }) => (
-                <Table {...getTableProps()} data-testid="analyzers-table">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const analyzer = filteredAnalyzers.find(
-                        (a) => a.id === row.id,
-                      );
-                      const unifiedStatus = analyzer?.status || "SETUP";
+          {loading ? (
+            <div data-testid="analyzers-loading">
+              <DataTableSkeleton
+                columnCount={headers.length}
+                rowCount={5}
+                showHeader={false}
+                showToolbar={false}
+              />
+            </div>
+          ) : (
+            <TableContainer
+              data-testid="analyzers-table-container"
+              className="analyzers-list-table-container"
+            >
+              <DataTable rows={rows} headers={headers} isSortable>
+                {({
+                  rows,
+                  headers,
+                  getHeaderProps,
+                  getRowProps,
+                  getTableProps,
+                }) => (
+                  <Table {...getTableProps()} data-testid="analyzers-table">
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader
+                            {...getHeaderProps({ header })}
+                            key={header.key}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const analyzer = filteredAnalyzers.find(
+                          (a) => a.id === row.id,
+                        );
+                        const unifiedStatus = analyzer?.status || "SETUP";
 
-                      return (
-                        <TableRow
-                          key={row.id}
-                          {...getRowProps({ row })}
-                          data-testid={`analyzer-row-${row.id}`}
-                        >
-                          {row.cells.map((cell) => {
-                            const headerKey = cell.info.header;
-                            let testId = null;
-                            let cellContent = cell.value;
+                        return (
+                          <TableRow
+                            {...getRowProps({ row })}
+                            key={row.id}
+                            data-testid={`analyzer-row-${row.id}`}
+                          >
+                            {row.cells.map((cell) => {
+                              const headerKey = cell.info.header;
+                              let testId = null;
+                              let cellContent = cell.value;
 
-                            if (headerKey === "name") {
-                              testId = `analyzer-name-${row.id}`;
-                              if (analyzer?.pluginLoaded === false) {
+                              if (headerKey === "name") {
+                                testId = `analyzer-name-${row.id}`;
+                                if (analyzer && hasHeldResults(analyzer)) {
+                                  cellContent = (
+                                    <span>
+                                      {cell.value}{" "}
+                                      <Tag
+                                        type="red"
+                                        size="sm"
+                                        data-testid={`held-results-tag-${row.id}`}
+                                      >
+                                        {intl.formatMessage({
+                                          id: "analyzer.attention.tag",
+                                        })}
+                                      </Tag>
+                                    </span>
+                                  );
+                                }
+                              } else if (headerKey === "type") {
+                                testId = `analyzer-type-${row.id}`;
+                              } else if (headerKey === "connection") {
+                                testId = `analyzer-connection-${row.id}`;
+                              } else if (headerKey === "labUnits") {
+                                testId = `analyzer-lab-units-${row.id}`;
+                              } else if (headerKey === "status") {
+                                testId = `analyzer-status-${row.id}`;
+                                const statusColorMap: Record<
+                                  AnalyzerStatus,
+                                  "gray" | "blue" | "green" | "red" | "purple"
+                                > = {
+                                  INACTIVE: "gray",
+                                  SETUP: "gray",
+                                  VALIDATION: "blue",
+                                  ACTIVE: "green",
+                                  ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
+                                  OFFLINE: "red",
+                                };
+                                const statusColor =
+                                  statusColorMap[unifiedStatus] || "gray";
+                                // Convert ERROR_PENDING to error_pending for i18n key
+                                const statusKey =
+                                  unifiedStatus === "ERROR_PENDING"
+                                    ? "analyzer.status.error_pending"
+                                    : `analyzer.status.${unifiedStatus.toLowerCase()}`;
                                 cellContent = (
-                                  <span>
-                                    {cell.value}{" "}
-                                    <Tag
-                                      type="red"
-                                      size="sm"
-                                      data-testid={`plugin-warning-${row.id}`}
-                                    >
-                                      {intl.formatMessage({
-                                        id: "analyzer.plugin.missing",
-                                      })}
-                                    </Tag>
-                                  </span>
+                                  <Tag
+                                    type={statusColor}
+                                    data-testid={`status-badge-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: statusKey,
+                                    })}
+                                  </Tag>
                                 );
-                              }
-                            } else if (headerKey === "type") {
-                              testId = `analyzer-type-${row.id}`;
-                            } else if (headerKey === "connection") {
-                              testId = `analyzer-connection-${row.id}`;
-                            } else if (headerKey === "testUnits") {
-                              testId = `analyzer-test-units-${row.id}`;
-                            } else if (headerKey === "status") {
-                              testId = `analyzer-status-${row.id}`;
-                              const statusColorMap: Record<
-                                AnalyzerStatus,
-                                "gray" | "blue" | "green" | "red" | "purple"
-                              > = {
-                                INACTIVE: "gray",
-                                SETUP: "gray",
-                                VALIDATION: "blue",
-                                ACTIVE: "green",
-                                ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
-                                OFFLINE: "red",
-                                PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
-                              };
-                              const statusColor =
-                                statusColorMap[unifiedStatus] || "gray";
-                              // Convert ERROR_PENDING to error_pending for i18n key
-                              const statusKey =
-                                unifiedStatus === "ERROR_PENDING"
-                                  ? "analyzer.status.error_pending"
-                                  : `analyzer.status.${unifiedStatus.toLowerCase()}`;
-                              cellContent = (
-                                <Tag
-                                  type={statusColor}
-                                  data-testid={`status-badge-${row.id}`}
-                                >
-                                  {intl.formatMessage({
-                                    id: statusKey,
-                                  })}
-                                </Tag>
-                              );
-                            } else if (headerKey === "lastModified") {
-                              testId = `analyzer-last-modified-${row.id}`;
-                            } else if (headerKey === "actions") {
-                              testId = `analyzer-actions-${row.id}`;
-                              cellContent = analyzer ? (
-                                <OverflowMenu
-                                  ariaLabel={intl.formatMessage({
-                                    id: "analyzer.table.actions",
-                                  })}
-                                  data-testid={`analyzer-row-overflow-${row.id}`}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.fieldMappings",
+                              } else if (headerKey === "actions") {
+                                testId = `analyzer-actions-${row.id}`;
+                                cellContent = analyzer ? (
+                                  <OverflowMenu
+                                    flipped
+                                    aria-label={intl.formatMessage({
+                                      id: "analyzer.table.actions",
                                     })}
-                                    onClick={() => {
-                                      if (analyzer?.id) {
-                                        history.push(
-                                          `/analyzers/${analyzer.id}/mappings`,
-                                        );
+                                    iconDescription={intl.formatMessage({
+                                      id: "analyzer.table.actions",
+                                    })}
+                                    data-testid={`analyzer-row-overflow-${row.id}`}
+                                  >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.viewResults",
+                                      })}
+                                      onClick={() => openResults(analyzer)}
+                                      data-testid={`analyzer-action-view-results-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.editSetup",
+                                      })}
+                                      onClick={() =>
+                                        openExistingSetup(
+                                          analyzer,
+                                          "instrument",
+                                        )
                                       }
-                                    }}
-                                    data-testid={`analyzer-action-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.testConnection",
-                                    })}
-                                    onClick={() => {
-                                      setTestConnectionModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-test-connection-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.copyMappings",
-                                    })}
-                                    onClick={() => {
-                                      setCopyMappingsModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-copy-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.edit",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/edit`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-edit-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.qcRules",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/qc-rules`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-qc-rules-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.delete",
-                                    })}
-                                    isDelete
-                                    onClick={() => {
-                                      setDeleteModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-delete-${row.id}`}
-                                  />
-                                </OverflowMenu>
-                              ) : null;
-                            }
+                                      data-testid={`analyzer-action-edit-setup-${row.id}`}
+                                    />
+                                    {analyzer.profileId &&
+                                      Number.isInteger(
+                                        Number(analyzer.profileRevision),
+                                      ) &&
+                                      Number(analyzer.profileRevision) >= 1 && (
+                                        <OverflowMenuItem
+                                          itemText={intl.formatMessage({
+                                            id: "analyzer.action.configureConnection",
+                                          })}
+                                          onClick={() =>
+                                            openExistingSetup(
+                                              analyzer,
+                                              "connect",
+                                            )
+                                          }
+                                          data-testid={`analyzer-action-configure-connection-${row.id}`}
+                                        />
+                                      )}
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.qualityControl",
+                                      })}
+                                      onClick={() =>
+                                        openQualityControl(analyzer)
+                                      }
+                                      data-testid={`analyzer-action-quality-control-${row.id}`}
+                                    />
+                                    {lifecycleActionsFor(unifiedStatus).map(
+                                      (action) => (
+                                        <OverflowMenuItem
+                                          key={action}
+                                          itemText={intl.formatMessage({
+                                            id: `analyzer.action.${action}`,
+                                          })}
+                                          onClick={() =>
+                                            openLifecycle(analyzer, action)
+                                          }
+                                          data-testid={`analyzer-action-${action}-${row.id}`}
+                                        />
+                                      ),
+                                    )}
+                                  </OverflowMenu>
+                                ) : null;
+                              }
 
-                            return (
-                              <TableCell key={cell.id} data-testid={testId}>
-                                {cellContent}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </DataTable>
-          </TableContainer>
+                              return (
+                                <TableCell key={cell.id} data-testid={testId}>
+                                  {cellContent}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </DataTable>
+            </TableContainer>
+          )}
         </Column>
       </Grid>
 
-      {testConnectionModal.open && (
-        <TestConnectionModal
-          analyzer={testConnectionModal.analyzer}
-          open={testConnectionModal.open}
-          onClose={() => {
-            setTestConnectionModal({ open: false, analyzer: null });
-          }}
-        />
-      )}
-
-      {deleteModal.open && (
-        <DeleteAnalyzerModal
-          analyzer={deleteModal.analyzer}
-          open={deleteModal.open}
-          onClose={() => {
-            setDeleteModal({ open: false, analyzer: null });
-          }}
-          onConfirm={() => {
-            loadAnalyzers();
-          }}
-        />
-      )}
-
-      {copyMappingsModal.open && copyMappingsModal.analyzer && (
-        <CopyMappingsModal
-          open={copyMappingsModal.open}
-          sourceAnalyzerId={copyMappingsModal.analyzer.id}
-          sourceAnalyzerName={copyMappingsModal.analyzer.name}
-          sourceAnalyzerType={
-            copyMappingsModal.analyzer.analyzerType ||
-            copyMappingsModal.analyzer.type
-          }
-          onClose={() => {
-            setCopyMappingsModal({ open: false, analyzer: null });
-          }}
-          onSuccess={() => undefined}
+      {lifecycleAction && lifecycleAnalyzer && (
+        <AnalyzerLifecycleModal
+          key={`${lifecycleAction}-${lifecycleAnalyzer.id}`}
+          action={lifecycleAction}
+          analyzer={lifecycleAnalyzer}
+          open
+          onClose={closeLifecycle}
+          onConfirm={() => loadAnalyzers()}
         />
       )}
     </div>

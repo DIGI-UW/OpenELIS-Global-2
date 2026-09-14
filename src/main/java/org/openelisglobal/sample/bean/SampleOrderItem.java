@@ -280,6 +280,17 @@ public class SampleOrderItem implements Serializable {
      */
     private Map<String, Object> environmentalFields = new HashMap<>();
 
+    /**
+     * A deliberate, recorded decision to order without a patient (OGC-1201 AL).
+     * Carried on the order form so the server can accept the order and record why,
+     * instead of the caller fabricating a patient to satisfy the gate.
+     */
+    private boolean noPatientOverride;
+
+    private String noPatientReasonCode;
+
+    private String noPatientReason;
+
     private boolean isEQASample;
     private String eqaProgramId;
     private String eqaProviderOrganizationId;
@@ -789,6 +800,30 @@ public class SampleOrderItem implements Serializable {
 
     public void setProgramId(String programId) {
         this.programId = programId;
+    }
+
+    public boolean isNoPatientOverride() {
+        return noPatientOverride;
+    }
+
+    public void setNoPatientOverride(boolean noPatientOverride) {
+        this.noPatientOverride = noPatientOverride;
+    }
+
+    public String getNoPatientReasonCode() {
+        return noPatientReasonCode;
+    }
+
+    public void setNoPatientReasonCode(String noPatientReasonCode) {
+        this.noPatientReasonCode = noPatientReasonCode;
+    }
+
+    public String getNoPatientReason() {
+        return noPatientReason;
+    }
+
+    public void setNoPatientReason(String noPatientReason) {
+        this.noPatientReason = noPatientReason;
     }
 
     public boolean getIsEQASample() {

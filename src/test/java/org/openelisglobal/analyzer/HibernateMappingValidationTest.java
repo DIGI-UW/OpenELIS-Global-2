@@ -3,11 +3,13 @@ package org.openelisglobal.analyzer;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -15,17 +17,16 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerError;
-import org.openelisglobal.analyzer.valueholder.AnalyzerField;
-import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
-import org.openelisglobal.analyzer.valueholder.AnalyzerType;
-import org.openelisglobal.analyzer.valueholder.CustomFieldType;
-import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
-import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
-import org.openelisglobal.analyzer.valueholder.UnitMapping;
-import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.w3c.dom.NodeList;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -49,20 +50,16 @@ public class HibernateMappingValidationTest {
         Configuration configuration = new Configuration();
 
         // Annotation-based entities (no XML entity references)
-        configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
-        configuration.addAnnotatedClass(AnalyzerType.class); // Type/Instance separation
-        configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
-        configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
-        configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
-        configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
-        // AnalyzerConfiguration removed: merged into Analyzer entity
-        configuration.addAnnotatedClass(AnalyzerError.class);
-        configuration.addAnnotatedClass(CustomFieldType.class);
-        // FileImportConfiguration removed: merged into Analyzer entity
-        configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
-        configuration.addAnnotatedClass(SerialPortConfiguration.class); //
-        configuration.addAnnotatedClass(QualitativeResultMapping.class); // Migrated to annotations
-        configuration.addAnnotatedClass(UnitMapping.class); // Migrated to annotations
+        configuration.addAnnotatedClass(Analyzer.class);
+        configuration.addAnnotatedClass(AnalyzerEvent.class);
+        configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
+        configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingConfirmation.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingRevision.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingResult.class);
+        configuration.addAnnotatedClass(AnalyzerResults.class);
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
@@ -89,27 +86,24 @@ public class HibernateMappingValidationTest {
     @Test
     public void testAnalyzerMappingsLoadSuccessfully() {
         // Verify each entity is registered in Hibernate metamodel
-        assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
-        assertNotNull("AnalyzerType should be registered", sessionFactory.getMetamodel().entity(AnalyzerType.class));
-        // AnalyzerConfiguration removed: merged into Analyzer entity
-        assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
+        assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class));
+        assertNotNull("AnalyzerEvent should be registered", sessionFactory.getMetamodel().entity(AnalyzerEvent.class));
+        assertNotNull("AnalyzerActivationRecord should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerActivationRecord.class));
+        assertNotNull("AnalyzerProfileBinding should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerProfileBinding.class));
+        assertNotNull("AnalyzerSiteBinding should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
+        assertNotNull("AnalyzerSiteBindingConfirmation should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingConfirmation.class));
+        assertNotNull("AnalyzerSiteBindingRevision should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingRevision.class));
+        assertNotNull("AnalyzerSiteBindingTest should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingTest.class));
+        assertNotNull("AnalyzerSiteBindingResult should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingResult.class));
         assertNotNull("AnalyzerResults should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerResults.class)); // Phase 2B
-        assertNotNull("AnalyzerTestMapping should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerTestMapping.class)); // Phase 2C
-        assertNotNull("AnalyzerFieldMapping should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
-        assertNotNull("QualitativeResultMapping should be registered",
-                sessionFactory.getMetamodel().entity(QualitativeResultMapping.class));
-        assertNotNull("UnitMapping should be registered", sessionFactory.getMetamodel().entity(UnitMapping.class));
-        assertNotNull("AnalyzerError should be registered", sessionFactory.getMetamodel().entity(AnalyzerError.class));
-        assertNotNull("CustomFieldType should be registered",
-                sessionFactory.getMetamodel().entity(CustomFieldType.class));
-        assertNotNull("ValidationRuleConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(ValidationRuleConfiguration.class));
-        assertNotNull("SerialPortConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(SerialPortConfiguration.class)); //
-        // FileImportConfiguration removed: merged into Analyzer entity
+                sessionFactory.getMetamodel().entity(AnalyzerResults.class));
     }
 
     /**
@@ -121,10 +115,10 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
-                AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
-                UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
-                SerialPortConfiguration.class };
+        Class<?>[] entities = { Analyzer.class, AnalyzerActivationRecord.class, AnalyzerProfileBinding.class,
+                AnalyzerSiteBinding.class, AnalyzerSiteBindingConfirmation.class, AnalyzerSiteBindingRevision.class,
+                AnalyzerSiteBindingTest.class, AnalyzerSiteBindingResult.class, AnalyzerResults.class,
+                AnalyzerEvent.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts
@@ -150,6 +144,27 @@ public class HibernateMappingValidationTest {
                             + " should not have conflicting getters: " + getters);
                 }
             }
+        }
+    }
+
+    @Test
+    public void analyzerEventIsRegisteredInRuntimeAndTestPersistenceUnits() throws Exception {
+        assertPersistenceUnitContains("persistence/persistence.xml", AnalyzerEvent.class.getName());
+        assertPersistenceUnitContains("persistence/test-persistence.xml", AnalyzerEvent.class.getName());
+    }
+
+    private void assertPersistenceUnitContains(String resource, String entityClass) throws Exception {
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream(resource)) {
+            assertNotNull(resource + " should exist", input);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            NodeList classes = factory.newDocumentBuilder().parse(input).getElementsByTagNameNS("*", "class");
+            for (int index = 0; index < classes.getLength(); index++) {
+                if (entityClass.equals(classes.item(index).getTextContent().trim())) {
+                    return;
+                }
+            }
+            fail(entityClass + " should be registered in " + resource);
         }
     }
 }

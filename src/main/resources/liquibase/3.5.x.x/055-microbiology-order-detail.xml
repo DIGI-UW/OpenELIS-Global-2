@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- FR-002: microbiology order-detail capture (patient origin, number of
+       sets, clinical history, antibiotic exposure, critical notification
+       preference). One row per case; captured at order/sample save when
+       available, editable in the case workbench thereafter. -->
+  <changeSet id="OGC-782-micro-case-order-detail-table" author="OGC">
+    <createTable tableName="micro_case_order_detail" schemaName="clinlims">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" primaryKeyName="pk_micro_case_order_detail" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uq_micro_case_order_detail_case"/>
+      </column>
+      <column name="patient_origin" type="varchar(255)"/>
+      <column name="number_of_sets" type="integer"/>
+      <column name="clinical_history" type="text"/>
+      <column name="antibiotic_exposure" type="text"/>
+      <column name="critical_notification_preference" type="varchar(255)"/>
+      <column name="created_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_by" type="varchar(20)"/>
+      <column name="updated_at" type="timestamp"/>
+      <column name="updated_by" type="varchar(20)"/>
+      <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+      <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_case_order_detail"
+      baseColumnNames="case_id"
+      constraintName="fk_micro_case_order_detail_case"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="micro_case"
+      referencedColumnNames="id"/>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="micro_case_order_detail"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

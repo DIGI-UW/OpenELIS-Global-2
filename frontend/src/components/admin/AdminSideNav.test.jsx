@@ -28,6 +28,8 @@ import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
+import { MICROBIOLOGY_REFERENCE_SECTIONS } from "./microbiologyReference/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -40,6 +42,34 @@ const renderNav = () =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("AdminSideNav — Test Catalog Management entry", () => {
+  it("does not expose the superseded Analyzer Test Name mapping screen", () => {
+    const { container } = renderNav();
+
+    expect(screen.queryByText("Analyzer Test Name")).not.toBeInTheDocument();
+    expect(container.querySelector('a[href$="/AnalyzerTestName"]')).toBeNull();
+  });
+
+  it("builds every microbiology reference route from shared section config", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/MicrobiologyReference/organisms",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    MICROBIOLOGY_REFERENCE_SECTIONS.forEach(({ key }) => {
+      expect(
+        container
+          .querySelector(`[data-testid="microbiology-reference-${key}"]`)
+          .getAttribute("href"),
+      ).toBe(`/MasterListsPage/MicrobiologyReference/${key}`);
+    });
+    expect(
+      container
+        .querySelector('[data-testid="microbiology-reference-organisms"]')
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     const { container } = renderNav();
@@ -284,5 +314,58 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
         expect(s.getAttribute("aria-disabled")).toBe("true"),
       );
     });
+
+    it("greys the lab unit sections and names lab units, on the lab units list", () => {
+      mockLocation = {
+        pathname: "/MasterListsPage/LabUnitManagement",
+        search: "",
+      };
+      const { container } = renderNav();
+
+      const caption = container.querySelector(
+        '[data-cy="labUnitSectionsContext"]',
+      );
+      expect(caption).not.toBeNull();
+      expect(caption.textContent).toBe("Click a lab unit to edit its sections");
+
+      const sections = container.querySelectorAll(
+        '[data-cy^="labUnit-section-"]',
+      );
+      expect(sections.length).toBe(LAB_UNIT_SECTIONS.length);
+      sections.forEach((s) => {
+        expect(s.getAttribute("aria-disabled")).toBe("true");
+        expect(s.getAttribute("aria-describedby")).toBe("labUnitSectionsHelp");
+      });
+
+      // the test sections must not be borrowed here
+      expect(container.querySelector('[data-cy^="section-"]')).toBeNull();
+    });
+  });
+
+  it("makes the lab unit sections live routed links when editing a lab unit", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/LabUnitManagement/5/basic-info",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    LAB_UNIT_SECTIONS.forEach((key) => {
+      const item = container.querySelector(
+        `[data-cy="labUnit-section-${key}"]`,
+      );
+      expect(item).not.toBeNull();
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      expect(item.getAttribute("href")).toBe(
+        `/MasterListsPage/LabUnitManagement/5/${key}`,
+      );
+    });
+  });
+
+  it("labels the Lab Units entry as 'Lab Units Editor' off an editor route", () => {
+    mockLocation = { pathname: "/MasterListsPage/TestCatalogList", search: "" };
+    const { container } = renderNav();
+    expect(
+      container.querySelector('[data-cy="labUnitManagement"]').textContent,
+    ).toBe("Lab Units Editor");
   });
 });

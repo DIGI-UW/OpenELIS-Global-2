@@ -48,24 +48,18 @@ const SearchForm = (props) => {
     if (data) {
       setSearchResults(data);
       setIsLoading(false);
-      if (data.paging) {
-        var { totalPages, currentPage } = data.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
-      }
+      const totalPages = Number(data.paging?.totalPages) || 1;
+      const currentPage = Number(data.paging?.currentPage) || 1;
+      const hasMultiplePages = totalPages > 1;
+      setPagination(hasMultiplePages);
+      setCurrentApiPage(hasMultiplePages ? currentPage : null);
+      setTotalApiPages(hasMultiplePages ? totalPages : null);
+      setNextPage(
+        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
+      );
+      setPreviousPage(
+        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
+      );
       if (data?.resultList?.length > 0) {
         const newResultsList = data.resultList.map((data, id) => {
           let tempData = { ...data };
@@ -106,6 +100,24 @@ const SearchForm = (props) => {
     }
     props.setResults(searchResults);
   }, [searchResults]);
+
+  /**
+   * The queue behind this form re-runs the current search after a write. The
+   * registration is keyed on the endpoint so a later search supersedes it.
+   */
+  useEffect(() => {
+    if (!props.registerRefresh) {
+      return;
+    }
+    props.registerRefresh(
+      url
+        ? () => {
+            setIsLoading(true);
+            getFromOpenElisServer(url, validationResults);
+          }
+        : null,
+    );
+  }, [url, props.registerRefresh]);
 
   const handleSubmit = (values) => {
     setNextPage(null);

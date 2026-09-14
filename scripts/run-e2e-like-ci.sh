@@ -57,6 +57,9 @@ if [ "$KEEP_DB" = true ]; then
   fi
 else
   echo -e "${YELLOW}[1/4] Recreating stack with a FRESH database (like CI)...${NC}"
+  # Keep the UAT fixture endpoint unavailable in ordinary deployments. The
+  # local CI-parity stack is disposable and needs it for the Playwright setup.
+  export OE_UAT_SCENARIOS_ENABLED=true
   docker compose -f build.docker-compose.yml down -v --remove-orphans
   docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 fi

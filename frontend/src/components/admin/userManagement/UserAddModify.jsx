@@ -18,7 +18,7 @@ import {
   FormGroup,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
   AlertDialog,
@@ -29,6 +29,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import AutoComplete from "../../common/AutoComplete";
 
@@ -83,6 +87,7 @@ function UserAddModify() {
   });
 
   const location = useLocation();
+  const history = useHistory();
   const ID = (() => {
     const search = location.search;
     if (search) {
@@ -92,24 +97,22 @@ function UserAddModify() {
     return "0";
   })();
 
+  const { data: readUser } = useServerData(
+    ID ? `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=` : null,
+  );
+  const invalidateServerData = useInvalidateServerData();
+
   useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    if (ID) {
-      getFromOpenElisServer(
-        `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=`,
-        handleUserData,
-      );
-    } else {
-      setTimeout(() => {
-        window.location.assign("/MasterListsPage/userManagement");
-      }, 200);
+    if (readUser) {
+      handleUserData(readUser);
     }
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, [ID]);
+  }, [readUser]);
+
+  useEffect(() => {
+    if (!ID) {
+      history.push("/MasterListsPage/userManagement");
+    }
+  }, [ID, history]);
 
   const handleUserData = (res) => {
     if (!res) {
@@ -346,7 +349,6 @@ function UserAddModify() {
 
   function userSavePostCallback(res) {
     if (res) {
-      setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -357,9 +359,7 @@ function UserAddModify() {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -367,9 +367,6 @@ function UserAddModify() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
 
@@ -1438,9 +1435,7 @@ function UserAddModify() {
                     </Button>{" "}
                     <Button
                       onClick={() =>
-                        window.location.assign(
-                          "/MasterListsPage/userManagement",
-                        )
+                        history.push("/MasterListsPage/userManagement")
                       }
                       data-cy="exitButton"
                       kind="tertiary"

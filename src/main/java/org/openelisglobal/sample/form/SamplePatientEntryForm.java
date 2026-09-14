@@ -12,6 +12,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -20,6 +21,7 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -119,8 +121,35 @@ public class SamplePatientEntryForm extends BaseForm {
      */
     private OrderLabelPersistRequest labelPersistRequest;
 
+    @Valid
+    private MicroCaseOrderDetailRequestForm microbiologyOrderDetail;
+
+    /**
+     * Specimens requested at order entry, saved with the order in one transaction
+     * so an order can never exist without them. Null means the request did not
+     * speak for the specimens at all, which leaves them as they are; an empty list
+     * means none are requested any more.
+     */
+    private List<SampleTypeRequestDTO> requestedSampleTypes;
+
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
+    }
+
+    public List<SampleTypeRequestDTO> getRequestedSampleTypes() {
+        return requestedSampleTypes;
+    }
+
+    public void setRequestedSampleTypes(List<SampleTypeRequestDTO> requestedSampleTypes) {
+        this.requestedSampleTypes = requestedSampleTypes;
+    }
+
+    public MicroCaseOrderDetailRequestForm getMicrobiologyOrderDetail() {
+        return microbiologyOrderDetail;
+    }
+
+    public void setMicrobiologyOrderDetail(MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
+        this.microbiologyOrderDetail = microbiologyOrderDetail;
     }
 
     public String getCurrentDate() {

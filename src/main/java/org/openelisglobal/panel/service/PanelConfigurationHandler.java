@@ -18,6 +18,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.panelterminology.service.PanelTerminologyMappingService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -54,6 +55,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     @Autowired
     private TypeOfSamplePanelService typeOfSamplePanelService;
 
+    @Autowired
+    private PanelTerminologyMappingService panelTerminologyMappingService;
+
     @Override
     public String getDomainName() {
         return "panels";
@@ -86,6 +90,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         int testsIndex = findColumnIndex(headers, "tests");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
+        int loincIndex = findColumnIndex(headers, "loinc");
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         if (panelNameIndex < 0) {
@@ -105,7 +110,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             try {
                 String[] values = CsvParsingUtil.parseCsvLine(line);
                 processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex, sortOrderIndex,
-                        localizationColumns, lineNumber, fileName);
+                        loincIndex, localizationColumns, lineNumber, fileName);
                 processed++;
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
@@ -119,8 +124,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private void processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
-            int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns, int lineNumber,
-            String fileName) {
+            int isActiveIndex, int sortOrderIndex, int loincIndex, Map<String, Integer> localizationColumns,
+            int lineNumber, String fileName) {
 
         String panelName = getValueOrEmpty(values, panelNameIndex);
         if (panelName.isEmpty()) {
@@ -131,12 +136,19 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
         boolean isActive = !"N".equalsIgnoreCase(getValueOrEmpty(values, isActiveIndex));
         String sortOrderStr = getValueOrEmpty(values, sortOrderIndex);
+        boolean hasLoincColumn = loincIndex >= 0;
+        String loinc = getValueOrEmpty(values, loincIndex);
 
         Panel panel = panelService.getPanelByName(panelName);
         if (panel == null) {
-            panel = createPanel(panelName, isActive, sortOrderStr, values, localizationColumns);
+            panel = createPanel(panelName, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values,
+                    localizationColumns);
         } else {
-            updatePanel(panel, isActive, sortOrderStr, values, localizationColumns);
+            updatePanel(panel, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values, localizationColumns);
+        }
+
+        if (hasLoincColumn) {
+            syncLoincMapping(panel, loinc);
         }
 
         String testsValue = getValueOrEmpty(values, testsIndex);
@@ -146,7 +158,19 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         reconcileSampleTypeLinks(panel, sampleTypesValue);
     }
 
-    private Panel createPanel(String panelName, boolean isActive, String sortOrderStr, String[] values,
+    // Bridge the legacy panel.loinc value into the panel terminology mappings as a
+    // LOINC / SAME_AS entry, exactly as the test loader does via
+    // TestTerminologyMappingService. A mapping failure must never fail the load.
+    private void syncLoincMapping(Panel panel, String loinc) {
+        try {
+            panelTerminologyMappingService.syncLegacyLoinc(panel.getId(), loinc, "1");
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "syncLoincMapping",
+                    "Failed to sync LOINC mapping for panel '" + panel.getPanelName() + "': " + e.getMessage());
+        }
+    }
+
+    private Panel createPanel(String panelName, boolean isActive, String sortOrderStr, String loinc, String[] values,
             Map<String, Integer> localizationColumns) {
 
         Map<String, String> translations = buildTranslations(values, panelName, localizationColumns);
@@ -169,6 +193,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         panel.setLocalization(localization);
         panel.setIsActive(isActive ? "Y" : "N");
         panel.setSysUserId("1");
+        if (loinc != null) {
+            panel.setLoinc(loinc);
+        }
 
         if (!sortOrderStr.isEmpty()) {
             try {
@@ -184,11 +211,14 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         return panel;
     }
 
-    private void updatePanel(Panel panel, boolean isActive, String sortOrderStr, String[] values,
+    private void updatePanel(Panel panel, boolean isActive, String sortOrderStr, String loinc, String[] values,
             Map<String, Integer> localizationColumns) {
 
         panel.setIsActive(isActive ? "Y" : "N");
         panel.setSysUserId("1");
+        if (loinc != null) {
+            panel.setLoinc(loinc);
+        }
 
         if (!sortOrderStr.isEmpty()) {
             try {

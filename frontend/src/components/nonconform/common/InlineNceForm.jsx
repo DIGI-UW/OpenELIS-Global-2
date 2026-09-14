@@ -255,7 +255,7 @@ const InlineNceForm = ({
         }),
       });
       setNotificationVisible(true);
-      onSubmitSuccess?.();
+      onSubmitSuccess?.(nceForm.nceNumber);
       onClose?.();
     };
 

@@ -40,7 +40,33 @@
         <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroPatientOrigin</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -122,26 +148,17 @@
         <class>org.openelisglobal.shipment.valueholder.Shipment</class>
         <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
 
-        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
-        <!-- All analyzer entities use JPA annotations -->
+        <!-- Analyzer orchestration and site-binding entities -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
-        <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerRun</class>
-        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerQcRule</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
-        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration</class>
-        <class>org.openelisglobal.analyzer.valueholder.FileImportConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
-        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
@@ -151,10 +168,6 @@
         <class>org.openelisglobal.qc.valueholder.QCViolationResult</class>
         <class>org.openelisglobal.qc.valueholder.WestgardRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCAlert</class>
-
-        <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
-            M2) -->
-        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
@@ -190,6 +203,13 @@
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
+        <class>org.openelisglobal.questionnaire.valueholder.Questionnaire</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireAnswerOption</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItemInitial</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
 
         <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
         <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>

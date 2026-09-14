@@ -16,6 +16,7 @@ package org.openelisglobal.resultvalidation.bean;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -207,6 +208,57 @@ public class AnalysisItem implements Serializable {
     private String timeHolding;
 
     private String resultDate;
+
+    private boolean modified = false;
+
+    private boolean nceOpen = false;
+
+    private boolean ackPending = false;
+
+    private boolean critical = false;
+
+    private String qcStatus;
+
+    private String criticalRange;
+
+    private String enteredBy;
+
+    private String enteredDate;
+
+    private String componentLabel;
+
+    private Integer componentDisplayOrder;
+
+    private String methodName;
+
+    private String analyzerName;
+
+    private String noteVisibility;
+
+    private String noteContext;
+
+    private List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes;
+
+    /**
+     * OGC-1030 (FR-J1) — analysis.lastupdated as epoch millis when the row was
+     * served; round-tripped to detect stale pages.
+     */
+    private String analysisLastupdated;
+
+    /** OGC-1030 (FR-D2) — the specimen the inline NCE form files against. */
+    private String sampleItemId;
+
+    /**
+     * OGC-1030 (FR-A4) — released at result entry without a validator; read-only in
+     * the queue.
+     */
+    private boolean autoValidated = false;
+
+    /**
+     * OGC-1030 (FR-D2) — the NCE number filed when rejecting, recorded in the
+     * rejection note.
+     */
+    private String nceNumber;
 
     public String getRejectReasonId() {
         return rejectReasonId;
@@ -817,6 +869,166 @@ public class AnalysisItem implements Serializable {
 
     public void setNormal(boolean isNormal) {
         this.isNormal = isNormal;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
+
+    public boolean isNceOpen() {
+        return nceOpen;
+    }
+
+    public void setNceOpen(boolean nceOpen) {
+        this.nceOpen = nceOpen;
+    }
+
+    public boolean isAckPending() {
+        return ackPending;
+    }
+
+    public void setAckPending(boolean ackPending) {
+        this.ackPending = ackPending;
+    }
+
+    public boolean isCritical() {
+        return critical;
+    }
+
+    public void setCritical(boolean critical) {
+        this.critical = critical;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
+    }
+
+    public String getEnteredBy() {
+        return enteredBy;
+    }
+
+    public void setEnteredBy(String enteredBy) {
+        this.enteredBy = enteredBy;
+    }
+
+    public String getEnteredDate() {
+        return enteredDate;
+    }
+
+    public void setEnteredDate(String enteredDate) {
+        this.enteredDate = enteredDate;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
+    }
+
+    public Integer getComponentDisplayOrder() {
+        return componentDisplayOrder;
+    }
+
+    public void setComponentDisplayOrder(Integer componentDisplayOrder) {
+        this.componentDisplayOrder = componentDisplayOrder;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    public String getAnalyzerName() {
+        return analyzerName;
+    }
+
+    public void setAnalyzerName(String analyzerName) {
+        this.analyzerName = analyzerName;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "E" send with result, "I" internal; blank = legacy
+     * inference.
+     */
+    public String getNoteVisibility() {
+        return noteVisibility;
+    }
+
+    public void setNoteVisibility(String noteVisibility) {
+        this.noteVisibility = noteVisibility;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "VALIDATION" or "MODIFICATION"; blank = legacy "Result
+     * Note".
+     */
+    public String getNoteContext() {
+        return noteContext;
+    }
+
+    public void setNoteContext(String noteContext) {
+        this.noteContext = noteContext;
+    }
+
+    public List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> getAnalysisNotes() {
+        return analysisNotes == null ? new ArrayList<>() : analysisNotes;
+    }
+
+    public void setAnalysisNotes(List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes) {
+        this.analysisNotes = analysisNotes;
+    }
+
+    public String getAnalysisLastupdated() {
+        return analysisLastupdated;
+    }
+
+    public void setAnalysisLastupdated(String analysisLastupdated) {
+        this.analysisLastupdated = analysisLastupdated;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
+    }
+
+    public boolean isAutoValidated() {
+        return autoValidated;
+    }
+
+    public void setAutoValidated(boolean autoValidated) {
+        this.autoValidated = autoValidated;
+    }
+
+    public String getNceNumber() {
+        return nceNumber;
+    }
+
+    public void setNceNumber(String nceNumber) {
+        this.nceNumber = nceNumber;
     }
 
     public double getLowerCritical() {

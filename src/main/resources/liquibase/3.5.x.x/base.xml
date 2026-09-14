@@ -356,7 +356,6 @@
   <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
   <include relativeToChangelogFile="true" file="083-override-default-translation-config.xml"/>
   <include relativeToChangelogFile="true" file="084-panel-loinc-terminology-backfill.xml"/>
-
   <!-- Post-merge (demo-silnas sync): restore develop's "Add Generic Order" rename,
        de-collide the Reports presentation order, and repoint Results > Referred Out
        at the page that replaced the route this sync removed. Renumbered from 068 to
@@ -369,5 +368,162 @@
        whole constraint, so whichever ran second dropped the other's values. -->
   <include relativeToChangelogFile="true" file="086-merge-alert-type-constraint-union.xml"/>
 
+  <!-- OGC-1029 (Validation v4 V3): site flag gating the guarded "Release all clear" bulk release. -->
+  <include relativeToChangelogFile="true" file="087-validation-bulk-release-flag.xml"/>
+
+  <!-- OGC-1030 (Validation v4 V4): site flag requiring a note when sending a result for retest. -->
+  <include relativeToChangelogFile="true" file="088-validation-retest-note-flag.xml"/>
+
+  <!-- Unified Results Entry worklist on by default (flips the flag seeded off by 059). -->
+  <include relativeToChangelogFile="true" file="089-results-unified-route-default-on.xml"/>
+  <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
+
+  <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
+  <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
+  <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml"/>
+  <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
+  <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
+  <include relativeToChangelogFile="true" file="091-analyzer-activation-record.xml"/>
+  <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
+  <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml"/>
+  <include relativeToChangelogFile="true" file="094-remove-openelis-analyzer-connection-runtime.xml"/>
+  <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
+  <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
+  <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml"/>
+  <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml"/>
+
+  <!-- OGC-782 M1: microbiology catalog/reference foundations. The historical
+       filename is retained so already-applied demo migrations keep identity. -->
+  <include relativeToChangelogFile="true" file="051-microbiology-reference-foundations.xml"/>
+
+  <!-- OGC-782 M2: microbiology case core -->
+  <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
+  <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
+  <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
+
+  <!-- OGC-782 M7 MVP-gap: microbiology order-detail capture (FR-002) -->
+  <include relativeToChangelogFile="true" file="055-microbiology-order-detail.xml"/>
+
+  <!-- OGC-782 M7 MVP-gap: per-run breakpoint-standard selection (M-05) -->
+  <include relativeToChangelogFile="true" file="056-microbiology-ast-breakpoint-standard.xml"/>
+
+  <!-- OGC-782 M7 MVP-gap: alert_entity_ref for string-keyed alerts (M-11) -->
+  <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
+
+  <!-- OGC-782: keep the referral and critical-result alert types after 057 redeclares the constraint -->
+  <include relativeToChangelogFile="true" file="058-alert-type-union.xml"/>
+  <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
+  <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
+
+  <!-- OGC-782 remediation: standard Result projection for microbiology reports -->
+  <include relativeToChangelogFile="true" file="059-microbiology-report-projection.xml"/>
+
+  <!-- OGC-782 M8: amendment, report-version, and re-identification history -->
+  <include relativeToChangelogFile="true" file="060-microbiology-amendment-history.xml"/>
+  <include relativeToChangelogFile="true" file="060a-microbiology-amendment-isolate-lifecycle.xml"/>
+
+  <!-- OGC-782 M8: repeat/retest AST provenance and reportable selection -->
+  <include relativeToChangelogFile="true" file="061-microbiology-ast-attempts.xml"/>
+
+  <!-- OGC-782 M8: link shared Inventory usage to culture and AST bench actions -->
+  <include relativeToChangelogFile="true" file="062-microbiology-inventory-usage-link.xml"/>
+  <include relativeToChangelogFile="true" file="063-microbiology-inventory-usage-version.xml"/>
+
+  <!-- OGC-782 M9: microbiology reference and breakpoint administration -->
+  <include relativeToChangelogFile="true" file="064-microbiology-reference-administration.xml"/>
+
+  <!-- OGC-782 M10: audited manual WHONET export -->
+  <include relativeToChangelogFile="true" file="065-microbiology-whonet-export-run.xml"/>
+
+  <!-- OGC-782 R1: safe manual-Program fallback classification -->
+  <include relativeToChangelogFile="true" file="069-microbiology-unassigned-workflow.xml"/>
+
+  <!-- OGC-782 R1: inoculation records and subculture lineage -->
+  <include relativeToChangelogFile="true" file="070-microbiology-inoculation-lineage.xml"/>
+
+  <!-- OGC-782 R1: two-pass isolate workup -->
+  <include relativeToChangelogFile="true" file="071-microbiology-isolate-workup.xml"/>
+
+  <!-- OGC-782 R1: immutable AST panel and breakpoint provenance -->
+  <include relativeToChangelogFile="true" file="072-microbiology-ast-provenance.xml"/>
+
+  <!-- OGC-782 R1: AST reading source, match level, and units -->
+  <include relativeToChangelogFile="true" file="073-microbiology-ast-reading-provenance.xml"/>
+
+  <!-- OGC-782 R1: immutable AST override and revert history -->
+  <include relativeToChangelogFile="true" file="074-microbiology-ast-override-history.xml"/>
+
+  <!-- OGC-782 R1: AST technique distinct from derived measurement type -->
+  <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
+
+  <!-- OGC-782 R1: immutable per-run ordered antibiotic set -->
+  <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
+
+  <!-- OGC-782 R1: analyzer AST lifecycle, provenance, and reading revisions -->
+  <include relativeToChangelogFile="true" file="077-microbiology-ast-analyzer-lifecycle.xml"/>
+
+  <!-- OGC-782 R1: durable analyzer event reconciliation envelope -->
+  <include relativeToChangelogFile="true" file="078-analyzer-event-reconciliation.xml"/>
+
+  <!-- OGC-782 R1: positive culture stage and complete stage constraint -->
+  <include relativeToChangelogFile="true" file="079-microbiology-positive-culture-stage.xml"/>
+
+  <!-- OGC-782 R1: structured Method-bound culture timing -->
+  <include relativeToChangelogFile="true" file="080-microbiology-culture-timing.xml"/>
+
+  <!-- OGC-782 R1: typed order-entry checkbox values -->
+  <include relativeToChangelogFile="true" file="081-microbiology-order-detail-booleans.xml"/>
+
+  <!-- OGC-782 R1: durable order detail across decoupled sample collection -->
+  <include relativeToChangelogFile="true" file="082-microbiology-order-detail-draft.xml"/>
+
+  <!-- OGC-782 R1: support the canonical MICROBIOLOGY program code -->
+  <include relativeToChangelogFile="true" file="083-program-code-length.xml"/>
+
+  <!-- OGC-782 R1: make activity actors real SystemUser references -->
+  <include relativeToChangelogFile="true" file="084-microbiology-activity-actor-reference.xml"/>
+  <include relativeToChangelogFile="true" file="085-microbiology-patient-origin-reference.xml"/>
+
+  <!-- OGC-782 R2: optional admission date for surveillance context -->
+  <include relativeToChangelogFile="true" file="086-microbiology-admission-date.xml"/>
+
+  <!-- OGC-782 R9: retain the exact normalized WHONET export population -->
+  <include relativeToChangelogFile="true" file="087-microbiology-whonet-export-selection.xml"/>
+
+  <!-- OGC-782 R11: capture the explicit clinical or screening culture purpose -->
+  <include relativeToChangelogFile="true" file="088-microbiology-culture-purpose.xml"/>
+
+  <!-- OGC-782 R16: one direct order-entry action per domain; the generic parent is retired -->
+  <include relativeToChangelogFile="true" file="093-order-entry-domain-actions.xml"/>
+
+  <!-- OGC-782 R16: finish the move on a database that holds only some of the actions -->
+  <include relativeToChangelogFile="true" file="094-order-entry-domain-actions-guard.xml"/>
+
+  <!-- OGC-782 R16: retain an audit of discarded pre-case microbiology drafts -->
+  <include relativeToChangelogFile="true" file="095-microbiology-order-draft-discard-audit.xml"/>
+
+  <!-- Cold-storage monitoring hardening (issues #3743/#3904). Its first changeset redeclares
+       chk_alert_type wholesale (086's union plus FREEZER_OFFLINE). 092 below redeclares it once more to
+       add FREEZER_HUMIDITY and is now the last word on that constraint - see the note there. -->
+  <include relativeToChangelogFile="true" file="089-cold-storage-monitoring-hardening.xml"/>
+
+  <!-- Acknowledgment notes on alert, so the detail modal's notes field is no longer dropped on acknowledge. -->
+  <include relativeToChangelogFile="true" file="090-alert-acknowledgment-notes.xml"/>
+
+  <!-- Repair value_type on a freezer.monitoring.enabled row seeded by the pre-rename 070 file, whose
+       existence makes 089's guarded insert MARK_RAN. -->
+  <include relativeToChangelogFile="true" file="091-freezer-monitoring-enabled-value-type.xml"/>
+
+  <!-- FREEZER_HUMIDITY on the alert_type constraint. This is now the last changeset anywhere in
+       base-changelog.xml that may redeclare chk_alert_type - it inherits 089's ordering invariant. -->
+  <include relativeToChangelogFile="true" file="092-freezer-humidity-alert-type.xml"/>
+
+  <!-- Consent gating for the clinical collect step, off by default. -->
+  <include relativeToChangelogFile="true" file="099-order-consent-required.xml"/>
+
+  <!-- One record per deliberate decision to proceed past a control on an order
+       (no patient, continue with testing). -->
+  <include relativeToChangelogFile="true" file="100-order-override-record.xml"/>
 
 </databaseChangeLog>

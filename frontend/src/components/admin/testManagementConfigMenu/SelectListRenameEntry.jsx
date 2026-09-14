@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Heading,
   Button,
@@ -9,10 +9,11 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -20,6 +21,8 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+
+const SELECT_LIST_ENDPOINT = "/rest/SelectListRenameEntry";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -40,52 +43,31 @@ function SelectListRenameEntry() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const modalHeading = intl.formatMessage({
     id: "selectListRenameEntry.selectListEdit",
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [finished, setFinished] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmationStep, setConfirmationStep] = useState(false);
   const [inputError, setInputError] = useState(false);
-  const [selectListRename, setSelectListRename] = useState({});
-  const [selectListRenameListShow, setSelectListRenameListShow] = useState([]);
+  const { data: selectListRename } = useServerData(SELECT_LIST_ENDPOINT);
+  const invalidateServerData = useInvalidateServerData();
+  const selectListRenameListShow =
+    selectListRename?.resultSelectOptionList ?? [];
   const [displayValueList, setDisplayValueList] = useState([]);
-  const [selectListRenamePost, setSelectListRenamePost] = useState({});
+  const [pendingRename, setPendingRename] = useState({});
   const [selectedItem, setSelectedItem] = useState({});
   const [selectedItemChange, setSelectedItemChange] = useState({});
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [entityId, setEntityId] = useState();
-
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer(
-      "/rest/SelectListRenameEntry",
-      handleSelectListRename,
-    );
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  const handleSelectListRename = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setSelectListRename(res);
-      setSelectListRenamePost(res);
-      setSelectListRenameListShow(res.resultSelectOptionList);
-    }
-  };
 
   function selectListRenameUpdatePost() {
     setIsLoading(true);
     if (confirmationStep) {
       postToOpenElisServerJsonResponse(
         `/rest/SelectListRenameEntry`,
-        JSON.stringify(selectListRenamePost),
+        JSON.stringify({ ...selectListRename, ...pendingRename }),
         (res) => {
           selectListRenameUpdatePostCallback(res);
         },
@@ -96,9 +78,8 @@ function SelectListRenameEntry() {
   }
 
   function selectListRenameUpdatePostCallback(res) {
+    setIsLoading(false);
     if (res) {
-      setIsLoading(false);
-      setFinished(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -110,9 +91,10 @@ function SelectListRenameEntry() {
       });
       setNotificationVisible(true);
       setIsAddModalOpen(false);
-      setTimeout(() => {
-        window.location.reload();
-      }, 10);
+      setConfirmationStep(false);
+      setEntityId(undefined);
+      setSelectedIndex(null);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -120,9 +102,6 @@ function SelectListRenameEntry() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
 
@@ -135,14 +114,16 @@ function SelectListRenameEntry() {
     setEntityId(item.id);
   };
 
+  const { data: readNames, isPreviousData } = useServerData(
+    entityId
+      ? `/rest/EntityNamesProvider?entityId=${entityId}&entityName=resultSelectOption`
+      : null,
+  );
+
   useEffect(() => {
-    if (entityId) {
-      getFromOpenElisServer(
-        `/rest/EntityNamesProvider?entityId=${entityId}&entityName=resultSelectOption`,
-        handleEntityNames,
-      );
-    }
-  }, [entityId]);
+    if (!entityId || isPreviousData) return;
+    handleEntityNames(readNames);
+  }, [entityId, isPreviousData, readNames]);
 
   /**
    * The option list carries only the name of the locale it was read in, so the
@@ -199,7 +180,7 @@ function SelectListRenameEntry() {
 
   useEffect(() => {
     if (selectedItemChange) {
-      setSelectListRenamePost((prev) => ({
+      setPendingRename((prev) => ({
         ...prev,
         resultSelectOptionId: selectedItemChange.id,
         nameEnglish: selectedItemChange.displayValueEnglish,

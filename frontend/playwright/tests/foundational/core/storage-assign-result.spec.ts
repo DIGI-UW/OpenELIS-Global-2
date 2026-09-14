@@ -5,25 +5,23 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * Track A / Site 4 — Result Entry → expandable result row
  *
  * The StorageLocationSelector at this site lives inside the expanded detail
- * of a result row at /result. Reaching that detail requires executing a
- * search with criteria that depend on environment-specific data — out of
- * scope for a regression smoke.
+ * of a result row. Reaching that detail requires loading a worklist with
+ * criteria that depend on environment-specific data — out of scope for a
+ * regression smoke.
  *
  * What this spec verifies:
- *   - The /result route loads (catches accidental route removal)
- *   - The result-search shell renders (catches accidental unmount)
+ *   - The legacy /result route still resolves: the unified worklist is the
+ *     default (resultsEntryUnifiedRoute on), so /result forwards to /Results
+ *     (catches accidental route removal)
+ *   - The worklist shell renders (catches accidental unmount)
  *
  * What this spec deliberately does NOT verify:
  *   - The StorageLocationSelector behavior — covered in depth by
  *     storage-assign-dashboard.spec.ts. Same shared component across all
  *     four sites; Site 1 catches component-level regressions.
- *
- * Future work: a follow-up spec under demo/core/ can perform a search,
- * expand a row, and exercise the storage-quick-find flow once seed-data
- * infrastructure exists for creating a queryable result via REST.
  */
-test.describe("Result Entry — search shell entry point", () => {
-  test("/result loads with the search-type chooser visible", async ({
+test.describe("Result Entry — worklist entry point", () => {
+  test("/result forwards to the unified worklist with its toolbar visible", async ({
     page,
   }) => {
     await page.goto("/result", {
@@ -31,14 +29,17 @@ test.describe("Result Entry — search shell entry point", () => {
       timeout: LONG_TIMEOUT,
     });
 
-    await expect(page).toHaveURL(/\/result/, { timeout: LONG_TIMEOUT });
+    await expect(page).toHaveURL(/\/Results/, { timeout: LONG_TIMEOUT });
 
-    // The Result Search page renders a search-criteria form as its primary
-    // interaction. Match the stable user-visible heading "Search Results"
-    // (or any "Result" heading) — semantic role assertion that doesn't
-    // depend on the specific form widget shape.
+    const main = page.getByRole("main");
     await expect(
-      page.getByRole("heading", { name: /result/i }).first(),
+      main.getByRole("heading", { name: /result/i }).first(),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(main.getByLabel(/lab unit/i)).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(
+      main.getByRole("button", { name: /^load results$/i }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 });

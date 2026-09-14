@@ -279,6 +279,9 @@ public abstract class PatientReport extends Report {
                 sampleCompleteMap.put(convertToAlphaNumericDisplay(sample), Boolean.TRUE);
                 findCompletionDate();
                 findPatientFromSample();
+                if (currentPatient == null) {
+                    continue;
+                }
                 findContactInfo();
                 findPatientInfo();
                 createReportItems();
@@ -474,6 +477,13 @@ public abstract class PatientReport extends Report {
 
     protected void findPatientFromSample() {
         Patient patient = sampleHumanService.getPatientForSample(currentSample);
+
+        if (patient == null) {
+            STNumber = null;
+            patientDOB = null;
+            currentPatient = null;
+            return;
+        }
 
         if (currentPatient == null || !patient.getId().equals(patientService.getPatientId(currentPatient))) {
             STNumber = null;

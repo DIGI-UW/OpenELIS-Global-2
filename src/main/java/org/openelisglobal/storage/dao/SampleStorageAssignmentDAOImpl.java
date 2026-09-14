@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.dao;
 
 import java.util.List;
+import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -90,6 +91,9 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                     + "WHERE ssa.locationType = 'box' AND ssa.locationId = :boxId";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
             query.setParameter("boxId", box.getId());
+            // Reached from StorageBox's @PostUpdate/@PostPersist FHIR sync, i.e. inside a
+            // flush; an auto-flush here re-enters the ActionQueue and fails.
+            query.setHibernateFlushMode(FlushMode.MANUAL);
             Long count = query.uniqueResult();
             return count != null && count > 0;
         } catch (Exception e) {
