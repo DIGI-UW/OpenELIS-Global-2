@@ -1,58 +1,553 @@
 # Reporting MVP Implementation and Deployment
 
-The user authorized implementing the complete agreed MVP and deploying an
-OpenELIS instance on the Catalyst server. Both milestones remain in scope.
-The Sample & Testing stage is publicly deployed and testable as of 2026-09-14.
-The full MVP remains in progress. The current deployment receipt below
-supersedes earlier point-in-time deployment observations in this history.
+The user authorized implementing the complete agreed MVP and deploying each
+usable stage to Reporting UAT. Both milestones remain in scope. The canonical
+mock defines the interface; MVP scope determines which functions are connected.
+Public availability, automated qualification and human acceptance are separate.
 
-## Current Public Stage — Canonical Frontend, 2026-09-14
+## Current Public Stage — Referrals, 2026-09-14
+
+The [public reporting application](https://reporting.catalyst.openelis-global.org/reports/custom-data-export)
+now serves frontend, backend and instance configuration
+`d48cd790c49294ddb4a36c9333d3acc744ebb3c4`, deployment
+`20260914T184156Z-d48cd790c492`. Review tooling remains `54b99f8d76ba` and runtime
+configuration remains `7780ee2cd987`. The
+[live identity](https://reporting.catalyst.openelis-global.org/__review/target.json)
+records this ready stage, its checks and the remaining work.
+
+Six public browser checks passed in 2.1 minutes: authentication, Sample & Testing
+spreadsheet repeats, turnaround in both layouts, configured sidebar/query context
+and retained draft, and the Referral saved-report/fresh-date/actual-CSV workflow
+at 1280×900 and 390×844. For May 7, the Referral CSV contains two independently
+identified 450 returns dated May 8 and May 9, plus one pending REQUESTED row.
+The unsent draft and May 8 sent referral are excluded. Only the test-created
+shared reports were removed after their workflows; existing reports were retained.
+Public desktop and phone columns/review captures were inspected against the
+pinned mock. The collapsed catalog, ordered selected fields, mobile panels,
+teal Referral label and explicit sent-date basis are present. Native OpenELIS
+chrome, real result identifiers and the background-generation message remain the
+recorded implementation-specific differences.
+
+All 210 artifact hashes were checked before deployment; served HTML and its
+referenced assets match the release. Application `0714c3b49924` started once and
+became ready after approximately 480 seconds; observation continued on that same
+container. Database `f9933a28cb4b`, report files and logs were retained. The
+synthetic Referral fixture was loaded and validated. The application has one
+context; the obsolete duplicate context returns 404. Previous artifacts,
+configuration, identity, logs and a database backup remain with the release.
+
+Public evidence: `/private/tmp/reporting-referral-public-evidence`,
+`/private/tmp/reporting-referral-public-browser.log`, and
+`/private/tmp/reporting-referral-public-verification.json`. The remote release is
+`/home/ubuntu/reporting-uat/releases/d48cd790c49294ddb4a36c9333d3acc744ebb3c4`;
+its `public-verification.json` preserves the earlier menu restart/profile and
+review-widget evidence with their original scope and timestamps.
+
+Frontend, static, image and translation checks pass for the deployed revision;
+backend Build + Test (run `34880970783`) is still running at this checkpoint.
+The live checklist remains six stories and 17 steps at revision
+`14333b9e6281374aac57eeb38177a7fca0bba1ff340f380457261af19e3b3481`.
+RPT-201 and RPT-504 instructions are prepared; the authoring SSH timeout still
+prevents publishing them. No human answers were modified. Non-Conformance's
+missing event-date decision, repeatable public queued cancellation, final audit
+and human acceptance remain open. This usable stage does not complete M2 or the
+full goal.
+
+## Two-Process Recovery Qualification — 2026-09-14
+
+The remaining multi-instance crash-isolation check now passes against two real
+application processes sharing the local database and report volume. Both use the
+public stage's `22e3a66b6175` WAR and single-context configuration. The new
+`projects/reporting-uat/qualify-worker-isolation.py` runner starts with no active
+jobs, submits a baseline and then observes one generating job per process plus
+one queued job. A bounded read stall exposes the recovery interval without
+changing job timestamps or the normal 300-second lease.
+
+The temporary peer `e42cd336a48e` was killed with SIGKILL. Primary application
+`6d7d3d387b8b` remained running with its original start time; its lease continued
+renewing across 59 observations. Its partial file and queued job remained intact.
+Only the killed worker's job failed as interrupted and its partial file was
+removed. Releasing the stall let the live and queued jobs complete. A linked
+retry retained the abandoned job's frozen request. All downloads matched the
+baseline CSV byte for byte, preserving both repeated values. Exactly one
+`INTERRUPTED` audit event identified the killed worker's job. Database
+`f4572a3f704c` was retained. The peer's final inspection and logs were saved before
+removing that temporary service; primary and database remain running.
+
+Receipt: `/private/tmp/reporting-multi-process-20260914/isolation/verified.json`;
+observations, ownership logs and actual CSV are in the same directory. CSV
+SHA-256 `499ab005f03b3c02d0da1af52097f3f64b6f00599f839beadac3e577fe741e32`.
+See quickstart for the reproducible procedure. This closes T024 and T028 when
+combined with their recorded lifecycle, retention and migration checks. It adds
+local operational evidence to the existing public application; it does not
+claim a new public deployment or human acceptance. T021's public queued-cancel
+workflow and the source-activation/product decisions remain open.
+
+## Previous Public Stage — Database Menu Presentation, 2026-09-14
+
+The navigation follow-through now persists optional section/icon metadata in the
+existing menu table and edits it through Global Menu Configuration. Server-owned
+configuration provenance makes instance-controlled fields read-only and prevents
+saving effective overrides into database defaults. Configuration-only grouping
+entries remain compact; database children remain editable. Successful writes
+refresh the editor with the effective server tree; failed writes retain edits.
+
+The menu entity now uses annotations in both application and test runtimes;
+`Menu.hbm.xml` was removed. Migration `479-005-menu-presentation` adds the two
+optional fields and the standard version timestamp. The initial persistence
+regressions failed with lost values. The completed checks pass: 26 backend cases,
+including real database round trips, override protection, mapping startup,
+existing menu APIs, fresh migration registration, 1,000-menu upgrade/rollback,
+and the existing 50,000-job reporting rollback checks.
+
+The local app was replaced once with the retained database, report files and
+logs, after a database backup. Container `6d7d3d387b8b` became ready after 198
+seconds. The actual browser saved and reloaded an Alerts icon, restored its
+previous value, and verified configured Reports fields remain read-only.
+Screenshot inspection caught a missing small-screen grid span and order-entry
+accordion styles leaking into this page. The grid now uses explicit Carbon
+breakpoints, the old styles are scoped to order entry, and the corrected editor
+uses 342 of the 390 phone pixels. The affected browser check passes again.
+
+The [public application](https://reporting.catalyst.openelis-global.org/reports/custom-data-export)
+now serves frontend/backend/instance configuration
+`22e3a66b6175f793103fe9c729ff4e02339dc7de`, deployment
+`20260914T165120Z-22e3a66b6175`. Its
+[live identity](https://reporting.catalyst.openelis-global.org/__review/target.json)
+records the exact revision and verification. The database, report volume and
+persistent logs were retained, with a pre-migration database backup and previous
+artifacts/compose/identity preserved. All 209 artifact hashes were verified;
+served HTML/assets match. Migration `479-005-menu-presentation` completed once.
+The application became ready about 484 seconds after its single replacement;
+one application context is active and the duplicate API context returns 404.
+
+All 10 public browser checks passed in 2.5 minutes: login, pinned-mock capture
+and eight application workflows. They cover spreadsheet repeats, detailed result
+identities, per-test turnaround, shared report create/use/update/copy/delete,
+desktop/phone column interactions, sidebar/history/query context and retained
+drafts, administration typography, and menu icon save/reload/restore with
+instance-controlled fields. Actual CSV contents were checked. Desktop and phone
+captures were directly inspected against the pinned mock at widths 1280 and 390;
+the native OpenELIS theme, real configured catalog, two-layout controls and
+unconnected source labels retain the previously recorded functional differences.
+The menu editor fits both widths without overlap. Seventy component checks,
+required formatting and application builds also pass for this increment.
+
+Actual local restart/two-profile qualification now passes. The Alerts menu's
+saved `patient` icon and `section` presentation survived restarting application
+`6d7d3d387b8b` with database `f4572a3f704c` retained. A second profile changed its
+effective icon to `reports` and presentation to a menu item. Saving the overlaid
+entry did not change the database defaults; removing those two overrides
+restored `patient`/`section`. The original menu values and exact profile bytes
+were restored afterward, with no frontend changes. Receipt:
+`/private/tmp/reporting-menu-profile-qualification/verification.json`.
+
+T041 remains open only for the review-tooling follow-through. RPT-504 is prepared
+but not published: direct authoring SSH and a relay through the deployment host
+both timed out. No Grist rows or human answers were changed. The public checklist
+and same-origin catalog still provide six stories and 17 steps at revision
+`14333b9e6281374aac57eeb38177a7fca0bba1ff340f380457261af19e3b3481`.
+The review-picker problem was subsequently reproduced locally: application tabs
+on different routes repeatedly replaced a shared story preference. Review-tooling
+commit `54b99f8d76bac9b46a2082e3549a7d013e8406ff` now keeps navigation per tab
+while synchronizing an explicit pop-out with its opener. All 104 widget browser
+checks and 201 tooling tests pass; two earlier checks were corrected to wait for
+the selected checklist and settled scroll position. The fix is published only
+to Reporting UAT, with both local and public script bytes verified. Application,
+database and web container identities/start times remained unchanged. Review
+answers and the six-story/17-step checklist were not changed.
+
+Live in-app validation now passes: all six stories are selectable; the reporting
+tab retains its navigation story while a separate menu-administration tab keeps
+its routine-export story, including after refresh/reload. The reopened picker was
+visually inspected. Three fresh public automated checks pass (authentication,
+repeated-result spreadsheet CSV and per-test turnaround in both layouts).
+Receipts: `/private/tmp/reporting-review-tab-publication.json` and
+`/private/tmp/reporting-review-tab-public-verification.json`; tests:
+`/private/tmp/reporting-review-widget-release-final.log`,
+`/private/tmp/reporting-review-unit-final.log`,
+`/private/tmp/reporting-review-public-csv.log`. The review fix is in
+[draft PR 21](https://github.com/DIGI-UW/openelis-review-tooling/pull/21), stacked
+on the exact published review runtime. RPT-504 publication alone remains open
+under T041. The exact application revision passes frontend, backend and
+translation CI. Human acceptance remains pending.
+
+Logs and screenshots: `/private/tmp/reporting-menu-final-backend.log`,
+`/private/tmp/reporting-menu-responsive-browser/`,
+`/private/tmp/reporting-menu-local-parity/`,
+`/private/tmp/reporting-menu-public-browser/`,
+`/private/tmp/reporting-menu-public-deployment.log`. The server retains deployment
+and public-verification receipts under `releases/22e3a66b6175f793103fe9c729ff4e02339dc7de`.
+The manifest SHA-256 is
+`7be02c33a7805fe03a058e9bd081d12c6b6b0546a6f60a542474ed9f51e79b0c`.
+The menu profile remains
+`35c3995db966ef8c1d4897b430cb317b33cb2021422ac16d8a61dfb08302e93e`.
+
+## Previous Public Stage — Configured Navigation and Audit, 2026-09-14
+
+The published stage consolidates the sidebar renderer and its shared Carbon
+typography, removing 535 lines of conflicting old sidebar rules. The Reporting
+UAT profile supplies the mock's four sections, icons, direct workflow links and
+collapsed legacy groups through the existing database-plus-configuration menu
+loader. Database rows, unspecified settings and unlisted instance extensions
+remain intact; section/icon metadata is configured in JSON, not yet exposed in
+the database menu editor. Other instance profiles are unchanged.
+
+Reporting now uses `/reports/custom-data-export`; legacy bookmarks redirect with
+query, fragment and history preserved. Active menu selection uses path and query,
+native links retain modified-click behavior, and mobile view changes close the
+drawer. Sidebar and internal reporting navigation share parameter ownership so
+review context survives changing views. The existing report draft is retained.
+
+The increment adds committed reporting lifecycle and shared-definition events
+to the existing application logger. The public release retains old logs and
+mounts a persistent log directory. A real saved-definition request exposed a
+timestamp-precision conflict on immediate edits after creation; a failing
+database round-trip test reproduced it. Creation now uses database-supported
+microsecond precision, and create/read/update/stale-update/delete checks pass
+across committed requests.
+
+Validation includes 125 component checks, 35 focused reporting/menu backend cases across overlapping runs,
+Java 21 packaging, and desktop/phone reporting, navigation and admin checks.
+Actual repeated-result CSV download passed locally. Direct comparison with the
+pinned mock covers the catalog, selection, filters, review and queue. The settled
+admin layout has consistent typography and does not overlap the pinned sidebar;
+the browser check waits for that geometry before capture. Public deployment and retained log-mount verification now pass, as recorded below. This does not close T021/T028, source activation,
+multi-instance isolation or human acceptance.
+
+The [public workspace](https://reporting.catalyst.openelis-global.org/reports/custom-data-export)
+is now on frontend/backend/configuration `65f96697e428b3e45c1e9b293115ccf0e2c135f7`,
+deployment `20260914T151244Z-65f96697e428`. Runtime configuration `7780ee2cd9`
+and review tooling `7356f1d32c` remain. The database container and report volume
+were retained, as were the previous artifacts, compose/identity files, a database
+backup and existing logs. One application context started in 459.508 seconds;
+the duplicate legacy API context returns 404. Served HTML/assets match the
+versioned manifest. Mounted menu SHA-256:
+`35c3995db966ef8c1d4897b430cb317b33cb2021422ac16d8a61dfb08302e93e`.
+
+Nine distinct public workflows pass: spreadsheet repeats; detailed identities;
+per-test turnaround in both layouts; shared report use/update/copy/delete;
+desktop/phone column interactions and accessibility; configured sidebar,
+review parameters and history; admin typography/content boundaries; failed retry;
+and expired re-run. The initial nine-check batch had eight passes and one
+spreadsheet timeout at the overall 30-second test limit immediately after
+startup. Its stored job did complete, 8.819 seconds after submission. The
+unchanged spreadsheet repeat and both recovery workflows then passed in a
+four-check run including login. Keep the initial timeout as a startup qualification
+limit; do not report the initial batch as wholly green. Browser downloads and
+seven committed job/definition events were independently verified in the retained
+application logs, including immediate saved-report editing.
+
+Direct public walkthroughs cover the visible section hierarchy, legacy groups,
+canonical report address, retained draft, phone drawer close and desktop admin
+return. The [live checklist](https://grist.openelis-global.org/uat/reporting.json)
+now has six stories and 17 steps: RPT-S06 adds three navigation checks, preserving
+all five prior stories and their stable step keys. Their 14 route references now
+use the canonical reporting path so the review panel can match the existing
+workflows to the new address; instructions and keys were preserved. It was published through the
+review repository's existing Grist story tool using the already-configured host
+connection after the AWS session had expired. No reviewer answers were submitted.
+Exact-revision frontend CI passes; backend CI remains in progress at this record.
+The full MVP and human acceptance remain open.
+
+## Previous Public Stage — Queue Recovery, 2026-09-14
 
 - Application: [Reporting UAT](https://reporting.catalyst.openelis-global.org/CustomDataExport).
-  Frontend `1f2093054e574fec8344443b75530cc7a687e58a`; retained backend
-  `ebc6983898c833ed40fe43003192c4079e4bab73`.
-- Deployment `20260914T084139Z-1f2093054e57`; review tooling
+  Frontend `0d65ccaac4ba46ac7fa76262368170a13fe7306d`; backend
+  `d56922c11ed071e992b6e7288be1198efb009717`.
+- Deployment `20260914T120001Z-runtime-7780ee2cd987`; runtime configuration
+  `7780ee2cd98766d871f730f1cff361489e931e8c`; review tooling
   `7356f1d32cfbdea346f200b5f3b2bf05a48610b9`. The public
   [target identity](https://reporting.catalyst.openelis-global.org/__review/target.json)
-  records both application revisions, frontend-only scope and pending human acceptance.
-- Ten distinct public reporting workflows passed across focused browser runs:
-  both actual CSV layouts, repeated identities, 30/90-minute turnaround,
-  configured sources, empty output, filter switching, native Reports navigation,
-  shared report management, independent downloads by two existing report users,
-  and responsive/keyboard/accessibility behavior. The navigation check also passed
-  with native keyboard entry in both date controls, then Back/Forward and reload.
-  Authentication setup checks are excluded from this ten-workflow count.
-- The two-user test initially stopped in setup because a fresh page had no origin
-  for clearing storage. Establishing the origin with the static manifest fixed
-  setup; the final public rerun passed without the earlier dashboard teardown
-  console errors. CSV and shared-definition expectations were preserved.
+  records both revisions, successful public browser checks and pending human acceptance.
+- The runtime follow-up passes five public application workflows: spreadsheet
+  repeats, failed retry, expired re-run, Reports navigation with Back/Forward/reload,
+  and desktop/narrow column interaction and accessibility. Seven reported checks
+  include authentication and the separate pinned-mock capture. Direct matched
+  1280×900/390×844 comparisons preserve the collapsed catalog, Add/Added controls,
+  ordered selection, filters, review hierarchy and mobile queue. Native OpenELIS
+  chrome, configured catalog data, the agreed layout selector and visible pending
+  functionality remain distinct from the mock's fictional preview controls.
+- Connected: Sample & Testing in both layouts, instance-aware columns, every
+  repeated result, per-test turnaround, shared report definitions, queue return,
+  linked failed-job retry, queued cancellation and expired-report re-run.
+  Referrals and Non-Conformance remain visible as not yet connected.
+- Seven public reporting workflows passed on backend/frontend `d56922c11e`:
+  spreadsheet repeats, detailed result identity/period, 30/90-minute per-test
+  turnaround, shared report management, Reports navigation, failed retry and
+  expired re-run. Both recovery flows check actual CSV contents, retained
+  settings, reload and browser navigation. Login setup is excluded from the count.
+- The direct walkthrough found false unavailable-field/filter warnings while a
+  restored report's catalog loaded. Frontend `e5d9e85ef7` fixes that transient
+  state, shows Carbon loading feedback and prevents progressing without a catalog.
+  It preserves warnings and correction for genuinely removed fields. The two
+  affected public workflows (expired re-run and Reports/native-date navigation)
+  passed again after publication, with no unexpected browser-console errors.
+- In-app public retry and expired re-run were exercised directly. Native keyboard
+  entry preserved both May 5 dates, review survived reload, and the resulting
+  report downloaded successfully. Its stored CSV was independently checked:
+  Accession Number/Viral Load, two REPORTING-MVP-REPEAT rows with 450 each;
+  SHA-256 `499ab005f03b3c02d0da1af52097f3f64b6f00599f839beadac3e577fe741e32`.
+  Earlier in-app fill attempts were inconclusive; native keyboard entry resolved
+  that automation limitation. These agent checks do not constitute human acceptance.
 - The live [Grist checklist](https://grist.openelis-global.org/uat/reporting.json)
-  now has five stories and 12 required steps, with zero authoring problems.
-  Revision `0d4c0ae0f5fdff079ff70da4e0c31f33b04991d82eeb15bc6e502079c2439525`.
-  Existing stable keys are preserved; RPT-005 adds narrow-layout and navigation
-  review. Every story links to the pinned canonical mock. The live overlay loaded
-  the new instructions, five-story picker and deployment revision.
-- Publication verified all frontend artifact hashes, served HTML/assets and
-  backend session health. Only the web container changed. Backend/database
-  container identities and persistent data were retained; no reseeding occurred.
-  An initial readiness check raced web startup and rolled back successfully;
-  bounded readiness retries then qualified the published release.
-- Local qualification: 21 component tests, frontend/hook lint, frontend production
-  build, Java 21 packaging and Spotless passed. Backend tests were not rerun for
-  this frontend-only change. Prior backend evidence remains below. Frontend CI
-  and end-to-end CI passed at this revision; backend CI was still running at
-  the latest recorded snapshot and must be reported separately.
+  contains five stories and 14 required steps. Revision
+  `81ea1671067557c9faee6ac530eb7fbe714a215d35682ccf9d01434460be71f6`.
+  RPT-S04 now includes reusable failed/expired examples. Existing keys and sibling
+  stories were preserved. The live overlay displays the recovery story, all three
+  instructions and the current deployment. No reviewer answers were submitted.
+- The application recovery release retained a database backup and applied the
+  additive cleanup-column/index migration to existing data. Only the new
+  synthetic failed/expired jobs were added. The subsequent loading fix replaced
+  only the web container; backend/database identities were retained. Deployment
+  checked artifact hashes, served HTML/assets and backend session health before
+  publishing the ready identity.
 
-Human acceptance remains pending. The in-app agent's date-control interaction
-remained inconclusive; both ordinary Playwright filling and native keyboard entry
-passed with both dates retained. This is not a confirmed product date defect or
-a completed human walkthrough. Referrals, Non-Conformance, queue recovery and
-remaining M1 qualification (including backend coverage) remain open.
+The preceding backend replacement took about 15 minutes to become ready. It ran
+the existing Intel image on an ARM host and initialized the application twice.
+The runtime correction below removes the duplicate application; the current
+public startup took 457.170 seconds. The platform mismatch remains, so backend
+replacements still have a substantial startup cost. Frontend-only publication
+avoids that restart. Previous versioned artifacts, original runtime configuration
+and the pre-recovery database backup remain available.
 
-The task's `reporting-frontend-repair` artifacts retain public data/experience,
-two-user and keyboard logs, matched mock/application screenshots, target identity,
-deployment receipt and the published checklist. Subsequent test/document-only
-commits do not change the application bytes deployed at `1f2093054e`.
+## Runtime Qualification — Qualified and Published, 2026-09-14
+
+A local process-interruption run killed the app with two real jobs generating,
+one queued job and two existing partial files. The database/output volumes were
+retained. After restart, both abandoned jobs became FAILED with the interrupted
+reason, the queued job completed, the preceding ready CSV remained byte-identical,
+and a linked retry returned the expected two repeated 450 readings. Incomplete
+outputs were rejected and both partial files were removed. Leases expired
+naturally; the test did not modify their timestamps.
+
+The run exposed a deployment discrepancy: Tomcat loaded the same WAR at the
+explicit `/api/OpenELIS-Global/` path and the automatically discovered
+`/OpenELIS-Global` path. A read-stall probe observed two export workers in one
+container, contrary to the plan's one-worker limit. All 4,216 application class files
+in the local WAR match the public `d56922c11e` artifact exactly; this is a runtime
+configuration issue.
+
+The scoped [runtime tools](../../projects/reporting-uat/README.md) disable Tomcat
+application discovery while preserving the explicit native API contexts, and
+remove the reporting proxy's replacement of the API prefix. The corrected local
+instance logged one Spring root initialization, started in 212.652 seconds, and
+a repeated probe observed one generating job with two queued jobs. Four real
+browser workflows passed through the native API route: spreadsheet CSV, failed
+retry, expired re-run and Reports navigation with Back/Forward/reload. The five
+reported checks include authentication. The public host's narrow configuration
+probe confirmed the same two discovery flags and prefix-removing API route; no
+active reporting jobs were present before the update.
+
+Runtime configuration `7780ee2cd9` is now public. nginx configuration validation
+passed before the app/proxy replacement. The database container, report volume,
+frontend `0d65ccaac4` and backend `d56922c11e` were retained. Tomcat logged exactly
+one Spring root initialization and 457.170 seconds startup; the implicit second
+application path returns 404. Native session/login and all five public workflows
+above pass. The target identity records the runtime revision separately from
+application artifacts. The unchanged five-story/14-step checklist and signed-in
+review panel remain available; no human answers were submitted.
+
+The original full-configuration read was rejected by automatic approval review.
+A narrower probe succeeded and returned only routing flags, mapping counts and
+active-job count. Server configuration contents remain on the deployment host.
+
+Recovery fixture correction `e6b34a4d2a` passed its full backend CI run
+`34834207814`, in addition to frontend and the actual E2E checkpoint. Source
+preparation `0d65ccaac4` now also passes backend `34836215711`, frontend
+`34836215623` and the actual E2E checkpoint `34837613118`. The runtime-tools
+commit `7780ee2cd9` also passes backend CI `34840293019`.
+
+A separate local retention check created and downloaded a new synthetic report,
+verified its configured seven-day expiry, then shortened only that job's expiry
+to 15 seconds. At the observed clock boundary, new downloads returned 410; the
+scheduler marked it EXPIRED and removed its CSV while preserving row count,
+file size, history and frozen settings. An unrelated ready download stayed
+byte-identical. This is accelerated fixture qualification, not a seven-day soak
+or an in-flight download race; the latter has service/database test coverage.
+Multi-instance crash isolation and public
+cancellation qualification remain open. These checks do not close all of T021/T028.
+
+## Database Upgrade and Rollback — Qualified Locally, 2026-09-14
+
+Two dedicated PostgreSQL 14.4 databases execute the complete application
+changelog, then the actual versioned reporting changesets for rollback and
+reapplication. No live application or shared test database is rolled back.
+The five-check run includes two migration scenarios (27.038 seconds) and three
+existing ORM/persistence checks (0.784 seconds), with no failures or skips.
+The recovery update over 50,000 retained jobs took 61 ms in this local test;
+that measurement is not a public deployment-time estimate.
+
+- Fresh initialization creates all four reporting changesets and the expected
+  job constraints/indexes. Full reporting rollback removes its job table, menu
+  entry and added columns while preserving existing report payloads and other
+  menu entries. Reapplying twice produces one menu entry and one recorded
+  application of each changeset.
+- The populated scenario upgrades 1,000 existing report definitions, then adds
+  100 shared definitions and 50,000 jobs across all six states. The recovery
+  update, its rollback and reapplication preserve every M1 job field, including
+  frozen requests, owner/submission identities, retry lineage, timestamps and
+  row/file metadata. All shared-definition fields, including last editor and
+  version timestamp, remain unchanged. Submission uniqueness still rejects a
+  duplicate, and the cleanup index is valid after upgrade.
+- Recovery rollback removes only its cleanup marker/index; reapplication starts
+  those markers empty. Full reporting rollback explicitly drops the job table
+  and `updated_by` column. It is not a history-preserving application downgrade.
+  The qualified recovery rollback does retain job history. File-volume restore
+  is not exercised by these schema tests.
+
+The tests use the real root changelog to prove registration and the existing
+repository container/bootstrap pattern. They require no application changes or
+public redeployment. Reproduction and rollback boundaries are recorded in
+[quickstart.md](quickstart.md#database-upgrade-and-rollback-qualification-2026-09-14).
+Multi-instance crash isolation, audit and human acceptance remain separate gates.
+
+## Local Workload Qualification — Passed, 2026-09-14
+
+T027 passes with the existing application artifacts and corrected single-worker
+runtime. The public deployment above is unchanged; no workload data was seeded
+there. The reproducible [runner and browser check](../../projects/reporting-uat/README.md#50000-result-workload)
+exercise real submissions and downloads over 5,001 synthetic specimens, 10,001
+analyses and 50,000 results. One specimen has 10,000 repeats. Independent CSV
+oracles check every value, identity, turnaround and repeat multiplicity in both
+layouts, alongside three ordinary two-result exports.
+
+Two runs produced identical CSV bytes. The final run generated each large file
+in about 46.1 seconds, observed a Java resident-memory peak of 1,501,904 KiB,
+and completed 144 ordinary authenticated session/queue/catalog reads with no
+failures (maximum 1.336 seconds). Atomic database observations found at most
+one generating job; five active jobs were present before the sixth submission
+returned 429. Each large query used 200 follow-up cursor fetches at the configured
+250-row fetch size. Temporary query logging was restored after both runs.
+
+Both browser workflows pass at 1280×900 and 390×844, including reload and actual
+50,000-row downloads with identical hashes. The three reported checks include
+authentication. Reviewed screenshots retain the mock's table/card structure and
+download/details controls without horizontal overflow. Narrow captures are
+scrolled to the selected real job; these supplement the previous matched
+full-page mock comparisons, rather than establishing pixel identity. No
+application interface changed in this iteration. Nine writer tests also pass,
+including incremental consumption/output of a 50,000-result repeat set.
+
+The workload browser file is registered in `core-performance`, verified by native
+Playwright listing and execution. The packaged project-validator cannot resolve
+the existing `CORE_PERFORMANCE_TESTS` constant; its diagnostic is a helper
+limitation, not evidence of an unregistered test. No project configuration was
+changed to bypass that limitation. Measurements, environment, hashes and
+reproduction instructions are in [quickstart.md](quickstart.md#recorded-50000-result-run-2026-09-14).
+These local results do not establish public performance or human acceptance.
+
+The qualification-only change passes full Spotless and frontend formatting,
+frontend lint, Python syntax validation, and Java 21 packaging with both test
+skip flags. The separate nine-test writer run and actual browser run above
+provide test evidence; the package build itself did not execute tests. No
+application artifact changed and no redeployment was required for this test-only
+increment. New commit CI is tracked separately from the passed runtime baseline.
+
+## Source Preparation — Frontend Published, 2026-09-14
+
+The shared builder starts newly chosen configured reports with zero columns, as
+the pinned mock does. Users add their fields explicitly; restoring a draft or a
+saved report retains its choices. The period explanation now uses the configured
+date anchor instead of always claiming specimen collection dates. Both referral
+date interpretations are covered without choosing the unresolved product default.
+
+- 28 component checks pass. Four real-browser application workflows pass:
+  configured-report CSV, hidden-filter removal, Reports navigation with
+  Back/Forward/reload, and desktop/narrow column interactions and accessibility.
+  A separate pinned-mock capture also passes. The six reported browser checks
+  include authentication; actual downloaded CSV assertions are unchanged.
+- Rendered comparisons use 1280×900 and 390×844. The application keeps the mock's
+  empty selection, collapsed groups, Add/Added controls and ordered columns.
+  Date guidance remains within the date card on narrow screens. The native
+  OpenELIS shell and real instance catalog remain distinct from fictional mock
+  data and preview controls.
+- A parameterized Referral data query preserves linked result identities and
+  referrals without returned results. Five database tests cover independent
+  request/sent dates, local date boundaries across daylight saving, repeated
+  results, referred-test/section filtering and invalid mapping rejection.
+  The complete focused run passes 79 tests, including the preceding role-fixture
+  sequence. No Referral report source is enabled by this preparation.
+- Frontend lint and production build pass. Initial sandbox attempts could not
+  launch Chromium or access Docker; the permitted runtime runs passed. Those
+  environment failures are not counted as product checks.
+- CI at `e6b34a4d2a` has passed frontend and the actual
+  [end-to-end checkpoint](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/34834965016),
+  verified through its commit status (not merely the shared-build workflow).
+  Its full backend run subsequently passed. These results precede this preparation.
+- Frontend `0d65ccaac4` is now public on unchanged backend `d56922c11e`.
+  All three affected public workflows pass: explicit configured-report columns
+  with CSV output, hidden-filter removal with CSV output, and Reports navigation
+  with Back/Forward/reload. The reported four checks include login. The frontend
+  update retained the backend/database containers and verified served artifact
+  hashes. Backend, frontend and actual E2E CI for `0d65ccaac4` have since passed;
+  no full-MVP or human
+  acceptance is claimed.
+
+At this checkpoint three questions were recorded. The first two were resolved
+on September 14 from the existing source of authority, as recorded below; only
+the rejection-date question remains pending:
+
+1. Referral period: the original specification uses sent date, while the MVP
+   data model and quickstart say request date. Both can be exported; the default
+   inclusion rule needs resolution.
+2. Referral repeats: the original one-row-per-analysis description conflicts
+   with preserving each returned result on separate rows. Raw result identities
+   are retained while the final row presentation remains open.
+3. Recorded rejection dates: native RejectionController creates NcEvent with
+   reportDate and specimen links but leaves dateOfEvent empty. The current MVP
+   prohibits substituting reportDate. Including these real recorded rejections
+   with an explicit date-basis label versus excluding them needs resolution.
+
+At that checkpoint source activation and affected CSV expectations were paused.
+Referral activation now proceeds using the pinned mock and the explicit repeat
+preservation requirement; Non-Conformance date semantics remain paused. The frontend
+is public; the new Referral data query is not deployed or exposed as a report.
+T020/T022 remain incomplete.
+
+## M2 Recovery Qualification
+
+Draft [PR #4295](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4295) is stacked
+on [M1 #4292](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4292), based on M1
+`948cdf3b0a`. Neither PR has been merged. M1 CI passed at that revision.
+
+- 67 focused reporting backend tests passed, including seven recovery database
+  tests. Focused line coverage was 960/1151 (83.4%), not whole-application coverage.
+  The tests cover idempotent retry/cancel, claim races, leases, stale publication,
+  expiry and cleanup while an already-open download retains complete bytes.
+- Full backend CI at `d56922c11e` subsequently ran 6261 tests and failed only the
+  seven new recovery tests at `reporting.access.denied` during initial submission.
+  They depended on the baseline admin's database roles, which other suite fixtures
+  replace. The corrected tests create their own real user and explicit role grant.
+  Running UserRoleServiceTest before the recovery tests reproduced all seven
+  failures; the same 14-test sequence passes after correction. All 67 reporting
+  tests also pass after that role fixture (74 tests total). Full-suite CI at `e6b34a4d2a`
+  now passes, confirming the corrected fixture. Frontend and E2E CI passed at `d56922c11e`.
+  The source-preparation checkpoint also passes backend, frontend and actual E2E CI.
+- 26 component tests, frontend/hook lint, formatting, production frontend build
+  and Java 21 packaging passed for the loading fix. Delayed-catalog and genuinely
+  removed-field tests cover the corrected behavior. Its local expired-re-run
+  browser check also passed. Backend tests were not repeated for frontend changes.
+- Six local reporting browser workflows and matched 1280×900/390×844 mock captures
+  qualified the recovery candidate before publication. Retry/Re-run use the mock's
+  primary actions. Older deep links add a detail card above the paginated queue.
+- A real local browser confirmed queued cancellation through the native Carbon
+  dialog; the cancelled job stayed cancelled while two other jobs completed.
+  A temporary read stall on the isolated synthetic database made the queued state
+  reproducible. A repeatable public queued fixture and narrow confirmation check
+  remain open; RPT-303 is therefore not yet in the live checklist.
+- A real local scheduler recovered a seeded abandoned GENERATING job, removed its
+  partial file and retained failed history. This is not a process-kill/restart test.
+
+Remaining work: connect Referrals and Non-Conformance through the common engine,
+qualify multi-instance crash isolation, audit events, public cancellation UAT and
+human acceptance. M1/M2 and the full MVP remain open.
+
+Evidence is retained in the task's `reporting-m2-recovery` artifacts: public/local
+logs and captures, pinned mock captures, deployment receipts, exact synthetic CSV,
+runtime/cancellation receipts and the published checklist. The preceding public
+stage was frontend `1f2093054e` with backend `ebc6983898`; its ten workflow checks
+and five-story/12-step checklist remain historical evidence, not the current receipt.
 
 ## Frontend Repair — Qualified and Published
 
@@ -716,3 +1211,88 @@ functional and qualification evidence.
 Do not mark the goal complete until the full functional specification and the
 requested deployment are verified. Hindsight retrieval and initiative capture
 were attempted but timed out; no retrieved memory was used as current evidence.
+
+## Referral source connection — local validation before publication
+
+The pinned mock explicitly names referral **sent date** as the period anchor.
+The user's instruction to preserve every repeated result resolves the older
+one-row-per-analysis shorthand: independent returned results remain independent
+rows; a sent referral with no returned result has one row with empty returned
+fields. These are existing decisions, not new assumptions or answers inferred
+from elapsed time. Request date remains an explicit alternative configuration.
+Non-Conformance's missing event-date/report-date decision remains unanswered.
+
+The common source registry now loads built-in definitions from the reporting
+resource directory. Referrals uses the existing builder, saved definitions,
+queue and CSV writer. Stored dictionary/qualifier/numeric interpretation is
+shared with Sample & Testing. Multi-select options retain their result/link
+identities within a cell and are grouped only within the same returned timestamp,
+original referral, test, component and result group; later returns remain rows.
+Only sources that define a result-status default apply it. Referrals includes
+pending records and does not claim a finalized-result filter in saved requests
+or review.
+
+Validation so far: 32 focused database tests and 28 reporting component tests
+pass. The interleaved returned-date test first reproduced one row instead of two;
+the review tests reproduced the misleading Finalized text before both repairs.
+The repeatable synthetic Referral fixture loads on the local UAT database.
+The final six-check local browser run passes: authentication, repeated-result
+spreadsheet, per-test turnaround in both Sample & Testing layouts, configured
+navigation, and the Referral saved-report/actual-CSV workflow at 1280×900 and
+390×844. Direct rendered comparison with the pinned Referral mock found and
+repaired the missing sent-date basis in review and the incorrect blue family tag;
+Referrals now uses Carbon teal. Columns remain collapsed with Add/Added controls,
+ordered selection, phone panel navigation and the same review/save structure.
+Native OpenELIS chrome and the source's extra identity/destination fields are
+retained. The final nine Referral database checks also pass after formatting.
+
+Local evidence is `/private/tmp/reporting-referral-local-final-evidence`,
+`/private/tmp/reporting-referral-mock-evidence`, and
+`/private/tmp/reporting-referral-local-final.log`. The local app is
+`23876680bd52`, the retained database is `f4572a3f704c`, and the restored frontend
+preview serves port 18489. Startup took 210 seconds; it was observed without a
+restart. The fixture was loaded twice without adding duplicate records.
+
+This local record preceded publication. The current public stage above records
+the subsequent deployment and its own browser checks; human acceptance remains
+separate. RPT-201 in uat.md
+now uses the actual three-row fixture and fresh-date shared-report workflow;
+updating the live Grist checklist still needs its authoring connection.
+
+## Natural queued-cancellation qualification — local, 2026-09-14
+
+A new opt-in browser workflow uses the existing 50,000-result fixture to occupy
+one real worker, then submits a normal May 5 report. It exercises Keep queued,
+reload, confirmed cancellation and another reload. After the large job finishes,
+the cancelled job remains CANCELLED with no start time, row count or file size;
+a direct download returns 409. The actual large CSV is compared row-for-row with
+an independent 50,000-row oracle, including equal repeated results. No worker
+pause, database lock, artificial timestamp or queue-state injection is used.
+
+The final local run passes three checks in 1.5 minutes: authentication and this
+workflow at 1280×900 and 390×844. Evidence is
+`/private/tmp/reporting-cancel-natural-local-verified-evidence` and its sibling
+`reporting-cancel-natural-local-verified.log`. Initial test-authoring failures
+were diagnosed from screenshots, browser traces and source: Carbon adds a
+screen-reader danger label to the confirm button; the separate Node HTTP client
+followed a local login redirect; and AppConfig omits null JSON properties.
+Those test assumptions were corrected. Application code was not changed.
+The expected 409 download rejection is the only final browser resource error;
+there were no page exceptions. The application completed both 50,000-row jobs.
+
+Direct inspection used the canonical queue captures at matching widths. The
+implementation retains the same columns, status/action placement and mobile
+labeled-row layout. Cancellation adds the existing native Carbon confirmation
+required by the functional specification; the mock's Cancel action is immediate.
+Desktop and phone confirmations and the resulting Cancelled rows were inspected.
+
+`projects/reporting-uat/prepare-cancellation-workload.py` verifies the actual
+stack, requires a ready identity for public Reporting UAT and an idle
+worker, backs up the database, loads the idempotent
+fixture and checks 50,000 unique results / 5,001 specimens / 10,001 analyses.
+Its local run passed against the already-seeded data with application
+`23876680bd52` retained; receipt
+`/private/tmp/reporting-cancel-setup-local-20260914/verified.json`.
+Public preflight found no active jobs and no records on the fixture collection
+date. Public fixture installation and its own browser checks are next; this local
+record does not close T021 or claim public/human acceptance.

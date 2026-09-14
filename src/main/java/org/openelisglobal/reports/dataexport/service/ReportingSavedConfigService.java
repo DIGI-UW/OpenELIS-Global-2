@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -48,7 +49,9 @@ public class ReportingSavedConfigService {
         access.requireReports(actor);
         String name = name(request);
         SavedReportDefinition normalized = catalog.validateSaved(actor, request.definition());
-        Timestamp now = Timestamp.from(clock.instant());
+        // PostgreSQL stores microseconds. Return the same version the next request
+        // will read, instead of a nanosecond value rounded during persistence.
+        Timestamp now = Timestamp.from(clock.instant().truncatedTo(ChronoUnit.MICROS));
         ReportDefinition stored = new ReportDefinition();
         stored.setId("CSV-" + UUID.randomUUID());
         stored.setName(name);
@@ -64,6 +67,7 @@ public class ReportingSavedConfigService {
         stored.setReportType(TYPE);
         stored.setSysUserId(actor);
         definitions.insert(stored);
+        ReportingAudit.definition(ReportingAudit.Action.DEFINITION_CREATED, actor, stored.getId());
         return view(stored, normalized);
     }
 
@@ -103,6 +107,7 @@ public class ReportingSavedConfigService {
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
         stored = definitions.update(stored);
+        ReportingAudit.definition(ReportingAudit.Action.DEFINITION_UPDATED, actor, stored.getId());
         return view(stored, normalized);
     }
 
@@ -115,6 +120,7 @@ public class ReportingSavedConfigService {
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
         definitions.update(stored);
+        ReportingAudit.definition(ReportingAudit.Action.DEFINITION_DELETED, actor, stored.getId());
     }
 
     private ReportDefinition saved(String id) {

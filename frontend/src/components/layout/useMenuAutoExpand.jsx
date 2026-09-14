@@ -1,82 +1,62 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useLocation } from "react-router-dom";
 
-/**
- * Custom hook for auto-expanding menu items based on current route.
- *
- * This hook:
- * - Takes a menu structure as input
- * - Returns an updated menu structure with `expanded` flags set
- * - Auto-expands parent items when child route is active
- * - Uses recursive depth-first algorithm
- * - Triggers on route change
- *
- * @see spec.md User Story 3: Hierarchical Navigation Structure (P2)
- * @see research.md R5: Menu Auto-Expansion Algorithm
- *
- * @param {Array} initialMenus - Menu structure with menu items
- * @returns {Array} Updated menu structure with expanded flags
- *
- * @example
- * const menus = useMenuAutoExpand(initialMenus);
- */
+const normalizePath = (path) =>
+  path === "/" ? "/Dashboard" : path.replace(/\/$/, "");
+
+/** Derive one active destination and its ancestors from the router location. */
 export function useMenuAutoExpand(initialMenus) {
-  const location = useLocation();
-  const [menus, setMenus] = useState(initialMenus);
-
-  useEffect(() => {
-    if (!initialMenus || initialMenus.length === 0) {
-      setMenus([]);
-      return;
-    }
-
-    // Deep clone to avoid mutating original
-    const newMenus = JSON.parse(JSON.stringify(initialMenus));
-
-    /**
-     * Recursive function to mark menu items for expansion.
-     * Returns true if this item or any descendant matches the current route.
-     *
-     * Only expands parents of the active route to ensure navigation context is visible.
-     *
-     * @param {Array} items - Menu items to process
-     * @returns {boolean} true if this branch contains the active route
-     */
-    const markActiveExpanded = (items) => {
-      let isActiveBranch = false;
-
-      items.forEach((item) => {
-        // Recursively check children first (depth-first)
-        if (item.childMenus && item.childMenus.length > 0) {
-          if (markActiveExpanded(item.childMenus)) {
-            item.expanded = true; // Expand parent of active child
-            isActiveBranch = true;
+  const { pathname, search } = useLocation();
+  return useMemo(() => {
+    const currentPath = normalizePath(pathname);
+    const currentQuery = new URLSearchParams(search);
+    let activeItem;
+    let bestScore = -1;
+    const findDestination = (items) => {
+      for (const item of items) {
+        const url = item.menu.actionURL;
+        if (url?.startsWith("/") && !url.startsWith("//")) {
+          const target = new URL(url, "https://openelis.invalid");
+          const path = normalizePath(target.pathname);
+          const exact = path === currentPath;
+          const prefix =
+            !item.childMenus?.length && currentPath.startsWith(path + "/");
+          const queryMatches = [...target.searchParams].every(([key, value]) =>
+            currentQuery.getAll(key).includes(value),
+          );
+          if ((exact || prefix) && queryMatches) {
+            // Prefer the most specific route, then its query variant. Extra
+            // page/job/review parameters never change the menu destination.
+            const score = path.length * 1000 + [...target.searchParams].length;
+            if (score > bestScore) {
+              activeItem = item;
+              bestScore = score;
+            }
           }
         }
-
-        // Check if this item matches current route
-        // Match exact route or prefix (e.g., /analyzers/qc matches /analyzers/qc/alerts)
-        // Guard against empty URLs (parent folders with no actionURL)
-        if (
-          item.menu.actionURL &&
-          item.menu.actionURL.length > 1 && // Must be more than just "/"
-          (item.menu.actionURL === location.pathname ||
-            location.pathname.startsWith(item.menu.actionURL + "/"))
-        ) {
-          isActiveBranch = true;
-        }
-      });
-
-      return isActiveBranch;
+        findDestination(item.childMenus || []);
+      }
     };
-
-    // Process all top-level menu items
-    markActiveExpanded(newMenus);
-
-    setMenus(newMenus);
-  }, [location.pathname, initialMenus]);
-
-  return menus;
+    findDestination(initialMenus || []);
+    const annotate = (items) =>
+      items.map((item) => {
+        const childMenus = annotate(item.childMenus || []);
+        const activeChild = childMenus.find(
+          (child) => child.routeActive || child.activeDescendantId,
+        );
+        return {
+          ...item,
+          childMenus,
+          routeActive: item === activeItem,
+          activeDescendantId: activeChild
+            ? activeChild.activeDescendantId ||
+              activeChild.menu.elementId ||
+              activeChild.menu.id
+            : undefined,
+          expanded: !!item.expanded || !!activeChild,
+        };
+      });
+    return annotate(initialMenus || []);
+  }, [initialMenus, pathname, search]);
 }
-
 export default useMenuAutoExpand;

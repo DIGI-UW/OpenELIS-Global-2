@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { canonicalReportingUrl, CUSTOM_DATA_EXPORT_PATH } from "./routes";
 
 const STEPS = ["columns", "filters", "review"];
 const VIEWS = ["overview", "builder", "saved", "queue"];
@@ -43,6 +44,21 @@ function writeRoute(search, route) {
     else params.set(key, String(value));
   });
   return params.size ? `?${params.toString()}` : "";
+}
+
+// Sidebar links start the selected view while retaining review context, using
+// the same parameter ownership as navigation inside the reporting workspace.
+export function reportingMenuDestination(url, location) {
+  const destination = canonicalReportingUrl(url);
+  if (
+    canonicalReportingUrl(location.pathname) !== CUSTOM_DATA_EXPORT_PATH ||
+    destination?.split(/[?#]/)[0] !== CUSTOM_DATA_EXPORT_PATH
+  ) return destination;
+  const [pathAndQuery, hash] = destination.split("#");
+  const [pathname, search] = pathAndQuery.split("?");
+  const params = new URLSearchParams(writeRoute(location.search, { panel: "overview" }));
+  new URLSearchParams(search).forEach((value, key) => params.set(key, value));
+  return pathname + (params.size ? `?${params}` : "") + (hash ? `#${hash}` : "");
 }
 
 export default function useReportingRoute() {

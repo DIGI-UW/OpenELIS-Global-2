@@ -137,9 +137,9 @@ import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
-import CustomDataExport, {
-  clearReportingDraft,
-} from "./components/reports/CustomDataExport/CustomDataExport";
+import { clearReportingDraft } from "./components/reports/CustomDataExport/CustomDataExport";
+import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute";
+import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
 import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = lazyWithRetry(
@@ -1507,9 +1507,9 @@ export default function App() {
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
-                  path="/CustomDataExport"
+                  path={REPORTING_ROUTE_PATHS}
                   exact
-                  render={() => <CustomDataExport />}
+                  render={() => <ReportingRoute />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

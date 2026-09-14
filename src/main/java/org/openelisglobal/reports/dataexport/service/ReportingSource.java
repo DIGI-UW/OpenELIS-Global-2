@@ -12,6 +12,10 @@ public interface ReportingSource {
 
     List<ReportingVariable> catalog();
 
+    default List<String> defaultResultStatuses() {
+        return List.of();
+    }
+
     void validateConfiguration(ReportSourceConfig configuration);
 
     long write(Writer output, ExportSnapshot request) throws IOException;

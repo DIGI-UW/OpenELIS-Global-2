@@ -18,11 +18,21 @@ and Review & Submit. A new export starts with no selected fields. Existing share
 reports retain their saved selections. The remaining steps below retain the full
 planned acceptance contract; pending functionality is not represented as working.
 
+The public recovery stage adds RPT-302 (failed retry) and RPT-304 (expired re-run),
+bringing that recovery-stage checklist to five stories and 14 required steps.
+The subsequent navigation stage adds RPT-S06 and RPT-501–RPT-503 (six stories,
+17 steps). RPT-504 is prepared for the database-backed menu editor stage; the
+current deployment receipt identifies whether that increment is published. Both prepared
+examples remain reusable after a run. RPT-303 is still planned: cancellation is
+connected and passed a local browser walkthrough, but its repeatable public queued
+fixture and narrow confirmation check are not yet available. No human acceptance
+is implied by the agent's walkthrough or automated checks.
+
 ## Target and Evidence
 
 - UAT host: `reporting.catalyst.openelis-global.org`
 - Checklist instance: `reporting`
-- Application route: `/CustomDataExport`
+- Application route: `/reports/custom-data-export` (the older `/CustomDataExport` redirects here)
 - Deployment identity: `/__review/target.json`
 - Public checklist: `https://grist.openelis-global.org/uat/reporting.json`
 - Fixture period: 2026-05-05 through 2026-05-05
@@ -31,7 +41,15 @@ planned acceptance contract; pending functionality is not represented as working
   Viral Load values of 450 with result-to-validation intervals of 30 and 90 minutes
 - Repeated configured test: `Viral Load`
 - Independent repeated values: two results whose displayed value is `450`
-- Planned referral fixture (not yet seeded): `REPORTING-MVP-REFERRAL`
+- Recovery fixtures for admin: failed job `47900000-0000-4000-8000-000000000101`
+  and expired job `47900000-0000-4000-8000-000000000102`; loaded by
+  `reporting-recovery.sql`. Deep link with `?view=queue&job=<id>` after sign-in.
+  Their two-column CSV contains Accession Number and Viral Load, with both 450
+  readings. Public availability is recorded in the deployment receipt.
+- Referral fixture: the `REPORTING-MVP-REPEAT` analysis has two returned 450
+  readings and one pending referral sent on May 7, 2026. Use May 7 for the
+  Referral period. `reporting-referrals.sql` also includes an unsent draft and
+  a May 8 sent referral, both excluded from that period.
 - Planned non-conformance fixture (not yet seeded): `REPORTING-MVP-NCE`
 
 Fixtures are public synthetic data. Seeding is idempotent for one deployment
@@ -98,15 +116,22 @@ through the same reporting experience.
 Current-stage availability check: `RPT-200` required — Open Report type in
 the builder. Expect Referrals and Non-Conformance alongside Sample & Testing.
 Choose Start a new export and inspect both type cards. Mark Fail while they
-remain unavailable. The restored design displays both as Not yet connected;
+remain unavailable. Referrals is publicly connected at `d48cd790c492`;
+Non-Conformance remains Not yet connected;
 visible cards do not establish functional acceptance. No unseeded fixture is needed for this availability check.
-The three execution checks below become runnable when their sources and
-fixtures arrive; preserve their stable planned keys.
+RPT-201 is runnable now with the deployed fixture, although its Grist checklist
+publication is still blocked by the authoring connection. The remaining checks
+become runnable as their sources arrive; preserve their stable planned keys.
 
-1. `RPT-201` required — Select Referrals, use the fixture period and generate a
-   report including the referral identity, accession, destination, event date
-   and status. Expect exactly one `REPORTING-MVP-REFERRAL` occurrence with the
-   configured date meaning and no duplicated rows.
+1. `RPT-201` required — Select Referrals and add Accession Number, Referral ID,
+   Referral Result ID, Result ID, Referred Lab, Referred Test Name, Referral Date,
+   Referral Result Value, Referral Result Date and Referral Status. Use May 7,
+   2026 for both dates. Review identifies referral sent dates and does not claim
+   Finalized-only results. Save a shared report, reopen it and choose fresh May 7
+   dates. Download three rows for `REPORTING-MVP-REPEAT`: two distinct 450 returns
+   from Synthetic Reference Lab, dated May 8 and May 9, plus one REQUESTED
+   referral with blank returned fields. Returned rows retain distinct link/result
+   IDs. Exclude the unsent draft and May 8 sent referral. Repeat on a phone.
 2. `RPT-202` required — Select Non-Conformance, use the fixture period and
    generate a report including the event identity, accession, reason, event
    date and status. Expect exactly one `REPORTING-MVP-NCE` occurrence linked to
@@ -127,9 +152,15 @@ from ordinary queued or failed jobs without reconstructing the report.
 2. `RPT-302` required — Open the prepared failed job and choose Retry. Expect a
    new linked job with the same frozen definition, columns and scope while the
    original remains FAILED.
-3. `RPT-303` required — Cancel the prepared queued job after confirmation.
-   Expect CANCELLED and no generated download. If it has already begun, expect a
-   clear refusal rather than a false cancellation.
+3. `RPT-303` required — With the 50,000-result synthetic workload loaded, start a
+   Sample & Testing spreadsheet with Accession Number and Viral Load for May 7, 2026. While it is Generating, return to the overview and start the same columns
+   for May 5. In My Report Queue, choose Cancel on that queued May 5 job, then
+   Keep queued. Reload; it remains Queued. Choose Cancel again and confirm Cancel
+   export. Expect Cancelled after reload with no download, including after the
+   first job finishes. The large report contains 50,000 rows, preserving repeated
+   equal values. Repeat on a phone. If processing has already begun, expect a clear
+   refusal rather than a false cancellation; prepare both reports in separate tabs
+   before starting the large one when more setup time is needed.
 4. `RPT-304` required — Open the prepared expired job and restore its choices.
    Expect download to remain unavailable and generation to require a fresh date
    range.
@@ -150,6 +181,26 @@ turnaround in the same exported report.
    rows, Add Accession Number, Result Value and Resulted to Validated (min). Continue
    through filters with the same dates, then review. Generate
    and download the new file. Expect the same two result/interval pairs.
+
+## RPT-S06 — Navigate and Configure Reports Without Losing Work
+
+Publication status on September 14: RPT-501 through RPT-503 remain live. RPT-504
+below is prepared and its application workflow passes publicly at `22e3a66b6175`,
+but the Grist authoring connection timed out. Keep the existing 17 live steps
+unchanged until this addition is applied. The separate review-picker problem is
+fixed in public widget `54b99f8d76ba`; live story selection across separate tabs
+and refresh/reload now passes. See `execution.md` for its evidence.
+
+**User story**: As a report user, I can find routine workflows in a clear sidebar and move between a report and its queue without losing my draft. Sign in as admin using the supplied demo login and start from Home. The report steps change your browser draft. The final administration step changes one menu icon and restores its original value; it does not edit laboratory records. Check the sidebar, reporting address, retained draft, keyboard navigation and phone layout against the linked mock. Other reports and More tools intentionally retain older destinations.
+
+1. `RPT-501` required — Start at Home in a desktop-width browser. Inspect Main Menu, Patient & Orders, Reports and Administration in the sidebar. Open Reports, then Other reports; close Other reports again. Open More tools and locate Alerts, then close More tools. Under Reports choose Custom Data Export.
+   Expect: The four sections have readable, consistent labels and simple icons. Routine workflows are easy to find. Older reports and tools remain reachable in collapsed groups. Patient Report Print Queue is visibly Not yet connected. Custom Data Export opens at /reports/custom-data-export and exactly that sidebar entry is active.
+2. `RPT-502` required — From the reporting overview choose Start a new export, then Sample & Testing. Search for Accession Number and choose Add. Use the sidebar's My Report Queue entry, then browser Back, Forward and reload. Choose Custom Data Export in the sidebar, then Continue current export in the overview.
+   Expect: The queue address contains view=queue and only its menu entry is active. Back and Forward restore the corresponding view. Reload keeps the queue usable. Continue current export returns to Choose columns with Accession Number still selected. Any UAT parameters already present in the reporting address remain present when changing sidebar views.
+3. `RPT-503` required — With the sidebar open, use Tab to focus a reporting link and Enter to open it. Narrow the browser to a phone-sized window, open the menu button at the top left, expand Reports and choose My Report Queue. Restore desktop width, choose Admin, then Back to main menu.
+   Expect: Keyboard focus is visible. At phone width, selecting the queue closes the drawer and leaves the report usable. Main and admin navigation use consistent font sizes and readable wrapped labels. At desktop width the pinned sidebar does not cover the admin page heading. Back to main menu restores the configured sections.
+4. `RPT-504` required — As admin, open Admin, Menu Configuration, then Global Menu Configuration. Expand Administration, More tools, then Alerts. Note its current Icon, choose another icon and Save. Reload the page and reopen Alerts. Restore the original icon and Save. Expand the Reports section and its Reports menu; inspect the settings marked Managed by instance configuration.
+   Expect: The saved Alerts icon remains selected after reload, and restoring the original value succeeds. Instance-controlled settings stay visible and read-only. The editor is usable at desktop and phone widths. Returning to the main menu retains the configured sections and existing report destinations.
 
 ## Preflight and Human Acceptance
 

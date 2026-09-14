@@ -46,11 +46,18 @@ public class SampleTestingSource implements ReportingSource {
     @Autowired
     private ReportingCsvWriter csv;
     @Autowired
+    private ReportingResultValues resultValues;
+    @Autowired
     private IStatusService statuses;
 
     @Override
     public String id() {
         return "SAMPLE_TESTING";
+    }
+
+    @Override
+    public List<String> defaultResultStatuses() {
+        return List.of("FINALIZED");
     }
 
     @Override
@@ -148,7 +155,7 @@ public class SampleTestingSource implements ReportingSource {
                 private Normalized read() {
                     while (input.hasNext()) {
                         Result result = input.next();
-                        if (isQualifier(result))
+                        if (resultValues.isQualifier(result))
                             continue;
                         var specimen = result.getAnalysis().getSampleItem();
                         if (!Objects.equals(specimenId, specimen.getId())) {
@@ -208,11 +215,6 @@ public class SampleTestingSource implements ReportingSource {
         }
     }
 
-    private boolean isQualifier(Result result) {
-        return "A".equals(result.getResultType()) && result.getTestResult() == null && result.getParentResult() != null
-                && ResultType.isDictionaryVariant(result.getParentResult().getResultType());
-    }
-
     private Normalized normalize(Result r, ExportSnapshot request, Map<String, TestResultComponent> components,
             Map<String, String> patientFields, Map<String, String> observationFields, long analysisCount, ZoneId zone) {
         var analysis = r.getAnalysis();
@@ -261,34 +263,11 @@ public class SampleTestingSource implements ReportingSource {
             fields.add("test:" + test.getId());
         if (componentId != null)
             fields.add("component:" + componentId);
-        String value = formatValue(r);
+        String value = resultValues.format(r);
         String multiKey = ResultType.isMultiSelectVariant(r.getResultType())
                 ? analysis.getId() + ":" + componentId + ":" + r.getGrouping() + ":" + r.getResultType()
                 : null;
         return new Normalized(r.getId(), specimen.getId(), a, fields, value, multiKey);
-    }
-
-    private String formatValue(Result result) {
-        String value = result.getValue();
-        if (value == null || value.isBlank())
-            return value;
-        if (ResultType.isDictionaryVariant(result.getResultType())) {
-            value = dao.dictionary(value);
-            var qualifiers = dao.qualifiers(result.getId());
-            if (!qualifiers.isEmpty())
-                value += " (" + String.join("; ", qualifiers) + ")";
-        } else if ("N".equals(result.getResultType()) && result.getSignificantDigits() >= 0) {
-            int digits = result.getSignificantDigits();
-            // Match stored reporting precision without rounding or HTML formatting.
-            if (digits == 0)
-                return value.split("\\.")[0];
-            int places = value.contains(".") ? value.length() - value.lastIndexOf('.') - 1 : 0;
-            if (!value.contains("."))
-                value += ".";
-            if (places < digits)
-                value += "0".repeat(digits - places);
-        }
-        return value;
     }
 
     private static Map<String, String> patientFields(Patient patient, ZoneId zone) {

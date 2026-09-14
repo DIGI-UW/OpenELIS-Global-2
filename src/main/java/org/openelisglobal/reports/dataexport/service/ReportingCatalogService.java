@@ -24,7 +24,7 @@ import org.openelisglobal.reports.dataexport.form.ReportingVariable;
 import org.openelisglobal.reports.dataexport.form.SavedReportDefinition;
 import org.openelisglobal.reports.dataexport.form.SavedReportFilters;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,9 +53,18 @@ public class ReportingCatalogService {
 
     public List<ReportSourceConfig> definitions() {
         Map<String, ReportSourceConfig> result = new LinkedHashMap<>();
-        try (var input = new ClassPathResource("reporting/sample-testing.json").getInputStream()) {
-            var config = readDefinition(input);
-            result.put(config.id(), config);
+        try {
+            var resources = new PathMatchingResourcePatternResolver().getResources("classpath:reporting/*.json");
+            java.util.Arrays.sort(resources, java.util.Comparator.comparing(r -> r.getFilename()));
+            for (var resource : resources) {
+                try (var input = resource.getInputStream()) {
+                    var config = readDefinition(input);
+                    if (result.putIfAbsent(config.id(), config) != null)
+                        throw new IllegalArgumentException("reporting.definition.identityConflict");
+                }
+            }
+            if (result.isEmpty())
+                throw new IllegalStateException("reporting.definition.missing");
         } catch (IOException e) {
             throw new IllegalStateException("reporting.definition.missing", e);
         }
@@ -125,11 +134,14 @@ public class ReportingCatalogService {
                 .map(t -> Map.of("id", t.getId(), "label", t.getDescription())).toList();
         return Map.of("definition", definition, "variables", fields, "defaultColumns", defaults, "labSections",
                 sections.stream().map(s -> Map.of("id", s.getId(), "label", s.getValue())).toList(), "tests", tests,
-                "statuses", statusOptions(), "maxDays", settings.maxDays(), "maxActive", settings.maxActive(),
+                "statuses", statusOptions(definition), "maxDays", settings.maxDays(), "maxActive", settings.maxActive(),
                 "retentionDays", settings.retentionDays(), "timezone", settings.zone().getId());
     }
 
-    private List<Map<String, String>> statusOptions() {
+    private List<Map<String, String>> statusOptions(ReportSourceConfig definition) {
+        if (!definition.filters().contains("resultStatuses")
+                && source(definition.source()).defaultResultStatuses().isEmpty())
+            return List.of();
         List<Map<String, String>> result = new ArrayList<>();
         for (AnalysisStatus status : AnalysisStatus.values()) {
             String id = statuses.getStatusID(status);
@@ -170,8 +182,7 @@ public class ReportingCatalogService {
                 .map(t -> t.getId()).collect(Collectors.toSet());
         if (!currentTests.containsAll(filter.testIds()))
             throw new ReportingException(422, "reporting.tests.stale");
-        var selectedStatuses = filter.resultStatuses().isEmpty() ? List.of("FINALIZED")
-                : filter.resultStatuses().stream().distinct().sorted().toList();
+        var selectedStatuses = normalizeStatuses(definition, filter.resultStatuses());
         List<String> ids = new ArrayList<>();
         for (String name : selectedStatuses) {
             AnalysisStatus status = java.util.Arrays.stream(AnalysisStatus.values())
@@ -216,7 +227,7 @@ public class ReportingCatalogService {
         if (!currentTests.containsAll(requestedTests))
             throw new ReportingException(422, "reporting.tests.stale");
 
-        var selectedStatuses = normalizeStatuses(request.filters().resultStatuses());
+        var selectedStatuses = normalizeStatuses(definition, request.filters().resultStatuses());
         return new SavedReportDefinition(1, definition.id(), request.layout(), request.selectedVariables(),
                 new SavedReportFilters(requestedSections, requestedTests, selectedStatuses));
     }
@@ -237,7 +248,8 @@ public class ReportingCatalogService {
     private void validateRequestedFilters(ReportSourceConfig definition, List<String> sections, List<String> tests,
             List<String> requestedStatuses) {
         // Saved definitions may already contain the source's normalized default.
-        boolean defaultStatus = requestedStatuses.isEmpty() || requestedStatuses.equals(List.of("FINALIZED"));
+        boolean defaultStatus = requestedStatuses.isEmpty()
+                || requestedStatuses.equals(source(definition.source()).defaultResultStatuses());
         if (!definition.filters().contains("labSectionIds") && !sections.isEmpty()
                 || !definition.filters().contains("testIds") && !tests.isEmpty()
                 || !definition.filters().contains("resultStatuses") && !defaultStatus) {
@@ -245,8 +257,9 @@ public class ReportingCatalogService {
         }
     }
 
-    private List<String> normalizeStatuses(List<String> requested) {
-        var selected = requested.isEmpty() ? List.of("FINALIZED") : requested.stream().distinct().sorted().toList();
+    private List<String> normalizeStatuses(ReportSourceConfig definition, List<String> requested) {
+        var selected = requested.isEmpty() ? source(definition.source()).defaultResultStatuses()
+                : requested.stream().distinct().sorted().toList();
         for (String name : selected) {
             AnalysisStatus status = java.util.Arrays.stream(AnalysisStatus.values())
                     .filter(s -> s.name().toUpperCase(java.util.Locale.ROOT).equals(name)).findFirst()

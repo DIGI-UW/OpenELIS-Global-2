@@ -21,9 +21,11 @@ import CustomDataExport, { clearReportingDraft } from "./CustomDataExport";
 const source = {
   id: "SAMPLE_TESTING",
   label: "Sample & Testing",
+  dateAnchor: "collectionDate",
   layouts: ["SPREADSHEET", "RESULT_LIST"],
 };
 let configuredFilters;
+let alternateCatalog;
 const field = (id, label, group = "sample") => ({ id, label, group });
 const catalog = (layout) => ({
   definition: { ...source, filters: configuredFilters },
@@ -46,12 +48,15 @@ const catalog = (layout) => ({
 let requests;
 let failSubmission;
 let submissionGate;
+let catalogGate;
 let job;
 let savedReports;
 let savedMutations;
 let failSavedUpdate;
 let deletedSaved;
 let consoleErrors;
+let recoveryRequests;
+let failCancellation;
 const json = (body, status = 200) => ({
   ok: status < 400,
   status,
@@ -62,25 +67,39 @@ const json = (body, status = 200) => ({
 beforeEach(() => {
   consoleErrors = vi.spyOn(console, "error");
   configuredFilters = ["labSectionIds", "testIds", "resultStatuses"];
+  alternateCatalog = undefined;
   clearReportingDraft();
   requests = [];
   failSubmission = false;
   submissionGate = undefined;
+  catalogGate = undefined;
   failSavedUpdate = false;
   job = undefined;
   savedReports = [];
   savedMutations = [];
   deletedSaved = [];
+  recoveryRequests = [];
+  failCancellation = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url, options = {}) => {
-      if (url.includes("/report-types")) return json([source]);
-      if (url.includes("/variables"))
+      if (url.includes("/report-types"))
+        return json(
+          alternateCatalog ? [source, alternateCatalog.definition] : [source],
+        );
+      if (url.includes("/variables")) {
+        if (catalogGate) await catalogGate;
+        if (
+          alternateCatalog &&
+          url.includes(`reportType=${alternateCatalog.definition.id}`)
+        )
+          return json(alternateCatalog);
         return json(
           catalog(
             url.includes("layout=RESULT_LIST") ? "RESULT_LIST" : "SPREADSHEET",
           ),
         );
+      }
       if (
         url.includes("/saved-configs/") &&
         (!options.method || options.method === "GET")
@@ -133,6 +152,18 @@ beforeEach(() => {
         savedReports = savedReports.filter((saved) => saved.id !== id);
         return json({}, 204);
       }
+      if (url.endsWith("/cancel") && options.method === "POST") {
+        recoveryRequests.push({ action: "cancel" });
+        if (failCancellation)
+          return json({ code: "reporting.networkError" }, 503);
+        job = { ...job, state: "CANCELLED" };
+        return json(job);
+      }
+      if (url.endsWith("/retry") && options.method === "POST") {
+        recoveryRequests.push({ action: "retry", ...JSON.parse(options.body) });
+        job = { ...job, id: "retry-child", parentId: job.id, state: "QUEUED" };
+        return json(job, 202);
+      }
       if (options.method === "POST") {
         const body = JSON.parse(options.body);
         requests.push(body);
@@ -155,6 +186,7 @@ afterEach(() => {
   const expectedErrors = new Set([
     "reporting.jobs.limit",
     "reporting.saved.changed",
+    "reporting.networkError",
     "Request failed (404): /rest/reports/data-export/saved-configs/missing",
   ]);
   const unexpected = consoleErrors.mock.calls
@@ -166,7 +198,7 @@ afterEach(() => {
   expect(unexpected).toEqual([]);
 });
 
-function open(entry = "/CustomDataExport") {
+function open(entry = "/reports/custom-data-export") {
   const history = createMemoryHistory({ initialEntries: [entry] });
   const rendered = render(
     <Router history={history}>
@@ -183,6 +215,155 @@ function open(entry = "/CustomDataExport") {
   );
   return { ...rendered, history };
 }
+
+function recoverableJob(state) {
+  return {
+    id: "original-job",
+    state,
+    submittedAt: "2026-09-14T00:00:00Z",
+    rowCount: null,
+    request: {
+      definition: source,
+      layout: "SPREADSHEET",
+      variables: [
+        field("test:1", "Hemoglobin", "tests"),
+        field("accessionNumber", "Accession Number"),
+      ],
+      filterSpec: {
+        dateFrom: "2026-05-05",
+        dateTo: "2026-05-05",
+        labSectionIds: ["1"],
+        testIds: ["1"],
+        resultStatuses: ["FINALIZED"],
+      },
+    },
+  };
+}
+
+test("queue cancellation requires confirmation and retains the dialog after a network failure", async () => {
+  job = recoverableJob("QUEUED");
+  failCancellation = true;
+  open("/reports/custom-data-export?view=queue");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Cancel", exact: true }),
+  );
+  expect(recoveryRequests).toEqual([]);
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Cancel export$/ }),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        messages["reporting.networkError"],
+      ),
+    ).toBeVisible(),
+  );
+  expect(recoveryRequests).toEqual([{ action: "cancel" }]);
+  failCancellation = false;
+  fireEvent.click(screen.getByRole("button", { name: /Cancel export$/ }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(await screen.findByText("Cancelled", { exact: true })).toBeVisible();
+});
+
+test("retry creates a linked queue job without opening or replacing the builder draft", async () => {
+  job = recoverableJob("FAILED");
+  const { history } = open("/reports/custom-data-export?view=queue");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Retry", exact: true }),
+  );
+  await waitFor(() => expect(recoveryRequests).toHaveLength(1));
+  expect(recoveryRequests[0]).toEqual({
+    action: "retry",
+    clientRequestId: expect.any(String),
+  });
+  await waitFor(() =>
+    expect(history.location.search).toContain("job=retry-child"),
+  );
+  expect(history.location.search).toContain("view=queue");
+  await waitFor(() =>
+    expect(screen.getByText("Queued", { exact: true })).toBeVisible(),
+  );
+});
+
+test("expired rerun restores frozen ordered fields and filters but requires fresh dates", async () => {
+  job = recoverableJob("EXPIRED");
+  open("/reports/custom-data-export?view=queue");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Re-run", exact: true }),
+  );
+  expect(await screen.findByLabelText("Date from")).toHaveValue("");
+  expect(screen.getByLabelText("Date to")).toHaveValue("");
+  expect(
+    screen.getByText(messages["reporting.saved.freshDates"]),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Back", exact: true }));
+  expect(
+    await screen.findByRole("heading", { name: "Your CSV columns (2)" }),
+  ).toBeVisible();
+  const columns = screen.getByRole("region", {
+    name: messages["reporting.selected"],
+  });
+  const removeButtons = within(columns).getAllByRole("button", {
+    name: /^Remove /,
+  });
+  expect(removeButtons[0]).toHaveAccessibleName("Remove Hemoglobin");
+  expect(removeButtons[1]).toHaveAccessibleName("Remove Accession Number");
+  expect(requests).toEqual([]);
+});
+
+test("rerun waits for its catalog without reporting valid fields or filters as unavailable", async () => {
+  let resolveCatalog;
+  catalogGate = new Promise((resolve) => {
+    resolveCatalog = resolve;
+  });
+  job = recoverableJob("EXPIRED");
+  open("/reports/custom-data-export?view=queue");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Re-run", exact: true }),
+  );
+  await waitFor(() =>
+    expect(fetch.mock.calls.some(([url]) => url.includes("/variables"))).toBe(
+      true,
+    ),
+  );
+  expect(
+    screen.queryByText(messages["reporting.filters.unavailable"]),
+  ).toBeNull();
+  expect(screen.queryByText(messages["reporting.columns.stale"])).toBeNull();
+  expect(screen.getByText(messages["reporting.loading"])).toBeVisible();
+  expect(screen.queryByLabelText("Date from")).toBeNull();
+  await act(async () => resolveCatalog());
+  expect(await screen.findByLabelText("Date from")).toHaveValue("");
+  expect(
+    screen.getByRole("combobox", { name: /^Tests / }),
+  ).toHaveAccessibleName(/Total items selected: 1/);
+  expect(
+    screen.queryByText(messages["reporting.filters.unavailable"]),
+  ).toBeNull();
+  expect(screen.queryByText(messages["reporting.columns.stale"])).toBeNull();
+  expect(requests).toEqual([]);
+});
+
+test("rerun preserves a removed field and requires correction after its catalog loads", async () => {
+  job = recoverableJob("EXPIRED");
+  job.request.variables.push(field("test:removed", "Removed test", "tests"));
+  open("/reports/custom-data-export?view=queue");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Re-run", exact: true }),
+  );
+  expect(
+    await screen.findByText(messages["reporting.columns.stale"]),
+  ).toBeVisible();
+  expect(
+    await screen.findByRole("button", { name: "Remove test:removed" }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", {
+      name: messages["reporting.design.nextFilters"],
+    }),
+  ).toBeDisabled();
+  expect(requests).toEqual([]);
+});
 
 test("the mock overview leads to collapsed groups and Add actions without selecting the whole test catalog", async () => {
   open();
@@ -227,6 +408,69 @@ test("the mock overview leads to collapsed groups and Add actions without select
   ).toBeVisible();
 });
 
+test.each([
+  ["sentDate", "referral sent dates"],
+  ["requestDate", "referral request dates"],
+])(
+  "another report starts with explicit Add choices and explains its %s period",
+  async (dateAnchor, dateMeaning) => {
+    alternateCatalog = {
+      ...catalog("TABLE"),
+      definition: {
+        id: "REFERRALS",
+        label: "Referrals",
+        layouts: ["TABLE"],
+        dateAnchor,
+        filters: [],
+      },
+      statuses: [],
+      variables: [field("referralId", "Referral ID", "referrals")],
+      defaultColumns: ["referralId"],
+    };
+    open();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Start a new export" }),
+    );
+    fireEvent.click(await screen.findByRole("radio", { name: /Referrals/ }));
+    expect(
+      await screen.findByRole("heading", { name: "Your CSV columns (0)" }),
+    ).toBeVisible();
+    const available = screen.getByRole("region", { name: "Available fields" });
+    const group = within(available).getByRole("button", {
+      name: "Referrals",
+      exact: true,
+    });
+    expect(group).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(group);
+    fireEvent.click(
+      within(available).getByRole("button", { name: "Add Referral ID" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next: Set Filters" }));
+    expect(
+      screen.getByText(
+        `Uses ${dateMeaning} in UTC, including both dates. Maximum period: 90 days.`,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole("combobox", { name: /^Tests/ })).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: /^Result statuses/ }),
+    ).toBeNull();
+    fireEvent.change(screen.getByLabelText("Date from"), {
+      target: { value: "2026-05-07" },
+    });
+    fireEvent.change(screen.getByLabelText("Date to"), {
+      target: { value: "2026-05-07" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Next: Review & Submit" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Generate CSV" }),
+    ).toBeVisible();
+    expect(screen.queryByText(/Finalized/)).toBeNull();
+  },
+);
+
 test("the mock column picker keeps exact keyboard ordering and focus", async () => {
   open();
   fireEvent.click(
@@ -263,7 +507,7 @@ test("the mock column picker keeps exact keyboard ordering and focus", async () 
   ).toEqual(["Accession Number", "Hemoglobin", "White Cell Count"]);
 });
 test("browser Back returns to the source chooser and Forward restores columns without losing external query parameters", async () => {
-  const { history } = open("/CustomDataExport?uat=review");
+  const { history } = open("/reports/custom-data-export?uat=review");
   fireEvent.click(
     await screen.findByRole("button", { name: "Start a new export" }),
   );
@@ -289,7 +533,7 @@ test("browser Back returns to the source chooser and Forward restores columns wi
 
 test("a review link without a draft returns to the required column selection", async () => {
   const { history } = open(
-    "/CustomDataExport?view=builder&type=SAMPLE_TESTING&layout=SPREADSHEET&step=review",
+    "/reports/custom-data-export?view=builder&type=SAMPLE_TESTING&layout=SPREADSHEET&step=review",
   );
   await waitFor(() =>
     expect(new URLSearchParams(history.location.search).get("step")).toBe(
@@ -575,7 +819,7 @@ test("a shared report saves choices without dates and reopening requires fresh d
   expect(screen.getByLabelText("Date from")).toHaveValue("");
   expect(screen.getByLabelText("Date to")).toHaveValue("");
   expect(
-    screen.getByText("Choose fresh dates before running this saved report."),
+    screen.getByText("Choose fresh dates before running this report."),
   ).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   expect(headers()).toEqual([
@@ -587,7 +831,7 @@ test("a shared report saves choices without dates and reopening requires fresh d
 
 test("a saved-report deep link loads its server definition with fresh dates and survives reload", async () => {
   savedReports.push(savedFixture());
-  const first = open("/CustomDataExport?view=builder&saved=saved-1");
+  const first = open("/reports/custom-data-export?view=builder&saved=saved-1");
   expect(await screen.findByLabelText("Date from")).toHaveValue("");
   expect(new URLSearchParams(first.history.location.search).get("type")).toBe(
     "SAMPLE_TESTING",
@@ -605,7 +849,7 @@ test("a saved-report deep link loads its server definition with fresh dates and 
 });
 
 test("a missing saved link offers recovery without presenting another draft as that report", async () => {
-  open("/CustomDataExport?view=builder&saved=missing");
+  open("/reports/custom-data-export?view=builder&saved=missing");
   expect(
     await screen.findByText(messages["reporting.saved.loadError"]),
   ).toBeVisible();
@@ -778,7 +1022,7 @@ test("an invalid queue page is normalized while a job link opens its frozen deta
     },
   };
   const { history } = open(
-    "/CustomDataExport?view=queue&page=-2&job=job-linked&uat=review",
+    "/reports/custom-data-export?view=queue&page=-2&job=job-linked&uat=review",
   );
   expect(
     await screen.findByRole("link", { name: "Download CSV" }),
@@ -803,7 +1047,7 @@ test("an invalid queue page is normalized while a job link opens its frozen deta
 });
 
 test("an empty queue page offers a route back to the first page", async () => {
-  const { history } = open("/CustomDataExport?view=queue&page=3");
+  const { history } = open("/reports/custom-data-export?view=queue&page=3");
   fireEvent.click(
     await screen.findByRole("button", { name: "Return to the first page" }),
   );

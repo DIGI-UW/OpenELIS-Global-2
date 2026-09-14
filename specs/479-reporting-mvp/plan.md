@@ -2,8 +2,9 @@
 
 **Branch**: `spec/479-ogc-479-reporting-mvp`  
 **Date**: 2026-09-13  
-**Status**: M1 implementation and mock-parity remediation in progress. The
-Sample & Testing stage is publicly deployed; the complete MVP remains pending.
+**Status**: Canonical frontend, Sample & Testing and queue recovery are publicly deployed.
+Full-suite recovery qualification, remaining M1 checks and the other source mappings are in progress;
+the complete MVP remains pending.
 
 **Specification**: [spec.md](spec.md)  
 **Inspected code baseline**: `e57a53399c2134fe3ff58009119cc05906c61e5e`
@@ -65,6 +66,27 @@ implementation test results.
 
 No constitution exception, new framework or shared agent-context change is
 needed.
+
+## Frontend State and Interaction Standards
+
+The supplied mock remains the interface authority. Its implementation must also
+behave like a native application:
+
+- React Router owns the view, builder step, report type/layout, saved-report link,
+  queue page and selected job in the query string. Preserve unrelated query
+  parameters; reload and browser Back/Forward restore the intended screen.
+- Session drafts retain unsaved columns, filters and dates through navigation.
+  Loading a shared report or re-running expired output deliberately asks for fresh
+  dates. Late server responses cannot replace a newer draft.
+- The shared query library owns catalog, saved-report and job data. Mutations
+  update or invalidate the affected records. Loading, empty and failure states
+  remain distinct; an unanswered catalog request is not evidence of removed fields.
+- Use Carbon controls, React Intl, visible focus, keyboard operation, meaningful
+  labels and responsive layouts. Prevent duplicate submission while a request is
+  pending and retain user choices when it fails.
+- Validate the rendered workflow against the pinned mock at matched desktop and
+  narrow widths, then exercise navigation, recovery and actual CSV downloads.
+  A passing component test or a ready badge alone does not establish the experience.
 
 Implementation inspection found existing `ReportDefinition` storage with JSON,
 report type, shared visibility and optimistic versioning. Reuse it for
@@ -165,6 +187,11 @@ artificial test pivot.
 
 ### Interface Authority and Frontend State
 
+Frontend quality is part of acceptance for each usable stage. Use maintainable
+React components and the application's shared routing, query and Carbon patterns.
+Judge the result by a smooth user journey: predictable navigation, retained work,
+responsive controls and understandable feedback throughout the workflow.
+
 The pinned interactive mock is authoritative for layout and interactions. MVP
 scope limits connected functionality; it does not reduce the supplied design.
 Use the direct comparison gate in [design-parity.md](design-parity.md) for every
@@ -192,6 +219,32 @@ empty, error and recovery states. Use Carbon controls, tokens and localized copy
 Check real downloaded values, unexpected browser errors, accessibility and
 visual fidelity separately; a passing screenshot capture alone proves none of
 the others.
+
+### Navigation Configuration Contract
+
+Retain one navigation model: database menu definitions, explicit instance
+configuration overrides, existing filtering, then the shared Carbon renderer.
+The mock determines the Reporting UAT profile; its particular sections and
+destinations belong in that profile. Existing menu identities, hierarchy,
+ordering, translated labels, visibility and destinations remain configurable.
+
+Extend the database and configuration layers with the same optional section and
+icon metadata. The local menu persistence increment now supplies
+`presentationStyle` and `icon` through both database rows and mounted JSON,
+with administrative editing. Its publication and remaining runtime qualification
+are tracked in `execution.md`. Add them through the existing menu service and administration
+path, with a versioned, reversible migration and backward-compatible defaults.
+Show when an instance override controls an edited value so a successful save
+cannot misleadingly appear to have changed the effective navigation.
+
+Only explicitly supplied configuration fields override database values. Loading
+an instance profile must not persist its reorganized tree over database defaults.
+Verify saved metadata after reload and application restart, explicit override and
+override removal, preservation of unlisted extensions and existing filtering,
+and the effective server tree in the rendered sidebar. Use two distinct instance
+profiles without frontend edits, then repeat the mock, routing and retained-draft
+checks before publishing the increment. Database/editor support is not a gate
+for continued access to the already usable public stage.
 
 ### Low-Friction Interface and Shared Reports
 

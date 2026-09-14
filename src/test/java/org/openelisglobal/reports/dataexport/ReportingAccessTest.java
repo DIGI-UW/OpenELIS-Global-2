@@ -35,6 +35,19 @@ public class ReportingAccessTest {
     }
 
     @Test
+    public void deniedRoleAndScopeProduceMetadataAudit() {
+        allowReports("42");
+        try (var capture = new ReportingAuditCapture()) {
+            assertThrows(ReportingException.class, () -> access.requireReports("missing"));
+            assertThrows(ReportingException.class, () -> access.requireScope("42", List.of("7")));
+            assertEquals(List.of("ACCESS_DENIED", "ACCESS_DENIED"), capture.actions());
+            assertEquals("42", capture.events().get(1).path("actor").asText());
+            assertEquals("reporting", capture.events().get(1).path("targetType").asText());
+            assertEquals(7, capture.events().get(1).size());
+        }
+    }
+
+    @Test
     public void ordinaryActiveReportUserReceivesExistingSectionsWithoutExtraSetup() {
         allowReports("42");
         List<IdValuePair> sections = List.of(new IdValuePair("7", "Virology"));
@@ -51,6 +64,8 @@ public class ReportingAccessTest {
         when(users.get("43")).thenReturn(inactive);
 
         assertEquals(403, assertThrows(ReportingException.class, () -> access.requireReports("43")).status());
+        when(users.get("44")).thenThrow(new org.hibernate.ObjectNotFoundException("44", SystemUser.class.getName()));
+        assertEquals(403, assertThrows(ReportingException.class, () -> access.requireReports("44")).status());
     }
 
     @Test

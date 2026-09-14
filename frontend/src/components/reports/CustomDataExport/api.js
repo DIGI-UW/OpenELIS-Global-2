@@ -35,7 +35,8 @@ const jsonResponse = (invoke) =>
         reject(new Error("reporting.networkError"));
         return;
       }
-      const body = response.status === 204 ? {} : await response.json().catch(() => ({}));
+      const body =
+        response.status === 204 ? {} : await response.json().catch(() => ({}));
       if (!response.ok) {
         reject(new Error(body.code || "reporting.requestError"));
         return;
@@ -66,6 +67,15 @@ export const deleteSavedReport = ({ id, expectedVersion }) =>
   jsonResponse((done) =>
     deleteFromOpenElisServerFullResponse(
       `${reportingPath}/saved-configs/${encodeURIComponent(id)}?expectedVersion=${encodeURIComponent(expectedVersion)}`,
+      done,
+    ),
+  );
+
+export const recoverReport = ({ id, action, clientRequestId }) =>
+  jsonResponse((done) =>
+    postToOpenElisServerFullResponse(
+      `${reportingPath}/jobs/${encodeURIComponent(id)}/${action}`,
+      JSON.stringify(action === "retry" ? { clientRequestId } : {}),
       done,
     ),
   );

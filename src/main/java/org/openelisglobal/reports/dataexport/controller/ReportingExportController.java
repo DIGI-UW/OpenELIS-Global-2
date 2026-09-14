@@ -8,9 +8,9 @@ import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.reports.dataexport.form.ExportSubmission;
 import org.openelisglobal.reports.dataexport.form.SavedReportMutation;
 import org.openelisglobal.reports.dataexport.service.ReportingAccess;
+import org.openelisglobal.reports.dataexport.service.ReportingAudit;
 import org.openelisglobal.reports.dataexport.service.ReportingCatalogService;
 import org.openelisglobal.reports.dataexport.service.ReportingException;
-import org.openelisglobal.reports.dataexport.service.ReportingFiles;
 import org.openelisglobal.reports.dataexport.service.ReportingJobService;
 import org.openelisglobal.reports.dataexport.service.ReportingSavedConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,14 +29,14 @@ public class ReportingExportController extends BaseRestController {
     @Autowired
     private ReportingJobService jobs;
     @Autowired
-    private ReportingFiles files;
-    @Autowired
     private ReportingSavedConfigService savedReports;
 
     private String owner() {
         String id = user.getCurrentSysUserId();
-        if (id == null)
+        if (id == null) {
+            ReportingAudit.denied("anonymous", null);
             throw new ReportingException(401, "reporting.access.signIn");
+        }
         return id;
     }
 
@@ -94,10 +94,24 @@ public class ReportingExportController extends BaseRestController {
         return jobs.detail(owner(), id);
     }
 
+    public record RetryRequest(String clientRequestId) {
+    }
+
+    @PostMapping("/jobs/{id}/retry")
+    public Object retry(@PathVariable String id, @RequestBody RetryRequest request) {
+        return ResponseEntity.accepted().body(jobs.retry(owner(), id, request.clientRequestId()));
+    }
+
+    @PostMapping("/jobs/{id}/cancel")
+    public Object cancel(@PathVariable String id) {
+        return jobs.cancel(owner(), id);
+    }
+
     @GetMapping("/jobs/{id}/download")
     public void download(@PathVariable String id, HttpServletResponse response) throws IOException {
-        var job = jobs.authorizeDownload(owner(), id);
-        try (var input = files.open(id)) {
+        var download = jobs.download(owner(), id);
+        var job = download.job();
+        try (var input = download.input()) {
             response.setContentType("text/csv; charset=UTF-8");
             response.setHeader("Cache-Control", "no-store");
             response.setHeader("Content-Disposition", "attachment; filename=\"report-" + job.id() + ".csv\"");

@@ -76,6 +76,17 @@ public class ExportJob extends BaseObject<String> {
     @Column(name = "failure_code", length = 120)
     private String failureCode;
 
+    @Column(name = "output_cleaned_at")
+    private Instant outputCleanedAt;
+
+    public Instant getOutputCleanedAt() {
+        return outputCleanedAt;
+    }
+
+    public void setOutputCleanedAt(Instant outputCleanedAt) {
+        this.outputCleanedAt = outputCleanedAt;
+    }
+
     public ExportJob() {
     }
 

@@ -320,11 +320,16 @@ test("detailed layout exports both result identities and keeps the chosen period
   expect(new Set(identities).size).toBe(2);
 });
 
-test("another configured report uses its own defaults and the same builder and queue", async ({
+test("another configured report uses explicit column choices and the same builder and queue", async ({
   page,
 }) => {
   await openBuilder(page);
   await configuredReport(page, "Sample summary");
+  await expect(
+    page.getByRole("heading", { name: "Your CSV columns (0)", exact: true }),
+  ).toBeVisible();
+  for (const label of ["Specimen ID", "Accession Number"])
+    await addField(page, label);
   const preview = page.getByRole("region", { name: "CSV header preview" });
   await expect(preview.getByRole("columnheader")).toHaveText([
     "Specimen ID",
@@ -382,7 +387,8 @@ test("switching to a report without optional filters cannot retain a hidden test
   await tests.press("Escape");
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await configuredReport(page, "Finalized sample summary");
-  await addField(page, "Viral Load");
+  for (const label of ["Specimen ID", "Accession Number", "Viral Load"])
+    await addField(page, label);
   await page
     .getByRole("button", { name: "Next: Set Filters", exact: true })
     .click();
@@ -522,7 +528,7 @@ test("a shared report reopens with fresh dates and supports confirmed update, co
   await expect(page.getByLabel("Date from", { exact: true })).toHaveValue("");
   await expect(page.getByLabel("Date to", { exact: true })).toHaveValue("");
   await expect(
-    page.getByText("Choose fresh dates before running this saved report.", {
+    page.getByText("Choose fresh dates before running this report.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -825,4 +831,454 @@ test("capture the canonical mock at the application validation widths", async ({
   await captureWidths(page, testInfo, "mock-review", false);
   await page.getByRole("button", { name: /My Report Queue/ }).click();
   await captureWidths(page, testInfo, "mock-queue", false);
+});
+
+async function expectConsistentNavigationType(page: Page) {
+  const mismatches = await page
+    .locator(
+      ".application-side-nav .cds--side-nav__link, .application-side-nav .cds--side-nav__submenu",
+    )
+    .evaluateAll((items) =>
+      items.flatMap((item) => {
+        const style = getComputedStyle(item);
+        const label = item.querySelector(
+          ".cds--side-nav__link-text, .cds--side-nav__submenu-title",
+        );
+        const labelStyle = label ? getComputedStyle(label) : style;
+        const active =
+          item.getAttribute("aria-current") === "page" ||
+          item.classList.contains("cds--side-nav__link--current");
+        return style.fontSize === "14px" &&
+          style.fontFamily.includes("IBM Plex Sans") &&
+          Math.abs(parseFloat(style.lineHeight) - 18) < 0.01 &&
+          labelStyle.fontWeight === (active ? "600" : "400")
+          ? []
+          : [
+              {
+                label: item.textContent?.trim(),
+                font: style.font,
+                labelWeight: labelStyle.fontWeight,
+              },
+            ];
+      }),
+    );
+  expect(mismatches).toEqual([]);
+}
+
+test("the reporting instance sidebar follows the mock and preserves the draft across queue navigation", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    process.env.REPORTING_INSTANCE_NAV !== "true",
+    "Requires the Reporting UAT instance menu profile.",
+  );
+  testInfo.setTimeout(60_000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/CustomDataExport?uat=navigation");
+  await expect(page).toHaveURL(
+    /\/reports\/custom-data-export\?uat=navigation$/,
+  );
+  const nav = page.getByRole("navigation", { name: "Side navigation" });
+  await expect(nav.getByRole("heading")).toHaveText([
+    "Main Menu",
+    "Patient & Orders",
+    "Reports",
+    "Administration",
+  ]);
+  for (const [name, href] of [
+    ["Home", "/Dashboard"],
+    ["Order Test", "/SamplePatientEntry"],
+    ["Results Validation", "/ResultValidation?type=&test="],
+    ["Patient Management", "/PatientManagement"],
+    ["Admin", "/MasterListsPage"],
+  ])
+    await expect(nav.getByRole("link", { name, exact: true })).toHaveAttribute(
+      "href",
+      href,
+    );
+  await expect(
+    nav.getByRole("link", { name: "Results Entry", exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    nav.getByRole("button", { name: "Other reports", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+  const more = nav.getByRole("button", { name: "More tools", exact: true });
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    nav.getByText("Not yet connected", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("app-sidebar-desktop.png"),
+    fullPage: true,
+  });
+  await more.click();
+  await expect(
+    nav.getByRole("link", { name: "Alerts", exact: true }),
+  ).toBeVisible();
+  await more.click();
+  await expectConsistentNavigationType(page);
+  await startReport(page);
+  await addField(page, "Accession Number");
+  const queue = nav.getByRole("link", { name: "My Report Queue", exact: true });
+  await nav
+    .getByRole("link", { name: "Custom Data Export", exact: true })
+    .press("Tab");
+  await expect(queue).toBeFocused();
+  await expect(queue).toHaveCSS("outline-width", "2px");
+  await expect(queue).toHaveCSS("outline-style", "solid");
+  await queue.press("Enter");
+  await expect(page).toHaveURL(/view=queue/);
+  await expect(
+    page.getByRole("heading", { name: "My Report Queue", exact: true }),
+  ).toBeVisible();
+  await expect(queue).toHaveAttribute("aria-current", "page");
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+  await page.goBack();
+  await expect(
+    page.getByRole("heading", { name: "Your CSV columns (1)", exact: true }),
+  ).toBeVisible();
+  await page.goForward();
+  await expect(queue).toHaveAttribute("aria-current", "page");
+  await page.reload();
+  await expect(queue).toHaveAttribute("aria-current", "page");
+  await nav
+    .getByRole("link", { name: "Custom Data Export", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Continue current export", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Your CSV columns (1)", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "CSV header preview" })
+      .getByRole("columnheader"),
+  ).toHaveText(["Accession Number"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('[data-cy="menuButton"]').click();
+  await expect(queue).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("app-sidebar-narrow.png"),
+    fullPage: true,
+  });
+  const accessibility = await new AxeBuilder({ page })
+    .include('nav[aria-label="Side navigation"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await queue.click();
+  await expect(
+    page.getByRole("heading", { name: "My Report Queue", exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/uat=navigation/);
+  await expect(nav).toHaveClass(/cds--side-nav--hidden/);
+});
+
+test("administration uses the same navigation typography and readable sections", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    process.env.REPORTING_INSTANCE_NAV !== "true",
+    "Requires the Reporting UAT instance menu profile.",
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/MasterListsPage");
+  await expect(page.getByTestId("admin-dashboard")).toBeVisible();
+  await expectConsistentNavigationType(page);
+  await expect
+    .poll(async () => {
+      const nav = await page
+        .getByRole("navigation", { name: "Side navigation" })
+        .boundingBox();
+      const heading = await page
+        .getByTestId("admin-dashboard")
+        .getByRole("heading", { level: 2 })
+        .boundingBox();
+      return Boolean(nav && heading && heading.x >= nav.x + nav.width);
+    })
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("app-sidebar-administration.png"),
+    animations: "disabled",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('[data-cy="menuButton"]').click();
+  await expect(
+    page.getByRole("navigation", { name: "Side navigation" }),
+  ).toBeVisible();
+  await expectConsistentNavigationType(page);
+  await page.screenshot({
+    path: testInfo.outputPath("app-sidebar-administration-narrow.png"),
+    fullPage: true,
+  });
+});
+
+test("menu administration saves database icons and identifies instance-controlled settings", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    process.env.REPORTING_INSTANCE_NAV !== "true",
+    "Requires the Reporting UAT instance profile.",
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/MasterListsPage/globalMenuManagement");
+  const form = page.getByRole("form", {
+    name: "Global Menu Management",
+    exact: true,
+  });
+  await expect(
+    form.getByText(
+      "Update menu visibility, section headings and icons. Settings managed by this instance are read-only here.",
+    ),
+  ).toBeVisible();
+  await form
+    .getByRole("button", { name: "Administration", exact: true })
+    .click();
+  await form.getByRole("button", { name: "More tools", exact: true }).click();
+  await form.getByRole("button", { name: "Alerts", exact: true }).click();
+  const fields = page.getByTestId("menu-fields-menu_alerts_standalone");
+  const icon = fields.getByRole("combobox", { name: "Icon", exact: true });
+  await expect(icon).toBeEnabled();
+  const previousIcon = await icon.inputValue();
+  const selectedIcon = previousIcon === "patient" ? "reports" : "patient";
+  try {
+    await icon.selectOption(selectedIcon);
+    await form.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      form.getByText("Menu settings saved.", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await form
+      .getByRole("button", { name: "Administration", exact: true })
+      .click();
+    await form.getByRole("button", { name: "More tools", exact: true }).click();
+    await form.getByRole("button", { name: "Alerts", exact: true }).click();
+    await expect(icon).toHaveValue(selectedIcon);
+    await icon.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath("app-menu-settings-desktop.png"),
+      animations: "disabled",
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await icon.scrollIntoViewIfNeeded();
+    await expect(icon).toBeVisible();
+    await expect
+      .poll(async () => (await form.boundingBox())?.width || 0)
+      .toBeGreaterThan(300);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath("app-menu-settings-narrow.png"),
+      animations: "disabled",
+    });
+  } finally {
+    await icon.selectOption(previousIcon);
+    await form.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      form.getByText("Menu settings saved.", { exact: true }),
+    ).toBeVisible();
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .getByTestId("menu-settings-menu_section_reports")
+    .getByRole("button", { name: "Reports", exact: true })
+    .click();
+  await page
+    .getByTestId("menu-settings-menu_reports")
+    .getByRole("button", { name: "Reports", exact: true })
+    .click();
+  const managed = page.getByTestId("menu-fields-menu_reports");
+  await expect(
+    managed.getByRole("combobox", { name: "Icon", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    managed.getByText("Managed by instance configuration"),
+  ).toHaveCount(2);
+});
+
+for (const viewport of [
+  { width: 1280, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test(`Referrals preserve returned and pending rows through shared reports at ${viewport.width}px`, async ({
+    page,
+  }, testInfo) => {
+    testInfo.setTimeout(90_000);
+    await page.setViewportSize(viewport);
+    await page.goto("/reports/custom-data-export");
+    await page
+      .getByRole("button", { name: "Start a new export", exact: true })
+      .click();
+    await page.getByRole("radio", { name: /^Referrals/ }).click();
+    const available = page.getByRole("region", { name: "Available fields" });
+    await expect(
+      available.getByRole("button", { name: "Referrals", exact: true }),
+    ).toHaveAttribute("aria-expanded", "false");
+    if (viewport.width < 600) {
+      await expect(
+        page.getByRole("button", { name: "Your columns (0)", exact: true }),
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole("heading", { name: "Your CSV columns (0)" }),
+      ).toBeVisible();
+    }
+    const columns = [
+      "Accession Number",
+      "Referral ID",
+      "Referral Result ID",
+      "Result ID",
+      "Referred Lab",
+      "Referred Test Name",
+      "Referral Date",
+      "Referral Result Value",
+      "Referral Result Date",
+      "Referral Status",
+    ];
+    for (const label of columns) await addField(page, label);
+    if (viewport.width < 600)
+      await page
+        .getByRole("button", { name: "Your columns (10)", exact: true })
+        .click();
+    await page.screenshot({
+      path: testInfo.outputPath("referral-columns.png"),
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Next: Set Filters", exact: true })
+      .click();
+    await expect(page.getByText(/Uses referral sent dates in/)).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: /^Result statuses/ }),
+    ).toHaveCount(0);
+    await setPeriod(page, "2026-05-07");
+    await reviewReport(page);
+    await expect(page.getByText(/Finalized/)).toHaveCount(0);
+    await expect(
+      page.getByText(/2026-05-07.*referral sent dates/),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("referral-review.png"),
+      fullPage: true,
+    });
+    const reportName = `Referral UAT ${viewport.width} ${Date.now()}`;
+    await saveReport(page, reportName);
+    await savedLibrary(page);
+    await page
+      .getByRole("searchbox", { name: "Search shared reports", exact: true })
+      .fill(reportName);
+    const card = page.getByRole("article", { name: reportName, exact: true });
+    await card.getByRole("button", { name: "Use report", exact: true }).click();
+    await expect(page.getByLabel("Date from", { exact: true })).toHaveValue("");
+    await expect(page.getByLabel("Date to", { exact: true })).toHaveValue("");
+    await setPeriod(page, "2026-05-07");
+    const { headers, records } = await downloadReport(page, 3);
+    expect(headers).toEqual(columns);
+    const returned = records.filter((row) => row[7] !== "");
+    const pending = records.filter((row) => row[7] === "");
+    expect(returned).toHaveLength(2);
+    expect(new Set(returned.map((row) => row[2])).size).toBe(2);
+    expect(new Set(returned.map((row) => row[3])).size).toBe(2);
+    expect(returned.map((row) => row.slice(4))).toEqual([
+      [
+        "Synthetic Reference Lab",
+        "Viral Load",
+        "2026-05-07",
+        "450",
+        "2026-05-08",
+        "COMPLETED",
+      ],
+      [
+        "Synthetic Reference Lab",
+        "Viral Load",
+        "2026-05-07",
+        "450",
+        "2026-05-09",
+        "COMPLETED",
+      ],
+    ]);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].slice(2)).toEqual([
+      "",
+      "",
+      "Synthetic Reference Lab",
+      "Viral Load",
+      "2026-05-07",
+      "",
+      "",
+      "REQUESTED",
+    ]);
+    expect(records.map((row) => row[0])).toEqual([
+      accession,
+      accession,
+      accession,
+    ]);
+    expect(new Set(records.map((row) => row[1])).size).toBe(2);
+    await savedLibrary(page);
+    await page
+      .getByRole("searchbox", { name: "Search shared reports", exact: true })
+      .fill(reportName);
+    await card.getByRole("button", { name: /Delete shared report/ }).click();
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().includes("/saved-configs/"),
+    );
+    await page.getByRole("button", { name: /Delete$/ }).click();
+    await deleted;
+    await expect(
+      page.getByRole("dialog", { name: "Delete shared report", exact: true }),
+    ).toBeHidden();
+    await expect(card).toBeHidden();
+    await page.reload();
+    await expect(
+      page.getByRole("searchbox", {
+        name: "Search shared reports",
+        exact: true,
+      }),
+    ).toHaveValue(reportName);
+    await expect(card).toBeHidden();
+  });
+}
+
+test("capture the canonical Referral workflow at matching widths", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !process.env.REPORTING_MOCK_URL,
+    "Set the pinned mock URL for direct design comparison.",
+  );
+  await page.goto(process.env.REPORTING_MOCK_URL!);
+  await page
+    .getByRole("button", { name: "Start a new export", exact: true })
+    .click();
+  await page.getByRole("radio", { name: /^Referrals/ }).click();
+  await captureWidths(page, testInfo, "mock-referral-collapsed", false);
+  for (const name of [
+    "Accession Number",
+    "Referring Lab",
+    "Referred Test Name",
+    "Referral Date",
+    "Referral Result Value",
+    "Referral Result Date",
+    "Referral Status",
+  ])
+    await addField(page, name);
+  await captureWidths(page, testInfo, "mock-referral-columns", false);
+  await page.getByRole("button", { name: /^Next: Set Filters/ }).click();
+  await page.getByLabel("Date From *", { exact: true }).fill("2026-05-07");
+  await page.getByLabel("Date To *", { exact: true }).fill("2026-05-07");
+  await captureWidths(page, testInfo, "mock-referral-filters", false);
+  await page.getByRole("button", { name: /^Next: Review & Submit/ }).click();
+  await expect(
+    page.getByRole("button", { name: "Create CSV", exact: true }),
+  ).toBeVisible();
+  await captureWidths(page, testInfo, "mock-referral-review", false);
 });

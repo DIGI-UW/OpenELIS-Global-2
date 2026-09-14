@@ -20,12 +20,27 @@ public class ReportingFiles {
     }
 
     public Path stage(String id, String worker) throws IOException {
-        UUID.fromString(id);
-        UUID.fromString(worker);
         Files.createDirectories(settings.directory(),
                 PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
-        return Files.createFile(settings.directory().resolve(id + "." + worker + ".part"),
+        return Files.createFile(stagedPath(id, worker),
                 PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+    }
+
+    private Path stagedPath(String id, String worker) {
+        UUID.fromString(id);
+        UUID.fromString(worker);
+        return settings.directory().resolve(id + "." + worker + ".part");
+    }
+
+    public long publish(String id, String worker) throws IOException {
+        Files.move(stagedPath(id, worker), path(id), java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        return Files.size(path(id));
+    }
+
+    public void removeOutput(String id, String worker) throws IOException {
+        if (worker != null)
+            Files.deleteIfExists(stagedPath(id, worker));
+        Files.deleteIfExists(path(id));
     }
 
     public InputStream open(String id) throws IOException {

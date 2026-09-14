@@ -29,12 +29,17 @@
 **Specification checkpoint**: Completed. The functional draft was presented for
 discussion, and the initial fixed-field restriction was superseded.
 
-**Clarification checkpoint**: Completed. Five topics were resolved or explicitly
+**Initial clarification checkpoint**: Completed. Five topics were resolved or explicitly
 interpreted: instance-aware coverage/low friction, both layouts, preservation of
 repeats, shared saved definitions and common configuration across report types.
 No product-answer placeholder remains. The last topic's implementation
 interpretation is visible in the specification rather than represented as an
 explicit user selection of three independent workstreams.
+
+Implementation later exposed three additional product decisions: Referral
+period anchor, returned-result row semantics, and native rejection records
+without an event date. Those remain unanswered in `execution.md`; affected
+source activation is pending. The initial checkpoint does not resolve them.
 
 The later turnaround clarification is also resolved: spreadsheet durations
 belong to each test/result, including repeats; collection-to-receipt stays
@@ -95,7 +100,8 @@ delivery.
 
 T002 must prove Sample & Testing values, components and instance catalog
 changes. T020 must prove referral/event identities and dates, rejection links
-and another configuration over an existing source. All application tasks remain
-unchecked. Completing this document checklist means the package can guide
+and another configuration over an existing source. At this specification
+checkpoint all application tasks were unchecked; their current implementation
+status is tracked in `tasks.md`. Completing this document checklist means the package can guide
 implementation; it does not claim application tests, CI, deployment or user
 acceptance have passed.

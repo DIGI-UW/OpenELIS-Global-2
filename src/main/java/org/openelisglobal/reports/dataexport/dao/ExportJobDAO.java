@@ -17,6 +17,12 @@ public interface ExportJobDAO extends BaseDAO<ExportJob, String> {
 
     ExportJob nextQueued();
 
+    ExportJob locked(String id);
+
+    List<ExportJob> dueForRecovery(java.time.Instant now);
+
+    List<ExportJob> pendingCleanup();
+
     void persistJob(ExportJob job);
 
     void flushJobs();

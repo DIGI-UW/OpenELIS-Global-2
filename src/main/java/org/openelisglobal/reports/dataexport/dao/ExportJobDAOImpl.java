@@ -71,6 +71,34 @@ public class ExportJobDAOImpl extends BaseDAOImpl<ExportJob, String> implements 
     }
 
     @Override
+    public ExportJob locked(String id) {
+        return entityManager.find(ExportJob.class, id, LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Override
+    public List<ExportJob> dueForRecovery(java.time.Instant now) {
+        return entityManager
+                .createQuery(
+                        "from ExportJob j where "
+                                + "(j.state = :generating and (j.leaseUntil is null or j.leaseUntil <= :now)) "
+                                + "or (j.state = :ready and j.expiresAt <= :now) order by j.submittedAt, j.id",
+                        ExportJob.class)
+                .setParameter("generating", ExportJobState.GENERATING).setParameter("ready", ExportJobState.READY)
+                .setParameter("now", now).setMaxResults(100).setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultList();
+    }
+
+    @Override
+    public List<ExportJob> pendingCleanup() {
+        return entityManager
+                .createQuery("from ExportJob j where j.state in :states "
+                        + "and j.outputCleanedAt is null order by j.submittedAt, j.id", ExportJob.class)
+                .setParameter("states",
+                        List.of(ExportJobState.FAILED, ExportJobState.CANCELLED, ExportJobState.EXPIRED))
+                .setMaxResults(100).setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultList();
+    }
+
+    @Override
     public void flushJobs() {
         entityManager.flush();
     }

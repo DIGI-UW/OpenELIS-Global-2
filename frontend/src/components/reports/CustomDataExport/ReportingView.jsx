@@ -23,6 +23,12 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ReportingColumns from "./ReportingColumns";
 import { downloadUrl } from "./api";
 
+const sourceTagColors = {
+  SAMPLE_TESTING: "blue",
+  REFERRALS: "teal",
+  NON_CONFORMANCE: "magenta",
+};
+
 // The presentation follows ReportBuilder/ReportQueue in openelis-work 5b2df7e34f.
 // Real data and mutations come from the existing reporting controller component.
 export default function ReportingView(p) {
@@ -75,8 +81,8 @@ export default function ReportingView(p) {
   const labelFor = (id) =>
     types.data?.find((item) => item.id === id)?.label ||
     t(`reporting.design.type.${id}`);
-  const card = (title, children) => (
-    <section className="card">
+  const card = (title, children, testId) => (
+    <section className="card" aria-label={title} data-testid={testId}>
       <div className="card-header">
         <h2 className="card-title">{title}</h2>
       </div>
@@ -197,7 +203,18 @@ export default function ReportingView(p) {
         </Button>
       )}
       {["QUEUED", "FAILED", "EXPIRED"].includes(item.state) && (
-        <Button kind="tertiary" size="sm" disabled title={pending}>
+        <Button
+          kind={item.state === "QUEUED" ? "tertiary" : "primary"}
+          size="sm"
+          disabled={p.recovery.isLoading}
+          onClick={() =>
+            ({
+              QUEUED: p.requestCancel,
+              FAILED: p.retryJob,
+              EXPIRED: p.rerunJob,
+            })[item.state](item)
+          }
+        >
           {t(
             {
               QUEUED: "common.cancel",
@@ -252,7 +269,12 @@ export default function ReportingView(p) {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "reporting.title", link: "" },
+              { label: "banner.menu.reports", link: "" },
+              {
+                label:
+                  panel === "queue" ? "reporting.queue" : "reporting.title",
+                link: "",
+              },
             ]}
           />
           <h1 className="page-title" ref={title} tabIndex={-1}>
@@ -374,6 +396,8 @@ export default function ReportingView(p) {
               <InlineLoading description={t("reporting.loading")} />
             )}
             {queue.error && notification("error", t("reporting.loadError"))}
+            {p.recovery.error &&
+              notification("error", p.errorText(p.recovery.error))}
             {expandedJob && p.linkedJob.isLoading && (
               <InlineLoading description={t("reporting.loading")} />
             )}
@@ -393,6 +417,7 @@ export default function ReportingView(p) {
                   {jobDetails(p.linkedJob.data)}
                   {jobActions(p.linkedJob.data)}
                 </>,
+                `reporting-job-${p.linkedJob.data.id}`,
               )}
             {queue.data?.jobs.length === 0 && (
               <div className="empty-state">
@@ -445,7 +470,7 @@ export default function ReportingView(p) {
                   <tbody>
                     {queue.data.jobs.map((item) => (
                       <React.Fragment key={item.id}>
-                        <tr>
+                        <tr data-testid={`reporting-job-${item.id}`}>
                           <td data-label={t("reporting.design.queue.jobName")}>
                             <strong>{item.request.definition.label}</strong>
                             <small>{item.id}</small>
@@ -568,6 +593,9 @@ export default function ReportingView(p) {
             {p.unavailableFilters &&
               notification("info", t("reporting.filters.unavailable"))}
             {p.savedError && notification("error", p.errorText(p.savedError))}
+            {catalog.isLoading && draft.reportType && (
+              <InlineLoading description={t("reporting.loading")} />
+            )}
             {step === 1 && (
               <>
                 {!selected.length && (
@@ -716,15 +744,13 @@ export default function ReportingView(p) {
                     />
                     {preview}
                   </>
-                ) : catalog.isLoading && draft.reportType ? (
-                  <InlineLoading description={t("reporting.loading")} />
-                ) : (
+                ) : !draft.reportType ? (
                   notification("info", t("reporting.design.chooseType"))
-                )}
+                ) : null}
                 <div className="action-bar">
                   <Button
                     size="md"
-                    disabled={!selected.length || stale.length > 0}
+                    disabled={!data || !selected.length || stale.length > 0}
                     renderIcon={ArrowRight}
                     onClick={() => goStep(2)}
                   >
@@ -740,6 +766,10 @@ export default function ReportingView(p) {
                   <>
                     <p className="column-hint">
                       {t("reporting.periodHelp", {
+                        // i18n-keys: reporting.dateAnchor.*
+                        dateMeaning: t(
+                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
+                        ),
                         days: data.maxDays,
                         timezone: data.timezone,
                       })}
@@ -900,7 +930,15 @@ export default function ReportingView(p) {
                   <>
                     <div className="review-section">
                       <h3>{t("reporting.reportType")}</h3>
-                      <Tag type="blue">{data.definition.label}</Tag>
+                      <Tag
+                        type={
+                          sourceTagColors[
+                            data.definition.source || data.definition.id
+                          ] || "gray"
+                        }
+                      >
+                        {data.definition.label}
+                      </Tag>
                       <p>{t(`reporting.layout.${draft.layout}`)}</p>
                     </div>
                     <div className="review-section">
@@ -919,18 +957,33 @@ export default function ReportingView(p) {
                         {t("reporting.design.periodDays", {
                           count: p.periodDays,
                         })}
+                        {" · "}
+                        {t(
+                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
+                        )}
                       </span>
                     </div>
                     <div className="review-section">
-                      <h3>{t("reporting.design.testStatus")}</h3>
+                      <h3>
+                        {t(
+                          data.statuses.length
+                            ? "reporting.design.testStatus"
+                            : "reporting.tests",
+                        )}
+                      </h3>
                       <p>
-                        {p.lookup(data.tests, p.effectiveFilters.testIds)} ·{" "}
-                        {p.effectiveFilters.resultStatuses.length
-                          ? p.lookup(
-                              data.statuses,
-                              p.effectiveFilters.resultStatuses,
-                            )
-                          : t("reporting.finalized")}
+                        {p.lookup(data.tests, p.effectiveFilters.testIds)}
+                        {data.statuses.length > 0 && (
+                          <>
+                            {" · "}
+                            {p.effectiveFilters.resultStatuses.length
+                              ? p.lookup(
+                                  data.statuses,
+                                  p.effectiveFilters.resultStatuses,
+                                )
+                              : t("reporting.finalized")}
+                          </>
+                        )}
                       </p>
 
                       <h3>{t("reporting.design.labScope")}</h3>

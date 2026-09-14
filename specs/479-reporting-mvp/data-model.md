@@ -16,8 +16,15 @@ mechanism.
 | Reporting area               | Existing source evidence                                                                                | Date and row rules to prove                                                                                                                            |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Sample & Testing             | Result → Analysis → SampleItem → Sample; configured tests/components and relevant patient/question data | Specimen collection date; independent result identity; specimen grouping for the spreadsheet                                                           |
-| Referrals                    | Referral, its analysis/organization and related result records                                          | Referral request date, not sent/received date; one referred-analysis occurrence in the detailed view; preserve repeated linked results                 |
+| Referrals                    | Referral, its analysis/organization and related result records                                          | Referral sent date in the canonical definition; one row per independent returned result, with a pending row when no result exists; retain referral and result identities |
 | Non-Conformance / Rejections | NcEvent with specimen links; recorded SampleQaEvent rejection occurrences where applicable              | Event date for NcEvent; explicitly labeled recorded-rejection date for legacy rejection records; distinct event identity, not QaEvent catalog identity |
+
+The canonical mock explicitly uses referral sent date. A separately named,
+configured definition may use request date; it must label that different date
+basis. Null sent dates do not match the sent-date definition. The user's
+requirement to preserve every repeated result takes precedence over the mock's
+older one-row-per-referred-analysis shorthand. Genuine multi-valued results stay
+in one cell; separate returned results remain separate rows, even when equal.
 
 T002/T020 establish actual relationships and date/value fixtures before
 accepting the mappings. For non-conformance, do not substitute `reportDate` for
@@ -154,6 +161,7 @@ belong in it.
 | Submission identity  | Owner plus client request identifier is unique; same key with changed request conflicts                     |
 | Lifecycle            | State, timestamps, safe failure code, completed output row count and file size                              |
 | Retry lineage        | New child job copies the failed parent's frozen request; current access is rechecked                        |
+| Output cleanup       | Nullable completion timestamp; terminal jobs are cleaned in bounded batches while retaining their history |
 | Worker claim         | Atomic persisted ownership that distinguishes abandoned work from another live worker                       |
 | Output               | Private server-owned reference and expiry deadline; no client-selected path                                 |
 

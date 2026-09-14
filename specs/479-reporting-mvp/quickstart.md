@@ -88,7 +88,7 @@ acceptance.
 | Source                                                   | Required proof                                                                                                                                                       |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sample & Testing                                         | Specimen collection date, stable result/component identity and both layouts                                                                                          |
-| Referrals                                                | Referral request date, referred-analysis occurrence identity and all selected linked results                                                                         |
+| Referrals                                                | Referral sent date, referral/result occurrence identities, every independent returned result and a pending row for a referral awaiting results                       |
 | Non-Conformance / Rejections                             | `NcEvent.dateOfEvent`, recorded rejection dates where applicable, specimen links and distinct occurrence identity; no double counting linked event/rejection records |
 | Additional configured definition over an existing source | New labels/defaults/allowed fields appear through configuration without report-specific frontend or queue code                                                       |
 
@@ -225,6 +225,150 @@ limits, no process exhaustion and successful ordinary reads. Report measurements
 with environment details; this workload does not establish a universal
 production service level.
 
+### Database upgrade and rollback qualification, 2026-09-14
+
+Run the focused real PostgreSQL migration scenarios and existing ORM/persistence
+checks from the repository root, with Java 21 and Docker available:
+
+```sh
+mvn test -Dtest=ReportingMigrationRollbackTest,ReportingPersistenceTest
+```
+
+Each migration test owns a new PostgreSQL 14.4 container initialized from
+`postgre-db-init` and the complete `liquibase/base-changelog.xml`. This proves
+registration through the actual application includes. It then uses
+`src/test/resources/liquibase/reporting-mvp-rollback.xml`, which includes the
+unchanged reporting files at their original paths, for bounded rollback.
+No running application database, shared test database or public UAT state is
+changed. The two migration scenarios and three ORM/persistence checks pass.
+
+The fresh-database scenario verifies table/index/constraint creation, complete
+reporting rollback, and idempotent reapplication. Existing report definitions and
+unrelated menu entries retain identical field fingerprints. The populated
+scenario first checks 1,000 existing definitions across the M1 upgrade, then
+adds 100 shared definitions and 50,000 jobs across queued, generating, ready,
+failed, expired and cancelled states. The M2 update, rollback and reapplication
+retain every old job field and every shared-definition field, including the
+last editor and version timestamp. Frozen JSON includes Unicode and quoted
+text. Row/file metadata, owner/request identity and retry lineage remain
+unchanged, and duplicate submission identity is still rejected by PostgreSQL.
+The new cleanup index is valid and its timestamp column has the intended type.
+
+Rollback has two distinct scopes:
+
+- Rolling back `479-004-reporting-output-cleanup` removes its cleanup timestamp
+  and index while retaining the queue and saved reports. Reapplication recreates
+  empty cleanup markers. This path is verified with populated data.
+- Rolling back all four reporting changesets removes the job table, reporting
+  menu entry, cleanup metadata and report-definition `updated_by` column.
+  Existing definition payloads remain in their original table. This is feature
+  uninstallation; restoring queue history afterward requires the retained
+  database backup. The fresh-database test proves schema removal/reapplication,
+  not preservation of data in the explicitly dropped table.
+
+These checks execute actual Liquibase update/rollback, not generated SQL or
+inspection of rollback tags alone. They qualify the schema path independently
+from the earlier output-volume/process-recovery tests. Multi-instance crash
+isolation and restoration from database/file-volume backups are not exercised
+by these schema tests.
+
+### Recorded 50,000-result run, 2026-09-14
+
+T027 passes. Reproduce with the [local workload runner](../../projects/reporting-uat/README.md#50000-result-workload)
+and its focused `core-performance` browser test. The fixture has 5,001 specimens,
+10,001 analyses and 50,000 finalized results on May 7, 2026. Five thousand
+specimens have two analyses with four readings each; one specimen has 10,000
+readings. Equal adjacent values have distinct identities. Expected spreadsheet
+and detailed-list counts are both 50,000, including every repeat and its
+30/90-minute turnaround. Three concurrent ordinary reports each produce the
+independently expected two rows with value 450.
+
+| Observation                              | First run     | Final run with atomic state sampling |
+| ---------------------------------------- | ------------- | ------------------------------------ |
+| Spreadsheet generation                   | 60.745 s      | 46.146 s                             |
+| Detailed-list generation                 | 54.447 s      | 46.136 s                             |
+| Java baseline resident memory            | 1,393,424 KiB | 1,490,920 KiB                        |
+| Java peak resident memory                | 1,503,172 KiB | 1,501,904 KiB                        |
+| Successful ordinary authenticated reads  | 162           | 144                                  |
+| Longest ordinary read                    | 1.409 s       | 1.336 s                              |
+| Observed 95th-percentile ordinary read   | 0.692 s       | 0.884 s                              |
+| Follow-up cursor fetches per large query | 200 / 200     | 200 / 200                            |
+
+The final runner uses a single database statement for each concurrency
+observation, avoiding counts assembled from different instants. Five jobs were
+active before the sixth submission returned 429; at most one job was observed
+generating. All five completed correctly without process exhaustion or restart.
+Session, queue and catalog reads used a separate authenticated client. The
+reported percentile is the sorted sample at `floor((n-1) * 0.95)`; these are
+observed local request durations, not an asserted response-time service level.
+
+Both runs produced byte-identical files. The spreadsheet is 1,445,747 bytes,
+SHA-256 `029cf33d7980615cca9b0647a571fea4f8ebc8e4a47e33752d592e243a09ba90`.
+The detailed list is 1,736,904 bytes,
+SHA-256 `44cef8c22e51eecbd6c84a24aef3cc95437ebe3cdf4da7bb67c427efc80773ab`.
+The oracle checks all values, specimen/result identities and repeat
+multiplicities, rather than only row counts or comparison between two generated
+files. Fixture SHA-256:
+`a1d7bdd74821715e08a0fcefefb04f27a52d137895a907741cae493a90c5c3e9`.
+
+Environment: Docker VM `aarch64`, 17 CPUs and 48,388,898,816 bytes memory; no
+explicit container CPU/memory cap; Java heap `-Xmx2g`; PostgreSQL 14.4. Image
+digest `sha256:2217d76104051589d99eb808cef22ae692f6ad2d12a0fadc70ecc549162df36f`.
+WAR SHA-256 `b46f2001500fd5405b9c2b6dc5f3c9d804e671efbdc5b8a335b07394bd284440`;
+its 4,216 application class files match public backend `d56922c11e` exactly.
+Frontend `0d65ccaac4` and the single-application native API overlay were used.
+The runner resets only the actual Java process's resident high-water counter;
+query logging is temporarily enabled for cursor evidence and restored afterward.
+Measured durations include logging overhead and are specific to this local stack.
+
+Streaming is verified through the transactional query's 250-row fetch size,
+observed cursor fetches, persistence-context clearing every 250 records, and
+the writer's bounded pending-row implementation. All nine
+`ReportingCsvWriterTest` checks pass, including consumption/output during a
+50,000-result repeat stream. Resident-memory readings alone are not treated as
+proof of bounded allocation.
+
+Both actual browser downloads pass at 1280×900 and 390×844, including ready/row
+count, reload, byte/hash checks and no horizontal overflow or page errors. The
+reported three checks include authentication. Reviewed screenshots preserve the
+mock's queue table/card and action hierarchy; native OpenELIS chrome, actual job
+data and scrolled narrow views differ from the fictional mock captures. This
+iteration changes qualification tools only. It does not establish public-server
+performance, multi-instance crash isolation, migration rollback or human acceptance.
+
+## Two-process crash isolation, 2026-09-14
+
+Run [the two-process procedure](../../projects/reporting-uat/README.md#two-process-crash-isolation)
+on a disposable local stack. Both application processes use the public
+`22e3a66b6175` WAR, the same PostgreSQL database and report volume, separate logs
+and one Spring application context each. The qualification runner checks these
+preconditions and requires loopback URLs and no active exports before starting.
+
+The actual run preserved primary `6d7d3d387b8b`, killed temporary peer
+`e42cd336a48e` and retained database `f4572a3f704c`. Its 59 observations covered the
+normal 300-second lease without editing timestamps. The live lease advanced;
+the live partial file and queued work survived. Only abandoned output was
+removed. After releasing the bounded read stall, the live and queued jobs became
+ready and the failed job's linked retry preserved its frozen request.
+
+| Evidence      | Observed result                                                                  |
+| ------------- | -------------------------------------------------------------------------------- |
+| Live job      | `57156fca-b95e-4313-a3bd-503e10107cd2`, completed                                |
+| Abandoned job | `51c227ed-2807-463c-92e6-26573fac6e47`, interrupted only after its lease expired |
+| Queued job    | `50e6ca95-c74e-4623-a0aa-cbe9c505c322`, retained then completed                  |
+| Linked retry  | `7557092a-c7ce-4ebb-801c-9806f17615e0`, completed with unchanged request         |
+| Audit         | Exactly one `INTERRUPTED` event, for the abandoned job                           |
+| Actual CSV    | UTF-8 BOM, Accession Number/Viral Load; two `REPORTING-MVP-REPEAT,450` rows      |
+| CSV SHA-256   | `499ab005f03b3c02d0da1af52097f3f64b6f00599f839beadac3e577fe741e32`               |
+
+The receipt and raw observations are in
+`/private/tmp/reporting-multi-process-20260914/isolation/`; command output is
+`/private/tmp/reporting-multi-process-qualification.log`. The stopped peer was
+inspected and removed after evidence capture. The primary application/database
+were not restarted or recreated. The runner releases its read stall in `finally`
+and retains observations on failure. This is local process-isolation evidence;
+public queued cancellation and human acceptance remain separate.
+
 ## Evidence to Record
 
 T016/T017 record M1 evidence; T026–T030 complete the source, recovery and
@@ -257,3 +401,78 @@ unavailable capabilities alongside each stage. Publication requires application 
 preflight with inspected CSV contents, the `reporting` Grist checklist, the
 review overlay and an authenticated submission/download check. Record human UAT
 as pending until a reviewer actually returns a revision-bound report.
+
+### Referral stage acceptance fixture
+
+Load `src/test/resources/fixtures/reporting-referrals.sql` after the existing
+repeated-results fixture (the shared loader does this). Choose Referrals, add
+Accession Number, Referral ID, Referral Result ID, Result ID, Referred Lab,
+Referred Test Name, Referral Date, Referral Result Value, Referral Result Date
+and Referral Status. Use May 7, 2026 for both period dates. Review must identify
+sent dates and must not claim Finalized-only results.
+
+Save a shared report, reopen it, enter fresh May 7 dates and generate the CSV.
+Expect three rows for `REPORTING-MVP-REPEAT`: two separate 450 returns from
+Synthetic Reference Lab, dated May 8 and May 9 with separate link/result IDs,
+and one pending REQUESTED referral with blank returned fields. The draft and
+May 8 sent referral must be absent. Repeat at desktop and phone widths using
+the same workflow and expectations. The `Referrals preserve returned and pending
+rows through shared reports` browser checks implement this UAT walkthrough.
+
+### Repeatable queued-cancellation UAT
+
+The existing 50,000-result synthetic workload creates ordinary queued work while
+one real export runs. No database lock, worker pause, timestamp alteration or
+special queue exception is used. Preparation is opt-in for the disposable local
+stack or the dedicated public Reporting UAT stack; ordinary CI does not load this
+large fixture. Existing records are retained, and the fixture refuses an occupied
+reporting date that is not its own already-complete dataset.
+
+Run the guarded setup from the application repository with the worker idle:
+
+```sh
+python3 projects/reporting-uat/prepare-cancellation-workload.py \
+  --project reporting-mvp-iteration1 \
+  --app-container reporting-mvp-iteration1-app-1 \
+  --db-container reporting-mvp-iteration1-db-1 \
+  --fixture src/test/resources/fixtures/reporting-workload-50000.sql \
+  --output /private/tmp/reporting-cancellation-setup
+```
+
+The output directory must be new. Setup verifies the actual stack, takes a
+backup, loads the idempotent fixture and verifies 50,000 result identities across
+5,001 specimens and 10,001 analyses. The public procedure uses project
+`reporting-uat`, its matching app/database containers and
+`--identity /home/ubuntu/reporting-uat/runtime/identity/target.json`; run it on the
+reporting host with the exact committed script and fixture. It requires that
+identity to name the ready Reporting UAT instance and retains the live app.
+
+With TEST_USER and TEST_PASS supplied in the environment, run the registered
+workflow against either the local preview or public reporting URL:
+
+```sh
+cd frontend
+REPORTING_WORKLOAD=true BASE_URL=http://127.0.0.1:18489 npm run pw:test -- \
+  playwright/tests/foundational/core/custom-data-export-recovery.spec.ts \
+  --project=core-app --workers=1 --max-failures=1 --grep 'naturally queued'
+```
+
+Human and automated flow: create a Sample & Testing spreadsheet with Accession
+Number and Viral Load for May 7, 2026. Generate it and observe Generating. Return
+to the overview, start another report with the same columns for May 5, then open
+My Report Queue. The May 5 job is Queued while the first report runs. Choose
+Cancel, then Keep queued; reload and verify it remains Queued. Open Cancel again
+and confirm Cancel export. Expect Cancelled after reload, no download, and no
+later transition to Generating or Ready. Once the large report completes, its
+actual CSV must preserve all 50,000 rows, including the equal repeated readings.
+The browser also checks that the cancelled job has no start time, row count or
+file size and that a direct download is refused. Repeat at desktop and phone
+widths and compare the queue with the pinned mock. The confirmation uses the
+existing Carbon modal required by the functional specification; the mock's
+queue cancellation is immediate.
+
+If a human run reaches the job after it starts, do not call that a successful
+cancellation: the interface must refuse cancellation clearly. Prepare both
+reports in separate tabs before generating the large one when more setup time
+is needed. The next attempt should create new jobs, preserving the first run's
+history.

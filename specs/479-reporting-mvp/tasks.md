@@ -3,15 +3,30 @@
 **Inputs**: [spec.md](spec.md), [plan.md](plan.md),
 [data-model.md](data-model.md), [contract](contracts/export-api.md),
 [acceptance plan](quickstart.md), [UAT contract](uat.md).
-**Status**: M1 implementation in progress. T001–T003, T005–T007, T009, T011 and T014 are
-complete; other tasks remain open until their full acceptance conditions pass. See
-[execution.md](execution.md) for current evidence and the subsequently authorized
-Catalyst deployment tasks. The Sample & Testing stage is publicly testable;
-T032, T033 and T035–T038 are complete for frontend `1f2093054e` with retained
-backend `ebc6983898`, and repeat for each later usable stage. The current public
-receipt includes ten reporting workflows and five UAT stories with 12 steps.
-T034 remains partial until the remaining workflow
-fixtures are available. Public availability does not close M1 or M2 qualification.
+**Status**: Sample & Testing, Referrals, queue recovery and configurable
+navigation are publicly testable at frontend/backend/instance configuration
+`d48cd790c492`. Six public checks pass for this Referral increment, including
+actual CSV downloads, shared report reuse, desktop/phone Referral workflows,
+Sample & Testing repeats/turnaround, and configured navigation. Direct public
+screen comparison used the pinned mock at widths 1280 and 390.
+Database section/icon editing and instance override protection remain deployed;
+the earlier 10-check public navigation run and local restart/two-profile
+qualification remain recorded separately. Runtime configuration `7780ee2cd9`
+retains one application context. Review widget `54b99f8d76ba` is unchanged and
+retains its earlier cross-tab verification. The live checklist still has six
+stories and 17 steps: RPT-201 and RPT-504 are prepared, but publication remains
+blocked by the Grist authoring connection timeout. Frontend and translation CI
+pass for `d48cd790c492`; backend Build + Test is still running. Non-Conformance,
+public queued cancellation, final audit and human acceptance remain open.
+See the current receipt and remaining qualification in `execution.md`.
+T027 now passes against the disposable local stack: both 50,000-result layouts,
+bounded fetches, one worker, the five-job limit, ordinary reads and desktop/phone
+downloads. These workload measurements are local; they are not public performance evidence.
+T024/T028 now pass, including two real application processes, live lease renewal,
+abandoned-only cleanup, queued completion and exact downloaded CSVs after killing
+the temporary peer. Public queued cancellation under T021 remains open.
+T032, T033 and T035–T038 repeat for each usable stage. T034 remains partial until
+all workflow fixtures are available. Public availability does not close M1 or M2.
 
 Use one engine and configured source definitions. Complete useful functionality
 first: instance-aware columns, both layouts, every repeated result and shared
@@ -45,6 +60,10 @@ completes the other mock source definitions and operational qualification.
       `src/test/java/org/openelisglobal/reports/dataexport/` for source
       references, shared definitions, concurrent edits, immutable job requests,
       submission identity and migration/rollback.
+      Partial: database-free ORM startup passes. Dedicated PostgreSQL tests now
+      verify fresh initialization, full reporting rollback/reapply, and recovery
+      upgrade/rollback over 50,000 jobs while retaining all prior job fields and
+      shared-definition fields. Broader simultaneous-edit qualification remains.
 - [x] T005 [US2] Add focused service/API tests under
       `src/test/java/org/openelisglobal/reports/dataexport/` for valid
       configured requests, existing access, owner-scoped files, idempotency and
@@ -128,7 +147,7 @@ completes the other mock source definitions and operational qualification.
 US4, and qualify the full workflow. There are no separate report-type
 applications.
 
-- [ ] T019 Create `feat/479-ogc-479-reporting-mvp-m2-queue-recovery` in its own
+- [x] T019 Create `feat/479-ogc-479-reporting-mvp-m2-queue-recovery` in its own
       worktree from the M1 result; refresh branch/PR state and
       `specs/479-reporting-mvp/`.
 - [ ] T020 [US1] Add failing fixture tests under
@@ -137,27 +156,52 @@ applications.
       dates/statuses, repeated results, event/rejection links and avoiding
       duplicate occurrences; test an additional definition over an existing
       source with no frontend/queue code changes.
+      Partial: nine real-database Referral checks now pass, including configured
+      date/column mappings, pending and repeated results, interleaved multi-select
+      returned dates and source-specific status defaults. Sent date and repeat
+      preservation follow the pinned mock and explicit user instruction.
+      Native rejection date coverage remains an unanswered product question;
+      Non-Conformance activation and affected expectations remain open.
 - [ ] T021 [US4] Add failing lifecycle tests under
       `src/test/java/org/openelisglobal/reports/dataexport/` for retry lineage,
       queued cancellation, concurrent claims, restart/live-worker isolation,
       expiry/download races, partial-file cleanup and retained audit; add
       recovery browser tests under
       `frontend/playwright/tests/foundational/core/custom-data-export-recovery.spec.ts`.
+      Seven new real-database checks pass for retry identity, cancellation,
+      live/abandoned leases, publication, cleanup, an open download at expiry,
+      concurrent claims and claim/cancel races. Failed retry and expired re-run also pass in the real browser with actual
+      CSVs. Local browser cancellation also passed. Public queued-fixture UAT
+      and broader failure qualification remain open. The 50,000-result workload
+      now verifies the active-job limit and single-worker behavior. Full-suite fixture
+      isolation now passes CI. A real local
+      process kill/restart preserves queued and completed work, fails abandoned
+      jobs, removes partial files and permits a successful linked retry; see the
+      runtime qualification record. Two real application processes now prove
+      live-worker lease renewal and output isolation after killing the other
+      process, with exact CSV and interruption-audit checks. Public queued
+      cancellation UAT remains open.
 - [ ] T022 [US1] Add Referral and Non-Conformance source mappings/configured
       definitions using the same feature under
       `src/main/java/org/openelisglobal/reports/dataexport/` and the existing
       resource/configuration locations, making T020 pass; record exact date and
       event-link rules in `specs/479-reporting-mvp/data-model.md`.
-- [ ] T023 [US4] Implement failed-job retry and queued-only cancellation through
+      Partial: Referrals is connected and publicly validated at `d48cd790c492`
+      through the existing builder, shared reports, queue and actual CSV at
+      desktop/phone widths. Non-Conformance remains open.
+- [x] T023 [US4] Implement failed-job retry and queued-only cancellation through
       the common service/controller paths under
       `src/main/java/org/openelisglobal/reports/dataexport/`, preserving
       immutable requests, source/version, layout, labels, current access and
       lineage.
-- [ ] T024 [US4] Implement abandoned-worker recovery, expiry enforcement and
+- [x] T024 [US4] Implement abandoned-worker recovery, expiry enforcement and
       private-file cleanup under
       `src/main/java/org/openelisglobal/reports/dataexport/service/`, making
       T021 pass without interfering with another live application context.
-- [ ] T025 [US4] Implement shared recovery controls and source-appropriate
+      Backend lifecycle checks, actual restart/expiry and two-process crash
+      isolation pass. The latter retains the live process/output while the
+      unchanged five-minute lease expires for the killed worker only.
+- [x] T025 [US4] Implement shared recovery controls and source-appropriate
       labels in `frontend/src/components/reports/CustomDataExport/` and
       `frontend/src/languages/en.json`; retain choices, require fresh dates for
       expired reruns and avoid report-specific screens.
@@ -165,15 +209,30 @@ applications.
       builder/saved-report/download flow; compare real fixture records and
       dates, test additional configuration without code changes, and audit the
       focused browser tests using `specs/479-reporting-mvp/quickstart.md`.
-- [ ] T027 [US4] Add/run a reproducible 50,000-result qualification under
-      `src/test/java/org/openelisglobal/reports/dataexport/` and
-      `src/test/resources/`; record expected counts, batches, memory, duration,
+- [x] T027 [US4] Add/run a reproducible 50,000-result qualification using
+      `projects/reporting-uat/qualify-workload.py`, the fixture under
+      `src/test/resources/fixtures/`, the incremental Java writer test under
+      `src/test/java/org/openelisglobal/reports/dataexport/` and browser downloads
+      under `frontend/playwright/tests/performance/core/`; record expected counts, batches, memory, duration,
       worker limits and ordinary request behavior in
       `specs/479-reporting-mvp/quickstart.md`.
-- [ ] T028 [US4] Verify migration/rollback on empty/populated disposable
+      The operational runner exercises the full running WAR, real database and
+      HTTP queue so process memory, cursor fetches and concurrent ordinary reads
+      are measured directly. This changes the test location, not the acceptance
+      criteria. Both layouts preserve all 50,000 results, including 10,000 for
+      one specimen. Two runs produce identical files; the final run samples
+      concurrent states atomically. Public-server performance remains unmeasured.
+- [x] T028 [US4] Verify migration/rollback on empty/populated disposable
       databases, persistent output, restart, retention and cleanup; document
       actual deployment settings/procedures and implementation evidence in
       `specs/479-reporting-mvp/quickstart.md`.
+      Actual process interruption/restart and accelerated local expiry
+      passed, including retained queued/completed work, cleanup, frozen settings
+      and unaffected prior downloads. Fresh/populated database migration and
+      rollback now pass through the actual Liquibase changelogs, including a
+      50,000-job queue and retained shared definitions. Two-process crash
+      isolation now passes with live lease renewal, abandoned-only cleanup,
+      queued completion, linked retry and unchanged actual CSVs; see execution.md.
 - [ ] T029 Verify every functional requirement and success criterion against
       implementation evidence; update
       `specs/479-reporting-mvp/checklists/requirements.md` and `quickstart.md`
@@ -207,7 +266,8 @@ separate completion criterion. Repeat these delivery tasks for each stage.
       a non-conformance event, two report users and prepared queue states. Do
       not depend on browser-only test helpers.
       Current stage has persistent synthetic repeat/turnaround fixtures and two
-      existing report users. Referral, non-conformance and recovery fixtures
+      existing report users, plus failed and expired recovery examples. Referral,
+      non-conformance and a reproducible public queued-cancellation fixture
       remain open; do not claim their planned identifiers are seeded.
 - [x] T035 Run the focused Playwright acceptance files against the deployed
       target, compare actual downloaded CSVs with the fixture oracle, and verify
@@ -226,6 +286,38 @@ separate completion criterion. Repeat these delivery tasks for each stage.
       checklist revision, automated preflight evidence and remaining human UAT
       status in `execution.md`. Hand each usable stage to reviewers with its
       actual check results and known limitations; do not wait for the full MVP.
+
+## Navigation Configuration Follow-through
+
+The user requires the navigation cleanup to enhance both the database and
+instance configuration layers. Preserve the public profile and the existing
+reporting scope while completing the navigation contract in `plan.md`.
+
+- [x] T039 Add regression coverage for section/icon database persistence and
+      administrative save/reload, configuration precedence and removal,
+      unchanged database defaults, unlisted extensions and existing filtering.
+      Four new database checks prove persistence, overlay removal, preservation
+      of older requests, and protection of database defaults during an overlaid
+      save. Annotation startup and existing menu API/service checks pass. Three
+      isolated migration checks include 1,000 menu entries and retain the existing
+      reporting rollback coverage. The real local editor saves, reloads and
+      restores a database icon; controlled fields remain read-only.
+- [x] T040 Extend the existing menu model, service and administrative editing
+      path with optional section/icon metadata and a versioned, reversible
+      Liquibase migration. Use the same fields in JSON and the effective menu
+      response. Make configuration-controlled values clear during editing and
+      preserve deployments that do not supply the new fields. Make T039 pass.
+- [ ] T041 Verify two instance profiles without frontend changes, including
+      persisted edits after restart and restoration after removing an override.
+      Compare the effective sidebar with the mock at desktop and narrow widths,
+      exercise route/history/draft behavior, and publish the working increment
+      through T032–T038. Record database/editor support separately from the
+      already published JSON presentation support.
+      Application publication, all 10 public browser checks and actual local
+      restart/two-profile/default-restoration checks now pass at `22e3a66b6175`.
+      Review-picker regression tests and live refresh/reload/two-tab checks now
+      pass at harness `54b99f8d76ba`. Only RPT-504 authoring remains open;
+      see the concrete connection/browser evidence in `execution.md`.
 
 ## Dependencies
 

@@ -51,6 +51,25 @@ public class ReportingSavedConfigServiceTest {
     }
 
     @Test
+    public void definitionAuditRecordsSuccessfulActionsAndOmitsStaleUpdates() {
+        ReportDefinition current = stored("CSV-1", "Monthly", "11", true, "CSV_SAVED", saved);
+        when(definitions.get("CSV-1")).thenReturn(current);
+        when(definitions.update(current)).thenReturn(current);
+        try (var capture = new ReportingAuditCapture()) {
+            service.create("11", new SavedReportMutation("Monthly", null, saved));
+            assertThrows(ReportingException.class,
+                    () -> service.update("11", "CSV-1", new SavedReportMutation("New", "stale-version", saved)));
+            service.update("11", "CSV-1", new SavedReportMutation("New", NOW.toString(), saved));
+            service.remove("11", "CSV-1", NOW.toString());
+            assertEquals(List.of("DEFINITION_CREATED", "DEFINITION_UPDATED", "DEFINITION_DELETED"), capture.actions());
+            assertEquals("definition", capture.events().get(1).path("targetType").asText());
+            assertEquals("CSV-1", capture.events().get(1).path("targetId").asText());
+            assertEquals("11", capture.events().get(1).path("actor").asText());
+            assertEquals(7, capture.events().get(1).size());
+        }
+    }
+
+    @Test
     public void createStoresAValidatedSharedDefinitionWithoutDates() {
         var created = service.create("11", new SavedReportMutation(" Monthly viral load ", null, saved));
 
