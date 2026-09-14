@@ -6,6 +6,7 @@ import {
   nextRowState,
   showEdit,
   showSave,
+  writesResultValue,
 } from "./editState";
 
 /**
@@ -80,6 +81,61 @@ describe("editState machine", () => {
     expect(isModifyingSavedResult("EMPTY")).toBe(false);
     expect(isModifyingSavedResult("DIRTY")).toBe(false);
     expect(isModifyingSavedResult("SAVED")).toBe(false);
+  });
+
+  /**
+   * Referring a test out is not a revision of its result. A confirmation
+   * referral is raised precisely when an in-house result already exists, and
+   * that row is SAVED, where a value change is deliberately ignored — so Save
+   * never appeared and the referral could not be raised at all. Clicking Edit
+   * first worked, but recorded the save as a result modification and, under
+   * electronic signatures, asked for a binding signature on a revision nobody
+   * had made.
+   */
+  describe("a referral on a row whose result is already saved", () => {
+    const pending = nextRowState(initialRowState(true), {
+      type: "DISPOSITION_CHANGED",
+    });
+
+    it("offers Save without unlocking the result", () => {
+      expect(pending).toBe("DISPOSITION_PENDING");
+      expect(showSave(pending)).toBe(true);
+      expect(isRowEditable(pending)).toBe(false);
+    });
+
+    it("is not a revision of the result", () => {
+      expect(isModifyingSavedResult(pending)).toBe(false);
+    });
+
+    it("still lets the result be edited as well", () => {
+      expect(showEdit(pending)).toBe(true);
+      expect(nextRowState(pending, { type: "EDIT_CLICKED" })).toBe(
+        "EDITING_DIRTY",
+      );
+    });
+
+    it("writes back the stored value, not the reported one", () => {
+      expect(writesResultValue(pending)).toBe(false);
+      expect(writesResultValue("EDITING_DIRTY")).toBe(true);
+      expect(writesResultValue("DIRTY")).toBe(true);
+    });
+
+    it("relocks on save", () => {
+      expect(nextRowState(pending, { type: "SAVE_SUCCEEDED" })).toBe("SAVED");
+    });
+
+    it("leaves the untouched-row rule alone", () => {
+      // A value change on a saved row is still ignored: only Edit unlocks it.
+      expect(nextRowState("SAVED", { type: "VALUE_CHANGED" })).toBe("SAVED");
+      // And a disposition on a row being entered for the first time is simply
+      // part of that entry.
+      expect(nextRowState("EMPTY", { type: "DISPOSITION_CHANGED" })).toBe(
+        "DIRTY",
+      );
+      expect(nextRowState("EDITING", { type: "DISPOSITION_CHANGED" })).toBe(
+        "EDITING_DIRTY",
+      );
+    });
   });
 
   it("save relocks the row read-only", () => {

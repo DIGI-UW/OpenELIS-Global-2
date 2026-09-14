@@ -237,6 +237,7 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         ShippingBox box = referral.getAssignedBox();
         if (box != null) {
             dto.setBoxId(box.getBoxId());
+            dto.setBoxKey(box.getId());
         }
 
         if (view == DashboardView.OUTSTANDING && referral.getSentDate() != null) {

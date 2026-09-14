@@ -17,10 +17,18 @@ export type RowEditState =
   | "DIRTY"
   | "SAVED"
   | "EDITING"
-  | "EDITING_DIRTY";
+  | "EDITING_DIRTY"
+  // A saved result with a referral waiting to be saved alongside it. Savable,
+  // but the result itself stays locked and the save is not a revision of it.
+  | "DISPOSITION_PENDING";
 
 export type RowEditEvent =
   | { type: "VALUE_CHANGED" }
+  // Something recorded about the analysis that is not its result: referring the
+  // test out. Kept separate from a value change because a saved result must
+  // stay read-only until Edit, and because signing this is not signing a
+  // revision.
+  | { type: "DISPOSITION_CHANGED" }
   | { type: "EDIT_CLICKED" }
   | { type: "SAVE_SUCCEEDED" }
   | { type: "SAVE_REJECTED_STALE" };
@@ -42,12 +50,33 @@ export function isRowEditable(state: RowEditState): boolean {
 
 /** Save is offered once there is something to save (FR-A3). */
 export function showSave(state: RowEditState): boolean {
-  return state === "DIRTY" || state === "EDITING_DIRTY";
+  return (
+    state === "DIRTY" ||
+    state === "EDITING_DIRTY" ||
+    state === "DISPOSITION_PENDING"
+  );
 }
 
-/** Edit is offered only on a saved, read-only row (FR-A2). */
+/**
+ * Edit is offered on a saved, read-only row, including one with a referral
+ * waiting: referring a test out does not stop the bench correcting its result.
+ */
 export function showEdit(state: RowEditState): boolean {
-  return state === "SAVED";
+  return state === "SAVED" || state === "DISPOSITION_PENDING";
+}
+
+/**
+ * Whether this save writes a result value at all.
+ *
+ * <p>A referral saved against an already-saved result does not: the value stays
+ * exactly as stored. That matters twice over, because the value the row carries
+ * is the one the test *reports* (95.00 for a stored 95 on a test reporting to
+ * one place), so a save that means to leave the result alone has to write back
+ * what was stored and not what was displayed, and the precision guard that
+ * blocks a too-fine value has nothing to block.
+ */
+export function writesResultValue(state: RowEditState): boolean {
+  return state !== "DISPOSITION_PENDING";
 }
 
 /**
@@ -74,7 +103,23 @@ export function nextRowState(
       // A row opened for editing becomes savable at the first actual change,
       // and not before.
       return state === "EDITING" ? "EDITING_DIRTY" : state;
+    case "DISPOSITION_CHANGED":
+      // On a row still being entered, a referral is part of that entry. On one
+      // already saved it stands on its own, so the result stays locked and the
+      // save is not recorded as a revision of it.
+      if (state === "SAVED") {
+        return "DISPOSITION_PENDING";
+      }
+      if (state === "EMPTY") {
+        return "DIRTY";
+      }
+      return state === "EDITING" ? "EDITING_DIRTY" : state;
     case "EDIT_CLICKED":
+      if (state === "DISPOSITION_PENDING") {
+        // The referral is already pending, so the row is savable either way;
+        // unlocking the result makes this a revision as well.
+        return "EDITING_DIRTY";
+      }
       return state === "SAVED" ? "EDITING" : state;
     case "SAVE_SUCCEEDED":
       return "SAVED";

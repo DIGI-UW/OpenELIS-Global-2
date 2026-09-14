@@ -15,6 +15,7 @@ public class ReferenceLabReferralDTO {
     private String referenceLabId;
     private String referenceLabName;
     private String boxId;
+    private Integer boxKey;
     private String sentDate;
     private String boxReceivedDate;
     private String fhirTaskUuid;
@@ -118,6 +119,19 @@ public class ReferenceLabReferralDTO {
 
     public void setBoxId(String boxId) {
         this.boxId = boxId;
+    }
+
+    /**
+     * The box's primary key, which is what the shipping-box endpoint takes. The
+     * label in {@link #getBoxId()} is for people to read; linking with it gave a
+     * "Box not found" page.
+     */
+    public Integer getBoxKey() {
+        return boxKey;
+    }
+
+    public void setBoxKey(Integer boxKey) {
+        this.boxKey = boxKey;
     }
 
     public String getSentDate() {

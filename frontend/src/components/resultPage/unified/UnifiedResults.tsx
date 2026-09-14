@@ -49,6 +49,7 @@ import {
   RowEditState,
   initialRowState,
   isModifyingSavedResult,
+  writesResultValue,
   isRowEditable,
   nextRowState,
   showEdit,
@@ -563,6 +564,21 @@ const UnifiedResults: React.FC = () => {
     setEditingAnalysisId(target.analysisId);
   }, []);
 
+  // Referring a test out is not a change to its result, so it makes an already
+  // saved row savable without unlocking the value or recording the save as a
+  // revision. Without this a confirmation referral, which is raised precisely
+  // when a result already exists, could not be saved at all.
+  const markDispositionPending = useCallback((target: WorklistRow) => {
+    const key = worklistRowKey(target);
+    setRowStates((current) => ({
+      ...current,
+      [key]: nextRowState(current[key] || "EMPTY", {
+        type: "DISPOSITION_CHANGED",
+      }),
+    }));
+    setEditingAnalysisId(target.analysisId);
+  }, []);
+
   const handleReferralDraftChange = useCallback(
     (target: WorklistRow, draft: ReferralDraft | null) => {
       const key = worklistRowKey(target);
@@ -576,10 +592,10 @@ const UnifiedResults: React.FC = () => {
         return next;
       });
       if (draft) {
-        markRowDirty(target);
+        markDispositionPending(target);
       }
     },
-    [markRowDirty],
+    [markDispositionPending],
   );
 
   const handleRejectDraftChange = useCallback(
@@ -827,6 +843,12 @@ const UnifiedResults: React.FC = () => {
       // FR-O1: the payload names and carries exactly this analysis — never
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
+      // A referral saved against an already-saved result must leave that result
+      // exactly as stored. The row carries the value the test reports, which is
+      // rounded, so posting it back would quietly rewrite the stored one.
+      if (!writesResultValue(rowStates[worklistRowKey(row)] || "EMPTY")) {
+        item.resultValue = row.rawResultValue ?? row.resultValue;
+      }
       delete item.result;
       delete item.analysisNotes;
       // attachments live in order_attachment now (OGC-811); round-tripping
@@ -1361,7 +1383,10 @@ const UnifiedResults: React.FC = () => {
                               recordType="RESULT"
                               recordId={row.analysisId}
                               onSign={() => handleSave(row)}
-                              disabled={blocksSaveOnPrecision(row)}
+                              disabled={
+                                writesResultValue(state) &&
+                                blocksSaveOnPrecision(row)
+                              }
                               size="sm"
                             >
                               <FormattedMessage id="label.results.save" />
@@ -1476,7 +1501,10 @@ const UnifiedResults: React.FC = () => {
                                       recordType="RESULT"
                                       recordId={row.analysisId}
                                       onSign={() => handleSave(row)}
-                                      disabled={blocksSaveOnPrecision(row)}
+                                      disabled={
+                                        writesResultValue(state) &&
+                                        blocksSaveOnPrecision(row)
+                                      }
                                       size="sm"
                                     >
                                       <FormattedMessage id="label.results.save" />
