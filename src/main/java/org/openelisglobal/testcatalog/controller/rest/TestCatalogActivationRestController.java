@@ -11,6 +11,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
 import org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment;
+import org.openelisglobal.testcatalog.service.LoincIntegrityService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -88,6 +89,10 @@ public class TestCatalogActivationRestController {
         public String testId;
         public boolean active;
         public boolean orderable;
+        // FR-18 (OGC-1119): the LOINC guardrails re-surfaced at the moment the test
+        // goes Active, so a missing or shared LOINC is seen where it starts to
+        // matter. Warnings only, the activation itself is not blocked.
+        public LoincIntegrityService.LoincIntegrity loincIntegrity;
     }
 
     /**
@@ -237,6 +242,7 @@ public class TestCatalogActivationRestController {
         result.testId = test.getId();
         result.active = test.isActive();
         result.orderable = Boolean.TRUE.equals(test.getOrderable());
+        result.loincIntegrity = SpringContext.getBean(LoincIntegrityService.class).check(test);
         return result;
     }
 

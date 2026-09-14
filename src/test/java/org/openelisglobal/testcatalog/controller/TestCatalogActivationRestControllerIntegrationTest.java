@@ -202,6 +202,38 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         assertFalse("a 422 must not activate the test", testActive());
     }
 
+    /**
+     * FR-18 (OGC-1119) — activation re-surfaces the LOINC guardrails: the success
+     * body names the other active test sharing this test's LOINC, and the
+     * activation still goes through (warn, never block).
+     */
+    @org.junit.Test
+    public void activation_reportsASharedLoinc_withoutBlocking() {
+        long twinId = TEST_ID + 1;
+        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+        jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        jdbc.update("UPDATE clinlims.test SET loinc = '4548-4' WHERE id = ?", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", twinId,
+                "ActivateIT twin");
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, loinc, guid, lastupdated,"
+                        + " name_localization_id) VALUES (?, ?, ?, 'Y', '4548-4', ?, NOW(), ?)",
+                twinId, "ActivateIT twin", "activate IT twin", UUID.randomUUID().toString(), twinId);
+        try {
+            seedRange(null, 0d, Double.POSITIVE_INFINITY);
+            ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+            assertEquals(200, resp.getStatusCode().value());
+            assertTrue(testActive());
+            ActivationResult result = (ActivationResult) resp.getBody();
+            assertTrue("the success body must carry the LOINC warnings", result.loincIntegrity != null);
+            assertEquals(1, result.loincIntegrity.duplicates.size());
+            assertEquals(String.valueOf(twinId), result.loincIntegrity.duplicates.get(0).testId);
+        } finally {
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        }
+    }
+
     @org.junit.Test
     public void unknownTest_returns404() {
         assertEquals(404, controller.activateTest("99999999", null, authedRequest()).getStatusCode().value());

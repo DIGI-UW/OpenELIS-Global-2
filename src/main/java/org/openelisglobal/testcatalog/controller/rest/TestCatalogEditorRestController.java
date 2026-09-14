@@ -26,12 +26,14 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testcatalog.service.CatalogHealthService;
+import org.openelisglobal.testcatalog.service.LoincIntegrityService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.TestCatalogCreationService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -511,44 +513,17 @@ public class TestCatalogEditorRestController {
     // that silently mis-routes: a test with no LOINC, or two active tests sharing
     // one. Warnings only — never a hard block.
 
-    public static class TestRef {
-        public String testId;
-        public String name;
-    }
-
-    public static class LoincIntegrity {
-        public String loinc;
-        public boolean active;
-        public boolean noLoinc;
-        public List<TestRef> duplicates = new ArrayList<>();
-    }
-
+    /**
+     * The same evaluation activation re-surfaces (OGC-1119 FR-18), so the two
+     * surfaces can never disagree; see {@link LoincIntegrityService}.
+     */
     @GetMapping(value = "/tests/{testId}/loinc-integrity", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<LoincIntegrity> getLoincIntegrity(@PathVariable String testId) {
+    public ResponseEntity<LoincIntegrityService.LoincIntegrity> getLoincIntegrity(@PathVariable String testId) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
-        LoincIntegrity integrity = new LoincIntegrity();
-        integrity.loinc = test.getLoinc();
-        integrity.active = test.isActive();
-        // A test that should receive results (active + orderable) but carries no LOINC
-        // anywhere can never be matched by the resolver. A mapping on a component or a
-        // single specimen is still a LOINC the resolver can match, so it counts — only
-        // a test with none at all is flagged.
-        integrity.noLoinc = test.isActive() && Boolean.TRUE.equals(test.getOrderable()) && isBlank(test.getLoinc())
-                && !terminologyService.hasActiveMappingForSource(testId, "LOINC");
-        if (!isBlank(test.getLoinc())) {
-            for (Test other : testService.getActiveTestsByLoinc(test.getLoinc())) {
-                if (other.getId() != null && !other.getId().equals(testId)) {
-                    TestRef ref = new TestRef();
-                    ref.testId = other.getId();
-                    ref.name = TestServiceImpl.getLocalizedTestNameWithType(other);
-                    integrity.duplicates.add(ref);
-                }
-            }
-        }
-        return ResponseEntity.ok(integrity);
+        return ResponseEntity.ok(SpringContext.getBean(LoincIntegrityService.class).check(test));
     }
 
     private static final List<String> DOMAINS = java.util.Arrays.stream(Domain.values()).map(Enum::name)
@@ -1153,6 +1128,12 @@ public class TestCatalogEditorRestController {
         for (TypeOfSample type : testService.getTypeOfSamples(test)) {
             associatedTypeIds.add(type.getId());
         }
+        // FR-19 (OGC-1119): a range constrains one of this test's own result
+        // components, never a component of another test.
+        Set<String> componentIds = new HashSet<>();
+        for (TestResultComponent component : componentService.getActiveComponentsByTestId(testId)) {
+            componentIds.add(component.getId());
+        }
         for (RangeDto r : body.ranges) {
             if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
                 return ResponseEntity.unprocessableEntity().build();
@@ -1163,6 +1144,9 @@ public class TestCatalogEditorRestController {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(r.sampleTypeId) && !associatedTypeIds.contains(r.sampleTypeId)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(r.componentId) && !componentIds.contains(r.componentId)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
         }
