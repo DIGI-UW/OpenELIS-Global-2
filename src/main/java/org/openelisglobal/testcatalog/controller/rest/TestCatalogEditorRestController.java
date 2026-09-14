@@ -1277,6 +1277,9 @@ public class TestCatalogEditorRestController {
             if (min < 0d || max <= min) {
                 return ResponseEntity.unprocessableEntity().build();
             }
+            if (!isBlank(r.componentId) && componentService.getMatch("id", r.componentId).isEmpty()) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         for (String testId : body.testIds) {
@@ -1286,11 +1289,20 @@ public class TestCatalogEditorRestController {
             }
             // New rows per test: the ids in the shared set belong to no single test,
             // so drop them and let each test insert its own (FR-11 per-test write).
+            // The component and specimen ids in the shared set belong to the test
+            // the set was seeded from, so each target test gets its own equivalent
+            // (FR-19): the component with the same code, else its primary, and a
+            // specimen scope only when that specimen is one of its own (OGC-1118).
+            List<TestResultComponent> targetComponents = componentService.getActiveComponentsByTestId(testId);
+            Set<String> targetTypeIds = new HashSet<>();
+            for (TypeOfSample type : testService.getTypeOfSamples(test)) {
+                targetTypeIds.add(type.getId());
+            }
             List<RangeDto> perTest = new ArrayList<>();
             for (RangeDto r : body.ranges) {
                 RangeDto copy = new RangeDto();
-                copy.componentId = r.componentId;
-                copy.sampleTypeId = r.sampleTypeId;
+                copy.componentId = equivalentComponentId(r.componentId, targetComponents);
+                copy.sampleTypeId = targetTypeIds.contains(r.sampleTypeId) ? r.sampleTypeId : null;
                 copy.gender = r.gender;
                 copy.minAge = r.minAge;
                 copy.maxAge = r.maxAge;
@@ -1305,6 +1317,37 @@ public class TestCatalogEditorRestController {
             resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
         }
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * The target test's own component for a range seeded from another test's
+     * component: the same id when it is already the target's, else the component
+     * sharing the source's code, else the target's primary. Null when the range is
+     * not component-scoped or the target has no components.
+     */
+    private String equivalentComponentId(String sourceComponentId, List<TestResultComponent> targetComponents) {
+        if (isBlank(sourceComponentId) || targetComponents.isEmpty()) {
+            return null;
+        }
+        for (TestResultComponent component : targetComponents) {
+            if (sourceComponentId.equals(component.getId())) {
+                return component.getId();
+            }
+        }
+        TestResultComponent source = componentService.getMatch("id", sourceComponentId).orElse(null);
+        if (source != null && !isBlank(source.getCode())) {
+            for (TestResultComponent component : targetComponents) {
+                if (source.getCode().equalsIgnoreCase(component.getCode())) {
+                    return component.getId();
+                }
+            }
+        }
+        for (TestResultComponent component : targetComponents) {
+            if (component.getIsPrimary()) {
+                return component.getId();
+            }
+        }
+        return targetComponents.get(0).getId();
     }
 
     private RangesResponse toRanges(String testId) {
