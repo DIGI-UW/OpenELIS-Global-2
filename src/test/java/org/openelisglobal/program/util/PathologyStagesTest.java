@@ -17,7 +17,9 @@ import static org.openelisglobal.program.valueholder.pathology.PathologySample.P
 import static org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus.UNDER_REVIEW;
 
 import java.util.List;
+import java.util.Optional;
 import org.junit.Test;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 
@@ -140,5 +142,23 @@ public class PathologyStagesTest {
     public void ordered_isUnmodifiable() {
         assertThrows("callers share the bench sequence, so none of them may reorder or extend it",
                 UnsupportedOperationException.class, () -> PathologyStages.ordered().add(ACCESSIONED));
+    }
+
+    @Test
+    public void enablementProperty_existsForExactlyTheOptionalStages() {
+        List<PathologyStatus> spine = List.of(ACCESSIONED, GROSSING, READY_PATHOLOGIST, COMPLETED);
+        for (PathologyStatus status : PathologyStages.ordered()) {
+            Optional<Property> property = PathologyStages.enablementProperty(status);
+            if (spine.contains(status)) {
+                assertEquals("a mandatory stage has no switch, since nothing may disable it", Optional.empty(),
+                        property);
+            } else {
+                assertTrue("an optional stage has a switch a deployment can read", property.isPresent());
+                assertEquals("the switch's stored name follows pathology.stage.<STATUS>.enabled",
+                        "pathology.stage." + status.name() + ".enabled", property.get().getDBName());
+                assertEquals("the switch's constant name follows PATHOLOGY_STAGE_<STATUS>_ENABLED",
+                        "PATHOLOGY_STAGE_" + status.name() + "_ENABLED", property.get().name());
+            }
+        }
     }
 }
