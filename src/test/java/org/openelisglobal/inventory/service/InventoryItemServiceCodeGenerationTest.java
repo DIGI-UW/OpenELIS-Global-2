@@ -22,7 +22,10 @@ import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-/** {@code InventoryItemServiceImpl.insert()} fills in the item's code. */
+/**
+ * {@code InventoryItemServiceImpl.insert()} fills in the item's code while the
+ * id stays a surrogate sequence value.
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceCodeGenerationTest {
 
