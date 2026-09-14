@@ -1526,34 +1526,45 @@ export default function App() {
                   render={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
+                {/* Every validation submenu renders the same component, and
+                    SearchForm picks its mode from window.location.pathname. The
+                    router reuses the mounted instance across these paths, so
+                    without a per-path key the mode effect never re-runs and the
+                    page keeps showing the previous submenu while the URL
+                    changes. The key forces a remount, which is what a fresh load
+                    does and what resets the search state between submenus. */}
                 <SecureRoute
                   path="/validation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="validation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="ResultValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="AccessionValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidationRange"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="AccessionValidationRange" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidationByTestDate"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="ResultValidationByTestDate" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
