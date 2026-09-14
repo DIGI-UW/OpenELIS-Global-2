@@ -76,7 +76,6 @@ function UserManagement() {
   const [toRecordCount, setToRecordCount] = useState("");
   const [userManagementList, setUserManagementList] = useState();
   const [userManagementListShow, setUserManagementListShow] = useState([]);
-  const [testSectionsSelect, setTestSectionsSelect] = useState("");
   const [testSectionsShow, setTestSectionsShow] = useState({});
 
   function deleteDeactivateUserManagement(event) {
@@ -312,7 +311,6 @@ function UserManagement() {
   }, [isSearching, panelSearchTerm]);
 
   function handleTestSectionsSelectChange(e) {
-    setTestSectionsSelect(e.target.value);
     setRoleFilter(e.target.value);
   }
 
@@ -406,11 +404,7 @@ function UserManagement() {
               <Select
                 id="filters"
                 labelText={<FormattedMessage id="menu.label.filter.role" />}
-                defaultValue={
-                  testSectionsShow && testSectionsShow.length > 0
-                    ? testSectionsShow[0].id
-                    : ""
-                }
+                value={roleFilter}
                 onChange={handleTestSectionsSelectChange}
               >
                 <SelectItem key="" value="" text="" />
@@ -436,6 +430,7 @@ function UserManagement() {
             <Column lg={8} md={8} sm={4}>
               <CustomCheckBox
                 id="only-active"
+                checked={filters.includes("isActive")}
                 label={<FormattedMessage id="menu.label.filter.active" />}
                 onChange={(isChecked) => {
                   if (isChecked) {
@@ -450,6 +445,7 @@ function UserManagement() {
               <br />
               <CustomCheckBox
                 id="only-administrator"
+                checked={filters.includes("isAdmin")}
                 label={<FormattedMessage id="menu.label.filter.admin" />}
                 onChange={(isChecked) => {
                   if (isChecked) {

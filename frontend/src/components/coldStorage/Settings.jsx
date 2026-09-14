@@ -12,7 +12,6 @@ import { injectIntl } from "react-intl";
 import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
-import SystemSettings from "./settings/SystemSettings";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 
@@ -43,7 +42,6 @@ function Settings({ intl }) {
           <Tab>Device Management</Tab>
           <Tab>Temperature Thresholds</Tab>
           <Tab>Alert Settings</Tab>
-          <Tab>System Settings</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -54,9 +52,6 @@ function Settings({ intl }) {
           </TabPanel>
           <TabPanel>
             <AlertSettings />
-          </TabPanel>
-          <TabPanel>
-            <SystemSettings />
           </TabPanel>
         </TabPanels>
       </Tabs>

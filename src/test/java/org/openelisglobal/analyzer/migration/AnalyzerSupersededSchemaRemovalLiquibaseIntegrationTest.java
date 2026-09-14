@@ -33,11 +33,11 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
     private DataSource dataSource;
 
     @Test
-    public void cutoverRetainsConfiguredAndExcludedAnalyzersWithoutSupersededSchema() throws Exception {
+    public void upgradePreservesEmptyDraftsAndMigratedAnalyzers() throws Exception {
         try {
             createReleasedSchema(true);
 
-            runRemovalMigration();
+            runCutoverUpgrade();
 
             for (String table : SUPERSEDED_TABLES) {
                 assertEquals(table, 0, tableCount(table));
@@ -46,10 +46,15 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
                     "has_setup_page", "analyzer_type_id", "identifier_pattern")) {
                 assertEquals(column, 0, columnCount("analyzer", column));
             }
-            assertEquals(2, analyzerCount());
+            assertEquals(3, analyzerCount());
             assertEquals("bridge-101", analyzerValue("bridge_connection_id", 101));
             assertEquals("101", analyzerValue("site_binding_revision_id", 101));
             assertEquals("INACTIVE", analyzerValue("status", 102));
+            assertEquals("SETUP", analyzerValue("status", 103));
+            assertEquals("Incomplete setup draft", analyzerValue("name", 103));
+            assertTrue(analyzerIsActive(103));
+            runCutoverUpgrade();
+            assertEquals(3, analyzerCount());
         } finally {
             dropTestSchema();
         }
@@ -61,12 +66,117 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
             createReleasedSchema(false);
 
             try {
-                runRemovalMigration();
+                runCutoverUpgrade();
                 fail("Cutover must stop until operational analyzers have Bridge and catalog references");
             } catch (LiquibaseException expected) {
                 assertTrue(exceptionMessages(expected).contains("precondition"));
                 assertEquals(1, tableCount("analyzer_type"));
                 assertEquals(1, columnCount("analyzer", "machine_id"));
+            }
+        } finally {
+            dropTestSchema();
+        }
+    }
+
+    @Test
+    public void cutoverStopsWhenSetupAnalyzerHasLegacyConfiguration() throws Exception {
+        try {
+            createReleasedSchema(true);
+            try (Connection connection = dataSource.getConnection();
+                    Statement statement = connection.createStatement()) {
+                statement.execute(
+                        "INSERT INTO " + TEST_SCHEMA + ".analyzer_plugin_config (id, analyzer_id) VALUES (1, 103)");
+            }
+
+            try {
+                runCutoverUpgrade();
+                fail("SETUP status must not authorize deleting an analyzer's existing configuration");
+            } catch (LiquibaseException expected) {
+                assertTrue(exceptionMessages(expected).contains("precondition"));
+                assertEquals(1, tableCount("analyzer_plugin_config"));
+                assertEquals("SETUP", analyzerValue("status", 103));
+                assertTrue(analyzerIsActive(103));
+            }
+        } finally {
+            dropTestSchema();
+        }
+    }
+
+    @Test
+    public void cutoverPreservesUnmigratedConfigurationAndResultHistory() throws Exception {
+        for (String table : List.of("analyzer_field", "analyzer_field_mapping", "analyzer_test_map",
+                "analyzer_experiment", "analyzer_file_upload", "analyzer_pending_code", "analyzer_activation_record",
+                "analyzer_results", "analysis")) {
+            try {
+                createReleasedSchema(true);
+                try (Connection connection = dataSource.getConnection();
+                        Statement statement = connection.createStatement()) {
+                    statement
+                            .execute("INSERT INTO " + TEST_SCHEMA + "." + table + " (id, analyzer_id) VALUES (1, 103)");
+                }
+                assertCutoverBlocked(table);
+                try (Connection connection = dataSource.getConnection();
+                        Statement statement = connection.createStatement();
+                        ResultSet result = statement
+                                .executeQuery("SELECT COUNT(*) FROM " + TEST_SCHEMA + "." + table)) {
+                    result.next();
+                    assertEquals(table, 1, result.getInt(1));
+                }
+            } finally {
+                dropTestSchema();
+            }
+        }
+    }
+
+    @Test
+    public void cutoverRejectsPartialReferencesAndConfiguredDrafts() throws Exception {
+        for (String assignment : List.of("bridge_connection_id = 'bridge-103'", "site_binding_revision_id = 103",
+                "latest_activation_record_id = 103", "machine_id = 'machine-103'", "scrip_id = 103",
+                "analyzer_type_id = 103", "identifier_pattern = 'instrument-pattern'", "test_unit_ids = '7'",
+                "status = NULL")) {
+            try {
+                createReleasedSchema(true);
+                try (Connection connection = dataSource.getConnection();
+                        Statement statement = connection.createStatement()) {
+                    statement.execute("UPDATE " + TEST_SCHEMA + ".analyzer SET " + assignment + " WHERE id = 103");
+                }
+                assertCutoverBlocked(assignment);
+            } finally {
+                dropTestSchema();
+            }
+        }
+    }
+
+    private void assertCutoverBlocked(String scenario) throws Exception {
+        try {
+            runCutoverUpgrade();
+            fail("Cutover must preserve unmigrated analyzer data: " + scenario);
+        } catch (LiquibaseException expected) {
+            assertTrue(scenario, exceptionMessages(expected).contains("precondition"));
+            assertEquals(scenario, 1, tableCount("analyzer_type"));
+            assertEquals(scenario, 1, columnCount("analyzer", "machine_id"));
+            assertTrue(analyzerIsActive(103));
+        }
+    }
+
+    @Test
+    public void cutoverStopsWhenSetupAnalyzerHasActivationHistory() throws Exception {
+        try {
+            createReleasedSchema(true);
+            try (Connection connection = dataSource.getConnection();
+                    Statement statement = connection.createStatement()) {
+                statement.execute("UPDATE " + TEST_SCHEMA
+                        + ".analyzer SET last_activated_date = TIMESTAMP '2026-01-01 00:00:00' WHERE id = 103");
+            }
+
+            try {
+                runCutoverUpgrade();
+                fail("SETUP status must not authorize retiring a previously activated analyzer");
+            } catch (LiquibaseException expected) {
+                assertTrue(exceptionMessages(expected).contains("precondition"));
+                assertEquals(1, tableCount("analyzer_type"));
+                assertEquals("SETUP", analyzerValue("status", 103));
+                assertTrue(analyzerIsActive(103));
             }
         } finally {
             dropTestSchema();
@@ -80,7 +190,7 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
                     + "id NUMERIC(10,0) PRIMARY KEY, name VARCHAR(255), is_active BOOLEAN, status VARCHAR(20), "
                     + "bridge_connection_id VARCHAR(255), site_binding_revision_id NUMERIC(10,0), "
                     + "test_unit_ids TEXT, fhir_uuid UUID, last_activated_date TIMESTAMP, "
-                    + "latest_activation_record_id NUMERIC(10,0), scrip_id VARCHAR(255), machine_id VARCHAR(255), "
+                    + "latest_activation_record_id NUMERIC(10,0), scrip_id NUMERIC(10,0), machine_id VARCHAR(255), "
                     + "analyzer_type VARCHAR(30), description VARCHAR(255), location VARCHAR(255), "
                     + "has_setup_page BOOLEAN, analyzer_type_id NUMERIC(10,0), identifier_pattern VARCHAR(500))");
             statement.execute("INSERT INTO " + TEST_SCHEMA
@@ -91,8 +201,17 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
                     + ".analyzer (id, name, is_active, status, bridge_connection_id, site_binding_revision_id, "
                     + "test_unit_ids, machine_id, analyzer_type) VALUES "
                     + "(102, 'Intentionally excluded analyzer', FALSE, 'INACTIVE', NULL, NULL, '', 'OLD-102', 'FILE')");
+            statement.execute("INSERT INTO " + TEST_SCHEMA
+                    + ".analyzer (id, name, is_active, status, bridge_connection_id, site_binding_revision_id, "
+                    + "test_unit_ids, machine_id, analyzer_type) VALUES "
+                    + "(103, 'Incomplete setup draft', TRUE, 'SETUP', '', NULL, '', NULL, 'FILE')");
             for (String table : SUPERSEDED_TABLES) {
-                statement.execute("CREATE TABLE " + TEST_SCHEMA + "." + table + " (id INTEGER)");
+                statement.execute(
+                        "CREATE TABLE " + TEST_SCHEMA + "." + table + " (id INTEGER, analyzer_id NUMERIC(10,0))");
+            }
+            for (String table : List.of("analyzer_activation_record", "analyzer_results", "analysis")) {
+                statement.execute(
+                        "CREATE TABLE " + TEST_SCHEMA + "." + table + " (id INTEGER, analyzer_id NUMERIC(10,0))");
             }
             statement.execute("CREATE SEQUENCE " + TEST_SCHEMA + ".analyzer_type_seq");
             statement.execute("CREATE SEQUENCE " + TEST_SCHEMA + ".analyzer_experiment_seq");
@@ -100,14 +219,21 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
     }
 
     private void runRemovalMigration() throws Exception {
+        runMigration("liquibase/3.5.x.x/098-remove-superseded-analyzer-schema.xml");
+    }
+
+    private void runCutoverUpgrade() throws Exception {
+        runRemovalMigration();
+    }
+
+    private void runMigration(String changeLog) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             connection.setSchema(TEST_SCHEMA);
             Database database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
             database.setDefaultSchemaName(TEST_SCHEMA);
             database.setLiquibaseSchemaName(TEST_SCHEMA);
-            try (Liquibase liquibase = new Liquibase("liquibase/3.5.x.x/098-remove-superseded-analyzer-schema.xml",
-                    new ClassLoaderResourceAccessor(), database)) {
+            try (Liquibase liquibase = new Liquibase(changeLog, new ClassLoaderResourceAccessor(), database)) {
                 liquibase.update(new Contexts("test"));
             }
         }
@@ -166,6 +292,16 @@ public class AnalyzerSupersededSchemaRemovalLiquibaseIntegrationTest extends Bas
                 ResultSet result = statement.executeQuery(sql)) {
             result.next();
             return result.getString(1);
+        }
+    }
+
+    private boolean analyzerIsActive(int id) throws Exception {
+        String sql = "SELECT is_active FROM " + TEST_SCHEMA + ".analyzer WHERE id = " + id;
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement();
+                ResultSet result = statement.executeQuery(sql)) {
+            result.next();
+            return result.getBoolean(1);
         }
     }
 

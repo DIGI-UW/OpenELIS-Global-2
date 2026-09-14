@@ -17,9 +17,13 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
+LOCAL_MODE=false
+SKIP_PLUGINS=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
+    --local) LOCAL_MODE=true ;;
+    --skip-plugins) SKIP_PLUGINS=true ;;
   esac
 done
 
@@ -33,7 +37,9 @@ if [ -f "$HARNESS_DIR/.env" ]; then
 elif [ -f "$REPO_ROOT/.env" ]; then
   set -a; . "$REPO_ROOT/.env"; set +a
 fi
-if [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
+if [ "$LOCAL_MODE" = true ]; then
+  : "${LETSENCRYPT_DOMAIN:=localhost}"
+elif [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
   echo -e "${RED}ERROR: LETSENCRYPT_DOMAIN is not set. Add it to $REPO_ROOT/.env before running bootstrap.${NC}" >&2
   exit 1
 fi
@@ -126,7 +132,10 @@ fi
 # nginx.conf: render from the env-driven template in the root volume so
 # ${LETSENCRYPT_DOMAIN} flows through to server_name and cert paths without
 # editing nginx.conf by hand. Fallback to plain copy if only nginx.conf exists.
-if [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
+if [ "$LOCAL_MODE" = true ] && [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
+  cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  copied local self-signed volume/nginx/nginx.conf"
+elif [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
   if ! command -v envsubst >/dev/null 2>&1; then
     # No silent fallback — the committed nginx.conf is a stale snapshot of the
     # template and lacks the bridge vhost + env-substituted domain names.
@@ -151,7 +160,10 @@ if [ ! -f "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv" ]; then
   touch "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv"
   echo "  created placeholder analyzer/analyzer-test-map.csv"
 fi
-if [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
+if [ -f "$ROOT_VOLUME/menu/menu_config.json" ]; then
+  cp "$ROOT_VOLUME/menu/menu_config.json" "$HARNESS_VOLUME/menu/menu_config.json"
+  echo "  copied repository menu/menu_config.json"
+elif [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
   echo '{}' > "$HARNESS_VOLUME/menu/menu_config.json"
   echo "  created placeholder menu/menu_config.json"
 fi

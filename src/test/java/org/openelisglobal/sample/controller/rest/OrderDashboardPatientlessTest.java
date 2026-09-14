@@ -10,6 +10,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,6 +37,15 @@ public class OrderDashboardPatientlessTest extends BaseWebContextSensitiveTest {
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private ObservationHistoryService observationHistoryService;
+
+    @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
+
     private MockHttpSession session;
     private MockMvc dashboardMvc;
 
@@ -42,6 +54,8 @@ public class OrderDashboardPatientlessTest extends BaseWebContextSensitiveTest {
         super.setUp();
         executeDataSetWithStateManagement("testdata/order-dashboard-patientless.xml");
         authenticateAs("testUser");
+        PatientlessOrderObservations.create(sampleService.getSampleByAccessionNumber(NEWEST_ENVIRONMENTAL),
+                observationHistoryService, observationHistoryTypeService);
         statusService.refreshCache();
         session = buildSession();
         // The test context does not component-scan org.openelisglobal.sample.controller

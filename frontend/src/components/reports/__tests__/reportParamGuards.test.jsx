@@ -18,13 +18,18 @@ vi.mock("../../utils/Utils", async () => {
   };
 });
 
+const notifications = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  addNotification: vi.fn(),
+};
+
 /**
  * Each report screen is reached with the report named in the query string. When
  * it is missing the screen sends the browser to its own default, which used to
  * mean downloading the whole app again to reach a route the router serves.
  */
 const SCREENS = [
-  { name: "ReportIndex", Screen: ReportIndex, at: "/ReportIndex", target: "/" },
   {
     name: "RoutineIndex",
     Screen: RoutineIndex,
@@ -74,13 +79,7 @@ describe.each(SCREENS)("$name", ({ Screen, at, target }) => {
     render(
       <MemoryRouter initialEntries={[at]}>
         <IntlProvider locale="en" messages={messages}>
-          <NotificationContext.Provider
-            value={{
-              notificationVisible: false,
-              setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
-            }}
-          >
+          <NotificationContext.Provider value={notifications}>
             <Route path={at}>
               <Screen />
             </Route>
@@ -95,5 +94,64 @@ describe.each(SCREENS)("$name", ({ Screen, at, target }) => {
     expect(await screen.findByText(`arrived at ${path}`)).toBeInTheDocument();
     expect(hrefWrittenTo).toBeNull();
     expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * OGC-1053 — /Report needs both `type` and `report`. A link missing either used
+ * to bounce to the Dashboard with nothing said, indistinguishable from a session
+ * or permission problem. The page now stays put, names what is missing and
+ * offers the report lists.
+ */
+describe("ReportIndex", () => {
+  const renderAt = (entry) =>
+    render(
+      <MemoryRouter initialEntries={[entry]}>
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider value={notifications}>
+            <Route path="/Report">
+              <ReportIndex />
+            </Route>
+            <Route exact path="/">
+              <div>arrived at the Dashboard</div>
+            </Route>
+          </NotificationContext.Provider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("names the missing parameter and stays instead of going to the Dashboard", async () => {
+    renderAt("/Report?type=patient");
+
+    expect(
+      await screen.findByText(messages["error.report.linkIncomplete.title"]),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/which report to open/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: messages["routine.reports"] }),
+    ).toHaveAttribute("href", "/RoutineReports");
+    expect(
+      screen.getByRole("link", { name: messages["label.study.Reports"] }),
+    ).toHaveAttribute("href", "/StudyReports");
+    expect(screen.queryByText("arrived at the Dashboard")).toBeNull();
+  });
+
+  it("names both parameters when the link carries neither", async () => {
+    renderAt("/Report");
+
+    expect(await screen.findByText(/which type, report to open/)).toBeInTheDocument();
+    expect(screen.queryByText("arrived at the Dashboard")).toBeNull();
+  });
+
+  it("shows no such message for a complete link", async () => {
+    renderAt("/Report?type=patient&report=TBPatientReport");
+
+    expect(
+      await screen.findByText(messages["routine.reports"]),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages["error.report.linkIncomplete.title"]),
+    ).toBeNull();
+    expect(screen.queryByText("arrived at the Dashboard")).toBeNull();
   });
 });

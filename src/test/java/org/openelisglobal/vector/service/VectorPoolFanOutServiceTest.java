@@ -242,22 +242,21 @@ public class VectorPoolFanOutServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void fanOut_shouldNotCollideSortOrdersAcrossMultipleParents() {
-        // Drop in a second parent sample_item alongside the fixture's id=500.
+        // Create a second parent sample item alongside the fixture's parent.
         // Both have small sort_orders; without a global max-aware lookup the
         // two fanOut windows would overlap (parent A: sort_order 2..N+1,
         // parent B: sort_order 3..N+2), producing the collision pattern seen
         // in production.
-        // The columns are NUMERIC(10,0) / NUMERIC, so bind as Integer/Double
-        // — the JDBC driver doesn't bridge String → NUMERIC implicitly here.
-        jdbcTemplate.update(
-                "INSERT INTO clinlims.sample_item "
-                        + "(id, samp_id, sort_order, status_id, typeosamp_id, quantity, voided, "
-                        + " collection_date, lastupdated) " + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                501, Integer.valueOf(SAMPLE_ID), 2, 500, 500, 4.0, false,
-                java.sql.Timestamp.valueOf("2026-05-09 00:00:00"), java.sql.Timestamp.valueOf("2026-05-09 00:00:00"));
-
         SampleItem parentA = sampleItemService.get(PARENT_SAMPLE_ITEM_ID);
-        SampleItem parentB = sampleItemService.get("501");
+        SampleItem parentB = new SampleItem();
+        parentB.setSample(parentA.getSample());
+        parentB.setSortOrder("2");
+        parentB.setStatusId(parentA.getStatusId());
+        parentB.setTypeOfSample(parentA.getTypeOfSample());
+        parentB.setQuantity(4.0);
+        parentB.setCollectionDate(java.sql.Timestamp.valueOf("2026-05-09 00:00:00"));
+        parentB.setSysUserId(SYS_USER_ID);
+        sampleItemService.insert(parentB);
 
         List<SampleItem> siblingsA = vectorPoolFanOutService.fanOut(parentA, List.of(), 5, SYS_USER_ID);
         List<SampleItem> siblingsB = vectorPoolFanOutService.fanOut(parentB, List.of(), 4, SYS_USER_ID);

@@ -119,6 +119,24 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
+    public void completingARetainedDraftCreatesAndStoresItsBridgeConnection() {
+        when(localStateService.update("42", request, "17")).thenReturn(localState);
+
+        AnalyzerInstanceView result = service.update("42", request, "17");
+
+        ArgumentCaptor<ObjectNode> bridgeRequest = ArgumentCaptor.forClass(ObjectNode.class);
+        InOrder order = inOrder(localStateService, bridgeClient);
+        order.verify(localStateService).update("42", request, "17");
+        order.verify(bridgeClient).createConnection(bridgeRequest.capture());
+        order.verify(localStateService).attachBridgeConnection("42", "bridge-connection-42", "17");
+        assertEquals("42", bridgeRequest.getValue().path("clientAnalyzerId").asText());
+        assertEquals("fixture.synthetic-connection",
+                bridgeRequest.getValue().path("profileRef").path("profileId").asText());
+        assertEquals("bridge-connection-42", result.state().bridgeConnectionId());
+        assertEquals(bridgeConnection, result.connection());
+    }
+
+    @Test
     public void reloadsTheReferencedBridgeConnectionWithoutPersistingItsValuesLocally() {
         AnalyzerInstanceView result = service.get("42");
 

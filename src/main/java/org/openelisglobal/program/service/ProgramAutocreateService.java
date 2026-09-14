@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -190,7 +191,7 @@ public class ProgramAutocreateService {
                         program.setQuestionnaireUUID(UUID.randomUUID());
                     }
                     if (questionnaire == null) {
-                        questionnaire = new Questionnaire();
+                        questionnaire = new Questionnaire().setStatus(PublicationStatus.DRAFT);
                     }
                     if (StringUtils.isNotBlank(form.getTestSectionName())) {
                         Optional<TestSection> testSection = testSectionService.getMatch("testSectionName",

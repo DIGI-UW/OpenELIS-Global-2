@@ -166,6 +166,76 @@ public class AnalyzerInstanceLocalStateServiceTest {
         assertEquals(0L, states.get(1).heldResultCount());
     }
 
+    @Test
+    public void listsAndReadsUpgradedDraftsWithoutInventingAProfile() {
+        Analyzer draft = analyzer("42");
+        draft.setActive(true);
+        draft.setTestUnitIds(List.of());
+        Analyzer excluded = analyzer("43");
+        excluded.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        when(analyzerService.getAllWithBindings()).thenReturn(List.of(draft, excluded));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(draft));
+
+        List<AnalyzerInstanceState> states = service.list();
+
+        assertEquals(2, states.size());
+        assertEquals("42", states.get(0).analyzerId());
+        assertEquals("", states.get(0).profileId());
+        assertEquals(0, states.get(0).profileRevision());
+        assertEquals(Analyzer.AnalyzerStatus.SETUP, states.get(0).status());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, states.get(1).status());
+        assertEquals(states.get(0), service.get("42"));
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void completesAnUpgradedDraftUsingTheExplicitlySelectedProfile() {
+        Analyzer draft = analyzer("42");
+        draft.setActive(true);
+        draft.setBridgeConnectionId(" ");
+        draft.setTestUnitIds(List.of());
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(draft));
+        when(profileBindingService.assignProfile(draft, "fixture.synthetic-connection", 3, "17"))
+                .thenAnswer(invocation -> bind(invocation.getArgument(0)));
+
+        AnalyzerInstanceState result = service.update("42", request, "17");
+
+        assertEquals("42", result.analyzerId());
+        assertEquals("fixture.synthetic-connection", result.profileId());
+        assertEquals(3, result.profileRevision());
+        assertEquals(List.of("7", "8"), result.labUnitIds());
+        assertEquals(Analyzer.AnalyzerStatus.SETUP, result.status());
+        assertNull(result.bridgeConnectionId());
+        assertFalse(draft.isActive());
+        verify(analyzerService).update(draft);
+        verify(analyzerService, never()).insert(any(Analyzer.class));
+    }
+
+    @Test
+    public void cannotAssignAProfileToAPreviouslyActivatedUnboundAnalyzer() {
+        Analyzer analyzer = analyzer("42");
+        analyzer.setLastActivatedDate(new java.sql.Timestamp(1L));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+
+        assertThrows(IllegalArgumentException.class, () -> service.update("42", request, "17"));
+
+        verify(profileBindingService, never()).assignProfile(any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                any());
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void cannotReplaceTheProfileOfAConfiguredAnalyzer() {
+        Analyzer analyzer = analyzer("42");
+        bind(analyzer);
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        request.setProfileId("another-profile");
+
+        assertThrows(IllegalArgumentException.class, () -> service.update("42", request, "17"));
+
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
     private static AnalyzerProfileBinding bind(Analyzer analyzer) {
         AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
         profile.setProfileId("fixture.synthetic-connection");

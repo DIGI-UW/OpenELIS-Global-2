@@ -128,12 +128,14 @@ jobs:
       - name: Post checkpoint status
         uses: actions/github-script@v8
         with:
+          retries: 3
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            await github.rest.repos.createCommitStatus({
+            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
@@ -141,7 +143,9 @@ jobs:
               context: contextName,
               description: 'Playwright, Cypress, and analyzer-harness suites are running...',
               target_url: runUrl
-            });
+            })));
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');
 
   # ─── Fork Image Publish (No Rebuild) ───────────────────────────────────────
   # Fork PR builds hand off prebuilt Docker images as an artifact. This job
@@ -181,7 +185,7 @@ jobs:
 
       - name: Publish handed-off compose images to GHCR
         run: |
-          TAG="sha-${{ needs.setup.outputs.status_sha }}"
+          TAG="sha-${{ needs.setup.outputs.status_sha }}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           export TAG OWNER_LOWER
 
@@ -213,7 +217,12 @@ jobs:
             attempt=1
             while [ $attempt -le 3 ]; do
               if push_err=$(docker push "$ghcr_image" 2>&1); then
-                printf "%s|%s\n" "$image" "$ghcr_image"
+                digest="$(printf "%s\n" "$push_err" | sed -nE "s/.*digest: (sha256:[a-f0-9]{64}).*/\\1/p" | tail -1)"
+                if [ -z "$digest" ]; then
+                  echo "PUSH did not report an immutable digest for $image" >&2
+                  exit 1
+                fi
+                printf "%s|%s@%s\n" "$image" "${ghcr_image%:*}" "$digest"
                 exit 0
               fi
               echo "PUSH attempt $attempt failed ($image): $push_err" >&2
@@ -370,9 +379,11 @@ jobs:
       - name: Update checkpoint status
         uses: actions/github-script@v8
         with:
+          retries: 3
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const gateResult = '${{ needs.e2e-gate.result }}';
             const artifactSourceMode = '${{ needs.setup.outputs.artifact_source_mode }}';
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
@@ -391,7 +402,7 @@ jobs:
               state = 'failure';
               description = 'One or more E2E suites failed';
             }
-            await github.rest.repos.createCommitStatus({
+            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
@@ -399,4 +410,6 @@ jobs:
               context: contextName,
               description,
               target_url: runUrl
-            });
+            })));
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');

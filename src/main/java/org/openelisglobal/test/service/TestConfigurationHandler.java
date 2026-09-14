@@ -357,7 +357,10 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private Test findExistingTest(String testName, String[] values, Map<String, Integer> localizationColumns) {
-        Test existingTest = testService.getTestByNormalizedDescription(testName);
+        Test existingTest = testService.getTestByDescription(testName);
+        if (existingTest == null) {
+            existingTest = testService.getTestByNormalizedDescription(testName);
+        }
         if (existingTest == null) {
             for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
                 String translationValue = getValueOrEmpty(values, entry.getValue());

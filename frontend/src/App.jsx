@@ -89,6 +89,15 @@ const AnalyzerTypesPage = lazyWithRetry(
 const AnalyzerTypeMappingPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypeMappingPage"),
 );
+const MicrobiologyPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyPage"),
+);
+const MicrobiologyWorklistPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyWorklistPage"),
+);
+const MicrobiologyWhonetPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyWhonetPage"),
+);
 import {
   QCDashboard,
   ControlChartDetail,
@@ -105,6 +114,15 @@ import {
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { resolveMessagesForLocale } from "./languages";
+import {
+  getMicrobiologyCaseUrl,
+  getMicrobiologyWorklistUrl,
+  MICROBIOLOGY_CASE_PATH,
+  MICROBIOLOGY_WORKLIST_PATH,
+  parseMicrobiologyCaseSearch,
+  parseMicrobiologyWorklistSearch,
+} from "./components/microbiology/MicrobiologyRoutes";
+import { MICROBIOLOGY_WHONET_PATH } from "./components/microbiology/WhonetRoutes";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -189,6 +207,11 @@ import {
   VectorIdentificationWorklist,
   VectorDeconvolutionWorklist,
 } from "./components/vectorIdentification";
+
+export const ANALYZER_RESULTS_ROLES = [
+  Roles.GLOBAL_ADMIN,
+  Roles.ANALYSER_IMPORT,
+];
 
 export default function App() {
   // The stored preference, or the browser's full tag (region kept: fr-MG
@@ -546,6 +569,59 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
+                  path={`${MICROBIOLOGY_CASE_PATH}/:caseId`}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path={MICROBIOLOGY_WORKLIST_PATH}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyWorklistPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path={MICROBIOLOGY_WHONET_PATH}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyWhonetPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS]}
+                />
+                <Route
+                  path="/MicrobiologyCaseView/:caseId"
+                  exact
+                  render={({ location, match }) => (
+                    <Redirect
+                      to={getMicrobiologyCaseUrl(
+                        match.params.caseId,
+                        parseMicrobiologyCaseSearch(location.search),
+                      )}
+                    />
+                  )}
+                />
+                <Route
+                  path="/MicrobiologyWorklist"
+                  exact
+                  render={({ location }) => (
+                    <Redirect
+                      to={getMicrobiologyWorklistUrl(
+                        parseMicrobiologyWorklistSearch(location.search),
+                      )}
+                    />
+                  )}
+                />
+                <SecureRoute
                   path="/GenericSample/Order"
                   exact
                   render={() => (
@@ -583,7 +659,7 @@ export default function App() {
                       <FreezerMonitoringDashboard />
                     </Suspense>
                   )}
-                  role={Roles.RECEPTION}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SamplePatientEntry"
@@ -1450,34 +1526,45 @@ export default function App() {
                   render={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
+                {/* Every validation submenu renders the same component, and
+                    SearchForm picks its mode from window.location.pathname. The
+                    router reuses the mounted instance across these paths, so
+                    without a per-path key the mode effect never re-runs and the
+                    page keeps showing the previous submenu while the URL
+                    changes. The key forces a remount, which is what a fresh load
+                    does and what resets the search state between submenus. */}
                 <SecureRoute
                   path="/validation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="validation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="ResultValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="AccessionValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidationRange"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="AccessionValidationRange" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidationByTestDate"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="ResultValidationByTestDate" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
@@ -1490,7 +1577,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.ANALYSER_IMPORT}
+                  role={ANALYZER_RESULTS_ROLES}
                 />
                 <Route path="*" render={() => <RedirectOldUI />} />
               </Switch>

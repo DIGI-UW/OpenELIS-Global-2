@@ -1,6 +1,7 @@
 package org.openelisglobal.statusOfSample;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -65,6 +66,22 @@ public class StatusOfSampleServiceTest extends BaseWebContextSensitiveTest {
         StatusOfSample statusOfSample = statusOfSampleService.get("2");
         StatusOfSample statusOfSampleData = statusOfSampleService.getDataByStatusTypeAndStatusCode(statusOfSample);
         assertEquals("Status 1", statusOfSampleData.getStatusOfSampleName());
+    }
+
+    @Test
+    public void insertShouldCompareNumericCodeWithoutTextFunctions() {
+        StatusOfSample status = new StatusOfSample();
+        status.setStatusOfSampleName("Generated status");
+        status.setDescription("Generated through the status service");
+        status.setCode("901");
+        status.setStatusType("SAMPLE");
+        status.setNameKey("status.sample.generated");
+        status.setIsActive("Y");
+
+        statusOfSampleService.insert(status);
+
+        assertNotNull(status.getId());
+        assertEquals("Generated status", statusOfSampleService.get(status.getId()).getStatusOfSampleName());
     }
 
 }

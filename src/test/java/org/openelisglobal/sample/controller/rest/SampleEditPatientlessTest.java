@@ -14,7 +14,10 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.sample.form.SampleEditForm;
+import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -43,6 +46,15 @@ public class SampleEditPatientlessTest extends BaseWebContextSensitiveTest {
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private ObservationHistoryService observationHistoryService;
+
+    @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
+
     private SampleEditRestController controller;
     private MockHttpServletRequest request;
 
@@ -51,6 +63,8 @@ public class SampleEditPatientlessTest extends BaseWebContextSensitiveTest {
         super.setUp();
         executeDataSetWithStateManagement("testdata/order-dashboard-patientless.xml");
         authenticateAs("testUser");
+        PatientlessOrderObservations.create(sampleService.getSampleByAccessionNumber(PATIENTLESS_ACCESSION),
+                observationHistoryService, observationHistoryTypeService);
         statusService.refreshCache();
         controller = webApplicationContext.getAutowireCapableBeanFactory().createBean(SampleEditRestController.class);
         pinStatusIdsToThisFixture();

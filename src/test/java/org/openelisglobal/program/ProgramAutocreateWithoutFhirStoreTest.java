@@ -2,6 +2,7 @@ package org.openelisglobal.program;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.junit.After;
 import org.junit.Before;
@@ -91,10 +93,14 @@ public class ProgramAutocreateWithoutFhirStoreTest extends BaseWebContextSensiti
 
         for (JsonNode definition : bundledProgrammes) {
             String code = definition.path("program").path("code").asText();
-            UUID questionnaireUuid = UUID.fromString(definition.path("program").path("questionnaireUUID").asText());
             Program program = programService.getMatch("code", code)
                     .orElseThrow(() -> new AssertionError("programme " + code + " was not seeded"));
-            assertEquals(code, questionnaireUuid, program.getQuestionnaireUUID());
+            UUID questionnaireUuid = program.getQuestionnaireUUID();
+            assertNotNull(code + " must have a stored questionnaire UUID", questionnaireUuid);
+            String configuredUuid = definition.path("program").path("questionnaireUUID").asText();
+            if (!configuredUuid.isBlank()) {
+                assertEquals(code, UUID.fromString(configuredUuid), questionnaireUuid);
+            }
 
             Questionnaire questionnaire = storage.getQuestionnaire(program.getQuestionnaireUUID())
                     .orElseThrow(() -> new AssertionError("questionnaire for " + code + " is not in the database"));
@@ -102,6 +108,9 @@ public class ProgramAutocreateWithoutFhirStoreTest extends BaseWebContextSensiti
             assertEquals(definition.path("additionalOrderEntryQuestions").path("item").size(),
                     questionnaire.getItem().size());
             assertTrue(questionnaire.hasStatus());
+            if (!definition.hasNonNull("additionalOrderEntryQuestions")) {
+                assertEquals(PublicationStatus.DRAFT, questionnaire.getStatus());
+            }
         }
     }
 

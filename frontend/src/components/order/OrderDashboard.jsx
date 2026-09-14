@@ -49,6 +49,9 @@ const STATUS_OPTIONS = [
   { id: "in_progress", label: "In Progress" },
   { id: "pending_qa", label: "Pending QA" },
   { id: "completed", label: "Completed" },
+  // Driven by the order's referral rather than a sample status column: the
+  // FHIR-aligned ReferralStatus already models the lifecycle (OGC-1201 U).
+  { id: "referred_out", label: "Referred Out" },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -83,9 +86,15 @@ const OrderDashboardContent = () => {
   const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
   const isEnvOrVector = workflow === "environmental" || workflow === "vector";
 
+  const workflowLabel = {
+    vector: "sidenav.label.vector.order",
+    environmental: "sidenav.label.environmental.order",
+    clinical: "sidenav.label.clinical.order",
+  }[workflow];
+
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sidenav.label.addorder", link: workflowPrefix },
+    { label: workflowLabel, link: workflowPrefix },
   ];
 
   // Fetch orders

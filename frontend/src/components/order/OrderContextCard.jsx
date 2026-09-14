@@ -137,7 +137,10 @@ const OrderContextCard = ({ className = "" }) => {
   const status = getOrderStatus();
 
   return (
-    <Tile className={`order-context-card ${className}`}>
+    <Tile
+      className={`order-context-card ${className}`}
+      data-testid="order-context-card"
+    >
       <div className="context-card-content">
         {/* Lab Number and Status */}
         <div className="context-primary">
@@ -230,6 +233,9 @@ const OrderContextCard = ({ className = "" }) => {
         {/* Step Progress */}
         <div className="context-progress">
           <ProgressBar
+            label={intl.formatMessage({
+              id: "order.context.workflowProgress",
+            })}
             value={progressPercent}
             size="small"
             hideLabel

@@ -29,6 +29,7 @@ import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
 import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
+import { MICROBIOLOGY_REFERENCE_SECTIONS } from "./microbiologyReference/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -46,6 +47,27 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
 
     expect(screen.queryByText("Analyzer Test Name")).not.toBeInTheDocument();
     expect(container.querySelector('a[href$="/AnalyzerTestName"]')).toBeNull();
+  });
+
+  it("builds every microbiology reference route from shared section config", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/MicrobiologyReference/organisms",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    MICROBIOLOGY_REFERENCE_SECTIONS.forEach(({ key }) => {
+      expect(
+        container
+          .querySelector(`[data-testid="microbiology-reference-${key}"]`)
+          .getAttribute("href"),
+      ).toBe(`/MasterListsPage/MicrobiologyReference/${key}`);
+    });
+    expect(
+      container
+        .querySelector('[data-testid="microbiology-reference-organisms"]')
+        .getAttribute("aria-current"),
+    ).toBe("page");
   });
 
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
