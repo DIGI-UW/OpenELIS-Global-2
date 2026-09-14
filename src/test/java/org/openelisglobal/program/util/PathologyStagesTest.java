@@ -18,15 +18,17 @@ import static org.openelisglobal.program.valueholder.pathology.PathologySample.P
 
 import java.util.List;
 import org.junit.Test;
+import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 
 /**
- * OGC-264. Before this, the dashboard and the case view each hardcoded which
- * statuses counted as "in progress" and disagreed with each other, and three of
- * the old {@code PathologyStatus} constants ({@code CUTTING}, {@code SLICING},
- * {@code ADDITIONAL_REQUEST}) were not bench stages at all. Plain JUnit: no
- * Spring, no database, so the bench sequence and its mandatory spine (FR-2.3,
- * FR-2.6) are pinned deterministically.
+ * OGC-264. Before this, the dashboard's backend count tile and the dashboard's
+ * frontend stage filter each hardcoded which statuses counted as "in progress"
+ * and disagreed with each other, and three of the old {@code PathologyStatus}
+ * constants ({@code CUTTING}, {@code SLICING}, {@code ADDITIONAL_REQUEST}) were
+ * not bench stages at all. Plain JUnit: no Spring, no database, so the bench
+ * sequence, its mandatory spine and the in-progress grouping (FR-2.3, FR-2.6,
+ * AC-4) are pinned deterministically.
  */
 public class PathologyStagesTest {
 
@@ -39,8 +41,16 @@ public class PathologyStagesTest {
     }
 
     @Test
+    public void aNewCase_startsAtTheFirstBenchStage() {
+        assertEquals("a case that has just been received is at the first stage of the bench, not the second",
+                PathologyStages.ordered().get(0), new PathologySample().getStatus());
+        assertEquals("the first bench stage is ACCESSIONED (FR-2.1 row 1)", ACCESSIONED,
+                new PathologySample().getStatus());
+    }
+
+    @Test
     public void ordered_hasElevenStagesAndNoRetiredName() {
-        assertEquals(11, PathologyStages.ordered().size());
+        assertEquals("FR-2.1 names eleven bench stages", 11, PathologyStages.ordered().size());
         assertThrows("CUTTING was retired in favor of the real bench stages (AC-5)", IllegalArgumentException.class,
                 () -> PathologyStatus.valueOf("CUTTING"));
         assertThrows("SLICING was retired in favor of MICROTOMY (AC-5)", IllegalArgumentException.class,
@@ -72,8 +82,10 @@ public class PathologyStagesTest {
 
     @Test
     public void isEnabled_anOptionalStageFollowsTheDeployment() {
-        assertFalse(PathologyStages.isEnabled(COVERSLIPPING, status -> false));
-        assertTrue(PathologyStages.isEnabled(COVERSLIPPING, status -> true));
+        assertFalse("an optional stage the deployment switched off is not visited",
+                PathologyStages.isEnabled(COVERSLIPPING, status -> false));
+        assertTrue("an optional stage the deployment left on is visited",
+                PathologyStages.isEnabled(COVERSLIPPING, status -> true));
     }
 
     @Test
@@ -82,32 +94,51 @@ public class PathologyStagesTest {
                 .enabled(status -> status != COVERSLIPPING && status != DECALCIFICATION);
         List<PathologyStatus> expected = List.of(ACCESSIONED, GROSSING, PROCESSING, EMBEDDING, MICROTOMY, STAINING,
                 READY_PATHOLOGIST, UNDER_REVIEW, COMPLETED);
-        assertEquals(expected, result);
+        assertEquals("only the disabled optional stages are dropped, and the rest keep bench order", expected, result);
     }
 
     @Test
     public void enabled_withEverythingDisabledLeavesTheSpineInOrder() {
         List<PathologyStatus> expected = List.of(ACCESSIONED, GROSSING, READY_PATHOLOGIST, COMPLETED);
-        assertEquals(expected, PathologyStages.enabled(status -> false));
+        assertEquals("a deployment that disables everything still visits the spine, in bench order", expected,
+                PathologyStages.enabled(status -> false));
+    }
+
+    @Test
+    public void inProgress_isEveryStageExceptTheReviewQueueAndCompleted() {
+        List<PathologyStatus> expected = List.of(ACCESSIONED, GROSSING, DECALCIFICATION, PROCESSING, EMBEDDING,
+                MICROTOMY, STAINING, COVERSLIPPING, UNDER_REVIEW);
+
+        List<PathologyStatus> result = PathologyStages.inProgress();
+
+        assertEquals("work in progress is the bench sequence minus the review queue and the finished cases", expected,
+                result);
+        assertFalse("a case queued for a pathologist is counted as awaiting review, not as in progress",
+                result.contains(READY_PATHOLOGIST));
+        assertFalse("a finished case is not in progress", result.contains(COMPLETED));
     }
 
     @Test
     public void displayKey_isTheReactIntlIdForEveryStage() {
-        assertEquals("pathology.stage.accessioned", PathologyStages.displayKey(ACCESSIONED));
-        assertEquals("pathology.stage.grossing", PathologyStages.displayKey(GROSSING));
-        assertEquals("pathology.stage.decalcification", PathologyStages.displayKey(DECALCIFICATION));
-        assertEquals("pathology.stage.processing", PathologyStages.displayKey(PROCESSING));
-        assertEquals("pathology.stage.embedding", PathologyStages.displayKey(EMBEDDING));
-        assertEquals("pathology.stage.microtomy", PathologyStages.displayKey(MICROTOMY));
-        assertEquals("pathology.stage.staining", PathologyStages.displayKey(STAINING));
-        assertEquals("pathology.stage.coverslipping", PathologyStages.displayKey(COVERSLIPPING));
-        assertEquals("pathology.stage.readyPathologist", PathologyStages.displayKey(READY_PATHOLOGIST));
-        assertEquals("pathology.stage.underReview", PathologyStages.displayKey(UNDER_REVIEW));
-        assertEquals("pathology.stage.completed", PathologyStages.displayKey(COMPLETED));
+        String oneWord = "a one-word stage keys off its own name in lower case";
+        assertEquals(oneWord, "pathology.stage.accessioned", PathologyStages.displayKey(ACCESSIONED));
+        assertEquals(oneWord, "pathology.stage.grossing", PathologyStages.displayKey(GROSSING));
+        assertEquals(oneWord, "pathology.stage.decalcification", PathologyStages.displayKey(DECALCIFICATION));
+        assertEquals(oneWord, "pathology.stage.processing", PathologyStages.displayKey(PROCESSING));
+        assertEquals(oneWord, "pathology.stage.embedding", PathologyStages.displayKey(EMBEDDING));
+        assertEquals(oneWord, "pathology.stage.microtomy", PathologyStages.displayKey(MICROTOMY));
+        assertEquals(oneWord, "pathology.stage.staining", PathologyStages.displayKey(STAINING));
+        assertEquals(oneWord, "pathology.stage.coverslipping", PathologyStages.displayKey(COVERSLIPPING));
+
+        String twoWords = "an underscored stage keys off the camel-cased name the message bundle uses";
+        assertEquals(twoWords, "pathology.stage.readyPathologist", PathologyStages.displayKey(READY_PATHOLOGIST));
+        assertEquals(twoWords, "pathology.stage.underReview", PathologyStages.displayKey(UNDER_REVIEW));
+        assertEquals(oneWord, "pathology.stage.completed", PathologyStages.displayKey(COMPLETED));
     }
 
     @Test
     public void ordered_isUnmodifiable() {
-        assertThrows(UnsupportedOperationException.class, () -> PathologyStages.ordered().add(ACCESSIONED));
+        assertThrows("callers share the bench sequence, so none of them may reorder or extend it",
+                UnsupportedOperationException.class, () -> PathologyStages.ordered().add(ACCESSIONED));
     }
 }

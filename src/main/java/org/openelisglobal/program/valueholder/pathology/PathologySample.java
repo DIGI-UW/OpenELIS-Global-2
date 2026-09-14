@@ -70,7 +70,7 @@ public class PathologySample extends ProgramSample {
 
     @Enumerated(EnumType.STRING)
     @NotNull
-    private PathologyStatus status = PathologyStatus.GROSSING;
+    private PathologyStatus status = PathologyStatus.ACCESSIONED;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
