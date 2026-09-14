@@ -140,6 +140,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return baseObjectDAO.getCountWithStatus(statuses);
     }
 
+    @Override
+    public Long getCountWithOpenRequests() {
+        return baseObjectDAO.getCountWithOpenRequests();
+    }
+
     private PathologySample copyPathologySample(PathologySample oldPathologySample) {
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));

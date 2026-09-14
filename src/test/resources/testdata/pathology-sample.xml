@@ -55,7 +55,7 @@
     <pathology_slide id="201" pathology_sample_id="1"
         file_type="JPEG" location="Slide Storage 1" />
     <pathology_request id="301" pathology_sample_id="1"
-        status="PENDING" type="DICTIONARY" value="HISTOLOGY" />
+        status="OPENED" type="DICTIONARY" value="HISTOLOGY" />
 
     <pathology_technique id="401"
         pathology_sample_id="1" type="MANUAL" value="Frozen Section" />

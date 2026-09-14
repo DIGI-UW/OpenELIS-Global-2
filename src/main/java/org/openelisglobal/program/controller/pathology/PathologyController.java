@@ -48,13 +48,11 @@ public class PathologyController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<PathologyDashBoardCount> getFilteredPathologyEntries() {
         PathologyDashBoardCount count = new PathologyDashBoardCount();
-        count.setInProgress(pathologySampleService.getCountWithStatus(
-                Arrays.asList(PathologyStatus.GROSSING, PathologyStatus.CUTTING, PathologyStatus.GROSSING,
-                        PathologyStatus.SLICING, PathologyStatus.STAINING, PathologyStatus.PROCESSING)));
+        count.setInProgress(pathologySampleService.getCountWithStatus(Arrays.asList(PathologyStatus.GROSSING,
+                PathologyStatus.MICROTOMY, PathologyStatus.STAINING, PathologyStatus.PROCESSING)));
         count.setAwaitingReview(
                 pathologySampleService.getCountWithStatus(Arrays.asList(PathologyStatus.READY_PATHOLOGIST)));
-        count.setAdditionalRequests(
-                pathologySampleService.getCountWithStatus(Arrays.asList(PathologyStatus.ADDITIONAL_REQUEST)));
+        count.setAdditionalRequests(pathologySampleService.getCountWithOpenRequests());
 
         Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
         Instant weekAgoInstant = Instant.now().minus(7, ChronoUnit.DAYS);
