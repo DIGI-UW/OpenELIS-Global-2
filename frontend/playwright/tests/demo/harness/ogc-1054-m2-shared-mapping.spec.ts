@@ -1,5 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
+import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -153,14 +154,10 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
         name: "Control result recognition",
       }),
     ).toBeVisible();
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth,
-      ),
+    await expectNoPageHorizontalOverflow(
+      page,
       "Shared mapping review should not overflow the mobile page horizontally",
-    ).toBe(true);
+    );
 
     await testInfo.attach("analyzer-type-shared-mapping-mobile", {
       body: await page.screenshot({ fullPage: true }),

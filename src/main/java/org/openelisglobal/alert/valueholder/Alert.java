@@ -74,8 +74,22 @@ public class Alert extends BaseObject<Long> {
     @Column(name = "alert_entity_type", length = 100, nullable = false)
     private String alertEntityType;
 
-    @Column(name = "alert_entity_id", nullable = false)
+    /**
+     * Numeric entity id for entities keyed by a database sequence (Freezer,
+     * Equipment, Sample, ...). Nullable because string-keyed entities (e.g.
+     * microbiology's UUID-keyed cases/criticals) use {@link #alertEntityRef}
+     * instead; exactly one of the two must be set (enforced by a DB check
+     * constraint, see 3.5.x.x/057-alert-entity-ref.xml).
+     */
+    @Column(name = "alert_entity_id")
     private Long alertEntityId;
+
+    /**
+     * String entity reference for entities keyed by a non-numeric id, e.g. a UUID.
+     * See {@link #alertEntityId} for the numeric-keyed counterpart.
+     */
+    @Column(name = "alert_entity_ref", length = 64)
+    private String alertEntityRef;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity", length = 20, nullable = false)

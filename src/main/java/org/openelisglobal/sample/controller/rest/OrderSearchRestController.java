@@ -83,8 +83,10 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
@@ -182,6 +184,9 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private SampleComplianceStandardService sampleComplianceStandardService;
 
+    /** Dashboard filter value for orders that have been referred out. */
+    private static final String REFERRED_OUT_FILTER = "referred_out";
+
     @Autowired
     private ReferralService referralService;
 
@@ -211,6 +216,11 @@ public class OrderSearchRestController extends BaseRestController {
     private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
     private static final int MAX_DASHBOARD_PAGE_SIZE = 500;
 
+    @Autowired
+    private TestMethodService testMethodService;
+
+    @Autowired(required = false)
+    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -356,8 +366,16 @@ public class OrderSearchRestController extends BaseRestController {
                     orderStatus = "in_progress";
                 }
 
-                // Filter by status
-                if (status != null && !status.isEmpty() && !"all".equals(status)) {
+                // Referred-out is a property of the referral, not a second sample
+                // status: the FHIR-aligned ReferralStatus already models the
+                // lifecycle, and a parallel sample status could only disagree with
+                // it. The dashboard filter therefore asks whether the order has a
+                // referral rather than reading a status column (OGC-1201 U).
+                if (REFERRED_OUT_FILTER.equals(status)) {
+                    if (!hasReferral(sampleItemsForProgress)) {
+                        continue;
+                    }
+                } else if (status != null && !status.isEmpty() && !"all".equals(status)) {
                     if (!orderStatus.equals(status)) {
                         continue; // Skip this sample
                     }
@@ -655,7 +673,7 @@ public class OrderSearchRestController extends BaseRestController {
                 } else {
                     analyses = analysisService.getAnalysesBySampleItem(sampleItem);
                 }
-                List<Map<String, Object>> testsData = new ArrayList<>();
+                List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
                 // panelId → testIds accumulator — built from PanelItem records so that
@@ -666,11 +684,7 @@ public class OrderSearchRestController extends BaseRestController {
                     if (analysis.getTest() == null) {
                         continue;
                     }
-                    Map<String, Object> testData = new HashMap<>();
-                    testData.put("id", analysis.getTest().getId());
-                    testData.put("name", analysis.getTest().getLocalizedName());
-                    testData.put("description", analysis.getTest().getDescription());
-                    testsData.add(testData);
+                    testsData.add(buildSelectedTestData(analysis.getTest()));
 
                     try {
                         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(analysis.getTest().getId());
@@ -791,6 +805,8 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
+            addMicrobiologyOrderDetail(response, sample);
+
             // Step progress - determine based on actual data
             boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
@@ -846,6 +862,32 @@ public class OrderSearchRestController extends BaseRestController {
             LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private boolean hasReferral(List<SampleItem> sampleItems) {
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                if (referral != null && referral.getId() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void addMicrobiologyOrderDetail(Map<String, Object> response, Sample sample) {
+        if (microCaseOrderDetailService == null) {
+            return;
+        }
+        var microbiologyOrderDetail = microCaseOrderDetailService.getOrderDraft(sample.getId());
+        if (microbiologyOrderDetail != null) {
+            response.put("microbiologyOrderDetail", microbiologyOrderDetail);
+        }
+    }
+
+    TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        return new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(test.getId()));
     }
 
     /**
@@ -1092,8 +1134,7 @@ public class OrderSearchRestController extends BaseRestController {
                 ProgramSample programSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sampleId),
                         programName);
                 if (programSample != null && programSample.getProgram() != null) {
-                    String programId = programSample.getProgram().getId();
-                    sampleOrderItems.put("programId", programId);
+                    addProgramSelection(sampleOrderItems, programSample.getProgram());
 
                     // Load questionnaire response if available
                     if (programSample.getQuestionnaireResponseUuid() != null) {
@@ -1114,7 +1155,7 @@ public class OrderSearchRestController extends BaseRestController {
                     List<Program> allPrograms = programService.getAll();
                     for (Program p : allPrograms) {
                         if (p.getProgramName() != null && p.getProgramName().equals(programName)) {
-                            sampleOrderItems.put("programId", p.getId());
+                            addProgramSelection(sampleOrderItems, p);
                             break;
                         }
                     }
@@ -1132,8 +1173,7 @@ public class OrderSearchRestController extends BaseRestController {
                 if (programSamples != null && !programSamples.isEmpty()) {
                     ProgramSample ps = programSamples.get(0);
                     if (ps.getProgram() != null) {
-                        sampleOrderItems.put("programId", ps.getProgram().getId());
-                        sampleOrderItems.put("program", ps.getProgram().getProgramName());
+                        addProgramSelection(sampleOrderItems, ps.getProgram());
 
                         // Load questionnaire response if available
                         if (ps.getQuestionnaireResponseUuid() != null) {
@@ -1218,6 +1258,12 @@ public class OrderSearchRestController extends BaseRestController {
         }
 
         return sampleOrderItems;
+    }
+
+    private void addProgramSelection(Map<String, Object> sampleOrderItems, Program program) {
+        sampleOrderItems.put("programId", program.getId());
+        sampleOrderItems.put("program", program.getProgramName());
+        sampleOrderItems.put("programCode", program.getCode());
     }
 
     /**

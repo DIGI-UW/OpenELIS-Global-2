@@ -65,6 +65,11 @@ produces a merged HTML report artifact:
 No `workflow_dispatch` manual workflows exist for Playwright. Video recording
 is local-only via the `-video` project variants.
 
+Analyzer-ingress scenarios post as a machine client. Set
+`ANALYZER_INGRESS_USER` / `ANALYZER_INGRESS_PASS` to use a dedicated
+analyzer-import account; otherwise they fall back to `TEST_USER` / `TEST_PASS`,
+and then to the `admin` fixture account, which carries the role.
+
 ## Fixtures
 
 CI workflows load fixtures via the unified loader script:
@@ -149,20 +154,51 @@ Canonical directories:
 - `playwright/tests/demo/core/`
 - `playwright/tests/demo/harness/`
 - `playwright/tests/foundational/core/`
+- `playwright/tests/performance/core/`
 - `playwright/tests/manual-only/harness/`
 
 Only `demo/**` specs participate in auto-video CI evidence policy. `manual-only/**`
 specs never run in ordinary PR CI.
+
+`performance/**` specs are explicit qualification runs. They require
+`MICROBIOLOGY_QUALIFICATION_DISPOSABLE=true`, an exact `OGC782_COMMIT`, and a
+throwaway stack/database that is destroyed after evidence collection. They must
+not run against shared review or clinical data.
 
 ## Local Execution
 
 ### Prerequisites
 
 1. **Dependencies:** from `frontend/`, run **`npm run ci:deps`** (then **`npm run pw:install`**). Plain **`npm ci`** often prints almost nothing for several minutes while Cypress unpacks — it is not stuck; **`ci:deps`** forces progress + `loglevel=info` so you see steady output. `.npmrc` also sets `progress=true` for normal installs.
-2. App running at `https://localhost` (or set `BASE_URL`)
-3. Auth env vars: `TEST_USER` and `TEST_PASS`
+2. Start the isolated stack from the repository root with
+   **`scripts/dev-stack up`**.
+
+Authentication uses the shared setup project and the repository `.env` values;
+the standard development credentials need no manual export.
 
 ### Commands
+
+```bash
+# Preferred developer entry point, from the repository root. It discovers the
+# current worktree's URL and runs authentication automatically.
+scripts/dev-stack playwright
+
+# Run a specific test (core-app is the default project)
+scripts/dev-stack playwright playwright/tests/foundational/core/microbiology-whonet-export.spec.ts
+
+# Verify only the shared login/session contract
+scripts/dev-stack playwright --project=setup
+
+# Select another registered project
+scripts/dev-stack playwright --project=harness-foundational
+
+# Run the same test against a deployed target
+BASE_URL=https://amr.openelis-global.org \
+  scripts/dev-stack playwright playwright/tests/foundational/core/microbiology-whonet-export.spec.ts
+```
+
+The lower-level package commands below remain the CI interface and are useful
+when debugging Playwright itself:
 
 ```bash
 cd frontend
@@ -267,6 +303,34 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-mvp
 assembled story selected by `pw:test:harness-mvp`, with `slowMo: 500` and video
 enabled.
 
+### Stakeholder Evidence Format
+
+Feature walkthroughs use one editorial format in addition to the shared
+recording mechanics:
+
+1. Record at 16:9 through a registered `*-demo-video` project; target 45-90
+   seconds for one milestone.
+2. Open with a 3.5-4.5 second full-screen card: ticket/milestone eyebrow,
+   literal feature title, and one-line outcome. Use `demo.chapter()` so the
+   Carbon-dark card, left accent, type hierarchy, and spacing stay consistent.
+3. Introduce each user story with a chapter card. Use compact scene labels for
+   sustained interaction; reserve numbered step banners for genuinely ordered
+   procedures rather than every click.
+4. End with an outcome card that distinguishes automated evidence from human
+   UAT. Do not imply acceptance when Review-overlay rulings are pending.
+5. Capture 5-8 stable screenshots at acceptance checkpoints and inspect both a
+   screenshot contact sheet and representative video frames for clipping,
+   stale loading state, scroll position, and readable timing.
+6. Package WebM as H.264/yuv420p/faststart MP4 and record the app SHA,
+   deployment ID, checklist revision, and artifact checksums in the evidence
+   manifest or README.
+7. Compare key screenshots with the authoritative product mock/spec. Record
+   intentional OpenELIS-shell or Carbon differences; do not treat prototype
+   routes, components, or navigation as implementation contracts.
+
+Presentation pauses are allowed only through the video-gated helpers below.
+Functional readiness and assertions must continue to use observable state.
+
 ```bash
 cd frontend
 # Core stack (e.g. OGC-284 barcode stories)
@@ -316,7 +380,9 @@ test("my demo test", async ({ page }, testInfo) => {
 - `showStepCard(page, stepNumber, description, durationMs, testInfo)` — step
   banner overlay, skips in non-video projects
 - `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
-  single UI-only scenario can run in both its normal and `*-demo-video` modes
+  single UI-only scenario can run in both its normal and `*-demo-video` modes;
+  prefer its structured `chapter()` method for opening, story, and completion
+  cards
 
 ## Adding New Tests
 
@@ -337,11 +403,13 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable            | Default             | Description                                                          |
-| ------------------- | ------------------- | -------------------------------------------------------------------- |
-| `BASE_URL`          | `https://localhost` | App URL                                                              |
-| `TEST_USER`         | —                   | Login username (required)                                            |
-| `TEST_PASS`         | —                   | Login password (required)                                            |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects                   |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)               |
-| `CI`                | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config |
+| Variable                | Default              | Description                                                                  |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------- |
+| `BASE_URL`              | `https://localhost`  | App URL                                                                      |
+| `TEST_USER`             | —                    | Login username (required)                                                    |
+| `TEST_PASS`             | —                    | Login password (required)                                                    |
+| `ANALYZER_INGRESS_USER` | `TEST_USER`, `admin` | Dedicated account with the Analyser Import role for analyzer-event scenarios |
+| `ANALYZER_INGRESS_PASS` | `TEST_PASS`, fixture | Password for the dedicated analyzer-ingress account                          |
+| `PLAYWRIGHT_SLOWMO`     | `500`                | Milliseconds of slowMo for `*-demo-video` projects                           |
+| `PLAYWRIGHT_VIDEO`      | `off`                | Global video override (prefer `*-demo-video` projects)                       |
+| `CI`                    | —                    | Set by GitHub Actions; enables CI mode settings in Playwright config         |

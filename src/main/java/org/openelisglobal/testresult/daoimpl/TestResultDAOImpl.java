@@ -210,6 +210,35 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
     @Override
     @Transactional(readOnly = true)
+    public TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId)
+            throws LIMSRuntimeException {
+        if (componentId == null || componentId.isBlank()) {
+            return getTestResultsByTestAndDictonaryResult(testId, result);
+        }
+        if (!StringUtil.isInteger(result)) {
+            return null;
+        }
+        try {
+            String sql = "from TestResult t where t.testResultType in ('D','M','Q','C') and t.test.id = :testId"
+                    + " and t.value = :testValue and t.componentId = :componentId";
+            Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
+            query.setParameter("testId", testId);
+            query.setParameter("testValue", result);
+            query.setParameter("componentId", componentId);
+            List<TestResult> list = query.list();
+            if (list != null && !list.isEmpty()) {
+                return list.get(0);
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in TestResult getTestResultsByTestAndDictonaryResult(String testId,"
+                    + " String result, String componentId)", e);
+        }
+        return getTestResultsByTestAndDictonaryResult(testId, result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException {
         List<TestResult> list;
         try {

@@ -6,6 +6,13 @@
 
 set -euo pipefail
 
+ENSURE_CONNECTIONS=false
+case "${1:-}" in
+  "") ;;
+  --ensure-connections) ENSURE_CONNECTIONS=true ;;
+  *) echo "Usage: $0 [--ensure-connections]" >&2; exit 2 ;;
+esac
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -24,6 +31,11 @@ LAB_UNITS_API="$BASE_URL/api/OpenELIS-Global/rest/test-catalog/lab-units"
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
 
+CURL_TLS_FLAG=--no-insecure
+if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
+  CURL_TLS_FLAG=--insecure
+fi
+
 GENEXPERT_PROFILE_ID="genexpert-astm"
 FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
 QUANTSTUDIO_PROFILE_ID="quantstudio"
@@ -41,7 +53,7 @@ fetch_json() {
   local attempt
   local status
   for attempt in 1 2 3 4 5; do
-    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url" || true)"
+    status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url" || true)"
     if [ "$status" = "200" ]; then
       return 0
     fi
@@ -141,6 +153,10 @@ PY
 
   local analyzer_id
   analyzer_id="$(find_analyzer_id "$name")"
+  if [ "$ENSURE_CONNECTIONS" = true ] && [ -n "$analyzer_id" ]; then
+    echo "  Preserved existing connection: $name"
+    return 0
+  fi
   local method="POST"
   local url="$ANALYZER_API"
   local expected_status="201"
@@ -155,7 +171,7 @@ PY
   fi
 
   local status
-  status="$(curl -sk --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
+  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
   if [ "$status" != "$expected_status" ]; then
     echo "ERROR: Failed to $action $name (HTTP $status)" >&2
     sed 's/^/  /' "$RESPONSE_FILE" >&2
@@ -258,7 +274,9 @@ fetch_json "$LAB_UNITS_API" "$LAB_UNITS_FILE" "Active lab units"
 LAB_UNIT_ID="$(resolve_lab_unit_id)"
 echo "  lab unit $LAB_UNIT_ID"
 
-curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
+if [ "$ENSURE_CONNECTIONS" = false ]; then
+  curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
+fi
 
 echo "Creating GeneXpert mock transport..."
 GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
@@ -273,6 +291,11 @@ reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_I
 reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
+
+if [ "$ENSURE_CONNECTIONS" = true ]; then
+  echo "Done. Missing harness connections created; existing configuration and review data preserved."
+  exit 0
+fi
 
 verify_profile_pins
 echo "Preparing analyzer mappings and result traffic for visible stories..."

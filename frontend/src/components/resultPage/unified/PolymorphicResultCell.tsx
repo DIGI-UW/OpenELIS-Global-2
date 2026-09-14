@@ -10,8 +10,10 @@ import CascadingMultiSelect from "../../common/cascadingMultiSelect";
  * Renders the result input by the test's result type — numeric (N),
  * dictionary (D), multi-checkbox (M) — matching the legacy widgets one for
  * one so stored values stay compatible. Cascading (C), remark (R) and
- * alphanumeric (A) reuse the legacy behavior. When the row is read-only
- * (FR-A2: saved until Edit) the stored display value renders as plain text.
+ * alphanumeric (A) reuse the legacy behavior. Titer (T) is a free-text
+ * dilution ratio such as 1:10, stored as typed (OGC-1185). When the row is
+ * read-only (FR-A2: saved until Edit) the stored display value renders as
+ * plain text.
  *
  * A multi-component test yields one row PER COMPONENT sharing an analysisId
  * (FR-A′1), so widget identity and change events are keyed by the composite
@@ -227,6 +229,23 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
         />
       );
     }
+
+    case "T":
+      return (
+        <TextInput
+          id={`unifiedResultValue-${rowKey}`}
+          labelText={accessibleName}
+          hideLabel
+          type="text"
+          placeholder={intl.formatMessage({
+            id: "label.results.titer.placeholder",
+          })}
+          value={row.resultValue || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onValueChange("resultValue", e.target.value)
+          }
+        />
+      );
 
     case "R":
     case "A":

@@ -134,7 +134,9 @@
    ========================================================================== */
 .order-workflow-container {
   border-radius: 8px;
+  box-sizing: border-box;
   margin: 1.5rem;
+  min-width: 0;
   padding: 1.5rem;
   background-color: var(--cds-layer);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -585,38 +587,6 @@
   gap: 1.5rem;
 }
 
-.qa-checklist-tile {
-  padding: 1.5rem;
-
-  h4 {
-    margin-bottom: 0.5rem;
-  }
-
-  .qa-checklist-instructions {
-    color: #6f6f6f; /* cds-gray-60 for WCAG AA compliance */
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
-
-  .qa-checklist-items {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
-
-    .cds--checkbox-wrapper {
-      padding: 0.5rem;
-      border-radius: 4px;
-      min-height: 32px; /* WCAG touch target */
-      transition: background-color 0.15s ease;
-
-      &:hover {
-        background-color: var(--cds-layer-hover);
-      }
-    }
-  }
-}
-
 .qa-success-tile {
   padding: 3rem;
   text-align: center;
@@ -794,6 +764,8 @@
    ========================================================================== */
 .order-section {
   margin-bottom: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
   padding: 1.5rem;
 
   .section-title {
@@ -842,6 +814,7 @@
 /* Section Tabs */
 .section-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 
@@ -861,9 +834,7 @@
   }
 
   .generate-link {
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    cursor: pointer;
+    flex: 0 0 auto;
   }
 }
 
@@ -896,6 +867,7 @@
 
 .search-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1rem;
 
@@ -906,6 +878,12 @@
 
 .search-results {
   margin-top: 1.5rem;
+  min-width: 0;
+
+  .cds--data-table-content {
+    max-width: 100%;
+    overflow-x: auto;
+  }
 
   .results-title {
     margin-bottom: 0.5rem;
@@ -1375,12 +1353,23 @@
    Responsive
    ========================================================================== */
 @media (max-width: 768px) {
+  .lab-number-field {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .generate-link {
+      align-self: flex-start;
+    }
+  }
+
   .order-dashboard {
     padding: 1rem;
   }
 
   .order-workflow-container {
     margin: 1rem;
+    max-width: calc(100vw - 2rem);
     padding: 1rem;
   }
 
@@ -1747,4 +1736,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+.label-print-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  .label-print-blocked-link {
+    padding-left: 1rem;
+  }
+}
+
+.sample-holding-limit {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  margin: 0.25rem 0 0.5rem;
 }

@@ -1,12 +1,18 @@
 package org.openelisglobal.test.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
@@ -111,6 +117,48 @@ public class TestConfigurationHandlerTest {
         assertEquals("Should parse 10 columns", 10, result.length);
         assertEquals("Quoted test name should be parsed correctly", "Test Name, With Comma", result[0]);
         assertEquals("Quoted sample types should be parsed correctly", "Plasma|Serum, Special", result[2]);
+    }
+
+    @Test
+    public void findExistingTest_prefersExactDescriptionOverNormalizedFallback() throws Exception {
+        TestService testService = mock(TestService.class);
+        org.openelisglobal.test.valueholder.Test expected = new org.openelisglobal.test.valueholder.Test();
+        setTestService(testService);
+        when(testService.getTestByDescription("LYM%(Whole Blood)")).thenReturn(expected);
+
+        org.openelisglobal.test.valueholder.Test result = findExistingTest("LYM%(Whole Blood)");
+
+        assertSame(expected, result);
+        verify(testService).getTestByDescription("LYM%(Whole Blood)");
+        verify(testService, never()).getTestByNormalizedDescription("LYM%(Whole Blood)");
+    }
+
+    @Test
+    public void findExistingTest_usesNormalizedFallbackWhenNoExactDescriptionExists() throws Exception {
+        TestService testService = mock(TestService.class);
+        org.openelisglobal.test.valueholder.Test expected = new org.openelisglobal.test.valueholder.Test();
+        setTestService(testService);
+        when(testService.getTestByNormalizedDescription("Stat-Pak(Plasma)")).thenReturn(expected);
+
+        org.openelisglobal.test.valueholder.Test result = findExistingTest("Stat-Pak(Plasma)");
+
+        assertSame(expected, result);
+        verify(testService).getTestByDescription("Stat-Pak(Plasma)");
+        verify(testService).getTestByNormalizedDescription("Stat-Pak(Plasma)");
+    }
+
+    private org.openelisglobal.test.valueholder.Test findExistingTest(String testName) throws Exception {
+        Method findExistingTest = TestConfigurationHandler.class.getDeclaredMethod("findExistingTest", String.class,
+                String[].class, java.util.Map.class);
+        findExistingTest.setAccessible(true);
+        return (org.openelisglobal.test.valueholder.Test) findExistingTest.invoke(handler, testName, new String[0],
+                Collections.emptyMap());
+    }
+
+    private void setTestService(TestService testService) throws Exception {
+        java.lang.reflect.Field testServiceField = TestConfigurationHandler.class.getDeclaredField("testService");
+        testServiceField.setAccessible(true);
+        testServiceField.set(handler, testService);
     }
 
     /**

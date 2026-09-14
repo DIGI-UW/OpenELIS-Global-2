@@ -1,0 +1,17 @@
+package org.openelisglobal.microbiology.dao;
+
+import java.util.List;
+import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+
+public interface MicroAstPanelDAO extends BaseDAO<MicroAstPanel, String> {
+    List<MicroAstPanel> getByIds(List<String> panelIds);
+
+    List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType);
+
+    MicroAstPanel findCurrentByLogicalKey(String logicalKey);
+
+    List<MicroAstPanel> search(String q, String status, String workflow, String sort, int offset, int limit);
+
+    long countSearch(String q, String status, String workflow);
+}
