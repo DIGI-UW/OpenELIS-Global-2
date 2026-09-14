@@ -88,7 +88,7 @@ public class TestCatalogEditorRestController {
      * visibility.
      */
     private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "methods", "ranges",
-            "storage", "panels", "terminology", "analyzers", "display-order");
+            "qc-targets", "storage", "panels", "terminology", "analyzers", "display-order");
 
     private final TestService testService;
 
@@ -857,6 +857,9 @@ public class TestCatalogEditorRestController {
         // Per-component default for printing on the patient report (OGC-1127).
         // Null/absent = true (backward-compatible: existing components print).
         public Boolean showOnReport;
+        // Detection limits of a quantitative component (OGC-1148), both optional.
+        public java.math.BigDecimal lod;
+        public java.math.BigDecimal loq;
         public List<InterpretationDto> interpretations = new ArrayList<>();
         public List<OptionDto> options = new ArrayList<>();
     }
@@ -892,6 +895,11 @@ public class TestCatalogEditorRestController {
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
+            // FR-C2 (OGC-1148): detection limits are non-negative and LOD <= LOQ.
+            if ((c.lod != null && c.lod.signum() < 0) || (c.loq != null && c.loq.signum() < 0)
+                    || (c.lod != null && c.loq != null && c.lod.compareTo(c.loq) > 0)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         List<TestResultComponent> desired = new ArrayList<>();
@@ -914,6 +922,8 @@ public class TestCatalogEditorRestController {
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
             e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
+            e.setLod(c.lod);
+            e.setLoq(c.loq);
             desired.add(e);
 
             List<TestResultInterpretation> interps = new ArrayList<>();
@@ -994,6 +1004,8 @@ public class TestCatalogEditorRestController {
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
             dto.showOnReport = c.getShowOnReport();
+            dto.lod = c.getLod();
+            dto.loq = c.getLoq();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
                 InterpretationDto idto = new InterpretationDto();
                 idto.id = i.getId();
