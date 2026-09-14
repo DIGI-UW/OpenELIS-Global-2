@@ -526,4 +526,8 @@
        (no patient, continue with testing). -->
   <include relativeToChangelogFile="true" file="100-order-override-record.xml"/>
 
+  <!-- OGC-1188: referrals written by Results Entry with the deprecated SENT status
+       were invisible to the Reference Lab Results page and to shipment dispatch. -->
+  <include relativeToChangelogFile="true" file="101-referral-sent-status-backfill.xml"/>
+
 </databaseChangeLog>

@@ -57,6 +57,7 @@ import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
@@ -136,6 +137,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private ResultInventoryService resultInventoryService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private ReferralSetService referralSetService;
     @Autowired
     private ResultLimitService resultLimitService;
     @Autowired
@@ -595,13 +598,24 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet) {
+        // See ResultUtil.hasOpenReferral: a test carrying a live referral is not
+        // referred a second time.
+        if (ResultUtil.hasOpenReferral(analysis)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "handleReferrals",
+                    "refused a second referral on analysis " + analysis.getId()
+                            + ": one is still open. Cancel it before referring the test again.");
+            return;
+        }
         // List<Referral> referrals = new ArrayList<>();
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
-        referral.setStatus(ReferralStatus.SENT);
+        // See ResultUtil.handleReferrals: DRAFT plus a subcontract row, dispatched
+        // later from the send date or the shipment box (OGC-1188).
+        referral.setStatus(ReferralStatus.DRAFT);
+        referral.setSubcontract(
+                referralSetService.buildSubcontractFromItem(referralItem, actionDataSet.getCurrentUserId()));
         referral.setSysUserId(actionDataSet.getCurrentUserId());
         referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
         referral.setRequesterName(testResultItem.getTechnician());
