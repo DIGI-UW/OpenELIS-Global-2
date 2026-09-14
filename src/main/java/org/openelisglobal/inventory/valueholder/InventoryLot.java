@@ -93,15 +93,11 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    // Not persisted on the lot row (OGC-657): populated on read by the REST
-    // controller from SampleStorageService.getLocationsForInventoryLots, the
-    // same assignment-table lookup samples use for their location.
-    //
-    // Uses the `transient` keyword rather than @jakarta.persistence.Transient:
-    // JPA honors both for excluding a field from persistence, but
-    // Hibernate5JakartaModule's Jackson AnnotationIntrospector treats the
-    // *annotation* as an implicit @JsonIgnore, which silently dropped this
-    // field from every JSON response even when populated.
+    // Not persisted (OGC-657): filled on read from
+    // SampleStorageService.getLocationsForInventoryLots.
+    // Declared with the `transient` keyword rather than
+    // @jakarta.persistence.Transient, which Hibernate5JakartaModule's Jackson
+    // introspector reads as @JsonIgnore and drops from every response.
     private transient Map<String, Object> location;
 
     // Business logic helper methods

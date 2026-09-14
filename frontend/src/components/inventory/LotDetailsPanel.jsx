@@ -16,7 +16,11 @@ import {
 } from "@carbon/react";
 import { Close } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { TransactionAPI, UsageAPI } from "./InventoryService";
+import {
+  InventoryLotStorageAPI,
+  TransactionAPI,
+  UsageAPI,
+} from "./InventoryService";
 import "./LotDetailsPanel.css";
 
 const LotDetailsPanel = ({ open, onClose, lot }) => {
@@ -24,6 +28,7 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [usage, setUsage] = useState([]);
+  const [movements, setMovements] = useState([]);
 
   useEffect(() => {
     if (open && lot) {
@@ -39,6 +44,9 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
 
       const usageData = await UsageAPI.getByLot(lot.id);
       setUsage(usageData || []);
+
+      const movementRows = await InventoryLotStorageAPI.getMovements(lot.id);
+      setMovements(Array.isArray(movementRows) ? movementRows : []);
     } catch (err) {
       console.error("Error fetching lot details:", err);
     } finally {
@@ -218,6 +226,77 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                     )}
                   </Tag>
                 </div>
+
+                <div className="panel-section">
+                  <h4>
+                    <FormattedMessage
+                      id="lot.details.section.movements"
+                      defaultMessage="Movement History"
+                    />
+                  </h4>
+                  {movements.length === 0 ? (
+                    <p className="empty-state">
+                      <FormattedMessage
+                        id="lot.details.no.movements"
+                        defaultMessage="No movements recorded for this lot"
+                      />
+                    </p>
+                  ) : (
+                    <StructuredListWrapper>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.movementDate" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.from" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.to" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.movedBy" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.reason" />
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        {movements.map((m) => (
+                          <StructuredListRow key={m.id}>
+                            <StructuredListCell>
+                              {formatDate(m.movementDate)}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {formatLocation(
+                                m.previousLocationType,
+                                m.previousLocationId,
+                                m.previousPositionCoordinate,
+                              )}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {formatLocation(
+                                m.newLocationType,
+                                m.newLocationId,
+                                m.newPositionCoordinate,
+                              )}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {m.movedByUserName ||
+                                (m.movedByUserId != null
+                                  ? String(m.movedByUserId)
+                                  : "-")}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {m.reason || "-"}
+                            </StructuredListCell>
+                          </StructuredListRow>
+                        ))}
+                      </StructuredListBody>
+                    </StructuredListWrapper>
+                  )}
+                </div>
               </TabPanel>
 
               <TabPanel>
@@ -327,5 +406,13 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
     </div>
   );
 };
+
+function formatLocation(type, id, coord) {
+  const parts = [];
+  if (type) parts.push(type);
+  if (id != null) parts.push(`#${id}`);
+  if (coord) parts.push(`(${coord})`);
+  return parts.length > 0 ? parts.join(" ") : "-";
+}
 
 export default LotDetailsPanel;

@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * message converters) via MockMvc, not a hand-built ObjectMapper, so it
  * exercises the exact code path that broke.
  */
-public class InventoryLotRestControllerIT extends BaseWebContextSensitiveTest {
+public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleStorageService sampleStorageService;
@@ -43,10 +43,8 @@ public class InventoryLotRestControllerIT extends BaseWebContextSensitiveTest {
         super.setUp();
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
-        // Defensive: sample_storage_assignment/movement aren't part of the fixture
-        // above (they're populated by individual test methods), so guarantee a
-        // clean slate here too, not just in @After — keeps test methods
-        // order-independent.
+        // The fixture carries no sample_storage_assignment/movement rows, so clear
+        // them here as well to keep test methods order-independent.
         cleanRowsInCurrentConnection(new String[] { "sample_storage_movement", "sample_storage_assignment" });
     }
 

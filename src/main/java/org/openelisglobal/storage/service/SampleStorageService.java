@@ -121,9 +121,8 @@ public interface SampleStorageService {
             org.springframework.data.domain.Pageable pageable);
 
     /**
-     * Assign an InventoryLot to a location using the same polymorphic
-     * locationId+locationType model and audit trail as sample assignments
-     * (OGC-657).
+     * Assign an InventoryLot to a location, using the same locationId+locationType
+     * model and audit trail as sample assignments (OGC-657).
      *
      * @param inventoryLotId     InventoryLot ID
      * @param locationId         Location ID (room, device, shelf, rack, or box ID)
@@ -169,9 +168,8 @@ public interface SampleStorageService {
     java.util.List<java.util.Map<String, Object>> getInventoryLotMovementsWithUserNames(String inventoryLotId);
 
     /**
-     * Bulk lookup of current locations for many InventoryLots, keyed by lot id (as
-     * String), to avoid N+1 queries when rendering the Inventory dashboard
-     * (OGC-657). Only lots that have an assignment appear in the result.
+     * Current locations for many InventoryLots in one assignment query, keyed by
+     * lot id as a String; lots without an assignment are absent (OGC-657).
      */
     java.util.Map<String, java.util.Map<String, Object>> getLocationsForInventoryLots(
             java.util.List<Long> inventoryLotIds);

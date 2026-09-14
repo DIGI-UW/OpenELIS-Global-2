@@ -29,17 +29,26 @@ vi.mock("./InventoryService", () => ({
 vi.mock("../storage/LocationPicker/LocationPickerModal", () => ({
   default: ({ isOpen, onConfirm }) =>
     isOpen ? (
-      <button
-        onClick={() =>
-          onConfirm({
-            selection: { room: { id: 9, name: "Cold Room" } },
-            position: null,
-            notes: "",
-          })
-        }
-      >
-        mock-confirm-location
-      </button>
+      <>
+        <button
+          onClick={() =>
+            onConfirm({
+              selection: { room: { id: 9, name: "Cold Room" } },
+              position: null,
+              notes: "",
+            })
+          }
+        >
+          mock-confirm-location
+        </button>
+        <button
+          onClick={() =>
+            onConfirm({ selection: {}, position: null, notes: "" })
+          }
+        >
+          mock-confirm-nothing
+        </button>
+      </>
     ) : null,
 }));
 
@@ -238,5 +247,89 @@ describe("LotEntryModal — auto-generated lot number", () => {
       await screen.findByText(/lot number is required/i),
     ).toBeInTheDocument();
     expect(InventoryLotAPI.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("LotEntryModal — partial save recovery", () => {
+  it("does not receive the lot a second time when the first save's location assignment failed", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({ id: 77 });
+    InventoryLotStorageAPI.assignLocation
+      .mockRejectedValueOnce(new Error("Position A1 is already occupied"))
+      .mockResolvedValueOnce({ assignmentId: "1" });
+    const onSave = vi.fn();
+
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={onSave} lot={null} />,
+    );
+    await fillRequiredFieldsExceptLocation();
+
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(/the lot was created, but assigning/i),
+    ).toBeInTheDocument();
+    expect(InventoryManagementAPI.receive).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+
+    // The retry sends only the assignment, so the lot fields must not invite
+    // edits that would be dropped.
+    expect(screen.getByLabelText(/lot number/i)).toBeDisabled();
+    expect(screen.getByLabelText(/initial quantity/i)).toBeDisabled();
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(InventoryManagementAPI.receive).toHaveBeenCalledTimes(1);
+    expect(InventoryLotStorageAPI.assignLocation).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes the caller's list on close when a lot was already committed", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({ id: 78 });
+    InventoryLotStorageAPI.assignLocation.mockRejectedValue(
+      new Error("Position A1 is already occupied"),
+    );
+    const onSave = vi.fn();
+    const onClose = vi.fn();
+
+    renderWithIntl(
+      <LotEntryModal open onClose={onClose} onSave={onSave} lot={null} />,
+    );
+    await fillRequiredFieldsExceptLocation();
+
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+    await screen.findByText(/the lot was created, but assigning/i);
+
+    fireEvent.click(screen.getByText("Cancel"));
+
+    expect(onSave).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("rejects a picker confirmation with no assignable location instead of posting a null locationId", async () => {
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={null} />,
+    );
+    await fillRequiredFieldsExceptLocation();
+
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-nothing"));
+
+    expect(
+      await screen.findByText(
+        /select a device, shelf, rack, or box before saving/i,
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(/please assign a storage location/i),
+    ).toBeInTheDocument();
+    expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
+    expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
   });
 });
