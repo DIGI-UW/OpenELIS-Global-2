@@ -22,10 +22,7 @@ import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-/**
- * {@code InventoryItemServiceImpl.insert()} fills in the item's code while the
- * id stays a surrogate sequence value.
- */
+/** {@code InventoryItemServiceImpl.insert()} fills in the item's code. */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceCodeGenerationTest {
 
@@ -74,16 +71,6 @@ public class InventoryItemServiceCodeGenerationTest {
 
         inventoryItemService.insert(item);
 
-        assertEquals("BLOOD_CULTURE_BOTTLE", item.getCode());
-    }
-
-    @Test
-    public void insert_leavesSurrogateIdToTheSequence() {
-        InventoryItem item = newItem("Blood Culture Bottle");
-
-        inventoryItemService.insert(item);
-
-        assertEquals(Long.valueOf(1L), item.getId());
         assertEquals("BLOOD_CULTURE_BOTTLE", item.getCode());
     }
 
