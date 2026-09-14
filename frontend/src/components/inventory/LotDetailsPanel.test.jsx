@@ -4,10 +4,15 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import LotDetailsPanel from "./LotDetailsPanel";
-import { TransactionAPI, UsageAPI } from "./InventoryService";
+import {
+  InventoryLotStorageAPI,
+  TransactionAPI,
+  UsageAPI,
+} from "./InventoryService";
 import messages from "../../languages/en.json";
 
 vi.mock("./InventoryService", () => ({
+  InventoryLotStorageAPI: { getMovements: vi.fn() },
   TransactionAPI: { getByLot: vi.fn() },
   UsageAPI: { getByLot: vi.fn() },
 }));
@@ -23,6 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   TransactionAPI.getByLot.mockResolvedValue([]);
   UsageAPI.getByLot.mockResolvedValue([]);
+  InventoryLotStorageAPI.getMovements.mockResolvedValue([]);
 });
 
 describe("LotDetailsPanel — storage location visibility (OGC-657)", () => {
@@ -53,5 +59,53 @@ describe("LotDetailsPanel — storage location visibility (OGC-657)", () => {
 
     await waitFor(() => expect(TransactionAPI.getByLot).toHaveBeenCalled());
     expect(await screen.findByText(/not assigned/i)).toBeInTheDocument();
+  });
+});
+
+describe("LotDetailsPanel — movement history (OGC-657)", () => {
+  const baseLot = {
+    id: 7000,
+    lotNumber: "OGC657-LOT-001",
+    inventoryItem: { name: "Malaria RDT", itemType: "RDT", units: "kits" },
+    qcStatus: "PASSED",
+    initialQuantity: 10,
+    currentQuantity: 10,
+    receiptDate: "2026-01-01",
+    expirationDate: "2026-12-31",
+  };
+
+  it("renders the lot's movement rows from the movements endpoint", async () => {
+    InventoryLotStorageAPI.getMovements.mockResolvedValue([
+      {
+        id: 1,
+        previousLocationType: "device",
+        previousLocationId: 7000,
+        previousPositionCoordinate: null,
+        newLocationType: "box",
+        newLocationId: 7000,
+        newPositionCoordinate: "A1",
+        movedByUserName: "Ana Tester",
+        movementDate: "2026-02-01T10:00:00",
+        reason: "Consolidating stock",
+      },
+    ]);
+
+    renderWithIntl(<LotDetailsPanel open lot={baseLot} onClose={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(InventoryLotStorageAPI.getMovements).toHaveBeenCalledWith(7000),
+    );
+    expect(await screen.findByText("device #7000")).toBeInTheDocument();
+    expect(screen.getByText("box #7000 (A1)")).toBeInTheDocument();
+    expect(screen.getByText("Ana Tester")).toBeInTheDocument();
+    expect(screen.getByText("Consolidating stock")).toBeInTheDocument();
+  });
+
+  it("shows the empty state when the lot has never been moved", async () => {
+    renderWithIntl(<LotDetailsPanel open lot={baseLot} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/no movements recorded for this lot/i),
+    ).toBeInTheDocument();
   });
 });

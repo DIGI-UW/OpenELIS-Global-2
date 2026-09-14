@@ -15,10 +15,8 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
- * SampleStorageAssignment entity - Current storage location for either a
- * SampleItem or an InventoryLot occupant. One row per occupant: occupantType
- * discriminates which of sampleItemId/inventoryLotId is populated (enforced by
- * chk_assignment_occupant_exclusive).
+ * Current storage location of one occupant; occupantType says which of
+ * sampleItemId/inventoryLotId is set (chk_assignment_occupant_exclusive).
  */
 @Entity
 @Table(name = "SAMPLE_STORAGE_ASSIGNMENT")

@@ -161,7 +161,7 @@ export default function SearchField({
         <p className="storage-location-picker-search-status">
           {intl.formatMessage({
             id: "storage.search.location.minLength",
-            defaultMessage: "Keep typing — at least 2 characters",
+            defaultMessage: "Keep typing, at least 2 characters",
           })}
         </p>
       )}
@@ -170,7 +170,7 @@ export default function SearchField({
           <InlineLoading
             description={intl.formatMessage({
               id: "storage.search.location.searching",
-              defaultMessage: "Searching…",
+              defaultMessage: "Searching...",
             })}
           />
         </div>

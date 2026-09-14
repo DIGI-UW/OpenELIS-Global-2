@@ -52,6 +52,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   // Create mode: a location picked before the lot exists in the DB,
   // applied right after the lot is saved (see handleSave).
   const [pendingAssignment, setPendingAssignment] = useState(null);
+  // Create mode: id of the lot this modal already committed. Receive and
+  // assign are two independent server writes; holding the id makes a retry
+  // after a failed assign skip the receive, so the stock is not counted twice.
+  const [createdLotId, setCreatedLotId] = useState(null);
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -188,7 +192,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           initialQuantity: lot.initialQuantity,
           version: lot.version,
         });
-      } else {
+        onSave();
+        return;
+      }
+
+      let lotId = createdLotId;
+      if (lotId === null) {
         const savedLot = await InventoryManagementAPI.receive({
           inventoryItem: { id: formData.inventoryItem.id },
           // Leave blank to let the server auto-generate one from the item
@@ -204,11 +213,24 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           status: formData.status,
           barcode: formData.barcode || null,
         });
+        lotId = savedLot?.id ?? null;
+        setCreatedLotId(lotId);
+      }
 
-        if (pendingAssignment && savedLot?.id) {
+      if (pendingAssignment && lotId !== null) {
+        try {
           await InventoryLotStorageAPI.assignLocation(
-            buildLocationPayload(savedLot.id, pendingAssignment),
+            buildLocationPayload(lotId, pendingAssignment),
           );
+        } catch (assignErr) {
+          console.error("Error assigning location to new lot:", assignErr);
+          setError(
+            intl.formatMessage(
+              { id: "lot.save.error.locationAfterCreate" },
+              { reason: assignErr.message || "" },
+            ),
+          );
+          return;
         }
       }
       onSave();
@@ -220,7 +242,28 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
+  // A lot committed by a save whose location assignment then failed is
+  // already in the database, so refresh the caller's list on the way out
+  // rather than letting the operator re-enter it by hand.
+  const handleClose = () => {
+    if (createdLotId !== null) {
+      onSave();
+      return;
+    }
+    onClose();
+  };
+
   const handleLocationConfirm = async ({ selection, position, notes }) => {
+    // The assign/move endpoints reject a blank locationId with a 400, and
+    // in create mode that rejection would land after the lot is committed.
+    if (!getDeepestLocationSelection(selection, { requireAssignable: true })) {
+      setLocationError(
+        intl.formatMessage({ id: "storage.manageLocation.error.selectTarget" }),
+      );
+      setLocationPickerOpen(false);
+      return;
+    }
+
     if (!isEdit) {
       // Lot doesn't exist yet — defer the assignment call until handleSave.
       setPendingAssignment({ selection, position, notes });
@@ -251,6 +294,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
+  // After a partial create (lot committed, assignment rejected) only the
+  // assignment is retried, so edits to the lot fields would not be sent.
+  const lotFieldsLocked = createdLotId !== null;
+
   const locationSummary = isEdit
     ? currentLocation?.hierarchicalPath || ""
     : pendingAssignment
@@ -261,7 +308,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     <>
       <Modal
         open={open && !locationPickerOpen}
-        onRequestClose={onClose}
+        onRequestClose={handleClose}
         onRequestSubmit={handleSave}
         modalHeading={intl.formatMessage({
           id: isEdit ? "lot.form.title.edit" : "lot.form.title.add",
@@ -291,7 +338,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               handleChange("inventoryItem", selectedItem.item)
             }
             required
-            disabled={isEdit}
+            disabled={isEdit || lotFieldsLocked}
           />
 
           <TextInput
@@ -300,6 +347,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             value={formData.lotNumber}
             onChange={(e) => handleChange("lotNumber", e.target.value)}
             required={isEdit}
+            disabled={lotFieldsLocked}
             placeholder={
               isEdit
                 ? undefined
@@ -328,6 +376,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             max={999999999}
             step={1}
             required
+            disabled={lotFieldsLocked}
           />
 
           <DatePicker
@@ -339,6 +388,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               id="expirationDate"
               labelText={<FormattedMessage id="lot.expirationDate" />}
               placeholder="mm/dd/yyyy"
+              disabled={lotFieldsLocked}
             />
           </DatePicker>
 
@@ -351,6 +401,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
               placeholder="mm/dd/yyyy"
+              disabled={lotFieldsLocked}
             />
           </DatePicker>
 
@@ -414,6 +465,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             onChange={({ selectedItem }) =>
               handleChange("qcStatus", selectedItem.id)
             }
+            disabled={lotFieldsLocked}
           />
 
           <Dropdown
@@ -426,6 +478,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             onChange={({ selectedItem }) =>
               handleChange("status", selectedItem.id)
             }
+            disabled={lotFieldsLocked}
           />
 
           <TextInput
@@ -434,6 +487,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             value={formData.barcode}
             onChange={(e) => handleChange("barcode", e.target.value)}
             placeholder="Optional"
+            disabled={lotFieldsLocked}
           />
         </Stack>
       </Modal>

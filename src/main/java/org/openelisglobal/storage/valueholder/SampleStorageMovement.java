@@ -15,10 +15,8 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
- * SampleStorageMovement entity - Immutable audit log of SampleItem/InventoryLot
- * movements Insert-only, no updates/deletes allowed. Uses flexible assignment
- * model: locationId + locationType (no StoragePosition references).
- * occupantType discriminates which of sampleItemId/inventoryLotId is populated.
+ * Insert-only audit log of SampleItem/InventoryLot movements, located by
+ * locationId + locationType; occupantType says which occupant id is set.
  */
 @Entity
 @Table(name = "SAMPLE_STORAGE_MOVEMENT")
