@@ -59,6 +59,8 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
@@ -434,13 +436,35 @@ public class ResultUtil {
         }
     }
 
-    @SuppressWarnings("deprecation")
+    /**
+     * A test already carrying a live referral must not be referred again: the
+     * second referral would come with its own subcontract row and its own FHIR
+     * Task, and nothing downstream could tell which of the two the reference lab is
+     * working on. Results Entry hides the action once a test is referred; this is
+     * the same rule for anything that reaches a save directly.
+     */
+    public static boolean hasOpenReferral(Analysis analysis) {
+        return analysis != null && analysis.getId() != null
+                && SpringContext.getBean(ReferralService.class).hasOpenReferral(analysis.getId());
+    }
+
     public static void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
+        if (hasOpenReferral(analysis)) {
+            LogEvent.logWarn(ResultUtil.class.getSimpleName(), "handleReferrals",
+                    "refused a second referral on analysis " + analysis.getId()
+                            + ": one is still open. Cancel it before referring the test again.");
+            return;
+        }
         // List<Referral> referrals = new ArrayList<>();
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
-        referral.setStatus(ReferralStatus.SENT);
+        // Born DRAFT with its subcontract row, exactly as the Order Entry Refer Out
+        // does: REQUESTED is reached only by a dispatch, and every lifecycle
+        // transition reads the subcontract row (OGC-1188).
+        referral.setStatus(ReferralStatus.DRAFT);
+        referral.setSubcontract(SpringContext.getBean(ReferralSetService.class).buildSubcontractFromItem(referralItem,
+                actionDataSet.getCurrentUserId()));
         referral.setSysUserId(actionDataSet.getCurrentUserId());
         referral.setReferralTypeId(confirmationReferralTypeId());
         referral.setRequesterName(testResultItem.getTechnician());

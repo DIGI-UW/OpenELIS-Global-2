@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1188 — referrals raised from Results Entry were written with the legacy
+    SENT status and without the subcontract row the lifecycle reads. The Reference
+    Lab Results page counts REQUESTED, RECEIVED and IN_PROGRESS as outstanding, and
+    shipment dispatch only advances DRAFT, so those referrals were saved and then
+    invisible to both, with no state they could ever reach.
+
+    Results Entry now raises them as DRAFT with a subcontract row and dispatches
+    them from the send date, the way Order Entry's Refer Out already did. These two
+    changes move the rows already written the old way: SENT is the documented
+    predecessor of REQUESTED, and a referral without a subcontract row cannot
+    transition at all.
+    -->
+    <changeSet id="OGC-1188-referral-sent-status-backfill" author="OGC">
+        <comment>Move referrals still on the deprecated SENT status onto REQUESTED (OGC-1188)</comment>
+        <update schemaName="clinlims" tableName="referral">
+            <column name="status" value="REQUESTED" />
+            <where>status = 'SENT'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="OGC-1188-referral-subcontract-backfill" author="OGC">
+        <comment>Give in-flight referrals the subcontract row every lifecycle transition reads (OGC-1188)</comment>
+        <!--
+        One row created per referral and attached to that referral, rather than
+        inserting a batch and pairing afterwards: a site can already hold an orphan
+        subcontract row, and pairing by position would hand that row's agreement
+        reference and chain-of-custody contact to an unrelated referral.
+        -->
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                r record;
+                new_id numeric;
+            BEGIN
+                FOR r IN
+                    SELECT id FROM clinlims.referral
+                    WHERE subcontract_id IS NULL
+                      AND status IN ('DRAFT', 'REQUESTED', 'RECEIVED', 'IN_PROGRESS')
+                    ORDER BY id
+                LOOP
+                    INSERT INTO clinlims.referral_subcontract (id, subcontract_status, lastupdated)
+                    VALUES (nextval('clinlims.referral_subcontract_seq'), 'DRAFT', now())
+                    RETURNING id INTO new_id;
+
+                    UPDATE clinlims.referral SET subcontract_id = new_id WHERE id = r.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
