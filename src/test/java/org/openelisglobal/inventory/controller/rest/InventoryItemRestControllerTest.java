@@ -23,17 +23,10 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * OGC-658 Part C — {@code inventory_item} gains a human-readable {@code code}
- * column alongside its surrogate primary key. Covers auto-generation from the
- * name, explicit codes, duplicate rejection with a translatable 400, and the
- * code surviving an update untouched.
- *
- * <p>
- * Never truncates {@code inventory_item} (shared with other suites via
- * {@code inventory-test-data.xml} fixtures) — only inserts/deletes rows scoped
- * to a unique {@code ITTEST_} code prefix.
+ * Covers the REST paths for {@code inventory_item.code}: generation, explicit
+ * codes, the duplicate 400 body, and the code surviving an update.
  */
-public class InventoryItemRestControllerIT extends BaseWebContextSensitiveTest {
+public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest {
 
     private static final String CODE_PREFIX = "ITTEST_";
 
@@ -62,6 +55,7 @@ public class InventoryItemRestControllerIT extends BaseWebContextSensitiveTest {
         cleanup();
     }
 
+    // Prefix-scoped, never TRUNCATE: other suites' fixtures share inventory_item.
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.inventory_item WHERE code LIKE ?", CODE_PREFIX + "%");
     }
@@ -125,7 +119,7 @@ public class InventoryItemRestControllerIT extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andReturn();
 
         JsonNode updated = objectMapper.readTree(updateResult.getResponse().getContentAsString());
-        assertEquals("Derived lot numbers embed the code, so it stays put", code, updated.get("code").asText());
+        assertEquals("The update handler does not copy code", code, updated.get("code").asText());
         assertEquals(CODE_PREFIX + "Locked Renamed", updated.get("name").asText());
 
         MvcResult getResult = mockMvc.perform(get("/rest/inventory/items/" + id)).andExpect(status().isOk())

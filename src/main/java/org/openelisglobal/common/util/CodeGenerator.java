@@ -5,11 +5,8 @@ import java.util.function.Predicate;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 
 /**
- * Shared UPPER_SNAKE code generation used by admin-managed reference lists that
- * let a user optionally type an explicit code, auto-generating one from a
- * display name otherwise (collision-suffixed {@code _2}, {@code _3}, ...).
- * First introduced for {@code inventory_item_type.code} (OGC-658 Part A),
- * reused for {@code inventory_item.code} (OGC-658 Part C).
+ * Turns display names and user-typed strings into UPPER_SNAKE codes, suffixing
+ * {@code _2}, {@code _3}, ... when a generated candidate is already taken.
  */
 public final class CodeGenerator {
 
@@ -17,9 +14,8 @@ public final class CodeGenerator {
     }
 
     /**
-     * Derives an UPPER_SNAKE code from {@code name}, truncated to fit
-     * {@code maxLength} (leaving room for a collision suffix), falling back to
-     * {@code fallbackBase} if the name has no alphanumeric characters at all.
+     * Derives a code from {@code name}, truncated to {@code maxLength} and falling
+     * back to {@code fallbackBase} when the name has no alphanumerics.
      */
     public static String generateFromName(String name, int maxLength, String fallbackBase,
             Predicate<String> existsByCode) {
@@ -40,15 +36,14 @@ public final class CodeGenerator {
     }
 
     /**
-     * Normalizes a user-supplied explicit code: uppercased, stripped to
-     * {@code [A-Z0-9_]}, truncated to {@code maxLength}. Throws if nothing usable
-     * remains.
+     * Normalizes a user-supplied code to {@code [A-Z0-9_]} within
+     * {@code maxLength}, throwing if nothing usable remains.
      */
     public static String normalize(String code, int maxLength) {
         String normalized = toCode(code);
         if (normalized.isEmpty()) {
             throw new LocalizedValidationException("common.codeGenerator.error.invalidCode",
-                    "Code must contain at least one letter, digit, or underscore");
+                    "Code must contain at least one letter or number");
         }
         return truncate(normalized, maxLength);
     }

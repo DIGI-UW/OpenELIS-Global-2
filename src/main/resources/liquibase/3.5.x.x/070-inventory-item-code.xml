@@ -3,14 +3,11 @@
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
-    logicalFilePath="inventory/inventory-item-code.xml">
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
     OGC-658 Part C: give inventory_item a human-readable code (BLOOD_CULTURE_BOTTLE)
-    alongside its surrogate primary key. The code is what users see in the catalog and
-    what derived lot numbers are built from; the id stays an opaque sequence value, as
-    everywhere else in the schema.
+    alongside its surrogate primary key, which stays an opaque sequence value.
 
     Purely additive: add the column, backfill existing rows from their names, then
     tighten to NOT NULL + UNIQUE. No rows are deleted and no foreign keys are touched,

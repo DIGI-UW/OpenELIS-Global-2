@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -22,10 +23,8 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 /**
- * OGC-658 Part C — {@code InventoryItemServiceImpl.insert()} fills in the
- * item's human-readable code. The code is a unique column, not the primary key:
- * the id stays a surrogate sequence value, so nothing here renames a key or
- * cascades.
+ * {@code InventoryItemServiceImpl.insert()} fills in the item's code while the
+ * id stays a surrogate sequence value.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceCodeGenerationTest {
@@ -107,6 +106,20 @@ public class InventoryItemServiceCodeGenerationTest {
         inventoryItemService.insert(item);
 
         assertEquals("MY_CODE", item.getCode());
+    }
+
+    @Test
+    public void insert_rejectsExplicitCode_thatNormalizesToNothing() {
+        InventoryItem item = newItem("Reagent W");
+        item.setCode("___");
+
+        try {
+            inventoryItemService.insert(item);
+            fail("Expected a LocalizedValidationException");
+        } catch (LocalizedValidationException e) {
+            assertEquals("common.codeGenerator.error.invalidCode", e.getErrorCode());
+            assertEquals("Code must contain at least one letter or number", e.getMessage());
+        }
     }
 
     @Test(expected = LocalizedValidationException.class)

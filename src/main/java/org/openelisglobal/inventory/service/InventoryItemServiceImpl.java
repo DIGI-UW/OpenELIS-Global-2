@@ -45,9 +45,10 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     private String resolveCode(InventoryItem item) {
         String supplied = item.getCode();
-        String code = (supplied == null || supplied.trim().isEmpty())
-                ? CodeGenerator.generateFromName(item.getName(), CODE_MAX_LENGTH, "ITEM", this::codeExists)
-                : CodeGenerator.normalize(supplied, CODE_MAX_LENGTH);
+        if (supplied == null || supplied.trim().isEmpty()) {
+            return CodeGenerator.generateFromName(item.getName(), CODE_MAX_LENGTH, "ITEM", this::codeExists);
+        }
+        String code = CodeGenerator.normalize(supplied, CODE_MAX_LENGTH);
         if (codeExists(code)) {
             throw new LocalizedValidationException("inventory.item.error.duplicateCode",
                     "Inventory item code already exists: " + code, Map.of("code", code));
@@ -57,12 +58,6 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     private boolean codeExists(String code) {
         return inventoryItemDAO.getByCode(code) != null;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public InventoryItem getByCode(String code) {
-        return inventoryItemDAO.getByCode(code);
     }
 
     @Override
