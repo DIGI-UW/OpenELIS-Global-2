@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
@@ -27,13 +28,10 @@ import org.openelisglobal.storage.valueholder.SampleStorageMovement;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-657 integration test: InventoryLot occupant support in
- * SampleStorageServiceImpl, exercised against a real (Testcontainers) Postgres
- * with the actual Liquibase-migrated schema — including changeset 051
- * (occupant_type/inventory_lot_id columns on sample_storage_assignment and
- * sample_storage_movement).
+ * OGC-657: InventoryLot occupant support in SampleStorageServiceImpl against a
+ * Testcontainers Postgres migrated by changeset 071.
  */
-public class SampleStorageServiceInventoryLotIT extends BaseWebContextSensitiveTest {
+public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleStorageService sampleStorageService;
@@ -240,6 +238,19 @@ public class SampleStorageServiceInventoryLotIT extends BaseWebContextSensitiveT
         assertEquals("A1", saved.getPositionCoordinate());
     }
 
+    @Test
+    public void getOccupiedCoordinatesWithOccupantInfo_reportsAStoredLotAsTheBoxOccupant() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", null, "1");
+
+        Map<String, Map<String, String>> occupied = sampleStorageAssignmentDAO
+                .getOccupiedCoordinatesWithOccupantInfo(7000);
+
+        assertTrue("A box holding only a lot must still report its coordinate as occupied", occupied.containsKey("A1"));
+        assertEquals(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT, occupied.get("A1").get("occupantType"));
+        assertEquals("7000", occupied.get("A1").get("inventoryLotId"));
+        assertEquals("OGC657-LOT-001", occupied.get("A1").get("externalId"));
+    }
+
     @Test(expected = LIMSRuntimeException.class)
     public void assignInventoryLotWithLocation_toBoxLevel_throwsWhenCoordinateAlreadyOccupied() {
         sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", null, "1");
@@ -299,9 +310,7 @@ public class SampleStorageServiceInventoryLotIT extends BaseWebContextSensitiveT
     // ==========================================================================
     // Regression: the pre-existing SampleItem occupant flow must be unaffected
     // by the occupant_type/inventory_lot_id generalization. Loads the original
-    // sample-storage fixture (different IDs, no collision with the 7000s above)
-    // to exercise assignSampleItemWithLocation/moveSampleItemWithLocation for
-    // real against the migrated schema.
+    // sample-storage fixture, whose ids do not collide with this class's 7000s.
     // ==========================================================================
 
     @Test
@@ -347,6 +356,29 @@ public class SampleStorageServiceInventoryLotIT extends BaseWebContextSensitiveT
         } catch (SQLException e) {
             assertTrue("Expected a check-constraint violation, got: " + e.getMessage(),
                     e.getMessage().contains("chk_assignment_occupant_exclusive"));
+        }
+    }
+
+    @Test
+    public void deletingAnInventoryLotCascadesToItsAssignmentRow() throws SQLException {
+        String insert = "INSERT INTO clinlims.sample_storage_assignment "
+                + "(id, occupant_type, inventory_lot_id, location_id, location_type, "
+                + "assigned_by_user_id, assigned_date) "
+                + "VALUES (nextval('sample_storage_assignment_seq'), 'INVENTORY_LOT', 7000, 7000, 'room', 1, ?)";
+        try (Connection conn = dataSource.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(insert)) {
+                ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM clinlims.inventory_lot WHERE id = 7000")) {
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM clinlims.sample_storage_assignment WHERE inventory_lot_id = 7000");
+                    ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                assertEquals("fk_assignment_inventory_lot must carry ON DELETE CASCADE", 0, rs.getInt(1));
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <!-- OGC-657: storage hierarchy + inventory item/lots for InventoryLot storage-assignment
-        integration tests (SampleStorageServiceInventoryLotIT, InventoryLotRestControllerIT).
+        integration tests (SampleStorageServiceInventoryLotIntegrationTest, InventoryLotRestControllerIntegrationTest).
         Occupant-side rows only — sample_storage_assignment/ movement are populated
         by the tests themselves via the service under test, and cleaned up in @After
         (see loading-patterns.md: not part of this fixture, so not auto-truncated

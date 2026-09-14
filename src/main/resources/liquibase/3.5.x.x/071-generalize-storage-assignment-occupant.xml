@@ -26,12 +26,17 @@
                 <constraints nullable="false"/>
             </column>
             <column name="inventory_lot_id" type="BIGINT">
-                <constraints nullable="true"
-                    foreignKeyName="fk_assignment_inventory_lot"
-                    references="clinlims.inventory_lot(id)"
-                    deleteCascade="true"/>
+                <constraints nullable="true"/>
             </column>
         </addColumn>
+
+        <!-- Declared separately because a <constraints> block inside <addColumn> emits
+             the FK without the ON DELETE CASCADE that deleteCascade="true" implies. -->
+        <addForeignKeyConstraint constraintName="fk_assignment_inventory_lot"
+            baseTableSchemaName="clinlims" baseTableName="sample_storage_assignment"
+            baseColumnNames="inventory_lot_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_lot"
+            referencedColumnNames="id" onDelete="CASCADE"/>
 
         <dropNotNullConstraint tableName="sample_storage_assignment"
             columnName="sample_item_id" columnDataType="numeric(10,0)"/>
@@ -100,12 +105,17 @@
                 <constraints nullable="false"/>
             </column>
             <column name="inventory_lot_id" type="BIGINT">
-                <constraints nullable="true"
-                    foreignKeyName="fk_movement_inventory_lot"
-                    references="clinlims.inventory_lot(id)"
-                    deleteCascade="true"/>
+                <constraints nullable="true"/>
             </column>
         </addColumn>
+
+        <!-- Declared separately because a <constraints> block inside <addColumn> emits
+             the FK without the ON DELETE CASCADE that deleteCascade="true" implies. -->
+        <addForeignKeyConstraint constraintName="fk_movement_inventory_lot"
+            baseTableSchemaName="clinlims" baseTableName="sample_storage_movement"
+            baseColumnNames="inventory_lot_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_lot"
+            referencedColumnNames="id" onDelete="CASCADE"/>
 
         <dropNotNullConstraint tableName="sample_storage_movement"
             columnName="sample_item_id" columnDataType="numeric(10,0)"/>

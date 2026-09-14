@@ -24,10 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST Controller for InventoryLot storage operations (OGC-657). Mirrors
- * {@link SampleStorageRestController}'s assign/move/movements shape, reusing
- * the same {@link SampleStorageService} occupant-generalized methods so lots
- * share one audit trail and one picker with samples.
+ * InventoryLot assign/move/movements over the occupant-generalized
+ * {@link SampleStorageService}, mirroring SampleStorageRestController
+ * (OGC-657).
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")

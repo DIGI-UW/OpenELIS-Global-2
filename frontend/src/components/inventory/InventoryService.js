@@ -48,19 +48,13 @@ const post = (endpoint, data) => {
             return;
           }
           // Handle standard message/error fields
-          const error = new Error(
-            json.message ||
-              json.error ||
-              `Request failed with status ${json.status || json.statusCode}`,
+          reject(
+            new Error(
+              json.message ||
+                json.error ||
+                `Request failed with status ${json.status || json.statusCode}`,
+            ),
           );
-          // errorCode/params (LocalizedValidationException, see
-          // InventoryItemRestController) let the
-          // caller show a translated message instead of this raw English fallback.
-          if (json.errorCode) {
-            error.errorCode = json.errorCode;
-            error.params = json.params;
-          }
-          reject(error);
         } else {
           resolve(json);
         }

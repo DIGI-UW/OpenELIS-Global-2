@@ -162,16 +162,13 @@ const InventoryDashboard = () => {
     loadItemTypes();
   }, [intl]);
 
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-    };
-    return labels[type] || type;
-  };
+  // /items/types is server-driven, so a site-defined type that has no
+  // inventory.itemType.* key falls back to the raw code.
+  const getItemTypeLabel = (type) =>
+    intl.formatMessage({
+      id: `inventory.itemType.${type}`,
+      defaultMessage: type,
+    });
 
   useEffect(() => {
     fetchLots();
@@ -472,7 +469,7 @@ const InventoryDashboard = () => {
         title: intl.formatMessage({ id: "notification.success" }),
         message: intl.formatMessage({
           id: "storage.location.assigned.success",
-          defaultMessage: "Storage location updated successfully",
+          defaultMessage: "Location assigned successfully",
         }),
       });
     } catch (error) {
@@ -484,7 +481,7 @@ const InventoryDashboard = () => {
           error.message ||
           intl.formatMessage({
             id: "storage.location.assigned.error",
-            defaultMessage: "Error updating storage location",
+            defaultMessage: "Failed to assign location",
           }),
       });
     }

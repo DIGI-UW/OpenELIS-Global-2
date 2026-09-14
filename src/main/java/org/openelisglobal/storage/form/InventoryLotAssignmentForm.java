@@ -4,20 +4,21 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for InventoryLot storage assignment (OGC-657). Mirrors
- * {@link SampleAssignmentForm}, keyed by inventoryLotId instead of
- * sampleItemId.
+ * InventoryLot storage assignment request, mirroring SampleAssignmentForm but
+ * keyed by inventoryLotId (OGC-657).
  */
 public class InventoryLotAssignmentForm {
 
     @NotBlank(message = "InventoryLot ID is required")
     private String inventoryLotId;
 
+    // Id of a room, device, shelf, rack or box, per locationType.
     @NotBlank(message = "Location ID is required")
-    private String locationId; // Can be room/device/shelf/rack/box ID
+    private String locationId;
 
+    // One of 'room', 'device', 'shelf', 'rack', 'box'.
     @NotBlank(message = "Location type is required")
-    private String locationType; // Enum: 'room', 'device', 'shelf', 'rack', 'box'
+    private String locationType;
 
     @Size(max = 50, message = "Position coordinate must not exceed 50 characters")
     private String positionCoordinate;

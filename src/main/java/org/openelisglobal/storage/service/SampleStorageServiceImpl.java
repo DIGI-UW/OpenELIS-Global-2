@@ -845,9 +845,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO
                         .findByBoxAndCoordinate(locationIdInt, effectiveCoordinate.trim());
                 if (existingAssignment != null) {
-                    throw new LIMSRuntimeException(String.format(
-                            "Position %s is already occupied by another sample. Please select a different position.",
-                            effectiveCoordinate.trim()));
+                    throw new LIMSRuntimeException(
+                            String.format("Position %s is already occupied. Please select a different position.",
+                                    effectiveCoordinate.trim()));
                 }
             }
 
@@ -1508,11 +1508,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     // ==========================================================================
-    // OGC-657: InventoryLot occupant support. Reuses the same
-    // SampleStorageAssignment/Movement tables and the occupant-agnostic
-    // hierarchy helpers above (buildHierarchicalPathForEntity,
-    // validateLocationActiveForEntity, checkShelfCapacity), keyed by
-    // inventoryLotId instead of sampleItemId.
+    // OGC-657: InventoryLot occupant support. Reuses the
+    // SampleStorageAssignment/Movement tables and the occupant-agnostic helpers
+    // buildHierarchicalPathForEntity, validateLocationActiveForEntity and
+    // checkShelfCapacity, keyed by inventoryLotId instead of sampleItemId.
     // ==========================================================================
 
     private Long resolveInventoryLotId(String inventoryLotId) {

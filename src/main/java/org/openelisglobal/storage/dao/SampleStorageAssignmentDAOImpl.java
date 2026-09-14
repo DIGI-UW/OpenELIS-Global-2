@@ -186,19 +186,20 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.Map<String, java.util.Map<String, String>> getOccupiedCoordinatesWithSampleInfo(Integer boxId) {
+    public java.util.Map<String, java.util.Map<String, String>> getOccupiedCoordinatesWithOccupantInfo(Integer boxId) {
         java.util.Map<String, java.util.Map<String, String>> result = new java.util.HashMap<>();
         try {
             if (boxId == null) {
                 return result;
             }
 
-            // Use native SQL to join sample_storage_assignment with sample_item
-            // to get the external_id (SampleItem uses HBM mapping, can't use HQL join)
-            String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id "
-                    + "FROM sample_storage_assignment ssa " + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
-                    + "WHERE ssa.location_type = 'box' " + "AND ssa.location_id = :boxId "
-                    + "AND ssa.position_coordinate IS NOT NULL";
+            // Native SQL because SampleItem uses HBM mapping and cannot be reached
+            // by an HQL join.
+            String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id, "
+                    + "ssa.inventory_lot_id, il.lot_number " + "FROM sample_storage_assignment ssa "
+                    + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
+                    + "LEFT JOIN inventory_lot il ON ssa.inventory_lot_id = il.id " + "WHERE ssa.location_type = 'box' "
+                    + "AND ssa.location_id = :boxId " + "AND ssa.position_coordinate IS NOT NULL";
 
             @SuppressWarnings("unchecked")
             List<Object[]> rows = entityManager.unwrap(Session.class).createNativeQuery(sql)
@@ -208,16 +209,28 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 String positionCoordinate = (String) row[0];
                 Number sampleItemIdNum = (Number) row[1];
                 String externalId = (String) row[2];
-
-                if (positionCoordinate != null && sampleItemIdNum != null) {
-                    java.util.Map<String, String> sampleInfo = new java.util.HashMap<>();
-                    sampleInfo.put("sampleItemId", sampleItemIdNum.toString());
-                    sampleInfo.put("externalId", externalId != null ? externalId : "");
-                    result.put(positionCoordinate, sampleInfo);
+                Number inventoryLotIdNum = (Number) row[3];
+                String lotNumber = (String) row[4];
+                if (positionCoordinate == null) {
+                    continue;
                 }
+
+                java.util.Map<String, String> occupantInfo = new java.util.HashMap<>();
+                if (inventoryLotIdNum != null) {
+                    occupantInfo.put("occupantType", SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+                    occupantInfo.put("inventoryLotId", inventoryLotIdNum.toString());
+                    occupantInfo.put("externalId", lotNumber != null ? lotNumber : "");
+                } else if (sampleItemIdNum != null) {
+                    occupantInfo.put("occupantType", SampleStorageAssignment.OCCUPANT_SAMPLE_ITEM);
+                    occupantInfo.put("sampleItemId", sampleItemIdNum.toString());
+                    occupantInfo.put("externalId", externalId != null ? externalId : "");
+                } else {
+                    continue;
+                }
+                result.put(positionCoordinate, occupantInfo);
             }
         } catch (Exception e) {
-            logger.error("Error getting occupied coordinates with sample info: " + e.getMessage(), e);
+            logger.error("Error getting occupied coordinates with occupant info: " + e.getMessage(), e);
         }
         return result;
     }

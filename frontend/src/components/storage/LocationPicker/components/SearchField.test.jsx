@@ -324,6 +324,30 @@ describe("SearchField", () => {
     });
   });
 
+  it("leaves Space to the input so multi-word location names can be typed", () => {
+    const onSelect = vi.fn();
+    const preventDefault = vi.fn();
+    render(
+      <SearchField
+        query="Main"
+        results={[
+          { id: 1, type: "room", name: "Main Lab" },
+          { id: 2, type: "room", name: "Secondary Lab" },
+        ]}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={onSelect}
+      />,
+    );
+
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: " ", preventDefault });
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
   it("calls onSelect with the picked result on click", () => {
     const onSelect = vi.fn();
     const result = {
