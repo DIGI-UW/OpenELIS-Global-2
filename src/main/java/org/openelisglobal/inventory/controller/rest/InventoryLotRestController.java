@@ -62,6 +62,8 @@ public class InventoryLotRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(lot);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
