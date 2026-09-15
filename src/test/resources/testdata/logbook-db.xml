@@ -342,8 +342,6 @@
         value2="14.5" reflex_rule_id="2" test_analyte_id="2" />
 
 
-    <!-- OGC-657: inventory_storage_location dropped (broken skeleton removed) -->
-
     <inventory_item id="1" code="GLOVES"
         fhir_uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" name="Gloves"
         description="Latex Gloves" item_type="REAGENT" category="PPE"

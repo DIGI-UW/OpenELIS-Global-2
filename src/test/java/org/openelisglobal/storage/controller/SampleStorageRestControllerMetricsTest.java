@@ -29,6 +29,9 @@ public class SampleStorageRestControllerMetricsTest extends BaseWebContextSensit
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
+        // sample_item 1002 comes from the sample-storage fixture; the lot fixture
+        // loaded second re-truncates only the storage and inventory tables.
+        executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
         executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
         cleanRowsInCurrentConnection(new String[] { "sample_storage_movement", "sample_storage_assignment" });
     }
@@ -39,13 +42,14 @@ public class SampleStorageRestControllerMetricsTest extends BaseWebContextSensit
     }
 
     @Test
-    public void countOnlyMetrics_ignoreInventoryLotAssignments() throws Exception {
-        long before = readTotalSampleItems();
+    public void countOnlyMetrics_countStoredSampleItemsAndIgnoreInventoryLotAssignments() throws Exception {
+        sampleStorageService.assignSampleItemWithLocation("1002", "7000", "room", null, "metrics probe");
+        assertEquals("A stored sample item is counted", 1L, readTotalSampleItems());
 
         sampleStorageService.assignInventoryLotWithLocation("7000", "7000", "room", null, "metrics probe",
                 TEST_SYS_USER_ID);
 
-        assertEquals("A stored lot is not a sample item", before, readTotalSampleItems());
+        assertEquals("A stored lot is not a sample item", 1L, readTotalSampleItems());
     }
 
     private long readTotalSampleItems() throws Exception {
