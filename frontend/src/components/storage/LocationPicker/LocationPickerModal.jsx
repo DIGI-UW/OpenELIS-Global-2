@@ -29,10 +29,11 @@ import "./LocationPickerModal.css";
  * → reason (movement only) → notes → Cancel/Confirm footer.
  *
  * onConfirm receives { selection, position, reason, notes }; the caller
- * translates that into the appropriate REST call. The modal is
- * workflow- and occupant-agnostic — `occupant` is display-only (identifier,
- * type, status) and `occupantType` (e.g. "SAMPLE_ITEM" | "INVENTORY_LOT")
- * is passed straight through so the caller can pick the right endpoint.
+ * translates that into the appropriate REST call, choosing the endpoint
+ * from its own context. The modal is workflow- and occupant-agnostic —
+ * `occupant` is display-only (identifier, type, status) and `occupantType`
+ * (e.g. "SAMPLE_ITEM" | "INVENTORY_LOT") only lands on the modal element as
+ * `data-occupant-type`, so a selector can tell the two flows apart.
  */
 export default function LocationPickerModal({
   isOpen,

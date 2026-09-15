@@ -201,4 +201,37 @@ describe("InventoryDashboard Location column", () => {
     });
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
   });
+
+  it("acts on the clicked row after the table has been re-sorted", async () => {
+    // Fetch order is the reverse of lot-number order, so sorting by Lot
+    // Number moves the assigned lot (id 1) into the first rendered row
+    // while the fetch-order array still holds the unassigned lot there.
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithoutLocation, lotNumber: "ZZZ-200" },
+      { ...lotWithLocation, lotNumber: "AAA-100" },
+    ]);
+    InventoryLotStorageAPI.moveLocation.mockResolvedValue({ movementId: "1" });
+    renderDashboard();
+
+    await screen.findByText("ZZZ-200");
+    fireEvent.click(screen.getByText("Lot Number"));
+
+    const lotNumberCells = document.querySelectorAll(
+      "tbody tr td:nth-child(2)",
+    );
+    expect(lotNumberCells[0]).toHaveTextContent("AAA-100");
+
+    fireEvent.click(document.querySelectorAll("button.cds--overflow-menu")[0]);
+
+    // The assigned lot's row offers Move, not Assign.
+    fireEvent.click(await screen.findByText(/move storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+
+    await waitFor(() => {
+      expect(InventoryLotStorageAPI.moveLocation).toHaveBeenCalledWith(
+        expect.objectContaining({ inventoryLotId: "1", locationId: "9" }),
+      );
+    });
+    expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
+  });
 });
