@@ -63,6 +63,10 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/result.xml");
         jdbc = new JdbcTemplate(dataSource);
         seedAnalysisStatuses();
+        // note is not part of result.xml, so interpretation/notes rows accumulate
+        // across methods in this class and trip NoteServiceImpl duplicate checks.
+        jdbc.update("DELETE FROM clinlims.note WHERE reference_id IN ('1', '2')");
+
         jdbc.update("UPDATE clinlims.test_section SET domain = 'ENVIRONMENTAL' WHERE id = 2");
         // result.xml's panel rows omit lastupdated; a null @Version makes
         // Hibernate treat the referenced Panel as transient when the analysis
