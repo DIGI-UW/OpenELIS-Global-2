@@ -93,11 +93,8 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    // Not persisted (OGC-657): filled on read from
-    // SampleStorageService.getLocationsForInventoryLots.
-    // Declared with the `transient` keyword rather than
-    // @jakarta.persistence.Transient, which Hibernate5JakartaModule's Jackson
-    // introspector reads as @JsonIgnore and drops from every response.
+    // Not persisted (OGC-657): `transient` keyword, since Hibernate5JakartaModule
+    // reads @Transient as @JsonIgnore.
     private transient Map<String, Object> location;
 
     // Business logic helper methods

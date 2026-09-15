@@ -184,9 +184,6 @@ export const InventoryLotAPI = {
   // Get all lots for an item
   getByItem: (itemId) => get(`/lots/item/${itemId}`),
 
-  // Get lots by storage location
-  getByLocation: (locationId) => get(`/lots/location/${locationId}`),
-
   // Get expiring lots
   getExpiring: (days = 30) => get(`/lots/expiring?days=${days}`),
 

@@ -15,33 +15,39 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.config.AppConfig;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * OGC-657 regression test: the app's real Jackson {@code ObjectMapper} bean
- * (registered in AppConfig with {@code Hibernate5JakartaModule}) silently drops
- * any entity field annotated {@code @jakarta.persistence.Transient} — treating
- * the JPA annotation as an implicit {@code @JsonIgnore}. InventoryLot .location
- * was declared that way and never appeared in JSON responses even when
- * correctly populated (fixed by using the {@code transient} keyword instead).
- * This test drives the actual Spring MVC stack (real DispatcherServlet, real
- * message converters) via MockMvc, not a hand-built ObjectMapper, so it
- * exercises the exact code path that broke.
+ * OGC-657 regression test: the Jackson mapper AppConfig builds registers
+ * {@code Hibernate5JakartaModule}, whose introspector reads
+ * {@code @jakarta.persistence.Transient} as {@code @JsonIgnore}, which is why
+ * InventoryLot.location is declared with the {@code transient} keyword.
  */
 public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleStorageService sampleStorageService;
 
+    @Autowired
+    private InventoryLotRestController inventoryLotRestController;
+
     private ObjectMapper objectMapper;
+
+    // AppTestConfig's MockMvc converter registers no Hibernate5JakartaModule, so
+    // MockMvc responses cannot see the @Transient-as-@JsonIgnore hazard; this is
+    // the mapper AppConfig hands the production converter.
+    private ObjectMapper productionObjectMapper;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
+        productionObjectMapper = new AppConfig().jacksonMessageConverter().getObjectMapper();
         executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
         // The fixture carries no sample_storage_assignment/movement rows, so clear
         // them here as well to keep test methods order-independent.
@@ -66,18 +72,30 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void getById_keepsLocation_whenSerializedByTheProductionJacksonMapper() throws Exception {
+        sampleStorageService.assignInventoryLotWithLocation("7000", "7000", "room", null, null, TEST_SYS_USER_ID);
+
+        InventoryLot lot = inventoryLotRestController.getById("7000").getBody();
+        JsonNode json = productionObjectMapper.readTree(productionObjectMapper.writeValueAsString(lot));
+
+        assertTrue("location must survive Hibernate5JakartaModule's @Transient handling", json.has("location"));
+        assertEquals("OGC657 Test Room", json.get("location").get("hierarchicalPath").asText());
+    }
+
+    @Test
     public void getById_hasNoLocationHierarchicalPath_whenLotIsUnassigned() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/inventory/lots/7000")).andExpect(status().isOk()).andReturn();
 
         JsonNode lot = objectMapper.readTree(result.getResponse().getContentAsString());
-        // In production, Include(NON_NULL) means the field is entirely absent when
-        // unassigned; this test's Spring context doesn't apply that same Jackson
-        // config, so the field may come back as an explicit null instead — assert on
-        // the functional behavior (no hierarchical path leaks) rather than on
-        // presence/absence of the key itself.
+        // The MockMvc mapper has no Include(NON_NULL), so it may render the field as
+        // an explicit null; assert no hierarchical path leaks rather than on the key.
         JsonNode location = lot.get("location");
         boolean hasPath = location != null && !location.isNull() && location.has("hierarchicalPath");
         assertFalse("Unassigned lot should have no location hierarchicalPath", hasPath);
+
+        InventoryLot unassigned = inventoryLotRestController.getById("7000").getBody();
+        JsonNode json = productionObjectMapper.readTree(productionObjectMapper.writeValueAsString(unassigned));
+        assertFalse("Production Include(NON_NULL) omits the key entirely", json.has("location"));
     }
 
     @Test
