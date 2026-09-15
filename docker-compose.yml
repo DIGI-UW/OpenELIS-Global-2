@@ -121,6 +121,7 @@ services:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
             - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+            - ${REVIEW_CONFIG_DIR:-./volume/review}:/etc/nginx/review:ro
         networks:
             - default
         restart: unless-stopped
