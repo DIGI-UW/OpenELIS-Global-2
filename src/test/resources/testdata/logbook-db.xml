@@ -357,7 +357,7 @@
         last_updated="2026-01-27 00:00:00" />
 
 
-    <inventory_item id="1"
+    <inventory_item id="1" code="GLOVES"
         fhir_uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" name="Gloves"
         description="Latex Gloves" item_type="REAGENT" category="PPE"
         manufacturer="MedSupply" catalog_number="GLV-001"
@@ -367,7 +367,7 @@
         individual_tracking="N" is_active="Y"
         last_updated="2026-01-27 00:00:00" />
 
-    <inventory_item id="2"
+    <inventory_item id="2" code="SYRINGES"
         fhir_uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" name="Syringes"
         description="5ml Syringes" item_type="REAGENT" category="Consumables"
         manufacturer="MedSupply" catalog_number="SYR-005"
