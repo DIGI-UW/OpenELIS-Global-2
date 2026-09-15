@@ -49,6 +49,9 @@ public class ReportDefinition extends BaseObject<String> {
     @Column(name = "created_date")
     private Timestamp createdDate;
 
+    @Column(name = "updated_by", length = 50)
+    private String updatedBy;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
@@ -114,6 +117,14 @@ public class ReportDefinition extends BaseObject<String> {
 
     public void setCreatedDate(Timestamp createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
     }
 
     public Boolean getIsActive() {
