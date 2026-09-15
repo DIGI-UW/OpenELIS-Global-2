@@ -13,9 +13,14 @@
  */
 package org.openelisglobal.sampleitem.valueholder;
 
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
@@ -47,22 +52,34 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * @see <a href="../../../../specs/001-sample-management/data-model.md">Data
  *      Model Specification</a>
  */
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "sample_item_aliquot_relationship")
 public class SampleItemAliquotRelationship extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID")
     private Long id;
 
     /**
      * Parent sample item from which the aliquot was created. Never null - every
      * aliquot relationship must have a parent.
      */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "parent_sample_item_id", nullable = false)
     private SampleItem parentSampleItem;
 
     /**
      * Child sample item (the aliquot) created from the parent. Never null - every
      * aliquot relationship must have a child.
      */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "child_sample_item_id", nullable = false)
     private SampleItem childSampleItem;
 
     /**
@@ -70,12 +87,14 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * suffix in external ID (e.g., .1, .2, .3). Unique constraint:
      * (parent_sample_item_id, sequence_number).
      */
+    @Column(name = "sequence_number", nullable = false)
     private Integer sequenceNumber;
 
     /**
      * Quantity transferred from parent to this aliquot. Must match the aliquot's
      * original_quantity. Precision 10,3 supports values like 123.456 mL.
      */
+    @Column(name = "quantity_transferred", precision = 10, scale = 3, nullable = false)
     private BigDecimal quantityTransferred;
 
     /**
@@ -83,6 +102,7 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * "Sent to external lab", "Quality control sample". Max length: 1000
      * characters.
      */
+    @Column(name = "notes", length = 1000)
     private String notes;
 
     /**
@@ -90,11 +110,14 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * FHIR Specimen resource representing this aliquot relationship. Unique across
      * all aliquot relationships.
      */
+    @Column(name = "fhir_uuid")
     private UUID fhirUuid;
 
     /**
      * Timestamp when this relationship was created. Automatically set on insert.
      */
+    @CreationTimestamp
+    @Column(name = "lastupdated", updatable = false)
     private Timestamp createdDate;
 
     // ========== Constructors ==========
@@ -115,62 +138,6 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
         this.id = id;
     }
 
-    public SampleItem getParentSampleItem() {
-        return parentSampleItem;
-    }
-
-    public void setParentSampleItem(SampleItem parentSampleItem) {
-        this.parentSampleItem = parentSampleItem;
-    }
-
-    public SampleItem getChildSampleItem() {
-        return childSampleItem;
-    }
-
-    public void setChildSampleItem(SampleItem childSampleItem) {
-        this.childSampleItem = childSampleItem;
-    }
-
-    public Integer getSequenceNumber() {
-        return sequenceNumber;
-    }
-
-    public void setSequenceNumber(Integer sequenceNumber) {
-        this.sequenceNumber = sequenceNumber;
-    }
-
-    public BigDecimal getQuantityTransferred() {
-        return quantityTransferred;
-    }
-
-    public void setQuantityTransferred(BigDecimal quantityTransferred) {
-        this.quantityTransferred = quantityTransferred;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
-    }
-
-    public Timestamp getCreatedDate() {
-        return createdDate;
-    }
-
-    public void setCreatedDate(Timestamp createdDate) {
-        this.createdDate = createdDate;
-    }
-
     // ========== Utility Methods ==========
 
     @Override
@@ -179,5 +146,16 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
                 + (parentSampleItem != null ? parentSampleItem.getId() : "null") + ", childSampleItemId="
                 + (childSampleItem != null ? childSampleItem.getId() : "null") + ", sequenceNumber=" + sequenceNumber
                 + ", quantityTransferred=" + quantityTransferred + ", fhirUuid=" + fhirUuid + '}';
+    }
+
+    @Transient
+    @Override
+    public Timestamp getLastupdated() {
+        return super.getLastupdated();
+    }
+
+    @Override
+    public void setLastupdated(Timestamp lastupdated) {
+        super.setLastupdated(lastupdated);
     }
 }
