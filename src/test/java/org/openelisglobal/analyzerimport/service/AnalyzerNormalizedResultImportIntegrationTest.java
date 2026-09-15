@@ -76,6 +76,80 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     }
 
     @Test
+    public void reprocessingPersistsTheNextUnresolvedMappingState() throws Exception {
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        importService.importBundle(bundle, "1");
+        String resultId = jdbc.queryForObject("SELECT id::text FROM clinlims.analyzer_results WHERE analyzer_id = ?",
+                String.class, ANALYZER_ID);
+        bindTest("VENDOR-NEW-42");
+        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_result"
+                + " (site_binding_revision_id, source_row_key, raw_value, mapping_state, last_updated)"
+                + " VALUES (?, 'VENDOR-NEW-42', 'OTHER', 'EXCLUDED', NOW())", SITE_BINDING_REVISION_ID);
+
+        assertEquals(1, importService.reprocessHeldResult(String.valueOf(ANALYZER_ID), resultId, "1").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+                jdbc.queryForObject("SELECT import_issue_reason FROM clinlims.analyzer_results WHERE id = ?",
+                        String.class, Long.parseLong(resultId)));
+        assertEquals(String.valueOf(TEST_ID),
+                jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = ?", String.class,
+                        Long.parseLong(resultId)));
+    }
+
+    @Test
+    public void heldControlRecoversItsLotFromStoredEvidenceInALaterTransaction() throws Exception {
+        Bundle bundle = prepareControl(true);
+        jdbc.update("INSERT INTO clinlims.qc_control_lot"
+                + " (id, fhir_uuid, product_name, lot_number, manufacturer, control_level, test_id, instrument_id,"
+                + " calculation_method, initial_runs_count, manufacturer_mean, manufacturer_std_dev, activation_date,"
+                + " expiration_date, status, sys_user_id, last_updated)"
+                + " SELECT 'receipt-qc-other', ?::uuid, product_name, 'OTHER-LOT', manufacturer, control_level, test_id,"
+                + " instrument_id, calculation_method, initial_runs_count, manufacturer_mean, manufacturer_std_dev,"
+                + " activation_date, expiration_date, status, sys_user_id, last_updated FROM clinlims.qc_control_lot WHERE id = ?",
+                java.util.UUID.randomUUID().toString(), QC_LOT_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_site_binding_test WHERE site_binding_revision_id = ?",
+                SITE_BINDING_REVISION_ID);
+        assertEquals(1, importService.importBundle(bundle, "1").resultsHeld());
+        String resultId = jdbc.queryForObject("SELECT id::text FROM clinlims.analyzer_results WHERE analyzer_id = ?",
+                String.class, ANALYZER_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_test"
+                + " (site_binding_revision_id, source_row_key, mapping_state, test_id, last_updated)"
+                + " VALUES (?, 'WBC', 'BOUND', ?, NOW())", SITE_BINDING_REVISION_ID, TEST_ID);
+
+        assertEquals(1, importService.reprocessHeldResult(String.valueOf(ANALYZER_ID), resultId, "1")
+                .controlResultsProcessed());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        importService.importBundle(bundle, "1");
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void retryCannotAdvanceAHeldResultButExplicitReprocessingCan() throws Exception {
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        importService.importBundle(bundle, "1");
+        String resultId = jdbc.queryForObject("SELECT id::text FROM clinlims.analyzer_results WHERE analyzer_id = ?",
+                String.class, ANALYZER_ID);
+        bindTest("VENDOR-NEW-42");
+
+        importService.importBundle(bundle, "1");
+        assertNotNull(jdbc.queryForObject("SELECT import_issue_reason FROM clinlims.analyzer_results WHERE id = ?",
+                String.class, Long.parseLong(resultId)));
+        AnalyzerNormalizedResultImportSummary reprocessed = importService
+                .reprocessHeldResult(String.valueOf(ANALYZER_ID), resultId, "1");
+
+        assertEquals(0, reprocessed.resultsHeld());
+        assertEquals(String.valueOf(TEST_ID),
+                jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = ?", String.class,
+                        Long.parseLong(resultId)));
+        assertThrows(IllegalStateException.class,
+                () -> importService.reprocessHeldResult(String.valueOf(ANALYZER_ID), resultId, "1"));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_delivery_receipt WHERE connection_id = ?",
+                        Integer.class, CONNECTION_ID));
+    }
+
+    @Test
     public void controlReplayDoesNotCreateAnotherOperationalQcResultAfterStagingRemoval() throws Exception {
         Bundle bundle = prepareControl(true);
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");

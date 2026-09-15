@@ -70,6 +70,7 @@ const AnalyserResults = (props) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reprocessingId, setReprocessingId] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -163,7 +164,7 @@ const AnalyserResults = (props) => {
   ];
 
   const handleSave = (values) => {
-    if (isSubmitting) {
+    if (isSubmitting || reprocessingId !== null) {
       return;
     }
     setIsSubmitting(true);
@@ -171,6 +172,43 @@ const AnalyserResults = (props) => {
       "/rest/AnalyzerResults",
       JSON.stringify(props.results),
       handleResponse,
+    );
+  };
+  const reprocessHeldResult = (row) => {
+    if (isSubmitting || reprocessingId !== null || !props.analyzerId) return;
+    setReprocessingId(row.id);
+    postToOpenElisServerFullResponse(
+      `/rest/analyzer/analyzers/${encodeURIComponent(props.analyzerId)}/held-results/${encodeURIComponent(row.id)}/reprocess`,
+      JSON.stringify({}),
+      async (response) => {
+        let kind = NotificationKinds.error;
+        let messageId = "analyzer.results.held.reprocessError";
+        try {
+          if (response.status === 200) {
+            const summary = await response.json();
+            kind = summary.resultsHeld
+              ? NotificationKinds.warning
+              : NotificationKinds.success;
+            messageId = summary.resultsHeld
+              ? "analyzer.results.held.stillHeld"
+              : "analyzer.results.held.reprocessSuccess";
+            props.refreshResults?.();
+          }
+        } catch {
+          kind = NotificationKinds.error;
+          messageId = "analyzer.results.held.reprocessError";
+        } finally {
+          if (componentMounted.current) {
+            setReprocessingId(null);
+            addNotification({
+              kind,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({ id: messageId }),
+            });
+            setNotificationVisible(true);
+          }
+        }
+      },
     );
   };
   const handleResponse = async (response) => {
@@ -451,6 +489,16 @@ const AnalyserResults = (props) => {
                 <CarbonLink as={RouterLink} to={resolutionUrl}>
                   <FormattedMessage id="analyzer.results.held.reviewMapping" />
                 </CarbonLink>
+              )}
+              {props.analyzerId && row.sourceProfileId && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  disabled={isSubmitting || reprocessingId !== null}
+                  onClick={() => reprocessHeldResult(row)}
+                >
+                  <FormattedMessage id="analyzer.results.held.reprocess" />
+                </Button>
               )}
             </div>
           );

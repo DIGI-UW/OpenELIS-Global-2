@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -48,6 +49,8 @@ const mappedQualitativeResult = {
   sampleGroupingNumber: 1,
 };
 
+const refreshResults = vi.fn();
+const notify = vi.fn();
 const renderResults = (resultList = [heldResult]) =>
   render(
     <MemoryRouter initialEntries={["/AnalyzerResults?id=2001"]}>
@@ -58,13 +61,14 @@ const renderResults = (resultList = [heldResult]) =>
           <NotificationContext.Provider
             value={{
               setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
+              addNotification: notify,
             }}
           >
             <AnalyserResults
               results={{ resultList }}
               sampleGroup={[resultList[0]]}
               analyzerId="2001"
+              refreshResults={refreshResults}
             />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
@@ -75,6 +79,84 @@ const renderResults = (resultList = [heldResult]) =>
 describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
+    refreshResults.mockReset();
+    notify.mockReset();
+  });
+
+  it.each([0, 1])(
+    "explicitly reprocesses a held result and refreshes with held count %i",
+    async (resultsHeld) => {
+      postResults.mockImplementation((url, body, callback) =>
+        callback({
+          status: 200,
+          json: async () => ({ resultsHeld }),
+        }),
+      );
+      renderResults();
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Reprocess held result" }),
+      );
+      expect(postResults).toHaveBeenCalledWith(
+        "/rest/analyzer/analyzers/2001/held-results/1004/reprocess",
+        "{}",
+        expect.any(Function),
+      );
+      await waitFor(() => expect(refreshResults).toHaveBeenCalledTimes(1));
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            messages[
+              resultsHeld
+                ? "analyzer.results.held.stillHeld"
+                : "analyzer.results.held.reprocessSuccess"
+            ],
+        }),
+      );
+    },
+  );
+
+  it("keeps the result held and reports a failed reprocessing request", async () => {
+    postResults.mockImplementation((url, body, callback) =>
+      callback({ status: 409 }),
+    );
+    renderResults();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Reprocess held result" }),
+    );
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: messages["analyzer.results.held.reprocessError"],
+        }),
+      ),
+    );
+    expect(refreshResults).not.toHaveBeenCalled();
+    expect(screen.getByText("Held")).toBeInTheDocument();
+  });
+
+  it("reports malformed responses and makes reprocessing available again", async () => {
+    postResults.mockImplementation((url, body, callback) =>
+      callback({
+        status: 200,
+        json: async () => {
+          throw new Error("Invalid JSON");
+        },
+      }),
+    );
+    renderResults();
+    const button = await screen.findByRole("button", {
+      name: "Reprocess held result",
+    });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: messages["analyzer.results.held.reprocessError"],
+        }),
+      ),
+    );
+    expect(button).toBeEnabled();
+    expect(refreshResults).not.toHaveBeenCalled();
   });
 
   it("keeps a held qualitative result visible and links it to the shared mapping editor", async () => {
