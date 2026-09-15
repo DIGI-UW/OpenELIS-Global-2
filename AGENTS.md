@@ -1728,6 +1728,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides

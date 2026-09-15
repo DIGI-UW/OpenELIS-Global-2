@@ -137,6 +137,9 @@ import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
+import { clearReportingDraft } from "./components/reports/CustomDataExport/CustomDataExport";
+import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute";
+import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
 import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = lazyWithRetry(
@@ -295,6 +298,7 @@ export default function App() {
   };
 
   const logout = () => {
+    clearReportingDraft();
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
         //includes the browser sessionId in the Header for Authentication on the backend server
@@ -1501,6 +1505,12 @@ export default function App() {
                   exact
                   render={() => <AuditTrailReportIndex />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path={REPORTING_ROUTE_PATHS}
+                  exact
+                  render={() => <ReportingRoute />}
+                  role={Roles.REPORTS}
                 />
                 <SecureRoute
                   path="/TATReport"
