@@ -18,6 +18,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { formatLocation } from "../formatLocation";
 
 /**
  * OGC-649 (LO-N/A — follow-up to OGC-60): Audit-trail viewer for a SampleItem's
@@ -222,13 +223,5 @@ const ViewAuditModal = ({ open, sample, onClose }) => {
     </ComposedModal>
   );
 };
-
-function formatLocation(type, id, coord) {
-  const parts = [];
-  if (type) parts.push(type);
-  if (id != null) parts.push(`#${id}`);
-  if (coord) parts.push(`(${coord})`);
-  return parts.length > 0 ? parts.join(" ") : "—";
-}
 
 export default ViewAuditModal;

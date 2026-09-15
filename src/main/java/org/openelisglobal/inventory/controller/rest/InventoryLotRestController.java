@@ -62,9 +62,7 @@ public class InventoryLotRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             java.util.Map<String, Object> location = sampleStorageService.getInventoryLotLocation(id);
-            // getInventoryLotLocation always returns a Map (empty, not null) when
-            // unassigned; normalize to null here so Jackson's Include.NON_NULL omits
-            // "location" entirely, consistent with the bulk lookup used by getAll().
+            // Empty (not null) when unassigned; null is what Include.NON_NULL omits.
             lot.setLocation(location.isEmpty() ? null : location);
             return ResponseEntity.ok(lot);
         } catch (Exception e) {

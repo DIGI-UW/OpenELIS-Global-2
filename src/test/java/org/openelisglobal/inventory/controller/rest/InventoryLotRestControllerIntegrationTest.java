@@ -38,9 +38,7 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
 
     private ObjectMapper objectMapper;
 
-    // AppTestConfig's MockMvc converter registers no Hibernate5JakartaModule, so
-    // MockMvc responses cannot see the @Transient-as-@JsonIgnore hazard; this is
-    // the mapper AppConfig hands the production converter.
+    // Production mapper: registers Hibernate5JakartaModule; MockMvc's does not.
     private ObjectMapper productionObjectMapper;
 
     @Before
@@ -83,15 +81,11 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void getById_hasNoLocationHierarchicalPath_whenLotIsUnassigned() throws Exception {
+    public void getById_omitsLocation_whenLotIsUnassigned() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/inventory/lots/7000")).andExpect(status().isOk()).andReturn();
 
         JsonNode lot = objectMapper.readTree(result.getResponse().getContentAsString());
-        // The MockMvc mapper has no Include(NON_NULL), so it may render the field as
-        // an explicit null; assert no hierarchical path leaks rather than on the key.
-        JsonNode location = lot.get("location");
-        boolean hasPath = location != null && !location.isNull() && location.has("hierarchicalPath");
-        assertFalse("Unassigned lot should have no location hierarchicalPath", hasPath);
+        assertFalse("MockMvc Include(NON_NULL) omits the key entirely", lot.has("location"));
 
         InventoryLot unassigned = inventoryLotRestController.getById("7000").getBody();
         JsonNode json = productionObjectMapper.readTree(productionObjectMapper.writeValueAsString(unassigned));
@@ -99,7 +93,7 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void getAll_bulkAttachesLocationsWithoutNPlusOneErrors() throws Exception {
+    public void getAll_attachesEachLotsLocation() throws Exception {
         sampleStorageService.assignInventoryLotWithLocation("7000", "7000", "room", null, null, "1");
         sampleStorageService.assignInventoryLotWithLocation("7001", "7000", "device", null, null, "1");
 

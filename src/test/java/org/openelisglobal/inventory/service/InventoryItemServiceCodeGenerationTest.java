@@ -95,7 +95,6 @@ public class InventoryItemServiceCodeGenerationTest {
         assertEquals("MY_CODE", item.getCode());
     }
 
-
     @Test
     public void insert_rejectsExplicitCode_thatNormalizesToNothing() {
         InventoryItem item = newItem("Reagent W");
