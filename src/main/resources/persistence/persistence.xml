@@ -71,6 +71,7 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+        <class>org.openelisglobal.reports.dataexport.valueholder.ExportJob</class>
 
         <!-- Microbiology MVP reference/config entities (OGC-782 M1) -->
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
