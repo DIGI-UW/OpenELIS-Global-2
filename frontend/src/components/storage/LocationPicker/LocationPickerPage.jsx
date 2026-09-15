@@ -75,39 +75,37 @@ export default function LocationPickerPage({
       <h1>
         {intl.formatMessage({
           id: isMovement
-            ? "storage.picker.heading.moveSample"
+            ? "storage.picker.heading.move"
             : "storage.picker.heading.assignLocation",
-          defaultMessage: isMovement
-            ? "Move Sample"
-            : "Assign Storage Location",
+          defaultMessage: isMovement ? "Move Item" : "Assign Storage Location",
         })}
       </h1>
 
       <section className="storage-location-picker-page-sample-info">
         <h4>
           {intl.formatMessage({
-            id: "storage.picker.sample.heading",
-            defaultMessage: "Sample",
+            id: "storage.picker.occupant.heading",
+            defaultMessage: "Item",
           })}
         </h4>
         <dl>
           <dt>
             {intl.formatMessage({
-              id: "storage.picker.sample.accession",
-              defaultMessage: "Accession",
+              id: "storage.picker.occupant.identifier",
+              defaultMessage: "Identifier",
             })}
           </dt>
           <dd>{sample.sampleAccessionNumber}</dd>
           <dt>
             {intl.formatMessage({
-              id: "storage.picker.sample.type",
+              id: "storage.picker.occupant.type",
               defaultMessage: "Type",
             })}
           </dt>
           <dd>{sample.sampleType}</dd>
           <dt>
             {intl.formatMessage({
-              id: "storage.picker.sample.status",
+              id: "storage.picker.occupant.status",
               defaultMessage: "Status",
             })}
           </dt>

@@ -54,7 +54,7 @@ describe("LocationPickerPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders 'Move Sample' heading when currentLocation is present", () => {
+  it("renders 'Move Item' heading when currentLocation is present", () => {
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
@@ -67,7 +67,7 @@ describe("LocationPickerPage", () => {
       />,
     );
     expect(
-      screen.getByRole("heading", { level: 1, name: /move sample/i }),
+      screen.getByRole("heading", { level: 1, name: /move item/i }),
     ).toBeInTheDocument();
   });
 

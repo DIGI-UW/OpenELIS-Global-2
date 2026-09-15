@@ -1629,7 +1629,7 @@ public class StorageLocationRestController extends BaseRestController {
         response.setActive(box.getActive());
 
         Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
-                .getOccupiedCoordinatesWithSampleInfo(box.getId());
+                .getOccupiedCoordinatesWithOccupantInfo(box.getId());
         response.setOccupied(!occupiedCoordinatesMap.isEmpty());
         response.setOccupiedCoordinates(occupiedCoordinatesMap);
         response.setFhirUuid(box.getFhirUuidAsString());
