@@ -4,6 +4,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -252,5 +253,108 @@ public class FhirPatientLinkServiceImplTest {
 
         assertTrue("Primary patient should reference merged patient", primaryLinkRef.contains("merged-fhir-uuid"));
         assertTrue("Merged patient should reference primary patient", mergedLinkRef.contains("primary-fhir-uuid"));
+    }
+
+    /**
+     * Test: verifyFhirResourcesExist() should return true when both FHIR resources exist.
+     */
+    @Test
+    public void testVerifyFhirResourcesExist_BothExist_ReturnsTrue() {
+        // Arrange
+        when(patientDAO.getData("1")).thenReturn(primaryPatient);
+        when(patientDAO.getData("2")).thenReturn(mergedPatient);
+        when(fhirPersistanceService.getPatientByUuid(primaryPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.of(primaryFhirPatient));
+        when(fhirPersistanceService.getPatientByUuid(mergedPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.of(mergedFhirPatient));
+
+        // Act
+        boolean result = fhirPatientLinkService.verifyFhirResourcesExist("1", "2");
+
+        // Assert
+        assertTrue("Should return true when both FHIR resources exist", result);
+    }
+
+    /**
+     * Test: verifyFhirResourcesExist() should return false when primary FHIR resource is missing.
+     */
+    @Test
+    public void testVerifyFhirResourcesExist_PrimaryMissing_ReturnsFalse() {
+        // Arrange
+        when(patientDAO.getData("1")).thenReturn(primaryPatient);
+        when(patientDAO.getData("2")).thenReturn(mergedPatient);
+        when(fhirPersistanceService.getPatientByUuid(primaryPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.empty());
+        when(fhirPersistanceService.getPatientByUuid(mergedPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.of(mergedFhirPatient));
+
+        // Act
+        boolean result = fhirPatientLinkService.verifyFhirResourcesExist("1", "2");
+
+        // Assert
+        assertFalse("Should return false when primary FHIR resource is missing", result);
+    }
+
+    /**
+     * Test: verifyFhirResourcesExist() should return false when merged FHIR resource is missing.
+     */
+    @Test
+    public void testVerifyFhirResourcesExist_MergedMissing_ReturnsFalse() {
+        // Arrange
+        when(patientDAO.getData("1")).thenReturn(primaryPatient);
+        when(patientDAO.getData("2")).thenReturn(mergedPatient);
+        when(fhirPersistanceService.getPatientByUuid(primaryPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.of(primaryFhirPatient));
+        when(fhirPersistanceService.getPatientByUuid(mergedPatient.getFhirUuidAsString()))
+                .thenReturn(Optional.empty());
+
+        // Act
+        boolean result = fhirPatientLinkService.verifyFhirResourcesExist("1", "2");
+
+        // Assert
+        assertFalse("Should return false when merged FHIR resource is missing", result);
+    }
+
+    /**
+     * Test: verifyFhirResourcesExist() should return false when patients have no
+     * FHIR UUIDs.
+     */
+    @Test
+    public void testVerifyFhirResourcesExist_NoFhirUuids_ReturnsFalse() {
+        // Arrange
+        org.openelisglobal.patient.valueholder.Patient patientWithoutFhir1 = new org.openelisglobal.patient.valueholder.Patient();
+        patientWithoutFhir1.setId("1");
+        patientWithoutFhir1.setFhirUuid(null);
+
+        org.openelisglobal.patient.valueholder.Patient patientWithoutFhir2 = new org.openelisglobal.patient.valueholder.Patient();
+        patientWithoutFhir2.setId("2");
+        patientWithoutFhir2.setFhirUuid(null);
+
+        lenient().when(patientDAO.getData("1")).thenReturn(patientWithoutFhir1);
+        lenient().when(patientDAO.getData("2")).thenReturn(patientWithoutFhir2);
+
+        // Act
+        boolean result = fhirPatientLinkService.verifyFhirResourcesExist("1", "2");
+
+        // Assert
+        assertFalse("Should return false when patients have no FHIR UUIDs", result);
+    }
+
+    /**
+     * Test: verifyFhirResourcesExist() should return false when FHIR server error occurs.
+     */
+    @Test
+    public void testVerifyFhirResourcesExist_FhirServerError_ReturnsFalse() {
+        // Arrange
+        when(patientDAO.getData("1")).thenReturn(primaryPatient);
+        when(patientDAO.getData("2")).thenReturn(mergedPatient);
+        when(fhirPersistanceService.getPatientByUuid(anyString()))
+                .thenThrow(new RuntimeException("FHIR server unavailable"));
+
+        // Act
+        boolean result = fhirPatientLinkService.verifyFhirResourcesExist("1", "2");
+
+        // Assert
+        assertFalse("Should return false when FHIR server error occurs", result);
     }
 }
