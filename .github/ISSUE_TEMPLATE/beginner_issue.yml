@@ -1,0 +1,127 @@
+name: Beginner Issue Template
+description: Create a Beginner Issue for fairly new contributors (React/Java/Testing)
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! 😊
+        We truly appreciate your time and effort.
+        
+        This template is designed to help you create a **Beginner-friendly issue** — a moderately easy, well-scoped task that helps contributors build confidence and deepen their understanding of the OpenELIS Global 2 codebase.
+
+        ### 🐥 Beginner Friendly
+        **Who is this issue for?**
+        This issue is a great fit for contributors who are ready to explore the OpenELIS Global 2 codebase a little more and take on slightly more independent work. We strongly recommend completing a **Good First Issue** before tackling a Beginner Issue.
+        
+        Beginner Issues often involve reading existing Java or React code, understanding how different parts fit together, and making small, thoughtful updates that follow established patterns.
+        
+        The goal is to support skill growth while keeping the experience approachable, well-scoped, and enjoyable.
+
+        ### 🐥 About Beginner Issues
+        Beginner Issues are a great next step for contributors who feel comfortable with the basic project workflow and want to explore the codebase a little more. These issues often involve:
+        * Small, well-scoped improvements to existing tests (JUnit/Mockito, Playwright, or Cypress)
+        * Narrow updates to backend/frontend functionality (e.g. refining helpers or improving readability)
+        * Documentation or comment clarity
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select the main technical area of this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 👾 Description of the Issue
+      description: Describe the issue in a clear, approachable way. Explain the context, what needs to change, and the expected outcome without assuming deep knowledge of the codebase.
+      placeholder: |
+        Edit here. Example:
+        The PermissionModuleServiceTest class is missing a test case for when an invalid module name is requested.
+        Adding a testInvalidModuleName() method would improve our test coverage and ensure the service handles unknown modules gracefully.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: Describe the approach for addressing this issue in a clear and focused way. Explain what will be changed and what the end result should look like.
+      placeholder: |
+        Edit here. Example:
+        Add a testInvalidModuleName() method to PermissionModuleServiceTest.java that asserts an exception is thrown or null is returned.
+        The changes should:
+        1. Setup the service with mock dependencies.
+        2. Call the method with an invalid module name.
+        3. Assert the expected outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_steps
+    attributes:
+      label: 👩‍💻 Implementation Steps
+      description: Walk through how to implement the solution in clear, easy-to-follow steps. Beginner Issues leave a little more room for exploration, so it's helpful to describe the overall approach, key files, and validation.
+      placeholder: |
+        Edit here. Example:
+        Step 1: Open the test file
+        - Open PermissionModuleServiceTest.java
+        
+        Step 2: Add the test case
+        - Look at how existing tests are structured and add a new @Test method for invalid module names.
+        
+        Step 3: Verify
+        - Run the test suite to verify the test passes.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: To help get this change merged smoothly
+      options:
+        - label: "**Scope:** Changes are limited to this issue"
+          required: false
+        - label: "**Behavior:** No other behavior or public API changes"
+          required: false
+        - label: "**Tests:** Existing and any new tests pass"
+          required: false
+        - label: "**Review:** All code review feedback addressed"
+          required: false
+
+  - type: checkboxes
+    id: contribution_guide
+    attributes:
+      label: 📋 Step-by-Step Contribution Guide
+      description: |
+        To help keep contributions consistent and easy to review, remember these key steps:
+
+        *Read [CONTRIBUTING.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/CONTRIBUTING.md) for contribution guidance.*
+        *Read [README.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/README.md) for setup instructions.*
+      options:
+        - label: Comment on the issue to indicate interest, and a maintainer will help with assignment
+          required: false
+        - label: Fork the repository and create a branch from `develop`
+          required: false
+        - label: Make the requested changes following Spotless (Java) or Prettier (React) guidelines
+          required: false
+        - label: Follow the repository contribution guidance and prepare a clean pull request for review
+          required: false
+        - label: Push your branch and open a pull request
+          required: false
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 🤔 Additional Information
+      description: Extra context, resources, or screenshots for contributors.
+      placeholder: Optional context or helpful resources.
