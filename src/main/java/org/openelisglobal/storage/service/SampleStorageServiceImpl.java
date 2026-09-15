@@ -1275,8 +1275,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     /**
-     * Build hierarchical path for a location entity (room, device, shelf, rack, or
-     * box)
+     * Build hierarchical path for a location entity. A box coordinate renders as
+     * "... > A1" here, "... > Box1 at position A1" in
+     * buildHierarchicalPathForAssignment.
      */
     private String buildHierarchicalPathForEntity(Object locationEntity, String locationType,
             String positionCoordinate) {
