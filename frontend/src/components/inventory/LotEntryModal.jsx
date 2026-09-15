@@ -506,9 +506,20 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             id="barcode"
             labelText={<FormattedMessage id="lot.barcode" />}
             value={formData.barcode}
+            disabled={isEdit || lotFieldsLocked}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
-            disabled={lotFieldsLocked}
+            placeholder={
+              isEdit
+                ? ""
+                : intl.formatMessage({
+                    id: "lot.barcode.placeholder",
+                  })
+            }
+            helperText={
+              isEdit
+                ? intl.formatMessage({ id: "lot.barcode.locked" })
+                : intl.formatMessage({ id: "lot.barcode.hint" })
+            }
           />
         </Stack>
       </Modal>

@@ -344,6 +344,7 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return (
           lot.lotNumber?.toLowerCase().includes(searchLower) ||
+          lot.barcode?.toLowerCase().includes(searchLower) ||
           item?.name?.toLowerCase().includes(searchLower)
         );
       });
@@ -463,6 +464,27 @@ const InventoryDashboard = () => {
   const handleMoveLocation = (lot) => {
     setMovingLot(lot);
     setLocationPickerOpen(true);
+  };
+
+  const handlePrintLabel = async (lot) => {
+    try {
+      const response = await InventoryLotAPI.printLabel(lot.id);
+      const blob = new Blob([response.data], { type: response.contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = response.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "lot.label.print.failed" }),
+      });
+    }
   };
 
   const movingLotCurrentLocation = movingLot?.location?.hierarchicalPath
@@ -654,7 +676,10 @@ const InventoryDashboard = () => {
                   </TableRow>
                 ) : (
                   rows.map((row) => {
+                    // Match by id, not by index: the table is sortable, so
+                    // Carbon's row order need not track paginatedLots.
                     const lot = lotsById.get(row.id);
+                    if (!lot) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {
@@ -758,6 +783,13 @@ const InventoryDashboard = () => {
                                         : "Assign storage location",
                                     })}
                                     onClick={() => handleMoveLocation(lot)}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "lot.label.print",
+                                    })}
+                                    disabled={!lot.barcode}
+                                    onClick={() => handlePrintLabel(lot)}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
