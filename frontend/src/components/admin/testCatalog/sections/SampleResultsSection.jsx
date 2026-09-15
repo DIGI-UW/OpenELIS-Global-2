@@ -524,6 +524,21 @@ const SampleResultsSection = ({ testId }) => {
   const toInt = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
 
+  // FR-C2 (OGC-1148): both limits >= 0 and LOD <= LOQ when both are set.
+  const detectionLimitProblem = (c) => {
+    const lod = toInt(c.lod);
+    const loq = toInt(c.loq);
+    if ((lod !== null && lod < 0) || (loq !== null && loq < 0)) {
+      return "error.testCatalog.sampleResults.detectionLimitNegative";
+    }
+    if (lod !== null && loq !== null && lod > loq) {
+      return "error.testCatalog.sampleResults.lodGtLoq";
+    }
+    return null;
+  };
+  const detectionLimitsInvalid = (c) =>
+    detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
+
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
     // so default it to the label when left blank. Guide the user with a clear
@@ -563,6 +578,19 @@ const SampleResultsSection = ({ testId }) => {
       });
       return;
     }
+    // FR-C2 (OGC-1148) — detection limits must be coherent before they persist.
+    const badLimits = normalized.map(detectionLimitProblem).find(Boolean);
+    if (badLimits) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage({ id: badLimits }),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
@@ -570,6 +598,8 @@ const SampleResultsSection = ({ testId }) => {
         ...c,
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),
+        lod: toInt(c.lod),
+        loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
           ...o,
           sortOrder: toInt(o.sortOrder),
@@ -881,6 +911,60 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
+                    {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
+                    <div
+                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
+                      data-testid={`detection-limits-${ci}`}
+                    >
+                      <NumberInput
+                        id={`comp-lod-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.lod === null || c.lod === undefined ? "" : c.lod
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            lod: value === "" ? null : value,
+                          })
+                        }
+                      />
+                      <NumberInput
+                        id={`comp-loq-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.loq === null || c.loq === undefined ? "" : c.loq
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            loq: value === "" ? null : value,
+                          })
+                        }
+                      />
+                    </div>
                   </>
                 )}
                 <TextInput

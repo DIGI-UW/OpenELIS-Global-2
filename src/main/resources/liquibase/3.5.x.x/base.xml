@@ -530,4 +530,8 @@
        were invisible to the Reference Lab Results page and to shipment dispatch. -->
   <include relativeToChangelogFile="true" file="101-referral-sent-status-backfill.xml"/>
 
+  <!-- QC targets per control level and lot, plus LOD/LOQ on result components
+       (Test Catalog, OGC-1148). -->
+  <include relativeToChangelogFile="true" file="102-test-qc-targets.xml"/>
+
 </databaseChangeLog>

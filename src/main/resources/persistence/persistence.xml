@@ -182,6 +182,7 @@
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
         <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
+        <class>org.openelisglobal.testcatalog.valueholder.TestQcTarget</class>
         <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
 
         <!-- Barcode Label Presets (OGC-285 M2) -->

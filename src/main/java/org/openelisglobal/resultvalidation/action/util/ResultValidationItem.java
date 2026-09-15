@@ -85,8 +85,9 @@ public class ResultValidationItem implements ResultItem, Serializable {
     private boolean normalResult;
     private String normalRange;
     private String patientName;
-    private double lowerCritical;
-    private double higherCritical;
+    private Double lowerCritical;
+    private Double higherCritical;
+    private String resultFlag;
     private String expandedUncertainty;
 
     @Override
@@ -489,20 +490,28 @@ public class ResultValidationItem implements ResultItem, Serializable {
         this.normalRange = normalRange;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
     }
 
     public String getExpandedUncertainty() {
