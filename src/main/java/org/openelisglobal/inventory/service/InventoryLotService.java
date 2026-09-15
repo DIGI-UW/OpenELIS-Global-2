@@ -54,11 +54,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     Double getTotalCurrentQuantity(Long itemId);
 
-    /**
-     * Get total usable quantity for an item — only lots that are ACTIVE/IN_USE, QC
-     * PASSED, and have currentQuantity > 0. Aligns with FEFO consumption
-     * eligibility.
-     */
     Double getTotalUsableQuantity(Long itemId);
 
     /**

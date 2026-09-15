@@ -174,12 +174,11 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
     public void isSufficientInventoryAvailable_shouldExcludeQcFailedLotsFromUsableTotal() {
         inventoryLotService.updateQCStatus(2L, QCStatus.FAILED, "QC failed", "1");
 
-        // Lot 1L has 100.0 usable, lot 2L (50.0) is QC failed and excluded
         boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 100.0);
         assertTrue("Should have sufficient inventory from usable lot only", available);
 
-        // 100.0 usable but 150.0 requested should fail — QC failed lot must not count
         boolean notAvailable = inventoryManagementService.isSufficientInventoryAvailable(1L, 150.0);
         assertFalse("Should not count QC failed lot toward available inventory", notAvailable);
     }
+
 }
