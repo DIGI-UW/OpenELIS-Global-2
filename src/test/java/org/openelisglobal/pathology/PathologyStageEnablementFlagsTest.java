@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -24,19 +25,56 @@ import org.springframework.test.util.ReflectionTestUtils;
  * row could exist under that name (FR-2.3, AC-7).
  *
  * <p>
- * The test database is built by the full Liquibase changelog before this class
- * runs, so changesets 035 (widen the column) and 036 (seed the seven rows) have
- * already executed and this class needs no DBUnit fixture of its own.
+ * The test database is built by the full Liquibase changelog, so changesets 035
+ * (widen the column) and 036 (seed the seven rows) have already run by the time
+ * this class starts. The rows are not still there to be found, though:
+ * {@code executeDataSetWithStateManagement} truncates every table a fixture
+ * names, several fixtures name {@code site_information} and
+ * {@code site_information_domain} (site-information.xml, site-info-domain.xml
+ * and result-reporting-configuration.xml among them), and the base class
+ * commits, so whether the seeded rows survive depends on which class ran before
+ * this one. The changeset's own statements are therefore re-applied here, so
+ * what these tests assert is what changeset 036 writes rather than what test
+ * order happened to leave behind.
  */
 public class PathologyStageEnablementFlagsTest extends BaseWebContextSensitiveTest {
 
     private static final String RESULT_CONFIGURATION_DOMAIN_ID = "SELECT id FROM clinlims.site_information_domain"
             + " WHERE name = 'resultConfiguration'";
 
+    /**
+     * The domain changeset 036 files its rows under, restored if a fixture took it.
+     */
+    private static final String SEED_RESULT_CONFIGURATION_DOMAIN = "INSERT INTO"
+            + " clinlims.site_information_domain (id, name, description)"
+            + " SELECT nextval('clinlims.site_information_domain_seq'), 'resultConfiguration',"
+            + " 'Result Entry Configuration' WHERE NOT EXISTS (SELECT 1 FROM"
+            + " clinlims.site_information_domain WHERE name = 'resultConfiguration')";
+
+    /**
+     * The insert changeset 036 writes for one stage, column for column. The guard
+     * makes it a no-op when the changeset's own row is still present, so a run in
+     * which nothing wiped the table asserts on the row Liquibase wrote.
+     */
+    private static final String SEED_SWITCH = "INSERT INTO clinlims.site_information (id, name, lastupdated,"
+            + " description, value, encrypted, domain_id, value_type, instruction_key, \"group\")"
+            + " SELECT nextval('clinlims.site_information_seq'), ?, now(), ?, 'true', false,"
+            + " (SELECT id FROM clinlims.site_information_domain WHERE name = 'resultConfiguration'),"
+            + " 'boolean', 'instructions.pathology.stage.enabled', 0"
+            + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information WHERE name = ?)";
+
     private static final int OPTIONAL_STAGES = 7;
 
     @Autowired
     private DefaultConfigurationProperties defaultConfigurationProperties;
+
+    @Before
+    public void seedTheSwitchesTheWayTheChangesetDoes() {
+        jdbcTemplate.update(SEED_RESULT_CONFIGURATION_DOMAIN);
+        optionalStageSwitches().forEach((status, property) -> jdbcTemplate.update(SEED_SWITCH, property.getDBName(),
+                "If true, cases pass through the " + status.getDisplay() + " stage; if false, it is skipped",
+                property.getDBName()));
+    }
 
     @Test
     public void siteInformationName_isWideEnoughForTheStandardNames() {
