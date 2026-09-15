@@ -38,6 +38,9 @@
             DECLARE
                 remaining INTEGER;
                 passes INTEGER := 0;
+                dup_id BIGINT;
+                suffix INTEGER;
+                candidate TEXT;
             BEGIN
                 LOOP
                     UPDATE clinlims.inventory_item outer_item
@@ -58,13 +61,30 @@
 
                     passes := passes + 1;
                     IF passes >= 5 THEN
-                        UPDATE clinlims.inventory_item outer_item
-                        SET code = 'ITEM_' || outer_item.id
-                        WHERE EXISTS (
-                            SELECT 1 FROM clinlims.inventory_item inner_item
-                            WHERE inner_item.code = outer_item.code
-                            AND inner_item.id &lt;&gt; outer_item.id
-                        );
+                        FOR dup_id IN
+                            SELECT outer_item.id FROM clinlims.inventory_item outer_item
+                            WHERE EXISTS (
+                                SELECT 1 FROM clinlims.inventory_item inner_item
+                                WHERE inner_item.code = outer_item.code
+                                AND inner_item.id &lt;&gt; outer_item.id
+                            )
+                            ORDER BY outer_item.id
+                        LOOP
+                            suffix := 1;
+                            LOOP
+                                candidate := 'ITEM_' || dup_id;
+                                IF suffix > 1 THEN
+                                    candidate := LEFT(candidate, GREATEST(1, 64 - LENGTH('_' || suffix)))
+                                                 || '_' || suffix;
+                                END IF;
+                                EXIT WHEN NOT EXISTS (
+                                    SELECT 1 FROM clinlims.inventory_item taken
+                                    WHERE taken.code = candidate AND taken.id &lt;&gt; dup_id
+                                );
+                                suffix := suffix + 1;
+                            END LOOP;
+                            UPDATE clinlims.inventory_item SET code = candidate WHERE id = dup_id;
+                        END LOOP;
                         EXIT;
                     END IF;
                 END LOOP;
