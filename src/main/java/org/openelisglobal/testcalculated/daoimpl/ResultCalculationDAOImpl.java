@@ -45,7 +45,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
     public List<ResultCalculation> getResultCalculationByTest(Test test) {
         try {
 
-            String sql = "from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
+            String sql = "select r from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
             Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ResultCalculation.class);
             query.setParameter("testId", test.getId());
@@ -55,7 +55,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
                 return results;
             }
         } catch (RuntimeException e) {
-            handleException(e, "getResultCalculationByPatientAndTest");
+            handleException(e, "getResultCalculationByTest");
         }
         return Collections.emptyList();
     }
