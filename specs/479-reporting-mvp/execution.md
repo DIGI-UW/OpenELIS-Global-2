@@ -1,6 +1,22 @@
 # Reporting MVP Implementation and Deployment
 
-## Current manual-UAT checkpoint — September 14, 2026 (Pacific time)
+## Current manual-UAT checkpoint — Non-Conformance delivery
+
+Public frontend/backend `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7` connects all
+three report types. The database, configuration and review tooling `2048bc3cfd`
+were retained. The focused public Non-Conformance workflow and authentication
+passed in 35.3 seconds with no retries and downloaded the expected four records.
+The [evidence index](https://reporting.catalyst.openelis-global.org/reporting-evidence/)
+links all eight published bundles; its links and rendered page were checked.
+
+[PR #4318](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4318) contains the
+source and its delivery receipt above the separate navigation PR. Frontend/static
+CI passed on the implementation commit; later receipt CI remains in progress.
+The source date decision is resolved. Remaining milestone audit and human
+acceptance are open. Grist availability/Non-Conformance wording is being updated
+by its owner without changing existing feedback.
+
+## Earlier manual-UAT checkpoint — September 14, 2026 (Pacific time)
 
 The public stage remains frontend `7cca586e5874ccb177d3a59f75177a5a9867e1d5`,
 backend `8005e4cc0b2b05d054489730aef969027d773093`, review tooling
@@ -1468,3 +1484,36 @@ exhausted its usage allowance. A fresh capacity check and normal retry succeeded
 two checks passed in 25.5 seconds, and desktop/phone screenshots were inspected.
 The correction remains unpublished; public application 8005e4cc0b and its existing evidence remain the
 current usable stage. No broad acceptance task or human review is closed.
+
+## September 15 delivery checkpoint
+
+Candidate `122dea228b01bf5bf148b22e39cbf7b72132675b` passes
+[backend CI](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/34928675652),
+[frontend CI](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/34928675761),
+and [downstream E2E CI](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/34929254161).
+The E2E workflow includes successful Cypress jobs, both Playwright Core shards,
+both Harness shards, report merges and suite gates. This is distinct from the
+earlier image-build checkpoint. All eleven stack PRs are conflict-free and
+require reviewer approval. No merge is recorded as part of this delivery.
+
+The public application's identity still reports frontend/backend `3de726b8d3`.
+The later candidate adds test/documentation changes and upstream translations;
+the recorded public workflow evidence retains its original tested revisions.
+The external review widget now identifies itself as `ea85d65`; the two-user
+recording proves the earlier `814d8341` widget, not a rerun against this update.
+Human acceptance remains pending.
+
+[The evidence index](https://reporting.catalyst.openelis-global.org/reporting-evidence/)
+contains twelve bundles, including two-user reuse, Non-Conformance saved reuse,
+and separate backend/frontend coverage results. Existing service tests establish
+scope-denial behavior; the public browser workflow establishes cross-owner
+job/file denial and authorized shared reuse. A duplicate browser matrix for
+every service-level denial is not a remaining requirement.
+
+The pinned mock's omitted “Preview controls” toolbar simulates user identity,
+access and the next export failure (canonical HTML line 1289). It is demonstration
+infrastructure, not an unfinished reporting feature. The native column preview
+remains in `ReportingView.jsx`; fictional example rows are not actual report data.
+The brief “Not yet connected” label during catalog loading remains a recorded
+non-blocking usability finding. Full requirement reconciliation and human
+acceptance must not be inferred from CI success alone.

@@ -82,9 +82,12 @@ over an existing source, using the same frontend and job implementation.
 The rejection entry path creates an `NcEvent` and an explicit `NceSpecimen`
 link. It sets `reportDate` but leaves `dateOfEvent` empty. The general event
 creation worker also sets the reporting date; its update path can later set the
-actual event date. This confirms why the unanswered default-date choice changes
-whether ordinary recorded rejections appear. Source activation remains paused on
-that choice; no answer is inferred from elapsed time.
+actual event date. The user explicitly approved the fallback on September 14,
+2026: use the event date when present, otherwise the recorded date, with a
+visible date-basis label. Ordinary recorded rejections therefore remain eligible
+for the selected period. This resolves the date-choice blocker; implementation
+and focused validation remain required. No activation or acceptance is claimed
+by recording this decision.
 
 Reason identifiers need their source context. `RejectionController.setupForm`
 uses `DisplayListService.QA_EVENTS`, whose `createSortedQAEvents` reads `QaEvent`.

@@ -476,3 +476,10 @@ cancellation: the interface must refuse cancellation clearly. Prepare both
 reports in separate tabs before generating the large one when more setup time
 is needed. The next attempt should create new jobs, preserving the first run's
 history.
+
+## September 15 delivery checkpoint
+
+See the [revision-bound delivery receipt](execution.md#september-15-delivery-checkpoint) for passing backend, frontend and E2E CI, public deployment identity,
+recorded workflow evidence and the distinction between mock simulation controls
+and product features. The full requirement reconciliation is in [acceptance.md](acceptance.md).
+Human acceptance remains pending and separate from engineering validation.

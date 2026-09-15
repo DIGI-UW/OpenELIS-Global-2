@@ -93,6 +93,17 @@ change ticket assignments.
 
 ## Clarifications
 
+### Approved Non-Conformance date behavior — September 14, 2026
+
+Use the event date when it exists; otherwise use the recorded date. The same
+chosen date controls period filtering and the exported reporting date. Show the
+date basis clearly, including the fallback rule in the builder and review, and
+provide the original dates and Date basis as report fields. A later recorded date
+must not override a known event date. A record with neither date does not match
+a dated report. Legacy rejection records keep an explicitly labeled recorded
+rejection date. This decision does not permit merging separate occurrences or
+changing the supplied interface.
+
 ### Session 2026-09-13
 
 - Q: Should MVP field coverage be a fixed subset of seven, 38 or 50 fields? → A:
