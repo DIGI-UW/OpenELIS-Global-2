@@ -121,8 +121,8 @@ public interface SampleStorageService {
             org.springframework.data.domain.Pageable pageable);
 
     /**
-     * Assign an InventoryLot to a location, using the same locationId+locationType
-     * model and audit trail as sample assignments (OGC-657).
+     * Assign an InventoryLot to a location, reusing the locationId+locationType
+     * model and audit trail of sample assignments (OGC-657).
      *
      * @param inventoryLotId     InventoryLot ID
      * @param locationId         Location ID (room, device, shelf, rack, or box ID)

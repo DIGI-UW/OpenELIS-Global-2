@@ -25,8 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * InventoryLot assign/move/movements over the occupant-generalized
- * {@link SampleStorageService}, mirroring SampleStorageRestController
- * (OGC-657).
+ * {@link SampleStorageService} (OGC-657).
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")

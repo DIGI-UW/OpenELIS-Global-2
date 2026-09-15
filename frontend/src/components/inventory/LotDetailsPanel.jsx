@@ -22,6 +22,7 @@ import {
   UsageAPI,
 } from "./InventoryService";
 import "./LotDetailsPanel.css";
+import { formatLocation } from "../storage/formatLocation";
 
 const LotDetailsPanel = ({ open, onClose, lot }) => {
   const intl = useIntl();
@@ -406,13 +407,5 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
     </div>
   );
 };
-
-function formatLocation(type, id, coord) {
-  const parts = [];
-  if (type) parts.push(type);
-  if (id != null) parts.push(`#${id}`);
-  if (coord) parts.push(`(${coord})`);
-  return parts.length > 0 ? parts.join(" ") : "-";
-}
 
 export default LotDetailsPanel;
