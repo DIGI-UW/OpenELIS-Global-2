@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -31,7 +31,6 @@ const OrderReferralRequest = ({
   setReferralRequests,
 }) => {
   const intl = useIntl();
-  const [referralRows, setReferralRows] = useState([]);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   function handleReferrer(referrer, index) {
@@ -89,108 +88,33 @@ const OrderReferralRequest = ({
     },
   ];
 
-  // One referral row per selected test, rebuilt (not appended) on every render so
-  // the rows stay aligned with selectedTests by index. Appending here previously
-  // accumulated a duplicate entry per render and left only a single entry for a
-  // multi-test sample, which the payload builder then collapsed into comma-joined
-  // ids such as "4,4" — values the server rejects.
-  const updateUIRender = () => {
-    const rows = [];
-    let obj = {};
-    const updateReferralRequest = [];
-    let testValue = {};
-    let defaultSelect = {};
-
-    selectedTests.length > 0 &&
-      selectedTests.map((test, i) => {
-        let id = index + "_" + test.id;
-        testValue = {
-          id: test.id,
-          value: test.name,
-        };
-        defaultSelect = {
-          id: "",
-          value: "",
-        };
-
-        obj = referralRequests.find((r) => r && r.testId === test.id) || {
+  // Keep referralRequests aligned with selectedTests by index whenever the
+  // selected tests change. Rebuilt (not appended) on every run so this stays
+  // idempotent — appending here previously accumulated a duplicate entry per
+  // render and left only a single entry for a multi-test sample, which the
+  // payload builder then collapsed into comma-joined ids such as "4,4" —
+  // values the server rejects.
+  const syncReferralRequests = () => {
+    if (selectedTests.length === 0) {
+      return;
+    }
+    const updateReferralRequest = selectedTests.map((test) => {
+      return (
+        referralRequests.find((r) => r && r.testId === test.id) || {
           referralRequestObject: referralReasons[0].id,
           referrer:
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
           institute: null,
           sentDate: "",
           testId: test.id,
-        };
-        updateReferralRequest.push(obj);
-        let row = {
-          reason: (
-            <CustomSelect
-              id={"referralReasonId_" + id}
-              options={referralReasons}
-              value={
-                referralRequests[i]?.reasonForReferral
-                  ? referralRequests[i].reasonForReferral
-                  : null
-              }
-              onChange={(e) => handleReasonForReferral(e, i)}
-            />
-          ),
-          referrer: (
-            <CustomTextInput
-              id={"referrer_" + id}
-              defaultValue={
-                referralRequests[i]?.referrer
-                  ? referralRequests[i].referrer
-                  : obj.referrer
-              }
-              onChange={(value) => handleReferrer(value, i)}
-              labelText={""}
-            />
-          ),
-          institute: (
-            <CustomSelect
-              id={"referredInstituteId_" + id}
-              options={referralOrganizations}
-              value={
-                referralRequests[i]?.institute
-                  ? referralRequests[i].institute
-                  : null
-              }
-              onChange={(e) => handleInstituteSelect(e, i)}
-              defaultSelect={defaultSelect}
-            />
-          ),
-          sentDate: (
-            <CustomDatePicker
-              id={"sendDate_" + id}
-              autofillDate={true}
-              className="orderReferralSentDate"
-              value={
-                referralRequests[i]?.sentDate
-                  ? referralRequests[i].sentDate
-                  : null
-              }
-              onChange={(date) => handleSentDatePicker(date, i)}
-              labelText={""}
-            />
-          ),
-          testName: (
-            <CustomSelect
-              id={"shadowReferredTest_" + id}
-              defaultSelect={testValue}
-              value={test.id}
-              disabled={true}
-            />
-          ),
-        };
-        rows.push(row);
-      });
-    setReferralRows(rows);
+        }
+      );
+    });
     setReferralRequests(updateReferralRequest);
   };
 
   useEffect(() => {
-    updateUIRender();
+    syncReferralRequests();
   }, [selectedTests]);
 
   return (
@@ -207,16 +131,59 @@ const OrderReferralRequest = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {referralRows.length > 0 &&
-              referralRows.map((row, td_index) => (
-                <TableRow key={td_index}>
-                  {Object.keys(row)
-                    .filter((key) => key !== "id")
-                    .map((key) => {
-                      return <TableCell key={key}>{row[key]}</TableCell>;
-                    })}
+            {selectedTests.map((test, i) => {
+              const id = index + "_" + test.id;
+              const obj = referralRequests[i] || {};
+              const testValue = { id: test.id, value: test.name };
+              const defaultSelect = { id: "", value: "" };
+              return (
+                <TableRow key={test.id}>
+                  <TableCell key="reason">
+                    <CustomSelect
+                      id={"referralReasonId_" + id}
+                      options={referralReasons}
+                      value={obj.reasonForReferral || null}
+                      onChange={(e) => handleReasonForReferral(e, i)}
+                    />
+                  </TableCell>
+                  <TableCell key="referrer">
+                    <CustomTextInput
+                      id={"referrer_" + id}
+                      defaultValue={obj.referrer}
+                      onChange={(value) => handleReferrer(value, i)}
+                      labelText={""}
+                    />
+                  </TableCell>
+                  <TableCell key="institute">
+                    <CustomSelect
+                      id={"referredInstituteId_" + id}
+                      options={referralOrganizations}
+                      value={obj.institute || null}
+                      onChange={(e) => handleInstituteSelect(e, i)}
+                      defaultSelect={defaultSelect}
+                    />
+                  </TableCell>
+                  <TableCell key="sentDate">
+                    <CustomDatePicker
+                      id={"sendDate_" + id}
+                      autofillDate={true}
+                      className="orderReferralSentDate"
+                      value={obj.sentDate || null}
+                      onChange={(date) => handleSentDatePicker(date, i)}
+                      labelText={""}
+                    />
+                  </TableCell>
+                  <TableCell key="testName">
+                    <CustomSelect
+                      id={"shadowReferredTest_" + id}
+                      defaultSelect={testValue}
+                      value={test.id}
+                      disabled={true}
+                    />
+                  </TableCell>
                 </TableRow>
-              ))}
+              );
+            })}
           </TableBody>
         </Table>
       </>
