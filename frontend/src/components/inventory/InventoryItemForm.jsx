@@ -31,6 +31,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
   // Form state
   const [formData, setFormData] = useState({
+    code: "",
     name: "",
     itemType: "REAGENT",
     category: "",
@@ -84,6 +85,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   useEffect(() => {
     if (item) {
       setFormData({
+        code: item.code || "",
         name: item.name || "",
         itemType: item.itemType || "REAGENT",
         category: item.category || "",
@@ -98,6 +100,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     } else {
       // Reset to initial state when adding new item
       setFormData({
+        code: "",
         name: "",
         itemType: "REAGENT",
         category: "",
@@ -206,13 +209,23 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
       } else {
+        // Optional user-supplied code; blank means the server auto-generates
+        // one from the name. Locked once saved, so never sent on update.
+        sanitizedData.code = formData.code?.trim() || null;
         await InventoryItemAPI.create(sanitizedData);
       }
       setSaving(false);
       onSave();
     } catch (err) {
       console.error("Error saving item:", err);
-      const errorMessage = err.message || "Error saving catalog item";
+      // err.errorCode (OGC-658 C8) is an en.json message id set by
+      // InventoryItemRestController for
+      // validation failures (duplicate/malformed code, etc.) — prefer it over
+      // err.message, which is the untranslated backend fallback string.
+      const errorMessage = err.errorCode
+        ? intl.formatMessage({ id: err.errorCode }, err.params)
+        : err.message ||
+          intl.formatMessage({ id: "catalog.item.error.saveGeneric" });
       setError(errorMessage);
       setSaving(false);
       notify({
@@ -249,6 +262,37 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           value={formData.name}
           onChange={(e) => handleChange("name", e.target.value)}
           required
+        />
+
+        <TextInput
+          id="code"
+          labelText={
+            <FormattedMessage id="catalog.item.code" defaultMessage="Code" />
+          }
+          value={formData.code}
+          disabled={isEdit}
+          placeholder={
+            isEdit
+              ? ""
+              : intl.formatMessage({
+                  id: "catalog.item.code.placeholder",
+                  defaultMessage: "Leave blank to auto-generate from name",
+                })
+          }
+          helperText={
+            isEdit
+              ? intl.formatMessage({
+                  id: "catalog.item.code.locked",
+                  defaultMessage:
+                    "Code is locked once saved so integrations and existing references keep working.",
+                })
+              : intl.formatMessage({
+                  id: "catalog.item.code.hint",
+                  defaultMessage:
+                    "Stable identifier used by integrations. Leave blank and we'll generate one from the name.",
+                })
+          }
+          onChange={(e) => handleChange("code", e.target.value.toUpperCase())}
         />
 
         <Dropdown
