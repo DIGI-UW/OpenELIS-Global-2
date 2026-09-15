@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    logicalFilePath="storage/storage-menu-collapse.xml"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Storage Management spent six sidenav rows on one module, five of them
+    (Rooms/Devices/Shelves/Racks/Boxes) levels of a single hierarchy shown as
+    peers. Those are now tabs and a level switcher inside /Storage, so the
+    parent becomes a link again and the children are retired.
+
+    Children are deactivated rather than deleted: the rows carry ids other
+    installations may reference, and is_active is the reversible switch this
+    table already uses. Every old URL still resolves to the tabbed page.
+    -->
+    <changeSet id="OGC-657-collapse-storage-menu" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_management'
+            </sqlCheck>
+        </preConditions>
+        <comment>Storage Management becomes a single link to the tabbed page</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/Storage"/>
+            <where>element_id = 'menu_storage_management'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id IN ('menu_storage_samples', 'menu_storage_rooms', 'menu_storage_devices',
+                'menu_storage_shelves', 'menu_storage_racks', 'menu_storage_boxes',
+                'menu_storage_inventory_lots')</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value=""/>
+                <where>element_id = 'menu_storage_management'</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true"/>
+                <where>element_id IN ('menu_storage_samples', 'menu_storage_rooms', 'menu_storage_devices',
+                    'menu_storage_shelves', 'menu_storage_racks', 'menu_storage_boxes')</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

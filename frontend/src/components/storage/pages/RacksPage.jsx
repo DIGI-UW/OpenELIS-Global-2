@@ -1,17 +1,49 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
+import { storageLevel } from "../storageLevels";
+import AddLocationModal from "../components/AddLocationModal";
 
 /** RacksPage — /Storage/racks. List of racks with per-row Edit. */
-export default function RacksPage() {
+export default function RacksPage({ embedded = false }) {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  // Name the level being acted on — "Rack created", not a generic
+  // "Storage location created" that reads identically for all five.
+  const level = storageLevel("rack");
+  const notify = (kind, messageId, defaultMessage) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id:
+          kind === NotificationKinds.success
+            ? "notification.title"
+            : "notification.error",
+      }),
+      message: intl.formatMessage(
+        { id: messageId, defaultMessage },
+        {
+          level: intl.formatMessage({
+            id: level.labelId,
+            defaultMessage: level.label,
+          }),
+        },
+      ),
+    });
+  };
 
   const mapRow = useCallback(
     (r) => ({
@@ -27,6 +59,7 @@ export default function RacksPage() {
   return (
     <>
       <StorageResourcePage
+        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({
@@ -48,6 +81,8 @@ export default function RacksPage() {
           defaultMessage: "Racks",
         })}
         listUrl="/rest/storage/racks"
+        searchUrl="/rest/storage/racks/search"
+        searchPlaceholderId="storage.search.racks.placeholder"
         headers={[
           {
             key: "label",
@@ -84,8 +119,25 @@ export default function RacksPage() {
         pageSize={pageSize}
         setPageSize={setPageSize}
         editHref={(rack) => `/Storage/racks/${rack.id}/edit`}
-        addHref="/Storage/racks/new"
+        onAddRequested={() => setAddOpen(true)}
         onDeleteRequested={setDeleteTarget}
+      />
+      <AddLocationModal
+        level="rack"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          notify(
+            NotificationKinds.success,
+            "storage.location.created",
+            "{level} created",
+          );
+          history.replace({
+            pathname: location.pathname,
+            search: `?t=${Date.now()}`,
+          });
+        }}
       />
       <DeleteLocationConfirmModal
         isOpen={Boolean(deleteTarget)}
@@ -94,6 +146,11 @@ export default function RacksPage() {
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => {
           setDeleteTarget(null);
+          notify(
+            NotificationKinds.success,
+            "storage.location.deleted",
+            "{level} deleted",
+          );
           history.replace({
             pathname: location.pathname,
             search: `?t=${Date.now()}`,

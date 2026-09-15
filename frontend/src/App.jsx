@@ -13,18 +13,10 @@ import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
-import StorageDashboard from "./components/storage/StorageDashboard";
-import SampleItemsPage from "./components/storage/pages/SampleItemsPage";
+import StorageManagementPage from "./components/storage/StorageManagementPage";
 import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
-import RoomsPage from "./components/storage/pages/RoomsPage";
-import DevicesPage from "./components/storage/pages/DevicesPage";
-import ShelvesPage from "./components/storage/pages/ShelvesPage";
-import RacksPage from "./components/storage/pages/RacksPage";
-import BoxesPage from "./components/storage/pages/BoxesPage";
 import EditLocationPage from "./components/storage/pages/EditLocationPage";
 import EditBoxPage from "./components/storage/pages/EditBoxPage";
-import AddLocationPage from "./components/storage/pages/AddLocationPage";
-import AddBoxPage from "./components/storage/pages/AddBoxPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
@@ -928,17 +920,20 @@ export default function App() {
                   exact
                   render={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
-                      <StorageDashboard />
+                      <StorageManagementPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
+                {/* Every per-resource URL resolves to the same tabbed page, so
+                    existing bookmarks and menu rows keep working. The slug union
+                    keeps /new and /:id/edit matching their own routes. */}
                 <SecureRoute
-                  path="/Storage/sample-items"
+                  path="/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)"
                   exact
                   render={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
-                      <SampleItemsPage />
+                      <StorageManagementPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
@@ -952,106 +947,6 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RoomsPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <DevicesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <ShelvesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RacksPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <BoxesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="room" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="device" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="shelf" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="rack" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddBoxPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/Storage/rooms/:id/edit"
