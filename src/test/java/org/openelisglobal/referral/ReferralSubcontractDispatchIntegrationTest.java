@@ -1,6 +1,7 @@
 package org.openelisglobal.referral;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -152,8 +153,7 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     @Test
     public void dispatch_stampsTheSentDateTheDashboardReads() {
         Referral before = referralService.getReferralById("1");
-        org.junit.Assert.assertNotEquals("precondition: the fixture's sent date is not the handoff", HANDOFF,
-                before.getSentDate());
+        assertNotEquals("precondition: the fixture's sent date is not the handoff", HANDOFF, before.getSentDate());
 
         referralService.dispatchReferral("1", HANDOFF, ACTOR, null);
 

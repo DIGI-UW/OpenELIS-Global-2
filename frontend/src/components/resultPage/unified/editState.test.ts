@@ -124,6 +124,16 @@ describe("editState machine", () => {
       expect(nextRowState(pending, { type: "SAVE_SUCCEEDED" })).toBe("SAVED");
     });
 
+    it("goes back to saved when the referral is withdrawn", () => {
+      expect(nextRowState(pending, { type: "DISPOSITION_CLEARED" })).toBe(
+        "SAVED",
+      );
+      // A row that was savable anyway stays so.
+      expect(nextRowState("DIRTY", { type: "DISPOSITION_CLEARED" })).toBe(
+        "DIRTY",
+      );
+    });
+
     it("leaves the untouched-row rule alone", () => {
       // A value change on a saved row is still ignored: only Edit unlocks it.
       expect(nextRowState("SAVED", { type: "VALUE_CHANGED" })).toBe("SAVED");

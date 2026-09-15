@@ -445,35 +445,33 @@ public class ResultUtil {
      * working on. Results Entry hides the action once a test is referred; this is
      * the same rule for anything that reaches a save directly.
      */
+    public static boolean hasOpenReferral(Analysis analysis) {
+        return analysis != null && analysis.getId() != null
+                && SpringContext.getBean(ReferralService.class).hasOpenReferral(analysis.getId());
+    }
+
     /**
-     * Whoever raised this referral: the referrer named on the form, else the
+     * Whoever raised a referral: the referrer named on the form, else the
      * technician credited with the result, else the person saving.
      *
      * <p>
-     * All three rungs are needed. The writers used to set the technician and then
-     * overwrite it with the form's referrer, which no client sends, so nothing was
-     * recorded at all; and the unified Results page shows a technician but never
-     * asks for one, so on the page the bench actually uses both of the first two
-     * are empty.
+     * All three rungs are needed. The Results Entry writers used to set the
+     * technician and then overwrite it with the form's referrer, which no client
+     * sends, so nothing was recorded at all; the unified Results page shows a
+     * technician but never asks for one; and Order Entry sends neither.
      */
-    public static String requesterNameFor(ReferralItem referralItem, TestResultItem testResultItem,
-            String actorUserId) {
-        if (!GenericValidator.isBlankOrNull(referralItem.getReferrer())) {
-            return referralItem.getReferrer();
+    public static String requesterNameFor(String referrer, String technician, String actorUserId) {
+        if (!GenericValidator.isBlankOrNull(referrer)) {
+            return referrer;
         }
-        if (!GenericValidator.isBlankOrNull(testResultItem.getTechnician())) {
-            return testResultItem.getTechnician();
+        if (!GenericValidator.isBlankOrNull(technician)) {
+            return technician;
         }
         if (GenericValidator.isBlankOrNull(actorUserId)) {
             return null;
         }
         SystemUser user = SpringContext.getBean(SystemUserService.class).getUserById(actorUserId);
-        return user == null ? null : user.getDisplayName();
-    }
-
-    public static boolean hasOpenReferral(Analysis analysis) {
-        return analysis != null && analysis.getId() != null
-                && SpringContext.getBean(ReferralService.class).hasOpenReferral(analysis.getId());
+        return user == null ? null : user.getNameForDisplay();
     }
 
     public static void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
@@ -497,7 +495,8 @@ public class ResultUtil {
         referral.setReferralTypeId(confirmationReferralTypeId());
         referral.setRequestDate(new Timestamp(new Date().getTime()));
         referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-        referral.setRequesterName(requesterNameFor(referralItem, testResultItem, actionDataSet.getCurrentUserId()));
+        referral.setRequesterName(requesterNameFor(referralItem.getReferrer(), testResultItem.getTechnician(),
+                actionDataSet.getCurrentUserId()));
         referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
         referral.setAnalysis(analysis);
 

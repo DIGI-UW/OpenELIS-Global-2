@@ -34,6 +34,7 @@ import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -83,7 +84,7 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
     private IStatusService statusService;
 
     @Autowired
-    private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+    private SystemUserService systemUserService;
 
     @Before
     public void init() throws Exception {
@@ -200,7 +201,7 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
     public void referOutWithNoNamedTechnicianRecordsTheUserSaving() {
         Referral referral = saveReferOut(today(), null);
 
-        String expected = systemUserService.getUserById(ACTOR).getDisplayName();
+        String expected = systemUserService.getUserById(ACTOR).getNameForDisplay();
         assertEquals("with nobody named on the form, the user saving is the requester", expected,
                 referral.getRequesterName());
     }

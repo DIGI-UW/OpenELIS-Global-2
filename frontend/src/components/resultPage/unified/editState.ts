@@ -29,6 +29,8 @@ export type RowEditEvent =
   // stay read-only until Edit, and because signing this is not signing a
   // revision.
   | { type: "DISPOSITION_CHANGED" }
+  // The referral was withdrawn before being saved.
+  | { type: "DISPOSITION_CLEARED" }
   | { type: "EDIT_CLICKED" }
   | { type: "SAVE_SUCCEEDED" }
   | { type: "SAVE_REJECTED_STALE" };
@@ -114,6 +116,10 @@ export function nextRowState(
         return "DIRTY";
       }
       return state === "EDITING" ? "EDITING_DIRTY" : state;
+    case "DISPOSITION_CLEARED":
+      // Nothing left to save on a saved row. Anywhere else the row was already
+      // savable for its own reasons, or was never savable.
+      return state === "DISPOSITION_PENDING" ? "SAVED" : state;
     case "EDIT_CLICKED":
       if (state === "DISPOSITION_PENDING") {
         // The referral is already pending, so the row is savable either way;

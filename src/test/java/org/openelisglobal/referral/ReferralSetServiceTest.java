@@ -365,7 +365,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
                 .collect(Collectors.toList());
         assertEquals(referralItems.size(), raised.size());
         raised.forEach(referral -> assertEquals("the user who placed the order is on the referral",
-                orderingUser.getDisplayName(), referral.getRequesterName()));
+                orderingUser.getNameForDisplay(), referral.getRequesterName()));
     }
 
     @Test

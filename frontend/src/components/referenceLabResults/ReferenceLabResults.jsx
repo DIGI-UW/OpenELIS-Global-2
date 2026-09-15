@@ -72,7 +72,7 @@ const STATUS_TAG_KIND = {
 const PRIORITY_TAG_KIND = {
   ROUTINE: "gray",
   STAT: "red",
-  ASAP: "orange",
+  ASAP: "purple",
   TIMED: "cyan",
   FUTURE_STAT: "magenta",
 };

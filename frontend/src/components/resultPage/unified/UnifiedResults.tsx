@@ -564,21 +564,6 @@ const UnifiedResults: React.FC = () => {
     setEditingAnalysisId(target.analysisId);
   }, []);
 
-  // Referring a test out is not a change to its result, so it makes an already
-  // saved row savable without unlocking the value or recording the save as a
-  // revision. Without this a confirmation referral, which is raised precisely
-  // when a result already exists, could not be saved at all.
-  const markDispositionPending = useCallback((target: WorklistRow) => {
-    const key = worklistRowKey(target);
-    setRowStates((current) => ({
-      ...current,
-      [key]: nextRowState(current[key] || "EMPTY", {
-        type: "DISPOSITION_CHANGED",
-      }),
-    }));
-    setEditingAnalysisId(target.analysisId);
-  }, []);
-
   const handleReferralDraftChange = useCallback(
     (target: WorklistRow, draft: ReferralDraft | null) => {
       const key = worklistRowKey(target);
@@ -591,11 +576,22 @@ const UnifiedResults: React.FC = () => {
         }
         return next;
       });
+      // Referring a test out is not a change to its result, so it makes an
+      // already saved row savable without unlocking the value or recording the
+      // save as a revision. Without this a confirmation referral, which is raised
+      // precisely when a result already exists, could not be saved at all.
+      // Withdrawing the referral again takes the row back to plain saved.
+      setRowStates((current) => ({
+        ...current,
+        [key]: nextRowState(current[key] || "EMPTY", {
+          type: draft ? "DISPOSITION_CHANGED" : "DISPOSITION_CLEARED",
+        }),
+      }));
       if (draft) {
-        markDispositionPending(target);
+        setEditingAnalysisId(target.analysisId);
       }
     },
-    [markDispositionPending],
+    [],
   );
 
   const handleRejectDraftChange = useCallback(
