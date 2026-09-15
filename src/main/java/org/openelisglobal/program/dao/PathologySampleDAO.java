@@ -18,7 +18,7 @@ public interface PathologySampleDAO extends BaseDAO<PathologySample, Integer> {
 
     /**
      * Counts the cases behind the dashboard's "additional requests" tile: those
-     * holding at least one pathology_request still at OPENED (OGC-264, AC-6).
+     * holding at least one pathology_request still at OPENED (AC-6).
      *
      * <p>
      * An outstanding request used to be recorded by parking the case in the

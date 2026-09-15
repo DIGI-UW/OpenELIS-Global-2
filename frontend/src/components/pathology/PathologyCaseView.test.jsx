@@ -1,5 +1,5 @@
 /**
- * OGC-264 FR-2.1: the case view's stage select is where a case is moved along
+ * FR-2.1: the case view's stage select is where a case is moved along
  * the bench, so its options have to read in the user's language while the
  * value that reaches the server stays the raw enum name the backend stores.
  * Before this, the option text was whatever English the display list carried,

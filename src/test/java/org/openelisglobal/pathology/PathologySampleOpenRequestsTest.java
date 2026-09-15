@@ -21,8 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  * exist on the bench purely to record that a request was open, so for as long
  * as the request stood the case no longer reported where its tissue actually
  * was. The dashboard's "additional requests" tile now counts the cases holding
- * a pathology_request at OPENED instead (OGC-264, FR-2.1, AC-6), and the case
- * keeps its real stage.
+ * a pathology_request at OPENED instead (FR-2.1, AC-6), and the case keeps its
+ * real stage.
  *
  * <p>
  * These tests pin the two counting rules the tile depends on: a case is counted

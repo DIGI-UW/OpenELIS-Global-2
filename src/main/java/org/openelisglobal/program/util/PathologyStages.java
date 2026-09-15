@@ -12,7 +12,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample.Patholog
 
 /**
  * The rules about the histopathology bench sequence that the dashboard, the
- * case view and the stage transitions all need to agree on (OGC-264).
+ * case view and the stage transitions all need to agree on.
  *
  * <p>
  * {@link PathologyStatus}'s declaration order is the single source of the bench
@@ -55,7 +55,7 @@ public final class PathologyStages {
     }
 
     /**
-     * The stages at which a case counts as work in progress (OGC-264, AC-4).
+     * The stages at which a case counts as work in progress (AC-4).
      *
      * <p>
      * The Pathology Dashboard's "in progress" tile and the dashboard's own stage

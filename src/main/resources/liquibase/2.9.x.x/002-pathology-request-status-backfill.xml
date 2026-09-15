@@ -15,7 +15,7 @@
     Requests raised from here on are stored as OPENED at creation. This brings
     the rows already in the table to the same value the screen has been showing
     for them all along, so that "this case has an outstanding request" can be
-    read from the request rows (OGC-264, FR-2.1, AC-6) rather than from a stage
+    read from the request rows (FR-2.1, AC-6) rather than from a stage
     of its own.
     -->
     <changeSet id="OGC-264-pathology-request-status-backfill" author="OGC">

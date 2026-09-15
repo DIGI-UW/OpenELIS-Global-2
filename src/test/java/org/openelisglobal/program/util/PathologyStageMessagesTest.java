@@ -22,8 +22,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample.Patholog
  * else keeps the two from drifting apart once either one changes on its own, so
  * this pins that every stage's {@link PathologyStages#displayKey} resolves in
  * the English bundle to that stage's own display text, and that the bundle
- * carries no {@code pathology.stage.*} key that does not belong to a stage
- * (OGC-264).
+ * carries no {@code pathology.stage.*} key that does not belong to a stage.
  *
  * <p>
  * Plain JUnit, no Spring, no database. Maven Surefire runs with the project

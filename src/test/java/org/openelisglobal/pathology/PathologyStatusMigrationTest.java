@@ -16,10 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * The pathology case view rework retired three {@code PathologyStatus} names
- * (OGC-264, FR-2.1). The test database is migrated by the full changelog before
- * any test runs, so by the time this class executes, the changeset under test
- * has already run against an empty pathology_sample table and has nothing left
- * to prove. The SQL equivalent of the changeset's three update elements is
+ * (FR-2.1). The test database is migrated by the full changelog before any test
+ * runs, so by the time this class executes, the changeset under test has
+ * already run against an empty pathology_sample table and has nothing left to
+ * prove. The SQL equivalent of the changeset's three update elements is
  * therefore run again here, against rows this test inserts itself on the
  * retired names, to show each one lands on its bench stage, that nothing is
  * left on a retired name (AC-5), that an unrelated value is untouched, and that

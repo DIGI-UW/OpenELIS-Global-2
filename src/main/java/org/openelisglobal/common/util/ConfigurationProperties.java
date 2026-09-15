@@ -330,7 +330,7 @@ public abstract class ConfigurationProperties {
         // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
         RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
 
-        // OGC-264 (FR-2.3): per-deployment switches for the optional pathology bench
+        // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
         // COMPLETED) have no switch. A missing row means enabled.
         PATHOLOGY_STAGE_DECALCIFICATION_ENABLED("pathology.stage.DECALCIFICATION.enabled", "text"),

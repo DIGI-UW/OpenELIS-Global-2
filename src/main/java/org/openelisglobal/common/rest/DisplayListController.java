@@ -360,7 +360,7 @@ public class DisplayListController extends BaseRestController {
         configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
         // The case view's stage rail renders a stage the deployment has switched off
-        // as not applicable rather than hiding it (OGC-264, FR-2.3).
+        // as not applicable rather than hiding it (FR-2.3).
         configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED));
         configs.put(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED.toString(),

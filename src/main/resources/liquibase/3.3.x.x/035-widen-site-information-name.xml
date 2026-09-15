@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-264 (FR-2.3): the pathology case view's per-deployment bench stage
+    FR-2.3: the pathology case view's per-deployment bench stage
     switches need names such as "pathology.stage.DECALCIFICATION.enabled",
     longer than the 32 characters site_information.name allowed. Every prior
     site flag whose name would not fit under 32 characters had to be given a

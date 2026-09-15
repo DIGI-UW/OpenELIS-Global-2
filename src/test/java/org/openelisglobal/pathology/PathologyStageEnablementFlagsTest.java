@@ -21,7 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * pathology bench stages had no way to be stored: {@code site_information.name}
  * was VARCHAR(32), and the standard name for a switch, for example
  * {@code pathology.stage.DECALCIFICATION.enabled}, is 39 characters, so no such
- * row could exist under that name (OGC-264, FR-2.3, AC-7).
+ * row could exist under that name (FR-2.3, AC-7).
  *
  * <p>
  * The test database is built by the full Liquibase changelog before this class

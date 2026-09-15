@@ -29,11 +29,11 @@ import org.springframework.web.context.support.AnnotationConfigWebApplicationCon
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
- * The Pathology Dashboard's four count tiles (OGC-264, AC-4, AC-6). The tiles
- * used to name four statuses of the old eight-value enum, so once the bench
- * stages replaced them a case at any of the five new stages was counted on no
- * tile at all, and a case with an outstanding pathologist request was only
- * counted because it had been parked in a status that was not a bench stage.
+ * The Pathology Dashboard's four count tiles (AC-4, AC-6). The tiles used to
+ * name four statuses of the old eight-value enum, so once the bench stages
+ * replaced them a case at any of the five new stages was counted on no tile at
+ * all, and a case with an outstanding pathologist request was only counted
+ * because it had been parked in a status that was not a bench stage.
  *
  * <p>
  * The fixture supplies two cases at GROSSING, one of them holding an open

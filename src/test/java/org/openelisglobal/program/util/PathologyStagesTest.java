@@ -24,9 +24,9 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 
 /**
- * OGC-264. Before this, the dashboard's backend count tile and the dashboard's
- * frontend stage filter each hardcoded which statuses counted as "in progress"
- * and disagreed with each other, and three of the old {@code PathologyStatus}
+ * Before this, the dashboard's backend count tile and the dashboard's frontend
+ * stage filter each hardcoded which statuses counted as "in progress" and
+ * disagreed with each other, and three of the old {@code PathologyStatus}
  * constants ({@code CUTTING}, {@code SLICING}, {@code ADDITIONAL_REQUEST}) were
  * not bench stages at all. Plain JUnit: no Spring, no database, so the bench
  * sequence, its mandatory spine and the in-progress grouping (FR-2.3, FR-2.6,

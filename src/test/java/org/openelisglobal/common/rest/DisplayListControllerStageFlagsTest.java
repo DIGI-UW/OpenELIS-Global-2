@@ -39,7 +39,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * The pathology case view's stage rail has to know which of the seven optional
  * bench stages this deployment has switched off, so it can render one as not
  * applicable instead of asking the operator to work a stage the lab does not
- * use (OGC-264, FR-2.3, AC-7). The switches reach the browser only through the
+ * use (FR-2.3, AC-7). The switches reach the browser only through the
  * authenticated {@code /rest/configuration-properties} endpoint, and before
  * this nothing there named them, so this drives that endpoint the way a browser
  * does.
@@ -93,7 +93,8 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
 
     @Before
     public void init() throws Exception {
-        authenticateAs("admin");
+        // The base class already authenticates as admin; this class loads no fixture
+        // that would replace system_user, so it keeps that principal.
         coverslippingBefore = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED);
 

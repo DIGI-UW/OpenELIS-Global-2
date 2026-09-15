@@ -30,7 +30,7 @@ public class PathologySample extends ProgramSample {
 
     /**
      * These are the histopathology bench stages a case passes through, in the order
-     * they happen (OGC-264, FR-2.1 of the pathology case view FRS).
+     * they happen (FR-2.1 of the pathology case view FRS).
      *
      * Declaration order is the bench order and is the single source for the
      * Pathology Dashboard stage filter and the PATHOLOGY_STATUS display list

@@ -393,7 +393,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
 
         // A deployment whose site_information row is missing or deleted still visits
         // every optional pathology bench stage, so a stage can never be switched off
-        // by the absence of its row (OGC-264, FR-2.3).
+        // by the absence of its row (FR-2.3).
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED, "true");

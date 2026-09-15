@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * outstanding while still showing the case at the stage its tissue is actually
  * at. The retired ADDITIONAL_REQUEST status could only do the first by giving
  * up the second, so the display items now carry the request as a fact derived
- * from the case's own pathology_request rows (OGC-264, FR-2.1, AC-6).
+ * from the case's own pathology_request rows (FR-2.1, AC-6).
  *
  * <p>
  * These tests drive the derivation through the service that builds the display
