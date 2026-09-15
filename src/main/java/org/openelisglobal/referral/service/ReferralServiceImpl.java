@@ -4,6 +4,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,11 +88,30 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     @Override
     @Transactional(readOnly = true)
     public Referral getReferralByAnalysisId(String id) {
-        Referral referral = getMatch("analysis.id", id).orElse(null);
+        // Not getMatch: that returns nothing at all once an analysis has more than one
+        // referral, which is how a re-referred test silently loses its referral on
+        // Results Entry and stops being completed by the manual-entry hook.
+        Referral referral = getBaseObjectDAO().getReferralByAnalysisId(id);
         if (referral != null) {
             Hibernate.initialize(referral.getOrganization());
         }
         return referral;
+    }
+
+    // A test carries one live referral at a time. A second refer-out on a test
+    // already referred would raise a rival referral with its own subcontract row
+    // and its own FHIR Task, leaving no way to tell which one the reference lab is
+    // working on. Any state that is not terminal counts as live, lost referrals
+    // included: a lost sample still has to be resolved before the test is referred
+    // again.
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasOpenReferral(String analysisId) {
+        if (GenericValidator.isBlankOrNull(analysisId)) {
+            return false;
+        }
+        return getBaseObjectDAO().getReferralsByAnalysisIds(Collections.singletonList(analysisId)).stream()
+                .anyMatch(r -> r.getStatus() == null || !r.getStatus().isTerminal());
     }
 
     @Override

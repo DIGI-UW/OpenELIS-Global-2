@@ -143,4 +143,17 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
             throw new LIMSRuntimeException("Error counting ShippingBoxes by state", e);
         }
     }
+
+    @Override
+    public void adjustSampleCount(Integer shippingBoxId, int delta) {
+        try {
+            String hql = "UPDATE ShippingBox b SET b.actualSampleCount = COALESCE(b.actualSampleCount, 0) + :delta"
+                    + " WHERE b.id = :id";
+            entityManager.unwrap(Session.class).createQuery(hql).setParameter("delta", delta)
+                    .setParameter("id", shippingBoxId).executeUpdate();
+        } catch (Exception e) {
+            logger.error("Error adjusting ShippingBox sample count", e);
+            throw new LIMSRuntimeException("Error adjusting ShippingBox sample count", e);
+        }
+    }
 }
