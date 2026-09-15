@@ -25,8 +25,6 @@ import "./Dashboard.css";
 import {
   Minimize,
   Maximize,
-  ArrowLeft,
-  ArrowRight,
   InProgress,
   TaskView,
   CheckmarkFilled,
@@ -128,23 +126,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
+  // Identifies the tile load in flight, so a superseded response is dropped.
+  const latestRequest = useRef(0);
   const [url, setUrl] = useState("");
   const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
   ) as UserSessionDetails;
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext) as Notification;
-
-  useEffect(() => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-  }, []);
 
   useEffect(() => {
     getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
@@ -157,9 +146,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   useEffect(() => {
     if (selectedTile != null) {
-      setNextPage(null);
-      setPreviousPage(null);
-      setPagination(false);
+      const requestId = ++latestRequest.current;
+      setPage(1);
       setLoading(true);
       if (selectedTile.type == "AVERAGE_TURN_AROUND_TIME") {
         getFromOpenElisServer(
@@ -172,12 +160,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
             selectedTile.type +
             "?systemUserId=" +
             selectedTile.id,
-          loadData,
+          (res) => loadData(res, requestId),
         );
       } else {
         getFromOpenElisServer(
           "/rest/home-dashboard/" + selectedTile.type,
-          loadData,
+          (res) => loadData(res, requestId),
         );
       }
     }
@@ -187,6 +175,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       componentMounted.current = false;
     };
   }, [selectedTile]);
+
+  // A narrowed list is shorter, so the page the user was on may no longer exist.
+  useEffect(() => {
+    setPage(1);
+  }, [selectedTestSection]);
 
   useEffect(() => {
     if (!userSessionDetails?.loginName) return;
@@ -201,19 +194,35 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     });
   }, [userSessionDetails]);
 
-  const loadNextResultsPage = () => {
-    setLoading(true);
+  // The server splits the list into pages of its own. The table below pages it
+  // again, so with a table page size as large as the server's, every order past
+  // the first server page was unreachable: the next button had nothing left to
+  // show. Pull the remaining server pages in and hand the table the full list.
+  const loadRemainingResultPages = (
+    loadedItems: any[],
+    pageToLoad: number,
+    totalPages: number,
+    requestId: number,
+  ) => {
     getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + nextPage,
-      loadData,
-    );
-  };
-
-  const loadPreviousResultsPage = () => {
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + previousPage,
-      loadData,
+      "/rest/home-dashboard/" + selectedTile.type + "?page=" + pageToLoad,
+      (res) => {
+        if (requestId !== latestRequest.current) {
+          return;
+        }
+        const items = loadedItems.concat(res?.displayItems ?? []);
+        setData(items);
+        if (pageToLoad < totalPages) {
+          loadRemainingResultPages(
+            items,
+            pageToLoad + 1,
+            totalPages,
+            requestId,
+          );
+        } else {
+          setLoading(false);
+        }
+      },
     );
   };
 
@@ -224,36 +233,29 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     }
   };
 
-  const loadData = (res) => {
+  const loadData = (res, requestId: number) => {
+    // A newer tile was opened while this request was in flight; its data wins.
+    if (requestId !== latestRequest.current) {
+      return;
+    }
+
     // If the response object is not null and has displayItems array with length greater than 0 then set it as data.
-    if (res && res.displayItems && res.displayItems.length > 0) {
-      setData(res.displayItems);
+    const items =
+      res && res.displayItems && res.displayItems.length > 0
+        ? res.displayItems
+        : [];
+    setData(items);
+    setPage(1);
+
+    // The rest of the server's pages belong to the same list, so fetch them
+    // before handing over to the table's own pagination.
+    const totalPages = parseInt(res?.paging?.totalPages) || 1;
+    const currentPage = parseInt(res?.paging?.currentPage) || 1;
+    if (totalPages > currentPage) {
+      loadRemainingResultPages(items, currentPage + 1, totalPages, requestId);
     } else {
-      setData([]);
+      setLoading(false);
     }
-
-    // Sets next and previous page numbers based on the total pages and current page number.
-    if (res && res.paging) {
-      const { totalPages, currentPage } = res.paging;
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      }
-    }
-
-    setLoading(false);
   };
 
   const loadTimeMetrics = (data) => {
@@ -600,43 +602,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
-                    {pagination && (
-                      <Grid>
-                        <Column lg={14} />
-                        <Column
-                          lg={2}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "10px",
-                            width: "110%",
-                          }}
-                        >
-                          <Link>
-                            {currentApiPage} / {totalApiPages}
-                          </Link>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <Button
-                              hasIconOnly
-                              id="loadpreviousresults"
-                              onClick={loadPreviousResultsPage}
-                              disabled={previousPage != null ? false : true}
-                              renderIcon={ArrowLeft}
-                              iconDescription="previous"
-                            ></Button>
-                            <Button
-                              hasIconOnly
-                              id="loadnextresults"
-                              onClick={loadNextResultsPage}
-                              disabled={nextPage != null ? false : true}
-                              renderIcon={ArrowRight}
-                              iconDescription="next"
-                            ></Button>
-                          </div>
-                        </Column>
-                      </Grid>
-                    )}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
