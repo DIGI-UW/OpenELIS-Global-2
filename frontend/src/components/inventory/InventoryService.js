@@ -31,6 +31,12 @@ const get = (endpoint) => {
   return promisify(getFromOpenElisServer, `${BASE_PATH}${endpoint}`);
 };
 
+// Utils reports an undelivered request by calling back with
+// { error, message, status: 0 }, which no >= 400 test catches, so the status
+// alone would let a dropped POST resolve as a success.
+const isFailedResponse = (json) =>
+  !!json && (!!json.error || json.status >= 400 || json.statusCode >= 400);
+
 // Helper for POST requests returning JSON
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
@@ -38,7 +44,7 @@ const post = (endpoint, data) => {
       `${BASE_PATH}${endpoint}`,
       JSON.stringify(data),
       (json) => {
-        if (json && (json.status >= 400 || json.statusCode >= 400)) {
+        if (isFailedResponse(json)) {
           // Handle validation errors object (field-level errors)
           if (json.errors && typeof json.errors === "object") {
             const errorMessages = Object.entries(json.errors)
@@ -259,7 +265,7 @@ export const InventoryLotStorageAPI = {
         `${STORAGE_BASE_PATH}/assign`,
         JSON.stringify(payload),
         (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (isFailedResponse(json)) {
             reject(
               new Error(
                 json.message ||
@@ -282,7 +288,7 @@ export const InventoryLotStorageAPI = {
         `${STORAGE_BASE_PATH}/move`,
         JSON.stringify(payload),
         (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (isFailedResponse(json)) {
             reject(
               new Error(
                 json.message ||

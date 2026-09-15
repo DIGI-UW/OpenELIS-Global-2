@@ -358,6 +358,10 @@ const InventoryDashboard = () => {
     };
   });
 
+  // Carbon reorders the rendered rows when a column is sorted, so the row
+  // body has to resolve its lot by id rather than by position.
+  const lotsById = new Map(paginatedLots.map((lot) => [String(lot.id), lot]));
+
   const handleLotSaved = () => {
     setLotModalOpen(false);
     setSelectedLot(null);
@@ -614,8 +618,8 @@ const InventoryDashboard = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row, rowIndex) => {
-                    const lot = paginatedLots[rowIndex];
+                  rows.map((row) => {
+                    const lot = lotsById.get(row.id);
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {
