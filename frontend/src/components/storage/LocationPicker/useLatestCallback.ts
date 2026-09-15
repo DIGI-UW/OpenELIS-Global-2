@@ -17,7 +17,7 @@ import { useRef, useLayoutEffect } from "react";
  * effect that consumes it reads it. useEffect would let an effect fire
  * with a stale callback on the very first render after a prop change.
  */
-export default function useLatestCallback(callback) {
+export default function useLatestCallback<T>(callback: T) {
   const ref = useRef(callback);
   useLayoutEffect(() => {
     ref.current = callback;
