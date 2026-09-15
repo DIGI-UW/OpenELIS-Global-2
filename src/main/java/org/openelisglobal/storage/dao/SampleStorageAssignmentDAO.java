@@ -24,9 +24,8 @@ public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignm
     List<String> getOccupiedCoordinatesByBoxId(Integer boxId);
 
     /**
-     * Occupied box coordinates mapped to the occupant at that coordinate, keyed by
-     * position. Each value carries occupantType plus sampleItemId or
-     * inventoryLotId, and externalId (the sample item external id or lot number).
+     * Occupied box coordinates to occupant info: occupantType, sampleItemId or
+     * inventoryLotId, and externalId (sample item external id or lot number).
      */
     Map<String, Map<String, String>> getOccupiedCoordinatesWithOccupantInfo(Integer boxId);
 

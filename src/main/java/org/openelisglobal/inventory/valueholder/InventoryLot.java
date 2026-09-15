@@ -93,8 +93,7 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    // Not persisted (OGC-657): `transient` keyword, since Hibernate5JakartaModule
-    // reads @Transient as @JsonIgnore.
+    // Not persisted; @Transient would read as @JsonIgnore (OGC-657).
     private transient Map<String, Object> location;
 
     // Business logic helper methods

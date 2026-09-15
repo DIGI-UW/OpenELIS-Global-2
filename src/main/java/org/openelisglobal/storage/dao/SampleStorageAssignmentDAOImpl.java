@@ -193,8 +193,7 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 return result;
             }
 
-            // Native SQL because SampleItem uses HBM mapping and cannot be reached
-            // by an HQL join.
+            // Native SQL: SampleItem is HBM-mapped and unreachable from an HQL join.
             String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id, "
                     + "ssa.inventory_lot_id, il.lot_number " + "FROM sample_storage_assignment ssa "
                     + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
