@@ -175,10 +175,20 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         for (ResultSet rs : actionDataSet.getModifiedResults()) {
             collectAnalysisId(rs, analysisIds);
         }
+        // A refer-out saved in this same request is a request going out, not a result
+        // coming back from the reference lab. Completing it here would close it the
+        // instant it was raised (OGC-1188).
+        Set<String> referralsRaisedInThisSave = new HashSet<>();
+        for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
+            if (referralSet != null && referralSet.getReferral() != null && referralSet.getReferral().getId() != null) {
+                referralsRaisedInThisSave.add(referralSet.getReferral().getId());
+            }
+        }
         for (String analysisId : analysisIds) {
             try {
                 Referral referral = referralService.getReferralByAnalysisId(analysisId);
-                if (referral != null && referral.getId() != null) {
+                if (referral != null && referral.getId() != null
+                        && !referralsRaisedInThisSave.contains(referral.getId())) {
                     referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
                 }
             } catch (Exception e) {
@@ -232,9 +242,21 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             // already stale from this request's own result save — an
             // OptimisticLockException that failed the whole save (OGC-1023). The
             // update pass belongs to the referred-out page's edit flow only.
-            referralService.insert(referralSet.getReferral());
+            Referral referral = referralSet.getReferral();
+            referralService.insert(referral);
+            referralSetService.insertInitialDraftHistory(referral.getId(), sysUserId);
+            // The send date the bench entered on the Refer Out row IS the handoff: the
+            // specimen left with it, so dispatch now rather than waiting for a shipment
+            // box that this workflow never creates. Dispatch is what writes the history
+            // row, pushes the FHIR Task the reference lab polls for, and fires the
+            // notification. Without a date the referral stays DRAFT for a box to send
+            // (OGC-1188).
+            if (referral.getSentDate() != null) {
+                referralService.dispatchReferral(referral.getId(), referral.getSentDate(), sysUserId,
+                        "Handed off from Result Entry");
+            }
             ReferralResult referralResult = referralSet.getNextReferralResult();
-            referralResult.setReferralId(referralSet.getReferral().getId());
+            referralResult.setReferralId(referral.getId());
             referralResult.setSysUserId(sysUserId);
             referralResultService.insert(referralResult);
             if (referralSet.getNote() != null) {

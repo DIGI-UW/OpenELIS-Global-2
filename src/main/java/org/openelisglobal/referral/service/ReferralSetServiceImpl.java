@@ -337,7 +337,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         referralService.update(existing);
     }
 
-    private ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId) {
+    @Override
+    public ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId) {
         ReferralSubcontract subcontract = new ReferralSubcontract();
         subcontract.setSysUserId(currentUserId);
         subcontract.setAgreementReference(referralItem.getAgreementReference());
@@ -467,7 +468,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
      * {@code null -> DRAFT} history row, giving every subcontract a complete
      * lifecycle record from inception.
      */
-    private void insertInitialDraftHistory(String referralId, String actorUserId) {
+    @Override
+    public void insertInitialDraftHistory(String referralId, String actorUserId) {
         ReferralStatusHistory history = new ReferralStatusHistory();
         history.setReferralId(referralId);
         history.setFromStatus(null);
