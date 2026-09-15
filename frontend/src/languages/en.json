@@ -2436,6 +2436,7 @@
   "dashboard.complete.orders.label": "Orders Completed Today",
   "dashboard.in.progress.label": "In Progress",
   "dashboard.in.progress.subtitle.label": "Awaiting Result Entry",
+  "dashboard.metrics.loadFailed": "Dashboard counts could not be loaded.",
   "dashboard.partially.completed.label": "Partially Completed Today",
   "dashboard.partially.completed.subtitle.label": "Awaiting Remaining Tests",
   "dashboard.rejected.orders": "Orders Rejected Today",

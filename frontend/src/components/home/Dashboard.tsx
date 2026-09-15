@@ -20,6 +20,8 @@ import {
   Tabs,
   TabList,
   Tag,
+  InlineNotification,
+  Stack,
 } from "@carbon/react";
 import "./Dashboard.css";
 import {
@@ -53,7 +55,7 @@ const TILE_ICONS: Record<string, any> = {
   AVERAGE_TURN_AROUND_TIME: Time,
   DELAYED_TURN_AROUND: WarningSquareFilled,
 };
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
@@ -124,7 +126,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   >([]);
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
-  const componentMounted = useRef(true);
+  const [metricsFailed, setMetricsFailed] = useState(false);
+  const [metricsAttempt, setMetricsAttempt] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
@@ -147,13 +150,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   }, []);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, []);
+    const controller = new AbortController();
+    setLoading(true);
+    setMetricsFailed(false);
+    getFromOpenElisServer<typeof counts>(
+      "/rest/home-dashboard/metrics",
+      (data) => {
+        if (controller.signal.aborted) return;
+        if (data == null) {
+          setMetricsFailed(true);
+        } else {
+          setCounts(data);
+        }
+        setLoading(false);
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [metricsAttempt]);
 
   useEffect(() => {
     if (selectedTile != null) {
@@ -181,11 +195,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         );
       }
     }
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
   }, [selectedTile]);
 
   useEffect(() => {
@@ -215,13 +224,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       "/rest/home-dashboard/" + selectedTile.type + "?page=" + previousPage,
       loadData,
     );
-  };
-
-  const loadCount = (data) => {
-    if (componentMounted.current) {
-      setCounts(data);
-      setLoading(false);
-    }
   };
 
   const loadData = (res) => {
@@ -513,6 +515,27 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       header: "Orders Entered",
     },
   ];
+
+  if (metricsFailed) {
+    return (
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <Stack gap={5}>
+            <InlineNotification
+              kind="error"
+              role="alert"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "dashboard.metrics.loadFailed" })}
+            />
+            <Button onClick={() => setMetricsAttempt((attempt) => attempt + 1)}>
+              <FormattedMessage id="common.retry" />
+            </Button>
+          </Stack>
+        </Column>
+      </Grid>
+    );
+  }
 
   return (
     <>

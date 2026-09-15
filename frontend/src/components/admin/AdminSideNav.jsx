@@ -64,17 +64,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
    * reader no way to know what to do next.
    */
   const sectionsCaption = (id, dataCy, messageId, values) => (
-    <li
-      id={id}
-      data-cy={dataCy}
-      className="adminSideNav__sectionsContext"
-      style={{
-        padding: "0.25rem 1rem 0.5rem",
-        fontSize: "0.75rem",
-        lineHeight: 1.3,
-        color: "var(--cds-text-secondary, #6f6f6f)",
-      }}
-    >
+    <li id={id} data-cy={dataCy} className="adminSideNav__sectionsContext">
       <FormattedMessage id={messageId} values={values} />
     </li>
   );
@@ -88,7 +78,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       aria-describedby={describedBy}
       tabIndex={-1}
       onClick={(e) => e.preventDefault()}
-      style={{ opacity: 0.5, cursor: "not-allowed" }}
     >
       {label}
     </SideNavMenuItem>
@@ -554,12 +543,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
               id="testCatalogSectionsHelp"
               data-cy="testCatalogSectionsContext"
               className="adminSideNav__sectionsContext"
-              style={{
-                padding: "0.25rem 1rem 0.5rem",
-                fontSize: "0.75rem",
-                lineHeight: 1.3,
-                color: "var(--cds-text-secondary, #6f6f6f)",
-              }}
             >
               {editorTestId ? (
                 editorTestName ? (
@@ -598,7 +581,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                   aria-describedby="testCatalogSectionsHelp"
                   tabIndex={-1}
                   onClick={(e) => e.preventDefault()}
-                  style={{ opacity: 0.5, cursor: "not-allowed" }}
                 >
                   {label}
                 </SideNavMenuItem>
