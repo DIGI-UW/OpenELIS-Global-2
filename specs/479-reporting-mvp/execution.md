@@ -1,5 +1,58 @@
 # Reporting MVP Implementation and Deployment
 
+## Existing-stack reconciliation — September 15, 2026
+
+The approved preparation retains official stack 4306 and its functional PRs.
+Existing replay [PR #4323](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4323)
+is now the twelfth member, following Non-Conformance #4318 and the separate
+navigation #4315. No replacement PR or stack was created.
+
+Current `develop` (`0ef81f6159211b731bb763835107fa949ddc6375`) was merged
+forward through the existing branches using ordinary merge commits. Navigation
+merge `51e8f71817` resolves the only conflict, in `Dashboard.tsx`: preserve the
+upstream complete server-page loading, request identity checks and page reset
+on section changes, together with the existing abortable metrics request and
+visible failure/retry state. Restore its `useRef` import and remove the obsolete
+pagination-reset effect and `loadCount` path. The complete assembled code
+candidate is `b0dcce79ea89d09baf9b3d359abbe4977863901b`; this receipt changes
+documentation only. That candidate contains every prior submitted stack head
+and the publicly demonstrated reporting baseline.
+
+Validation actually run:
+
+- The two dashboard test files pass (four tests), covering the 150-order paging
+  boundary, metric failure/retry, abort on unmount and stale metric callbacks.
+- The final assembled frontend run passes 84 tests across nine files: dashboard,
+  configured/admin navigation, menu editing, report builder/routes and the
+  upstream result-edit state machine. The navigation-stage run passed 67 tests
+  before the final Non-Conformance test extension was brought forward.
+- The frontend build passes. The Java 21 WAR build passes with test execution
+  explicitly skipped; a separate Maven run passes all 13 tests in
+  `FhirReplayRestControllerTest`, `FhirSampleReplayTest` and
+  `FhirReplayWiringTest` without using Docker.
+- The merge diff was reviewed, including inherited upstream changes. No
+  additional finding in the manual dashboard reconciliation or dependency-pin
+  drift was identified. The database-backed upstream inventory/referral tests
+  and browser workflows were not run locally while shared OrbStack was
+  unavailable; they remain hosted validation requirements.
+
+The required contexts are `01 Checkpoint - Backend`, `02 Checkpoint - Frontend`
+and `03 Checkpoint - E2E`, plus the repository's required code-owner approval.
+Before this reconciliation the first ten PR heads had all three contexts;
+the latest #4318 and #4323 heads lacked the E2E context. The updated heads need
+fresh required checks. The existing `e2e-playwright.yml` supports manual dispatch
+for stack branches outside its automatic PR-base filters. A successful shared
+image build alone is not the downstream E2E checkpoint.
+
+Public frontend/backend remains `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7`.
+No app or shared local runtime was restarted, deployed or reseeded, and no
+database roles were changed. A later authorized deployment of the merged
+revision must retain the current data/configuration and apply the inherited
+inventory-code and referral sent-date Liquibase changes; it is not schema-free.
+Fresh recorded workflow proof and the final deployment identity remain separate
+from these local checks and the earlier public evidence. Human approval and
+acceptance are not claimed by this preparation.
+
 ## Current manual-UAT checkpoint — Non-Conformance delivery
 
 Public frontend/backend `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7` connects all
@@ -7,7 +60,7 @@ three report types. The database, configuration and review tooling `2048bc3cfd`
 were retained. The focused public Non-Conformance workflow and authentication
 passed in 35.3 seconds with no retries and downloaded the expected four records.
 The [evidence index](https://reporting.catalyst.openelis-global.org/reporting-evidence/)
-links all eight published bundles; its links and rendered page were checked.
+links all twelve published bundles; its links and rendered page were checked.
 
 [PR #4318](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4318) contains the
 source and its delivery receipt above the separate navigation PR. Frontend/static

@@ -184,6 +184,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                 "transformPersistObjectsUnderSamples called");
 
+        // Resolve the whole selection before generating UUIDs or emitting resources.
+        List<Sample> samples = sampleIds.stream().map(sampleService::get).toList();
         FhirOperations fhirOperations = new FhirOperations();
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
 
@@ -196,10 +198,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Map<String, Practitioner> requesters = new HashMap<>();
         Set<String> includedAnalyzerIds = new HashSet<>();
         Map<String, Analyzer> analyzerCache = new HashMap<>();
-        for (String sampleId : sampleIds) {
+        for (Sample sample : samples) {
+            String sampleId = sample.getId();
             LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                     "transforming sampleId: " + sampleId);
-            Sample sample = sampleService.get(sampleId);
             Patient patient = sampleHumanService.getPatientForSample(sample);
             Provider provider = sampleHumanService.getProviderForSample(sample);
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
