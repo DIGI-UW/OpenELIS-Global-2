@@ -29,7 +29,7 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
     List<InventoryUsage> getByAnalysisId(Long analysisId);
 
     /**
-     * Get usage records within a date range (for the Usage Trends report)
+     * Get usage records whose usage date falls in the given range.
      */
     List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate);
 

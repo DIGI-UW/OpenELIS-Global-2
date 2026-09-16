@@ -75,7 +75,8 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
     @Transactional(readOnly = true)
     public List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
         try {
-            String hql = "FROM InventoryUsage u WHERE u.usageDate BETWEEN :startDate AND :endDate ORDER BY u.usageDate DESC";
+            String hql = "FROM InventoryUsage u WHERE u.usageDate >= :startDate AND u.usageDate < :endDate"
+                    + " ORDER BY u.usageDate DESC";
             Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
             query.setParameter("startDate", startDate);
             query.setParameter("endDate", endDate);
