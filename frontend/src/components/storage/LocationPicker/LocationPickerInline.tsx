@@ -8,6 +8,12 @@ import { searchResultToReplaceAction } from "./searchResultToAction";
 import useLatestCallback from "./useLatestCallback";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
+import type {
+  LocationLevel,
+  LocationPickerInlineProps,
+  SelectedLocation,
+  StorageLocationOption,
+} from "./types";
 
 /**
  * LocationPickerInline — the picker rendered flat for embedding inside a
@@ -33,7 +39,7 @@ export default function LocationPickerInline({
   initialPosition,
   onChange,
   allowCreate = true,
-}) {
+}: LocationPickerInlineProps) {
   const intl = useIntl();
   const [state, dispatch] = useLocationPicker(
     initialSelection || initialPosition
@@ -57,16 +63,15 @@ export default function LocationPickerInline({
   useEffect(() => {
     const cb = onChangeRef.current;
     if (cb) cb(state);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selection, state.position]);
 
-  const setLevel = (level, value) =>
+  const setLevel = (level: LocationLevel, value?: SelectedLocation) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
   // Flat search returns a single leaf; replacing the whole selection
   // keeps the state consistent (no stale ancestors from a different
   // branch of the hierarchy).
-  const handleSearchSelect = (result) => {
+  const handleSearchSelect = (result: StorageLocationOption) => {
     const action = searchResultToReplaceAction(result);
     if (action) dispatch(action);
   };

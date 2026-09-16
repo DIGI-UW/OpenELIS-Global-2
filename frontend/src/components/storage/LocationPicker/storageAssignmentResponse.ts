@@ -14,7 +14,19 @@
  *
  * HTTP-level gating (`response.ok`) is the caller's responsibility.
  */
-export function isStorageAssignmentSuccess(body) {
+interface StorageAssignmentResponse {
+  success?: boolean;
+  error?: unknown;
+  message?: unknown;
+  assignmentId?: unknown;
+  movementId?: unknown;
+  hierarchicalPath?: unknown;
+  newHierarchicalPath?: unknown;
+}
+
+export function isStorageAssignmentSuccess(
+  body: StorageAssignmentResponse | null | undefined,
+) {
   if (!body) return false;
 
   if (body.success === true) return true;

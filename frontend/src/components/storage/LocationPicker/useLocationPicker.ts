@@ -1,4 +1,10 @@
 import { useReducer } from "react";
+import {
+  LEVEL_ORDER,
+  type PickerAction,
+  type PickerState,
+  type StorageAssignment,
+} from "./types";
 
 /**
  * Reducer + hook for the storage location picker.
@@ -23,9 +29,9 @@ import { useReducer } from "react";
  */
 
 // Children come after parents. SET_LEVEL uses this to clear descendants.
-export const LEVEL_ORDER = ["room", "device", "shelf", "rack", "box"];
+export { LEVEL_ORDER };
 
-export const initialState = {
+export const initialState: PickerState = {
   mode: "search",
   selection: {},
   position: null,
@@ -42,7 +48,13 @@ export const initialState = {
  * (movement context — the modal opens with the current location pre-
  * filled so the user can see and adjust it).
  */
-export function createInitialState({ initialAssignment } = {}) {
+interface InitialStateOptions {
+  initialAssignment?: StorageAssignment | null;
+}
+
+export function createInitialState({
+  initialAssignment,
+}: InitialStateOptions = {}): PickerState {
   if (!initialAssignment) {
     return initialState;
   }
@@ -58,7 +70,7 @@ export function createInitialState({ initialAssignment } = {}) {
  * Pure reducer. Every state transition flows through here so they can be
  * tested as data → data.
  */
-export function reducer(state, action) {
+export function reducer(state: PickerState, action: PickerAction): PickerState {
   switch (action.type) {
     case "SET_LEVEL": {
       const { level, value } = action;
@@ -67,7 +79,7 @@ export function reducer(state, action) {
 
       // Build a fresh selection: keep ancestors, set this level (or omit if
       // value is undefined), drop all descendants.
-      const nextSelection = {};
+      const nextSelection: PickerState["selection"] = {};
       for (let i = 0; i < idx; i++) {
         const k = LEVEL_ORDER[i];
         if (state.selection[k] !== undefined) {
@@ -145,7 +157,7 @@ export function reducer(state, action) {
  * Optional `init.initialAssignment` seeds the state with an existing
  * assignment (used by the modal's movement-mode opening).
  */
-export default function useLocationPicker(init = {}) {
+export default function useLocationPicker(init: InitialStateOptions = {}) {
   const [state, dispatch] = useReducer(reducer, init, createInitialState);
   return [state, dispatch];
 }

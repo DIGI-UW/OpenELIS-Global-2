@@ -1,18 +1,29 @@
 import { LEVEL_ORDER } from "./useLocationPicker";
+import type {
+  LocationLevel,
+  LocationPosition,
+  LocationSelection,
+} from "./types";
 
 export const ASSIGNABLE_LEVELS = ["room", "device", "shelf", "rack", "box"];
 
-export function selectionToHierarchicalPath(selection = {}) {
+export function selectionToHierarchicalPath(selection: LocationSelection = {}) {
   return LEVEL_ORDER.map((level) => selection[level]?.name)
     .filter(Boolean)
     .join(" > ");
 }
 
 export function getDeepestLocationSelection(
-  selection = {},
-  { requireAssignable = false } = {},
-) {
-  let deepest = null;
+  selection: LocationSelection = {},
+  { requireAssignable = false }: { requireAssignable?: boolean } = {},
+): {
+  type: LocationLevel;
+  value: NonNullable<LocationSelection[keyof LocationSelection]>;
+} | null {
+  let deepest: {
+    type: LocationLevel;
+    value: NonNullable<LocationSelection[keyof LocationSelection]>;
+  } | null = null;
 
   LEVEL_ORDER.forEach((level) => {
     const candidate = selection[level];
@@ -32,7 +43,10 @@ export function getDeepestLocationSelection(
   return deepest;
 }
 
-export function positionToCoordinate(position, { emptyValue = "" } = {}) {
+export function positionToCoordinate(
+  position: LocationPosition | undefined,
+  { emptyValue = "" }: { emptyValue?: string } = {},
+) {
   if (!position) return emptyValue;
 
   if (position.mode === "text") {
