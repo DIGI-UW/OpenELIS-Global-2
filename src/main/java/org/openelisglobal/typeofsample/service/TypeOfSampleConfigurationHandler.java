@@ -11,7 +11,10 @@ import java.util.Map;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.configuration.service.LoadedRow;
+import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -19,7 +22,7 @@ import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMap
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Handler for loading sample type (TypeOfSample) configuration files. Supports
@@ -40,13 +43,19 @@ import org.springframework.transaction.annotation.Transactional;
  * xx is a locale code like en, fr, es) provide translations - If no
  * localization columns are provided, description is used as the default value
  * for the fallback locale (en) - Existing sample types with matching
- * localAbbreviation and domain will be updated
+ * localAbbreviation and domain will be updated - description is limited to 40
+ * and localAbbreviation to 10 characters; a row over either limit is skipped
+ * with its line number - every row runs in its own transaction, so a rejected
+ * row never aborts the rest of the file - each file ends with a
+ * {@code SUMMARY file=... domain=sample-types created= updated= skipped=} line
  */
 @Component
 public class TypeOfSampleConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String DEFAULT_DOMAIN = "H"; // Human
     private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
+    private static final int DESCRIPTION_MAX_LENGTH = 40;
+    private static final int LOCAL_ABBREVIATION_MAX_LENGTH = 10;
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -60,9 +69,19 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     @Autowired
     private SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService;
 
+    @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
+
+    private volatile CsvLoadSummary lastSummary;
+
     @Override
     public String getDomainName() {
         return "sample-types";
+    }
+
+    @Override
+    public CsvLoadSummary getLastSummary() {
+        return lastSummary;
     }
 
     @Override
@@ -76,7 +95,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     @Override
-    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -102,7 +120,8 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
-        List<TypeOfSample> processedSampleTypes = new ArrayList<>();
+        CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
         String line;
         int lineNumber = 1; // Start at 1 since we already read the header
         int nextSortOrder = getNextAvailableSortOrder();
@@ -114,18 +133,20 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
                 continue;
             }
 
+            String[] values = parseCsvLine(line);
+            int rowLine = lineNumber;
+            int defaultSortOrder = nextSortOrder;
+            LoadedRow<TypeOfSample> result;
             try {
-                String[] values = parseCsvLine(line);
-                TypeOfSample sampleType = processCsvLine(values, descriptionIndex, localAbbreviationIndex, domainIndex,
-                        isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, lineNumber, fileName,
-                        nextSortOrder);
-                if (sampleType != null) {
-                    processedSampleTypes.add(sampleType);
-                    nextSortOrder++;
-                }
+                result = rowTransaction.run(() -> processCsvLine(values, descriptionIndex, localAbbreviationIndex,
+                        domainIndex, isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, rowLine, fileName,
+                        defaultSortOrder));
             } catch (Exception e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
-                        "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+            }
+            summary.record(result, getClass().getSimpleName(), rowLine);
+            if (!result.isSkipped()) {
+                nextSortOrder++;
             }
         }
 
@@ -133,8 +154,8 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         typeOfSampleService.clearCache();
         DisplayListService.getInstance().refreshLists();
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processedSampleTypes.size() + " sample types from " + fileName);
+        summary.log(getClass().getSimpleName());
+        lastSummary = summary;
     }
 
     private String[] parseCsvLine(String line) {
@@ -224,7 +245,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         return maxSortOrder + 1;
     }
 
-    private TypeOfSample processCsvLine(String[] values, int descriptionIndex, int localAbbreviationIndex,
+    private LoadedRow<TypeOfSample> processCsvLine(String[] values, int descriptionIndex, int localAbbreviationIndex,
             int domainIndex, int isActiveIndex, int sortOrderIndex, int loincIndex,
             Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
@@ -233,15 +254,21 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         String localAbbreviation = getValueOrEmpty(values, localAbbreviationIndex);
 
         if (description.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Skipping row " + lineNumber + " in " + fileName + " with missing description");
-            return null;
+            return LoadedRow.skipped("missing description");
         }
 
         if (localAbbreviation.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Skipping row " + lineNumber + " in " + fileName + " with missing localAbbreviation");
-            return null;
+            return LoadedRow.skipped("missing localAbbreviation");
+        }
+
+        if (description.length() > DESCRIPTION_MAX_LENGTH) {
+            return LoadedRow.skipped("description '" + description + "' is longer than " + DESCRIPTION_MAX_LENGTH
+                    + " characters (type_of_sample.description)");
+        }
+
+        if (localAbbreviation.length() > LOCAL_ABBREVIATION_MAX_LENGTH) {
+            return LoadedRow.skipped("localAbbreviation '" + localAbbreviation + "' is longer than "
+                    + LOCAL_ABBREVIATION_MAX_LENGTH + " characters (type_of_sample.local_abbrev)");
         }
 
         // Get optional fields
@@ -267,14 +294,14 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             syncLoincMapping(existingSampleType, values, loincIndex);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing sample type: " + description + " (" + localAbbreviation + ")");
-            return existingSampleType;
-        } else {
-            // Create new sample type
-            TypeOfSample created = createSampleType(values, description, localAbbreviation, domain, isActiveIndex,
-                    sortOrderIndex, localizationColumns, defaultSortOrder);
-            syncLoincMapping(created, values, loincIndex);
-            return created;
+            return LoadedRow.updated(existingSampleType);
         }
+
+        // Create new sample type
+        TypeOfSample created = createSampleType(values, description, localAbbreviation, domain, isActiveIndex,
+                sortOrderIndex, localizationColumns, defaultSortOrder);
+        syncLoincMapping(created, values, loincIndex);
+        return LoadedRow.created(created);
     }
 
     /**

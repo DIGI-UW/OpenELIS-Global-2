@@ -59,4 +59,12 @@ public interface DomainConfigurationHandler {
      * @throws Exception if processing fails
      */
     void processConfiguration(InputStream inputStream, String fileName) throws Exception;
+
+    /**
+     * Outcome counters of the most recently processed file, for handlers that
+     * record one row as created, updated or skipped; {@code null} otherwise.
+     */
+    default CsvLoadSummary getLastSummary() {
+        return null;
+    }
 }

@@ -6,12 +6,17 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.CsvParsingUtil;
+import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.configuration.service.LoadedRow;
+import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -19,6 +24,8 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.panelterminology.service.PanelTerminologyMappingService;
+import org.openelisglobal.test.service.LegacyTestVariantFinder;
+import org.openelisglobal.test.service.LegacyTestVariantFinder.LegacyTestVariant;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -27,8 +34,16 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
 
+/**
+ * Loads the {@code panels} catalog domain from CSV. Members in the
+ * {@code tests} column are plain test names: a name resolves to the test with
+ * that exact or normalized description (or localized name), or to the legacy
+ * {@code Name(SampleType)} variants an earlier loader wrote for the panel's
+ * sample types. Every row runs in its own transaction and each file ends with a
+ * {@code SUMMARY file=... domain=panels created= updated= skipped=} line.
+ */
 @Component
 public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
@@ -42,6 +57,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private LegacyTestVariantFinder legacyVariantFinder;
 
     @Autowired
     private LocalizationService localizationService;
@@ -58,9 +76,19 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     @Autowired
     private PanelTerminologyMappingService panelTerminologyMappingService;
 
+    @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
+
+    private volatile CsvLoadSummary lastSummary;
+
     @Override
     public String getDomainName() {
         return "panels";
+    }
+
+    @Override
+    public CsvLoadSummary getLastSummary() {
+        return lastSummary;
     }
 
     @Override
@@ -74,7 +102,6 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
-    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -98,7 +125,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                     "Panel configuration file " + fileName + " must have a 'panelName' column");
         }
 
-        int processed = 0;
+        CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
         String line;
         int lineNumber = 1;
 
@@ -107,31 +135,30 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
+            String[] values = CsvParsingUtil.parseCsvLine(line);
+            int rowLine = lineNumber;
+            LoadedRow<Panel> result;
             try {
-                String[] values = CsvParsingUtil.parseCsvLine(line);
-                processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex, sortOrderIndex,
-                        loincIndex, localizationColumns, lineNumber, fileName);
-                processed++;
+                result = rowTransaction.run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex,
+                        isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, rowLine, fileName));
             } catch (Exception e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
-                        "Error processing line " + lineNumber + " in " + fileName + ": " + e.getMessage());
+                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
             }
+            summary.record(result, getClass().getSimpleName(), rowLine);
         }
 
         DisplayListService.getInstance().refreshLists();
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processed + " panels from " + fileName);
+        summary.log(getClass().getSimpleName());
+        lastSummary = summary;
     }
 
-    private void processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
+    private LoadedRow<Panel> processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
             int isActiveIndex, int sortOrderIndex, int loincIndex, Map<String, Integer> localizationColumns,
             int lineNumber, String fileName) {
 
         String panelName = getValueOrEmpty(values, panelNameIndex);
         if (panelName.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processRow",
-                    "Skipping row " + lineNumber + " in " + fileName + ": missing panelName");
-            return;
+            return LoadedRow.skipped("missing panelName");
         }
 
         boolean isActive = !"N".equalsIgnoreCase(getValueOrEmpty(values, isActiveIndex));
@@ -140,7 +167,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         String loinc = getValueOrEmpty(values, loincIndex);
 
         Panel panel = panelService.getPanelByName(panelName);
-        if (panel == null) {
+        boolean created = panel == null;
+        if (created) {
             panel = createPanel(panelName, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values,
                     localizationColumns);
         } else {
@@ -151,11 +179,12 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             syncLoincMapping(panel, loinc);
         }
 
-        String testsValue = getValueOrEmpty(values, testsIndex);
-        reconcilePanelItems(panel, testsValue, lineNumber, fileName);
-
         String sampleTypesValue = getValueOrEmpty(values, sampleTypesIndex);
+        String testsValue = getValueOrEmpty(values, testsIndex);
+        reconcilePanelItems(panel, testsValue, resolveSampleTypeIds(sampleTypesValue), lineNumber, fileName);
         reconcileSampleTypeLinks(panel, sampleTypesValue);
+
+        return created ? LoadedRow.created(panel) : LoadedRow.updated(panel);
     }
 
     // Bridge the legacy panel.loinc value into the panel terminology mappings as a
@@ -281,7 +310,22 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         return null;
     }
 
-    private void reconcilePanelItems(Panel panel, String testsValue, int lineNumber, String fileName) {
+    private Set<String> resolveSampleTypeIds(String sampleTypesValue) {
+        Set<String> ids = new LinkedHashSet<>();
+        if (sampleTypesValue.isEmpty()) {
+            return ids;
+        }
+        for (String sampleTypeName : sampleTypesValue.split("\\|")) {
+            TypeOfSample typeOfSample = findSampleTypeByName(sampleTypeName.trim());
+            if (typeOfSample != null) {
+                ids.add(typeOfSample.getId());
+            }
+        }
+        return ids;
+    }
+
+    private void reconcilePanelItems(Panel panel, String testsValue, Set<String> panelSampleTypeIds, int lineNumber,
+            String fileName) {
         List<PanelItem> existing = panelItemService.getPanelItemsForPanel(panel.getId());
         List<String> desiredTestNames = new ArrayList<>();
 
@@ -294,47 +338,72 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        Map<String, PanelItem> existingByTestDesc = new HashMap<>();
+        Map<String, PanelItem> existingByTestId = new HashMap<>();
         for (PanelItem item : existing) {
             Test t = item.getTest();
-            if (t != null && t.getDescription() != null) {
-                existingByTestDesc.put(t.getDescription(), item);
+            if (t != null && t.getId() != null) {
+                existingByTestId.put(t.getId(), item);
             }
         }
 
         for (String testName : desiredTestNames) {
-            if (existingByTestDesc.containsKey(testName)) {
-                continue;
-            }
-            Test test = findTest(testName);
-            if (test == null) {
+            List<Test> tests = findTests(testName, panelSampleTypeIds);
+            if (tests.isEmpty()) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "reconcilePanelItems",
                         "Test '" + testName + "' not found (line " + lineNumber + " of " + fileName + "). Skipping.");
                 continue;
             }
-            PanelItem item = new PanelItem();
-            item.setPanel(panel);
-            item.setPanelName(panel.getPanelName());
-            item.setTest(test);
-            String desc = test.getDescription();
-            item.setTestName(desc != null && desc.length() > 20 ? desc.substring(0, 20) : desc);
-            item.setSortOrder(String.valueOf(desiredTestNames.indexOf(testName) + 1));
-            item.setSysUserId("1");
-            panelItemService.insert(item);
+            for (Test test : tests) {
+                if (existingByTestId.containsKey(test.getId())) {
+                    continue;
+                }
+                PanelItem item = new PanelItem();
+                item.setPanel(panel);
+                item.setPanelName(panel.getPanelName());
+                item.setTest(test);
+                String desc = test.getDescription();
+                item.setTestName(desc != null && desc.length() > 20 ? desc.substring(0, 20) : desc);
+                item.setSortOrder(String.valueOf(desiredTestNames.indexOf(testName) + 1));
+                item.setSysUserId("1");
+                panelItemService.insert(item);
+                existingByTestId.put(test.getId(), item);
+            }
         }
     }
 
-    private Test findTest(String testName) {
-        List<Test> allTests = testService.getAllTests(false);
-        for (Test test : allTests) {
-            if (testName.equalsIgnoreCase(test.getDescription())) {
-                return test;
-            }
-            if (testName.equalsIgnoreCase(test.getLocalizedName())) {
-                return test;
+    /**
+     * The tests a plain member name stands for: the one test with that exact or
+     * normalized description (or localized name), else the legacy
+     * {@code name(SampleType)} variants for the panel's sample types (every variant
+     * when the panel lists none).
+     */
+    private List<Test> findTests(String testName, Set<String> panelSampleTypeIds) {
+        List<Test> matches = new ArrayList<>();
+        Test exact = testService.getTestByDescription(testName);
+        if (exact == null) {
+            exact = testService.getTestByNormalizedDescription(testName);
+        }
+        if (exact != null) {
+            matches.add(exact);
+            return matches;
+        }
+        for (LegacyTestVariant variant : legacyVariantFinder.find(testName)) {
+            if (panelSampleTypeIds.isEmpty() || panelSampleTypeIds.contains(variant.specimen().getId())) {
+                matches.add(variant.test());
             }
         }
-        return null;
+        if (!matches.isEmpty()) {
+            return matches;
+        }
+        // Last resort, kept for catalogs that name members by their display name:
+        // legacy variants all share one display name, so this must not run first.
+        for (Test test : testService.getAllTests(false)) {
+            if (testName.equalsIgnoreCase(test.getLocalizedName())) {
+                matches.add(test);
+                return matches;
+            }
+        }
+        return matches;
     }
 
     private Map<String, String> buildTranslations(String[] values, String defaultName,
