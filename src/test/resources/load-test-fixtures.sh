@@ -23,6 +23,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 STORAGE_IN_PROGRESS_ORDER_SQL="$SCRIPT_DIR/fixtures/storage-in-progress-order.sql"
+REPORTING_RESULTS_SQL="$SCRIPT_DIR/fixtures/reporting-repeated-results.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -324,6 +325,7 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 
 # Runs AFTER storage-e2e.xml, for fixtures that FK-reference storage patients.
 load_profile_lane_fixtures() {
+    load_sql_file "$REPORTING_RESULTS_SQL" "synthetic reporting repeat fixture" "fatal"
     if [ "$PROFILE" = "harness" ]; then
         load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
     fi
