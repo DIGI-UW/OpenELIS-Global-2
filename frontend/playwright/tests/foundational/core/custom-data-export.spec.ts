@@ -968,7 +968,25 @@ test("ordinary report users share a definition and independently download its re
   expect(
     original.records.map((row) => row[original.headers.indexOf("Viral Load")]),
   ).toEqual(["450", "450"]);
+  const ownedDownload = await page
+    .getByRole("region", { name: "Your current report" })
+    .getByRole("link", { name: "Download CSV" })
+    .getAttribute("href");
+  expect(ownedDownload).toMatch(/\/jobs\/[^/]+\/download$/);
   await signInAsReportUser(page, secondUser);
+  // Shared definitions can be reused; completed jobs still belong to their submitter.
+  for (const endpoint of [
+    ownedDownload!,
+    ownedDownload!.replace(/\/download$/, ""),
+  ]) {
+    const denied = await page.request.get(endpoint);
+    expect(denied.status()).toBe(404);
+    expect(denied.headers()["content-disposition"]).toBeUndefined();
+    expect(denied.headers()["content-type"] || "").not.toContain("text/csv");
+    const body = await denied.text();
+    expect(body).not.toContain(accession);
+    expect(body).not.toContain("Synthetic Reporting Fixture");
+  }
   await page
     .getByRole("button", { name: "Shared reports", exact: true })
     .click();
@@ -1649,4 +1667,116 @@ test("capture the canonical Referral workflow at matching widths", async ({
     page.getByRole("button", { name: "Create CSV", exact: true }),
   ).toBeVisible();
   await captureWidths(page, testInfo, "mock-referral-review", false);
+});
+
+test("Non-Conformance preserves event dates, recorded fallbacks and independent occurrences", async ({
+  page,
+}) => {
+  test.info().setTimeout(90_000);
+  const reportName = `Non-Conformance reuse ${Date.now()}`;
+  await page.goto("/reports/custom-data-export");
+  await page
+    .getByRole("button", { name: "Start a new export", exact: true })
+    .click();
+  await page.getByRole("radio", { name: /Non-Conformance/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your CSV columns (0)" }),
+  ).toBeVisible();
+  const available = page.getByRole("region", { name: "Available fields" });
+  await expect(
+    available.getByRole("button", {
+      name: "Non-Conformance / Rejections",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-expanded", "false");
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      window.scrollTo(0, 0);
+    });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: test.info().outputPath(`nc-catalog-${width}.png`),
+      fullPage: true,
+    });
+  }
+  const labels = [
+    "Accession Number",
+    "Occurrence ID",
+    "Rejection Reason",
+    "Rejection Date",
+    "Date Basis",
+    "Event Date",
+    "Recorded Date",
+    "Record Source",
+    "Status",
+  ];
+  for (const label of labels) await addField(page, label);
+  await page
+    .getByRole("button", { name: "Next: Set Filters", exact: true })
+    .click();
+  await expect(
+    page.getByText(/event dates when known, otherwise recorded dates/),
+  ).toBeVisible();
+  await setPeriod(page, "2026-05-10");
+  await reviewReport(page);
+  await expect(
+    page.getByText(/event dates when known, otherwise recorded dates/),
+  ).toBeVisible();
+  await saveReport(page, reportName);
+  const original = await downloadReport(page, 4);
+  const { headers, records } = original;
+  expect(headers).toEqual(labels);
+  expect(new Set(records.map((row) => row[1])).size).toBe(4);
+  for (const row of records) {
+    expect(row[0]).toBe("REPORTING-MVP-NCE");
+    expect(row[2]).toBe("RPT-MVP-HAEMOLYSIS");
+    expect(row[3]).toBe("2026-05-10");
+  }
+  const known = records.filter((row) => row[4] === "Event date");
+  expect(known).toHaveLength(1);
+  expect(known[0].slice(5)).toEqual([
+    "2026-05-10",
+    "2026-05-12",
+    "Non-conformance event",
+    "OPEN",
+  ]);
+  const fallback = records.filter((row) => row[4] === "Recorded date");
+  expect(fallback).toHaveLength(2);
+  for (const row of fallback)
+    expect(row.slice(5)).toEqual([
+      "",
+      "2026-05-10",
+      "Non-conformance event",
+      "OPEN",
+    ]);
+  const legacy = records.filter((row) => row[4] === "Recorded rejection date");
+  expect(legacy).toHaveLength(1);
+  expect(legacy[0].slice(5)).toEqual([
+    "",
+    "2026-05-10",
+    "Recorded rejection",
+    "",
+  ]);
+  await savedLibrary(page);
+  await page
+    .getByRole("searchbox", { name: "Search shared reports", exact: true })
+    .fill(reportName);
+  const card = page.getByRole("article", { name: reportName, exact: true });
+  await card.getByRole("button", { name: "Use report", exact: true }).click();
+  await expect(page.getByLabel("Date from", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Date to", { exact: true })).toHaveValue("");
+  await setPeriod(page, "2026-05-10");
+  const reused = await downloadReport(page, 4);
+  expect(reused).toEqual(original);
+  await savedLibrary(page);
+  await page
+    .getByRole("searchbox", { name: "Search shared reports", exact: true })
+    .fill(reportName);
+  await card.getByRole("button", { name: /Delete shared report/ }).click();
+  await page.getByRole("button", { name: /Delete$/ }).click();
+  await expect(card).toBeHidden();
 });

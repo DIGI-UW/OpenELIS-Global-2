@@ -1,10 +1,10 @@
 # Reporting review and merge stopping point
 
-This delivery checkpoint packages the working Reporting UAT increment. It does
-not replace the full MVP goal or its canonical mock. Non-Conformance remains
-visible as unavailable and requires its outstanding date decision, implementation
-and validation in a follow-up. Do not delay feedback on the working increment
-until that follow-up is finished.
+This delivery checkpoint packages the publicly testable Reporting MVP increment.
+It preserves the full goal and canonical mock. Sample & Testing, Referrals and
+Non-Conformance are connected; automated evidence and human acceptance remain
+separate. Use the [evidence index](https://reporting.catalyst.openelis-global.org/reporting-evidence/)
+for revision-specific recordings, actual CSVs, mock comparisons and code QA.
 
 ## Included behavior
 
@@ -12,6 +12,9 @@ until that follow-up is finished.
   result, turnaround beside each test, saved shared reports and fresh dates.
 - Referrals: the same builder, shared library, queue and CSV engine; independent
   returned results and pending referrals are preserved.
+- Non-Conformance: the same builder and queue; independent event/specimen and
+  legacy-rejection occurrences, event-date precedence, visibly labeled recorded-date
+  fallback and original dates.
 - Delivery: immutable requests, duplicate submission protection, queued
   cancellation, retry lineage, worker recovery, expiry and file cleanup.
 - Navigation: a configured Carbon renderer for the main menu, shared typography
@@ -53,25 +56,34 @@ independently complete user workflows.
 
 ## Review-ready versus merge-ready
 
-The latest verified public application at this checkpoint is
-`8005e4cc0b2b05d054489730aef969027d773093`, deployment
-`20260914T234348Z-8005e4cc0b2b`. Its backend, frontend and full E2E GitHub gates
-pass. [Current public workflow evidence](https://reporting.catalyst.openelis-global.org/reporting-evidence/20260914-review-8005/)
-contains three inspected HD recordings, actual CSVs and matching queue downloads,
-plus desktop/narrow comparisons with the pinned mock. Five public workflows
-passed across seven checks including two authentication setups. Earlier recovery
-proof remains tied to `9baa356`; navigation/Dashboard repair recordings identify
-their original local builds. Human acceptance remains pending.
+The public frontend/backend is `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7`,
+with review tooling `2048bc3cfd`. The original ten-PR stack remains separate by
+function, with Non-Conformance [follow-up #4318](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4318)
+above navigation #4315. Subsequent documentation and test-only commits do not
+change the deployed production source. No PR has been merged by this delivery.
 
-Reporting UI follow-up `36eb98edda` adds a two-editor regression and corrects the
-old conflict warning persisting after a successful copy. Its component regression
-reproduced the defect before the one-line fix. All 31 reporting component checks,
-compiled desktop/phone recovery with actual CSVs, both builds, formatting and
-focused lint pass. Failed copying retains the entered name and selected fields.
-The original saved definition and its independent copy retain their own columns.
-This follow-up still needs assembled publication, public recording and fresh CI;
-it is not yet part of the public `8005e4cc0b` result. The [code-QA record](code-qa.md)
-separates current validation from full-MVP and human acceptance.
+The public Non-Conformance workflow plus authentication passed in 35.3 seconds
+without retries and downloaded four independently identified synthetic records.
+[Its evidence](https://reporting.catalyst.openelis-global.org/reporting-evidence/20260914-non-conformance-3de726/)
+contains the actual CSV, video, desktop/phone screens and pinned mock comparison.
+The database, navigation configuration and review integration were retained.
+
+Earlier evidence remains valid for its recorded revisions: core reporting and
+mock comparison at `8005e4cc0b`, shared-editor recovery at `7cca586e58`, and the
+public field-value/saved-period checkpoint using review tooling `2048bc3cfd`.
+The [index](https://reporting.catalyst.openelis-global.org/reporting-evidence/)
+labels public runs and local recordings explicitly. These are not claims that
+every earlier workflow was repeated on `3de726b8d3`.
+
+Frontend/static CI passed on the implementation revision. CI for the later
+delivery receipt is running at this checkpoint; inspect the current PR before
+claiming merge readiness. Human acceptance remains pending. The Grist owner is
+correcting verified live availability keys RPT-001/RPT-200 and adding RPT-202;
+RPT-101 is the existing shared-save workflow and must remain unchanged.
+
+A minor recorded usability follow-up remains: report-type cards briefly show
+“Not yet connected” before the catalog request resolves. This is distinct from
+a source actually being unavailable. The completed public export is unaffected.
 
 Before calling this checkpoint merge-ready:
 
@@ -110,7 +122,8 @@ checklist on every iteration.
 
 The first feedback stopping point is the published stack plus the current public
 UAT application and the explicit open items above. Full MVP completion still
-requires Non-Conformance and the remaining agreed acceptance criteria.
+requires the remaining agreed acceptance audit, current required CI and completed
+UAT-readiness mapping; human acceptance is recorded separately.
 
 ## Required delivery evidence
 

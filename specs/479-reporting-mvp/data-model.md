@@ -13,11 +13,11 @@ identity, layout options and defaults. The instance can enable definitions and
 supply its configured metadata. The three product report types use this common
 mechanism.
 
-| Reporting area               | Existing source evidence                                                                                | Date and row rules to prove                                                                                                                            |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sample & Testing             | Result → Analysis → SampleItem → Sample; configured tests/components and relevant patient/question data | Specimen collection date; independent result identity; specimen grouping for the spreadsheet                                                           |
-| Referrals                    | Referral, its analysis/organization and related result records                                          | Referral sent date in the canonical definition; one row per independent returned result, with a pending row when no result exists; retain referral and result identities |
-| Non-Conformance / Rejections | NcEvent with specimen links; recorded SampleQaEvent rejection occurrences where applicable              | Event date for NcEvent; explicitly labeled recorded-rejection date for legacy rejection records; distinct event identity, not QaEvent catalog identity |
+| Reporting area               | Existing source evidence                                                                                | Date and row rules to prove                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sample & Testing             | Result → Analysis → SampleItem → Sample; configured tests/components and relevant patient/question data | Specimen collection date; independent result identity; specimen grouping for the spreadsheet                                                                                                                        |
+| Referrals                    | Referral, its analysis/organization and related result records                                          | Referral sent date in the canonical definition; one row per independent returned result, with a pending row when no result exists; retain referral and result identities                                            |
+| Non-Conformance / Rejections | NcEvent with specimen links; recorded SampleQaEvent rejection occurrences where applicable              | Event date for NcEvent, falling back to its recorded date with a visible date basis; explicitly labeled recorded-rejection date for legacy rejection records; distinct event identity, not QaEvent catalog identity |
 
 The canonical mock explicitly uses referral sent date. A separately named,
 configured definition may use request date; it must label that different date
@@ -27,8 +27,15 @@ older one-row-per-referred-analysis shorthand. Genuine multi-valued results stay
 in one cell; separate returned results remain separate rows, even when equal.
 
 T002/T020 establish actual relationships and date/value fixtures before
-accepting the mappings. For non-conformance, do not substitute `reportDate` for
-`dateOfEvent`. If a recorded rejection is represented by a linked
+accepting the mappings. The user approved the Non-Conformance date rule on
+September 14, 2026: use `dateOfEvent` when present, otherwise `reportDate`.
+Use that same effective date for range filtering and the exported reporting date.
+Expose a readable Date basis value identifying Event date or Recorded date;
+label the fallback in the builder's date guidance and review summary. Preserve
+the original event and recorded dates as independently selectable fields.
+Records with neither date cannot match a dated export; do not invent a date.
+Legacy rejection occurrences retain their entered-date meaning, explicitly
+labeled Recorded rejection date. If a recorded rejection is represented by a linked
 non-conformance event, do not count it twice. Do not infer equivalence from
 matching accession or display text. Definitions distinguish event-date and
 recorded-date semantics rather than hiding different timestamps behind an
@@ -161,7 +168,7 @@ belong in it.
 | Submission identity  | Owner plus client request identifier is unique; same key with changed request conflicts                     |
 | Lifecycle            | State, timestamps, safe failure code, completed output row count and file size                              |
 | Retry lineage        | New child job copies the failed parent's frozen request; current access is rechecked                        |
-| Output cleanup       | Nullable completion timestamp; terminal jobs are cleaned in bounded batches while retaining their history |
+| Output cleanup       | Nullable completion timestamp; terminal jobs are cleaned in bounded batches while retaining their history   |
 | Worker claim         | Atomic persisted ownership that distinguishes abandoned work from another live worker                       |
 | Output               | Private server-owned reference and expiry deadline; no client-selected path                                 |
 

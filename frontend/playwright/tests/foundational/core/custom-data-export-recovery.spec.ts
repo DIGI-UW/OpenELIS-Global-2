@@ -4,7 +4,8 @@ import { writeFile } from "node:fs/promises";
 
 // The shared fixture loader supplies these public synthetic terminal jobs. Their
 // requests select the same two equal Viral Load readings as the routine UAT flow.
-const failedId = "47900000-0000-4000-8000-000000000101";
+const failedId =
+  process.env.REPORTING_FAILED_JOB_ID || "47900000-0000-4000-8000-000000000101";
 const expiredId = "47900000-0000-4000-8000-000000000102";
 const jobsPath = "/api/OpenELIS-Global/rest/reports/data-export/jobs";
 
