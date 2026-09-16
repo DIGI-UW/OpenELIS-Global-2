@@ -18,6 +18,7 @@ import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for managing AnalyzerType entities.
