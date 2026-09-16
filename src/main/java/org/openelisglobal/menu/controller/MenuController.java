@@ -65,6 +65,17 @@ public class MenuController {
         return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());
     }
 
+    @GetMapping(value = "/rest/admin/menu", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<MenuItem> getEditableMenuTree() {
+        return MenuUtil.getUnfilteredMenuTree();
+    }
+
+    @PostMapping("/rest/admin/menu")
+    public List<MenuItem> saveEditableMenus(@RequestBody List<MenuItem> menuItems) {
+        menuService.save(menuItems);
+        return MenuUtil.getUnfilteredMenuTree();
+    }
+
     @PostMapping("/rest/menu")
     public List<MenuItem> postMenuTree(@RequestBody List<MenuItem> menuItems) {
         return menuService.save(menuItems);
