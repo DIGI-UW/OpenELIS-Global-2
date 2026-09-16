@@ -28,12 +28,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     List<InventoryLot> getByInventoryItemId(Long itemId);
 
     /**
-     * Get lots by storage location ID
-     */
-    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
-    List<InventoryLot> getByStorageLocationId(Long locationId);
-
-    /**
      * Get lots expiring within specified days
      */
     @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
