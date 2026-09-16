@@ -134,7 +134,7 @@ function ResultSelectListAdd() {
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.delete.success",
+          id: "notification.resultSelectList.post.save.success",
         }),
         kind: NotificationKinds.success,
       });

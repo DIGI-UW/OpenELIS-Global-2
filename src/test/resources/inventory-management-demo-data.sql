@@ -63,73 +63,73 @@ SELECT setval('clinlims.inventory_storage_location_seq', (SELECT COALESCE(MAX(id
 -- SECTION 2: Inventory Catalog Items (20 items covering common lab reagents)
 -- ============================================================================
 
-INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, item_type, category, manufacturer,
+INSERT INTO clinlims.inventory_item (id, code, fhir_uuid, name, item_type, category, manufacturer,
                                       units, low_stock_threshold, expiration_alert_days,
                                       stability_after_opening, storage_requirements,
                                       compatible_analyzers, tests_per_kit, is_active)
 VALUES
     -- REAGENTS (PCR and Chemistry)
-    (2000, gen_random_uuid(), 'COVID-19 PCR Master Mix', 'REAGENT', 'Molecular Diagnostics', 'ThermoFisher Scientific',
+    (2000, 'COVID_19_PCR_MASTER_MIX', gen_random_uuid(), 'COVID-19 PCR Master Mix', 'REAGENT', 'Molecular Diagnostics', 'ThermoFisher Scientific',
      'mL', 5, 30, 90, 'Store at -20°C. Protect from light. Thaw on ice.', NULL, NULL, 'Y'),
 
-    (2001, gen_random_uuid(), 'HIV RNA Extraction Kit', 'REAGENT', 'Molecular Diagnostics', 'Qiagen',
+    (2001, 'HIV_RNA_EXTRACTION_KIT', gen_random_uuid(), 'HIV RNA Extraction Kit', 'REAGENT', 'Molecular Diagnostics', 'Qiagen',
      'extractions', 10, 30, 180, 'Store at 2-8°C. Do not freeze.', NULL, NULL, 'Y'),
 
-    (2002, gen_random_uuid(), 'Hepatitis B PCR Reagent', 'REAGENT', 'Molecular Diagnostics', 'Roche Diagnostics',
+    (2002, 'HEPATITIS_B_PCR_REAGENT', gen_random_uuid(), 'Hepatitis B PCR Reagent', 'REAGENT', 'Molecular Diagnostics', 'Roche Diagnostics',
      'mL', 3, 30, 60, 'Store at -80°C. Stable for 60 days at -20°C after opening.', NULL, NULL, 'Y'),
 
-    (2003, gen_random_uuid(), 'TB MGIT Culture Medium', 'REAGENT', 'Microbiology', 'BD Diagnostics',
+    (2003, 'TB_MGIT_CULTURE_MEDIUM', gen_random_uuid(), 'TB MGIT Culture Medium', 'REAGENT', 'Microbiology', 'BD Diagnostics',
      'tubes', 20, 30, 30, 'Store at 2-8°C. Use within 30 days of opening.', NULL, NULL, 'Y'),
 
-    (2004, gen_random_uuid(), 'Glucose Reagent Solution', 'REAGENT', 'Clinical Chemistry', 'Abbott Laboratories',
+    (2004, 'GLUCOSE_REAGENT_SOLUTION', gen_random_uuid(), 'Glucose Reagent Solution', 'REAGENT', 'Clinical Chemistry', 'Abbott Laboratories',
      'mL', 10, 30, 90, 'Store at 2-8°C. Stable for 90 days after opening.', NULL, NULL, 'Y'),
 
-    (2005, gen_random_uuid(), 'Creatinine Reagent Kit', 'REAGENT', 'Clinical Chemistry', 'Siemens Healthineers',
+    (2005, 'CREATININE_REAGENT_KIT', gen_random_uuid(), 'Creatinine Reagent Kit', 'REAGENT', 'Clinical Chemistry', 'Siemens Healthineers',
      'mL', 8, 30, 60, 'Store at 2-8°C. Do not freeze.', NULL, NULL, 'Y'),
 
     -- RDTs (Rapid Diagnostic Tests)
-    (2006, gen_random_uuid(), 'Malaria RDT (Pf/Pan)', 'RDT', 'Infectious Disease', 'SD Biosensor',
+    (2006, 'MALARIA_RDT_PF_PAN', gen_random_uuid(), 'Malaria RDT (Pf/Pan)', 'RDT', 'Infectious Disease', 'SD Biosensor',
      'tests', 50, 60, NULL, 'Store at 2-30°C. Do not freeze.', NULL, 25, 'Y'),
 
-    (2007, gen_random_uuid(), 'HIV Combo Test (Alere)', 'RDT', 'Infectious Disease', 'Abbott Rapid Diagnostics',
+    (2007, 'HIV_COMBO_TEST_ALERE', gen_random_uuid(), 'HIV Combo Test (Alere)', 'RDT', 'Infectious Disease', 'Abbott Rapid Diagnostics',
      'tests', 30, 60, NULL, 'Store at 2-30°C. Do not expose to moisture.', NULL, 20, 'Y'),
 
-    (2008, gen_random_uuid(), 'COVID-19 Antigen RDT', 'RDT', 'Infectious Disease', 'Roche Diagnostics',
+    (2008, 'COVID_19_ANTIGEN_RDT', gen_random_uuid(), 'COVID-19 Antigen RDT', 'RDT', 'Infectious Disease', 'Roche Diagnostics',
      'tests', 100, 90, NULL, 'Store at 2-30°C. Use within 24 months.', NULL, 25, 'Y'),
 
-    (2009, gen_random_uuid(), 'Syphilis Rapid Test', 'RDT', 'Infectious Disease', 'SD Biosensor',
+    (2009, 'SYPHILIS_RAPID_TEST', gen_random_uuid(), 'Syphilis Rapid Test', 'RDT', 'Infectious Disease', 'SD Biosensor',
      'tests', 25, 60, NULL, 'Store at 2-30°C. Avoid direct sunlight.', NULL, 30, 'Y'),
 
-    (2010, gen_random_uuid(), 'Hepatitis C Rapid Test', 'RDT', 'Infectious Disease', 'OraSure Technologies',
+    (2010, 'HEPATITIS_C_RAPID_TEST', gen_random_uuid(), 'Hepatitis C Rapid Test', 'RDT', 'Infectious Disease', 'OraSure Technologies',
      'tests', 20, 60, NULL, 'Store at 2-30°C. Do not use if pouch is damaged.', NULL, 25, 'Y'),
 
     -- CARTRIDGES (Automated Analyzers)
-    (2011, gen_random_uuid(), 'GeneXpert MTB/RIF Ultra Cartridge', 'CARTRIDGE', 'Molecular Diagnostics', 'Cepheid',
+    (2011, 'GENEXPERT_MTB_RIF_ULTRA_CARTRIDGE', gen_random_uuid(), 'GeneXpert MTB/RIF Ultra Cartridge', 'CARTRIDGE', 'Molecular Diagnostics', 'Cepheid',
      'cartridges', 20, 60, NULL, 'Store at 2-28°C. Do not freeze.', 'GeneXpert System', NULL, 'Y'),
 
-    (2012, gen_random_uuid(), 'GeneXpert HIV Viral Load', 'CARTRIDGE', 'Molecular Diagnostics', 'Cepheid',
+    (2012, 'GENEXPERT_HIV_VIRAL_LOAD', gen_random_uuid(), 'GeneXpert HIV Viral Load', 'CARTRIDGE', 'Molecular Diagnostics', 'Cepheid',
      'cartridges', 15, 60, NULL, 'Store at 2-28°C.', 'GeneXpert System', NULL, 'Y'),
 
-    (2013, gen_random_uuid(), 'Cobas HPV Test Cartridge', 'CARTRIDGE', 'Molecular Diagnostics', 'Roche Diagnostics',
+    (2013, 'COBAS_HPV_TEST_CARTRIDGE', gen_random_uuid(), 'Cobas HPV Test Cartridge', 'CARTRIDGE', 'Molecular Diagnostics', 'Roche Diagnostics',
      'cartridges', 10, 30, NULL, 'Store at 2-8°C. Equilibrate to room temp before use.', 'Cobas 4800, Cobas 6800/8800', NULL, 'Y'),
 
-    (2014, gen_random_uuid(), 'Alinity HIV Combo Cartridge', 'CARTRIDGE', 'Immunoassay', 'Abbott Diagnostics',
+    (2014, 'ALINITY_HIV_COMBO_CARTRIDGE', gen_random_uuid(), 'Alinity HIV Combo Cartridge', 'CARTRIDGE', 'Immunoassay', 'Abbott Diagnostics',
      'cartridges', 12, 30, NULL, 'Store at 2-8°C.', 'Alinity i System', NULL, 'Y'),
 
     -- More specialized items
-    (2015, gen_random_uuid(), 'Blood Culture Bottles (Aerobic)', 'REAGENT', 'Microbiology', 'BD Diagnostics',
+    (2015, 'BLOOD_CULTURE_BOTTLES_AEROBIC', gen_random_uuid(), 'Blood Culture Bottles (Aerobic)', 'REAGENT', 'Microbiology', 'BD Diagnostics',
      'bottles', 50, 90, 365, 'Store at 20-25°C. Do not refrigerate.', NULL, NULL, 'Y'),
 
-    (2016, gen_random_uuid(), 'CD4 Count Reagent Kit', 'REAGENT', 'Flow Cytometry', 'BD Biosciences',
+    (2016, 'CD4_COUNT_REAGENT_KIT', gen_random_uuid(), 'CD4 Count Reagent Kit', 'REAGENT', 'Flow Cytometry', 'BD Biosciences',
      'tests', 20, 30, 30, 'Store at 2-8°C. Use within 30 days after opening.', NULL, NULL, 'Y'),
 
-    (2017, gen_random_uuid(), 'Hematology Control Material (3-Level)', 'REAGENT', 'Hematology', 'Sysmex',
+    (2017, 'HEMATOLOGY_CONTROL_MATERIAL_3_LEVEL', gen_random_uuid(), 'Hematology Control Material (3-Level)', 'REAGENT', 'Hematology', 'Sysmex',
      'mL', 10, 30, 90, 'Store at 2-8°C. Mix gently before use.', NULL, NULL, 'Y'),
 
-    (2018, gen_random_uuid(), 'Urinalysis Reagent Strips', 'RDT', 'Clinical Chemistry', 'Siemens Healthineers',
+    (2018, 'URINALYSIS_REAGENT_STRIPS', gen_random_uuid(), 'Urinalysis Reagent Strips', 'RDT', 'Clinical Chemistry', 'Siemens Healthineers',
      'strips', 100, 60, NULL, 'Store at 2-30°C. Keep bottle tightly closed.', NULL, 100, 'Y'),
 
-    (2019, gen_random_uuid(), 'Pregnancy Test (hCG)', 'RDT', 'Clinical Chemistry', 'Quidel',
+    (2019, 'PREGNANCY_TEST_HCG', gen_random_uuid(), 'Pregnancy Test (hCG)', 'RDT', 'Clinical Chemistry', 'Quidel',
      'tests', 50, 60, NULL, 'Store at 2-30°C. Do not use if foil pouch is damaged.', NULL, 25, 'Y')
 ON CONFLICT (id) DO NOTHING;
 
