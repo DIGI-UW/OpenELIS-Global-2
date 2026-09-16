@@ -404,6 +404,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="catalogImport"
+          {...navProps(`${path}/CatalogImport`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.catalogImport" />
+        </SideNavMenuItem>
         {editorLabUnitId ? (
           <>
             {editorLabUnitId === "new"

@@ -263,6 +263,59 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     });
 };
 
+/**
+ * Posts a multipart form and hands back the parsed JSON body, for endpoints
+ * that answer an upload with a result rather than a bare status (the catalog
+ * import's preview and apply). A non-2xx answer still resolves, carrying the
+ * status, so callers can show the server's own message.
+ */
+export const postToOpenElisServerFormDataJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  formData: FormData,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: formData,
+  })
+    .then(handleSessionError)
+    .then((response) =>
+      response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}))
+        .then((parsed) =>
+          response.ok
+            ? parsed
+            : {
+                ...parsed,
+                status: response.status,
+                statusCode: response.status,
+              },
+        )
+        .catch(() => ({
+          error: `Request failed (HTTP ${response.status})`,
+          status: response.status,
+          statusCode: response.status,
+        })),
+    )
+    .then((body) => {
+      callback(body as T, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+      callback(undefined, extraParams);
+    });
+};
+
 export const postToOpenElisServerJsonResponse = <
   T = LegacyApiResponse,
   TExtra = unknown,

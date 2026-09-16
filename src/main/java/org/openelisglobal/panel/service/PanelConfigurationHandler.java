@@ -15,8 +15,11 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.configuration.service.ImportRunContext;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
+import org.openelisglobal.configuration.service.UnresolvedReferenceService;
+import org.openelisglobal.configuration.valueholder.UnresolvedReference;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -61,6 +64,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     @Autowired
     private LegacyTestVariantFinder legacyVariantFinder;
 
+    @Autowired(required = false)
+    private UnresolvedReferenceService unresolvedReferenceService;
+
     @Autowired
     private LocalizationService localizationService;
 
@@ -102,7 +108,17 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    public boolean supportsDryRun() {
+        return true;
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
+        processConfiguration(inputStream, fileName, false);
+    }
+
+    @Override
+    public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         String headerLine = reader.readLine();
@@ -126,7 +142,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         }
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
-        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
         String line;
         int lineNumber = 1;
 
@@ -145,11 +161,23 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                 result = LoadedRow.skipped(CsvLoadSummary.reason(e));
             }
             summary.record(result, getClass().getSimpleName(), rowLine);
+            recordUnresolved(fileName, rowLine);
         }
 
         DisplayListService.getInstance().refreshLists();
         summary.log(getClass().getSimpleName());
         lastSummary = summary;
+    }
+
+    /**
+     * Writes the names this row could not resolve into the decision queue, once the
+     * row's own transaction has ended. Without a Spring context, as in plain unit
+     * tests, there is no queue to write to.
+     */
+    private void recordUnresolved(String fileName, int lineNumber) {
+        if (unresolvedReferenceService != null) {
+            unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
+        }
     }
 
     private LoadedRow<Panel> processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
@@ -349,6 +377,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         for (String testName : desiredTestNames) {
             List<Test> tests = findTests(testName, panelSampleTypeIds);
             if (tests.isEmpty()) {
+                ImportRunContext.addPending(UnresolvedReference.TYPE_TEST, testName,
+                        fileName + " line " + lineNumber + " (panel " + panel.getPanelName() + ")");
                 LogEvent.logWarn(this.getClass().getSimpleName(), "reconcilePanelItems",
                         "Test '" + testName + "' not found (line " + lineNumber + " of " + fileName + "). Skipping.");
                 continue;

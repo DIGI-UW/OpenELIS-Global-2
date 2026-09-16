@@ -95,7 +95,17 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     @Override
+    public boolean supportsDryRun() {
+        return true;
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
+        processConfiguration(inputStream, fileName, false);
+    }
+
+    @Override
+    public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         // Read and validate header
@@ -121,7 +131,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
-        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
         String line;
         int lineNumber = 1; // Start at 1 since we already read the header
         int nextSortOrder = getNextAvailableSortOrder();
