@@ -2,6 +2,7 @@ package org.openelisglobal.reports.dataexport.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.OptimisticLockException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
@@ -106,7 +107,7 @@ public class ReportingSavedConfigService {
         stored.setDefinitionJson(write(normalized));
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
-        stored = definitions.update(stored);
+        stored = updateDefinition(stored);
         ReportingAudit.definition(ReportingAudit.Action.DEFINITION_UPDATED, actor, stored.getId());
         return view(stored, normalized);
     }
@@ -119,8 +120,19 @@ public class ReportingSavedConfigService {
         stored.setIsActive(false);
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
-        definitions.update(stored);
+        updateDefinition(stored);
         ReportingAudit.definition(ReportingAudit.Action.DEFINITION_DELETED, actor, stored.getId());
+    }
+
+    private ReportDefinition updateDefinition(ReportDefinition stored) {
+        try {
+            return definitions.update(stored);
+        } catch (OptimisticLockException error) {
+            // Both requests may pass the version check before either writes.
+            ReportingException conflict = new ReportingException(409, "reporting.saved.changed");
+            conflict.initCause(error);
+            throw conflict;
+        }
     }
 
     private ReportDefinition saved(String id) {

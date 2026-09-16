@@ -196,7 +196,7 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
-    public void catalogSeparatesOptionalPerTestIntervalsFromDefaultTestsAndGenericDetailIntervals() {
+    public void catalogSeparatesPerTestIntervalsFromGenericDetailIntervalsWithoutSelectingFields() {
         var definition = catalog.definition("SAMPLE_TESTING");
         var spreadsheet = catalog.variables(definition, "SPREADSHEET").stream().map(ReportingVariable::id).toList();
         var detail = catalog.variables(definition, "RESULT_LIST").stream().map(ReportingVariable::id).toList();
@@ -205,8 +205,8 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         assertTrue(spreadsheet.contains("collectionToReceivedMinutes"));
         assertTrue(detail.contains("receivedToValidatedMinutes"));
         assertFalse(detail.contains("test:1:receivedToValidatedMinutes"));
-        assertEquals(List.of("accessionNumber", "specimenId", "collectionDate", "sampleType", "test:1", "test:2"),
-                catalog.defaultColumns(definition, "SPREADSHEET"));
+        assertEquals(List.of(), catalog.defaultColumns(definition, "SPREADSHEET"));
+        assertEquals(List.of(), catalog.defaultColumns(definition, "RESULT_LIST"));
     }
 
     @Test

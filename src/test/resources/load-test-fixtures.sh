@@ -24,6 +24,7 @@ FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 STORAGE_IN_PROGRESS_ORDER_SQL="$SCRIPT_DIR/fixtures/storage-in-progress-order.sql"
 REPORTING_RESULTS_SQL="$SCRIPT_DIR/fixtures/reporting-repeated-results.sql"
+REPORTING_FIELDS_SQL="$SCRIPT_DIR/fixtures/reporting-field-values.sql"
 REPORTING_REFERRALS_SQL="$SCRIPT_DIR/fixtures/reporting-referrals.sql"
 REPORTING_RECOVERY_SQL="$SCRIPT_DIR/fixtures/reporting-recovery.sql"
 REPORTING_SOURCE_JSON="$SCRIPT_DIR/../../main/resources/reporting/sample-testing.json"
@@ -330,6 +331,7 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 # Runs AFTER storage-e2e.xml, for fixtures that FK-reference storage patients.
 load_profile_lane_fixtures() {
     load_sql_file "$REPORTING_RESULTS_SQL" "synthetic reporting repeat fixture" "fatal"
+    load_sql_file "$REPORTING_FIELDS_SQL" "synthetic reporting field values" "fatal"
     load_sql_file "$REPORTING_REFERRALS_SQL" "synthetic reporting referral fixture" "fatal"
     load_sql_file "$REPORTING_RECOVERY_SQL" "synthetic reporting queue fixtures" "fatal" \
         -v "source_definition=$(cat "$REPORTING_SOURCE_JSON")"
