@@ -58,15 +58,28 @@ public final class ValidationSignals {
         }
     }
 
+    /** The four-tier result flag, in order of precedence (OGC-1022 FR-L1). */
+    public static final String FLAG_INVALID = "INVALID";
+    public static final String FLAG_CRITICAL = "CRITICAL";
+    public static final String FLAG_ABNORMAL = "ABNORMAL";
+    public static final String FLAG_NORMAL = "NORMAL";
+
     /**
-     * Mirrors {@code TestAlertEvaluationServiceImpl#isCriticalValue} (OGC-1022): a
-     * numeric value outside an authored critical bound of the result's own limit. A
-     * bound is authored only when finite — the infinities are the "not authored"
-     * sentinels — so a test without critical limits never fires. Must be evaluated
-     * on the raw {@link ResultLimit}: the validation beans later collapse
-     * unauthored bounds to 0, which would make every positive value read as
-     * critical-high.
+     * The single critical rule (OGC-1022, OGC-1121): a numeric value outside an
+     * authored critical bound of the result's own limit. A bound is authored only
+     * when finite — the infinities are the "not authored" sentinels — so a test
+     * without critical limits never fires. Must be evaluated on the raw
+     * {@link ResultLimit}, never on a bean that has collapsed unauthored bounds.
      */
+    public static boolean isCritical(ResultLimit limit, double numeric) {
+        if (limit == null) {
+            return false;
+        }
+        boolean low = Double.isFinite(limit.getLowCritical()) && numeric < limit.getLowCritical();
+        boolean high = Double.isFinite(limit.getHighCritical()) && numeric > limit.getHighCritical();
+        return low || high;
+    }
+
     public static boolean isCritical(ResultLimit limit, Result result) {
         if (limit == null || result == null || !"N".equals(result.getResultType())) {
             return false;
@@ -76,13 +89,46 @@ public final class ValidationSignals {
             return false;
         }
         try {
-            double numeric = Double.parseDouble(value.trim());
-            boolean low = Double.isFinite(limit.getLowCritical()) && numeric < limit.getLowCritical();
-            boolean high = Double.isFinite(limit.getHighCritical()) && numeric > limit.getHighCritical();
-            return low || high;
+            return isCritical(limit, Double.parseDouble(value.trim()));
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+
+    /**
+     * The flag a numeric result carries against the patient-conditional limit:
+     * INVALID outside the valid range, CRITICAL outside an authored critical bound,
+     * ABNORMAL outside the reference range, NORMAL inside it. Null when there is
+     * nothing to judge: no value, a non-numeric type, or the selector's synthetic
+     * empty limit (a null id) — no authored range matched this patient, so there is
+     * no basis to call anything "normal". Shared by Results Entry and Validation
+     * (OGC-1121) so the two screens can never disagree.
+     */
+    public static String resultFlag(ResultLimit limit, String resultType, String value) {
+        if (limit == null || GenericValidator.isBlankOrNull(limit.getId()) || !"N".equals(resultType)
+                || GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            double numeric = Double.parseDouble(value.trim());
+            if (numeric < limit.getLowValid() || numeric > limit.getHighValid()) {
+                return FLAG_INVALID;
+            }
+            if (isCritical(limit, numeric)) {
+                return FLAG_CRITICAL;
+            }
+            if (numeric < limit.getLowNormal() || numeric > limit.getHighNormal()) {
+                return FLAG_ABNORMAL;
+            }
+            return FLAG_NORMAL;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** An authored (finite) bound as itself, an unauthored one as null. */
+    public static Double authoredBound(double bound) {
+        return Double.isFinite(bound) ? Double.valueOf(bound) : null;
     }
 
     /**

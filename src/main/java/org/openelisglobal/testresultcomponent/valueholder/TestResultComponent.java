@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -74,6 +75,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
+
+    // Detection limits of a quantitative component (OGC-1148): limit of
+    // detection and limit of quantification, both optional, LOD <= LOQ.
+    @Column(name = "lod", precision = 15, scale = 5)
+    private BigDecimal lod;
+
+    @Column(name = "loq", precision = 15, scale = 5)
+    private BigDecimal loq;
 
     public TestResultComponent() {
         super();
@@ -184,5 +193,21 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    public BigDecimal getLod() {
+        return lod;
+    }
+
+    public void setLod(BigDecimal lod) {
+        this.lod = lod;
+    }
+
+    public BigDecimal getLoq() {
+        return loq;
+    }
+
+    public void setLoq(BigDecimal loq) {
+        this.loq = loq;
     }
 }

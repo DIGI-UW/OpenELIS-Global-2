@@ -32,6 +32,7 @@ export const FILTERS = [
 
 /** "Check before release" chips, in display order. */
 export const SIGNAL_KEYS = [
+  "critical",
   "nce",
   "qcFail",
   "modified",

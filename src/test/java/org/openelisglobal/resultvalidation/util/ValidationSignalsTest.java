@@ -25,6 +25,59 @@ import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
  */
 public class ValidationSignalsTest {
 
+    // ---- resultFlag (OGC-1121) -----------------------------------------------
+
+    private static ResultLimit authoredLimit() {
+        ResultLimit limit = new ResultLimit();
+        limit.setId("1");
+        limit.setLowValid(0d);
+        limit.setHighValid(1000d);
+        limit.setLowCritical(2d);
+        limit.setHighCritical(150d);
+        limit.setLowNormal(5d);
+        limit.setHighNormal(100d);
+        return limit;
+    }
+
+    @Test
+    public void resultFlag_invalidBeatsCriticalBeatsAbnormalBeatsNormal() {
+        ResultLimit limit = authoredLimit();
+        assertEquals("INVALID", ValidationSignals.resultFlag(limit, "N", "2000"));
+        assertEquals("CRITICAL", ValidationSignals.resultFlag(limit, "N", "200"));
+        assertEquals("CRITICAL", ValidationSignals.resultFlag(limit, "N", "1"));
+        assertEquals("ABNORMAL", ValidationSignals.resultFlag(limit, "N", "120"));
+        assertEquals("ABNORMAL", ValidationSignals.resultFlag(limit, "N", "3"));
+        assertEquals("NORMAL", ValidationSignals.resultFlag(limit, "N", "50"));
+    }
+
+    @Test
+    public void resultFlag_unauthoredCriticalBoundsNeverFire() {
+        ResultLimit limit = authoredLimit();
+        limit.setLowCritical(Double.POSITIVE_INFINITY);
+        limit.setHighCritical(Double.POSITIVE_INFINITY);
+        assertEquals("ABNORMAL", ValidationSignals.resultFlag(limit, "N", "200"));
+        limit.setLowCritical(Double.NEGATIVE_INFINITY);
+        assertEquals("ABNORMAL", ValidationSignals.resultFlag(limit, "N", "1"));
+    }
+
+    @Test
+    public void resultFlag_isNullWhenThereIsNothingToJudge() {
+        ResultLimit limit = authoredLimit();
+        assertNull("non-numeric type", ValidationSignals.resultFlag(limit, "D", "50"));
+        assertNull("blank value", ValidationSignals.resultFlag(limit, "N", " "));
+        assertNull("unparseable value", ValidationSignals.resultFlag(limit, "N", "abc"));
+        assertNull("no limit", ValidationSignals.resultFlag(null, "N", "50"));
+        limit.setId(null);
+        assertNull("the selector's synthetic empty limit", ValidationSignals.resultFlag(limit, "N", "50"));
+    }
+
+    @Test
+    public void authoredBound_isNullForTheInfinitySentinels() {
+        assertNull(ValidationSignals.authoredBound(Double.POSITIVE_INFINITY));
+        assertNull(ValidationSignals.authoredBound(Double.NEGATIVE_INFINITY));
+        assertEquals(Double.valueOf(2d), ValidationSignals.authoredBound(2d));
+    }
+
     // ---- modified -----------------------------------------------------------
 
     @Test

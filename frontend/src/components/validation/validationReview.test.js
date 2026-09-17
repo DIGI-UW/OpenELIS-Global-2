@@ -31,6 +31,19 @@ const row = (overrides = {}) => ({
 });
 
 describe("flagFor", () => {
+  // OGC-1121: the server's four-tier flag wins when the row carries it.
+  it("prefers the server's resultFlag, including INVALID", () => {
+    expect(flagFor(row({ resultFlag: "INVALID", normal: true }))).toBe(
+      "INVALID",
+    );
+    expect(flagFor(row({ resultFlag: "CRITICAL", normal: true }))).toBe(
+      "CRITICAL",
+    );
+    expect(flagFor(row({ resultFlag: "garbage", normal: false }))).toBe(
+      "ABNORMAL",
+    );
+  });
+
   it("critical wins over the range verdict", () => {
     expect(flagFor(row({ critical: true, normal: false }))).toBe("CRITICAL");
   });

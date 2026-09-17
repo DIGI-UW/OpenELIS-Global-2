@@ -80,6 +80,42 @@ const renderValidation = (
 
 const BULK_ON = { AccessionFormat: "", ALLOW_BULK_RELEASE_CLEAR: "true" };
 
+describe("Validation — result flags in the row (OGC-1121)", () => {
+  it("marks a critical value and an abnormal value differently, and a normal one not at all", () => {
+    renderValidation([
+      row(0),
+      row(1, { result: "120", normal: false, resultFlag: "ABNORMAL" }),
+      row(2, {
+        result: "200",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const normal = screen.getByTestId("validation-result-0");
+    const abnormal = screen.getByTestId("validation-result-1");
+    const critical = screen.getByTestId("validation-result-2");
+
+    expect(normal.querySelector('[data-testid^="flag-"]')).toBeNull();
+    expect(
+      abnormal.querySelector('[data-testid="flag-ABNORMAL"]'),
+    ).not.toBeNull();
+    expect(
+      critical.querySelector('[data-testid="flag-CRITICAL"]'),
+    ).not.toBeNull();
+    expect(critical).toHaveTextContent("Critical");
+    expect(abnormal).not.toHaveTextContent("Critical");
+    expect(critical.className).toContain("unifiedValueAccent--critical");
+    expect(abnormal.className).toContain("unifiedValueAccent--abnormal");
+
+    // The critical row also carries the row-level signal chip.
+    expect(screen.getByTestId("check-before-release-2")).toHaveTextContent(
+      "Critical",
+    );
+  });
+});
+
 describe("Validation — Check before release (OGC-1027)", () => {
   it("renders a chip only for rows carrying a signal; a clean row is blank", () => {
     renderValidation([row(0), row(1, { nceOpen: true, modified: true })]);

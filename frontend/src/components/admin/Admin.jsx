@@ -28,6 +28,7 @@ import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
 import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
+import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
@@ -101,6 +102,7 @@ function Admin() {
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}

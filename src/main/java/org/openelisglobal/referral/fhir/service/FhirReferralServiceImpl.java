@@ -462,8 +462,15 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     }
 
     private Organization getFhirOrganization(org.openelisglobal.organization.valueholder.Organization organization) {
-        Optional<Organization> fhiOrganization = fhirPersistanceService
-                .getFhirOrganizationByName(organization.getOrganizationName());
+        // Resolve on the organization's own uuid first. The receiving lab polls for
+        // Tasks owned by that uuid, so a resource found by name alone — an older one
+        // created under some other id — would address the referral to a lab that is
+        // not listening (OGC-1188).
+        Optional<Organization> fhiOrganization = organization.getFhirUuid() == null ? Optional.empty()
+                : fhirPersistanceService.getFhirOrganizationByUuid(organization.getFhirUuidAsString());
+        if (fhiOrganization.isEmpty()) {
+            fhiOrganization = fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName());
+        }
         if (fhiOrganization.isPresent()) {
             return fhiOrganization.get();
         } else {
@@ -482,7 +489,10 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         // Best-effort: a missing/unreachable FHIR Organization degrades to a null
         // owner reference rather than throwing — the Task/SR build tolerates a null
         // org.
-        return fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName()).orElse(null);
+        Optional<Organization> created = organization.getFhirUuid() == null ? Optional.empty()
+                : fhirPersistanceService.getFhirOrganizationByUuid(organization.getFhirUuidAsString());
+        return created.orElseGet(() -> fhirPersistanceService
+                .getFhirOrganizationByName(organization.getOrganizationName()).orElse(null));
     }
 
     public Task createReferralTask(Organization referralOrganization, Patient patient, ServiceRequest serviceRequest,

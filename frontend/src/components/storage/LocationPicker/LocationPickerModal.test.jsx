@@ -3,7 +3,7 @@
  *
  * Title flips based on `currentLocation`:
  *   null/undefined → "Assign Storage Location"
- *   present        → "Move Sample"
+ *   present        → "Move Item"
  *
  * onConfirm payload: { selection, position, reason, notes }.
  */
@@ -53,10 +53,9 @@ const renderWithIntl = (component) =>
     </IntlProvider>,
   );
 
-const mockSample = {
-  id: "42",
-  sampleAccessionNumber: "DEV0126-001",
-  sampleType: "Whole Blood",
+const mockOccupant = {
+  label: "DEV0126-001",
+  type: "Whole Blood",
   status: "Active",
 };
 
@@ -71,7 +70,8 @@ describe("LocationPickerModal", () => {
     const { container } = renderWithIntl(
       <LocationPickerModal
         isOpen={false}
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -84,7 +84,8 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -92,11 +93,12 @@ describe("LocationPickerModal", () => {
     expect(screen.getByText(/assign storage location/i)).toBeInTheDocument();
   });
 
-  it("shows 'Move Sample' title when currentLocation is present", () => {
+  it("shows 'Move Item' title when currentLocation is present", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         currentLocation={{
           selection: { room: { id: 1, name: "Main Lab" } },
           position: null,
@@ -105,14 +107,15 @@ describe("LocationPickerModal", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByText(/move sample/i)).toBeInTheDocument();
+    expect(screen.getByText(/move item/i)).toBeInTheDocument();
   });
 
-  it("renders the sample info (accession, type, status)", () => {
+  it("renders the occupant info (identifier, type, status)", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -126,7 +129,8 @@ describe("LocationPickerModal", () => {
     const { rerender } = renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -137,7 +141,8 @@ describe("LocationPickerModal", () => {
       <IntlProvider locale="en" messages={{}}>
         <LocationPickerModal
           isOpen
-          sample={mockSample}
+          occupant={mockOccupant}
+          occupantType="SAMPLE_ITEM"
           currentLocation={{
             selection: { room: { id: 1, name: "Main Lab" } },
             position: null,
@@ -156,7 +161,8 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onCancel={onCancel}
         onConfirm={onConfirm}
       />,
@@ -171,7 +177,8 @@ describe("LocationPickerModal", () => {
       <IntlProvider locale="en" messages={{}}>
         <LocationPickerModal
           isOpen={isOpen}
-          sample={mockSample}
+          occupant={mockOccupant}
+          occupantType="SAMPLE_ITEM"
           currentLocation={currentLocation}
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
@@ -230,7 +237,8 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,

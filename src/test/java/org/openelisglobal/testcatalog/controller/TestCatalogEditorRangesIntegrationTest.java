@@ -103,7 +103,19 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+    }
+
+    private String seedPrimaryComponent() {
+        String componentId = UUID.randomUUID().toString();
+        jdbc.update(
+                "INSERT INTO clinlims.test_result_component"
+                        + " (id, test_id, code, label, display_order, result_type, allow_multiple_readings,"
+                        + " is_primary, show_on_report, is_active, lastupdated)"
+                        + " VALUES (?, ?, 'PRIMARY', 'Result', 0, 'N', false, true, true, 'Y', NOW())",
+                componentId, TEST_ID);
+        return componentId;
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -173,6 +185,30 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
         assertEquals(Double.valueOf(2d), loaded.lowValid);
         assertEquals(Double.valueOf(20d), loaded.highValid);
+    }
+
+    /**
+     * FR-19 (OGC-1119): the component a range constrains is written and read back.
+     */
+    @org.junit.Test
+    public void saveRanges_componentAssociationRoundTrips() {
+        String componentId = seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = componentId;
+        assertEquals(200, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+
+        RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(componentId, loaded.componentId);
+    }
+
+    /** A range may only constrain one of the test's own components (OGC-1119). */
+    @org.junit.Test
+    public void saveRanges_rejectsAComponentThatIsNotTheTests() {
+        seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = UUID.randomUUID().toString();
+        assertEquals(422, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+        assertTrue("a rejected save must write nothing", controller.getRanges(testId()).getBody().ranges.isEmpty());
     }
 
     @org.junit.Test

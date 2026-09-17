@@ -291,6 +291,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        // A test carrying a live referral is not referred again, and the bench has to
+        // be told rather than have the refer-out quietly dropped from the save.
+        if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
+            body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
         item.setModified(true);
         reuseExistingResultForComponent(item, analysis);
 
