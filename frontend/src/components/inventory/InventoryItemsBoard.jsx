@@ -192,7 +192,7 @@ const InventoryItemsBoard = () => {
   const openItemEditor = async (row) => {
     try {
       const item = await InventoryItemAPI.getById(row.itemId);
-      setAction({ kind: "editItem", item });
+      setAction({ kind: "editItem", item, row });
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
@@ -876,6 +876,13 @@ const InventoryItemsBoard = () => {
         <InventoryItemForm
           open
           item={action.item}
+          // The board already resolved this item's lead time; offer the learned
+          // figure only when it is the one in use, never as a silent overwrite.
+          observedLeadTime={
+            action.row?.leadTimeTier === "OBSERVED"
+              ? action.row.leadTimeDays
+              : null
+          }
           onClose={closeAction}
           onSave={() => onActionSaved("catalog.item.save.success")}
         />

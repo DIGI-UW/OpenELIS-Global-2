@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-order-cycle.xml">
+
+    <!--
+    OGC-438: one completed order-to-receipt cycle, so a lab that never fills in a lead time gets one
+    anyway, learned from what actually happens.
+
+    This exists because inventory_item.ordered_at cannot answer the question on its own. It holds a
+    single mark: re-marking keeps the first stamp, clearing deletes it, and a receipt replaces it.
+    At most one cycle is ever in flight and the previous one is gone, so a median over recent cycles
+    has nothing to take a median of. A cycle is only knowable at the moment it closes, so that is
+    when it is written down.
+
+    Both ends are server stamps taken when the mark and the receipt were recorded, not
+    inventory_lot.receipt_date. That column is overwritten with the server clock on every receive, so
+    it says when somebody typed the delivery in rather than when it arrived, and every lot migrated
+    from the old schema carries the single timestamp of the migration run. Measuring between two
+    stamps this module made itself keeps the figure honest even where that column is not.
+
+    Rows are append-only history: nothing edits or deletes a closed cycle, and a cycle is never
+    inferred backwards from existing data, so an upgraded instance starts empty and learns forward
+    rather than inventing a lead time for its whole catalogue on day one.
+    -->
+    <changeSet author="OGC" id="OGC-438-add-inventory-order-cycle">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_order_cycle" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence schemaName="clinlims" sequenceName="inventory_order_cycle_seq" startValue="1"
+            incrementBy="1"/>
+
+        <createTable tableName="inventory_order_cycle" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="inventory_order_cycle_pkey" nullable="false"/>
+            </column>
+            <column name="inventory_item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!-- When the item was marked as ordered. -->
+            <column name="ordered_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <!-- When the receipt that closed this cycle was recorded. -->
+            <column name="received_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Whole days between the two, stored so the median never has to re-derive it. -->
+            <column name="lead_time_days" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="NUMERIC(10)"/>
+            <!-- BaseObject maps its lastupdated property to a last_updated column. -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="inventory_order_cycle"
+            baseColumnNames="inventory_item_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+            referencedColumnNames="id"
+            constraintName="inventory_order_cycle_item_fk" onDelete="CASCADE"/>
+
+        <!-- Every read is "the recent cycles for this item, newest first". -->
+        <createIndex schemaName="clinlims" tableName="inventory_order_cycle"
+            indexName="idx_inventory_order_cycle_item">
+            <column name="inventory_item_id"/>
+            <column name="received_at" descending="true"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="inventory_order_cycle" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_order_cycle_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

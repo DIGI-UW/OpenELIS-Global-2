@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.projection;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.projection.InventoryProjection.LeadTimeTier;
 
@@ -51,6 +52,38 @@ public final class InventoryProjectionCalculator {
      * @param observedDays the median of this item's order-to-receipt cycles, or
      *                     null when too few cycles have completed
      */
+    /**
+     * How many completed cycles before an observed lead time is worth quoting.
+     * Below this the figure is one supplier's good week, not a pattern.
+     */
+    public static final int MIN_CYCLES_FOR_OBSERVED_LEAD_TIME = 3;
+
+    /**
+     * How far back completed cycles are worth reading. A supplier that was slow two
+     * years ago says nothing about today.
+     */
+    public static final int LEAD_TIME_HISTORY_DAYS = 365;
+
+    /**
+     * The median of an item's completed order-to-receipt cycles, or null when too
+     * few have completed to stand behind a number.
+     *
+     * <p>
+     * A median rather than a mean, for the same reason the consumption rate is one:
+     * a single delivery held up at customs should not become the lab's expected
+     * lead time.
+     *
+     * @param cycleDays elapsed days of each completed cycle, in any order
+     */
+    public static Integer observedLeadTime(List<Integer> cycleDays) {
+        if (cycleDays == null || cycleDays.size() < MIN_CYCLES_FOR_OBSERVED_LEAD_TIME) {
+            return null;
+        }
+        double[] days = cycleDays.stream().mapToDouble(Integer::doubleValue).toArray();
+        long rounded = Math.round(median(days));
+        return rounded <= 0 ? null : (int) rounded;
+    }
+
     public static LeadTime resolveLeadTime(Integer setDays, Integer observedDays) {
         if (setDays != null && setDays > 0) {
             return new LeadTime(setDays, LeadTimeTier.SET);

@@ -9735,5 +9735,9 @@
   "inventory.reorder.marked": "{count, plural, one {# item} other {# items}} marked as ordered.",
   "inventory.reorder.reviewAndOrder": "Review and mark as ordered",
   "inventory.reorder.clearOrdered": "Not ordered after all",
-  "inventory.reorder.cleared": "{count, plural, one {# item} other {# items}} no longer marked as ordered."
+  "inventory.reorder.cleared": "{count, plural, one {# item} other {# items}} no longer marked as ordered.",
+  "inventory.item.leadTime": "Lead time (days)",
+  "inventory.item.leadTime.help": "How long this item takes to arrive after it is ordered. Leave blank to let it be learned from your own deliveries.",
+  "inventory.item.leadTime.observedSuggest": "Your last few deliveries took about {days} days.",
+  "inventory.item.leadTime.useObserved": "Use this"
 }
