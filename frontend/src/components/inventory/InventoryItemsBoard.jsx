@@ -25,6 +25,7 @@ import {
   Button,
   OverflowMenu,
   OverflowMenuItem,
+  ActionableNotification,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -41,9 +42,14 @@ import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
 import QuickLogUsageModal from "./QuickLogUsageModal";
+import ReorderSuggestionsModal, {
+  isSuggested,
+} from "./ReorderSuggestionsModal";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import "./InventoryItemsBoard.css";
+
+const BANNER_NAMES = 5;
 
 /** Must match WINDOW_DAYS server side. */
 const USAGE_WINDOW_DAYS = 30;
@@ -564,6 +570,12 @@ const InventoryItemsBoard = () => {
     );
   };
 
+  // Items have no criticality flag: "critical" means REORDER_NOW and not yet marked ordered.
+  const unaddressedCritical = rows.filter(
+    (row) => row.status === "REORDER_NOW" && !row.orderedOn,
+  );
+  const suggestionCount = rows.filter(isSuggested).length;
+
   if (loading) {
     return (
       <Loading
@@ -586,6 +598,34 @@ const InventoryItemsBoard = () => {
           hideCloseButton
           title={intl.formatMessage({ id: "inventory.board.error" })}
           subtitle={error}
+        />
+      )}
+
+      {unaddressedCritical.length > 0 && (
+        <ActionableNotification
+          kind="error"
+          lowContrast
+          inline
+          hideCloseButton
+          className="board-critical-banner"
+          title={intl.formatMessage({ id: "inventory.reorderStatus.now" })}
+          subtitle={[
+            ...unaddressedCritical
+              .slice(0, BANNER_NAMES)
+              .map((row) => row.name),
+            ...(unaddressedCritical.length > BANNER_NAMES
+              ? [
+                  intl.formatMessage(
+                    { id: "inventory.board.andMore" },
+                    { count: unaddressedCritical.length - BANNER_NAMES },
+                  ),
+                ]
+              : []),
+          ].join(" · ")}
+          actionButtonLabel={intl.formatMessage({
+            id: "inventory.reorder.reviewAndOrder",
+          })}
+          onActionButtonClick={() => setAction({ kind: "suggestions" })}
         />
       )}
 
@@ -639,6 +679,15 @@ const InventoryItemsBoard = () => {
           onClick={() => setAction({ kind: "quickLog" })}
         >
           <FormattedMessage id="inventory.logUsage.button" />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-suggestions-button"
+          onClick={() => setAction({ kind: "suggestions" })}
+        >
+          <FormattedMessage id="inventory.reorder.suggestions" />
+          {suggestionCount > 0 ? ` (${suggestionCount})` : ""}
         </Button>
       </div>
 
@@ -705,6 +754,13 @@ const InventoryItemsBoard = () => {
                       <Tag type={statusTag.type}>
                         <FormattedMessage id={statusTag.label} />
                       </Tag>
+                      {row.orderedOn && (
+                        <Tag type="teal" title={row.orderNote || undefined}>
+                          <FormattedMessage id="inventory.reorder.onOrder" />
+                          {row.orderExpectedDate &&
+                            ` · ${formatDay(row.orderExpectedDate)}`}
+                        </Tag>
+                      )}
                     </TableCell>
                     <TableCell className="board-actions-cell">
                       <OverflowMenu
@@ -811,6 +867,31 @@ const InventoryItemsBoard = () => {
           initialItemId={action.row?.itemId ?? null}
           onClose={closeAction}
           onSave={() => onActionSaved("usage.record.success")}
+        />
+      )}
+
+      {action?.kind === "suggestions" && (
+        <ReorderSuggestionsModal
+          open
+          rows={rows}
+          onClose={closeAction}
+          onMarked={(count, outcome) => {
+            setAction(null);
+            refresh();
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                {
+                  id:
+                    outcome === "cleared"
+                      ? "inventory.reorder.cleared"
+                      : "inventory.reorder.marked",
+                },
+                { count },
+              ),
+            });
+          }}
         />
       )}
 

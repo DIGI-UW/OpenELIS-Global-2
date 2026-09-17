@@ -160,6 +160,11 @@ export const InventoryItemAPI = {
 
   // Activate item (restore from soft delete)
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  markOrdered: ({ itemIds, note, expectedDate }) =>
+    post("/items/mark-ordered", { itemIds, note, expectedDate }),
+
+  clearOrdered: (itemIds) => post("/items/clear-ordered", { itemIds }),
 };
 
 /** Items board API: one row per active item, sorted by urgency server side. */
