@@ -1076,15 +1076,20 @@ describe("OEHeader menu items whose children are all deactivated", () => {
       menuData: MENU_WITH_DEACTIVATED_CHILDREN,
     });
 
-    const parent = await waitFor(() => {
-      const el = container.querySelector("#menu_storage_management");
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
       expect(el).toBeTruthy();
       return el;
     });
 
-    // Carbon renders an expandable parent as a button inside .cds--side-nav__submenu
-    expect(parent.querySelector(".cds--side-nav__submenu")).toBeNull();
-    expect(parent.querySelector('a[href="/Storage"]')).toBeTruthy();
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
   });
 
   test("navigates when the parent is clicked", async () => {
@@ -1094,7 +1099,7 @@ describe("OEHeader menu items whose children are all deactivated", () => {
 
     const link = await waitFor(() => {
       const el = container.querySelector(
-        "#menu_storage_management a[href='/Storage']",
+        'a#menu_storage_management_nav[href="/Storage"]',
       );
       expect(el).toBeTruthy();
       return el;
