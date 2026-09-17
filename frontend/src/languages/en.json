@@ -11029,7 +11029,7 @@
   "customFieldType.page.hierarchy.root": "System Administration",
   "eqa.program.tests.helper": "Result intake for this scheme offers exactly these tests, on the results grid and in its CSV import.",
   "eqa.program.tests.saveFailed": "The scheme was saved but its tests were not. Reopen it and set them again.",
-  "inventory.search.placeholder": "Search by item name or lot number",
+  "inventory.search.placeholder": "Search by item name, lot number or barcode",
   "label.results.control.capture.pass": "Pass",
   "label.results.control.capture.fail": "Fail",
   "message.noPluginFound": "No plugins Found",
@@ -12402,5 +12402,18 @@
   "inventory.lots.useFirst": "Use first",
   "inventory.lots.disposeFailedQc": "Failed QC: dispose",
   "inventory.lots.flag": "Flag",
-  "inventory.lots.none": "No lots recorded for this item yet. Receive stock to start tracking it."
+  "inventory.lots.none": "No lots recorded for this item yet. Receive stock to start tracking it.",
+  "inventory.actions.forItem": "Actions for {item}",
+  "inventory.actions.forLot": "Actions for lot {lot}",
+  "inventory.actions.editItem": "Edit item details",
+  "inventory.actions.editLot": "Edit lot and location",
+  "inventory.lots.expiringInDays": "Expires in {days}d",
+  "inventory.logUsage.button": "Log usage",
+  "inventory.logUsage.title": "Log usage",
+  "inventory.logUsage.help": "Record stock used at the bench. This feeds the run-out projection; use Adjust stock to correct a count instead.",
+  "inventory.logUsage.quantityWithUnits": "Quantity used ({units})",
+  "inventory.logUsage.onHand": "{quantity} {units} on hand. Lots are drawn earliest-expiry first.",
+  "inventory.logUsage.error.noItem": "Choose an item to log usage against.",
+  "inventory.logUsage.error.wholeUnits": "Enter a whole number of units, at least 1.",
+  "inventory.receiveStock.button": "Receive stock"
 }

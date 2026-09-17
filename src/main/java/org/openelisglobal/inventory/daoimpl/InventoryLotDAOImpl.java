@@ -56,9 +56,11 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             // - ACTIVE or IN_USE status
             // - QC status PASSED
             // - Have quantity available (currentQuantity > 0)
+            // - Not past their effective expiry
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
-                    + "AND l.currentQuantity > 0 "
+                    + "AND l.currentQuantity > 0 " + "AND (l.expirationDate IS NULL OR l.expirationDate >= :now) "
+                    + "AND (l.calculatedExpiryAfterOpening IS NULL OR l.calculatedExpiryAfterOpening >= :now) "
                     // Use the lowest of the printed expiration date and calculated
                     // expiration date, ignoring any null values
                     + "ORDER BY least(l.expirationDate, l.calculatedExpiryAfterOpening) ASC NULLS LAST";
@@ -68,6 +70,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             query.setParameter("activeStatus", LotStatus.ACTIVE);
             query.setParameter("inUseStatus", LotStatus.IN_USE);
             query.setParameter("passedStatus", QCStatus.PASSED);
+            query.setParameter("now", new Timestamp(System.currentTimeMillis()));
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting available lots by item (FEFO)", e);
