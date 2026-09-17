@@ -78,7 +78,6 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                 + " VALUES (nextval('sample_type_test_seq'), ?, ?, 'false')", sampleTypeId, testId);
     }
 
-
     @AfterTransaction
     public void resetUnknownPatientCache() {
         org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();

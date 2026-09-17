@@ -398,17 +398,20 @@ interoperability.
 **Layers:**
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
+
    - Extend `BaseObject<String>`
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - Use JPA/Hibernate annotations (NOT XML mappings)
    - ID generation via `@GenericGenerator`
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
+
    - Interface + Implementation extends `BaseDAOImpl<Entity, String>`
    - Annotate with `@Component` + `@Transactional`
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
+
    - Interface + Implementation with `@Service` + `@Transactional`
    - **Transactions start here (NOT in controllers)**
    - **CRITICAL - Data Compilation Rule:** Services MUST eagerly fetch ALL data
@@ -419,6 +422,7 @@ interoperability.
    - Call DAOs for persistence, FHIR services for sync
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
+
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - **Controllers are singletons** - NO class-level variables
@@ -975,6 +979,7 @@ npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
 **CRITICAL RULES:**
 
 1. **Transactions start in service layer ONLY**
+
    - Services annotated with `@Transactional`
    - Controllers MUST NOT have `@Transactional` (architectural violation)
 
@@ -1268,7 +1273,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 };
 
@@ -1981,40 +1986,50 @@ import jakarta.persistence.Entity;  // ✅ CORRECT
 Before creating PR, verify ALL items:
 
 1. **GitHub Issue Reference:**
+
    - PR title includes issue number: `issue-123: Add storage location widget` or
      `001-sample-storage: Implement barcode scanning`
 
 2. **Branch Naming:**
+
    - Branch name follows Constitution Principle IX (e.g.,
      `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
+
    - Always target `develop` (unless hotfix to `main`)
 
 4. **Code Formatting (MANDATORY):**
+
    - Backend: `mvn spotless:apply` - MUST run before commit
    - Frontend: `npm run format` - MUST run before commit
    - Pre-commit hooks recommended
 
 5. **Build Verification:**
+
    - `mvn clean install -DskipTests -Dmaven.test.skip=true` passes locally
 
 6. **Tests Included:**
+
    - Unit tests for business logic
    - ORM validation tests (if new entities)
    - Integration tests for API endpoints
    - E2E tests for user workflows (if UI changes)
 
 7. **Test Coverage:**
+
    - > 70% coverage for new code (JaCoCo report)
 
 8. **UI Screenshots:**
+
    - Attach before/after images for UI changes
 
 9. **Single Concern:**
+
    - PR addresses ONE issue only (no mixed refactoring + features)
 
 10. **Constitution Compliance:**
+
     - [ ] Layered architecture respected (Principle IV)
     - [ ] Carbon Design System used exclusively (Principle II)
     - [ ] FHIR compliance for external data (Principle III)
@@ -2024,16 +2039,20 @@ Before creating PR, verify ALL items:
     - [ ] Security/compliance requirements met (Principle VIII)
 
 11. **No Hardcoded Strings:**
+
     - All user-facing text uses React Intl
 
 12. **Liquibase Changesets:**
+
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
 
 13. **FHIR Resources Validated:**
+
     - If FHIR-mapped entities, test FHIR transformation
 
 14. **Documentation Updated:**
+
     - Update spec.md, plan.md, quickstart.md if applicable
 
 15. **Review Assignment:**

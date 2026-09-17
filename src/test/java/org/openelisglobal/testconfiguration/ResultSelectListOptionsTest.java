@@ -45,10 +45,9 @@ public class ResultSelectListOptionsTest extends BaseWebContextSensitiveTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.update("INSERT INTO clinlims.dictionary_category (id, name, description, lastupdated)"
                 + " VALUES (?, 'Result select options test', 'Owned test category', NOW())", CATEGORY);
-        jdbc.update(
-                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
-                        + " VALUES (?, 'Result select options test', 'Owned test row', 'Y', ?, 'CLINICAL', true, NOW())",
-                TEST, java.util.UUID.randomUUID().toString());
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                + " VALUES (?, 'Result select options test', 'Owned test row', 'Y', ?, 'CLINICAL', true, NOW())", TEST,
+                java.util.UUID.randomUUID().toString());
 
         jdbc.update(
                 "INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev,"
