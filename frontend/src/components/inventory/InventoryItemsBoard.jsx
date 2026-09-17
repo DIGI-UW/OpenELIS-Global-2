@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Table,
   TableContainer,
@@ -17,11 +23,25 @@ import {
   Loading,
   InlineNotification,
   Button,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { InventoryBoardAPI, InventoryLotAPI } from "./InventoryService";
+import {
+  InventoryBoardAPI,
+  InventoryItemAPI,
+  InventoryLotAPI,
+} from "./InventoryService";
 import LotDetailsPanel from "./LotDetailsPanel";
+import LotEntryModal from "./LotEntryModal";
+import LotAdjustmentModal from "./LotAdjustmentModal";
+import DisposeLotModal from "./DisposeLotModal";
+import UpdateQCStatusModal from "./UpdateQCStatusModal";
+import InventoryItemForm from "./InventoryItemForm";
+import QuickLogUsageModal from "./QuickLogUsageModal";
+import { NotificationContext } from "../layout/Layout";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import "./InventoryItemsBoard.css";
 
 /** Trailing window the projection is computed over; matches WINDOW_DAYS server side. */
@@ -48,6 +68,9 @@ const LEAD_TIER_LABELS = {
   OBSERVED: "inventory.orderBy.leadObserved",
   DEFAULT: "inventory.orderBy.leadDefault",
 };
+
+/** Matches the module's existing expiry-warning window on the old dashboard. */
+const EXPIRING_SOON_DAYS = 30;
 
 const QC_TAGS = {
   PASSED: "green",
@@ -110,24 +133,70 @@ const InventoryItemsBoard = () => {
   const [sort, setSort] = useState({ key: null, ascending: true });
   const [detailLot, setDetailLot] = useState(null);
 
+  // One action at a time, holding the row or lot it was opened against. The
+  // modals seed their form state at construction, so they are mounted only
+  // while active rather than kept mounted behind an `open` prop.
+  const [action, setAction] = useState(null);
+
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
+    },
+    [addNotification, setNotificationVisible],
+  );
+
+  // Both reads, always together: every write here changes on-hand, and on-hand
+  // is what the projection is computed from, so refreshing the lots without the
+  // board would leave the run-out dates describing the stock level before the
+  // action.
+  const refresh = useCallback(
+    () =>
+      Promise.all([InventoryBoardAPI.get(), InventoryLotAPI.getAll()])
+        .then(([board, allLots]) => {
+          setRows(Array.isArray(board) ? board : []);
+          setLots(Array.isArray(allLots) ? allLots : []);
+          setError(null);
+        })
+        .catch((err) => setError(err.message)),
+    [],
+  );
+
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([InventoryBoardAPI.get(), InventoryLotAPI.getAll()])
-      .then(([board, allLots]) => {
-        if (cancelled) return;
-        setRows(Array.isArray(board) ? board : []);
-        setLots(Array.isArray(allLots) ? allLots : []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
+
+  const closeAction = () => setAction(null);
+
+  const onActionSaved = (messageId) => {
+    setAction(null);
+    refresh();
+    notify({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.success" }),
+      message: intl.formatMessage({ id: messageId }),
+    });
+  };
+
+  // The item editor takes a whole item, and a board row is a projection: it
+  // carries itemId rather than id and omits six editable fields, so handing the
+  // row straight over would PUT to /items/undefined and blank whatever it does
+  // not carry. Fetch the real item first.
+  const openItemEditor = async (row) => {
+    try {
+      const item = await InventoryItemAPI.getById(row.itemId);
+      setAction({ kind: "editItem", item });
+    } catch (err) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: err.message,
       });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    }
+  };
 
   const lotsByItem = useMemo(() => {
     const grouped = new Map();
@@ -315,6 +384,66 @@ const InventoryItemsBoard = () => {
     );
   };
 
+  // The dashboard being retired warned per lot when a lot was expired or close
+  // to it. The board's status column answers a different question — whether the
+  // item needs reordering — so without this the warning would simply be gone.
+  const renderExpiryTag = (lot) => {
+    if (!lot.effectiveExpirationDate) return null;
+    // Test the remaining milliseconds, not the rounded days. A lot that went off
+    // earlier today leaves a fraction of a day, and Math.ceil turns that into -0,
+    // which is not less than zero — so the lot read "Expires in 0d" on the day it
+    // expired.
+    const remainingMs = new Date(lot.effectiveExpirationDate) - Date.now();
+    const days = Math.ceil(remainingMs / 86400000);
+    if (remainingMs < 0) {
+      return (
+        <Tag size="sm" type="red">
+          <FormattedMessage id="stock.status.expired" />
+        </Tag>
+      );
+    }
+    if (days <= EXPIRING_SOON_DAYS) {
+      return (
+        <Tag size="sm" type="magenta">
+          <FormattedMessage
+            id="inventory.lots.expiringInDays"
+            values={{ days }}
+          />
+        </Tag>
+      );
+    }
+    return null;
+  };
+
+  const lotActions = (lot) => (
+    <OverflowMenu
+      size="sm"
+      flipped
+      iconDescription={intl.formatMessage(
+        { id: "inventory.actions.forLot" },
+        { lot: lot.lotNumber },
+      )}
+    >
+      <OverflowMenuItem
+        itemText={intl.formatMessage({ id: "inventory.actions.editLot" })}
+        onClick={() => setAction({ kind: "editLot", lot })}
+      />
+      <OverflowMenuItem
+        itemText={intl.formatMessage({ id: "adjustment.button" })}
+        onClick={() => setAction({ kind: "adjust", lot })}
+      />
+      <OverflowMenuItem
+        itemText={intl.formatMessage({ id: "qc.status.update.button" })}
+        onClick={() => setAction({ kind: "qc", lot })}
+      />
+      <OverflowMenuItem
+        isDelete
+        itemText={intl.formatMessage({ id: "disposal.button" })}
+        onClick={() => setAction({ kind: "dispose", lot })}
+      />
+    </OverflowMenu>
+  );
+
   const renderExpansion = (row) => {
     const itemLots = lotsByItem.get(row.itemId) || [];
     if (itemLots.length === 0) {
@@ -365,6 +494,11 @@ const InventoryItemsBoard = () => {
               <TableHeader>
                 <FormattedMessage id="inventory.lots.flag" />
               </TableHeader>
+              <TableHeader>
+                <span className="board-visually-hidden">
+                  <FormattedMessage id="common.actions" />
+                </span>
+              </TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -387,7 +521,8 @@ const InventoryItemsBoard = () => {
                         month: "short",
                         day: "numeric",
                       })
-                    : "—"}
+                    : "—"}{" "}
+                  {renderExpiryTag(lot)}
                 </TableCell>
                 <TableCell>
                   {intl.formatNumber(lot.currentQuantity)} {row.units}
@@ -413,6 +548,9 @@ const InventoryItemsBoard = () => {
                       <FormattedMessage id="inventory.lots.useFirst" />
                     </Tag>
                   )}
+                </TableCell>
+                <TableCell className="board-actions-cell">
+                  {lotActions(lot)}
                 </TableCell>
               </TableRow>
             ))}
@@ -518,6 +656,14 @@ const InventoryItemsBoard = () => {
             <SelectItem key={path} value={path} text={path} />
           ))}
         </Select>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-log-usage"
+          onClick={() => setAction({ kind: "quickLog" })}
+        >
+          <FormattedMessage id="inventory.logUsage.button" />
+        </Button>
       </div>
 
       <TableContainer>
@@ -531,12 +677,17 @@ const InventoryItemsBoard = () => {
               {sortableHeader("runOutEarly", "inventory.board.column.runsOut")}
               {sortableHeader("orderByDate", "inventory.orderBy.label")}
               {sortableHeader("status", "common.status")}
+              <TableHeader>
+                <span className="board-visually-hidden">
+                  <FormattedMessage id="common.actions" />
+                </span>
+              </TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
             {visibleRows.length === 0 && !error && (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <p className="board-empty">
                     <FormattedMessage
                       id={
@@ -579,9 +730,38 @@ const InventoryItemsBoard = () => {
                         <FormattedMessage id={statusTag.label} />
                       </Tag>
                     </TableCell>
+                    <TableCell className="board-actions-cell">
+                      <OverflowMenu
+                        size="sm"
+                        flipped
+                        iconDescription={intl.formatMessage(
+                          { id: "inventory.actions.forItem" },
+                          { item: row.name },
+                        )}
+                      >
+                        <OverflowMenuItem
+                          itemText={intl.formatMessage({
+                            id: "inventory.receiveStock.button",
+                          })}
+                          onClick={() => setAction({ kind: "receive", row })}
+                        />
+                        <OverflowMenuItem
+                          itemText={intl.formatMessage({
+                            id: "usage.record.button",
+                          })}
+                          onClick={() => setAction({ kind: "quickLog", row })}
+                        />
+                        <OverflowMenuItem
+                          itemText={intl.formatMessage({
+                            id: "inventory.actions.editItem",
+                          })}
+                          onClick={() => openItemEditor(row)}
+                        />
+                      </OverflowMenu>
+                    </TableCell>
                   </TableExpandRow>
                   {isOpen && (
-                    <TableExpandedRow colSpan={7}>
+                    <TableExpandedRow colSpan={8}>
                       {renderExpansion(row)}
                     </TableExpandedRow>
                   )}
@@ -597,6 +777,71 @@ const InventoryItemsBoard = () => {
         lot={detailLot}
         onClose={() => setDetailLot(null)}
       />
+
+      {/* Each action is mounted only while it is the active one. These modals
+          seed their form state from their props at construction and never reset
+          it, so keeping them mounted behind an `open` prop would show the
+          previous row's values on the next open. */}
+      {action?.kind === "receive" && (
+        <LotEntryModal
+          open
+          lot={null}
+          item={{ id: action.row.itemId }}
+          onClose={closeAction}
+          onSave={() => onActionSaved("lot.save.success")}
+        />
+      )}
+      {action?.kind === "editLot" && (
+        <LotEntryModal
+          open
+          lot={action.lot}
+          onClose={closeAction}
+          onSave={() => onActionSaved("lot.save.success")}
+        />
+      )}
+      {action?.kind === "adjust" && (
+        <LotAdjustmentModal
+          open
+          lot={action.lot}
+          onClose={closeAction}
+          onSave={() => onActionSaved("adjustment.success")}
+        />
+      )}
+      {action?.kind === "qc" && (
+        <UpdateQCStatusModal
+          open
+          lot={action.lot}
+          onClose={closeAction}
+          onSave={() => onActionSaved("qc.status.update.success")}
+        />
+      )}
+      {action?.kind === "dispose" && (
+        <DisposeLotModal
+          open
+          lot={action.lot}
+          onClose={closeAction}
+          onSave={() => onActionSaved("disposal.success")}
+        />
+      )}
+      {action?.kind === "editItem" && (
+        <InventoryItemForm
+          open
+          item={action.item}
+          onClose={closeAction}
+          onSave={() => onActionSaved("catalog.item.save.success")}
+        />
+      )}
+      {action?.kind === "quickLog" && (
+        <QuickLogUsageModal
+          open
+          items={rows}
+          initialItemId={action.row?.itemId ?? null}
+          onClose={closeAction}
+          onSave={() => onActionSaved("usage.record.success")}
+        />
+      )}
+
+      {notificationVisible === true ? <AlertDialog /> : ""}
     </div>
   );
 };

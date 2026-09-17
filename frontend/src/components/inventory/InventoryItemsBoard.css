@@ -114,3 +114,29 @@
     overflow-x: auto;
   }
 }
+
+/* The action columns carry only an icon button; their headers exist for screen
+   readers, so they take up no width. */
+.board-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.board-actions-cell {
+  width: 3rem;
+  text-align: right;
+  padding-right: 0.25rem;
+}
+
+/* Log usage is an everyday action, so it sits in the toolbar rather than behind
+   a row menu, and keeps its own width when the filters stack. */
+.board-log-usage {
+  flex: 0 0 auto;
+}

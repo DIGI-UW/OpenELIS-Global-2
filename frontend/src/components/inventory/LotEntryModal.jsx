@@ -24,7 +24,7 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -84,6 +84,15 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Receiving from a board row already knows which item it is, so preselect it
+  // and leave the dropdown as a confirmation rather than a search. Create mode
+  // only: in edit mode the lot decides.
+  useEffect(() => {
+    if (!lot && item) {
+      setFormData((prev) => ({ ...prev, inventoryItem: item }));
+    }
+  }, [lot, item]);
 
   useEffect(() => {
     if (lot) {

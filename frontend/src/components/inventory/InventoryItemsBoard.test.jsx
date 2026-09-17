@@ -4,13 +4,69 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import InventoryItemsBoard from "./InventoryItemsBoard";
-import { InventoryBoardAPI, InventoryLotAPI } from "./InventoryService";
+import { NotificationContext } from "../layout/Layout";
+import {
+  InventoryBoardAPI,
+  InventoryItemAPI,
+  InventoryLotAPI,
+  InventoryManagementAPI,
+} from "./InventoryService";
 import messages from "../../languages/en.json";
 
 vi.mock("./InventoryService", () => ({
   InventoryBoardAPI: { get: vi.fn() },
   InventoryLotAPI: { getAll: vi.fn() },
+  InventoryItemAPI: { getById: vi.fn() },
+  InventoryManagementAPI: { consume: vi.fn() },
 }));
+
+// Each action modal is exercised by its own suite. What matters here is the
+// wiring: which modal opens, and against which row or lot. Each stand-in
+// reports the identity it was handed and can fire its onSave.
+const { modalStub } = vi.hoisted(() => ({
+  modalStub: (testId, describe) => ({
+    default: (props) =>
+      props.open
+        ? React.createElement(
+            "div",
+            { "data-testid": testId },
+            React.createElement(
+              "span",
+              { "data-testid": `${testId}-target` },
+              describe(props),
+            ),
+            React.createElement(
+              "button",
+              { onClick: props.onSave },
+              `${testId}-save`,
+            ),
+            React.createElement(
+              "button",
+              { onClick: props.onClose },
+              `${testId}-close`,
+            ),
+          )
+        : null,
+  }),
+}));
+
+vi.mock("./LotEntryModal", () =>
+  modalStub("lot-entry", (p) =>
+    p.lot ? `edit:${p.lot.lotNumber}` : `receive:item:${p.item?.id}`,
+  ),
+);
+vi.mock("./LotAdjustmentModal", () =>
+  modalStub("adjust", (p) => `lot:${p.lot.id}`),
+);
+vi.mock("./UpdateQCStatusModal", () =>
+  modalStub("qc", (p) => `lot:${p.lot.id}`),
+);
+vi.mock("./DisposeLotModal", () =>
+  modalStub("dispose", (p) => `lot:${p.lot.id}`),
+);
+vi.mock("./InventoryItemForm", () =>
+  modalStub("item-form", (p) => `item:${p.item.id}:${p.item.name}`),
+);
 
 // The details panel is opened from a lot number and has its own tests; the
 // board only owns the wiring, which is asserted through the click handler.
@@ -110,8 +166,10 @@ const lot = (overrides) => ({
 // Lot expiry ships as epoch milliseconds, not an ISO string — java.sql.Timestamp
 // falls through the registered JavaTimeModule and Jackson's
 // WRITE_DATES_AS_TIMESTAMPS default stands. Pinned by
-// InventoryLotRestControllerIntegrationTest on the server side.
-const expiry = (iso) => Date.parse(iso);
+// InventoryLotRestControllerIntegrationTest on the server side. Relative to
+// today for the same reason the board dates are: a fixed date silently stops
+// exercising the expiry warnings once it passes.
+const expiry = (daysFromNow) => shiftDays(daysFromNow).getTime();
 
 // The cartridge's earliest-expiring lot has failed QC, so "use first" must skip
 // it. A naive earliest-expiry-wins rule would mark MTB-2001 instead.
@@ -119,7 +177,7 @@ const LOTS = [
   lot({
     id: 101,
     lotNumber: "MTB-2001",
-    effectiveExpirationDate: expiry("2026-11-01T00:00:00Z"),
+    effectiveExpirationDate: expiry(-10),
     currentQuantity: 5,
     qcStatus: "FAILED",
     availableForUse: false,
@@ -129,7 +187,7 @@ const LOTS = [
   lot({
     id: 102,
     lotNumber: "MTB-2451",
-    effectiveExpirationDate: expiry("2026-12-01T00:00:00Z"),
+    effectiveExpirationDate: expiry(20),
     currentQuantity: 7,
     inventoryItem: { id: 1, name: CARTRIDGE.name },
     location: { hierarchicalPath: "Fridge 1 > Shelf B" },
@@ -137,7 +195,7 @@ const LOTS = [
   lot({
     id: 103,
     lotNumber: "MTB-2900",
-    effectiveExpirationDate: expiry("2027-01-01T00:00:00Z"),
+    effectiveExpirationDate: expiry(200),
     currentQuantity: 5,
     inventoryItem: { id: 1, name: CARTRIDGE.name },
     location: { hierarchicalPath: "Fridge 2" },
@@ -145,7 +203,7 @@ const LOTS = [
   lot({
     id: 201,
     lotNumber: "SYPH-77",
-    effectiveExpirationDate: expiry("2027-02-01T00:00:00Z"),
+    effectiveExpirationDate: expiry(220),
     currentQuantity: 8,
     inventoryItem: { id: 2, name: SYPHILIS.name },
     location: { hierarchicalPath: "Room 2" },
@@ -154,12 +212,18 @@ const LOTS = [
     id: 301,
     lotNumber: "MAL-5150",
     barcode: "0034567890123",
-    effectiveExpirationDate: expiry("2027-03-01T00:00:00Z"),
+    effectiveExpirationDate: expiry(240),
     currentQuantity: 60,
     inventoryItem: { id: 3, name: MALARIA.name },
     location: { hierarchicalPath: "Room 2" },
   }),
 ];
+
+const notificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  addNotification: vi.fn(),
+};
 
 const renderBoard = async (
   board = [CARTRIDGE, SYPHILIS, MALARIA],
@@ -169,11 +233,18 @@ const renderBoard = async (
   InventoryLotAPI.getAll.mockResolvedValue(lots);
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <InventoryItemsBoard />
+      <NotificationContext.Provider value={notificationContext}>
+        <InventoryItemsBoard />
+      </NotificationContext.Provider>
     </IntlProvider>,
   );
   await screen.findByRole("table");
   return view;
+};
+
+const openRowMenu = async (name) => {
+  const row = rowNamed(name);
+  fireEvent.click(within(row).getByRole("button", { name: /Actions for/ }));
 };
 
 // Only the board's own item rows. An expanded row nests a whole lot table
@@ -440,7 +511,9 @@ describe("InventoryItemsBoard", () => {
     InventoryLotAPI.getAll.mockResolvedValue([]);
     render(
       <IntlProvider locale="en" messages={messages}>
-        <InventoryItemsBoard />
+        <NotificationContext.Provider value={notificationContext}>
+          <InventoryItemsBoard />
+        </NotificationContext.Provider>
       </IntlProvider>,
     );
     await waitFor(() =>
@@ -449,5 +522,205 @@ describe("InventoryItemsBoard", () => {
       ).toBeInTheDocument(),
     );
     expect(screen.getByText("board is down")).toBeInTheDocument();
+  });
+
+  describe("row actions", () => {
+    it("opens Receive stock against the clicked item, preselected", async () => {
+      await renderBoard();
+      await openRowMenu(MALARIA.name);
+      fireEvent.click(screen.getByText("Receive stock"));
+
+      expect(screen.getByTestId("lot-entry-target")).toHaveTextContent(
+        `receive:item:${MALARIA.itemId}`,
+      );
+    });
+
+    it("opens the item editor on the fetched item, never on the board row", async () => {
+      await renderBoard();
+      InventoryItemAPI.getById.mockResolvedValue({
+        id: MALARIA.itemId,
+        name: MALARIA.name,
+        category: "kits",
+        manufacturer: "Acme",
+      });
+
+      await openRowMenu(MALARIA.name);
+      fireEvent.click(screen.getByText("Edit item details"));
+
+      await waitFor(() =>
+        expect(InventoryItemAPI.getById).toHaveBeenCalledWith(MALARIA.itemId),
+      );
+      // A board row carries itemId, not id, and omits half the editable fields.
+      // Handing it over directly would PUT to /items/undefined and blank them.
+      expect(screen.getByTestId("item-form-target")).toHaveTextContent(
+        `item:${MALARIA.itemId}:${MALARIA.name}`,
+      );
+    });
+
+    it("opens each lot action against the lot clicked, not the row position", async () => {
+      await renderBoard();
+      // Sort first: Carbon reorders rendered rows, and the cartridge moves.
+      fireEvent.click(
+        within(
+          screen.getByRole("columnheader", { name: /On hand/i }),
+        ).getByRole("button"),
+      );
+      fireEvent.click(
+        within(rowNamed(CARTRIDGE.name)).getByRole("button", {
+          name: CARTRIDGE.name,
+        }),
+      );
+
+      const lotTable = screen.getAllByRole("table")[1];
+      const secondLotRow = within(lotTable).getAllByRole("row")[2];
+      expect(secondLotRow).toHaveTextContent("MTB-2451");
+
+      fireEvent.click(
+        within(secondLotRow).getByRole("button", { name: /Actions for lot/ }),
+      );
+      fireEvent.click(screen.getByText("Dispose Lot"));
+
+      expect(screen.getByTestId("dispose-target")).toHaveTextContent("lot:102");
+    });
+
+    it("refreshes the board and the lots after an action succeeds", async () => {
+      await renderBoard();
+      expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
+      expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(1);
+
+      await openRowMenu(MALARIA.name);
+      fireEvent.click(screen.getByText("Receive stock"));
+      fireEvent.click(screen.getByText("lot-entry-save"));
+
+      // Both, because a write changes on-hand and on-hand is what the run-out
+      // projection is computed from.
+      await waitFor(() =>
+        expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2),
+      );
+      expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(2);
+      expect(notificationContext.addNotification).toHaveBeenCalled();
+      expect(screen.queryByTestId("lot-entry")).not.toBeInTheDocument();
+    });
+
+    it("warns on a lot that is expired or close to it", async () => {
+      await renderBoard();
+      fireEvent.click(
+        within(rowNamed(CARTRIDGE.name)).getByRole("button", {
+          name: CARTRIDGE.name,
+        }),
+      );
+      const lotTable = screen.getAllByRole("table")[1];
+      const rows = within(lotTable).getAllByRole("row");
+      expect(rows[1]).toHaveTextContent("MTB-2001");
+      expect(rows[1]).toHaveTextContent("Expired");
+      expect(rows[2]).toHaveTextContent("MTB-2451");
+      expect(rows[2]).toHaveTextContent("Expires in 20d");
+      // Far enough out to need no warning at all.
+      expect(rows[3]).toHaveTextContent("MTB-2900");
+      expect(rows[3]).not.toHaveTextContent("Expire");
+    });
+
+    it("calls a lot that went off earlier today expired, not due in zero days", async () => {
+      await renderBoard(
+        [CARTRIDGE],
+        [
+          lot({
+            id: 999,
+            lotNumber: "MTB-TODAY",
+            effectiveExpirationDate: Date.now() - 3600000,
+            currentQuantity: 3,
+            inventoryItem: { id: 1, name: CARTRIDGE.name },
+          }),
+        ],
+      );
+      fireEvent.click(
+        within(rowNamed(CARTRIDGE.name)).getByRole("button", {
+          name: CARTRIDGE.name,
+        }),
+      );
+      const lotRow = within(screen.getAllByRole("table")[1]).getAllByRole(
+        "row",
+      )[1];
+      expect(lotRow).toHaveTextContent("Expired");
+      expect(lotRow).not.toHaveTextContent("Expires in 0d");
+    });
+  });
+
+  describe("quick log usage", () => {
+    const openQuickLog = async () => {
+      await renderBoard();
+      fireEvent.click(screen.getByRole("button", { name: "Log usage" }));
+    };
+
+    it("posts a consumption for the chosen item, not an adjustment", async () => {
+      InventoryManagementAPI.consume.mockResolvedValue({});
+      await openQuickLog();
+
+      fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
+      fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
+      fireEvent.change(screen.getByRole("spinbutton"), {
+        target: { value: "7" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+
+      await waitFor(() =>
+        expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
+          itemId: String(MALARIA.itemId),
+          quantity: 7,
+        }),
+      );
+      // An adjustment would move the same number and leave the projection
+      // describing consumption that never happened.
+      await waitFor(() =>
+        expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it("preselects the item when opened from a row", async () => {
+      InventoryManagementAPI.consume.mockResolvedValue({});
+      await renderBoard();
+      await openRowMenu(CARTRIDGE.name);
+      fireEvent.click(screen.getByText("Record Usage"));
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+
+      await waitFor(() =>
+        expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
+          itemId: String(CARTRIDGE.itemId),
+          quantity: 1,
+        }),
+      );
+    });
+
+    it("refuses a fractional quantity instead of letting the database reject it", async () => {
+      await openQuickLog();
+      fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
+      fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
+      fireEvent.change(screen.getByRole("spinbutton"), {
+        target: { value: "0.5" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+
+      expect(
+        screen.getByText("Enter a whole number of units, at least 1."),
+      ).toBeInTheDocument();
+      expect(InventoryManagementAPI.consume).not.toHaveBeenCalled();
+    });
+
+    it("shows the server's shortfall message rather than a generic failure", async () => {
+      InventoryManagementAPI.consume.mockRejectedValue(
+        new Error("Insufficient inventory for item: 3. Available: 60"),
+      );
+      await openQuickLog();
+      fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
+      fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("Insufficient inventory for item: 3. Available: 60"),
+        ).toBeInTheDocument(),
+      );
+      expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
+    });
   });
 });

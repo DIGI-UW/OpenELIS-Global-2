@@ -54,9 +54,24 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             // - ACTIVE or IN_USE status
             // - QC status PASSED
             // - Have quantity available (currentQuantity > 0)
+            // - Not past their effective expiry
+            //
+            // The expiry terms are the whole point of "available" and were
+            // missing: without them this returned expired stock and, because
+            // the sort is earliest-expiry-first, returned it at the head of the
+            // list. Every caller of this method wants the same rule that
+            // InventoryLot.isAvailableForUse() states, and one of them
+            // (InventoryItemServiceImpl.isInStock) calls this DAO directly
+            // rather than through the service, so the predicate belongs here
+            // and nowhere further up.
+            //
+            // A null expiry column never expires, matching
+            // getEffectiveExpirationDate(); both columns are checked because
+            // the effective date is the earlier of the two.
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
-                    + "AND l.currentQuantity > 0 "
+                    + "AND l.currentQuantity > 0 " + "AND (l.expirationDate IS NULL OR l.expirationDate >= :now) "
+                    + "AND (l.calculatedExpiryAfterOpening IS NULL OR l.calculatedExpiryAfterOpening >= :now) "
                     + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
@@ -64,6 +79,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             query.setParameter("activeStatus", LotStatus.ACTIVE);
             query.setParameter("inUseStatus", LotStatus.IN_USE);
             query.setParameter("passedStatus", QCStatus.PASSED);
+            query.setParameter("now", new Timestamp(System.currentTimeMillis()));
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting available lots by item (FEFO)", e);
