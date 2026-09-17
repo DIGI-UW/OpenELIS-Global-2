@@ -35,9 +35,7 @@ public class {Entity}DAOIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void insertCanBeReloadedFromTheDatabase() {
-        {Entity} entity = new {Entity}();
-        entity.setName("Owned persistence fixture");
-        // Set all other required values and owned relationships here.
+        {Entity} entity = createOwnedEntity();
         String id = {entity}DAO.insert(entity);
         entityManager.flush();
         entityManager.clear();
@@ -48,8 +46,20 @@ public class {Entity}DAOIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getDoesNotReturnAnUnrelatedRecordForAMissingId() {
-        assertFalse({entity}DAO.get("999999999").isPresent());
+    public void deletedRecordIsAbsentAfterReload() {
+        {Entity} entity = createOwnedEntity();
+        String id = {entity}DAO.insert(entity);
+        {entity}DAO.delete(entity);
+        entityManager.flush();
+        entityManager.clear();
+        assertFalse({entity}DAO.get(id).isPresent());
+    }
+
+    private {Entity} createOwnedEntity() {
+        {Entity} entity = new {Entity}();
+        entity.setName("Owned persistence fixture");
+        // Set all other required values and owned relationships here.
+        return entity;
     }
 
     // Add the actual feature query: create both matching and nonmatching owned

@@ -184,7 +184,7 @@ directories captured above]
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+**Reference**: [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 
 **MANDATORY**: Every plan MUST include a complete testing strategy that
 references the Testing Roadmap and documents test coverage goals, test types,
@@ -204,7 +204,7 @@ Document which test types will be used for this feature:
 - [ ] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
   - **Reference**:
-    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
   - **Coverage Goal**: >80% (measured via JaCoCo)
   - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
   - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
@@ -214,7 +214,7 @@ Document which test types will be used for this feature:
 - [ ] **DAO Tests**: Persistence layer testing (Traditional Spring MVC)
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
   - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+    [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
   - **Project Note**: This repo uses traditional Spring MVC test patterns (no
     Boot test slices).
   - **Pattern**: Use real DAO beans and the shared test context where needed.
@@ -224,7 +224,7 @@ Document which test types will be used for this feature:
 - [ ] **Controller Tests**: REST API endpoints (Traditional Spring MVC)
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
   - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+    [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
   - **Component pattern**: Standalone MockMvc or focused Spring configuration
     may mock the service boundary for HTTP mapping tests.
   - **Integration pattern**: Shared context + real relevant services/DAOs. Load
@@ -232,14 +232,14 @@ Document which test types will be used for this feature:
 
 - [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
   - **Reference**:
-    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+    [Testing Roadmap - ORM Validation Tests](../../.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
   - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
   - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
     connection
 
 - [ ] **Integration Tests**: Full workflow testing (Traditional Spring MVC)
   - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+    [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
   - **Project Note**: `@SpringBootTest` is not used in this repository; use
     `BaseWebContextSensitiveTest`.
   - **Pattern**: Use `BaseWebContextSensitiveTest` when the full context is
@@ -250,7 +250,7 @@ Document which test types will be used for this feature:
       Library)
   - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - **Reference**:
-    [Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#vitest--react-testing-library-unit-and-component-tests)
+    [Testing Roadmap - Vitest + React Testing Library](../../.specify/guides/testing-roadmap.md#vitest--react-testing-library-unit-and-component-tests)
   - **Coverage Goal**: >70% (runner: Vitest; coverage provider must be configured)
   - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
 

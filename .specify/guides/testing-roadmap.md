@@ -2303,9 +2303,11 @@ enforcement).
 - [ ] T010a [P] [US1] ORM validation test in
       src/test/java/org/openelisglobal/storage/HibernateMappingValidationTest.java
       (Template: .specify/templates/testing/DataJpaTestDao.java.template)
-- [ ] T011 [P] [US1] Integration test for REST endpoint in
-      src/test/java/org/openelisglobal/storage/controller/StorageLocationControllerIntegrationTest.java
+- [ ] T011 [P] [US1] Controller component test for HTTP mapping in
+      src/test/java/org/openelisglobal/storage/controller/StorageLocationControllerTest.java
       (Template: .specify/templates/testing/WebMvcTestController.java.template)
+- [ ] T011a [P] [US1] Integration test through real services and relevant filters in
+      src/test/java/org/openelisglobal/storage/controller/StorageLocationControllerIntegrationTest.java
 - [ ] T011b [P] [US1] Playwright E2E test in
       frontend/playwright/tests/foundational/core/storage-assignment.spec.ts
       (register in frontend/playwright.config.ts)
@@ -2343,7 +2345,7 @@ mvn test -Dtest=YourTestClass
 mvn test
 
 # ORM validation tests
-mvn test -Dtest='*ValidationTest'
+mvn test -Dtest=HibernateMappingValidationTest
 
 # Specific test class
 mvn test -Dtest=StorageLocationServiceTest
