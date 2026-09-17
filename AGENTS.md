@@ -168,7 +168,8 @@ sdk use java 21.0.1-tem
 
 ### Test Skipping (CRITICAL)
 
-Use both flags for a development build that skips test compilation and execution:
+Use both flags for a development build that skips test compilation and
+execution:
 
 ```bash
 mvn clean install -DskipTests -Dmaven.test.skip=true
@@ -176,8 +177,9 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 `-DskipTests` skips execution but still compiles tests. The root `pom.xml` uses
 Surefire for both unit and integration test classes; it does not configure a
-separate Failsafe runner. Builds that need the test JAR for analyzer plugins must
-keep test compilation enabled; see the shared-build exception in `CLAUDE.md`.
+separate Failsafe runner. Builds that need the test JAR for analyzer plugins
+must keep test compilation enabled; see the shared-build exception in
+`CLAUDE.md`.
 
 ### Other Prerequisites
 
@@ -281,9 +283,10 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Playwright** (version in `frontend/package.json`) (E2E tests — **recommended for all new tests**)
-- **Cypress** (version in `frontend/package.json`) (E2E tests — **deprecated**, existing tests will be
-  migrated to Playwright)
+- **Playwright** (version in `frontend/package.json`) (E2E tests — **recommended
+  for all new tests**)
+- **Cypress** (version in `frontend/package.json`) (E2E tests — **deprecated**,
+  existing tests will be migrated to Playwright)
 - **Vitest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -395,17 +398,20 @@ interoperability.
 **Layers:**
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
+
    - Extend `BaseObject<String>`
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - Use JPA/Hibernate annotations (NOT XML mappings)
    - ID generation via `@GenericGenerator`
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
+
    - Interface + Implementation extends `BaseDAOImpl<Entity, String>`
    - Annotate with `@Component` + `@Transactional`
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
+
    - Interface + Implementation with `@Service` + `@Transactional`
    - **Transactions start here (NOT in controllers)**
    - **CRITICAL - Data Compilation Rule:** Services MUST eagerly fetch ALL data
@@ -416,6 +422,7 @@ interoperability.
    - Call DAOs for persistence, FHIR services for sync
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
+
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - **Controllers are singletons** - NO class-level variables
@@ -447,7 +454,8 @@ complex logic.
 2. **ORM Validation Tests** - Framework configuration validation (<5s, no
    database)
 3. **Integration Tests** - Full stack with database
-4. **E2E Tests** (Playwright; existing Cypress maintained) - User workflow validation
+4. **E2E Tests** (Playwright; existing Cypress maintained) - User workflow
+   validation
 
 **Coverage Goals:** >80% backend (JaCoCo), >70% frontend (per Constitution V)
 
@@ -971,6 +979,7 @@ npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
 **CRITICAL RULES:**
 
 1. **Transactions start in service layer ONLY**
+
    - Services annotated with `@Transactional`
    - Controllers MUST NOT have `@Transactional` (architectural violation)
 
@@ -1074,14 +1083,13 @@ Choose data setup for the test boundary; see the
   the behavior under test.
 - Database integration tests create only the initial state they need. Existing
   DBUnit XML under `src/test/resources/testdata/` may be loaded through
-  `executeDataSetWithStateManagement`; owned records created through real services
-  are also appropriate. The loader and
-  `cleanRowsInCurrentConnection` join an active Spring transaction; otherwise
-  each operation commits its own work. The base class defaults to
-  `Propagation.NOT_SUPPORTED`, so rollback requires an explicit test
-  `@Transactional` annotation.
-- Fixture truncation uses `CASCADE`, which can affect tables absent from the XML.
-  Committed/concurrency tests must own setup, affected data, and cleanup;
+  `executeDataSetWithStateManagement`; owned records created through real
+  services are also appropriate. The loader and `cleanRowsInCurrentConnection`
+  join an active Spring transaction; otherwise each operation commits its own
+  work. The base class defaults to `Propagation.NOT_SUPPORTED`, so rollback
+  requires an explicit test `@Transactional` annotation.
+- Fixture truncation uses `CASCADE`, which can affect tables absent from the
+  XML. Committed/concurrency tests must own setup, affected data, and cleanup;
   fixture loading alone does not guarantee isolation.
 - For local browser/manual testing, use `scripts/dev-stack up` and the
   property-gated application scenario services. Existing CI fixture scripts are
@@ -1162,8 +1170,8 @@ for common patterns and cheat sheets.
 
 Use the taxonomy in the [Testing Roadmap](.specify/guides/testing-roadmap.md):
 unit, component, integration, and end-to-end. Permissions, history, and
-concurrency are behaviors to cover at the relevant boundary; human acceptance
-is separate. Existing file names do not prove what boundary a test covers.
+concurrency are behaviors to cover at the relevant boundary; human acceptance is
+separate. Existing file names do not prove what boundary a test covers.
 
 This is traditional Spring MVC. Spring Boot `@WebMvcTest`, `@DataJpaTest`,
 `@SpringBootTest`, `@MockBean`, and `TestEntityManager` are not available.
@@ -1203,13 +1211,14 @@ annotations. Read their current contents before use.
 - The shared base builds a protected `mockMvc` field in `@Before`; do not
   autowire another `MockMvc` field. Its default principal and MockMvc setup do
   not establish coverage of production security filters.
-- Database tests that can use rollback must explicitly add `@Transactional`.
-  Use DBUnit for fixtures and injected JPA/Hibernate objects for persistence
+- Database tests that can use rollback must explicitly add `@Transactional`. Use
+  DBUnit for fixtures and injected JPA/Hibernate objects for persistence
   assertions; flush and clear before rereading persisted state when applicable.
 - Tests of independent connections, concurrency, or commit-time behavior need
   committed setup and explicit cleanup instead of an enclosing test transaction.
 
-See [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+See
+[Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
 for fixture ownership and transaction examples.
 
 ### Frontend Unit Tests (Vitest + React Testing Library)
@@ -1264,7 +1273,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 };
 
@@ -1359,8 +1368,9 @@ choose rollback isolation or committed setup. Do not hide commit/transaction
 failures by wrapping every workflow in a test transaction, and do not replace
 relevant internal services with mocks merely to make full-context setup pass.
 
-Run one class with `mvn test -Dtest=YourIntegrationTest`. Both unit and integration
-classes run through Surefire; there is no separate `integration` Maven profile.
+Run one class with `mvn test -Dtest=YourIntegrationTest`. Both unit and
+integration classes run through Surefire; there is no separate `integration`
+Maven profile.
 
 ### E2E Tests (Cypress) — DEPRECATED
 
@@ -1971,40 +1981,50 @@ import jakarta.persistence.Entity;  // ✅ CORRECT
 Before creating PR, verify ALL items:
 
 1. **GitHub Issue Reference:**
+
    - PR title includes issue number: `issue-123: Add storage location widget` or
      `001-sample-storage: Implement barcode scanning`
 
 2. **Branch Naming:**
+
    - Branch name follows Constitution Principle IX (e.g.,
      `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
+
    - Always target `develop` (unless hotfix to `main`)
 
 4. **Code Formatting (MANDATORY):**
+
    - Backend: `mvn spotless:apply` - MUST run before commit
    - Frontend: `npm run format` - MUST run before commit
    - Pre-commit hooks recommended
 
 5. **Build Verification:**
+
    - `mvn clean install -DskipTests -Dmaven.test.skip=true` passes locally
 
 6. **Tests Included:**
+
    - Unit tests for business logic
    - ORM validation tests (if new entities)
    - Integration tests for API endpoints
    - E2E tests for user workflows (if UI changes)
 
 7. **Test Coverage:**
+
    - > 70% coverage for new code (JaCoCo report)
 
 8. **UI Screenshots:**
+
    - Attach before/after images for UI changes
 
 9. **Single Concern:**
+
    - PR addresses ONE issue only (no mixed refactoring + features)
 
 10. **Constitution Compliance:**
+
     - [ ] Layered architecture respected (Principle IV)
     - [ ] Carbon Design System used exclusively (Principle II)
     - [ ] FHIR compliance for external data (Principle III)
@@ -2014,16 +2034,20 @@ Before creating PR, verify ALL items:
     - [ ] Security/compliance requirements met (Principle VIII)
 
 11. **No Hardcoded Strings:**
+
     - All user-facing text uses React Intl
 
 12. **Liquibase Changesets:**
+
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
 
 13. **FHIR Resources Validated:**
+
     - If FHIR-mapped entities, test FHIR transformation
 
 14. **Documentation Updated:**
+
     - Update spec.md, plan.md, quickstart.md if applicable
 
 15. **Review Assignment:**

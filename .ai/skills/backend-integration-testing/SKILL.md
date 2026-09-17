@@ -32,17 +32,18 @@ DBUnit, and the 5-layer architecture standards.
    `Propagation.NOT_SUPPORTED`. Commit/concurrency tests need committed setup
    and explicit cleanup of all affected data.
 3. **Create owned initial data** with real services where appropriate. If a
-   DBUnit dataset is needed, load it with `executeDataSetWithStateManagement`
-   in `@Before`.
-   Fixture loading and cleanup join an active transaction, otherwise commit
-   their own operation. Truncation uses `CASCADE` beyond XML-listed tables.
+   DBUnit dataset is needed, load it with `executeDataSetWithStateManagement` in
+   `@Before`. Fixture loading and cleanup join an active transaction, otherwise
+   commit their own operation. Truncation uses `CASCADE` beyond XML-listed
+   tables.
 4. **Inspect shared substitutions** in `AppTestConfig`. Isolate external effects
    without mocking the internal path under test; do not remove mocks globally.
 5. **Verify the specific test** with `mvn test -Dtest=<NewTest>` using Java 21
    and Docker for database tests.
-6. **Assert behavior**: exact changed state, values, filtering, required history,
-   negative and boundary cases. Null/empty assertions are valid when absence is
-   the expected outcome, not a substitute for checking the behavior under test.
+6. **Assert behavior**: exact changed state, values, filtering, required
+   history, negative and boundary cases. Null/empty assertions are valid when
+   absence is the expected outcome, not a substitute for checking the behavior
+   under test.
 
 ## Reference
 

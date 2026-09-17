@@ -25,8 +25,8 @@ $ARGUMENTS
 3. **Generate the test class** using
    `.ai/skills/backend-integration-testing/templates/integration-test-template.java.template`.
    Replace every placeholder and the failing sentinel with working code.
-4. **Create owned initial records** through real services where appropriate.
-   If a DBUnit dataset is needed, load it from `src/test/resources/testdata/` in
+4. **Create owned initial records** through real services where appropriate. If
+   a DBUnit dataset is needed, load it from `src/test/resources/testdata/` in
    `@Before`. Account for cascading truncation outside the XML; fixture reload
    does not replace teardown of committed state. Use services for the business
    transition under test, not fixture SQL.

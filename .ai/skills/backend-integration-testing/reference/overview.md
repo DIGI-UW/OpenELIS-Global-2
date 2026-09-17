@@ -1,8 +1,8 @@
 # OpenELIS Global 2: Backend Integration Testing Guide
 
-Service integration tests exercise real relevant services and data access against
-PostgreSQL. The test name or a full Spring context alone does not establish that
-coverage.
+Service integration tests exercise real relevant services and data access
+against PostgreSQL. The test name or a full Spring context alone does not
+establish that coverage.
 
 ## Infrastructure and boundary
 
@@ -23,8 +23,8 @@ coverage.
 Inspect `AppTestConfig` before claiming an integration path is real. It contains
 both external-boundary replacements and internal substitutions. Keep the
 relevant internal services, domain logic, DAOs, and database real; use a focused
-configuration when a shared replacement would hide the behavior being tested.
-Do not remove every mock indiscriminately.
+configuration when a shared replacement would hide the behavior being tested. Do
+not remove every mock indiscriminately.
 
 Isolate external network effects. For example, the shared `FhirContext` is real
 so it parses real messages; its HTTP transport is mocked. Mocking the parser
@@ -37,10 +37,10 @@ its default principal does not prove production authorization behavior.
 DBUnit Flat XML datasets live in `src/test/resources/testdata/`. Use bare table
 names and load with `executeDataSetWithStateManagement` in `@Before`.
 
-The base class defaults to `Propagation.NOT_SUPPORTED`. For ordinary service
-and persistence tests, explicitly add Spring `@Transactional` to join fixture
-setup and application writes in one rollback transaction. The bundled template
-uses this pattern. It is not appropriate for every integration test:
+The base class defaults to `Propagation.NOT_SUPPORTED`. For ordinary service and
+persistence tests, explicitly add Spring `@Transactional` to join fixture setup
+and application writes in one rollback transaction. The bundled template uses
+this pattern. It is not appropriate for every integration test:
 
 - For concurrent workers, independent connections, commit-time behavior, or
   production transaction boundaries, use committed setup and explicit cleanup.
@@ -58,9 +58,11 @@ uses this pattern. It is not appropriate for every integration test:
   The loader resynchronizes only its explicit `FIXTURE_SEQUENCE_MAPPINGS`.
 - For audit-emitting operations, provide the required user identity. After
   fixtures replace `system_user`, ensure the principal matches the fixture user;
-  do not assume admin ID 1 is universally restored inside a rollback transaction.
+  do not assume admin ID 1 is universally restored inside a rollback
+  transaction.
 
-See [Backend Testing Best Practices](../../../../.specify/guides/backend-testing-best-practices.md)
+See
+[Backend Testing Best Practices](../../../../.specify/guides/backend-testing-best-practices.md)
 for rollback and committed patterns. The bundled MenuService example illustrates
 fixture assertions; existing test names do not define the target taxonomy.
 
@@ -69,8 +71,8 @@ fixture assertions; existing test names do not define the target taxonomy.
 Assert real outcomes: exact returned values and filtering, persisted fields,
 required history, rejected inputs, and unchanged state after rejection. Null or
 empty assertions are appropriate when absence is the expected behavior; they
-must not replace stronger assertions about the behavior being claimed. Flush
-and clear before persisted-state rereads when needed.
+must not replace stronger assertions about the behavior being claimed. Flush and
+clear before persisted-state rereads when needed.
 
 With Java 21 and Docker available, run one class:
 
