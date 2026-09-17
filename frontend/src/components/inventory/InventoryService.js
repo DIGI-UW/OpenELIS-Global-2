@@ -1,7 +1,6 @@
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
   postToOpenElisServerForBlob,
 } from "../utils/Utils";
 import config from "../../config.json";
@@ -32,6 +31,12 @@ const get = (endpoint) => {
   return promisify(getFromOpenElisServer, `${BASE_PATH}${endpoint}`);
 };
 
+// Utils reports an undelivered request by calling back with
+// { error, message, status: 0 }, which no >= 400 test catches, so the status
+// alone would let a dropped POST resolve as a success.
+const isFailedResponse = (json) =>
+  !!json && (!!json.error || json.status >= 400 || json.statusCode >= 400);
+
 // Helper for POST requests returning JSON
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
@@ -39,7 +44,7 @@ const post = (endpoint, data) => {
       `${BASE_PATH}${endpoint}`,
       JSON.stringify(data),
       (json) => {
-        if (json && (json.status >= 400 || json.statusCode >= 400)) {
+        if (isFailedResponse(json)) {
           // Handle validation errors object (field-level errors)
           if (json.errors && typeof json.errors === "object") {
             const errorMessages = Object.entries(json.errors)
@@ -185,9 +190,6 @@ export const InventoryLotAPI = {
   // Get all lots for an item
   getByItem: (itemId) => get(`/lots/item/${itemId}`),
 
-  // Get lots by storage location
-  getByLocation: (locationId) => get(`/lots/location/${locationId}`),
-
   // Get expiring lots
   getExpiring: (days = 30) => get(`/lots/expiring?days=${days}`),
 
@@ -240,111 +242,30 @@ export const InventoryManagementAPI = {
 };
 
 /**
- * Storage Location API
- * Uses inventory-specific storage locations (separate from sample storage)
+ * Inventory Lot Storage API (OGC-657)
+ * Assigns/moves an InventoryLot's location using the same
+ * sample_storage_assignment-backed endpoints and audit trail as sample
+ * storage, keyed by inventoryLotId instead of sampleItemId.
  */
-export const StorageLocationAPI = {
-  // Get all active locations
-  getAll: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer("/rest/inventory-storage-locations", (response) => {
-        if (response) {
-          resolve(response);
-        } else {
-          reject(new Error("Failed to fetch storage locations"));
-        }
-      });
-    });
-  },
+const STORAGE_BASE_PATH = "/rest/storage/inventory-lots";
 
-  // Get location by ID
-  getById: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch storage location"));
-          }
-        },
-      );
-    });
-  },
+export const InventoryLotStorageAPI = {
+  // Get current location for a lot (empty object if unassigned)
+  getLocation: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}`),
 
-  // Get top-level locations (no parent)
-  getTopLevel: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        "/rest/inventory-storage-locations/top-level",
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch top-level locations"));
-          }
-        },
-      );
-    });
-  },
+  // List movement-audit rows for a lot
+  getMovements: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}/movements`),
 
-  // Get child locations
-  getChildren: async (parentId) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${parentId}/children`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch child locations"));
-          }
-        },
-      );
-    });
-  },
-
-  // Get location path (hierarchical breadcrumb)
-  getPath: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/path`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch location path"));
-          }
-        },
-      );
-    });
-  },
-
-  // Check if location has active lots
-  hasActiveLots: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/has-active-lots`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to check active lots"));
-          }
-        },
-      );
-    });
-  },
-
-  // Create location
-  create: async (location) => {
-    return new Promise((resolve, reject) => {
+  // Assign a lot to a location for the first time
+  assignLocation: (payload) =>
+    new Promise((resolve, reject) => {
       postToOpenElisServerJsonResponse(
-        "/rest/inventory-storage-locations",
-        JSON.stringify(location),
+        `${STORAGE_BASE_PATH}/assign`,
+        JSON.stringify(payload),
         (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (isFailedResponse(json)) {
             reject(
               new Error(
                 json.message ||
@@ -358,42 +279,30 @@ export const StorageLocationAPI = {
         },
         null,
       );
-    });
-  },
+    }),
 
-  // Update location
-  update: async (id, location) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        JSON.stringify(location),
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
+  // Move an already-assigned lot to a new location
+  moveLocation: (payload) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        `${STORAGE_BASE_PATH}/move`,
+        JSON.stringify(payload),
+        (json) => {
+          if (isFailedResponse(json)) {
+            reject(
+              new Error(
+                json.message ||
+                  json.error ||
+                  `Request failed with status ${json.status || json.statusCode}`,
+              ),
+            );
           } else {
-            reject(new Error(`Failed to update location: HTTP ${status}`));
+            resolve(json);
           }
         },
+        null,
       );
-    });
-  },
-
-  // Deactivate location
-  deactivate: async (id) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/deactivate`,
-        "{}",
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(`Failed to deactivate location: HTTP ${status}`));
-          }
-        },
-      );
-    });
-  },
+    }),
 };
 
 /**

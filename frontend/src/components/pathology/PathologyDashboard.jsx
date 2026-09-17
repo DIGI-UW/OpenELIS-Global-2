@@ -20,6 +20,7 @@ import {
   Loading,
   Pagination,
 } from "@carbon/react";
+import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { Search } from "@carbon/react";
 import {
@@ -35,6 +36,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const intl = useIntl();
 
@@ -216,7 +218,7 @@ function PathologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/PathologyCaseView/" + id;
+    history.push("/PathologyCaseView/" + id);
   };
 
   useEffect(() => {

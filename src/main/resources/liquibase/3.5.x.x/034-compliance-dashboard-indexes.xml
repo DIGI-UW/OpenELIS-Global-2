@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+    <changeSet id="1" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_obs_hist_type_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Composite index on observation_history for compliance dashboard JOIN performance</comment>
+        <createIndex tableName="observation_history" indexName="idx_obs_hist_type_sample" schemaName="clinlims">
+            <column name="observation_history_type_id"/>
+            <column name="sample_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

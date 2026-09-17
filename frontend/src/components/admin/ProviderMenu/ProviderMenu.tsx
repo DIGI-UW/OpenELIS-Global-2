@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
 import {
   Heading,
@@ -25,6 +25,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -121,7 +125,6 @@ function ProviderMenu() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [modifyButton, setModifyButton] = useState(true);
@@ -131,8 +134,6 @@ function ProviderMenu() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
-  const [providerMenuList, setProviderMenuList] =
-    useState<ProviderMenuResponse>({});
   const [providerMenuListShow, setProviderMenuListShow] = useState<
     ProviderTableRow[]
   >([]);
@@ -169,42 +170,17 @@ function ProviderMenu() {
     { id: "no", value: "No" },
   ];
 
-  const handleMenuItems = (res?: ProviderMenuResponse) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setProviderMenuList(res);
-    }
-  };
+  // Browsing and searching are the same list from two endpoints, so which one
+  // is read follows the search box rather than both being read at once.
+  const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
+    panelSearchTerm
+      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`
+      : `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
   useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      handleMenuItems,
-    );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [paging, startingRecNo]);
-
-  const handleSearchedProviderMenuList = (res?: ProviderMenuResponse) => {
-    if (res) {
-      setProviderMenuList(res);
-    }
-  };
-
-  useEffect(() => {
-    getFromOpenElisServer(
-      `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
-      handleSearchedProviderMenuList,
-    );
-  }, [panelSearchTerm]);
-
-  useEffect(() => {
-    if (providerMenuList.providers) {
+    if (providerMenuList?.providers) {
       const newProviderMenuList = providerMenuList.providers.map((item) => {
         return {
           id: item.id,
@@ -253,6 +229,10 @@ function ProviderMenu() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
+      invalidateServerData();
+      // The row a success just acted on may no longer be in the next read
+      // (a deactivation), so Modify/Deactivate must stop pointing at it.
+      setSelectedRowIds([]);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -269,10 +249,7 @@ function ProviderMenu() {
     postToOpenElisServerFullResponse(
       `/rest/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
       providerMenuListShow,
-      setLoading(false),
-      setTimeout(() => {
-        window.location.reload();
-      }, 1),
+      displayStatus,
     );
   }
 
@@ -359,7 +336,6 @@ function ProviderMenu() {
     );
 
     closeAddModal();
-    window.location.reload();
   };
 
   const handleUpdateProvider = () => {
@@ -381,7 +357,6 @@ function ProviderMenu() {
     );
 
     closeUpdateModal();
-    window.location.reload();
   };
 
   const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {

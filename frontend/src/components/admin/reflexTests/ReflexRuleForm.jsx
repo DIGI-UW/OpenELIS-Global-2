@@ -416,34 +416,6 @@ function ReflexRule() {
     );
   };
 
-  const handleRuleRemove = (index, id) => {
-    if (id) {
-      postToOpenElisServer(
-        "/rest/deactivate-reflexrule/" + id,
-        {},
-        handleDelete,
-      );
-    }
-  };
-
-  const handleDelete = (status) => {
-    setNotificationVisible(true);
-    if (status == "200") {
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.success.msg" }),
-      });
-      window.location.reload();
-    } else {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.error.msg" }),
-      });
-    }
-  };
-
   const handleRuleAdd = () => {
     setRuleList([...ruleList, ruleObj]);
   };

@@ -1,6 +1,6 @@
 # Publishes tested images after merge/release only.
 # Triggered by 03 - E2E build completion and gated on the wrapper-reported
-# `03 Checkpoint - E2E` contract.
+# `03 Checkpoint - E2E` and backend (including existing-data upgrade) contracts.
 name: Publish Images
 
 on:
@@ -26,6 +26,7 @@ jobs:
       head_branch: ${{ steps.context.outputs.head_branch }}
       image_transfer: ${{ steps.context.outputs.image_transfer }}
       build_run_id: ${{ github.event.workflow_run.id }}
+      build_run_attempt: ${{ github.event.workflow_run.run_attempt }}
     steps:
       - name: Capture publish context from triggering workflow
         id: context
@@ -47,51 +48,33 @@ jobs:
           echo "Publish context: event=$EVENT_NAME image_transfer=$IMAGE_TRANSFER head_sha=$HEAD_SHA head_branch=$HEAD_BRANCH"
 
   wait-for-e2e-checkpoint:
-    name: Wait For 03 Checkpoint - E2E
+    name: Wait For Backend And E2E Checkpoints
     needs: setup
     if: needs.setup.outputs.head_sha != '' && (needs.setup.outputs.event_name == 'push' || needs.setup.outputs.event_name == 'release') && needs.setup.outputs.image_transfer != 'none'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       statuses: read
+      checks: read
     steps:
-      - name: Wait for E2E checkpoint success
+      - name: Checkout candidate checkpoint gate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
+          sparse-checkout: .github/scripts
+      - name: Require backend upgrades and E2E for the exact candidate
         uses: actions/github-script@v8
+        env:
+          CANDIDATE_SHA: ${{ needs.setup.outputs.head_sha }}
+          BUILD_RUN_ID: ${{ needs.setup.outputs.build_run_id }}
+          BUILD_RUN_ATTEMPT: ${{ needs.setup.outputs.build_run_attempt }}
         with:
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const sha = '${{ needs.setup.outputs.head_sha }}';
-            const contextName = '03 Checkpoint - E2E';
-            const timeoutMs = 45 * 60 * 1000;
-            const pollMs = 30 * 1000;
-            const started = Date.now();
-
-            while (Date.now() - started < timeoutMs) {
-              const res = await github.rest.repos.listCommitStatusesForRef({
-                owner,
-                repo,
-                ref: sha,
-                per_page: 100,
-              });
-              const status = res.data.find((entry) => entry.context === contextName);
-
-              if (!status) {
-                core.info(`No '${contextName}' status yet for ${sha}; waiting...`);
-              } else if (status.state === 'success') {
-                core.info(`Found successful '${contextName}' status.`);
-                return;
-              } else if (status.state === 'failure' || status.state === 'error') {
-                core.setFailed(`Checkpoint status is ${status.state}: ${status.description || 'no description'}`);
-                return;
-              } else {
-                core.info(`Checkpoint currently '${status.state}'; waiting...`);
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, pollMs));
-            }
-
-            core.setFailed(`Timed out waiting for '${contextName}' on ${sha}`);
+            const wait = require('./.github/scripts/publish-checkpoints.cjs');
+            await wait({ github, core, owner: context.repo.owner, repo: context.repo.repo,
+              sha: process.env.CANDIDATE_SHA,
+              buildRunId: process.env.BUILD_RUN_ID,
+              buildRunAttempt: process.env.BUILD_RUN_ATTEMPT });
 
   publish-images:
     name: Publish ${{ matrix.dockerhub_suffix || 'backend' }}
@@ -109,15 +92,31 @@ jobs:
         include:
           - compose_image: openelisglobal-webapp.build
             dockerhub_suffix: backend
+            compose_service: oe.openelis.org
           - compose_image: frontend
             dockerhub_suffix: frontend
+            compose_service: frontend.openelis.org
           - compose_image: openelisglobal-proxy.build
             dockerhub_suffix: proxy
+            compose_service: proxy
           - compose_image: external-fhir-api.build
             dockerhub_suffix: fhir
+            compose_service: fhir.openelis.org
           - compose_image: openelisglobal-databse.build
             dockerhub_suffix: database
+            compose_service: db.openelis.org
     steps:
+      # The Trivy step below reads .trivyignore from the workspace, but this job
+      # otherwise never checks the repository out (it only retags images), so
+      # Trivy failed with "cannot find ignorefile" on every publish since the
+      # scan was added. Check out just that file, at the commit being published.
+      - name: Checkout Trivy ignore list
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
+          sparse-checkout: .trivyignore
+          sparse-checkout-cone-mode: false
+
       - name: Download image map from triggering build workflow
         uses: actions/download-artifact@v6
         with:
@@ -169,6 +168,12 @@ jobs:
             TAGS="${IMAGE}:${SAFE_BRANCH}"
           fi
 
+          SHA_TAG="${IMAGE}:sha-${{ needs.setup.outputs.head_sha }}-${{ github.run_id }}"
+          TAGS="${TAGS}
+          ${SHA_TAG}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=$SHA_TAG" >> "$GITHUB_OUTPUT"
+
           # Use delimiter for multiline output
           {
             echo "tags<<TAGS_EOF"
@@ -187,6 +192,34 @@ jobs:
       - name: Pull tested image from GHCR
         run: docker pull "${{ steps.source.outputs.ghcr_source }}"
 
+      - name: Scan tested image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.source.outputs.ghcr_source }}
+          format: table
+          output: ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+          exit-code: 0
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
+
+      - name: Generate tested image SBOM
+        if: always()
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.source.outputs.ghcr_source }}
+          output-file: ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
+          artifact-name: ${{ format('openelis-{0}-sbom.spdx.json', matrix.dockerhub_suffix) }}
+
+      - name: Upload image security artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ format('publish-{0}-security-reports', matrix.dockerhub_suffix) }}
+          path: |
+            ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+            ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
+
       - name: Retag and publish tested image to DockerHub
         run: |
           while IFS= read -r target_tag; do
@@ -196,12 +229,190 @@ jobs:
             docker push "$target_tag"
           done <<< "${{ steps.tags.outputs.tags }}"
 
-  # After the :develop images are published, redeploy the testing VM by reusing
-  # openelis-docker's deploy workflow (it SSHes in, pulls the new images, restarts
-  # the stack). Only on develop pushes — that VM runs the :develop tag.
+      - name: Record immutable published image
+        env:
+          PUBLISHED_TAG: ${{ steps.tags.outputs.sha_tag }}
+          IMAGE_REPOSITORY: ${{ steps.tags.outputs.image }}
+          SOURCE_IMAGE: ${{ steps.source.outputs.ghcr_source }}
+          COMPOSE_SERVICE: ${{ matrix.compose_service }}
+          APP_SHA: ${{ needs.setup.outputs.head_sha }}
+          APP_BRANCH: ${{ needs.setup.outputs.head_branch }}
+          PART_NAME: ${{ matrix.dockerhub_suffix }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re, subprocess
+          env = os.environ
+          result = subprocess.run(['docker', 'pull', env['PUBLISHED_TAG']], text=True, capture_output=True, check=True)
+          digests = re.findall(r'^Digest: (sha256:[0-9a-f]{64})$', result.stdout, re.M)
+          if len(digests) != 1:
+              raise SystemExit('Could not identify the published image digest')
+          reference = env['IMAGE_REPOSITORY'] + '@' + digests[0]
+          def inspect(image):
+              return json.loads(subprocess.check_output(['docker', 'image', 'inspect', image], text=True))[0]
+          if inspect(reference)['Id'] != inspect(env['SOURCE_IMAGE'])['Id']:
+              raise SystemExit('Published image differs from the tested source image')
+          part = {'appSha': env['APP_SHA'], 'appBranch': env['APP_BRANCH'],
+                  'service': env['COMPOSE_SERVICE'], 'image': reference}
+          pathlib.Path('published-images').mkdir(exist_ok=True)
+          pathlib.Path('published-images', env['PART_NAME'] + '.json').write_text(json.dumps(part))
+          PY
+      - name: Preserve published digest
+        uses: actions/upload-artifact@v6
+        with:
+          name: published-image-${{ matrix.dockerhub_suffix }}
+          path: published-images/*.json
+
+  deployment-manifest:
+    name: Assemble tested deployment manifest
+    needs: [setup, publish-images]
+    runs-on: ubuntu-latest
+    outputs:
+      manifest: ${{ steps.manifest.outputs.manifest }}
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: published-image-*
+          merge-multiple: true
+          path: published-images
+      - name: Verify all images belong to the same tested commit
+        id: manifest
+        env:
+          APP_SHA: ${{ needs.setup.outputs.head_sha }}
+          APP_BRANCH: ${{ needs.setup.outputs.head_branch }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          parts = [json.loads(p.read_text()) for p in pathlib.Path('published-images').glob('*.json')]
+          services = {'oe.openelis.org', 'db.openelis.org', 'fhir.openelis.org', 'frontend.openelis.org', 'proxy'}
+          if len(parts) != 5 or {p['service'] for p in parts} != services:
+              raise SystemExit('Incomplete or duplicate image manifest')
+          if any(p['appSha'] != os.environ['APP_SHA'] or p['appBranch'] != os.environ['APP_BRANCH'] for p in parts):
+              raise SystemExit('Image manifest contains a different source commit')
+          manifest = {'appSha': os.environ['APP_SHA'], 'appBranch': os.environ['APP_BRANCH'],
+                      'images': {p['service']: p['image'] for p in parts}}
+          encoded = json.dumps(manifest, separators=(',', ':'))
+          pathlib.Path('deployment-manifest.json').write_text(encoded + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('manifest=' + encoded + '\n')
+          PY
+      - uses: actions/upload-artifact@v6
+        with:
+          name: testing-deployment-manifest
+          path: deployment-manifest.json
+
   deploy-testing:
     name: Deploy to testing VM
-    needs: [setup, publish-images]
+    needs: [setup, deployment-manifest]
     if: needs.setup.outputs.event_name == 'push' && needs.setup.outputs.head_branch == 'develop'
-    uses: DIGI-UW/openelis-docker/.github/workflows/deploy-testing.yml@main
-    secrets: inherit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: deploy-testing
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || 'testing.openelis-global.org' }}
+      DEPLOY_USER: ${{ vars.TESTING_VM_USER || 'ubuntu' }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/ubuntu/openelis-docker' }}
+      REMOTE_RUN: /tmp/openelis-deploy-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout deployment scripts with the application
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
+          sparse-checkout: .github/scripts
+      - name: Validate deployment request
+        env:
+          IMAGE_MANIFEST: ${{ needs.deployment-manifest.outputs.manifest }}
+          DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_USERNAME }}
+          READINESS_URL: ${{ vars.TESTING_READINESS_URL || 'https://testing.openelis-global.org/api/OpenELIS-Global/health' }}
+          READINESS_TIMEOUT: ${{ vars.TESTING_READINESS_TIMEOUT || '300' }}
+          READINESS_JSON_KEY: ${{ vars.TESTING_READINESS_JSON_KEY || 'status' }}
+          READINESS_EXPECTED: ${{ vars.TESTING_READINESS_EXPECTED || '"UP"' }}
+        run: |
+          python3 - <<'PY'
+          import importlib.util, json, os, pathlib, re
+          env = os.environ
+          for key, pattern in [('DEPLOY_HOST', r'[A-Za-z0-9][A-Za-z0-9.-]*'), ('DEPLOY_USER', r'[A-Za-z_][A-Za-z0-9_-]*'), ('DEPLOY_PORT', r'[0-9]+')]:
+              if not re.fullmatch(pattern, env[key]):
+                  raise SystemExit(f'Invalid {key}')
+          spec = importlib.util.spec_from_file_location('deploy', '.github/scripts/deploy-published-testing.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          request = {'manifest': module.validate_manifest(json.loads(env['IMAGE_MANIFEST']), env['DOCKERHUB_NAMESPACE']),
+                     'dockerhub_namespace': env['DOCKERHUB_NAMESPACE'],
+                     'deploy_path': env['DEPLOY_PATH'], 'run_id': env['GITHUB_RUN_ID'] + '-' + env['GITHUB_RUN_ATTEMPT'],
+                     'readiness': {'url': env['READINESS_URL'], 'timeout': float(env['READINESS_TIMEOUT']),
+                                   'key': env['READINESS_JSON_KEY'], 'expected': json.loads(env['READINESS_EXPECTED'])}}
+          pathlib.Path('request.json').write_text(json.dumps(request))
+          PY
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.TESTING_VM_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+      - name: Deploy published images and require readiness
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $REMOTE_RUN/diagnostics"
+          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
+          set -o pipefail
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "python3 $REMOTE_RUN/deploy-published-testing.py $REMOTE_RUN/request.json" 2>&1 | tee deployment.log
+      - name: Collect deployment diagnostics
+        if: always()
+        run: |
+          mkdir -p diagnostics
+          if [ -f ~/.ssh/id_deploy ]; then
+            scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" -r "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/diagnostics/." diagnostics/ || true
+          fi
+          if [ -f deployment.log ]; then cp deployment.log diagnostics/; fi
+      - name: Attach deployment diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: testing-deployment-${{ github.run_id }}-${{ github.run_attempt }}
+          path: diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
+
+  deployment-summary:
+    name: Explain deployment outcome
+    if: always()
+    needs:
+      [
+        setup,
+        wait-for-e2e-checkpoint,
+        publish-images,
+        deployment-manifest,
+        deploy-testing,
+      ]
+    runs-on: ubuntu-latest
+    env:
+      EVENT: ${{ needs.setup.outputs.event_name }}
+      BRANCH: ${{ needs.setup.outputs.head_branch }}
+      GATE: ${{ needs.wait-for-e2e-checkpoint.result }}
+      PUBLISH: ${{ needs.publish-images.result }}
+      MANIFEST: ${{ needs.deployment-manifest.result }}
+      DEPLOY: ${{ needs.deploy-testing.result }}
+    steps:
+      - name: Summarize readiness or explain why deployment did not run
+        run: |
+          python3 - <<'PY'
+          import os
+          e = os.environ
+          if e['DEPLOY'] == 'success':
+              message = 'Testing deployment passed its image identity and application readiness checks.'
+          elif e['DEPLOY'] == 'skipped':
+              if e['EVENT'] != 'push' or e['BRANCH'] != 'develop':
+                  message = 'Testing deployment skipped: only pushes to develop deploy automatically.'
+              else:
+                  message = f"Testing deployment skipped: checkpoints={e['GATE']}, publication={e['PUBLISH']}, manifest={e['MANIFEST']}. Inspect the prerequisite jobs."
+          else:
+              message = f"Testing deployment {e['DEPLOY']}. Inspect the deployment diagnostics artifact."
+          with open(e['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(message + '\n')
+          PY

@@ -34,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class TestSectionCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName",
+            "domain" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -97,7 +98,7 @@ public class TestSectionCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getTestUnitFrenchName(), identifyingName, userId);
 
-        TestSection testSection = createTestSection(identifyingName, userId);
+        TestSection testSection = createTestSection(identifyingName, form.getDomain(), userId);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -147,15 +148,15 @@ public class TestSectionCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TestSection createTestSection(String identifyingName, String userId) {
+    private TestSection createTestSection(String identifyingName, String domain, String userId) {
         TestSection testSection = new TestSection();
         testSection.setDescription(identifyingName);
         testSection.setTestSectionName(identifyingName);
         testSection.setIsActive("N");
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");
         testSection.setNameKey("testSection." + identifyingNameKey);
-
         testSection.setSortOrderInt(Integer.MAX_VALUE);
+        testSection.setDomain(domain);
         testSection.setSysUserId(userId);
         return testSection;
     }

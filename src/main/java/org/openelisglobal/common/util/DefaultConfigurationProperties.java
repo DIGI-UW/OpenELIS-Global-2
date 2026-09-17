@@ -255,6 +255,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.restrictFreeTextRefSiteEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextMethodEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextProviderEntry, "false");
+        properties.setPropertyValue(Property.restrictFreeTextRequestorEntry, "false");
+        properties.setPropertyValue(Property.restrictFreeTextSampSiteEntry, "false");
         properties.setPropertyValue(Property.autoFillTechNameBox, "false");
         properties.setPropertyValue(Property.autoFillTechNameUser, "false");
         properties.setPropertyValue(Property.failedValidationMarker, "true");
@@ -293,6 +295,9 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ACCESSION_NUMBER_PREFIX, "");
         properties.setPropertyValue(Property.NOTE_EXTERNAL_ONLY_FOR_VALIDATION, "false");
         properties.setPropertyValue(Property.PHONE_FORMAT, "(ddd) dddd-dddd");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR, "OPTIONAL");
         properties.setPropertyValue(Property.PHONE_FORMAT_LABEL, "");
         properties.setPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION, "NONE");
         properties.setPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL, "");
@@ -431,6 +436,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         loadExternalConnection(properties, ProgrammedConnection.SMPP_SERVER, Property.PATIENT_RESULTS_SMPP_SMS_ENABLED,
                 Property.PATIENT_RESULTS_SMPP_SMS_ADDRESS, Property.PATIENT_RESULTS_SMPP_SMS_USERNAME,
                 Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD);
+        // WHATSAPP_SERVER intentionally NOT loaded here — WhatsAppNotificationSender
+        // reads URI + Basic auth directly from ExternalConnectionService at send time.
     }
 
     // two properties are used as the database logic to properties supposrts more

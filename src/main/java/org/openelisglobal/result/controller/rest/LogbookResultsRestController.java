@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
@@ -105,7 +106,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.resultFile", "testResult*.resultFile.fileName", "testResult*.resultFile.fileType",
             "testResult*.resultFile.base64Content", "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "testResult*.referralItem.referredSendDate", "testResult*.expandedUncertainty",
+            "testResult*.coverageFactor" };
 
     @Autowired
     private TestSectionService testSectionService;
@@ -113,6 +115,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private LogbookResultsPersistService logbookPersistService;
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
     @Autowired
     private FhirTransformService fhirTransformService;
     @Autowired
@@ -298,9 +302,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     resultsLoadUtility.setLockCurrentResults(
                             ResultUtil.modifyResultsRoleBased() && ResultUtil.userNotInRole(request));
                     tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber);
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                            "getUnfinishedTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "
-                                    + labNumber);
                 }
 
                 // if no test try patientID
@@ -324,9 +325,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
-                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
@@ -496,17 +494,23 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             String message = MessageUtil.getMessage("notification.result.stat");
             StringBuffer sb = new StringBuffer(message);
             for (String userId : systemUserIds) {
+                // Pool-anchored analyses have analysis.sampleItem == null; resolve
+                // the owning Sample via AnalysisAnchorService so vector orders
+                // don't NPE in this STAT-notification path.
                 List<Analysis> userAnalyses = userService
                         .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
-                        .filter(a -> a.getSampleItem().getSample().getPriority().equals(OrderPriority.STAT))
-                        .collect(Collectors.toList());
+                        .filter(a -> {
+                            Sample s = analysisAnchorService.resolveSample(a);
+                            return s != null && OrderPriority.STAT.equals(s.getPriority());
+                        }).collect(Collectors.toList());
 
                 if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> userTests = userAnalyses.stream()
-                            .map(a -> AlphanumAccessionValidator
-                                    .convertAlphaNumLabNumForDisplay(a.getSampleItem().getSample().getAccessionNumber())
-                                    + " - " + a.getTest().getLocalizedName())
-                            .collect(Collectors.toList());
+                    List<String> userTests = userAnalyses.stream().map(a -> {
+                        Sample s = analysisAnchorService.resolveSample(a);
+                        String accession = s != null ? s.getAccessionNumber() : "";
+                        return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
+                                + a.getTest().getLocalizedName();
+                    }).collect(Collectors.toList());
                     String testString = String.join(", ", userTests);
                     sb.append(testString);
                     try {

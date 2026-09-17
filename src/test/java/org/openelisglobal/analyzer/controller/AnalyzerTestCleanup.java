@@ -27,21 +27,13 @@ public final class AnalyzerTestCleanup {
     }
 
     /**
-     * Generate a unique source ID for discovered-sources tests.
-     */
-    public static String uniqueSourceId() {
-        return "test-source-" + System.currentTimeMillis() + "-" + IP_COUNTER.incrementAndGet();
-    }
-
-    /**
      * Delete all test-created analyzers and resync the sequence.
      *
-     * Covers: - TEST-* (explicit test creates) - Unknown* (discovered-sources
-     * endpoint stubs) - TEST-SEC-* (security test creates)
+     * Covers analyzers created by controller tests.
      */
     public static void clean(JdbcTemplate jdbcTemplate) {
         try {
-            String testAnalyzerIds = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%' OR name LIKE 'Unknown%')";
+            String testAnalyzerIds = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
             String testFieldIds = "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + testAnalyzerIds + ")";
 
             // Delete in FK order
@@ -50,7 +42,7 @@ public final class AnalyzerTestCleanup {
             jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN " + testFieldIds);
             jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_id IN " + testAnalyzerIds);
             jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + testAnalyzerIds);
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%' OR name LIKE 'Unknown%'");
+            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
 
             // Resync sequence
             Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);

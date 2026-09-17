@@ -67,7 +67,7 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     @Override
     public List<ShippingBox> findByState(BoxState state) {
         try {
-            String hql = "FROM ShippingBox b WHERE b.state = :state ORDER BY b.createdDate DESC";
+            String hql = "FROM ShippingBox b WHERE b.state = :state AND b.inbound = false ORDER BY b.createdDate DESC";
             Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);
             query.setParameter("state", state);
             return query.list();
@@ -80,9 +80,10 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     @Override
     public List<ShippingBox> findByDestinationFacilityId(Integer facilityId) {
         try {
-            String hql = "FROM ShippingBox b WHERE b.destinationFacility.id = :facilityId ORDER BY b.createdDate DESC";
+            String hql = "FROM ShippingBox b WHERE b.destinationFacility.id = :facilityId AND b.inbound = false ORDER BY b.createdDate DESC";
             Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);
-            query.setParameter("facilityId", facilityId);
+            // Organization.id is a String; bind as String to avoid a type-mismatch error
+            query.setParameter("facilityId", String.valueOf(facilityId));
             return query.list();
         } catch (Exception e) {
             logger.error("Error finding ShippingBoxes by destination facility", e);
@@ -117,6 +118,19 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
+    public List<ShippingBox> findActiveByInbound(boolean inbound) {
+        try {
+            String hql = "FROM ShippingBox b WHERE b.archived = false AND b.inbound = :inbound ORDER BY b.createdDate DESC";
+            Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);
+            query.setParameter("inbound", inbound);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding ShippingBoxes by inbound flag", e);
+            throw new LIMSRuntimeException("Error finding ShippingBoxes by inbound flag", e);
+        }
+    }
+
+    @Override
     public int countByState(BoxState state) {
         try {
             String hql = "SELECT COUNT(*) FROM ShippingBox b WHERE b.state = :state";
@@ -127,6 +141,19 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
         } catch (Exception e) {
             logger.error("Error counting ShippingBoxes by state", e);
             throw new LIMSRuntimeException("Error counting ShippingBoxes by state", e);
+        }
+    }
+
+    @Override
+    public void adjustSampleCount(Integer shippingBoxId, int delta) {
+        try {
+            String hql = "UPDATE ShippingBox b SET b.actualSampleCount = COALESCE(b.actualSampleCount, 0) + :delta"
+                    + " WHERE b.id = :id";
+            entityManager.unwrap(Session.class).createQuery(hql).setParameter("delta", delta)
+                    .setParameter("id", shippingBoxId).executeUpdate();
+        } catch (Exception e) {
+            logger.error("Error adjusting ShippingBox sample count", e);
+            throw new LIMSRuntimeException("Error adjusting ShippingBox sample count", e);
         }
     }
 }

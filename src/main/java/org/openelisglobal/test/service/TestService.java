@@ -9,6 +9,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.test.beanItems.TestResultItem.ResultDisplayType;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -51,6 +52,10 @@ public interface TestService extends BaseObjectService<Test, String> {
     Test getTestByDescription(String description);
 
     Test getTestByNormalizedDescription(String description);
+
+    Test getTestByLocalCode(String localCode);
+
+    List<Test> getTestsByNormalizedDescriptionPrefix(String plainName);
 
     List<Test> getTestsByLoincCode(String loincCode);
 
@@ -145,6 +150,8 @@ public interface TestService extends BaseObjectService<Test, String> {
     void activateTestsAndDeactivateOthers(List<String> asList);
 
     List<Test> getTriggeringAntimicrobialResistanceTests();
+
+    Optional<TestQcThreshold> getQcThreshold(String testId);
 
     /**
      * Resolves the {@code localization} ids backing a test's localizable name

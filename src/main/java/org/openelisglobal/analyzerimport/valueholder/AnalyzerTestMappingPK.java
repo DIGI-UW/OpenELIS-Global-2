@@ -15,28 +15,21 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
-import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Composite primary key for AnalyzerTestMapping: (analyzer_id,
  * analyzer_test_name). Test mappings are per-analyzer — each physical
  * instrument owns its own mappings.
  */
-@Embeddable
+@Deprecated(forRemoval = true)
 public class AnalyzerTestMappingPK implements Serializable {
 
     private static final long serialVersionUID = 3L;
 
-    @Column(name = "analyzer_id")
-    @Convert(converter = StringToIntegerConverter.class)
     private String analyzerId;
 
-    @Column(name = "analyzer_test_name")
     private String analyzerTestName;
 
     public String getAnalyzerId() {

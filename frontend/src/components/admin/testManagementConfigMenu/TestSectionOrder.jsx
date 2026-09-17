@@ -1,9 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import { Heading, Button, Loading, Grid, Column, Section } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useServerData,
+  useInvalidateServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -35,27 +36,17 @@ function TestSectionOrder() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(false);
   const [confirmSelection, setConfirmSelection] = useState(false);
-  const [testSectionOrderList, setTestSectionOrderList] = useState({});
+  const [pendingOrder, setPendingOrder] = useState(null);
   const [testSectionOrderListPost, setTestSectionOrderListPost] = useState([]);
 
-  const componentMounted = useRef(false);
-
-  const handleTestSectionOrderList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestSectionOrderList(res);
-    }
-  };
-
   const handleTestSectionOrderListCall = () => {
-    if (!testSectionOrderListPost) {
-      setIsLoading(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+    if (!testSectionOrderListPost?.length) {
+      // Accepting an unchanged preview is complete once it leaves confirmation.
+      setPendingOrder(null);
+      setTestSectionOrderListPost([]);
+      setConfirmSelection(false);
+      return;
     }
     postToOpenElisServerJsonResponse(
       "/rest/TestSectionOrder",
@@ -73,7 +64,6 @@ function TestSectionOrder() {
   const handlePostTestSectionOrderListCallBack = (res) => {
     if (res) {
       if (res) {
-        setIsLoading(false);
         addNotification({
           title: intl.formatMessage({
             id: "notification.title",
@@ -83,9 +73,10 @@ function TestSectionOrder() {
           }),
           kind: NotificationKinds.success,
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
+        setPendingOrder(null);
+        setTestSectionOrderListPost([]);
+        setConfirmSelection(false);
+        refreshTestSectionOrderList("/rest/TestSectionOrder");
         setNotificationVisible(true);
       }
     } else {
@@ -98,17 +89,21 @@ function TestSectionOrder() {
     }
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/TestSectionOrder`, handleTestSectionOrderList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
+  // The order shown is a read of /rest/TestSectionOrder; a save marks it out of date
+  // and the screen reads it again, which is what reloading used to do.
+  const {
+    data: fetchedTestSectionOrderList,
+    isFetching: testSectionOrderListFetching,
+  } = useServerData("/rest/TestSectionOrder");
+  const refreshTestSectionOrderList = useInvalidateServerData();
 
-  if (!isLoading) {
+  // A pending reorder sits on top of the stored order, so discarding it is
+  // clearing it: the stored array comes back as the same reference the list
+  // was seeded from, which is a change the list can see.
+  const shownOrder =
+    pendingOrder ?? fetchedTestSectionOrderList?.testSectionList;
+
+  if (testSectionOrderListFetching && !fetchedTestSectionOrderList) {
     return (
       <>
         <Loading />
@@ -168,26 +163,21 @@ function TestSectionOrder() {
           <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              {testSectionOrderList &&
-                testSectionOrderList?.testSectionList &&
-                testSectionOrderList?.testSectionList?.length > 0 && (
-                  <CustomCommonSortableOrderList
-                    test={testSectionOrderList?.testSectionList}
-                    onSort={(updatedList) => {
-                      setTestSectionOrderList((prev) => ({
-                        ...prev,
-                        testSectionList: updatedList,
-                      }));
-                      setTestSectionOrderListPost(
-                        updatedList.map(({ id, sortOrder }) => ({
-                          id: Number(id),
-                          sortOrder,
-                        })),
-                      );
-                    }}
-                    disableSorting={confirmSelection}
-                  />
-                )}
+              {shownOrder?.length > 0 && (
+                <CustomCommonSortableOrderList
+                  test={shownOrder}
+                  onSort={(updatedList) => {
+                    setPendingOrder(updatedList);
+                    setTestSectionOrderListPost(
+                      updatedList.map(({ id, sortOrder }) => ({
+                        id: Number(id),
+                        sortOrder,
+                      })),
+                    );
+                  }}
+                  disableSorting={confirmSelection}
+                />
+              )}
             </Column>
           </Grid>
           {confirmSelection && (
@@ -213,6 +203,7 @@ function TestSectionOrder() {
                 onClick={() => {
                   if (confirmSelection) {
                     handleTestSectionOrderListCall();
+                    return;
                   }
                   setConfirmSelection(true);
                 }}
@@ -229,7 +220,11 @@ function TestSectionOrder() {
                 type="button"
                 kind="tertiary"
                 onClick={() => {
-                  window.location.reload();
+                  // Discard the pending reordering and show what is stored.
+                  setPendingOrder(null);
+                  setTestSectionOrderListPost([]);
+                  setConfirmSelection(false);
+                  refreshTestSectionOrderList("/rest/TestSectionOrder");
                 }}
               >
                 {confirmSelection ? (

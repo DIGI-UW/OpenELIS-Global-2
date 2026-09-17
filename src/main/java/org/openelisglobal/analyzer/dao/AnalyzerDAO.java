@@ -15,24 +15,19 @@ package org.openelisglobal.analyzer.dao;
 
 import java.util.List;
 import java.util.Optional;
+import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
-    Optional<Analyzer> findByIpAddress(String ipAddress);
-
     Optional<Analyzer> findByName(String name);
 
-    Optional<Analyzer> findActiveByPort(Integer port);
+    List<Analyzer> findAllWithBindings();
 
-    List<Analyzer> findGenericAnalyzersWithPatterns();
+    Optional<Analyzer> findByIdWithBinding(String id);
 
-    List<Analyzer> findAllWithTypes();
+    Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
-    Optional<Analyzer> findByIdWithType(String id);
-
-    Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port);
-
-    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
+    List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId);
 }

@@ -10,41 +10,50 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.configuration.service.LoadedRow;
+import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Handler for loading test section configuration files. Supports CSV format for
  * defining laboratory test sections/departments.
  *
  * Expected CSV format:
- * testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr
- * Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
- * Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
- * Serology,Serology Department,Y,3,N,Serology,Sérologie
+ * testSectionName,description,isActive,sortOrder,isExternal,domain,localization:en,localization:fr
+ * Hematology,Hematology Department,Y,1,N,CLINICAL,Hematology,Hématologie
+ * Biochemistry,Biochemistry Department,Y,2,N,CLINICAL,Biochemistry,Biochimie
  *
  * Notes: - First line is the header (required) - testSectionName is required -
  * description defaults to testSectionName if not provided - isActive defaults
  * to "Y" if not specified - sortOrder is optional (auto-assigned if not
- * provided) - isExternal defaults to "N" if not specified - localization:xx
- * columns (where xx is a locale code like en, fr, es) provide translations - If
- * no localization columns are provided, testSectionName is used as the default
- * value for the fallback locale (en) - Existing test sections with matching
- * name will be updated
+ * provided) - isExternal defaults to "N" if not specified - domain must be one
+ * of CLINICAL, ENVIRONMENTAL, or VECTOR; defaults to CLINICAL if not specified
+ * - localization:xx columns (where xx is a locale code like en, fr, es) provide
+ * translations - If no localization columns are provided, testSectionName is
+ * used as the default value for the fallback locale (en) - Existing test
+ * sections with matching name will be updated
  */
 @Component
 public class TestSectionConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
+    private static final int NAME_MAX_LENGTH = 20;
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
+
+    private volatile CsvLoadSummary lastSummary;
 
     @Autowired
     private LocalizationService localizationService;
@@ -68,8 +77,22 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     @Override
-    @Transactional
+    public boolean supportsDryRun() {
+        return true;
+    }
+
+    @Override
+    public CsvLoadSummary getLastSummary() {
+        return lastSummary;
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
+        processConfiguration(inputStream, fileName, false);
+    }
+
+    @Override
+    public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         // Read and validate header
@@ -87,11 +110,13 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int isExternalIndex = findColumnIndex(headers, "isExternal");
+        int domainIndex = findColumnIndex(headers, "domain");
 
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
-        List<TestSection> processedSections = new ArrayList<>();
+        CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
         String line;
         int lineNumber = 1;
         int nextSortOrder = getNextAvailableSortOrder();
@@ -103,17 +128,20 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
                 continue;
             }
 
+            String[] values = parseCsvLine(line);
+            int rowLine = lineNumber;
+            int defaultSortOrder = nextSortOrder;
+            LoadedRow<TestSection> result;
             try {
-                String[] values = parseCsvLine(line);
-                TestSection section = processCsvLine(values, testSectionNameIndex, descriptionIndex, isActiveIndex,
-                        sortOrderIndex, isExternalIndex, localizationColumns, lineNumber, fileName, nextSortOrder);
-                if (section != null) {
-                    processedSections.add(section);
-                    nextSortOrder++;
-                }
+                result = rowTransaction.run(() -> processRow(values, testSectionNameIndex, descriptionIndex,
+                        isActiveIndex, sortOrderIndex, isExternalIndex, domainIndex, localizationColumns, rowLine,
+                        fileName, defaultSortOrder));
             } catch (Exception e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
-                        "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+            }
+            summary.record(result, getClass().getSimpleName(), rowLine);
+            if (!result.isSkipped()) {
+                nextSortOrder++;
             }
         }
 
@@ -121,8 +149,8 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         testSectionService.refreshNames();
         DisplayListService.getInstance().refreshLists();
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processedSections.size() + " test sections from " + fileName);
+        summary.log(getClass().getSimpleName());
+        lastSummary = summary;
     }
 
     private String[] parseCsvLine(String line) {
@@ -204,32 +232,32 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         return maxSortOrder + 1;
     }
 
-    private TestSection processCsvLine(String[] values, int testSectionNameIndex, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int lineNumber, String fileName, int defaultSortOrder) {
+    private LoadedRow<TestSection> processRow(String[] values, int testSectionNameIndex, int descriptionIndex,
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
         String testSectionName = getValueOrEmpty(values, testSectionNameIndex);
 
         if (testSectionName.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Skipping row " + lineNumber + " in " + fileName + " with missing testSectionName");
-            return null;
+            return LoadedRow.skipped("missing testSectionName");
+        }
+        if (testSectionName.length() > NAME_MAX_LENGTH) {
+            return LoadedRow.skipped(
+                    "testSectionName '" + testSectionName + "' is longer than " + NAME_MAX_LENGTH + " characters");
         }
 
-        // Check if test section already exists
         TestSection existingSection = testSectionService.getTestSectionByName(testSectionName);
 
         if (existingSection != null) {
             updateTestSection(existingSection, values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, localizationColumns, defaultSortOrder);
+                    isExternalIndex, domainIndex, localizationColumns, defaultSortOrder);
             testSectionService.update(existingSection);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processRow",
                     "Updated existing test section: " + testSectionName);
-            return existingSection;
-        } else {
-            return createTestSection(values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, localizationColumns, defaultSortOrder);
+            return LoadedRow.updated(existingSection);
         }
+        return LoadedRow.created(createTestSection(values, testSectionName, descriptionIndex, isActiveIndex,
+                sortOrderIndex, isExternalIndex, domainIndex, localizationColumns, defaultSortOrder));
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -241,8 +269,8 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     private void updateTestSection(TestSection section, String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
 
         section.setTestSectionName(testSectionName);
 
@@ -275,13 +303,19 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("Y".equalsIgnoreCase(isExternal) || "true".equalsIgnoreCase(isExternal) ? "Y" : "N");
         }
 
+        // Update domain (preserve existing value if column absent or blank)
+        String domain = getValueOrEmpty(values, domainIndex);
+        if (!domain.isEmpty()) {
+            section.setDomain(domain);
+        }
+
         // Handle localization
         processLocalization(section, values, testSectionName, localizationColumns);
     }
 
     private TestSection createTestSection(String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
 
         // Build translations map
         Map<String, String> translations = buildTranslationsMap(values, testSectionName, localizationColumns);
@@ -341,6 +375,10 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         } else {
             section.setIsExternal("N");
         }
+
+        // Set domain; default to CLINICAL if column absent or blank
+        String domain = getValueOrEmpty(values, domainIndex);
+        section.setDomain(domain.isEmpty() ? "CLINICAL" : domain);
 
         String sectionId = testSectionService.insert(section);
         section.setId(sectionId);

@@ -1,0 +1,30 @@
+# Vector trap type configuration
+# Columns:
+#   name             - trap type name (required, used as the upsert key)
+#   description      - optional human-readable description
+#   isActive         - Y/N (default Y)
+#   sampleTypeAbbrevs - semicolon-separated localAbbreviation values of vector
+#                       sample types (domain=V) this trap is used for.
+#                       Each abbreviation must already exist in type_of_sample.
+name,description,isActive,sampleTypeAbbrevs
+# ─── Adult mosquito traps ───────────────────────────────────────────────────
+BG-Sentinel Trap,Biogents sentinel trap for active Aedes adult collection,Y,NY;NYDE;MOSQUITO
+CDC Light Trap,CDC miniature light trap for Anopheles and Culex adult collection,Y,NY;NYDE;MOSQUITO
+Gravid Trap,Gravid mosquito trap for gravid Aedes and Culex females,Y,NY;NYDE;MOSQUITO
+Shannon Trap,Shannon light trap for outdoor human-landing mosquito catches,Y,NY;NYDE;MOSQUITO
+# ─── Larval / egg traps ─────────────────────────────────────────────────────
+Ovitrap,Oviposition trap for Aedes egg collection,Y,NY;NYDE;JENY;LANY;MOSQUITO
+Emergence Trap,Larval emergence trap placed over water containers,Y,JENY;LANY;MOSQUITO
+# ─── Fly and cockroach traps ────────────────────────────────────────────────
+Sticky Trap,Adhesive sticky trap for fly and cockroach surveillance,Y,LADAKE;FLY
+# ─── Ectoparasite (flea / tick) traps ───────────────────────────────────────
+# Extended to cover rodent animal specimens since ectoparasites are collected
+# directly from captured animals (BIPEPE, DABI, DASWHE, FEBI, JAHE, SEHE, SETI).
+Flea Comb,Fine-tooth comb for ectoparasite collection from captured animals,Y,EK;FLEA;BIPEPE;BIDASA;DABI;DABIPE;DASWHE;FEBI;JAHE;SEHE;SETI
+Flagging Trap,Dragging-flag method for tick and ectoparasite collection from vegetation,Y,EK;FLEA;SALI;TA;USDE
+# ─── Rodent traps ───────────────────────────────────────────────────────────
+Snap Trap,Kill-type snap trap for rodent collection,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+Sherman Live Trap,Sherman folding live trap for rodent capture and biological sampling,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+Cage Trap,Wire cage trap for repeated live-capture rodent surveillance,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+# ─── Environmental collection (no mechanical trap) ──────────────────────────
+Environmental Collection,Direct field collection of soil/dust/environmental specimens,Y,SALI;TA;USDE

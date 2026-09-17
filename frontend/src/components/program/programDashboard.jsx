@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import {
   Tile,
@@ -91,8 +92,10 @@ const ProgramDashboard = () => {
     });
   };
 
+  const history = useHistory();
+
   const handleRowClick = (programSampleId) => {
-    window.location.href = `/programView/${programSampleId}`;
+    history.push(`/programView/${programSampleId}`);
   };
 
   useEffect(() => {

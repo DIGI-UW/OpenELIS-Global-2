@@ -17,8 +17,8 @@ import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
+import org.openelisglobal.qaevent.service.NceReportService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
-import org.openelisglobal.qaevent.worker.NonConformingEventWorker;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -44,7 +44,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     private final SampleService sampleService;
     private final SampleItemService sampleItemService;
     private final SearchResultsService searchResultsService;
-    private final NonConformingEventWorker nonConformingEventWorker;
+    private final NceReportService nceReportService;
     private final NceCategoryService nceCategoryService;
     private final RequesterService requesterService;
     private final NceAttachmentService nceAttachmentService;
@@ -52,22 +52,22 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     @Autowired
     private SystemUserService systemUserService;
 
-    @Autowired
-    private NceNumberGeneratorService nceNumberGeneratorService;
+    private final NceNumberGeneratorService nceNumberGeneratorService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReportNonConformEventsRestController(SampleService sampleService, SampleItemService sampleItemService,
-            SearchResultsService searchResultsService, NonConformingEventWorker nonConformingEventWorker,
+            SearchResultsService searchResultsService, NceReportService nceReportService,
             NceCategoryService nceCategoryService, RequesterService requesterService,
-            NceAttachmentService nceAttachmentService) {
+            NceAttachmentService nceAttachmentService, NceNumberGeneratorService nceNumberGeneratorService) {
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.searchResultsService = searchResultsService;
-        this.nonConformingEventWorker = nonConformingEventWorker;
+        this.nceReportService = nceReportService;
         this.nceCategoryService = nceCategoryService;
         this.requesterService = requesterService;
         this.nceAttachmentService = nceAttachmentService;
+        this.nceNumberGeneratorService = nceNumberGeneratorService;
     }
 
     @GetMapping(value = "/rest/nonconformevents", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -110,18 +110,12 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             NonConformingEventForm eventData = new NonConformingEventForm();
             eventData.setLabOrderNumber(params.get("labOrderNumber"));
             eventData.setSpecimenId(params.get("specimenId"));
-            eventData.setCurrentUserId(params.get("currentUserId"));
             eventData.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
 
             SystemUser systemUser = systemUserService.getUserById(getSysUserId(request));
             eventData.setName(systemUser.getFirstName() + " " + systemUser.getLastName());
 
-            String ncenumber = String.valueOf(System.currentTimeMillis());
-            NcEvent event = nonConformingEventWorker.create(params.get("labOrderNumber"),
-                    Arrays.asList(params.get("specimenId").split(",")), systemUser.getId(), ncenumber);
-
-            eventData.setNceNumber(event.getNceNumber());
-            eventData.setId(String.valueOf(event.getId()));
+            eventData.setNceNumber(nceNumberGeneratorService.generateNceNumber());
 
             Sample sample = getSampleForLabNumber(params.get("labOrderNumber"));
             if (sample != null) {
@@ -177,31 +171,11 @@ public class ReportNonConformEventsRestController extends BaseRestController {
         try {
             String sysUserId = getSysUserId(request);
 
-            if (form.getId() == null || form.getId().isEmpty()) {
-                String nceNumber = form.getNceNumber();
-                if (nceNumber == null || nceNumber.isEmpty()) {
-                    nceNumber = nceNumberGeneratorService.generateNceNumber();
-                }
-
-                List<String> specimens = new ArrayList<>();
-                if (form.getSpecimenId() != null && !form.getSpecimenId().isEmpty()) {
-                    specimens = Arrays.asList(form.getSpecimenId().split(","));
-                }
-
-                NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
-                        nceNumber, form.getAnalysisId());
-                form.setId(String.valueOf(newEvent.getId()));
-            }
-
-            form.setCurrentUserId(sysUserId);
-            boolean updated = nonConformingEventWorker.update(form);
-            if (!updated) {
-                return ResponseEntity.ok().body(Map.of("success", false));
-            }
+            NcEvent event = nceReportService.report(form, sysUserId);
 
             if (files != null && !files.isEmpty()) {
                 Integer userId = Integer.valueOf(sysUserId);
-                Integer nceId = Integer.valueOf(form.getId());
+                Integer nceId = event.getId();
 
                 for (MultipartFile file : files) {
                     if (!file.isEmpty()) {

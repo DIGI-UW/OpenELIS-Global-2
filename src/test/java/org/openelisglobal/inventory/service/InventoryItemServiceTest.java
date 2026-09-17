@@ -82,6 +82,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
         Long insertedId = inventoryItemService.insert(newItem);
 
         assertNotNull("Inserted ID should not be null", insertedId);
+        assertTrue("Generated ID should be beyond DBUnit fixture IDs", insertedId > 1001L);
 
         InventoryItem savedItem = inventoryItemService.get(insertedId);
         assertNotNull("Saved item should be retrievable", savedItem);

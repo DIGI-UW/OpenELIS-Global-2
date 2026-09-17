@@ -15,6 +15,8 @@ export const getComplianceTagType = (complianceColor) => {
       return "warm-gray";
     case "RED":
       return "red";
+    case "NOT_CONFIGURED":
+      return "gray";
     default:
       return "gray";
   }
@@ -31,8 +33,10 @@ export const getComplianceLabelKey = (complianceColor) => {
       return "qc.dashboard.instruments.status.yellow";
     case "RED":
       return "qc.dashboard.instruments.status.red";
+    case "NOT_CONFIGURED":
+      return "qc.dashboard.instruments.status.notConfigured";
     default:
-      return "qc.dashboard.instruments.status.green";
+      return "qc.dashboard.instruments.status.unknown";
   }
 };
 
@@ -45,16 +49,17 @@ export const getSeverityTagType = (severity) => {
 
 /**
  * Returns a Carbon Tag type based on a z-score (sigma value).
- * >= 4σ  → green (good)
- * 3-4σ   → warm-gray (warning)
- * < 3σ   → red (poor)
+ * < 2σ   -> green (in control)
+ * 2-3σ   -> warm-gray (warning)
+ * >= 3σ  -> red (rejection)
  */
 export const getZScoreBadgeType = (zScore) => {
   if (zScore == null) return "gray";
   const val = Math.abs(parseFloat(zScore));
-  if (val >= 4) return "green";
-  if (val >= 3) return "warm-gray";
-  return "red";
+  if (Number.isNaN(val)) return "gray";
+  if (val >= 3) return "red";
+  if (val >= 2) return "warm-gray";
+  return "green";
 };
 
 /**

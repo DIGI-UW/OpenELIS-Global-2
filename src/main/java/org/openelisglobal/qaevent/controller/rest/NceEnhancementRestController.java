@@ -334,9 +334,19 @@ public class NceEnhancementRestController extends BaseRestController {
 
         String activity = historyRequest.activity != null ? historyRequest.activity : "NOTE_ADDED";
 
-        // If acknowledging, update NCE status from Pending to Under Investigation
+        // Status transitions driven by activity
+        boolean statusChanged = false;
         if ("ACKNOWLEDGED".equals(activity) && "Pending".equals(event.getStatus())) {
             event.setStatus("Under Investigation");
+            statusChanged = true;
+        } else if ("INVESTIGATION_STARTED".equals(activity) && "Under Investigation".equals(event.getStatus())) {
+            event.setStatus("Corrective Action");
+            statusChanged = true;
+        } else if ("CLOSED".equals(activity) && "Corrective Action".equals(event.getStatus())) {
+            event.setStatus("Closed");
+            statusChanged = true;
+        }
+        if (statusChanged) {
             event.setSysUserId(sysUserId);
             ncEventService.update(event);
         }

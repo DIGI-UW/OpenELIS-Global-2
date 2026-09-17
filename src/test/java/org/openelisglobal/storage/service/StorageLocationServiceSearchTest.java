@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -24,20 +25,31 @@ public class StorageLocationServiceSearchTest {
     @Mock
     private StorageSearchService storageSearchService;
 
+    @Mock
+    private StorageRoomService storageRoomService;
+
+    @Mock
+    private StorageDeviceService storageDeviceService;
+
+    @Mock
+    private StorageShelfService storageShelfService;
+
+    @Mock
+    private StorageRackService storageRackService;
+
+    @Mock
+    private StorageBoxService storageBoxService;
+
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
 
     @Before
     public void setUp() {
-        // Use reflection to inject mock
-        try {
-            java.lang.reflect.Field searchServiceField = StorageLocationServiceImpl.class
-                    .getDeclaredField("storageSearchService");
-            searchServiceField.setAccessible(true);
-            searchServiceField.set(storageLocationService, storageSearchService);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to inject mock", e);
-        }
+        // Stub subtree-expansion DAO calls to return empty lists so tests focus on
+        // directly-matched results without NullPointerExceptions.
+        when(storageShelfService.findByParentDeviceId(any())).thenReturn(new ArrayList<>());
+        when(storageRackService.findByParentShelfId(any())).thenReturn(new ArrayList<>());
+        when(storageBoxService.findByParentRackId(any())).thenReturn(new ArrayList<>());
     }
 
     @Test

@@ -75,6 +75,9 @@
         <property name="domain" type="java.lang.String">
             <column name="DOMAIN" length="20" />
         </property>
+        <property name="cultureWorkflowType" type="java.lang.String">
+            <column name="culture_workflow_type" length="40" />
+        </property>
         <property name="stickerRequiredFlag" type="java.lang.String">
             <column name="STICKER_REQ_FLAG" length="1" />
         </property>

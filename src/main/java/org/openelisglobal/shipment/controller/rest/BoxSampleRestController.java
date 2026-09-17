@@ -37,6 +37,9 @@ public class BoxSampleRestController extends BaseRestController {
     @Autowired
     private BoxSampleItemService boxSampleItemService;
 
+    @Autowired
+    private org.openelisglobal.shipment.service.ShipmentReceptionService shipmentReceptionService;
+
     /**
      * Get box samples by shipping box ID
      * 
@@ -293,6 +296,25 @@ public class BoxSampleRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     java.util.Collections.singletonMap("error", "Error updating reception status: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolve a box's specimens to their referral orders and link any
+     * already-accepted samples.
+     */
+    @PostMapping("/items/reconcile-shipment/{shippingBoxId}")
+    public ResponseEntity<?> reconcileShipment(@PathVariable Integer shippingBoxId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            return ResponseEntity
+                    .ok(shipmentReceptionService.reconcileAndGetExpectedSpecimens(shippingBoxId, systemUserId));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Collections.singletonMap("error", "Error reconciling shipment: " + e.getMessage()));
         }
     }
 

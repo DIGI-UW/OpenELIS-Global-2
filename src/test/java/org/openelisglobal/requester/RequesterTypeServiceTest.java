@@ -37,10 +37,16 @@ public class RequesterTypeServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getRequesterTypeByName_shouldReturnCorrectRequesterType() {
-        String typeName = "LABORATORY";
+        // "organization" is one of the real Liquibase-seeded requester_type rows
+        // (see BaseWebContextSensitiveTest#PROTECTED_SEED_TABLES) — requester.xml's
+        // own fictional LABORATORY/CLINIC/HOSPITAL <requester_type> rows are
+        // silently filtered out at fixture-load time so the real seed (which
+        // TableIdService resolves ids from, once, at Spring context startup) is
+        // never corrupted for downstream test classes.
+        String typeName = "organization";
         RequesterType requesterType = requesterTypeService.getRequesterTypeByName(typeName);
         Assert.assertNotNull("Requester type should not be null", requesterType);
-        Assert.assertEquals("Expected requester type name to be LABORATORY", "LABORATORY",
+        Assert.assertEquals("Expected requester type name to be organization", "organization",
                 requesterType.getRequesterType());
     }
 

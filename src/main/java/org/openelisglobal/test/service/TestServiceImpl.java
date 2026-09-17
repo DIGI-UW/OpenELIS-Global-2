@@ -27,6 +27,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.beanItems.TestResultItem.ResultDisplayType;
@@ -693,6 +694,18 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @Override
     @Transactional(readOnly = true)
+    public Test getTestByLocalCode(String localCode) {
+        return getBaseObjectDAO().getTestByLocalCode(localCode);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) {
+        return getBaseObjectDAO().getTestsByNormalizedDescriptionPrefix(plainName);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Test> getTestsByLoincCode(String loincCode) {
         return getBaseObjectDAO().getTestsByLoincCode(loincCode);
     }
@@ -940,6 +953,13 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     public List<Test> getTriggeringAntimicrobialResistanceTests() {
         return getAllMatching("antimicrobialResistance", Boolean.TRUE).stream()
                 .filter(e -> TestReflexUtil.isTriggeringReflexTestId(e.getId())).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TestQcThreshold> getQcThreshold(String testId) {
+        return SpringContext.getBean(org.openelisglobal.qc.dao.TestQcThresholdDAO.class)
+                .findByTestId(Integer.valueOf(testId));
     }
 
     @Override

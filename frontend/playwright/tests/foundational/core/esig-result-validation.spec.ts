@@ -30,6 +30,10 @@ const password = process.env.TEST_PASS || "adminADMIN!";
 test("E-Signature — full result entry and validation flow", async ({
   page,
 }) => {
+  // Two full signing ceremonies plus an admin toggle round-trip: the default
+  // 30s budget leaves no headroom on a CI runner.
+  test.setTimeout(60_000);
+
   // ── Step 1: Enable e-signatures via admin UI ──────────────────
 
   await test.step("Enable e-signatures in Site Information", async () => {
@@ -57,26 +61,41 @@ test("E-Signature — full result entry and validation flow", async ({
 
   // ── Step 3: Result Entry — AUTHORED signature ─────────────────
 
-  await test.step("Navigate to Result Entry and search for order", async () => {
-    await page.goto("/result?type=order&doRange=false", {
-      waitUntil: "domcontentloaded",
-    });
+  await test.step("Open the unified Results worklist for the order", async () => {
+    // The unified worklist is the default result entry page; a deep link with
+    // the accession number loads that order's rows directly.
+    await page.goto(
+      `/Results?accessionNumber=${encodeURIComponent(accessionNumber)}`,
+      { waitUntil: "domcontentloaded" },
+    );
 
-    // Search by accession number (scope to main to avoid header Search button)
     const main = page.getByRole("main");
-    const searchInput = main.getByPlaceholder(/accession/i);
-    await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
-    await searchInput.fill(accessionNumber);
-    await main.getByRole("button", { name: /search/i }).click();
+    await expect(
+      main.getByRole("heading", { name: /result/i }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(
+      main.locator("tr", { hasText: accessionNumber }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+  });
 
-    // Wait for results to load
-    await expect(main.getByRole("button", { name: "Save" })).toBeVisible({
-      timeout: NAV_TIMEOUT,
-    });
+  await test.step("Enter a result so the analysis reaches the validation queue", async () => {
+    // A saved value is what moves the analysis to "awaiting validation";
+    // saving an empty row persists nothing and leaves the queue empty.
+    const resultInput = page
+      .getByRole("main")
+      .locator('input[id^="unifiedResultValue-"]')
+      .first();
+    await expect(resultInput).toBeVisible({ timeout: UI_TIMEOUT });
+    await resultInput.fill("6");
   });
 
   await test.step("Click Save — e-sig modal appears", async () => {
-    await page.getByRole("button", { name: "Save" }).click();
+    // Typing a value makes the row dirty, which is what offers its Save.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: /^save$/i })
+      .first()
+      .click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
@@ -129,11 +148,28 @@ test("E-Signature — full result entry and validation flow", async ({
     await pwInput.click();
     await pwInput.pressSequentially(password, { delay: 30 });
 
+    // The signature releases the per-row save. The unified worklist stays on
+    // the page: sync on the save response and on the row turning read-only
+    // (its Save gives way to Edit) before moving on.
+    const resultsSaved = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/results-entry/analysis/") &&
+        response.request().method() === "POST",
+      { timeout: LONG_TIMEOUT },
+    );
+
     // Click Sign
     await modal.getByRole("button", { name: /sign/i }).click();
 
     // Modal should close after successful signature
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
+    await resultsSaved;
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("button", { name: /^edit$/i })
+        .first(),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   // ── Step 4: Validation — VALIDATED_AND_RELEASED signature ─────
@@ -150,19 +186,26 @@ test("E-Signature — full result entry and validation flow", async ({
     await searchInput.fill(accessionNumber);
     await main.getByRole("button", { name: /search/i }).click();
 
-    await expect(main.getByRole("button", { name: "Validate" })).toBeVisible({
-      timeout: NAV_TIMEOUT,
-    });
+    // OGC-1030: release is per row, from the review panel — the queue row's
+    // expander is what appears once the search has loaded.
+    await expect(
+      main.getByRole("button", { name: /expand row/i }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
   });
 
-  await test.step("Select all results and click Validate — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
-    // Select all results for validation
-    const saveAllLabel = page.locator('label[for="saveallresults"]');
-    if (await saveAllLabel.isVisible()) {
-      await saveAllLabel.click();
-    }
+  await test.step("Expand the row and click Validate & release — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
+    const main = page.getByRole("main");
+    await main
+      .getByRole("button", { name: /expand row/i })
+      .first()
+      .click();
 
-    await page.getByRole("button", { name: "Validate" }).click();
+    const panel = main.locator('[data-testid^="validation-review-panel-"]');
+    await expect(panel).toBeVisible({ timeout: UI_TIMEOUT });
+    await panel
+      .getByRole("button", { name: /validate & release/i })
+      .first()
+      .click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
@@ -188,13 +231,21 @@ test("E-Signature — full result entry and validation flow", async ({
 
     // In password-only mode, just enter password
     await modal.locator('input[type="password"]').fill(password);
+
+    // A successful release rereads the queue in place. Sync on that read so
+    // the cleanup step's navigation cannot collide with it, then assert on
+    // what the page shows.
+    const queueReread = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/AccessionValidation") &&
+        response.request().method() === "GET",
+      { timeout: LONG_TIMEOUT },
+    );
     await modal.getByRole("button", { name: /sign/i }).click();
 
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
-
-    // Wait for the page to finish any post-sign navigation/redirect
-    // before attempting cleanup navigation
-    await page.waitForLoadState("networkidle");
+    await queueReread;
+    await expect(page).toHaveURL(/\/validation/);
   });
 
   // ── Cleanup: Restore original e-sig setting ───────────────────

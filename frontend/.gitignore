@@ -38,6 +38,10 @@ cypress/screenshots/
 # Dev scratch artifacts (local test-output, never commit)
 current_failures.txt
 
+# jsdom PDF-export tests write these to the CWD (generated, not source)
+/vector-surveillance.pdf
+/label-BOX-001.pdf
+/manifest-BOX-001.pdf
 # Mountpoint that dev.docker-compose.yml hangs volume/translation on. Docker
 # creates it because it nests inside the ./frontend/public bind mount; the
 # translations themselves live in volume/translation.

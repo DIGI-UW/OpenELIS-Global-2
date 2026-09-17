@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { TextInput } from "@carbon/react";
+import { InlineLoading, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { LEVEL_ORDER } from "../useLocationPicker";
@@ -39,6 +39,14 @@ export default function SearchField({
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [status, setStatus] = useState("idle");
+  // The parent passes onResultsChange as an inline arrow, so its identity
+  // changes every render. Depending on it re-runs the search effect on every
+  // render, and any state update in that effect then loops forever.
+  const onResultsChangeRef = useRef(onResultsChange);
+  useEffect(() => {
+    onResultsChangeRef.current = onResultsChange;
+  }, [onResultsChange]);
 
   const deepestSelectedLevel = LEVEL_ORDER.reduce((deepest, level) => {
     if (selectedSelection[level]?.id) return level;
@@ -69,23 +77,34 @@ export default function SearchField({
       debounceRef.current = null;
     }
     if (!query || query.length < MIN_QUERY_LENGTH) {
-      // Clear stale results only if non-empty. Calling
-      // onResultsChange unconditionally would loop: the parent
-      // re-renders, passes a new onResultsChange identity, this
-      // effect re-fires, and so on.
-      if (results.length > 0) onResultsChange([]);
+      setStatus("idle");
+      onResultsChangeRef.current([]);
       return undefined;
     }
+    setStatus("loading");
     debounceRef.current = setTimeout(() => {
-      getFromOpenElisServer(
-        `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
-        (response) => {
-          if (requestId !== requestIdRef.current) {
-            return;
-          }
-          onResultsChange(Array.isArray(response) ? response : []);
-        },
-      );
+      try {
+        getFromOpenElisServer(
+          `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
+          (response) => {
+            if (requestId !== requestIdRef.current) {
+              return;
+            }
+            if (response === null || response === undefined) {
+              setStatus("error");
+              onResultsChangeRef.current([]);
+              return;
+            }
+            setStatus("loaded");
+            onResultsChangeRef.current(Array.isArray(response) ? response : []);
+          },
+        );
+      } catch (e) {
+        if (requestId === requestIdRef.current) {
+          setStatus("error");
+          onResultsChangeRef.current([]);
+        }
+      }
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) {
@@ -93,8 +112,7 @@ export default function SearchField({
         debounceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, onResultsChange]);
+  }, [query]);
 
   return (
     <div className="storage-location-picker-search">
@@ -130,12 +148,55 @@ export default function SearchField({
             setActiveIndex((prev) => Math.max(prev - 1, 0));
             return;
           }
-          if ((e.key === "Enter" || e.key === " ") && activeIndex >= 0) {
+          if (e.key === "Enter" && activeIndex >= 0) {
             e.preventDefault();
-            onSelect(results[activeIndex]);
+            const selected = results[activeIndex];
+            onSelect(selected);
+            onQueryChange(selected.hierarchicalPath || selected.name || "");
+            onResultsChange([]);
           }
         }}
       />
+      {query.length > 0 && query.length < MIN_QUERY_LENGTH && (
+        <p className="storage-location-picker-search-status">
+          {intl.formatMessage({
+            id: "storage.search.location.minLength",
+            defaultMessage: "Keep typing, at least 2 characters",
+          })}
+        </p>
+      )}
+      {status === "loading" && (
+        <div className="storage-location-picker-search-status">
+          <InlineLoading
+            description={intl.formatMessage({
+              id: "storage.search.location.searching",
+              defaultMessage: "Searching...",
+            })}
+          />
+        </div>
+      )}
+      {status === "error" && (
+        <p
+          className="storage-location-picker-search-status storage-location-picker-search-error"
+          role="alert"
+        >
+          {intl.formatMessage({
+            id: "storage.search.location.error",
+            defaultMessage: "Could not search locations. Please try again.",
+          })}
+        </p>
+      )}
+      {status === "loaded" && results.length === 0 && (
+        <p className="storage-location-picker-search-status">
+          {intl.formatMessage(
+            {
+              id: "storage.search.location.noResults",
+              defaultMessage: 'No storage locations match "{query}"',
+            },
+            { query },
+          )}
+        </p>
+      )}
       {results.length > 0 && (
         <ul
           id="storage-location-picker-search-results"
@@ -153,6 +214,10 @@ export default function SearchField({
             // sole keyboard tab stop; list options are not tab-reachable.
             // Navigation is via arrow keys on the input, selection is
             // surfaced via aria-activedescendant. Mouse users get onClick.
+            const parts = (result.hierarchicalPath || result.name || "").split(
+              " › ",
+            );
+            const depth = parts.length - 1;
             return (
               <li
                 id={optionId}
@@ -160,10 +225,23 @@ export default function SearchField({
                 role="option"
                 aria-selected={isSelected}
                 tabIndex={-1}
+                className={`storage-search-result depth-${depth}`}
+                style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => onSelect(result)}
+                onClick={() => {
+                  onSelect(result);
+                  onQueryChange(result.hierarchicalPath || result.name || "");
+                  onResultsChange([]);
+                }}
               >
-                {result.hierarchicalPath || result.name}
+                {depth > 0 && (
+                  <span className="storage-search-result-ancestors">
+                    {parts.slice(0, -1).join(" › ")} ›{" "}
+                  </span>
+                )}
+                <span className="storage-search-result-leaf">
+                  {parts[parts.length - 1]}
+                </span>
               </li>
             );
           })}

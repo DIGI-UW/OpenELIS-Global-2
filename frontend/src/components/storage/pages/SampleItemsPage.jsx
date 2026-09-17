@@ -163,7 +163,14 @@ export default function SampleItemsPage() {
       const externalId = it.sampleItemExternalId || null;
       const displayId = externalId || sampleItemId;
       const isDisposed = it.status === "disposed" || it.status === "Disposed";
-      const locationPath = it.location || it.hierarchicalPath || "";
+      const isStorageSkipped = it.storageSkipped === true;
+      const locationPath =
+        isStorageSkipped && !it.location && !it.hierarchicalPath
+          ? intl.formatMessage({
+              id: "storage.location.skipped",
+              defaultMessage: "Storage Skipped",
+            })
+          : it.location || it.hierarchicalPath || "";
       return {
         id: sampleItemId,
         sampleItemId: displayId,

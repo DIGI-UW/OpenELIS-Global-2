@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-unmigrated-analyzer-preserved"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer a JOIN analyzer_plugin_config c ON
+                c.analyzer_id = a.id
+                WHERE a.id = 900011 AND a.is_active IS TRUE AND a.status = 'SETUP'
+                AND c.config::text LIKE '%preserve-me%'
+            </sqlCheck>
+            <tableExists tableName="analyzer_test_map" />
+            <columnExists tableName="analyzer"
+                columnName="machine_id" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM databasechangelog WHERE id =
+                '098-remove-superseded-analyzer-schema'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

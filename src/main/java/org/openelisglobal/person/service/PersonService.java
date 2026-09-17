@@ -33,4 +33,10 @@ public interface PersonService extends BaseObjectService<Person, String> {
     String getFax(Person person);
 
     String getEmail(Person person);
+
+    List<Person> getPagesOfSearchedRequestorContacts(int startingRecNo, String searchValue, long requesterTypeId);
+
+    int getTotalSearchedRequestorContactCount(String searchValue, long requesterTypeId);
+
+    Person getRequestorContactByName(String firstName, String lastName, long requesterTypeId);
 }
