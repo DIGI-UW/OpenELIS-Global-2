@@ -12,6 +12,14 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 
+// CodeGenerator.toCode minus the trailing-underscore trim (done in handleSave),
+// so a space typed mid-code survives as the next character's separator.
+const toCodePrefix = (value) =>
+  value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+/, "");
+
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -209,19 +217,15 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
       } else {
-        // Optional user-supplied code; blank means the server auto-generates
-        // one from the name. Locked once saved, so never sent on update.
-        sanitizedData.code = formData.code?.trim() || null;
+        // Never sent on update: lot numbers embed it (generateLotNumber).
+        sanitizedData.code = formData.code.replace(/_+$/, "") || null;
         await InventoryItemAPI.create(sanitizedData);
       }
       setSaving(false);
       onSave();
     } catch (err) {
       console.error("Error saving item:", err);
-      // err.errorCode (OGC-658 C8) is an en.json message id set by
-      // InventoryItemRestController for
-      // validation failures (duplicate/malformed code, etc.) — prefer it over
-      // err.message, which is the untranslated backend fallback string.
+      // errorCode is an en.json id; message is the raw backend string.
       const errorMessage = err.errorCode
         ? intl.formatMessage({ id: err.errorCode }, err.params)
         : err.message ||
@@ -292,7 +296,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                     "Stable identifier used by integrations. Leave blank and we'll generate one from the name.",
                 })
           }
-          onChange={(e) => handleChange("code", e.target.value.toUpperCase())}
+          maxLength={64}
+          onChange={(e) => handleChange("code", toCodePrefix(e.target.value))}
         />
 
         <Dropdown

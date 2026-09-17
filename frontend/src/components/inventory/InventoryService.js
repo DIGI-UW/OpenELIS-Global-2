@@ -54,13 +54,15 @@ const post = (endpoint, data) => {
             return;
           }
           // Handle standard message/error fields
-          reject(
-            new Error(
-              json.message ||
-                json.error ||
-                `Request failed with status ${json.status || json.statusCode}`,
-            ),
+          const err = new Error(
+            json.message ||
+              json.error ||
+              `Request failed with status ${json.status || json.statusCode}`,
           );
+          // Translated-error body from a LocalizedValidationException
+          err.errorCode = json.errorCode;
+          err.params = json.params;
+          reject(err);
         } else {
           resolve(json);
         }

@@ -42,8 +42,8 @@ describe("LinkReagentModal", () => {
   it("shows the reagent multi-select populated from inventory", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([
-        { id: "GLUCOSE_REAGENT", name: "Glucose Reagent" },
-        { id: "BUFFER_SOLUTION", name: "Buffer Solution" },
+        { id: 7, name: "Glucose Reagent" },
+        { id: 9, name: "Buffer Solution" },
       ]),
     );
     renderModal();
@@ -62,9 +62,9 @@ describe("LinkReagentModal", () => {
 
   it("excludes already-linked reagents and shows the all-linked notice", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
-      cb([{ id: "GLUCOSE_REAGENT", name: "Glucose Reagent" }]),
+      cb([{ id: 7, name: "Glucose Reagent" }]),
     );
-    renderModal({ linkedReagentIds: ["GLUCOSE_REAGENT"] });
+    renderModal({ linkedReagentIds: [7] });
     expect(
       await screen.findByText(
         messages["label.testCatalog.reagents.modal.allLinked"],

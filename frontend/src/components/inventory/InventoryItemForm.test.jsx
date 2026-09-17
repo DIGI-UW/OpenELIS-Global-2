@@ -78,6 +78,31 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     expect(onSave).toHaveBeenCalled();
   });
 
+  it("normalizes the code like the server does and caps it at 64 characters", async () => {
+    InventoryItemAPI.create.mockResolvedValue({ id: 1003, code: "MY_REAGENT" });
+    renderForm();
+
+    fireEvent.change(await screen.findByLabelText(/^item name/i), {
+      target: { value: "My Reagent" },
+    });
+    const codeInput = screen.getByLabelText(/code/i);
+    expect(codeInput).toHaveAttribute("maxlength", "64");
+
+    fireEvent.change(codeInput, { target: { value: " my reagent, v1 " } });
+    expect(codeInput).toHaveValue("MY_REAGENT_V1_");
+    fireEvent.change(screen.getByLabelText(/stability after opening/i), {
+      target: { value: "30" },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryItemAPI.create).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "MY_REAGENT_V1" }),
+      );
+    });
+  });
+
   it("submits a null code when left blank, letting the server auto-generate one", async () => {
     InventoryItemAPI.create.mockResolvedValue({ id: 1001, code: "GENERATED" });
     renderForm();
@@ -119,6 +144,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
       expect(InventoryItemAPI.update).toHaveBeenCalled();
     });
     const [, payload] = InventoryItemAPI.update.mock.calls[0];
+    expect(payload.code).toBeUndefined();
     expect(payload.id).toBeUndefined();
   });
 
