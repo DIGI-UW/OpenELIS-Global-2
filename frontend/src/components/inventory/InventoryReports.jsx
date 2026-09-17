@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   Form,
   Stack,
+  Row,
   Dropdown,
   DatePicker,
   DatePickerInput,
@@ -226,29 +227,46 @@ const InventoryReports = () => {
                       <span style={{ color: "#da1e28" }}> *</span>
                     )}
                   </FormLabel>
-                  <DatePicker
-                    datePickerType="range"
-                    value={[formData.startDate, formData.endDate]}
-                    onChange={(dates) => {
-                      handleChange("startDate", dates[0] || null);
-                      handleChange("endDate", dates[1] || null);
-                    }}
-                  >
-                    <DatePickerInput
-                      id="startDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "reports.startDate",
-                      })}
-                      size="md"
-                    />
-                    <DatePickerInput
-                      id="endDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({ id: "reports.endDate" })}
-                      size="md"
-                    />
-                  </DatePicker>
+
+                  <Row>
+                    <Column lg={4} md={4} sm={4}>
+                      <DatePicker
+                        datePickerType="single"
+                        value={formData.startDate}
+                        onChange={(dates) =>
+                          handleChange("startDate", dates[0] || null)
+                        }
+                      >
+                        <DatePickerInput
+                          id="startDate"
+                          placeholder="mm/dd/yyyy"
+                          labelText={intl.formatMessage({
+                            id: "reports.startDate",
+                          })}
+                          size="md"
+                        />
+                      </DatePicker>
+                    </Column>
+
+                    <Column lg={4} md={4} sm={4}>
+                      <DatePicker
+                        datePickerType="single"
+                        value={formData.endDate}
+                        onChange={(dates) =>
+                          handleChange("endDate", dates[0] || null)
+                        }
+                      >
+                        <DatePickerInput
+                          id="endDate"
+                          placeholder="mm/dd/yyyy"
+                          labelText={intl.formatMessage({
+                            id: "reports.endDate",
+                          })}
+                          size="md"
+                        />
+                      </DatePicker>
+                    </Column>
+                  </Row>
                 </div>
 
                 {/* Filter Options */}
