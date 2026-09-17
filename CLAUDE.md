@@ -42,21 +42,15 @@ Integration" for:
 
 ### Test Skipping (CRITICAL)
 
-**MUST use BOTH flags** when skipping tests:
+Use both flags to skip test compilation and execution in development builds:
 
 ```bash
-# CORRECT (skips ALL tests including Surefire and Failsafe)
 mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# WRONG (only skips Surefire, Failsafe integration tests still run)
-mvn clean install -DskipTests
 ```
 
-**Why both flags?**
-
-- `-DskipTests`: Skips Surefire unit test execution
-- `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
-  Failsafe)
+`-DskipTests` alone skips execution while retaining test compilation. The root
+project uses Surefire for unit and integration classes; it does not configure
+Failsafe.
 
 **Exception — CI shared-build root project:** The E2E `shared-build` step in
 both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits

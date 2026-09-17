@@ -54,17 +54,13 @@ Verify compliance with
 - [ ] **Test Coverage**: Unit + ORM validation (if applicable) + integration +
       E2E tests planned (>80% backend, >70% frontend coverage goal per
       Constitution V)
-  - E2E tests MUST follow Cypress best practices (Constitution V.5):
-    - Run tests individually during development (not full suite)
-    - Browser console logging enabled and reviewed after each run
-    - Video recording disabled by default
-    - Post-run review of console logs and screenshots required
-    - Use data-testid selectors (PREFERRED)
-    - Use cy.session() for login state (10-20x faster)
-    - Use API-based test data setup (10x faster than UI)
-    - See
-      [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
-      for comprehensive Cypress guidance
+  - E2E tests follow Constitution V.5 and the registered project rules:
+    - Use Playwright for new tests; maintain existing Cypress coverage.
+    - Run individual files during development; review console logs, screenshots,
+      and results after each run.
+    - Use the existing authentication setup and stable role/test-id selectors.
+    - Follow the project's data-setup policy, including UI-only demo constraints.
+    - See `frontend/playwright/README.md` for projects and local execution.
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
@@ -197,7 +193,7 @@ data management, and checkpoint validations.
 ### Coverage Goals
 
 - **Backend**: >80% code coverage (measured via JaCoCo)
-- **Frontend**: >70% code coverage (measured via Jest)
+- **Frontend**: >70% code coverage (runner: Vitest; coverage provider must be configured)
 - **Critical Paths**: 100% coverage (authentication, authorization, data
   validation)
 
@@ -206,7 +202,6 @@ data management, and checkpoint validations.
 Document which test types will be used for this feature:
 
 - [ ] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
-
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
   - **Reference**:
     [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
@@ -217,26 +212,25 @@ Document which test types will be used for this feature:
   - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
 
 - [ ] **DAO Tests**: Persistence layer testing (Traditional Spring MVC)
-
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
   - **Reference**:
     [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
   - **Project Note**: This repo uses traditional Spring MVC test patterns (no
     Boot test slices).
-  - **Pattern**: Use `BaseWebContextSensitiveTest` and real DAO beans; rely on
-    rollback/fixture reset patterns from the Testing Roadmap.
+  - **Pattern**: Use real DAO beans and the shared test context where needed.
+    Add explicit `@Transactional` for rollback tests; committed tests must own
+    setup and cleanup, including tables affected by cascading truncation.
 
 - [ ] **Controller Tests**: REST API endpoints (Traditional Spring MVC)
-
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
   - **Reference**:
     [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
-  - **Project Note**: `@WebMvcTest` is not used in this repository; use
-    `BaseWebContextSensitiveTest`.
-  - **Pattern**: Use `BaseWebContextSensitiveTest` + `MockMvc`.
+  - **Component pattern**: Standalone MockMvc or focused Spring configuration
+    may mock the service boundary for HTTP mapping tests.
+  - **Integration pattern**: Shared context + real relevant services/DAOs. Load
+    the relevant security configuration when proving authorization. No Boot slices.
 
 - [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
-
   - **Reference**:
     [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
   - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
@@ -244,53 +238,49 @@ Document which test types will be used for this feature:
     connection
 
 - [ ] **Integration Tests**: Full workflow testing (Traditional Spring MVC)
-
   - **Reference**:
     [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
   - **Project Note**: `@SpringBootTest` is not used in this repository; use
     `BaseWebContextSensitiveTest`.
-  - **Pattern**: Use `BaseWebContextSensitiveTest` for full-context integration
-    tests.
+  - **Pattern**: Use `BaseWebContextSensitiveTest` when the full context is
+    needed. Verify the relevant internal path is real despite shared test mocks.
   - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
 
-- [ ] **Frontend Unit Tests**: React component logic (Jest + React Testing
+- [ ] **Frontend Unit Tests**: React component logic (Vitest + React Testing
       Library)
-
   - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - **Reference**:
-    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
-  - **Coverage Goal**: >70% (measured via Jest)
+    [Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#vitest--react-testing-library-unit-and-component-tests)
+  - **Coverage Goal**: >70% (runner: Vitest; coverage provider must be configured)
   - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
 
-- [ ] **E2E Tests**: Critical user workflows (Cypress)
-  - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
-  - **Reference**:
-    [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
-  - **Reference**:
-    [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+- [ ] **E2E Tests**: Critical user workflows (Playwright)
+  - Follow `.ai/skills/playwright/commands/write-playwright-test.md` and register
+    the spec in its existing project under `frontend/playwright.config.ts`.
+  - Reference: `frontend/playwright/README.md` and Constitution V.5.
+
+Use unit, component, integration, and end-to-end as the test taxonomy. ORM
+mapping checks cover framework configuration. Permissions, history, and
+concurrency are dimensions of coverage; human acceptance remains separate.
 
 ### Test Data Management
 
-Document how test data will be created and cleaned up:
+Document setup, transaction boundaries, data ownership, and cleanup:
 
-- **Backend**:
-
-  - **Unit Tests**: Use builders/factories for test data (NOT hardcoded values)
-  - **DAO/Integration**: Use `TestEntityManager` or `@Transactional` rollback
-
-- **Frontend**:
-  - **E2E Tests (Cypress)**:
-    - [ ] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
-          10x faster
-    - [ ] Prefer the unified fixture loader for stable baseline data:
-          `./src/test/resources/load-test-fixtures.sh` (see
-          `src/test/resources/FIXTURE_LOADER_README.md`)
-    - [ ] Use `cy.intercept()` as **spy-first** (alias + assertions). Avoid
-          stubbing backend responses in real E2E tests.
-    - [ ] **DO NOT** stub the mutation endpoint under test
-          (`PUT|POST|PATCH|DELETE`) in `frontend/cypress/e2e/` (if backend is
-          stubbed, it is not E2E).
-    - [ ] Use `cy.session()` for login state (10-20x faster than per-test login)
+- **Unit/component**: In-memory objects or existing builders; mocked boundaries
+  may isolate the behavior under test.
+- **Database integration**: Owned initial records or DBUnit fixtures, plus real
+  relevant services/DAOs for the behavior under test.
+  Explicit test `@Transactional` enables rollback; the shared base defaults to
+  `NOT_SUPPORTED`. Loader and cleanup helpers join an active transaction or own
+  an atomic committed operation. `CASCADE` may affect tables outside the XML.
+- **Commit/concurrency behavior**: Committed setup and explicit cleanup of owned
+  data, including failure paths. A test transaction must not hide the boundary
+  being tested.
+- **Browser**: Use `scripts/dev-stack` for local setup and property-gated
+  application scenarios. Follow the registered project's setup rules; do not
+  stub the backend behavior being validated as end-to-end. Existing CI SQL
+  fixture scripts are not the local feature-setup interface.
 
 ### Checkpoint Validations
 
@@ -299,5 +289,5 @@ Document which tests must pass at each SDD phase checkpoint:
 - [ ] **After Phase 1 (Entities)**: ORM validation tests must pass
 - [ ] **After Phase 2 (Services)**: Backend unit tests must pass
 - [ ] **After Phase 3 (Controllers)**: Integration tests must pass
-- [ ] **After Phase 4 (Frontend)**: Frontend unit tests (Jest) AND E2E tests
-      (Cypress) must pass
+- [ ] **After Phase 4 (Frontend)**: Frontend unit/component tests (Vitest) AND E2E tests
+      (Playwright) must pass

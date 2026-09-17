@@ -168,21 +168,16 @@ sdk use java 21.0.1-tem
 
 ### Test Skipping (CRITICAL)
 
-**IMPORTANT:** Use BOTH flags to properly skip tests during development builds:
+Use both flags for a development build that skips test compilation and execution:
 
 ```bash
-# CORRECT (skips all tests including Surefire and Failsafe)
 mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# WRONG (only skips Surefire tests, Failsafe integration tests still run)
-mvn clean install -DskipTests
 ```
 
-**Why both flags?**
-
-- `-DskipTests`: Skips Surefire unit test execution
-- `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
-  Failsafe integration tests)
+`-DskipTests` skips execution but still compiles tests. The root `pom.xml` uses
+Surefire for both unit and integration test classes; it does not configure a
+separate Failsafe runner. Builds that need the test JAR for analyzer plugins must
+keep test compilation enabled; see the shared-build exception in `CLAUDE.md`.
 
 ### Other Prerequisites
 
@@ -286,8 +281,8 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
-- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+- **Playwright** (version in `frontend/package.json`) (E2E tests — **recommended for all new tests**)
+- **Cypress** (version in `frontend/package.json`) (E2E tests — **deprecated**, existing tests will be
   migrated to Playwright)
 - **Vitest + React Testing Library** (unit tests)
 
@@ -400,20 +395,17 @@ interoperability.
 **Layers:**
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
-
    - Extend `BaseObject<String>`
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - Use JPA/Hibernate annotations (NOT XML mappings)
    - ID generation via `@GenericGenerator`
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
-
    - Interface + Implementation extends `BaseDAOImpl<Entity, String>`
    - Annotate with `@Component` + `@Transactional`
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
-
    - Interface + Implementation with `@Service` + `@Transactional`
    - **Transactions start here (NOT in controllers)**
    - **CRITICAL - Data Compilation Rule:** Services MUST eagerly fetch ALL data
@@ -424,7 +416,6 @@ interoperability.
    - Call DAOs for persistence, FHIR services for sync
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
-
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - **Controllers are singletons** - NO class-level variables
@@ -456,9 +447,9 @@ complex logic.
 2. **ORM Validation Tests** - Framework configuration validation (<5s, no
    database)
 3. **Integration Tests** - Full stack with database
-4. **E2E Tests** (Cypress) - User workflow validation
+4. **E2E Tests** (Playwright; existing Cypress maintained) - User workflow validation
 
-**Coverage Goal:** >70% for new code (JaCoCo)
+**Coverage Goals:** >80% backend (JaCoCo), >70% frontend (per Constitution V)
 
 **Section V.4: ORM Validation Tests**
 
@@ -833,7 +824,10 @@ npm run format
 # Run unit tests
 npm test
 
-# Run E2E tests (individual file during development)
+# Run a registered Playwright test after exporting scripts/dev-stack env
+npm run pw:test -- --project=core-app playwright/tests/foundational/core/{feature}.spec.ts
+
+# Maintain an existing Cypress test
 npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
 
 # Run full E2E suite (CI/CD only, not during development)
@@ -977,7 +971,6 @@ npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
 **CRITICAL RULES:**
 
 1. **Transactions start in service layer ONLY**
-
    - Services annotated with `@Transactional`
    - Controllers MUST NOT have `@Transactional` (architectural violation)
 
@@ -1074,57 +1067,25 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
-fixture loading system.
+Choose data setup for the test boundary; see the
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md).
 
-**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
-for comprehensive guide.
-
-**Key Principles:**
-
-- Single source of truth: `storage-test-data.sql` contains all test fixtures
-- Unified loader: `load-test-fixtures.sh` used by all test types
-- Dependency validation: Scripts verify required tables exist before loading
-- Comprehensive verification: Automatic verification after loading
-- Safe cleanup: Only removes test-created data, preserves fixtures
-
-**Quick Start:**
-
-```bash
-# Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness fixture lane (includes HARN-* lane data)
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Fixture Loading:**
-
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-  `load-test-fixtures.sh`
-- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
-- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
-
-**DBUnit datasets (MANDATORY for DB-backed tests):**
-
-- **Where**: `src/test/resources/testdata/*.xml`
-- **How**: Load via
-  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
-- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
-  data pollution and keep tests maintainable.
-
-**For detailed information**, see:
-
-- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -
-  Comprehensive guide
-- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) -
-  E2E-specific reference
+- Unit/component tests use in-memory objects and may mock collaborators outside
+  the behavior under test.
+- Database integration tests create only the initial state they need. Existing
+  DBUnit XML under `src/test/resources/testdata/` may be loaded through
+  `executeDataSetWithStateManagement`; owned records created through real services
+  are also appropriate. The loader and
+  `cleanRowsInCurrentConnection` join an active Spring transaction; otherwise
+  each operation commits its own work. The base class defaults to
+  `Propagation.NOT_SUPPORTED`, so rollback requires an explicit test
+  `@Transactional` annotation.
+- Fixture truncation uses `CASCADE`, which can affect tables absent from the XML.
+  Committed/concurrency tests must own setup, affected data, and cleanup;
+  fixture loading alone does not guarantee isolation.
+- For local browser/manual testing, use `scripts/dev-stack up` and the
+  property-gated application scenario services. Existing CI fixture scripts are
+  separate infrastructure, not the local feature-setup interface.
 
 **Key Resources**:
 
@@ -1156,7 +1117,7 @@ for comprehensive guide.
 
 ```
         ┌─────────────┐
-        │   E2E (5%)   │  Cypress - User workflows
+        │   E2E (5%)   │  Playwright - User workflows
         │   Slow       │
         └──────┬───────┘
        ┌───────▼────────┐
@@ -1197,210 +1158,59 @@ for common patterns and cheat sheets.
 - **After Phase 3 (Controllers)**: Integration tests MUST pass
 - **Coverage Goal**: >80% (measured via JaCoCo)
 
-### Test Slicing Strategy
+### Choose the Test Boundary
 
-**CRITICAL**: Use focused test slices when possible for faster execution.
+Use the taxonomy in the [Testing Roadmap](.specify/guides/testing-roadmap.md):
+unit, component, integration, and end-to-end. Permissions, history, and
+concurrency are behaviors to cover at the relevant boundary; human acceptance
+is separate. Existing file names do not prove what boundary a test covers.
 
-**Decision Tree**:
+This is traditional Spring MVC. Spring Boot `@WebMvcTest`, `@DataJpaTest`,
+`@SpringBootTest`, `@MockBean`, and `TestEntityManager` are not available.
 
-**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
-NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
-`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests use
-`BaseWebContextSensitiveTest`.
+| Boundary             | Existing pattern                                                         | What it proves                                                                                          |
+| -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Unit                 | JUnit 4 + `MockitoJUnitRunner`, `@Mock`, `@InjectMocks`                  | Real branching, validation, or transformation with isolated collaborators                               |
+| Controller component | `MockMvcBuilders.standaloneSetup` or a focused Spring test configuration | Request mapping and response behavior; security only when the relevant security configuration is loaded |
+| Integration          | `BaseWebContextSensitiveTest`, real relevant services/DAOs, PostgreSQL   | Connected application behavior and persisted effects                                                    |
+| End-to-end           | Playwright with the running application                                  | Browser workflow through the real backend and database                                                  |
 
-1. **Testing REST controller HTTP layer only?** → Use
-   `BaseWebContextSensitiveTest` ✅
-2. **Testing DAO/repository persistence layer only?** → Use
-   `BaseWebContextSensitiveTest` ✅
-3. **Testing complete workflow with full application context?** → Use
-   `BaseWebContextSensitiveTest` ✅
-4. **All integration tests** → Use `BaseWebContextSensitiveTest` ✅
-
-**When to Use Each**:
-
-| Test Type   | Base Class/Pattern            | Use Case               | Speed  | Context      |
-| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
-| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
-| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
-| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
-
-**Why not Spring Boot test annotations?**
-
-- This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**, not
-  Spring Boot
-- No `spring-boot-starter-test` dependency
-- No `@SpringBootApplication` - uses `@EnableWebMvc` + `@Configuration` instead
-- WAR packaging (not JAR) - deployed to Tomcat
-
-**Reference**:
-[Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
+Use the smallest context that proves the behavior. For examples of focused
+controller tests, see `AnalyzerConnectionProbeRestControllerTest` and
+`AnalyzerWorkflowAuthorizationSecurityTest`. Loading a full context does not
+prove integration if the relevant internal services are mocked. Inspect
+`AppTestConfig` replacements before choosing an integration setup.
 
 ### Unit Tests (JUnit 4 + Mockito)
 
-**Location:** `src/test/java/org/openelisglobal/{module}/service/`
+Use `org.junit.Test` and `org.junit.Assert` with expected value first. Mocking
+DAOs or services is appropriate when they are outside the unit under test.
+Assert real decisions, transformed values, rejected input, or exact delegated
+arguments; merely asserting that a service returns its mock's return value
+provides no useful business regression coverage. Include negative and boundary
+cases required by Constitution V.6.
 
-**Pattern:**
+Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`.
 
-```java
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+### Controller and DAO Tests
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.when;
+The filenames `WebMvcTestController.java.template` and
+`DataJpaTestDao.java.template` are retained template names, not Spring Boot
+annotations. Read their current contents before use.
 
-@RunWith(MockitoJUnitRunner.class)
-public class SampleServiceTest {
-    @Mock  // ✅ Use @Mock for isolated unit tests (NOT @MockBean)
-    private SampleDAO sampleDAO;
+- Controller component tests may mock the service boundary. Integration tests
+  must exercise the relevant real internal services and persistence.
+- The shared base builds a protected `mockMvc` field in `@Before`; do not
+  autowire another `MockMvc` field. Its default principal and MockMvc setup do
+  not establish coverage of production security filters.
+- Database tests that can use rollback must explicitly add `@Transactional`.
+  Use DBUnit for fixtures and injected JPA/Hibernate objects for persistence
+  assertions; flush and clear before rereading persisted state when applicable.
+- Tests of independent connections, concurrency, or commit-time behavior need
+  committed setup and explicit cleanup instead of an enclosing test transaction.
 
-    @InjectMocks
-    private SampleServiceImpl sampleService;
-
-    @Test
-    public void testGetSampleById_ReturnsCorrectSample() {
-        // Arrange
-        Sample expected = SampleBuilder.create()
-            .withId("123")
-            .build();
-        when(sampleDAO.get("123")).thenReturn(expected);
-
-        // Act
-        Sample actual = sampleService.getSampleById("123");
-
-        // Assert
-        assertNotNull("Sample should not be null", actual);
-        assertEquals("Sample ID should match", "123", actual.getId());
-    }
-}
-```
-
-**Key Points:**
-
-- Use JUnit 4 imports (`org.junit.Test`, NOT `org.junit.jupiter.api.Test`)
-- Use `@Mock` for isolated unit tests (NOT `@MockBean` - that's for Spring
-  context tests)
-- Assertion order: `assertEquals(expected, actual)`
-- Mock DAO layer, test service logic only
-- Use builders/factories for test data (NOT hardcoded values)
-- Test business logic only (mock dependencies)
-
-**Template:** `.specify/templates/testing/JUnit4ServiceTest.java.template`
-
-### Controller Tests (BaseWebContextSensitiveTest)
-
-**Location:** `src/test/java/org/openelisglobal/{module}/controller/`
-
-**Use for**: Testing REST controllers with full Spring context.
-
-**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
-NOT Spring Boot. Therefore, `@WebMvcTest` is **NOT available**. All controller
-tests extend `BaseWebContextSensitiveTest`.
-
-**Pattern:**
-
-```java
-public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean  // ✅ Use @MockBean for Spring context tests (NOT @Mock)
-    private StorageLocationService storageLocationService;
-
-    @Test
-    public void testGetLocation_WithValidId_ReturnsLocation() throws Exception {
-        StorageRoom room = StorageRoomBuilder.create()
-            .withId("ROOM-001")
-            .withName("Main Laboratory")
-            .build();
-        when(storageLocationService.getLocationById("ROOM-001")).thenReturn(room);
-
-        mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
-                .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value("ROOM-001"));
-    }
-}
-```
-
-**Key Points:**
-
-- Extends `BaseWebContextSensitiveTest` (provides MockMvc)
-- Use `@MockBean` (NOT `@Mock`) for Spring context mocking
-- Use `MockMvc` for HTTP request/response testing
-- Use JSONPath for response assertions
-- Mock service layer, test HTTP layer only
-
-**Template:** `.specify/templates/testing/WebMvcTestController.java.template`
-
-### DAO Tests (BaseWebContextSensitiveTest)
-
-**Location:** `src/test/java/org/openelisglobal/{module}/dao/`
-
-**Use for**: Testing persistence layer with real HQL query execution.
-
-**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
-NOT Spring Boot. Therefore, `@DataJpaTest` is **NOT available**. All DAO tests
-extend `BaseWebContextSensitiveTest`.
-
-**Pattern:**
-
-```java
-public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
-    @Autowired
-    private DataSource dataSource;
-
-    @Autowired
-    private StorageLocationDAO storageLocationDAO;
-
-    private JdbcTemplate jdbcTemplate;
-
-    @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        cleanTestData();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanTestData();
-    }
-
-    @Test
-    public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
-        StorageRoom room = StorageRoomBuilder.create()
-            .withId("ROOM-001")
-            .withName("Main Lab")
-            .build();
-        entityManager.persist(room);
-
-        StorageDevice device = StorageDeviceBuilder.create()
-            .withId("DEV-001")
-            .withName("Freezer 1")
-            .withParentRoom(room)
-            .build();
-        entityManager.persist(device);
-        entityManager.flush();
-
-        List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
-
-        assertEquals("Should return one device", 1, devices.size());
-        assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
-    }
-}
-```
-
-**Key Points:**
-
-- Use `TestEntityManager` for test data (NOT JdbcTemplate)
-- Automatic transaction rollback (no manual cleanup needed)
-- Test HQL queries, CRUD operations, relationships
-
-**Template:** `.specify/templates/testing/DataJpaTestDao.java.template`
+See [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+for fixture ownership and transaction examples.
 
 ### Frontend Unit Tests (Vitest + React Testing Library)
 
@@ -1413,7 +1223,7 @@ public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 `@testing-library/jest-dom` matchers are wired via `frontend/src/setupTests.js`.
 
 **For Comprehensive Guidance**: See
-[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#vitest--react-testing-library-unit-and-component-tests)
 for detailed patterns, code examples, and best practices.
 
 **For Quick Reference**: See
@@ -1427,13 +1237,15 @@ common patterns, cheat sheets, and a Vitest↔Jest API mapping table.
 - **Refactor**: Improve code quality while keeping tests green
 
 **SDD Checkpoint:** After Phase 4 (Frontend), all unit tests MUST pass  
-**Coverage Goal:** >70% (measured via Vitest + `@vitest/coverage-v8`)
+**Coverage Goal:** >70%. Vitest runs the tests; a coverage provider is not
+currently declared in `frontend/package.json`.
 
 **Pattern:**
 
 ```javascript
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -1452,7 +1264,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -1541,60 +1353,14 @@ public class HibernateMappingValidationTest {
 
 ### Integration Tests (BaseWebContextSensitiveTest)
 
-**Location:** `src/test/java/org/openelisglobal/{module}/controller/` or
-`src/test/java/org/openelisglobal/{module}/service/`
+Exercise real services, DAO queries, and PostgreSQL for the behavior under test.
+Use the [backend guide](.specify/guides/backend-testing-best-practices.md) to
+choose rollback isolation or committed setup. Do not hide commit/transaction
+failures by wrapping every workflow in a test transaction, and do not replace
+relevant internal services with mocks merely to make full-context setup pass.
 
-**Use for**: Testing complete workflows that require full application context.
-
-**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
-NOT Spring Boot. Therefore, `@SpringBootTest` is **NOT available**. All
-integration tests extend `BaseWebContextSensitiveTest`.
-
-**Pattern:**
-
-```java
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-
-import javax.sql.DataSource;
-
-public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
-    @Autowired
-    private SampleService sampleService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbcTemplate;
-
-    @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        cleanTestData();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanTestData();
-    }
-
-    @Test
-    public void testSaveSample_PersistsToDatabase() {
-        Sample sample = SampleBuilder.create()
-            .withAccessionNumber("2025-00001")
-            .build();
-
-        sampleService.save(sample);
-
-        Sample retrieved = sampleService.getSampleByAccessionNumber("2025-00001");
-        assertNotNull("Sample should be persisted", retrieved);
-    }
-}
-```
+Run one class with `mvn test -Dtest=YourIntegrationTest`. Both unit and integration
+classes run through Surefire; there is no separate `integration` Maven profile.
 
 ### E2E Tests (Cypress) — DEPRECATED
 
@@ -2022,22 +1788,15 @@ import org.junit.Assert.*;  // JUnit 4
 
 ### Incomplete Test Skipping
 
-**Symptom:** "Skipping tests" message shown but tests still run (Failsafe
-integration tests)
-
-**Cause:** Using only `-DskipTests` flag
-
-**Wrong:**
-
-```bash
-mvn clean install -DskipTests
-```
-
-**Correct:**
+`-DskipTests` skips execution but retains test compilation. For a development
+build that also skips compilation, use both flags:
 
 ```bash
 mvn clean install -DskipTests -Dmaven.test.skip=true
 ```
+
+Keep test compilation enabled for the shared-build plugin test-JAR requirement
+in `CLAUDE.md`. A build with tests skipped is not test validation.
 
 ### @Transactional in Controllers
 
@@ -2212,50 +1971,40 @@ import jakarta.persistence.Entity;  // ✅ CORRECT
 Before creating PR, verify ALL items:
 
 1. **GitHub Issue Reference:**
-
    - PR title includes issue number: `issue-123: Add storage location widget` or
      `001-sample-storage: Implement barcode scanning`
 
 2. **Branch Naming:**
-
    - Branch name follows Constitution Principle IX (e.g.,
      `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
-
    - Always target `develop` (unless hotfix to `main`)
 
 4. **Code Formatting (MANDATORY):**
-
    - Backend: `mvn spotless:apply` - MUST run before commit
    - Frontend: `npm run format` - MUST run before commit
    - Pre-commit hooks recommended
 
 5. **Build Verification:**
-
    - `mvn clean install -DskipTests -Dmaven.test.skip=true` passes locally
 
 6. **Tests Included:**
-
    - Unit tests for business logic
    - ORM validation tests (if new entities)
    - Integration tests for API endpoints
    - E2E tests for user workflows (if UI changes)
 
 7. **Test Coverage:**
-
    - > 70% coverage for new code (JaCoCo report)
 
 8. **UI Screenshots:**
-
    - Attach before/after images for UI changes
 
 9. **Single Concern:**
-
    - PR addresses ONE issue only (no mixed refactoring + features)
 
 10. **Constitution Compliance:**
-
     - [ ] Layered architecture respected (Principle IV)
     - [ ] Carbon Design System used exclusively (Principle II)
     - [ ] FHIR compliance for external data (Principle III)
@@ -2265,20 +2014,16 @@ Before creating PR, verify ALL items:
     - [ ] Security/compliance requirements met (Principle VIII)
 
 11. **No Hardcoded Strings:**
-
     - All user-facing text uses React Intl
 
 12. **Liquibase Changesets:**
-
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
 
 13. **FHIR Resources Validated:**
-
     - If FHIR-mapped entities, test FHIR transformation
 
 14. **Documentation Updated:**
-
     - Update spec.md, plan.md, quickstart.md if applicable
 
 15. **Review Assignment:**
