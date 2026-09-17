@@ -21,8 +21,8 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 /**
  * OGC-224 — Panel editor · Basic Info (FRS v2.2).
  *
- * Panel Name (required) · Domain (radio; only Clinical enabled at launch —
- * Environmental / Vector disabled with the later-phase note) · Sample Types
+ * Panel Name (required) · Domain (radio; set on the panel itself, never worked
+ * out from the sample types its tests use — OGC-1209) · Sample Types
  * (read-only, DERIVED from the member tests) · Description · Active toggle.
  * Activation rule: with zero tests the toggle is disabled (not clickable)
  * with helper text; editing never auto-flips the state. There is no code
@@ -139,13 +139,11 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             labelText={intl.formatMessage({ id: "label.domain.ENVIRONMENTAL" })}
             value="ENVIRONMENTAL"
             id="panel-domain-environmental"
-            disabled
           />
           <RadioButton
             labelText={intl.formatMessage({ id: "label.domain.VECTOR" })}
             value="VECTOR"
             id="panel-domain-vector"
-            disabled
           />
         </RadioButtonGroup>
         <p className="panel-helper-text" style={helperStyle}>

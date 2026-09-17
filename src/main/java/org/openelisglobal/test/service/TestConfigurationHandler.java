@@ -14,10 +14,12 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
+import org.openelisglobal.configuration.service.UnresolvedReferenceService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.service.LegacyTestVariantFinder.LegacyTestVariant;
@@ -71,8 +73,12 @@ import org.springframework.transaction.PlatformTransactionManager;
  * {@code isOrderable} (default Y); {@code sortOrder} (auto-assigned);
  * {@code unitOfMeasure} (must already exist); {@code isReportable} (default Y);
  * {@code notifyResults}; {@code localCode} (at most 10 characters);
- * {@code localization:xx} display names, falling back to {@code testName} for
- * the fallback locale.
+ * {@code reportingName} (the name printed on reports); {@code domain}
+ * (CLINICAL, ENVIRONMENTAL, ...; defaults to the lab unit's); {@code amr}
+ * (antimicrobial resistance test, Y/N); {@code localization:xx} display names,
+ * falling back to {@code testName} for the fallback locale. A lab unit or
+ * sample type the row names but the catalog does not know is looked up among
+ * the remembered aliases and otherwise queued for a decision (OGC-1194).
  */
 @Component
 public class TestConfigurationHandler implements DomainConfigurationHandler {
@@ -81,13 +87,11 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     private static final int LOCAL_CODE_MAX_LENGTH = 10;
     private static final int DESCRIPTION_MAX_LENGTH = 60;
     private static final String DEFAULT_DOMAIN = "CLINICAL";
+    private static final String FALLBACK_LOCALE = "en";
     private static final String SYS_USER_ID = "1";
 
     @Autowired
     private TestService testService;
-
-    @Autowired
-    private TestSectionService testSectionService;
 
     @Autowired
     private LocalizationValueService localizationValueService;
@@ -116,14 +120,20 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     @Autowired
     private LegacyTestVariantFinder legacyVariantFinder;
 
+    @Autowired
+    private CatalogReferenceResolver referenceResolver;
+
+    @Autowired(required = false)
+    private UnresolvedReferenceService unresolvedReferenceService;
+
     @Autowired(required = false)
     private PlatformTransactionManager transactionManager;
 
     private volatile CsvLoadSummary lastSummary;
 
     private record Columns(int testName, int testSection, int sampleType, int loinc, int isActive, int isOrderable,
-            int sortOrder, int unitOfMeasure, int isReportable, int notifyResults, int localCode,
-            Map<String, Integer> localization) {
+            int sortOrder, int unitOfMeasure, int isReportable, int notifyResults, int localCode, int reportingName,
+            int domain, int amr, Map<String, Integer> localization) {
     }
 
     @Override
@@ -147,7 +157,17 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    public boolean supportsDryRun() {
+        return true;
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
+        processConfiguration(inputStream, fileName, false);
+    }
+
+    @Override
+    public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         String headerLine = reader.readLine();
@@ -162,10 +182,12 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                 findColumnIndex(headers, "isActive"), findColumnIndex(headers, "isOrderable"),
                 findColumnIndex(headers, "sortOrder"), findColumnIndex(headers, "unitOfMeasure"),
                 findColumnIndex(headers, "isReportable"), findColumnIndex(headers, "notifyResults"),
-                findColumnIndex(headers, "localCode"), detectLocalizationColumns(headers));
+                findColumnIndex(headers, "localCode"), findColumnIndex(headers, "reportingName"),
+                findColumnIndex(headers, "domain"), findColumnIndex(headers, "amr"),
+                detectLocalizationColumns(headers));
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
-        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
         Set<String> touchedTestIds = new LinkedHashSet<>();
         String line;
         int lineNumber = 1;
@@ -187,19 +209,33 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                 result = LoadedRow.skipped(CsvLoadSummary.reason(e));
             }
             summary.record(result, getClass().getSimpleName(), rowLine);
+            recordUnresolved(fileName, rowLine);
             if (!result.isSkipped()) {
                 touchedTestIds.addAll(result.value());
                 nextSortOrder++;
             }
         }
 
-        bridgeToEditorModel(touchedTestIds);
+        if (!dryRun) {
+            bridgeToEditorModel(touchedTestIds);
+        }
 
         testService.refreshTestNames();
         DisplayListService.getInstance().refreshLists();
 
         summary.log(getClass().getSimpleName());
         lastSummary = summary;
+    }
+
+    /**
+     * Writes the names this row could not resolve into the decision queue, once the
+     * row's own transaction has ended. Without a Spring context, as in plain unit
+     * tests, there is no queue to write to.
+     */
+    private void recordUnresolved(String fileName, int lineNumber) {
+        if (unresolvedReferenceService != null) {
+            unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
+        }
     }
 
     private LoadedRow<List<String>> processRow(String[] values, Columns columns, int lineNumber, String fileName,
@@ -213,7 +249,8 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         if (testSectionName.isEmpty()) {
             return LoadedRow.skipped("missing testSection");
         }
-        TestSection testSection = testSectionService.getTestSectionByName(testSectionName);
+        TestSection testSection = referenceResolver.resolveTestSection(testSectionName,
+                fileName + " line " + lineNumber + " (test " + testName + ")");
         if (testSection == null) {
             return LoadedRow.skipped("test section '" + testSectionName + "' not found");
         }
@@ -346,7 +383,23 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             test.setLocalCode(localCode);
         }
 
+        String domain = getValueOrEmpty(values, columns.domain());
+        if (!domain.isEmpty()) {
+            test.setDomain(domain.toUpperCase());
+        }
+
+        String amr = getValueOrEmpty(values, columns.amr());
+        if (!amr.isEmpty()) {
+            test.setAntimicrobialResistance(parseFlag(amr, false));
+        }
+
         applyTranslations(test, values, testName, columns.localization());
+        String reportingName = getValueOrEmpty(values, columns.reportingName());
+        if (!reportingName.isEmpty() && test.getLocalizedReportingName() != null
+                && test.getLocalizedReportingName().getId() != null) {
+            localizationValueService.setTranslation(test.getLocalizedReportingName().getId(), FALLBACK_LOCALE,
+                    reportingName, SYS_USER_ID);
+        }
 
         test.setSysUserId(SYS_USER_ID);
         testService.update(test);
@@ -603,22 +656,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private TypeOfSample findSampleType(String sampleTypeName) {
-        List<TypeOfSample> allSampleTypes = typeOfSampleService.getAllTypeOfSamples();
-
-        for (TypeOfSample sampleType : allSampleTypes) {
-            if (sampleType.getLocalizedName() != null
-                    && sampleType.getLocalizedName().equalsIgnoreCase(sampleTypeName)) {
-                return sampleType;
-            }
-            if (sampleType.getDescription() != null && sampleType.getDescription().equalsIgnoreCase(sampleTypeName)) {
-                return sampleType;
-            }
-            if (sampleType.getLocalAbbreviation() != null
-                    && sampleType.getLocalAbbreviation().equalsIgnoreCase(sampleTypeName)) {
-                return sampleType;
-            }
-        }
-        return null;
+        return referenceResolver.resolveSampleType(sampleTypeName, "tests.csv sample type");
     }
 
     private boolean mappingExists(String testId, String sampleTypeId) {

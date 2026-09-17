@@ -546,4 +546,8 @@
        (Test Catalog, OGC-1148). -->
   <include relativeToChangelogFile="true" file="102-test-qc-targets.xml"/>
 
+  <!-- Catalog import runs, the "Needs your decision" queue and remembered aliases
+       (Test catalog import v2, OGC-1194). -->
+  <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
+
 </databaseChangeLog>

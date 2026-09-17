@@ -182,6 +182,9 @@
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
         <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
         <class>org.openelisglobal.testcatalog.valueholder.TestQcTarget</class>
+        <class>org.openelisglobal.configuration.valueholder.ConfigurationImportRun</class>
+        <class>org.openelisglobal.configuration.valueholder.UnresolvedReference</class>
+        <class>org.openelisglobal.configuration.valueholder.ReferenceAlias</class>
         <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
 
         <!-- Barcode Label Presets (OGC-285 M2) -->
