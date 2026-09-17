@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -63,6 +64,9 @@ public class BaseTestConfig {
     @Profile("test")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        // JDBC fixture operations and Hibernate must join the same test transaction.
+        emf.setDataSource(dataSource);
+        emf.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
         emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
         return emf;
     }

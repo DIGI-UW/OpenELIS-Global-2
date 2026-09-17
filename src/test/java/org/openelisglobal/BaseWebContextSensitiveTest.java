@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -42,6 +43,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
+import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -106,10 +108,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * cached values.
      */
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
-            { "patient", "patient_seq" }, { "patient_identity", "patient_identity_seq" }, { "sample", "sample_seq" },
-            { "sample_item", "sample_item_seq" }, { "sample_human", "sample_human_seq" },
-            { "analysis", "analysis_seq" }, { "result", "result_seq" }, { "inventory_item", "inventory_item_seq" },
-            { "observation_history", "observation_history_seq" } };
+            { "patient", "patient_seq" }, { "patient_identity", "patient_identity_seq" },
+            { "nc_event", "nc_event_id_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
+            { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -243,68 +245,62 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        InputStream inputStream = null;
-
-        // Use a single JDBC connection for both TRUNCATE and REFRESH so that
-        // if REFRESH fails the truncation can be rolled back and the next test
-        // does not start with an empty database.
-        try (Connection jdbcConn = dataSource.getConnection()) {
-            jdbcConn.setAutoCommit(false);
-            IDatabaseConnection dbUnitConn = buildDbUnitConnection(jdbcConn);
-            try {
-                inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
-
-                if (inputStream == null) {
-                    throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
-                }
-
-                // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-                // or refreshing. This makes the static seed (reference_tables, etc.)
-                // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-                // Any <reference_tables> rows declared by a fixture are silently
-                // ignored; the SQL-seeded row stays in place.
-                // Column sensing scans ALL rows to build the column list, so a mistyped
-                // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
-                // hard PSQLException instead of being silently dropped.
-                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                        new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
-
-                truncateTablesInConnection(jdbcConn, dataset.getTableNames());
-                DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
-                synchronizeFixtureSequences(jdbcConn, dataset.getTableNames());
-                jdbcConn.commit();
-
-                // truncateTablesInConnection TRUNCATEs every table the dataset names
-                // and REFRESH re-inserts only the dataset's own rows — so a dataset
-                // that declares system_user without an id=1 row leaves the shared
-                // container missing the audit user every later sample insert FKs to
-                // (sample_sysuser_fk). Seven datasets do exactly that
-                // (analysis-qa-event-action, sample-qa-event-action,
-                // pathology-sample, result-select-list, role-module,
-                // system-user-module, system-user-section), which made unrelated
-                // tests fail order-dependently. Restore the seed invariant after
-                // every load so no dataset can drop it.
-                ensureAuditSystemUser();
-
-                // Refresh StatusService cache to pick up any status_of_sample changes
-                // from the loaded test data
-                if (statusService != null) {
-                    statusService.refreshCache();
-                }
-                // Same for ObservationHistoryService — it caches ObservationType → id
-                // on first call and never invalidates unless asked. Without this,
-                // earlier-running test classes' fixtures pin a stale mapping.
-                if (observationHistoryService != null) {
-                    observationHistoryService.refreshTypeIdCache();
-                }
-            } catch (Exception e) {
-                jdbcConn.rollback();
-                throw e;
-            } finally {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
+        Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
+        boolean participatesInTestTransaction = DataSourceUtils.isConnectionTransactional(jdbcConn, dataSource);
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
+            if (!participatesInTestTransaction) {
+                jdbcConn.setAutoCommit(false);
+            } else if (jdbcConn.getAutoCommit()) {
+                throw new IllegalStateException("Fixture connection must share the application transaction; "
+                        + "configure the EntityManagerFactory with the test DataSource");
             }
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+            }
+            IDatabaseConnection dbUnitConn = buildDbUnitConnection(jdbcConn);
+            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
+
+            // Fixture replacement and application writes must use the same test
+            // transaction. A separate committed connection defeats @Transactional
+            // rollback and leaves unrelated suites with truncated seed tables.
+            truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+            DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+            synchronizeFixtureSequences(jdbcConn, dataset.getTableNames());
+            if (participatesInTestTransaction) {
+                loadedTransactionalFixture = true;
+            } else {
+                jdbcConn.commit();
+                // Legacy nontransactional fixtures still own their committed setup.
+                ensureAuditSystemUser();
+            }
+            refreshFixtureCaches();
+        } catch (Exception e) {
+            if (!participatesInTestTransaction) {
+                jdbcConn.rollback();
+            }
+            throw e;
+        } finally {
+            DataSourceUtils.releaseConnection(jdbcConn, dataSource);
+        }
+    }
+
+    private boolean loadedTransactionalFixture;
+
+    @AfterTransaction
+    public void refreshCachesAfterFixtureRollback() {
+        if (loadedTransactionalFixture) {
+            refreshFixtureCaches();
+            loadedTransactionalFixture = false;
+        }
+    }
+
+    private void refreshFixtureCaches() {
+        if (statusService != null) {
+            statusService.refreshCache();
+        }
+        if (observationHistoryService != null) {
+            observationHistoryService.refreshTypeIdCache();
         }
     }
 
@@ -381,8 +377,13 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     continue;
                 }
                 String sequenceName = mapping[1];
-                stmt.execute("SELECT setval('clinlims." + sequenceName + "',"
-                        + " CAST(COALESCE((SELECT MAX(id) FROM clinlims." + tableName + "), 0) + 1 AS BIGINT), false)");
+                // setval is not rolled back for standalone sequences. Never rewind
+                // below their prior next value when a fixture is smaller than the
+                // records that the surrounding test transaction will restore.
+                stmt.execute("SELECT setval('clinlims." + sequenceName + "', GREATEST("
+                        + "CAST(COALESCE((SELECT MAX(id) FROM clinlims." + tableName + "), 0) + 1 AS BIGINT), "
+                        + "(SELECT last_value + CASE WHEN is_called THEN 1 ELSE 0 END FROM clinlims." + sequenceName
+                        + ")), false)");
                 logger.debug("Synchronized fixture sequence {} for table {}", sequenceName, tableName);
             }
         }
