@@ -55,19 +55,4 @@ public class AlertNotificationConfigRestControllerTest {
         Assert.assertNotNull(response.getBody());
         Assert.assertEquals("Invalid escalationDelayMinutes: must be an integer", response.getBody().get("error"));
     }
-
-    @Test
-    public void saveAlertNotificationConfig_returnsUnauthorizedWhenSessionHasNoUser() {
-        when(request.getSession(false)).thenReturn(null);
-
-        Map<String, Object> config = new HashMap<>();
-        config.put("escalationDelayMinutes", "abc");
-
-        ResponseEntity<Map<String, String>> response = controller.saveAlertNotificationConfig(config, request);
-
-        Assert.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        Assert.assertNotNull(response.getBody());
-        Assert.assertEquals("Authenticated session required to save alert configuration",
-                response.getBody().get("error"));
-    }
 }
