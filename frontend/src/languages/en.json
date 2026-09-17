@@ -9723,5 +9723,17 @@
   "inventory.logUsage.error.noItem": "Choose an item to log usage against.",
   "inventory.logUsage.error.wholeUnits": "Enter a whole number of units, at least 1.",
   "inventory.search.placeholder": "Search by item name, lot number or barcode",
-  "inventory.receiveStock.button": "Receive stock"
+  "inventory.receiveStock.button": "Receive stock",
+  "inventory.reorder.suggestions": "Reorder suggestions",
+  "inventory.reorder.help": "Items at or below their threshold, or projected to reach it before a new order could arrive. Marking as ordered records that an order was placed \u2014 it does not place one.",
+  "inventory.reorder.none": "Nothing needs ordering right now.",
+  "inventory.reorder.markOrdered": "Mark as ordered",
+  "inventory.reorder.onOrder": "On order",
+  "inventory.reorder.note": "Note",
+  "inventory.reorder.note.placeholder": "Requisition or PO reference",
+  "inventory.reorder.expectedDate": "Expected date",
+  "inventory.reorder.marked": "{count, plural, one {# item} other {# items}} marked as ordered.",
+  "inventory.reorder.reviewAndOrder": "Review and mark as ordered",
+  "inventory.reorder.clearOrdered": "Not ordered after all",
+  "inventory.reorder.cleared": "{count, plural, one {# item} other {# items}} no longer marked as ordered."
 }

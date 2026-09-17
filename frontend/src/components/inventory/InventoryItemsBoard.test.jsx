@@ -16,7 +16,11 @@ import messages from "../../languages/en.json";
 vi.mock("./InventoryService", () => ({
   InventoryBoardAPI: { get: vi.fn() },
   InventoryLotAPI: { getAll: vi.fn() },
-  InventoryItemAPI: { getById: vi.fn() },
+  InventoryItemAPI: {
+    getById: vi.fn(),
+    markOrdered: vi.fn(),
+    clearOrdered: vi.fn(),
+  },
   InventoryManagementAPI: { consume: vi.fn() },
 }));
 
@@ -113,6 +117,9 @@ const CARTRIDGE = {
   orderByDate: isoDay(-6),
   trendPercent: 40,
   status: "REORDER_NOW",
+  orderedOn: null,
+  orderExpectedDate: null,
+  orderNote: null,
 };
 
 const SYPHILIS = {
@@ -133,6 +140,9 @@ const SYPHILIS = {
   orderByDate: null,
   trendPercent: null,
   status: "BUILDING_DATA",
+  orderedOn: null,
+  orderExpectedDate: null,
+  orderNote: null,
 };
 
 const MALARIA = {
@@ -153,6 +163,9 @@ const MALARIA = {
   orderByDate: isoDay(10),
   trendPercent: 2,
   status: "REORDER_SOON",
+  orderedOn: null,
+  orderExpectedDate: null,
+  orderNote: null,
 };
 
 const lot = (overrides) => ({
@@ -720,6 +733,157 @@ describe("InventoryItemsBoard", () => {
           screen.getByText("Insufficient inventory for item: 3. Available: 60"),
         ).toBeInTheDocument(),
       );
+      expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("reorder suggestions and the critical banner", () => {
+    const openSuggestions = async (board) => {
+      await renderBoard(board);
+      fireEvent.click(
+        screen.getByRole("button", { name: /^Reorder suggestions/ }),
+      );
+    };
+
+    it("banners only the items that are critical and not already ordered", async () => {
+      await renderBoard();
+      const banner = screen.getByRole("alertdialog");
+      // The cartridge is REORDER_NOW; the malaria row is only REORDER_SOON and
+      // must not be shouted about.
+      expect(banner).toHaveTextContent(CARTRIDGE.name);
+      expect(banner).not.toHaveTextContent(MALARIA.name);
+    });
+
+    it("drops an item from the banner once it is marked ordered, without hiding its row", async () => {
+      await renderBoard([
+        { ...CARTRIDGE, orderedOn: "2026-09-17", orderNote: "PO-1" },
+        SYPHILIS,
+        MALARIA,
+      ]);
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+
+      // Still on the board, still short, now tagged.
+      const row = rowNamed(CARTRIDGE.name);
+      expect(row).toBeInTheDocument();
+      expect(within(row).getAllByRole("cell")[6]).toHaveTextContent(
+        "Reorder now",
+      );
+      expect(within(row).getAllByRole("cell")[6]).toHaveTextContent("On order");
+    });
+
+    it("shows the expected delivery date beside the on-order tag", async () => {
+      await renderBoard([
+        {
+          ...CARTRIDGE,
+          orderedOn: isoDay(-2),
+          orderExpectedDate: isoDay(9),
+          orderNote: "PO-1",
+        },
+        SYPHILIS,
+        MALARIA,
+      ]);
+      const status = within(rowNamed(CARTRIDGE.name)).getAllByRole("cell")[6];
+      expect(status).toHaveTextContent(`On order · ${dayLabel(9)}`);
+    });
+
+    it("lists exactly the rows the board badges, and nothing else", async () => {
+      await openSuggestions();
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText(/GeneXpert/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Malaria RDT/)).toBeInTheDocument();
+      // Building data is not a suggestion: there is no projection to act on.
+      expect(within(dialog).queryByText(/Syphilis/)).not.toBeInTheDocument();
+    });
+
+    it("marks the whole selection in one call and refreshes the board", async () => {
+      InventoryItemAPI.markOrdered.mockResolvedValue({ changed: 2 });
+      await openSuggestions();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: /select all/i }));
+      fireEvent.click(screen.getByText("Mark as ordered"));
+
+      await waitFor(() =>
+        expect(InventoryItemAPI.markOrdered).toHaveBeenCalledTimes(1),
+      );
+      const call = InventoryItemAPI.markOrdered.mock.calls[0][0];
+      expect(call.itemIds).toEqual(
+        expect.arrayContaining([CARTRIDGE.itemId, MALARIA.itemId]),
+      );
+      expect(call.itemIds).toHaveLength(2);
+      await waitFor(() =>
+        expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it("carries the note and expected date into the mark", async () => {
+      InventoryItemAPI.markOrdered.mockResolvedValue({ changed: 1 });
+      await openSuggestions();
+
+      fireEvent.change(screen.getByLabelText("Note"), {
+        target: { value: "PO-4471" },
+      });
+      fireEvent.click(screen.getByRole("checkbox", { name: /select all/i }));
+      fireEvent.click(screen.getByText("Mark as ordered"));
+
+      await waitFor(() =>
+        expect(InventoryItemAPI.markOrdered).toHaveBeenCalledWith(
+          expect.objectContaining({ note: "PO-4471" }),
+        ),
+      );
+    });
+
+    it("offers a way back, and only for rows that actually carry a mark", async () => {
+      InventoryItemAPI.clearOrdered.mockResolvedValue({ changed: 1 });
+      await openSuggestions([
+        { ...CARTRIDGE, orderedOn: "2026-09-17", orderNote: "PO-1" },
+        MALARIA,
+      ]);
+
+      fireEvent.click(screen.getByRole("checkbox", { name: /select all/i }));
+      const undo = screen.getByText("Not ordered after all");
+      fireEvent.click(undo);
+
+      await waitFor(() =>
+        expect(InventoryItemAPI.clearOrdered).toHaveBeenCalledWith(
+          expect.arrayContaining([CARTRIDGE.itemId, MALARIA.itemId]),
+        ),
+      );
+      await waitFor(() =>
+        expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it("disables the way back when nothing selected is on order", async () => {
+      await openSuggestions([MALARIA, { ...CARTRIDGE }]);
+      fireEvent.click(screen.getByRole("checkbox", { name: /select all/i }));
+
+      expect(
+        screen.getByText("Not ordered after all").closest("button"),
+      ).toBeDisabled();
+    });
+
+    it("says so plainly when nothing needs ordering", async () => {
+      await openSuggestions([{ ...MALARIA, status: "ADEQUATE" }]);
+      expect(
+        screen.getByText("Nothing needs ordering right now."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Mark as ordered")).not.toBeInTheDocument();
+    });
+
+    it("keeps the panel open and shows why when marking fails", async () => {
+      InventoryItemAPI.markOrdered.mockRejectedValue(
+        new Error("could not reach the server"),
+      );
+      await openSuggestions();
+      fireEvent.click(screen.getByRole("checkbox", { name: /select all/i }));
+      fireEvent.click(screen.getByText("Mark as ordered"));
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("could not reach the server"),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
     });
   });

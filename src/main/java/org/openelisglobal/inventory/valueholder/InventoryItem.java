@@ -15,6 +15,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -89,6 +91,27 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "lead_time_days")
     @Min(value = 0, message = "Lead time cannot be negative")
     private Integer leadTimeDays;
+
+    /**
+     * When someone recorded that this item had been ordered. Null means it has not
+     * been, or that the mark was cleared: this is an acknowledgement that an order
+     * was placed, not the order itself, so it is reversible in both directions.
+     *
+     * <p>
+     * It is also the anchor for learning the real lead time later, from the gap
+     * between this stamp and the next receipt of the item, rather than leaving
+     * {@code leadTimeDays} as a number somebody had to guess.
+     */
+    @Column(name = "ordered_at")
+    private Timestamp orderedAt;
+
+    /** Free text kept with the mark, e.g. a requisition reference. */
+    @Column(name = "order_note")
+    private String orderNote;
+
+    /** When the lab expects the order to arrive, if they know. Advisory only. */
+    @Column(name = "order_expected_date")
+    private LocalDate orderExpectedDate;
 
     @Column(name = "expiration_alert_days")
     @Min(1)

@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -8,6 +9,22 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
     List<ItemType> getAllItemTypes();
+
+    /**
+     * Record that these items have been ordered, stamping each with the moment the
+     * mark was made.
+     *
+     * <p>
+     * Reversible by design — {@link #clearOrdered} undoes it — because this is an
+     * acknowledgement that an order was placed, not the order itself, and a lab
+     * that marks the wrong row needs a way back.
+     *
+     * @return the number of items whose mark actually changed
+     */
+    int markOrdered(List<Long> itemIds, String note, LocalDate expectedDate, String sysUserId);
+
+    /** Undo {@link #markOrdered}, clearing the stamp, note and expected date. */
+    int clearOrdered(List<Long> itemIds, String sysUserId);
 
     /**
      * Get all active inventory items
