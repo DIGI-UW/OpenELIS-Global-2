@@ -156,6 +156,69 @@ describe("SampleResultsSection", () => {
     ).toBeInTheDocument();
   });
 
+  // OGC-1148 FR-C1/C2 — detection limits on quantitative components.
+  it("offers LOD and LOQ on numeric components and sends them as numbers", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    fireEvent.change(
+      screen.getByLabelText("LOD", { selector: "#comp-lod-0" }),
+      {
+        target: { value: "0.1" },
+      },
+    );
+    fireEvent.change(
+      screen.getByLabelText("LOQ", { selector: "#comp-loq-0" }),
+      {
+        target: { value: "0.3" },
+      },
+    );
+    fireEvent.click(saveButton());
+
+    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
+    const [first, second] = savedPayload().components;
+    expect(first).toMatchObject({ lod: 0.1, loq: 0.3 });
+    expect(second).toMatchObject({ lod: null, loq: null });
+  });
+
+  it("blocks Save when LOD is above LOQ and says why", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    fireEvent.change(
+      screen.getByLabelText("LOD", { selector: "#comp-lod-0" }),
+      {
+        target: { value: "0.5" },
+      },
+    );
+    fireEvent.change(
+      screen.getByLabelText("LOQ", { selector: "#comp-loq-0" }),
+      {
+        target: { value: "0.2" },
+      },
+    );
+    expect(
+      screen.getAllByText(messages["error.testCatalog.sampleResults.lodGtLoq"])
+        .length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
   it("saves the full component tree to the section endpoint, coercing numeric fields", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");

@@ -1,10 +1,12 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Count;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.Offset;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
@@ -28,12 +30,12 @@ import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
@@ -85,6 +87,9 @@ public class PractitionerProvider implements IResourceProvider {
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Practitioner", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Practitioner: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Practitioner", e);
@@ -130,6 +135,9 @@ public class PractitionerProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Practitioner", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while creating Practitioner: " + e.getMessage());
@@ -175,6 +183,9 @@ public class PractitionerProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Practitioner", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while updating Practitioner: " + e.getMessage());
@@ -218,6 +229,9 @@ public class PractitionerProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Practitioner", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Practitioner: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while deleting Practitioner", e);
@@ -253,10 +267,10 @@ public class PractitionerProvider implements IResourceProvider {
 
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
 
-            @Sort SortSpec sort,
+            @Sort SortSpec sort, @Offset Integer offset, @Count Integer count,
 
-            @IncludeParam(reverse = true, allow = {
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER }) HashSet<Include> revIncludes,
+            @IncludeParam(reverse = true, allow = { FhirConstants.SERVICE_REQUEST_REQUESTER_REV_INCLUDE,
+                    FhirConstants.OBSERVATION_PERFORMER_REV_INCLUDE }) HashSet<Include> revIncludes,
 
             HttpServletRequest request) {
 
@@ -268,7 +282,7 @@ public class PractitionerProvider implements IResourceProvider {
             PractitionerSearchParams params = new PractitionerSearchParams(identifier, name, given, family, city, state,
                     postalCode, country, telecom, email, phone, id, lastUpdated, sort, revIncludes);
 
-            return practitionerSearchService.searchPractitioners(params);
+            return FhirProviderUtils.withPaging(practitionerSearchService.searchPractitioners(params), offset, count);
 
         } catch (InvalidRequestException exception) {
             throw exception;

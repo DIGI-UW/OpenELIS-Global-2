@@ -1,20 +1,26 @@
 package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
+import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InventoryManagementServiceImpl implements InventoryManagementService {
+
+    private static final int LOT_NUMBER_MAX_LENGTH = 100;
 
     @Autowired
     private InventoryItemService inventoryItemService;
@@ -23,13 +29,61 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
     private InventoryLotService inventoryLotService;
 
     @Autowired
-    private InventoryStorageLocationService storageLocationService;
-
-    @Autowired
     private InventoryTransactionService transactionService;
 
     @Autowired
     private InventoryUsageService usageService;
+
+    @Override
+    @Transactional
+    public InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
+            String sysUserId) {
+        if (quantityNeeded == null || quantityNeeded <= 0) {
+            throw new IllegalArgumentException("Quantity needed must be greater than 0");
+        }
+
+        InventoryLot lot = inventoryLotService.getForUpdate(lotId);
+        if (lot == null) {
+            throw new IllegalArgumentException("Lot not found: " + lotId);
+        }
+        validateSelectedLot(lot, quantityNeeded);
+
+        double remaining = lot.getCurrentQuantity() - quantityNeeded;
+        lot.setCurrentQuantity(remaining);
+        if (remaining == 0) {
+            lot.setStatus(LotStatus.CONSUMED);
+        }
+        lot.setSysUserId(sysUserId);
+        lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        inventoryLotService.update(lot);
+
+        String referenceType = testResultId == null ? ReferenceType.MANUAL.name() : ReferenceType.TEST_RESULT.name();
+        String notes = analysisId == null ? "Consumed selected inventory lot"
+                : "Consumed selected lot for analysis " + analysisId;
+        transactionService.recordTransaction(lot.getId(), TransactionType.CONSUMPTION, -quantityNeeded, remaining,
+                testResultId, referenceType, notes, sysUserId);
+        return usageService.recordUsage(lot, quantityNeeded, testResultId, analysisId, sysUserId);
+    }
+
+    private void validateSelectedLot(InventoryLot lot, Double quantityNeeded) {
+        String lotNumber = lot.getLotNumber();
+        if (lot.isExpired()) {
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_EXPIRED", lotNumber);
+        }
+        if (lot.getQcStatus() != org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus.PASSED) {
+            String code = lot.getQcStatus() == org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus.FAILED
+                    ? "INVENTORY_LOT_QC_FAILED"
+                    : "INVENTORY_LOT_QC_NOT_PASSED";
+            throw new InventoryLotUnavailableException(code, lotNumber);
+        }
+        if (lot.getStatus() != LotStatus.ACTIVE && lot.getStatus() != LotStatus.IN_USE) {
+            String status = lot.getStatus() == null ? "STATUS_UNKNOWN" : lot.getStatus().name();
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_" + status, lotNumber);
+        }
+        if (lot.getCurrentQuantity() == null || lot.getCurrentQuantity() < quantityNeeded) {
+            throw new InventoryLotUnavailableException("INVENTORY_LOT_INSUFFICIENT_QUANTITY", lotNumber);
+        }
+    }
 
     @Override
     @Transactional
@@ -103,6 +157,14 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         return consumptionRecords;
     }
 
+    private String generateLotNumber(InventoryItem item) {
+        String datePart = new SimpleDateFormat("yyyyMMdd").format(new Timestamp(System.currentTimeMillis()));
+        Set<String> existingLotNumbers = inventoryLotService.getByInventoryItemId(item.getId()).stream()
+                .map(InventoryLot::getLotNumber).collect(Collectors.toSet());
+        return CodeGenerator.generateFromName(item.getCode() + "-" + datePart, LOT_NUMBER_MAX_LENGTH, "LOT",
+                existingLotNumbers::contains);
+    }
+
     @Override
     @Transactional
     public InventoryLot receiveInventory(InventoryLot lotData, String sysUserId) {
@@ -122,14 +184,8 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         }
         lotData.setInventoryItem(managedItem);
 
-        // Fetch managed StorageLocation entity if provided
-        if (lotData.getStorageLocation() != null && lotData.getStorageLocation().getId() != null) {
-            Long locationId = lotData.getStorageLocation().getId();
-            InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-            if (managedLocation == null) {
-                throw new IllegalArgumentException("Storage location not found: " + locationId);
-            }
-            lotData.setStorageLocation(managedLocation);
+        if (lotData.getLotNumber() == null || lotData.getLotNumber().trim().isEmpty()) {
+            lotData.setLotNumber(generateLotNumber(managedItem));
         }
 
         // Set initial values

@@ -1,6 +1,7 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import { vi } from "vitest";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
@@ -12,6 +13,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 // Mock Utils
 vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  getFromOpenElisServerV2: vi.fn().mockResolvedValue({}),
 }));
 
 describe("Layout Full Integration (Smoke Tests)", () => {
@@ -188,7 +190,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
       userId: "1",
     };
 
-    const { container } = render(
+    render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
           <UserSessionDetailsContext.Provider
@@ -202,16 +204,8 @@ describe("Layout Full Integration (Smoke Tests)", () => {
       </BrowserRouter>,
     );
 
-    // CRITICAL: Navigation items must render
-    await waitFor(
-      () => {
-        // After refactor: top-level items use onClick instead of href
-        // Check by outer span element ID (menu_home, not menu_home_nav)
-        const homeLink = container.querySelector("#menu_home");
-        expect(homeLink).toBeTruthy();
-      },
-      { timeout: 2000 },
-    );
+    const homeLink = await screen.findByRole("link", { name: "Home" });
+    expect(homeLink).toHaveAttribute("href", "/Dashboard");
   });
 
   test("CRITICAL: header actions render without crash", async () => {

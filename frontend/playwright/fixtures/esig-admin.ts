@@ -7,16 +7,33 @@
 import { Page, expect } from "@playwright/test";
 import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
-export class SiteInformationPage {
-  constructor(private page: Page) {}
+/**
+ * The admin settings menus that share the same table + Modify + Save screen.
+ * Each shows one site_information domain: Site Information holds the identity
+ * settings (electronic signature), Result Entry Configuration the result ones.
+ */
+export type SettingsMenu = "SiteInformationMenu" | "ResultConfigurationMenu";
 
-  /** Navigate to Admin > Site Information */
+const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
+  SiteInformationMenu: /site information/i,
+  ResultConfigurationMenu: /result entry configuration/i,
+};
+
+export class SiteInformationPage {
+  constructor(
+    private page: Page,
+    private menu: SettingsMenu = "SiteInformationMenu",
+  ) {}
+
+  /** Navigate to the admin settings menu this page object was built for. */
   async goto() {
-    await this.page.goto("/MasterListsPage/SiteInformationMenu", {
+    await this.page.goto(`/MasterListsPage/${this.menu}`, {
       waitUntil: "domcontentloaded",
     });
     await expect(
-      this.page.getByRole("heading", { name: /site information/i }),
+      this.page.getByRole("heading", {
+        name: SETTINGS_MENU_HEADING[this.menu],
+      }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 

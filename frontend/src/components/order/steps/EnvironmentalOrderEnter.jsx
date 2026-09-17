@@ -1,42 +1,45 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
   Column,
   Stack,
-  TextInput,
   Button,
   Tile,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
+import { useNewOrderReset } from "../useNewOrderReset";
+import { describeUnmetRequirements } from "../saveRequirements";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import LabNumberField from "./sections/LabNumberField";
+import OrderAttachmentsSection from "./sections/OrderAttachmentsSection";
 import VectorSection from "./sections/VectorSection";
 import CollectionConditionsSection from "./sections/CollectionConditionsSection";
 import ProgramSection from "./sections/ProgramSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
 import ComplianceStandardsSection from "./sections/ComplianceStandardsSection";
+import { currentLocalTime, todayLocalIso } from "../dateUtils";
 import "../order-workflow.scss";
 
 const WORKFLOW_TYPE = "environmental";
+const WORKFLOW_PREFIX = "/order/environmental";
 
 const EnvironmentalOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const componentMounted = useRef(true);
   const {
     orderData,
     setOrderData,
@@ -44,34 +47,23 @@ const EnvironmentalOrderEnter = () => {
     setSamples,
     labNumber,
     saveOrder,
+    fieldErrors,
     markStepComplete,
     isReadOnly,
     isEditMode,
-    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
+  const isNewOrder = useNewOrderReset(WORKFLOW_PREFIX);
+
   // Initialise empty — the sync effect below populates from context only after
-  // the mount reset guard has run, preventing stale cross-domain lab numbers
-  // from a prior workflow session from pre-filling this field.
+  // the mount reset has run, preventing stale cross-domain lab numbers from a
+  // prior workflow session from pre-filling this field.
   const [localLabNumber, setLocalLabNumber] = useState("");
-  const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
-
-  // Reset on mount for new orders. Only skip reset when ?order= is present
-  // AND the URL path belongs to this workflow.
-  useEffect(() => {
-    const orderParam = new URLSearchParams(location.search).get("order");
-    const pathMatchesWorkflow = location.pathname.startsWith(
-      "/order/environmental",
-    );
-    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
-      resetOrder();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -99,9 +91,7 @@ const EnvironmentalOrderEnter = () => {
   // Sync local lab number when context changes.
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
-    const pathMatchesWorkflow = location.pathname.startsWith(
-      "/order/environmental",
-    );
+    const pathMatchesWorkflow = location.pathname.startsWith(WORKFLOW_PREFIX);
     if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
@@ -111,47 +101,19 @@ const EnvironmentalOrderEnter = () => {
     }
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
-  useEffect(() => {
-    componentMounted.current = true;
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  const handleGenerateLabNumber = () => {
-    setIsGeneratingLabNo(true);
-    getFromOpenElisServer(
-      "/rest/SampleEntryGenerateScanProvider",
-      (response) => {
-        if (componentMounted.current) {
-          setIsGeneratingLabNo(false);
-          if (response?.body) {
-            const newLabNo = response.body;
-            setLocalLabNumber(newLabNo);
-            setOrderData({
-              ...orderData,
-              sampleOrderItems: {
-                ...orderData.sampleOrderItems,
-                labNo: newLabNo,
-              },
-            });
-          }
-        }
-      },
-    );
-  };
-
-  const handleLabNumberChange = (e) => {
-    const newLabNo = e.target.value;
-    setLocalLabNumber(newLabNo);
-    setOrderData({
-      ...orderData,
-      sampleOrderItems: {
-        ...orderData.sampleOrderItems,
-        labNo: newLabNo,
-      },
-    });
-  };
+  const handleLabNumberChange = useCallback(
+    (newLabNo) => {
+      setLocalLabNumber(newLabNo);
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          labNo: newLabNo,
+        },
+      }));
+    },
+    [setOrderData],
+  );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite = !!(
@@ -164,8 +126,19 @@ const EnvironmentalOrderEnter = () => {
   const allSamplesHaveTests = samples
     .filter((s) => s.sampleTypeId)
     .every((s) => (s.tests?.length || 0) + (s.panels?.length || 0) > 0);
-  const canSave =
-    localLabNumber && hasPatientOrSite && hasSampleTypes && allSamplesHaveTests;
+  const saveRequirements = [
+    {
+      met: Boolean(localLabNumber),
+      labelId: "order.save.requirement.labNumber",
+    },
+    { met: hasPatientOrSite, labelId: "order.save.requirement.samplingSite" },
+    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
+    {
+      met: hasSampleTypes && allSamplesHaveTests,
+      labelId: "order.save.requirement.testsPerSample",
+    },
+  ];
+  const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 
   // Stamp collection date/time on samples that don't already have one.
@@ -173,8 +146,8 @@ const EnvironmentalOrderEnter = () => {
   // so the backend always receives a valid collection date.
   const buildStampedSamples = () => {
     const now = new Date();
-    const todayIso = now.toISOString().slice(0, 10);
-    const currentTime = now.toTimeString().slice(0, 5);
+    const todayIso = todayLocalIso(now);
+    const currentTime = currentLocalTime(now);
     const stamped = samples.map((s) =>
       s.sampleTypeId
         ? {
@@ -195,11 +168,7 @@ const EnvironmentalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a sampling site, at least one sample type, and at least one test or panel per sample before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
@@ -249,11 +218,7 @@ const EnvironmentalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a sampling site, at least one sample type, and at least one test or panel per sample before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
@@ -316,6 +281,7 @@ const EnvironmentalOrderEnter = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
         {/* Lab Number */}
@@ -329,50 +295,14 @@ const EnvironmentalOrderEnter = () => {
 
           <Grid>
             <Column lg={12} md={6} sm={4}>
-              <div className="lab-number-field">
-                <TextInput
-                  id="labNumber"
-                  labelText={
-                    <span>
-                      <FormattedMessage
-                        id="order.labNumber"
-                        defaultMessage="Lab Number"
-                      />
-                      <span className="required-indicator"> *</span>
-                    </span>
-                  }
-                  value={localLabNumber}
-                  onChange={handleLabNumberChange}
-                  placeholder={intl.formatMessage({
-                    id: "order.labNumber.placeholder",
-                    defaultMessage: "Enter or generate lab number",
-                  })}
-                  disabled={isReadOnly && !isEditMode}
-                />
-                <Link
-                  className="generate-link"
-                  onClick={handleGenerateLabNumber}
-                  disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
-                >
-                  {isGeneratingLabNo ? (
-                    <FormattedMessage
-                      id="generating"
-                      defaultMessage="Generating..."
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="order.labNumber.generate"
-                      defaultMessage="Generate"
-                    />
-                  )}
-                </Link>
-              </div>
-              <p className="helper-text">
-                <FormattedMessage
-                  id="order.labNumber.helper"
-                  defaultMessage="Auto-generated per existing lab number rules. Assigned here to enable tracking across all steps."
-                />
-              </p>
+              <LabNumberField
+                value={localLabNumber}
+                onLabNumberChange={handleLabNumberChange}
+                disabled={isReadOnly && !isEditMode}
+                autoGenerate={isNewOrder}
+                invalid={Boolean(fieldErrors?.["sampleOrderItems.labNo"])}
+                invalidText={fieldErrors?.["sampleOrderItems.labNo"]}
+              />
             </Column>
           </Grid>
 
@@ -490,6 +420,12 @@ const EnvironmentalOrderEnter = () => {
             onSubmitSuccess={() => setShowNceForm(false)}
           />
         )}
+        {/* T: order attachments existed on the legacy screen with an
+            unchanged REST API; only the new lanes had no way in. */}
+        <OrderAttachmentsSection
+          labNumber={localLabNumber}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
       </Stack>
     </OrderWorkflowLayout>
   );

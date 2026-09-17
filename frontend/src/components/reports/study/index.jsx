@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import {
@@ -188,6 +189,7 @@ export const StudyReports = (props) => {
 };
 
 const StudyIndex = () => {
+  const history = useHistory();
   const intl = useIntl();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
@@ -221,7 +223,7 @@ const StudyIndex = () => {
       }
       setIsLoading(false);
     } else {
-      window.location.href = "/StudyReports";
+      history.replace("/StudyReports");
     }
   }, [type, report]);
 

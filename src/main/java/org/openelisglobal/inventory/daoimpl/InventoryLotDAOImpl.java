@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
@@ -19,6 +20,15 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     public InventoryLotDAOImpl() {
         super(InventoryLot.class);
+    }
+
+    @Override
+    public InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException {
+        try {
+            return entityManager.find(InventoryLot.class, lotId, LockModeType.PESSIMISTIC_WRITE);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error locking inventory lot for update", e);
+        }
     }
 
     @Override
@@ -129,19 +139,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting lot by barcode", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.storageLocation.id = :locationId ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("locationId", locationId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by storage location ID", e);
         }
     }
 

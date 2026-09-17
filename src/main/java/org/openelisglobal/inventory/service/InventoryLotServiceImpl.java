@@ -34,6 +34,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     }
 
     @Override
+    @Transactional
+    public InventoryLot getForUpdate(Long lotId) {
+        return inventoryLotDAO.getForUpdate(lotId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) {
         return inventoryLotDAO.getAvailableLotsByItemFEFO(itemId);
@@ -43,12 +49,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Transactional(readOnly = true)
     public List<InventoryLot> getByInventoryItemId(Long itemId) {
         return inventoryLotDAO.getByInventoryItemId(itemId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) {
-        return inventoryLotDAO.getByStorageLocationId(locationId);
     }
 
     @Override

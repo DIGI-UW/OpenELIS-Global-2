@@ -1,17 +1,15 @@
 # Analyzer Testing Services
 #
-# Multi-protocol mock server (ASTM + HL7), bridge, and virtual serial ports for E2E testing.
-# The mock supports all templates via its HTTP API — trigger any analyzer:
+# Analyzer mock, Bridge, and virtual serial ports for E2E testing.
+# The M1 assembled lane publishes only profile-gated priority analyzers:
 #   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
-#   GET/POST http://localhost:8085/simulate/hl7/mindray_bs200
 #
 # ASTM_TEMPLATE env var sets the default template for the ASTM listen port
 # (what the bridge gets when it connects). All other templates available via API.
 
 services:
-  # Multi-protocol mock server — serves all ASTM and HL7 analyzer templates.
+  # Multi-protocol mock server running the M1 priority templates.
   # Default ASTM template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
-  # HL7 templates available via /simulate/hl7/{template} API.
   astm-simulator:
     container_name: openelis-astm-simulator
     build:
@@ -19,26 +17,28 @@ services:
       dockerfile: Dockerfile
     image: openelis-astm-simulator.harness
     volumes:
-      - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
       - ./volume/analyzer-imports:/data/analyzer-imports  # FILE fixture drops into bridge watched folders
+      # Priority simulations resolve exact immutable Bridge profile revisions.
+      - ../../tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles:/data/bridge-profiles:ro
       - /var/run/docker.sock:/var/run/docker.sock  # TEST/HARNESS ONLY — dynamic analyzer network management
     ports:
       - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
       - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
-      - "5380:5380" # HL7 listen (Mindray BC-5380)
     environment:
-      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380"}'
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm"}'
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-astm-simulator
+      - ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles
+      - BRIDGE_USER=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_PASS=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
     command: >
       python -u server.py
       --port 9600
       --simulate-api-port 8080
       --verbose
     networks:
-      analyzer-net:
-        ipv4_address: 172.21.1.100
+      - analyzer-net
     restart: unless-stopped
     healthcheck:
       test:
@@ -81,13 +81,13 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       # Bridge admin/upload UI Basic Auth. Aligned with OE admin so the harness
-      # ships one credential pair instead of two — closes the known-default
-      # (bridge/changeme) exposure once the bridge vhost is served over LE.
+      # The harness uses one overridable credential pair for the mock, Bridge,
+      # and OpenELIS client.
       # Property keys per bridge SecurityConfig: bridge.security.*.
       # Note: BRIDGE_AUTH_PASSWORD is a silent no-op — nothing in the bridge
       # reads it; the correct keys are BRIDGE_SECURITY_USERNAME / _PASSWORD.
-      - BRIDGE_SECURITY_USERNAME=admin
-      - BRIDGE_SECURITY_PASSWORD=adminADMIN!
+      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
       - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to OE (not through proxy), so no /api/ prefix
@@ -129,6 +129,8 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
     networks:
       default:
       analyzer-net:
@@ -136,7 +138,6 @@ services:
           - oe.openelis.org
     volumes:
       - serial-vol:/dev/serial
-      - ./volume/analyzer-imports:/data/analyzer-imports
 
   # Proxy needs both networks to reach OE.
   proxy:
@@ -144,15 +145,9 @@ services:
       default:
       analyzer-net:
 
-  # Seed service — creates mock networks + analyzer records on startup.
-  # Runs once after OE and mock-server are healthy. Idempotent.
-  # Default: cleans stale data before seeding (--no-clean to skip).
 networks:
   analyzer-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:

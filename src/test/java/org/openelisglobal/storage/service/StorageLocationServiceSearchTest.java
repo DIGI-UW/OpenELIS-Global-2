@@ -14,11 +14,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.storage.dao.StorageBoxDAO;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageRoomDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
 
 /**
  * Test for StorageLocationService.searchLocations to verify parent IDs and
@@ -31,19 +26,19 @@ public class StorageLocationServiceSearchTest {
     private StorageSearchService storageSearchService;
 
     @Mock
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
 
     @Mock
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
 
     @Mock
-    private StorageShelfDAO storageShelfDAO;
+    private StorageShelfService storageShelfService;
 
     @Mock
-    private StorageRackDAO storageRackDAO;
+    private StorageRackService storageRackService;
 
     @Mock
-    private StorageBoxDAO storageBoxDAO;
+    private StorageBoxService storageBoxService;
 
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
@@ -52,9 +47,9 @@ public class StorageLocationServiceSearchTest {
     public void setUp() {
         // Stub subtree-expansion DAO calls to return empty lists so tests focus on
         // directly-matched results without NullPointerExceptions.
-        when(storageShelfDAO.findByParentDeviceId(any())).thenReturn(new ArrayList<>());
-        when(storageRackDAO.findByParentShelfId(any())).thenReturn(new ArrayList<>());
-        when(storageBoxDAO.findByParentRackId(any())).thenReturn(new ArrayList<>());
+        when(storageShelfService.findByParentDeviceId(any())).thenReturn(new ArrayList<>());
+        when(storageRackService.findByParentShelfId(any())).thenReturn(new ArrayList<>());
+        when(storageBoxService.findByParentRackId(any())).thenReturn(new ArrayList<>());
     }
 
     @Test

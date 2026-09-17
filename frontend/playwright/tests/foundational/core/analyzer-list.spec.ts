@@ -14,10 +14,15 @@ test.describe("Analyzer List Page", () => {
     await expect(list.tableContainer).toBeVisible();
   });
 
-  test("displays statistics cards", async ({ page }) => {
-    await expect(page.locator('[data-testid="stat-total"]')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-active"]')).toBeVisible();
-    await expect(page.locator('[data-testid="stat-inactive"]')).toBeVisible();
+  test("displays the operational summary", async ({ page }) => {
+    for (const testId of [
+      "stat-total",
+      "stat-active",
+      "stat-setup",
+      "stat-needs-attention",
+    ]) {
+      await expect(page.getByTestId(testId)).toBeVisible();
+    }
   });
 
   test("has Add Analyzer button", async () => {
@@ -33,6 +38,6 @@ test.describe("Analyzer List Page", () => {
 
   test("table renders with column headers", async () => {
     const headers = list.table.locator("thead th");
-    await expect(headers).toHaveCount(7);
+    await expect(headers).toHaveCount(6);
   });
 });

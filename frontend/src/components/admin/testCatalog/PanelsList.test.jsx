@@ -115,6 +115,36 @@ describe("PanelsList (FRS v2.2 list spec)", () => {
     expect(screen.getAllByText("Inactive").length).toBeGreaterThan(0);
   });
 
+  it("warns on a panel whose sample types fall outside its own domain (OGC-1209)", async () => {
+    mockServer([
+      {
+        ...PANELS[0],
+        domain: "VECTOR",
+        sampleTypes: ["Mosquito", "Serum"],
+        sampleTypesOutsideDomain: ["Serum"],
+      },
+      PANELS[1],
+    ]);
+    wrap(<PanelsList />);
+
+    expect(await screen.findByText("Complete Blood Count")).toBeInTheDocument();
+    const warning = screen.getByText("Mixed domain");
+    expect(warning).toBeInTheDocument();
+    // The offending sample types are named on hover, so the row says which.
+    expect(warning.closest("[data-cy^='panel-mixed-domain']")).toHaveAttribute(
+      "title",
+      "Sample types outside this panel's domain: Serum",
+    );
+  });
+
+  it("shows no mixed-domain warning when every sample type matches (OGC-1209)", async () => {
+    mockServer([{ ...PANELS[0], sampleTypesOutsideDomain: [] }, PANELS[1]]);
+    wrap(<PanelsList />);
+
+    expect(await screen.findByText("Complete Blood Count")).toBeInTheDocument();
+    expect(screen.queryByText("Mixed domain")).not.toBeInTheDocument();
+  });
+
   it("shows the domain-upgrade banner", async () => {
     mockServer();
     wrap(<PanelsList />);

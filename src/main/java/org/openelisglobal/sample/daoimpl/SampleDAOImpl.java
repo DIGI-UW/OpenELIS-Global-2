@@ -119,6 +119,21 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) throws LIMSRuntimeException {
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery("from Sample s order by s.id desc",
+                    Sample.class);
+            query.setFirstResult(Math.max(startingRecNo, 1) - 1);
+            query.setMaxResults(Math.max(pageSize, 1));
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getSamplesNewestFirst()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getSampleByAccessionNumber(Sample sample) throws LIMSRuntimeException {
         try {
             String sql = "from Sample s where s.accessionNumber = :param";

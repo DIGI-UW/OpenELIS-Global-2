@@ -134,4 +134,37 @@ describe("AlertsDashboard", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(getFromOpenElisServer).toHaveBeenCalled();
   });
+
+  test("offers the microbiology critical alert type filter", () => {
+    renderWithIntl(<AlertsDashboard />);
+    expect(screen.getByText("Microbiology Critical")).toBeTruthy();
+  });
+
+  test("renders a microbiology critical alert row", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [
+            {
+              id: 3,
+              alertType: "MICROBIOLOGY_CRITICAL",
+              severity: "CRITICAL",
+              status: "OPEN",
+              message: "Positive blood culture called",
+              startTime: "2026-01-15T12:00:00Z",
+            },
+          ],
+          totalCount: 1,
+          page: 0,
+          pageSize: 25,
+        });
+      }
+    });
+
+    renderWithIntl(<AlertsDashboard />);
+
+    expect(screen.getByText("Positive blood culture called")).toBeTruthy();
+  });
 });

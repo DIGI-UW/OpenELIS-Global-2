@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.dao;
 
 import java.util.List;
+import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -60,6 +61,45 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
+    public SampleStorageAssignment findByInventoryLotId(Long inventoryLotId) {
+        if (inventoryLotId == null) {
+            return null;
+        }
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.inventoryLotId = :inventoryLotId";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("inventoryLotId", inventoryLotId);
+            query.setMaxResults(1);
+            List<SampleStorageAssignment> results = query.list();
+            return results.isEmpty() ? null : results.getFirst();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignment by InventoryLot ID: {}", inventoryLotId, e);
+            throw new LIMSRuntimeException(
+                    "Error finding SampleStorageAssignment by InventoryLot ID: " + inventoryLotId, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleStorageAssignment> findByInventoryLotIds(List<Long> inventoryLotIds) {
+        if (inventoryLotIds == null || inventoryLotIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.inventoryLotId IN (:inventoryLotIds)";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("inventoryLotIds", inventoryLotIds);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignments by InventoryLot IDs", e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignments by InventoryLot IDs", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SampleStorageAssignment findByStorageBox(StorageBox box) {
         try {
             if (box == null) {
@@ -90,6 +130,9 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                     + "WHERE ssa.locationType = 'box' AND ssa.locationId = :boxId";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
             query.setParameter("boxId", box.getId());
+            // Reached from StorageBox's @PostUpdate/@PostPersist FHIR sync, i.e. inside a
+            // flush; an auto-flush here re-enters the ActionQueue and fails.
+            query.setHibernateFlushMode(FlushMode.MANUAL);
             Long count = query.uniqueResult();
             return count != null && count > 0;
         } catch (Exception e) {
@@ -143,19 +186,19 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.Map<String, java.util.Map<String, String>> getOccupiedCoordinatesWithSampleInfo(Integer boxId) {
+    public java.util.Map<String, java.util.Map<String, String>> getOccupiedCoordinatesWithOccupantInfo(Integer boxId) {
         java.util.Map<String, java.util.Map<String, String>> result = new java.util.HashMap<>();
         try {
             if (boxId == null) {
                 return result;
             }
 
-            // Use native SQL to join sample_storage_assignment with sample_item
-            // to get the external_id (SampleItem uses HBM mapping, can't use HQL join)
-            String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id "
-                    + "FROM sample_storage_assignment ssa " + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
-                    + "WHERE ssa.location_type = 'box' " + "AND ssa.location_id = :boxId "
-                    + "AND ssa.position_coordinate IS NOT NULL";
+            // Native SQL: SampleItem is HBM-mapped and unreachable from an HQL join.
+            String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id, "
+                    + "ssa.inventory_lot_id, il.lot_number " + "FROM sample_storage_assignment ssa "
+                    + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
+                    + "LEFT JOIN inventory_lot il ON ssa.inventory_lot_id = il.id " + "WHERE ssa.location_type = 'box' "
+                    + "AND ssa.location_id = :boxId " + "AND ssa.position_coordinate IS NOT NULL";
 
             @SuppressWarnings("unchecked")
             List<Object[]> rows = entityManager.unwrap(Session.class).createNativeQuery(sql)
@@ -165,16 +208,28 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 String positionCoordinate = (String) row[0];
                 Number sampleItemIdNum = (Number) row[1];
                 String externalId = (String) row[2];
-
-                if (positionCoordinate != null && sampleItemIdNum != null) {
-                    java.util.Map<String, String> sampleInfo = new java.util.HashMap<>();
-                    sampleInfo.put("sampleItemId", sampleItemIdNum.toString());
-                    sampleInfo.put("externalId", externalId != null ? externalId : "");
-                    result.put(positionCoordinate, sampleInfo);
+                Number inventoryLotIdNum = (Number) row[3];
+                String lotNumber = (String) row[4];
+                if (positionCoordinate == null) {
+                    continue;
                 }
+
+                java.util.Map<String, String> occupantInfo = new java.util.HashMap<>();
+                if (inventoryLotIdNum != null) {
+                    occupantInfo.put("occupantType", SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+                    occupantInfo.put("inventoryLotId", inventoryLotIdNum.toString());
+                    occupantInfo.put("externalId", lotNumber != null ? lotNumber : "");
+                } else if (sampleItemIdNum != null) {
+                    occupantInfo.put("occupantType", SampleStorageAssignment.OCCUPANT_SAMPLE_ITEM);
+                    occupantInfo.put("sampleItemId", sampleItemIdNum.toString());
+                    occupantInfo.put("externalId", externalId != null ? externalId : "");
+                } else {
+                    continue;
+                }
+                result.put(positionCoordinate, occupantInfo);
             }
         } catch (Exception e) {
-            logger.error("Error getting occupied coordinates with sample info: " + e.getMessage(), e);
+            logger.error("Error getting occupied coordinates with occupant info: " + e.getMessage(), e);
         }
         return result;
     }

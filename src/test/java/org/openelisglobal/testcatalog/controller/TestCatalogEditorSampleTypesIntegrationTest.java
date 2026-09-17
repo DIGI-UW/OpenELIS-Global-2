@@ -57,8 +57,6 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -85,8 +83,7 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         // create-in-place is field-injected (optional) in production; wire it here so
         // the createTest endpoint is exercisable.
         org.springframework.test.util.ReflectionTestUtils.setField(controller, "testCatalogCreationService",

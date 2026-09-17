@@ -58,7 +58,8 @@ export const UnifiedResultsRoute: React.FC = () => {
  * Wraps a legacy results route: redirects to /Results when the flag is on,
  * renders the legacy page otherwise. An accessionNumber on the legacy URL
  * (e.g. the in-progress dashboard's /result?type=order&accessionNumber=X
- * links) is carried through so the unified page loads that order directly.
+ * links) and a patientId (legacy /PatientResults?patientId=X links) are
+ * carried through so the unified page loads that order or patient directly.
  */
 export const LegacyResultsGate: React.FC<{ children: React.ReactElement }> = ({
   children,
@@ -70,16 +71,14 @@ export const LegacyResultsGate: React.FC<{ children: React.ReactElement }> = ({
   if (flag === "off") {
     return children;
   }
-  const accession = new URLSearchParams(window.location.search).get(
-    "accessionNumber",
-  );
-  return (
-    <Redirect
-      to={
-        accession
-          ? `/Results?accessionNumber=${encodeURIComponent(accession)}`
-          : "/Results"
-      }
-    />
-  );
+  const legacyParams = new URLSearchParams(window.location.search);
+  const forwarded = new URLSearchParams();
+  for (const key of ["accessionNumber", "patientId"]) {
+    const value = legacyParams.get(key);
+    if (value) {
+      forwarded.set(key, value);
+    }
+  }
+  const query = forwarded.toString();
+  return <Redirect to={query ? `/Results?${query}` : "/Results"} />;
 };

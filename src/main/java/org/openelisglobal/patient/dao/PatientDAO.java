@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.patient.dao;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -52,6 +53,13 @@ public interface PatientDAO extends BaseDAO<Patient, String> {
     Patient getPatientBySubjectNumber(String subjectNumber);
 
     List<Patient> getPatientsByNationalId(String nationalId) throws LIMSRuntimeException;
+
+    /**
+     * The merged patients among the given ids, in one query. Patient search
+     * annotates every result with its merge status, and asking per row turns a
+     * broad search into thousands of round trips.
+     */
+    List<Patient> getMergedPatientsIn(Collection<String> patientIds) throws LIMSRuntimeException;
 
     Patient getPatientByExternalId(String externalId);
 

@@ -4,6 +4,8 @@ import {
   Stack,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   Toggle,
@@ -70,6 +72,12 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
+const CULTURE_WORKFLOW_TYPES = [
+  "BACTERIOLOGY",
+  "MYCOBACTERIOLOGY_TB",
+  "MYCOLOGY",
+];
+
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
   const intl = useIntl();
@@ -96,6 +104,9 @@ const BasicInfoSection = ({ testId }) => {
   // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
+  // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
+  // shown beside the toggle right after the test goes Active, never a block.
+  const [activationWarnings, setActivationWarnings] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -386,6 +397,14 @@ const BasicInfoSection = ({ testId }) => {
               ? { orderable: res.orderable }
               : {}),
           });
+          const integrity = res.loincIntegrity;
+          setActivationWarnings(
+            integrity &&
+              (integrity.noLoinc ||
+                (integrity.duplicates && integrity.duplicates.length > 0))
+              ? integrity
+              : null,
+          );
           setNotificationVisible(true);
           addNotification({
             kind: "success",
@@ -679,6 +698,32 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
+      <Select
+        id="basic-info-culture-workflow-type"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+        })}
+        value={form.cultureWorkflowType || ""}
+        onChange={(event) =>
+          update({ cultureWorkflowType: event.target.value || "" })
+        }
+      >
+        <SelectItem
+          value=""
+          text={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
+          })}
+        />
+        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
+          <SelectItem
+            key={workflowType}
+            value={workflowType}
+            text={intl.formatMessage({
+              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
+            })}
+          />
+        ))}
+      </Select>
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -693,9 +738,38 @@ const BasicInfoSection = ({ testId }) => {
           } else {
             // Activation sets orderable, so deactivation clears it again.
             update({ active: checked, orderable: false });
+            setActivationWarnings(null);
           }
         }}
       />
+      {activationWarnings && activationWarnings.noLoinc && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="activation-no-loinc-warning"
+          title={intl.formatMessage({ id: "warning.testCatalog.noLoinc" })}
+        />
+      )}
+      {activationWarnings &&
+        activationWarnings.duplicates &&
+        activationWarnings.duplicates.length > 0 && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="activation-duplicate-loinc-warning"
+            title={intl.formatMessage(
+              { id: "warning.testCatalog.duplicateLoinc" },
+              {
+                code: activationWarnings.loinc,
+                testName: activationWarnings.duplicates
+                  .map((d) => d.name)
+                  .join(", "),
+              },
+            )}
+          />
+        )}
       {!form.active && completenessGaps.length > 0 && (
         <InlineNotification
           kind="info"

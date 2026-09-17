@@ -50,7 +50,7 @@ async function openManageLocationFromRow(page: Page, rowIndex = 0) {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /(assign storage location|move sample)/i,
+      name: /(assign storage location|move item)/i,
     }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
 }

@@ -1,18 +1,18 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
   TextInput,
   Modal,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -20,6 +20,10 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { useHistory } from "react-router-dom";
+import ServerDataState from "../../utils/ServerDataState";
+
+const UOM_CREATE_ENDPOINT = "/rest/UomCreate";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -44,15 +48,25 @@ function UomCreate() {
 
   const intl = useIntl();
 
-  const [loading, setLoading] = useState(true);
+  const history = useHistory();
   const [saveButton, setSaveButton] = useState(true);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [uomNew, setUomNew] = useState("");
   const [inputError, setInputError] = useState(false);
-  const [uomRes, setUomRes] = useState({});
-  const [allUomValues, setAllUomValues] = useState([]);
 
-  const componentMounted = useRef(false);
+  const uomQuery = useServerData(UOM_CREATE_ENDPOINT);
+  const { data: uomRes } = uomQuery;
+  const invalidateServerData = useInvalidateServerData();
+
+  // The names a new one may not collide with, from the same read the screen
+  // shows, so a name created here is checked against it once it is reread.
+  const allUomValues = [
+    ...(uomRes?.existingUomList?.map((uom) => uom.value.toLowerCase()) || []),
+    ...(uomRes?.inactiveUomList?.map((uom) => uom.value.toLowerCase()) || []),
+    ...(uomRes?.existingEnglishNames || "")
+      .split("$")
+      .map((name) => name.toLowerCase()),
+  ];
 
   function handleUomCreatePostResponse() {
     postToOpenElisServerJsonResponse(
@@ -64,66 +78,39 @@ function UomCreate() {
         handleUomCreatePostResponseCallBack(data);
       },
     );
-    setLoading(false);
   }
 
   const handleUomCreatePostResponseCallBack = (res) => {
     if (!res) {
-      window.location.reload();
-    } else {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: NotificationKinds.error,
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "uom.notification.save",
+          id: "server.error.msg",
         }),
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      return;
     }
+    setNotificationVisible(true);
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({
+        id: "notification.title",
+      }),
+      message: intl.formatMessage({
+        id: "uom.notification.save",
+      }),
+    });
+    setUomNew("");
+    setSaveButton(true);
+    setInputError(false);
+    invalidateServerData();
   };
 
-  const handleUomResponse = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setUomRes(res);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer(`/rest/UomCreate`, handleUomResponse);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (uomRes) {
-      setAllUomValues([
-        ...(uomRes.existingUomList?.map((uom) => uom.value.toLowerCase()) ||
-          []),
-        ...(uomRes.inactiveUomList?.map((uom) => uom.value.toLowerCase()) ||
-          []),
-        ...(uomRes.existingEnglishNames || "")
-          .split("$")
-          .map((name) => name.toLowerCase()),
-      ]);
-    }
-  }, [uomRes]);
-
-  if (loading)
-    return (
-      <>
-        <Loading />
-      </>
-    );
+  if (!uomRes) return <ServerDataState query={uomQuery} />;
 
   return (
     <>
@@ -209,9 +196,7 @@ function UomCreate() {
                 <FormattedMessage id="next.action.button" />
               </Button>{" "}
               <Button
-                onClick={() =>
-                  window.location.replace("/MasterListsPage/UomManagement")
-                }
+                onClick={() => history.push("/MasterListsPage/UomManagement")}
                 kind="tertiary"
                 type="button"
               >

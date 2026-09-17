@@ -1,27 +1,29 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
   Column,
   Stack,
-  TextInput,
   Button,
   Tile,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
+import { useNewOrderReset } from "../useNewOrderReset";
+import { describeUnmetRequirements } from "../saveRequirements";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import LabNumberField from "./sections/LabNumberField";
+import OrderAttachmentsSection from "./sections/OrderAttachmentsSection";
 import VectorSection from "./sections/VectorSection";
 import RequesterSection from "./sections/RequesterSection";
 import ProgramSection from "./sections/ProgramSection";
@@ -29,12 +31,12 @@ import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
 
 const WORKFLOW_TYPE = "vector";
+const WORKFLOW_PREFIX = "/order/vector";
 
 const VectorOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const componentMounted = useRef(true);
   const {
     orderData,
     setOrderData,
@@ -42,31 +44,23 @@ const VectorOrderEnter = () => {
     setSamples,
     labNumber,
     saveOrderEntry,
+    isSubmitting,
+    fieldErrors,
     markStepComplete,
     isReadOnly,
     isEditMode,
-    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
+  const isNewOrder = useNewOrderReset(WORKFLOW_PREFIX);
+
   // Initialise empty — populated by the sync effect below after the mount
-  // reset guard runs, preventing stale cross-domain lab numbers from bleeding in.
+  // reset runs, preventing stale cross-domain lab numbers from bleeding in.
   const [localLabNumber, setLocalLabNumber] = useState("");
-  const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
-
-  // Reset on mount for new orders. Only skip reset when ?order= is present
-  // AND the URL path belongs to this workflow.
-  useEffect(() => {
-    const orderParam = new URLSearchParams(location.search).get("order");
-    const pathMatchesWorkflow = location.pathname.startsWith("/order/vector");
-    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
-      resetOrder();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -94,7 +88,7 @@ const VectorOrderEnter = () => {
   // Sync local lab number when context changes.
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
-    const pathMatchesWorkflow = location.pathname.startsWith("/order/vector");
+    const pathMatchesWorkflow = location.pathname.startsWith(WORKFLOW_PREFIX);
     if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
@@ -103,47 +97,19 @@ const VectorOrderEnter = () => {
     }
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
-  useEffect(() => {
-    componentMounted.current = true;
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  const handleGenerateLabNumber = () => {
-    setIsGeneratingLabNo(true);
-    getFromOpenElisServer(
-      "/rest/SampleEntryGenerateScanProvider",
-      (response) => {
-        if (componentMounted.current) {
-          setIsGeneratingLabNo(false);
-          if (response?.body) {
-            const newLabNo = response.body;
-            setLocalLabNumber(newLabNo);
-            setOrderData({
-              ...orderData,
-              sampleOrderItems: {
-                ...orderData.sampleOrderItems,
-                labNo: newLabNo,
-              },
-            });
-          }
-        }
-      },
-    );
-  };
-
-  const handleLabNumberChange = (e) => {
-    const newLabNo = e.target.value;
-    setLocalLabNumber(newLabNo);
-    setOrderData({
-      ...orderData,
-      sampleOrderItems: {
-        ...orderData.sampleOrderItems,
-        labNo: newLabNo,
-      },
-    });
-  };
+  const handleLabNumberChange = useCallback(
+    (newLabNo) => {
+      setLocalLabNumber(newLabNo);
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          labNo: newLabNo,
+        },
+      }));
+    },
+    [setOrderData],
+  );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasCollectionSite = !!(
@@ -152,7 +118,18 @@ const VectorOrderEnter = () => {
     envFields.vecOrganismGroupId
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const canSave = localLabNumber && hasCollectionSite && hasSampleTypes;
+  const saveRequirements = [
+    {
+      met: Boolean(localLabNumber),
+      labelId: "order.save.requirement.labNumber",
+    },
+    {
+      met: hasCollectionSite,
+      labelId: "order.save.requirement.collectionSite",
+    },
+    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
+  ];
+  const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 
   const handleSave = async () => {
@@ -160,17 +137,13 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a collection site and at least one sample type before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
     }
     try {
-      await saveOrderEntry(false);
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -191,7 +164,7 @@ const VectorOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry(false);
+      await saveOrderEntry();
       markStepComplete("enter");
       history.push(
         labNumber
@@ -213,17 +186,13 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a collection site and at least one sample type before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
     }
     try {
-      await saveOrderEntry(true);
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -255,7 +224,7 @@ const VectorOrderEnter = () => {
             kind="tertiary"
             onClick={handleSaveAsDraft}
             size="md"
-            disabled={!canSave}
+            disabled={isSubmitting || !canSave}
           >
             <FormattedMessage
               id="button.save.draft"
@@ -279,6 +248,7 @@ const VectorOrderEnter = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
         {/* Lab Number */}
@@ -292,50 +262,14 @@ const VectorOrderEnter = () => {
 
           <Grid>
             <Column lg={12} md={6} sm={4}>
-              <div className="lab-number-field">
-                <TextInput
-                  id="labNumber"
-                  labelText={
-                    <span>
-                      <FormattedMessage
-                        id="order.labNumber"
-                        defaultMessage="Lab Number"
-                      />
-                      <span className="required-indicator"> *</span>
-                    </span>
-                  }
-                  value={localLabNumber}
-                  onChange={handleLabNumberChange}
-                  placeholder={intl.formatMessage({
-                    id: "order.labNumber.placeholder",
-                    defaultMessage: "Enter or generate lab number",
-                  })}
-                  disabled={isReadOnly && !isEditMode}
-                />
-                <Link
-                  className="generate-link"
-                  onClick={handleGenerateLabNumber}
-                  disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
-                >
-                  {isGeneratingLabNo ? (
-                    <FormattedMessage
-                      id="generating"
-                      defaultMessage="Generating..."
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="order.labNumber.generate"
-                      defaultMessage="Generate"
-                    />
-                  )}
-                </Link>
-              </div>
-              <p className="helper-text">
-                <FormattedMessage
-                  id="order.labNumber.helper"
-                  defaultMessage="Auto-generated per existing lab number rules. Assigned here to enable tracking across all steps."
-                />
-              </p>
+              <LabNumberField
+                value={localLabNumber}
+                onLabNumberChange={handleLabNumberChange}
+                disabled={isReadOnly && !isEditMode}
+                autoGenerate={isNewOrder}
+                invalid={Boolean(fieldErrors?.["sampleOrderItems.labNo"])}
+                invalidText={fieldErrors?.["sampleOrderItems.labNo"]}
+              />
             </Column>
           </Grid>
 
@@ -437,6 +371,12 @@ const VectorOrderEnter = () => {
             onSubmitSuccess={() => setShowNceForm(false)}
           />
         )}
+        {/* T: order attachments existed on the legacy screen with an
+            unchanged REST API; only the new lanes had no way in. */}
+        <OrderAttachmentsSection
+          labNumber={localLabNumber}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
       </Stack>
     </OrderWorkflowLayout>
   );

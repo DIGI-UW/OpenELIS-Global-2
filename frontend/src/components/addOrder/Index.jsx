@@ -13,7 +13,7 @@ import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
@@ -72,7 +72,9 @@ const Index = () => {
   const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const [orderFormValues, setOrderFormValues] = useState(
+    createSampleOrderFormValues,
+  );
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

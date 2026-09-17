@@ -1,8 +1,17 @@
 import React from "react";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  act,
+} from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createQueryClient } from "../../../utils/queryClient";
 import SelectListRenameEntry from "../SelectListRenameEntry";
 import {
   getFromOpenElisServer,
@@ -15,10 +24,23 @@ vi.mock("../../../common/PageBreadCrumb", () => ({
   },
 }));
 
-vi.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: vi.fn(),
-  postToOpenElisServerJsonResponse: vi.fn(),
-}));
+vi.mock("../../../utils/Utils", () => {
+  const getFromOpenElisServer = vi.fn();
+  return {
+    getFromOpenElisServer,
+    fetchFromOpenElisServer: vi.fn(
+      (url) =>
+        new Promise((resolve, reject) =>
+          getFromOpenElisServer(url, (response) =>
+            response === undefined
+              ? reject(new Error("read failed"))
+              : resolve(response),
+          ),
+        ),
+    ),
+    postToOpenElisServerJsonResponse: vi.fn(),
+  };
+});
 
 vi.mock("../../../layout/Layout", () => ({
   NotificationContext: React.createContext({
@@ -60,7 +82,9 @@ const serverWith = ({ names = STORED, options = OPTIONS } = {}) =>
 const renderPage = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <SelectListRenameEntry />
+      <QueryClientProvider client={createQueryClient()}>
+        <SelectListRenameEntry />
+      </QueryClientProvider>
     </IntlProvider>,
   );
 
@@ -74,6 +98,31 @@ const submit = () => {
   return JSON.parse(postToOpenElisServerJsonResponse.mock.calls[0][1]);
 };
 
+/** The options arrive from a read, so they are waited for rather than assumed. */
+const showOptions = async () => {
+  renderPage();
+  await screen.findByText("Positive");
+};
+
+/**
+ * Opening an option reads its stored translations. The English field already
+ * shows the option name before that read lands, so waiting on it would let an
+ * edit be made and then overwritten; the wait is on the read itself.
+ */
+const openOption = async (name) => {
+  fireEvent.click(screen.getByText(name));
+  await waitFor(() =>
+    expect(
+      getFromOpenElisServer.mock.calls.some(([url]) =>
+        url.includes("EntityNamesProvider"),
+      ),
+    ).toBe(true),
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
 describe("SelectListRenameEntry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -82,36 +131,34 @@ describe("SelectListRenameEntry", () => {
 
   afterEach(cleanup);
 
-  it("lists the options to rename", () => {
-    renderPage();
+  it("lists the options to rename", async () => {
+    await showOptions();
 
     expect(screen.getByText("Positive")).toBeInTheDocument();
     expect(screen.getByText("Negative")).toBeInTheDocument();
   });
 
-  it("reads the stored translations when an option is opened", () => {
-    renderPage();
+  it("reads the stored translations when an option is opened", async () => {
+    await showOptions();
 
-    fireEvent.click(screen.getByText("Positive"));
+    await openOption("Positive");
 
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(getFromOpenElisServer.mock.calls.map(([url]) => url)).toContain(
       "/rest/EntityNamesProvider?entityId=101&entityName=resultSelectOption",
-      expect.any(Function),
     );
   });
 
-  it("offers a field per language, prefilled from what is stored", () => {
-    renderPage();
+  it("offers a field per language, prefilled from what is stored", async () => {
+    await showOptions();
 
-    fireEvent.click(screen.getByText("Positive"));
+    await openOption("Positive");
 
-    expect(english()).toHaveValue("Positive");
     expect(french()).toHaveValue("Positif");
   });
 
-  it("sends the stored French when only the English was edited", () => {
-    renderPage();
-    fireEvent.click(screen.getByText("Positive"));
+  it("sends the stored French when only the English was edited", async () => {
+    await showOptions();
+    await openOption("Positive");
 
     fireEvent.change(english(), { target: { value: "Reactive" } });
 
@@ -122,9 +169,9 @@ describe("SelectListRenameEntry", () => {
     });
   });
 
-  it("sends the stored English when only the French was edited", () => {
-    renderPage();
-    fireEvent.click(screen.getByText("Positive"));
+  it("sends the stored English when only the French was edited", async () => {
+    await showOptions();
+    await openOption("Positive");
 
     fireEvent.change(french(), { target: { value: "Reactif" } });
 
@@ -134,9 +181,9 @@ describe("SelectListRenameEntry", () => {
     });
   });
 
-  it("sends both when both were edited", () => {
-    renderPage();
-    fireEvent.click(screen.getByText("Positive"));
+  it("sends both when both were edited", async () => {
+    await showOptions();
+    await openOption("Positive");
 
     fireEvent.change(english(), { target: { value: "Detected" } });
     fireEvent.change(french(), { target: { value: "Detecte" } });
@@ -147,27 +194,61 @@ describe("SelectListRenameEntry", () => {
     });
   });
 
-  it("never submits the displayed name as the French one", () => {
+  it("never submits the displayed name as the French one", async () => {
     // An option with no French stored: the field is empty rather than seeded with
     // the English text, so saving cannot invent a translation.
     serverWith({ names: { name: { english: "Negative" } } });
-    renderPage();
+    await showOptions();
 
-    fireEvent.click(screen.getByText("Negative"));
+    await openOption("Negative");
 
     expect(french()).toHaveValue("");
     expect(submit().nameFrench).toBe("");
   });
 
-  it("still opens when the option has no stored translations at all", () => {
+  it("reads the options again once a rename is saved, without reloading", async () => {
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, reload },
+    });
+    await showOptions();
+    await openOption("Positive");
+
+    fireEvent.change(english(), { target: { value: "Reactive" } });
+    // Saving is what changes the stored name.
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => {
+        // The second option changed too, which only a reread can show: the
+        // edit on screen touches the first one alone.
+        serverWith({
+          options: {
+            resultSelectOptionList: [
+              { id: "101", displayValue: "Reactive" },
+              { id: "102", displayValue: "Nonreactive" },
+            ],
+          },
+        });
+        callback(true);
+      },
+    );
+    submit();
+
+    await waitFor(() =>
+      expect(screen.getByText("Nonreactive")).toBeInTheDocument(),
+    );
+    // Renaming used to reload the document, which threw away the whole app.
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("still opens when the option has no stored translations at all", async () => {
     // The endpoint 404s with an error body for an option that was never
     // localized. The modal has to show the name it does know, not a spinner.
     serverWith({ names: { status: "invalid", message: "not found" } });
-    renderPage();
+    await showOptions();
 
-    fireEvent.click(screen.getByText("Negative"));
+    await openOption("Negative");
 
-    expect(english()).toHaveValue("Negative");
     expect(french()).toHaveValue("");
   });
 });

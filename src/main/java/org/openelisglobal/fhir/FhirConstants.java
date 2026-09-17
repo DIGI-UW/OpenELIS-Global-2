@@ -87,4 +87,37 @@ public final class FhirConstants {
     public static final String ANALYSIS_PATIENT_HANDLER = ANALYSIS + "." + PATIENT;
     public static final String SERVICE_REQUEST_REQUESTER_REV_INCLUDE = "ServiceRequest:" + ServiceRequest.SP_REQUESTER;
 
+    public static final String SERVICE_REQUEST_PATIENT_REV_INCLUDE = "ServiceRequest:" + ServiceRequest.SP_PATIENT;
+    public static final String SERVICE_REQUEST_SUBJECT_REV_INCLUDE = "ServiceRequest:" + ServiceRequest.SP_SUBJECT;
+    public static final String SPECIMEN_PATIENT_REV_INCLUDE = "Specimen:patient";
+    public static final String SPECIMEN_SUBJECT_REV_INCLUDE = "Specimen:subject";
+    public static final String OBSERVATION_PATIENT_REV_INCLUDE = "Observation:patient";
+    public static final String OBSERVATION_SUBJECT_REV_INCLUDE = "Observation:subject";
+    public static final String DIAGNOSTIC_REPORT_PATIENT_REV_INCLUDE = "DiagnosticReport:patient";
+    public static final String DIAGNOSTIC_REPORT_SUBJECT_REV_INCLUDE = "DiagnosticReport:subject";
+    public static final String ORGANIZATION_PARTOF_INCLUDE = "Organization:partof";
+    public static final String SPECIMEN_PATIENT_INCLUDE = "Specimen:patient";
+    public static final String SPECIMEN_SUBJECT_INCLUDE = "Specimen:subject";
+    public static final String SERVICE_REQUEST_SPECIMEN_REV_INCLUDE = "ServiceRequest:specimen";
+    public static final String OBSERVATION_SPECIMEN_REV_INCLUDE = "Observation:specimen";
+    public static final String SERVICE_REQUEST_PATIENT_INCLUDE = "ServiceRequest:patient";
+    public static final String SERVICE_REQUEST_SUBJECT_INCLUDE = "ServiceRequest:subject";
+    public static final String SERVICE_REQUEST_REQUESTER_INCLUDE = "ServiceRequest:requester";
+    public static final String SERVICE_REQUEST_SPECIMEN_INCLUDE = "ServiceRequest:specimen";
+    public static final String OBSERVATION_BASED_ON_REV_INCLUDE = "Observation:based-on";
+    public static final String DIAGNOSTIC_REPORT_BASED_ON_REV_INCLUDE = "DiagnosticReport:based-on";
+    public static final String OBSERVATION_PATIENT_INCLUDE = "Observation:patient";
+    public static final String OBSERVATION_SUBJECT_INCLUDE = "Observation:subject";
+    public static final String OBSERVATION_BASED_ON_INCLUDE = "Observation:based-on";
+    public static final String OBSERVATION_SPECIMEN_INCLUDE = "Observation:specimen";
+    public static final String OBSERVATION_PERFORMER_INCLUDE = "Observation:performer";
+    public static final String DIAGNOSTIC_REPORT_RESULT_REV_INCLUDE = "DiagnosticReport:result";
+    public static final String DIAGNOSTIC_REPORT_PATIENT_INCLUDE = "DiagnosticReport:patient";
+    public static final String DIAGNOSTIC_REPORT_SUBJECT_INCLUDE = "DiagnosticReport:subject";
+    public static final String DIAGNOSTIC_REPORT_BASED_ON_INCLUDE = "DiagnosticReport:based-on";
+    public static final String DIAGNOSTIC_REPORT_RESULT_INCLUDE = "DiagnosticReport:result";
+    public static final String DIAGNOSTIC_REPORT_SPECIMEN_INCLUDE = "DiagnosticReport:specimen";
+    public static final String LOCATION_PARTOF_INCLUDE = "Location:partof";
+    public static final String OBSERVATION_PERFORMER_REV_INCLUDE = "Observation:performer";
+    public static final String DIAGNOSTIC_REPORT_SPECIMEN_REV_INCLUDE = "DiagnosticReport:specimen";
 }

@@ -1,5 +1,7 @@
 package org.openelisglobal.coldstorage.controller;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,9 +41,23 @@ public class CorrectiveActionRestController extends BaseRestController {
     @Autowired
     private FreezerService freezerService;
 
+    /**
+     * Resolves the acting user from the authenticated session rather than trusting
+     * a client-supplied user id in the request body, which would let anyone forge
+     * the "who did this" field on a compliance record.
+     */
+    private Integer resolveActingUserId(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            throw new IllegalStateException("Unable to resolve authenticated user for this request");
+        }
+        return Integer.valueOf(sysUserId);
+    }
+
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PostMapping
     public ResponseEntity<CorrectiveActionDTO> createCorrectiveAction(
-            @RequestBody CreateCorrectiveActionRequest request) {
+            @RequestBody CreateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             Optional<Freezer> freezerOpt = freezerService.findById(request.getFreezerId());
@@ -51,7 +68,7 @@ public class CorrectiveActionRestController extends BaseRestController {
 
             CorrectiveActionType actionType = CorrectiveActionType.valueOf(request.getActionType());
             CorrectiveAction createdAction = correctiveActionService.createCorrectiveAction(request.getFreezerId(),
-                    actionType, request.getDescription(), request.getCreatedByUserId());
+                    actionType, request.getDescription(), resolveActingUserId(httpRequest));
 
             return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(createdAction));
         } catch (IllegalArgumentException e) {
@@ -63,6 +80,7 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<CorrectiveActionDTO>> getAllCorrectiveActions(
             @RequestParam(required = false) Long freezerId, @RequestParam(required = false) String status,
@@ -97,6 +115,7 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<CorrectiveActionDTO> getCorrectiveActionById(@PathVariable Long id) {
         try {
@@ -111,9 +130,10 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<CorrectiveActionDTO> updateCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             CorrectiveAction action = correctiveActionService.get(id);
@@ -121,20 +141,16 @@ public class CorrectiveActionRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
-            if (request.getUpdatedByUserId() == null) {
-                logger.error("updatedByUserId is required");
-                return ResponseEntity.badRequest().build();
-            }
+            Integer actingUserId = resolveActingUserId(httpRequest);
 
             if (request.getDescription() != null && !request.getDescription().isEmpty()) {
                 action = correctiveActionService.updateCorrectiveActionDescription(id, request.getDescription(),
-                        request.getUpdatedByUserId());
+                        actingUserId);
             }
 
             if (request.getStatus() != null && !request.getStatus().isEmpty()) {
                 CorrectiveActionStatus newStatus = CorrectiveActionStatus.valueOf(request.getStatus());
-                action = correctiveActionService.updateCorrectiveActionStatus(id, newStatus,
-                        request.getUpdatedByUserId());
+                action = correctiveActionService.updateCorrectiveActionStatus(id, newStatus, actingUserId);
             }
 
             return ResponseEntity.ok(convertToDTO(action));
@@ -147,18 +163,14 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/complete")
     public ResponseEntity<CorrectiveActionDTO> completeCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
-            if (request.getUpdatedByUserId() == null) {
-                logger.error("updatedByUserId is required");
-                return ResponseEntity.badRequest().build();
-            }
-
             CorrectiveAction completedAction = correctiveActionService.completeCorrectiveAction(id,
-                    request.getUpdatedByUserId(), request.getCompletionNotes());
+                    resolveActingUserId(httpRequest), request.getCompletionNotes());
 
             return ResponseEntity.ok(convertToDTO(completedAction));
         } catch (IllegalArgumentException e) {
@@ -170,22 +182,19 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/retract")
     public ResponseEntity<CorrectiveActionDTO> retractCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
-            if (request.getUpdatedByUserId() == null) {
-                return ResponseEntity.badRequest().build();
-            }
-
             if (request.getRetractionReason() == null || request.getRetractionReason().isEmpty()) {
                 logger.error("retractionReason is required");
                 return ResponseEntity.badRequest().build();
             }
 
             CorrectiveAction retractedAction = correctiveActionService.retractCorrectiveAction(id,
-                    request.getUpdatedByUserId(), request.getRetractionReason());
+                    resolveActingUserId(httpRequest), request.getRetractionReason());
 
             return ResponseEntity.ok(convertToDTO(retractedAction));
         } catch (IllegalArgumentException e) {
@@ -266,14 +275,18 @@ public class CorrectiveActionRestController extends BaseRestController {
         private String actionType;
         private String description;
         private String status;
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime createdAt;
         private Integer createdBy;
         private String createdByName;
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime updatedAt;
         private Integer updatedBy;
         private String updatedByName;
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime completedAt;
         private String completionNotes;
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         private OffsetDateTime retractedAt;
         private String retractionReason;
         private Boolean isEdited;
@@ -287,17 +300,17 @@ public class CorrectiveActionRestController extends BaseRestController {
         private Long freezerId;
         private String actionType;
         private String description;
-        private Integer createdByUserId;
     }
 
     /**
-     * Request DTO for updating a corrective action.
+     * Request DTO for updating a corrective action. The acting user is derived
+     * server-side from the authenticated session (see resolveActingUserId), never
+     * accepted from the client.
      */
     @Data
     public static class UpdateCorrectiveActionRequest {
         private String description;
         private String status;
-        private Integer updatedByUserId;
         private String completionNotes;
         private String retractionReason;
     }

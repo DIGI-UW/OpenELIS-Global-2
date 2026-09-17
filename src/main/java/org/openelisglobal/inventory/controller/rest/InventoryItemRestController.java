@@ -2,9 +2,12 @@ package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
@@ -135,7 +138,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -148,6 +151,12 @@ public class InventoryItemRestController extends BaseRestController {
 
             InventoryItem savedItem = inventoryItemService.save(item);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
+        } catch (LocalizedValidationException e) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", e.getMessage());
+            body.put("errorCode", e.getErrorCode());
+            body.put("params", e.getParams());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

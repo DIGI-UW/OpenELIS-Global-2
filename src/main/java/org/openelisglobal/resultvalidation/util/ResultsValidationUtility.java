@@ -34,6 +34,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -50,6 +52,8 @@ import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -66,9 +70,13 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.result.action.util.CriticalRangeFormat;
+import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
@@ -573,6 +581,10 @@ public class ResultsValidationUtility {
         } else {
             testItem.setResultType(getTestResultType(testResults));
         }
+        testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
+                result == null ? null : result.getValue()));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
+                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
@@ -588,10 +600,8 @@ public class ResultsValidationUtility {
             List<TestResult> testResults) {
         if (resultLimit != null) {
             testItem.setResultLimitId(resultLimit.getId());
-            testItem.setLowerCritical(
-                    resultLimit.getLowCritical() == Double.NEGATIVE_INFINITY ? 0 : resultLimit.getLowCritical());
-            testItem.setHigherCritical(
-                    resultLimit.getHighCritical() == Double.POSITIVE_INFINITY ? 0 : resultLimit.getHighCritical());
+            testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
+            testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
@@ -840,6 +850,93 @@ public class ResultsValidationUtility {
         return allPass ? ValidationSignals.QC_PASS : ValidationSignals.QC_UNKNOWN;
     }
 
+    /**
+     * OGC-1028 — the read-only review-summary fields for one queue row (FR-C1,
+     * FR-C4, FR-G1): who entered the result and when, the authored critical range,
+     * and the row's result component for multi-component ordering.
+     */
+    private void populateReviewSummary(AnalysisItem analysisResultItem, ResultValidationItem testResultItem) {
+        analysisResultItem.setCriticalRange(testResultItem.getCriticalRange());
+        Analysis analysis = testResultItem.getAnalysis();
+        Result result = testResultItem.getResult();
+        if (result != null) {
+            List<ResultSignature> signatures = SpringContext.getBean(ResultSignatureService.class)
+                    .getResultSignaturesByResult(result);
+            analysisResultItem.setEnteredBy(ValidationSignals.enteredBy(signatures));
+        }
+        if (analysis != null && analysis.getEnteredDate() != null) {
+            analysisResultItem.setEnteredDate(DateUtil.convertTimestampToStringDate(analysis.getEnteredDate()) + " "
+                    + DateUtil.convertTimestampToStringTime(analysis.getEnteredDate()));
+        }
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (!GenericValidator.isBlankOrNull(componentId)
+                && !GenericValidator.isBlankOrNull(testResultItem.getTestId())) {
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = ValidationSignals
+                    .componentOf(testResultComponentService.getComponentsByTestId(testResultItem.getTestId()),
+                            componentId);
+            if (component != null) {
+                analysisResultItem.setComponentLabel(component.getLabel());
+                analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
+            }
+        }
+        if (analysis != null && analysis.getLastupdated() != null) {
+            analysisResultItem.setAnalysisLastupdated(String.valueOf(analysis.getLastupdated().getTime()));
+        }
+        if (analysis != null && analysis.getSampleItem() != null) {
+            analysisResultItem.setSampleItemId(analysis.getSampleItem().getId());
+        }
+        analysisResultItem.setMethodName(methodNameFor(analysis));
+        analysisResultItem.setAnalyzerName(analyzerNameFor(analysis));
+        analysisResultItem.setAnalysisNotes(
+                analysis == null ? new ArrayList<>() : reviewNotesLoader().buildAnalysisNotes(analysis));
+    }
+
+    private ResultsLoadUtility reviewNotesLoader;
+
+    /**
+     * The structured-notes builder lives on the Results Entry loader; one prototype
+     * instance is enough because the method is stateless.
+     */
+    private ResultsLoadUtility reviewNotesLoader() {
+        if (reviewNotesLoader == null) {
+            reviewNotesLoader = SpringContext.getBean(ResultsLoadUtility.class);
+        }
+        return reviewNotesLoader;
+    }
+
+    /** FR-G1 — the method as its own field, never folded into the analyzer. */
+    private String methodNameFor(Analysis analysis) {
+        if (analysis == null) {
+            return null;
+        }
+        try {
+            String methodId = analysisService.getMethodId(analysis);
+            if (GenericValidator.isBlankOrNull(methodId)) {
+                return null;
+            }
+            Method method = SpringContext.getBean(MethodService.class).findById(methodId);
+            return method == null ? null : method.getMethodName();
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(e);
+            return null;
+        }
+    }
+
+    /** FR-G1 — the analyzer instance the result came from, by its own name. */
+    private String analyzerNameFor(Analysis analysis) {
+        if (analysis == null || GenericValidator.isBlankOrNull(analysis.getAnalyzerId())) {
+            return null;
+        }
+        try {
+            Analyzer analyzer = SpringContext.getBean(AnalyzerService.class).get(analysis.getAnalyzerId());
+            return analyzer == null ? null : analyzer.getName();
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(e);
+            return null;
+        }
+    }
+
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = getUnitsByTestId(testResultItem.getTestId());
@@ -863,10 +960,9 @@ public class ResultsValidationUtility {
         testUnits = augmentUOMWithRange(testUnits, testResultItem.getResult());
 
         analysisResultItem.setAccessionNumber(testResultItem.getAccessionNumber());
-        analysisResultItem.setLowerCritical(
-                testResultItem.getLowerCritical() == Double.NEGATIVE_INFINITY ? 0 : testResultItem.getLowerCritical());
-        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical() == Double.POSITIVE_INFINITY ? 0
-                : testResultItem.getHigherCritical());
+        analysisResultItem.setLowerCritical(testResultItem.getLowerCritical());
+        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical());
+        analysisResultItem.setResultFlag(testResultItem.getResultFlag());
         analysisResultItem.setNormalRange(testResultItem.getNormalRange());
         analysisResultItem.setPatientName(testResultItem.getPatientName());
         analysisResultItem.setTestName(testName);
@@ -904,6 +1000,7 @@ public class ResultsValidationUtility {
                 .setNonconforming(testResultItem.isNonconforming() || SpringContext.getBean(IStatusService.class)
                         .matches(testResultItem.getAnalysis().getStatusId(), AnalysisStatus.TechnicalRejected));
         populateReleaseSignals(analysisResultItem, testResultItem);
+        populateReviewSummary(analysisResultItem, testResultItem);
         analysisResultItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
         analysisResultItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
@@ -986,6 +1083,41 @@ public class ResultsValidationUtility {
         setGroupingNumbers(resultList);
 
         return resultList;
+    }
+
+    /**
+     * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
+     * without a validator: Finalized, yet with no validator e-signature on record.
+     * Served read-only behind the queue's "Include auto-validated" toggle; never
+     * part of the queue itself, never releasable.
+     */
+    public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
+        String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        List<Analysis> finalized = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId)));
+        org.openelisglobal.esig.service.ElectronicSignatureService signatures = SpringContext
+                .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
+        List<Analysis> autoValidated = new ArrayList<>();
+        for (Analysis analysis : excludeQcAnalyses(finalized)) {
+            boolean signedByValidator;
+            try {
+                signedByValidator = !signatures
+                        .getSignaturesForRecord("VALIDATION_BATCH", Long.parseLong(analysis.getId())).isEmpty();
+            } catch (RuntimeException e) {
+                signedByValidator = false;
+            }
+            if (!signedByValidator) {
+                autoValidated.add(analysis);
+            }
+        }
+        List<AnalysisItem> rows = testResultListToAnalysisItemList(
+                getGroupedTestsForAnalysisList(autoValidated, !StatusRules.useRecordStatusForValidation()));
+        for (AnalysisItem row : rows) {
+            row.setAutoValidated(true);
+            row.setReadOnly(true);
+        }
+        sortByAccessionNumberAndOrder(rows);
+        return rows;
     }
 
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {

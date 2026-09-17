@@ -1,7 +1,6 @@
 package org.openelisglobal.program.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.lang.reflect.InvocationTargetException;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -9,11 +8,9 @@ import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
-import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,9 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProgramController extends BaseRestController {
 
     @Autowired
-    private FhirPersistanceService fhirPersistanceService;
-    @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private ProgramService programService;
     @Autowired
@@ -41,13 +36,11 @@ public class ProgramController extends BaseRestController {
 
     @GetMapping(value = "/program/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public EditProgramForm createProgram(@PathVariable String id) throws FhirLocalPersistingException {
+    public EditProgramForm createProgram(@PathVariable String id) {
         EditProgramForm form = new EditProgramForm();
         form.setProgram(programService.get(id));
-        if (form.getProgram().getQuestionnaireUUID() != null) {
-            form.setAdditionalOrderEntryQuestions(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                    .withId(form.getProgram().getQuestionnaireUUID().toString()).execute());
-        }
+        form.setAdditionalOrderEntryQuestions(
+                questionnaireStorageService.getQuestionnaire(form.getProgram().getQuestionnaireUUID()).orElse(null));
         if (form.getProgram().getTestSection() != null) {
             form.setTestSectionId(form.getProgram().getTestSection().getId());
         }
@@ -56,7 +49,7 @@ public class ProgramController extends BaseRestController {
 
     @PostMapping(value = "/program", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public EditProgramForm createProgram(@RequestBody EditProgramForm form) throws FhirLocalPersistingException {
+    public EditProgramForm createProgram(@RequestBody EditProgramForm form) {
         Questionnaire questionnaire = form.getAdditionalOrderEntryQuestions();
         Program program = form.getProgram();
         if (!GenericValidator.isBlankOrNull(program.getId())) {
@@ -78,19 +71,18 @@ public class ProgramController extends BaseRestController {
         program.setManuallyChanged(true);
         program = programService.save(program);
         questionnaire.setId(program.getQuestionnaireUUID().toString());
-        fhirPersistanceService.updateFhirResourceInFhirStore(questionnaire);
+        questionnaireStorageService.saveQuestionnaire(questionnaire);
         DisplayListService.getInstance().refreshList(ListType.PROGRAM);
         return form;
     }
 
     @GetMapping(value = "/program/{id}/questionnaire", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Questionnaire getAdditionalEntryQuestions(HttpServletRequest request, @PathVariable String id)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        if (programService.get(id).getQuestionnaireUUID() != null) {
-            return fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                    .withId(programService.get(id).getQuestionnaireUUID().toString()).execute();
+    public Questionnaire getAdditionalEntryQuestions(HttpServletRequest request, @PathVariable String id) {
+        Program program = programService.get(id);
+        if (program == null) {
+            return null;
         }
-        return null;
+        return questionnaireStorageService.getQuestionnaire(program.getQuestionnaireUUID()).orElse(null);
     }
 }

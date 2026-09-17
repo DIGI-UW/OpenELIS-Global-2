@@ -79,6 +79,7 @@ import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -1200,10 +1201,8 @@ public class ResultsLoadUtility {
                     resultLimit.getLowValid() == Double.NEGATIVE_INFINITY ? 0 : resultLimit.getLowValid());
             testItem.setUpperAbnormalRange(
                     resultLimit.getHighValid() == Double.POSITIVE_INFINITY ? 0 : resultLimit.getHighValid());
-            testItem.setLowerCritical(
-                    resultLimit.getLowCritical() == Double.NEGATIVE_INFINITY ? 0 : resultLimit.getLowCritical());
-            testItem.setHigherCritical(
-                    resultLimit.getHighCritical() == Double.POSITIVE_INFINITY ? 0 : resultLimit.getHighCritical());
+            testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
+            testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setValid(getIsValid(testItem.getResultValue(), resultLimit));
             testItem.setNormal(getIsNormal(testItem.getResultValue(), resultLimit));
@@ -1374,30 +1373,7 @@ public class ResultsLoadUtility {
      * an unset bound never fires.
      */
     private String computeResultFlag(String resultValue, String resultType, ResultLimit limit) {
-        // a null id is the selector's synthetic empty limit (no authored range
-        // matched this patient) — no basis to call anything "normal"
-        if (GenericValidator.isBlankOrNull(resultValue) || limit == null
-                || GenericValidator.isBlankOrNull(limit.getId()) || !"N".equals(resultType)) {
-            return null;
-        }
-        try {
-            double value = Double.parseDouble(resultValue);
-            if (value < limit.getLowValid() || value > limit.getHighValid()) {
-                return "INVALID";
-            }
-            boolean criticalLow = limit.getLowCritical() != Double.POSITIVE_INFINITY && value < limit.getLowCritical();
-            boolean criticalHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY
-                    && value > limit.getHighCritical();
-            if (criticalLow || criticalHigh) {
-                return "CRITICAL";
-            }
-            if (value < limit.getLowNormal() || value > limit.getHighNormal()) {
-                return "ABNORMAL";
-            }
-            return "NORMAL";
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return ValidationSignals.resultFlag(limit, resultType, resultValue);
     }
 
     private boolean getIsNormal(String resultValue, ResultLimit resultLimit) {
@@ -1574,7 +1550,7 @@ public class ResultsLoadUtility {
      * unified panel can render each with its context (subject) and visibility
      * (noteType) tags. pastNotes remains the legacy flat string.
      */
-    private List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
+    public List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
         List<TestResultItem.AnalysisNote> items = new ArrayList<>();
         NoteService noteService = SpringContext.getBean(NoteService.class);
         for (Note note : noteService.getNotes(analysis)) {

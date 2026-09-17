@@ -30,6 +30,16 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
 
     List<Sample> getPageOfSamples(int startingRecNo) throws LIMSRuntimeException;
 
+    /**
+     * A page of samples, most recently created first (descending id). Unlike
+     * {@link #getPageOfSamples(int)} the page size is the caller's, not the system
+     * default.
+     *
+     * @param startingRecNo 1-based index of the first record
+     * @param pageSize      number of samples to return
+     */
+    List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) throws LIMSRuntimeException;
+
     void getData(Sample sample) throws LIMSRuntimeException;
 
     // public void updateData(Sample sample) throws LIMSRuntimeException;

@@ -7,6 +7,5 @@ import lombok.Data;
  */
 @Data
 public class ResolveAlertRequest {
-    private Integer userId;
     private String resolutionNotes;
 }
