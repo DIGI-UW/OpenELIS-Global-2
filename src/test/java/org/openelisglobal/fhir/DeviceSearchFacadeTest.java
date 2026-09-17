@@ -43,7 +43,6 @@ public class DeviceSearchFacadeTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/facade-device.xml");
-        resyncSequence("clinlims.analyzer_seq", "clinlims.analyzer");
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(deviceProvider));

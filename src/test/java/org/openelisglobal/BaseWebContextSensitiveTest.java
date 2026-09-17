@@ -99,7 +99,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             "observation_history_type" };
 
     /**
-     * Legacy entities whose Hibernate generators use standalone sequences and whose
+     * Entities whose Hibernate generators use standalone sequences and whose
      * fixtures are followed by service-created records in this test suite. Keep
      * this list explicit: resetting every inferred table sequence can rewind
      * unrelated PostgreSQL sequences while other pooled connections still hold
@@ -109,7 +109,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             { "patient", "patient_seq" }, { "patient_identity", "patient_identity_seq" },
             { "nc_event", "nc_event_id_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
-            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
+            { "analyzer", "analyzer_seq" }, { "analyzer_profile_binding", "analyzer_profile_binding_seq" },
+            { "analyzer_site_binding", "analyzer_site_binding_seq" },
+            { "analyzer_site_binding_revision", "analyzer_site_binding_revision_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the

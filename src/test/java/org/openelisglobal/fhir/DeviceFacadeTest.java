@@ -46,9 +46,6 @@ public class DeviceFacadeTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
 
         executeDataSetWithStateManagement("testdata/facade-device.xml");
-        // The fixture seeds analyzer ids 1-3 without advancing analyzer_seq; resync so
-        // a created Device does not collide on analyzer_pk.
-        resyncSequence("clinlims.analyzer_seq", "clinlims.analyzer");
 
         servletContext = new MockServletContext();
 
