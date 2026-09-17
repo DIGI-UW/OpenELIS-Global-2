@@ -43,6 +43,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * and event-publishing behavior, keyed by (alertType, entityType, entityRef)
      * instead of (alertType, entityType, entityId).
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert createAlert(AlertType alertType, String entityType, String entityRef, AlertSeverity severity, String message,
             String contextDataJson);
 
@@ -71,6 +72,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      *                            already recorded
      * @return Updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert acknowledgeAlert(Long alertId, Integer userId, String acknowledgmentNotes);
 
     /**
@@ -111,6 +113,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityRef  Entity reference (e.g. a UUID string)
      * @return List of alerts for the entity
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
     /**

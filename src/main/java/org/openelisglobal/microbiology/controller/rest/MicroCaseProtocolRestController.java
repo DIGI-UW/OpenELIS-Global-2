@@ -9,7 +9,6 @@ import org.openelisglobal.microbiology.form.MicroCaseProtocolOptionForm;
 import org.openelisglobal.microbiology.service.MicroCaseProtocolService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/protocol")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseProtocolRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseProtocolService protocolService;

@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
     /** Locks and returns a lot for an atomic eligibility check and consumption. */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryLot getForUpdate(Long lotId);
 
     /**

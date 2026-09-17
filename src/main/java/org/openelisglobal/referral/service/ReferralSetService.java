@@ -38,6 +38,7 @@ public interface ReferralSetService {
      * new referral gets one: the lifecycle transitions read it, so a referral
      * without one can never advance past the state it was created in.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId);
 
     /**
@@ -45,5 +46,6 @@ public interface ReferralSetService {
      * the referral is inserted, so the audit trail starts at inception rather than
      * at the first transition.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void insertInitialDraftHistory(String referralId, String actorUserId);
 }

@@ -28,6 +28,7 @@ public interface FreezerReadingService {
      * Deletes readings older than the given retention cutoff. Used by the scheduled
      * retention cleanup job. Returns the number of rows deleted.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     int deleteReadingsOlderThan(OffsetDateTime cutoff);
 
     /**
@@ -36,5 +37,6 @@ public interface FreezerReadingService {
      * time, min/max temperature, duration, severity). A run ends whenever a NORMAL
      * reading is seen or the severity changes.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     List<FreezerExcursionData> findExcursions(Freezer freezer, OffsetDateTime start, OffsetDateTime end);
 }

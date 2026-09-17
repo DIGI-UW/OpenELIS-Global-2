@@ -183,6 +183,27 @@ public final class Privileges {
     public static final String COLDSTORAGE_MANAGE = "coldstorage:manage";
 
     // -----------------------------------------------------------------------
+    // Microbiology
+    // -----------------------------------------------------------------------
+    //
+    // Mirrors the access model the microbiology module already expressed in
+    // MicrobiologyRestControllerSupport, so the privileges are a translation of
+    // the module's own intent rather than a new policy:
+    //
+    // BENCH_ACCESS = hasAnyRole('ADMIN','RESULTS','VALIDATION') -> micro:view
+    // (read)
+    // and micro:bench (culture/AST bench work: isolates, inoculation, worklist).
+    // SUPERVISOR_ACCESS = hasAnyRole('ADMIN','VALIDATION') -> micro:supervise
+    // (report release, amendment, critical communication, nonconformance).
+    //
+    // Reference/breakpoint administration is test-catalog configuration, not
+    // bench work, and stays on the existing TEST_CONFIGURE.
+
+    public static final String MICRO_VIEW = "micro:view";
+    public static final String MICRO_BENCH = "micro:bench";
+    public static final String MICRO_SUPERVISE = "micro:supervise";
+
+    // -----------------------------------------------------------------------
     // Dictionary
     // -----------------------------------------------------------------------
 
