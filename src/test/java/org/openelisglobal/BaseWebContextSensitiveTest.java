@@ -27,8 +27,6 @@ import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,8 +134,6 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     @Autowired
     private org.openelisglobal.observationhistory.service.ObservationHistoryService observationHistoryService;
-    @Autowired(required = false)
-    private ReferenceTablesService referenceTablesService;
 
     protected MockMvc mockMvc;
 
@@ -317,13 +313,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * up a daemon SecurityContext in their own {@code @Before} to avoid the admin
      * DB lookup entirely.
      */
-    private void ensureBaselineSystemUserRows() throws SQLException {
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("INSERT INTO system_user (id, external_id, login_name, last_name, first_name, initials, "
-                    + "is_active, is_employee, lastupdated) "
-                    + "SELECT nextval('system_user_seq'), 'TEST_ADMIN', 'admin', 'Doe', 'John', 'JD', 'Y', 'Y', now() "
-                    + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'admin')");
-        }
+    private void ensureBaselineSystemUserRows() {
+        jdbcTemplate.update("INSERT INTO system_user (id, external_id, login_name, last_name, first_name, initials, "
+                + "is_active, is_employee, lastupdated) "
+                + "SELECT nextval('system_user_seq'), 'TEST_ADMIN', 'admin', 'Doe', 'John', 'JD', 'Y', 'Y', now() "
+                + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'admin')");
     }
 
     /**
@@ -373,22 +367,21 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private void synchronizeFixtureSequences(Connection conn, String[] tableNames) throws SQLException {
         Set<String> loadedTables = Arrays.stream(tableNames).map(name -> name.toLowerCase(java.util.Locale.ROOT))
                 .collect(java.util.stream.Collectors.toSet());
-        try (Statement stmt = conn.createStatement()) {
-            for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
-                String tableName = mapping[0];
-                if (!loadedTables.contains(tableName)) {
-                    continue;
-                }
-                String sequenceName = mapping[1];
-                // setval is not rolled back for standalone sequences. Never rewind
-                // below their prior next value when a fixture is smaller than the
-                // records that the surrounding test transaction will restore.
-                stmt.execute("SELECT setval('clinlims." + sequenceName + "', GREATEST("
-                        + "CAST(COALESCE((SELECT MAX(id) FROM clinlims." + tableName + "), 0) + 1 AS BIGINT), "
-                        + "(SELECT last_value + CASE WHEN is_called THEN 1 ELSE 0 END FROM clinlims." + sequenceName
-                        + ")), false)");
-                logger.debug("Synchronized fixture sequence {} for table {}", sequenceName, tableName);
+        for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
+            if (loadedTables.contains(mapping[0])) {
+                synchronizeSequence(conn, "clinlims." + mapping[1], "clinlims." + mapping[0]);
             }
+        }
+    }
+
+    private void synchronizeSequence(Connection conn, String sequence, String table) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.setQueryTimeout(30);
+            // PostgreSQL sequence allocation does not roll back. Never reuse an
+            // allocated ID when the surrounding transaction restores larger rows.
+            stmt.execute("SELECT setval('" + sequence + "', GREATEST(" + "CAST(COALESCE((SELECT MAX(id) FROM " + table
+                    + "), 0) + 1 AS BIGINT), " + "(SELECT last_value + CASE WHEN is_called THEN 1 ELSE 0 END FROM "
+                    + sequence + ")), false)");
         }
     }
 
@@ -429,54 +422,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Idempotently ensure {@code clinlims.reference_tables} has a row with the
-     * given name (case-insensitive) and return its id. Looks up via the service,
-     * inserts via raw JDBC if absent. Used in tests whose DbUnit fixture truncates
-     * {@code reference_tables} as a side effect, ahead of code paths that
-     * audit-emit and require the row to exist.
+     * Legacy fixture helper for an explicitly requested reference-table row. Uses
+     * the test transaction when present; does not commit over its rollback. Tests
+     * of migration seeds should assert their presence instead of repairing them
+     * with this helper.
      */
     protected String ensureReferenceTable(String name) {
-        if (referenceTablesService != null) {
-            ReferenceTables existing = referenceTablesService.getReferenceTableByName(name);
-            if (existing != null) {
-                return existing.getId();
-            }
+        List<String> ids = jdbcTemplate.queryForList(
+                "SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?)", String.class, name);
+        if (!ids.isEmpty()) {
+            return ids.get(0);
         }
-        try (Connection conn = dataSource.getConnection();
-                java.sql.PreparedStatement insert = conn
-                        .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
-                                + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
-            insert.setString(1, name);
-            insert.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
-        }
-        if (referenceTablesService != null) {
-            ReferenceTables seeded = referenceTablesService.getReferenceTableByName(name);
-            if (seeded != null) {
-                return seeded.getId();
-            }
-        }
-        // Fall back to raw lookup if the service bean isn't wired (rare in unit
-        // tests that lookup post-seed).
-        try (Connection conn = dataSource.getConnection();
-                java.sql.PreparedStatement select = conn.prepareStatement(
-                        "SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?) LIMIT 1")) {
-            select.setString(1, name);
-            try (java.sql.ResultSet rs = select.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString(1);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to look up seeded reference_tables row for " + name, e);
-        }
-        throw new IllegalStateException("Reference table row for '" + name + "' is still missing after seed attempt");
+        return jdbcTemplate.queryForObject("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
+                + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y') RETURNING id", String.class, name);
     }
 
     /**
-     * Convenience: seed multiple reference_tables names in one call. See
-     * {@link #ensureReferenceTable(String)}.
+     * Ensure explicitly requested legacy fixture rows in the caller's transaction.
      */
     protected void ensureReferenceTables(String... names) {
         for (String name : names) {
@@ -485,82 +447,42 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
-     * loads insert rows with explicit ids without advancing the sequence, so a
-     * later sequence-backed insert can collide with a seeded id depending on test
-     * order (e.g. {@code person_pk id=2 already exists}). Call this before
-     * sequence-backed inserts into a fixture-seeded table.
+     * Advance a fixture table's sequence beyond imported and previously allocated
+     * IDs using the same connection as the fixture. Sequence allocation itself is
+     * not rolled back by PostgreSQL.
      */
     protected void resyncSequence(String sequence, String table) {
-        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
-            // id columns are numeric(10); setval needs a bigint.
-            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
-                    + ")::bigint, false)");
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        try {
+            synchronizeSequence(conn, sequence, table);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 
     /**
-     * Idempotently ensure the audit user {@code system_user.id=1} ("admin") exists,
-     * inserting it via raw JDBC (no audit emission) if absent. Audit-emitting
-     * service calls stamp history with {@code sys_user_id=1}
-     * ({@link #TEST_SYS_USER_ID}); a sibling test that truncates
-     * {@code system_user} to its own fixture rows wipes this seed, so an
-     * audit-dependent test must ensure it rather than assume the global seed
-     * survives a prior test's fixture load.
+     * Legacy fixture helper for audit actor 1. Joins the active test transaction;
+     * tests replacing users should authenticate as their own fixture actor.
      */
     protected void ensureAuditSystemUser() {
-        try (Connection conn = dataSource.getConnection()) {
-            try (java.sql.PreparedStatement check = conn
-                    .prepareStatement("SELECT 1 FROM clinlims.system_user WHERE id = 1");
-                    java.sql.ResultSet rs = check.executeQuery()) {
-                if (rs.next()) {
-                    return;
-                }
-            }
-            try (java.sql.PreparedStatement insert = conn.prepareStatement(
-                    "INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name, "
-                            + "initials, is_active, is_employee, lastupdated) "
-                            + "VALUES (1, '1', 'admin', 'ELIS', 'Open', 'OE', 'Y', 'Y', now())")) {
-                insert.executeUpdate();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to ensure audit system_user id=1", e);
-        }
+        jdbcTemplate.update("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name, "
+                + "initials, is_active, is_employee, lastupdated) "
+                + "SELECT 1, '1', 'admin', 'ELIS', 'Open', 'OE', 'Y', 'Y', now() "
+                + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_user WHERE id = 1)");
     }
 
     /**
-     * Idempotently ensure the named {@code clinlims.site_information} row exists
-     * with the given value, inserting it (value_type {@code 'text'}, null domain)
-     * via raw JDBC if absent. For config-backed tests that read a migration-seeded
-     * site_information row but do not own that seed: a sibling fixture's
-     * {@code TRUNCATE site_information ... CASCADE} runs committed on a separate
-     * connection (outside the test's {@code @Rollback} transaction), so it
-     * permanently deletes the row for the rest of the JVM run. {@code domain_id} is
-     * nullable and unused by {@code ConfigurationProperties}, so it is left null.
-     * Insert-if-absent only — an existing row's value is left untouched.
+     * Legacy fixture helper for explicitly requested configuration. Joins the
+     * active test transaction and preserves an existing value. Tests of migration
+     * seeds should verify them rather than filling missing values here.
      */
     protected void ensureSiteInformation(String name, String value) {
-        try (Connection conn = dataSource.getConnection()) {
-            try (java.sql.PreparedStatement check = conn
-                    .prepareStatement("SELECT 1 FROM clinlims.site_information WHERE name = ?")) {
-                check.setString(1, name);
-                try (java.sql.ResultSet rs = check.executeQuery()) {
-                    if (rs.next()) {
-                        return;
-                    }
-                }
-            }
-            try (java.sql.PreparedStatement insert = conn.prepareStatement(
-                    "INSERT INTO clinlims.site_information (id, name, value, value_type, lastupdated) "
-                            + "VALUES (nextval('clinlims.site_information_seq'), ?, ?, 'text', now())")) {
-                insert.setString(1, name);
-                insert.setString(2, value);
-                insert.executeUpdate();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to ensure site_information row for " + name, e);
-        }
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.site_information (id, name, value, value_type, lastupdated) "
+                        + "SELECT nextval('clinlims.site_information_seq'), ?, ?, 'text', now() "
+                        + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information WHERE name = ?)",
+                name, value, name);
     }
 }
