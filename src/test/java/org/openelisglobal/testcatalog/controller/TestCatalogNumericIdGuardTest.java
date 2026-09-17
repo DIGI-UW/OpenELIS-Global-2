@@ -247,8 +247,9 @@ public class TestCatalogNumericIdGuardTest {
         }
         assertEquals("the classpath scan must find every controller on the guarded prefix, not pass vacuously",
                 Set.of("TestAlertRuleRestController", "TestCatalogActivationRestController",
-                        "TestCatalogEditorRestController", "TestReagentLinkRestController",
-                        "TestReflexCalcRestController", "TestStorageHistoryRestController"),
+                        "TestCatalogEditorRestController", "TestCatalogQcTargetsRestController",
+                        "TestReagentLinkRestController", "TestReflexCalcRestController",
+                        "TestStorageHistoryRestController"),
                 scanned);
         assertEquals(
                 "unclassified /rest/test-catalog path variables — guard them in"

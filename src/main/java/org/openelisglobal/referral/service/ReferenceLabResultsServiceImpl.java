@@ -192,7 +192,6 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         ReferenceLabReferralDTO dto = new ReferenceLabReferralDTO();
         dto.setId(referral.getId());
         dto.setStatus(toFhirStatus(referral.getStatus()));
-        dto.setPriority(referral.getPriority());
         dto.setRequestor(referral.getRequesterName());
         dto.setSentDate(toIso(referral.getSentDate()));
         dto.setBoxReceivedDate(toIso(latestChangedAt(referral.getId(), ReferralStatus.RECEIVED)));
@@ -205,6 +204,12 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             if (sample != null) {
                 dto.setLabNumber(sample.getAccessionNumber());
                 dto.setCollectedDate(toIso(sample.getCollectionDate()));
+                // The urgency of a referral is the urgency of its order. The referral's own
+                // priority column has no writer anywhere, so reading that one left the
+                // column blank and made the page's priority filter match nothing at all.
+                if (sample.getPriority() != null) {
+                    dto.setPriority(sample.getPriority().name());
+                }
                 Patient patient = sampleHumanService.getPatientForSample(sample);
                 if (patient != null) {
                     dto.setPatientDisplay(formatPatient(patient));
@@ -232,6 +237,7 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         ShippingBox box = referral.getAssignedBox();
         if (box != null) {
             dto.setBoxId(box.getBoxId());
+            dto.setBoxKey(box.getId());
         }
 
         if (view == DashboardView.OUTSTANDING && referral.getSentDate() != null) {

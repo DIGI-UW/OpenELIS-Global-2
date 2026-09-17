@@ -463,6 +463,11 @@ public class ShippingBoxRestController extends BaseRestController {
             String userIdString = getSysUserId(request);
             if (userIdString != null) {
                 box.setSystemUserId(Integer.parseInt(userIdString));
+                // Whoever is packing the box, unless the caller named someone else. The
+                // form never carries this, so the box page showed no author at all.
+                if (box.getCreatedBy() == null) {
+                    box.setCreatedBy(systemUserService.getUserById(userIdString));
+                }
             }
 
             ShippingBox createdBox = shippingBoxService.createBox(box);

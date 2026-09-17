@@ -40,6 +40,7 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -269,7 +270,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
             referral.setRequestDate(new Timestamp(new Date().getTime()));
             referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-            referral.setRequesterName(referralItem.getReferrer());
+            referral.setRequesterName(
+                    ResultUtil.requesterNameFor(referralItem.getReferrer(), null, updateData.getCurrentUserId()));
             referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
             referral.setSubcontract(buildSubcontractFromItem(referralItem, updateData.getCurrentUserId()));
             for (SampleTestCollection sampleItemTest : updateData.getSampleItemsTests()) {
@@ -316,7 +318,11 @@ public class ReferralSetServiceImpl implements ReferralSetService {
             existing.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
         }
         existing.setReferralReasonId(referralItem.getReferralReasonId());
-        existing.setRequesterName(referralItem.getReferrer());
+        // Only when the form names someone: an edit that leaves the field empty
+        // must not erase who raised the referral in the first place.
+        if (!GenericValidator.isBlankOrNull(referralItem.getReferrer())) {
+            existing.setRequesterName(referralItem.getReferrer());
+        }
         if (!GenericValidator.isBlankOrNull(referralItem.getReferredSendDate())) {
             existing.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
         }
@@ -337,7 +343,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         referralService.update(existing);
     }
 
-    private ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId) {
+    @Override
+    public ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId) {
         ReferralSubcontract subcontract = new ReferralSubcontract();
         subcontract.setSysUserId(currentUserId);
         subcontract.setAgreementReference(referralItem.getAgreementReference());
@@ -467,7 +474,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
      * {@code null -> DRAFT} history row, giving every subcontract a complete
      * lifecycle record from inception.
      */
-    private void insertInitialDraftHistory(String referralId, String actorUserId) {
+    @Override
+    public void insertInitialDraftHistory(String referralId, String actorUserId) {
         ReferralStatusHistory history = new ReferralStatusHistory();
         history.setReferralId(referralId);
         history.setFromStatus(null);

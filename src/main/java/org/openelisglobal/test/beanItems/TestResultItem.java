@@ -127,8 +127,9 @@ public class TestResultItem implements ResultItem, Serializable {
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
-    private double lowerCritical;
-    private double higherCritical;
+    // Authored critical bounds, null when the range has none (OGC-1121).
+    private Double lowerCritical;
+    private Double higherCritical;
     private List<ComplianceEvaluation> complianceStatuses = Collections.emptyList();
 
     /**
@@ -663,19 +664,19 @@ public class TestResultItem implements ResultItem, Serializable {
         this.lowerAbnormalRange = lowerAbnormalRange;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
     }
 

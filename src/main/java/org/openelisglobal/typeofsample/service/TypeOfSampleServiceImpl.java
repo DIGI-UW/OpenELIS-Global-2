@@ -101,7 +101,8 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     public synchronized List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b,
             List<String> testUnitIds) {
         List<Test> testList = getActiveTestsBySampleTypeId(sampleType, b);
-        return testList.stream().filter(test -> testUnitIds.contains(test.getTestSection().getId()))
+        return testList.stream()
+                .filter(test -> test.getTestSection() == null || testUnitIds.contains(test.getTestSection().getId()))
                 .collect(Collectors.toList());
     }
 

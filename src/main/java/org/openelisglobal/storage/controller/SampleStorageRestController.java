@@ -115,7 +115,8 @@ public class SampleStorageRestController extends BaseRestController {
                 // Return count metrics only
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
 
-                long totalSampleItems = allAssignments.size();
+                long totalSampleItems = allAssignments.stream()
+                        .filter(assignment -> assignment.getSampleItemId() != null).count();
                 long active = 0;
                 long disposed = 0;
 

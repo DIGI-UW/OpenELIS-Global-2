@@ -25,6 +25,13 @@ const clearRow = (overrides = {}) => ({
 });
 
 describe("validationTriage — chips (FR-A2)", () => {
+  // OGC-1121: a critical value is a row-level signal, not only a filter.
+  it("a critical row carries the Critical chip", () => {
+    const [item] = triageRows([clearRow({ critical: true, normal: false })]);
+    expect(item.chips).toEqual(["critical"]);
+    expect(item.lane).toBe(LANE_NEEDS_REVIEW);
+  });
+
   it("a clean row carries no chips", () => {
     const [item] = triageRows([clearRow()]);
     expect(item.chips).toEqual([]);
