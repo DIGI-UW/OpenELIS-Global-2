@@ -551,4 +551,7 @@
        (Test catalog import v2, OGC-1194). -->
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
 
+  <!-- Preserve UUID identifiers in the shared audit history (including QC control lots). -->
+  <include relativeToChangelogFile="true" file="104-history-reference-identifiers.xml"/>
+
 </databaseChangeLog>

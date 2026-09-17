@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.apache.ApacheRestfulClientFactory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,6 @@ import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -238,8 +238,13 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public FhirContext fhirContext() {
-        return mock(FhirContext.class);
+    public FhirContext fhirContext(CloseableHttpClient httpClient) {
+        FhirContext context = FhirContext.forR4();
+        // Parse real messages; only the external HTTP transport is substituted.
+        ApacheRestfulClientFactory clientFactory = new ApacheRestfulClientFactory(context);
+        clientFactory.setHttpClient(httpClient);
+        context.setRestfulClientFactory(clientFactory);
+        return context;
     }
 
     @Bean()
@@ -272,11 +277,8 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(NotificationDAO.class);
     }
 
-    @Bean()
-    @Profile("test")
-    public AuditTrailService auditTrailService() {
-        return mock(AuditTrailService.class);
-    }
+    // AuditTrailServiceImpl is component-scanned with its real history and
+    // reference-table services. Database tests must exercise persisted history.
 
     @Bean()
     @Profile("test")

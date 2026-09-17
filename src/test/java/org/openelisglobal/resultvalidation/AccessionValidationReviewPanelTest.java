@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
@@ -30,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OGC-1028 (Validation v4 slice V2) — the per-row review actions: Validate &
@@ -37,7 +40,11 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * dual-axis note (FR-F1). Fixture: {@code testdata/validation-review-panel.xml}
  * — accession VAL-RP-001 with analyses 100 and 102 awaiting validation.
  */
+@Transactional
 public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String ANALYSIS_ID = "100";
     private static final String SIBLING_ANALYSIS_ID = "102";
@@ -56,7 +63,6 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         super.setUp();
         executeDataSetWithStateManagement("testdata/validation-review-panel.xml");
         authenticateAs("testUser");
-        statusService.refreshCache();
         session = buildValidatorSession();
         notesRequiredBefore = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.notesRequiredForModifyResults);
@@ -101,6 +107,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/analysis/999999/release").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("10.5", "", "", "VALIDATION")))
                 .andExpect(status().isNotFound());
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
@@ -111,6 +119,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("10.5", "", "", "VALIDATION")))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("notAwaitingValidation"));
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
@@ -120,6 +130,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
                 .content(rowBody("10.5", "Reviewed against the previous run", "E", "VALIDATION")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("released"))
                 .andExpect(jsonPath("$.analysisId").value("100"));
+        entityManager.flush();
+        entityManager.clear();
 
         Analysis released = analysisService.get(ANALYSIS_ID);
         assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), released.getStatusId());
@@ -141,6 +153,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("10.5", "Legacy note", "", "")))
                 .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
 
         List<Map<String, Object>> notes = notesFor(ANALYSIS_ID, "Result Note (Validation)");
         assertEquals(1, notes.size());
@@ -154,6 +168,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("12.25", "", "I", "MODIFICATION")))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("modificationReasonRequired"));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals("10.5",
                 jdbcTemplate.queryForObject("SELECT value FROM clinlims.result WHERE id = 100", String.class));
@@ -164,6 +180,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("", "Cleared", "I", "MODIFICATION")))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("resultRequired"));
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
@@ -174,6 +192,8 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(rowBody("12.25", "Transcription error", "I", "MODIFICATION"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.outcome").value("modified"));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals("12.25",
                 jdbcTemplate.queryForObject("SELECT value FROM clinlims.result WHERE id = 100", String.class));

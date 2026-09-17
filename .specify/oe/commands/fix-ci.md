@@ -434,10 +434,10 @@ the failure was an E2E test).
 
 ```bash
 # Format check (uses project-configured prettier via npm script)
-cd frontend && npm run check-format
+(cd frontend && npm run check-format)
 
 # Unit tests (fast — always run)
-cd frontend && npm test -- --watchAll=false --coverage=false
+(cd frontend && npm test)
 ```
 
 **Backend changes:**

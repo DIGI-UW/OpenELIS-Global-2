@@ -821,7 +821,7 @@ MUST adhere to the standards and procedures outlined in the authoritative
 **Core Requirements**:
 
 - **TDD Workflow**: Red-Green-Refactor cycle is mandatory for complex logic
-- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Jest)
+- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Vitest)
 - **Checkpoint Validations**: Tests must pass at each SDD phase checkpoint (per
   Spec-Driven Development workflow)
 - **Test Data Management**: Use builders/factories, NOT hardcoded values
@@ -830,13 +830,15 @@ MUST adhere to the standards and procedures outlined in the authoritative
 
 - Backend: `src/test/java/org/openelisglobal/{module}/`
 - Frontend: `frontend/src/components/{feature}/*.test.js`
-- E2E: `frontend/cypress/e2e/{feature}.cy.js`
+- E2E: `frontend/playwright/tests/{feature}.spec.ts` for new coverage;
+  `frontend/cypress/e2e/{feature}.cy.js` for existing Cypress coverage
 
 **CI/CD Gates**:
 
 - `mvn spotless:check` (code formatting)
 - `mvn clean install` (build + unit tests)
-- `npm run cy:run` (E2E tests)
+- Applicable Playwright and existing Cypress checks from the current CI workflows
+  (local commands and project selection: `.specify/guides/testing-roadmap.md`)
 - All must pass before merge to `develop`
 
 **Rationale**: Healthcare software failures impact patient care. Automated
@@ -882,7 +884,7 @@ seconds rather than at deployment.
 1. Unit Tests (Mockito mocked) - Business logic validation
 2. ORM Validation Tests - Framework configuration validation
 3. Integration Tests (with database) - Full stack validation
-4. E2E Tests (Cypress) - User workflow validation
+4. E2E Tests (Playwright; existing Cypress maintained) - User workflow validation
 ```
 
 **Example** (Hibernate with annotations):

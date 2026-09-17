@@ -7,6 +7,10 @@
         range — Needs-review. The result limit has no gender and default ages so
         it applies without a patient. -->
 
+    <!-- Required validation permissions belong to this rollback-owned fixture. -->
+    <system_role id="9400" name="Validation"
+        description="Validate results" display_key="role.validator"
+        active="true" editable="false" />
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y"
         lastupdated="2025-01-01 12:00:00" />

@@ -3,7 +3,6 @@ package org.openelisglobal.analyzerimport.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
-import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
 import java.nio.file.Files;
@@ -33,7 +32,6 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private static final String ACCESSION = "ACC-UNKNOWN-TEST-001";
     private static final Path FIXTURE = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
             "fixtures", "normalized-unknown-test.fhir.json");
-    private static final FhirContext REAL_FHIR = FhirContext.forR4();
 
     @Autowired
     private AnalyzerNormalizedResultImportService importService;
@@ -48,7 +46,6 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        when(fhirContext.newJsonParser()).thenAnswer(invocation -> REAL_FHIR.newJsonParser());
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
         jdbc.update(
@@ -111,7 +108,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             java.util.concurrent.Callable<AnalyzerNormalizedResultImportSummary> delivery = () -> {
                 if (!start.await(10, TimeUnit.SECONDS))
                     throw new IllegalStateException("Delivery barrier timed out");
-                return importService.importBundle(REAL_FHIR.newJsonParser().parseResource(Bundle.class, payload), "1");
+                return importService.importBundle(fhirContext.newJsonParser().parseResource(Bundle.class, payload),
+                        "1");
             };
             var first = workers.submit(delivery);
             var second = workers.submit(delivery);
@@ -127,7 +125,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @Test
     public void aNewMessageIdProducesADistinctReceipt() throws Exception {
-        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Bundle bundle = fhirContext.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         importService.importBundle(bundle, "1");
         bundle.getIdentifier().setValue("second-delivery");
         importService.importBundle(bundle, "1");
@@ -138,7 +136,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @Test
     public void invalidProfileDoesNotCommitAReceipt() throws Exception {
-        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Bundle bundle = fhirContext.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         jdbc.update("UPDATE clinlims.analyzer_profile_binding SET profile_revision = 4 WHERE id = ?",
                 PROFILE_BINDING_ID);
         assertThrows(AnalyzerNormalizedResultImportException.class, () -> importService.importBundle(bundle, "1"));
@@ -149,7 +147,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @Test
     public void acceptedDeliveryIsNotRestagedAfterStagingRowsAreRemoved() throws Exception {
-        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Bundle bundle = fhirContext.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");
         jdbc.update("DELETE FROM clinlims.analyzer_results WHERE analyzer_id = ?", ANALYZER_ID);
         jdbc.update("UPDATE clinlims.analyzer_profile_binding SET profile_revision = 4 WHERE id = ?",
@@ -164,7 +162,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @Test
     public void unknownResultIsHeldWithExactBridgeSourceEvidence() throws Exception {
-        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Bundle bundle = fhirContext.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
 
         AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
 
@@ -219,7 +217,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 java.util.UUID.randomUUID().toString(), TEST_ID, ANALYZER_ID);
         if (withStatistics)
             addQcStatistics();
-        return REAL_FHIR.newJsonParser().parseResource(Bundle.class,
+        return fhirContext.newJsonParser().parseResource(Bundle.class,
                 Files.readString(FIXTURE.resolveSibling("normalized-qc.fhir.json")));
     }
 
