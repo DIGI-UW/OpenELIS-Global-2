@@ -120,6 +120,14 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       // if (response.url.includes("LoginPage")) {
       //     throw "No Login Session";
       // }
+      // An error response carries a JSON body too. Handing that body to the
+      // caller as if it were data turns a 500 into a render-time crash, so a
+      // failed request reports nothing instead.
+      if (!response.ok) {
+        console.error(`GET ${endPoint} failed: HTTP ${response.status}`);
+        callback(undefined);
+        return;
+      }
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json().then((jsonResp) => {

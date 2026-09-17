@@ -2886,6 +2886,8 @@
   "errorBoundary.route.patientResultsViewer.title": "Patient results could not be loaded",
   "errorBoundary.route.resultsSearch.message": "Something went wrong on the results page. Reload to try again.",
   "errorBoundary.route.resultsSearch.title": "Results could not be loaded",
+  "errorBoundary.route.orderEntry.message": "Something went wrong on the order entry page. Reload to try again.",
+  "errorBoundary.route.orderEntry.title": "Order entry could not be loaded",
   "errorBoundary.route.samplePatientEntry.message": "Something went wrong on the sample entry page. Reload to try again.",
   "errorBoundary.route.samplePatientEntry.title": "Sample entry could not be loaded",
   "errorBoundary.route.storage.message": "Something went wrong on this page. Reload to try again, or use the menu to go elsewhere.",
