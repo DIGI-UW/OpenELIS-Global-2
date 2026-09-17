@@ -54,6 +54,7 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
             String sysUserId);
 
     /** Records usage for an already validated, managed lot. */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryUsage recordUsage(InventoryLot lot, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId);
 }

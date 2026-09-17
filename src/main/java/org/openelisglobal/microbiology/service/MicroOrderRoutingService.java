@@ -6,6 +6,7 @@ import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface MicroOrderRoutingService {
     /**
@@ -14,8 +15,10 @@ public interface MicroOrderRoutingService {
      * documented fallback. Callers must not re-derive this from test names, program
      * codes, or a submitted order-detail payload.
      */
+    @PreAuthorize("hasAuthority('PRIV_MICRO_VIEW')")
     boolean isMicrobiologyOrder(List<Test> tests, boolean microbiologyProgramSelected);
 
+    @PreAuthorize("hasAuthority('PRIV_MICRO_BENCH')")
     List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy);
 
     /**
@@ -23,9 +26,11 @@ public interface MicroOrderRoutingService {
      * when {@code orderDetail} is non-null, persists it against every case routed
      * for this order/sample save.
      */
+    @PreAuthorize("hasAuthority('PRIV_MICRO_BENCH')")
     List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy,
             MicroCaseOrderDetailRequestForm orderDetail);
 
+    @PreAuthorize("hasAuthority('PRIV_MICRO_BENCH')")
     List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy,
             MicroCaseOrderDetailRequestForm orderDetail, boolean microbiologyProgramSelected);
 }

@@ -246,7 +246,12 @@ public class ServicePrivilegeCoverageTest {
          * sensitive writes in the file. {@code SelfIdentityMethodsUngatedTest} asserts
          * the other half of the contract, that these stay ungated on purpose.
          */
-        private static final Set<String> SELF_IDENTITY_READS = Set.of("UserService#getUserTestSections");
+        private static final Set<String> SELF_IDENTITY_READS = Set.of("UserService#getUserTestSections",
+                // Both take the subject's own systemUserId and answer "may this user
+                // see this case". Gating them would be circular: the caller would need
+                // a privilege before it could ask whether the caller has one. The
+                // MicroCaseRestController endpoint that consults them carries the gate.
+                "MicrobiologyCaseAccessService#canAccessCase", "MicrobiologyCaseAccessService#canAccessSampleItem");
 
         private static boolean isSelfIdentityRead(String simpleName, String methodName) {
             return SELF_IDENTITY_READS.contains(simpleName + "#" + methodName);

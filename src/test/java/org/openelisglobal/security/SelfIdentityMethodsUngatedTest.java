@@ -117,7 +117,17 @@ public class SelfIdentityMethodsUngatedTest {
             // Referring a sample out needs the referral-LAB picklist, built by
             // OrganizationService#getOrganizationsByTypeName (PRIV_ORGANIZATION_VIEW).
             { "Results", "organization:view", "GET /rest/displayList/REFERRAL_ORGANIZATIONS on result entry" },
-            { "Validation", "organization:view", "GET /rest/displayList/REFERRAL_ORGANIZATIONS on validation" } };
+            { "Validation", "organization:view", "GET /rest/displayList/REFERRAL_ORGANIZATIONS on validation" },
+            // Microbiology reproduces MicrobiologyRestControllerSupport's pre-existing
+            // reach: BENCH_ACCESS was ADMIN/RESULTS/VALIDATION, SUPERVISOR_ACCESS was
+            // ADMIN/VALIDATION. If these grants go missing the whole micro module
+            // becomes Global-Admin-only, which is exactly the lockout shape that took
+            // out /rest/menu.
+            { "Results", "micro:view", "microbiology case/worklist reads for bench staff" },
+            { "Results", "micro:bench", "culture setup, isolates and AST runs for bench staff" },
+            { "Validation", "micro:view", "microbiology case/worklist reads for validators" },
+            { "Validation", "micro:bench", "culture setup, isolates and AST runs for validators" },
+            { "Validation", "micro:supervise", "microbiology report release, amendment and critical communication" } };
 
     @Test
     public void rolesHoldThePrivilegesTheirScreensRequire() throws IOException {

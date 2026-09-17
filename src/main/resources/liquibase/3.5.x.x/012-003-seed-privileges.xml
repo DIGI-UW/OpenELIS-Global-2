@@ -515,4 +515,44 @@
         </rollback>
     </changeSet>
 
+    <!--
+      Microbiology privileges, added after 012-003 was already released.
+
+      A separate changeset on purpose: 012-003 above MARK_RANs whenever
+      system_privilege is non-empty, so on any database that already seeded the
+      catalog these rows would never appear. Each INSERT is individually
+      idempotent (NOT EXISTS on the name) so this is safe to re-run and safe on a
+      partially-seeded database.
+
+      The three privileges mirror the access model the microbiology module
+      already expressed in MicrobiologyRestControllerSupport — BENCH_ACCESS
+      (ADMIN/RESULTS/VALIDATION) and SUPERVISOR_ACCESS (ADMIN/VALIDATION) — so
+      this is a translation of the module's own intent, not a new policy.
+    -->
+    <changeSet author="openelis" id="012-003a-seed-microbiology-privileges">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Seed micro:view / micro:bench / micro:supervise (idempotent per row)</comment>
+        <sql>
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            SELECT 'micro:view', 'View microbiology cases, isolates, AST runs and reference data', 'microbiology'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_privilege WHERE name = 'micro:view');
+
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            SELECT 'micro:bench', 'Perform microbiology bench work: culture setup, inoculation, isolates, AST runs and readings', 'microbiology'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_privilege WHERE name = 'micro:bench');
+
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            SELECT 'micro:supervise', 'Release, amend and nonconform microbiology reports; critical result communication', 'microbiology'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_privilege WHERE name = 'micro:supervise');
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_privilege
+                WHERE name IN ('micro:view', 'micro:bench', 'micro:supervise');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

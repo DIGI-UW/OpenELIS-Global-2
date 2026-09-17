@@ -146,6 +146,7 @@ public interface SampleStorageService {
      * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
      *         shelfCapacityWarning if applicable
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> assignInventoryLotWithLocation(String inventoryLotId, String locationId,
             String locationType, String positionCoordinate, String notes, String sysUserId);
 
@@ -161,6 +162,7 @@ public interface SampleStorageService {
      * @param sysUserId          The user performing the move
      * @return Movement ID
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String moveInventoryLotWithLocation(String inventoryLotId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes, String sysUserId);
 
@@ -171,18 +173,21 @@ public interface SampleStorageService {
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, Object> getInventoryLotLocation(String inventoryLotId);
 
     /**
      * List storage movements for an InventoryLot with the acting user's display
      * name resolved (OGC-657).
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.List<java.util.Map<String, Object>> getInventoryLotMovementsWithUserNames(String inventoryLotId);
 
     /**
      * Current locations for many InventoryLots in one assignment query, keyed by
      * lot id as a String; lots without an assignment are absent (OGC-657).
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, java.util.Map<String, Object>> getLocationsForInventoryLots(
             java.util.List<Long> inventoryLotIds);
 

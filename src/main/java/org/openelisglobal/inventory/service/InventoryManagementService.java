@@ -25,6 +25,7 @@ public interface InventoryManagementService {
     /**
      * Revalidates and consumes exactly the selected lot in one transaction.
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
             String sysUserId);
 

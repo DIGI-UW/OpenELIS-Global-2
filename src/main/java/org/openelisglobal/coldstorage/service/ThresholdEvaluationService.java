@@ -24,6 +24,7 @@ public interface ThresholdEvaluationService {
      * Classifies {@code temperature} against the profile's band, then gates
      * escalation on {@code minExcursionMinutes} of continuous breach.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     FreezerReading.Status evaluateTemperatureStatus(BigDecimal temperature, ThresholdProfile profile, Freezer freezer,
             OffsetDateTime timestamp);
 
@@ -31,6 +32,7 @@ public interface ThresholdEvaluationService {
      * Measures the excursion streak over humidity alone, so each metric escalates
      * on its own accumulated breach time.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     FreezerReading.Status evaluateHumidityStatus(BigDecimal humidity, ThresholdProfile profile, Freezer freezer,
             OffsetDateTime timestamp);
 
@@ -40,5 +42,6 @@ public interface ThresholdEvaluationService {
      * falling back to whichever single bound is available. Returns {@code null} if
      * no profile (or no usable bounds) is available.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     BigDecimal deriveTargetTemperature(ThresholdProfile profile);
 }
