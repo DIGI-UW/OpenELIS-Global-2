@@ -5,13 +5,14 @@ import static org.junit.Assert.assertNull;
 
 import java.util.List;
 import java.util.UUID;
-import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.transaction.AfterTransaction;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OGC-1145 P1b (FR-8) — the analyzer-review awaiting-specimen hold: accepting a
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * row stays in review flagged {@code awaiting_specimen} and nothing is
  * persisted for its accession.
  */
+@Transactional
 public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TYPE_A = 97101L;
@@ -33,8 +35,6 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
-    private org.openelisglobal.common.services.IStatusService statusService;
-    @Autowired
     private javax.sql.DataSource dataSource;
 
     private JdbcTemplate jdbc;
@@ -45,7 +45,8 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        cleanup();
+        executeDataSetWithStateManagement("testdata/status_service.xml");
+        org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();
         seedSampleType(TYPE_A, "Hold A 1145");
         seedSampleType(TYPE_B, "Hold B 1145");
         jdbc.update(
@@ -60,110 +61,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
                 + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'HoldIT 1145', '42', false,"
                 + " ?, NOW())", stagedRowId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST);
-        seedUnknownPatient();
-        ensureCanonicalStatuses();
         typeOfSampleService.clearCache();
-    }
-
-    /**
-     * Some fixtures (e.g. analyzer-results.xml) TRUNCATE status_of_sample and
-     * reseed only their own rows, leaving the shared container — and the
-     * StatusService cache — without the canonical statuses this dataset-less test's
-     * accept flow needs (Testing Started, SampleEntered, record statuses…). Restore
-     * any missing canonical rows and refresh the cache so the test is
-     * order-independent. Canonical rows are never deleted.
-     */
-    private void ensureCanonicalStatuses() {
-        String[][] canonical = { { "ORDER", "Test Entered" }, { "ORDER", "Testing Started" },
-                { "ORDER", "Testing finished" }, { "ORDER", "NonConforming" }, { "SAMPLE", "SampleEntered" },
-                { "SAMPLE", "SampleCanceled" }, { "SAMPLE", "Sample Rejected" }, { "SAMPLE", "SampleDisposed" },
-                { "ANALYSIS", "Not Tested" }, { "ANALYSIS", "Test Canceled" }, { "ANALYSIS", "Technical Acceptance" },
-                { "ANALYSIS", "Technical Rejected" }, { "ANALYSIS", "Biologist Rejection" },
-                { "ANALYSIS", "Finalized" }, { "ANALYSIS", "NonConforming" }, { "ANALYSIS", "Sample Rejected" },
-                { "EXTERNAL_ORDER", "Entered" }, { "EXTERNAL_ORDER", "Cancelled" }, { "EXTERNAL_ORDER", "Realized" },
-                { "EXTERNAL_ORDER", "NonConforming" }, { "EXTERNAL_ORDER", "AwaitingSpecimen" } };
-        for (String[] status : canonical) {
-            jdbc.update("INSERT INTO clinlims.status_of_sample (id, description, code, status_type, name, is_active,"
-                    + " lastupdated) SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.status_of_sample), ?, '1',"
-                    + " ?, ?, 'Y', NOW() WHERE NOT EXISTS (SELECT 1 FROM clinlims.status_of_sample WHERE status_type"
-                    + " = ? AND name = ?)", status[1], status[0], status[1], status[0], status[1]);
-        }
-        statusService.refreshCache();
-        ensureSequencesAheadOfSeededIds();
-        ensureCanonicalObservationHistoryTypes();
-    }
-
-    /**
-     * The accept path writes the whole order graph through the entity sequences.
-     * Fixture datasets (observation-history.xml, result-facade.xml,
-     * analyzer-results.xml, ...) seed those tables with explicit low ids without
-     * advancing the sequences, so under full-suite ordering the next sequence value
-     * collides with a seeded PK ("duplicate key ... samp_pk", "...
-     * observation_history_pk"). Realign every sequence this flow draws from so the
-     * test is order-independent — the same drift the person/provider/ patient
-     * singletons below guard against.
-     */
-    private void ensureSequencesAheadOfSeededIds() {
-        String[][] sequences = { { "sample_seq", "sample" }, { "sample_item_seq", "sample_item" },
-                { "analysis_seq", "analysis" }, { "result_seq", "result" }, { "sample_human_seq", "sample_human" },
-                { "observation_history_seq", "observation_history" }, { "note_seq", "note" } };
-        for (String[] sequence : sequences) {
-            jdbc.queryForObject("SELECT setval('clinlims." + sequence[0] + "', CAST((SELECT COALESCE(MAX(id), 0) + 1"
-                    + " FROM clinlims." + sequence[1] + ") AS BIGINT), false)", Long.class);
-        }
-    }
-
-    /**
-     * The sibling of the drift above, on the referenced side: the fixtures that
-     * seed observation_history (observation-history.xml, observation-history-type
-     * .xml, result-facade.xml, facade-servicerequest.xml) CLEAN_INSERT
-     * observation_history_type with their own ids 1-5 only, so the Liquibase
-     * reference rows the accept path resolves by name — SampleRecordStatus and
-     * PatientRecordStatus — are gone for every later test in the same container.
-     * The accept flow then inserts an observation_history row whose type FK no
-     * longer resolves and the batch dies on demographics_history_type_fk. Restore
-     * the missing canonical rows at their canonical ids (name is unique, so an
-     * existing row under another id is left alone and resolves by name).
-     */
-    private void ensureCanonicalObservationHistoryTypes() {
-        String[][] canonical = { { "15", "SampleRecordStatus" }, { "16", "PatientRecordStatus" } };
-        for (String[] type : canonical) {
-            jdbc.update(
-                    "INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
-                            + " SELECT ?::numeric, ?, ?, NOW() WHERE NOT EXISTS (SELECT 1 FROM"
-                            + " clinlims.observation_history_type WHERE type_name = ?)"
-                            + " AND NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE id = ?::numeric)",
-                    type[0], type[1], type[1], type[1], type[0]);
-        }
-    }
-
-    /**
-     * The no-sample-entry accept path needs PatientUtil's UNKNOWN_ singletons. When
-     * absent, PatientUtil INSERTS them through the entity sequences, which are out
-     * of sync with the seeded ids under full-suite ordering — so ensure the
-     * canonical rows exist (never deleted; they are singletons, not test data) and
-     * reset the static cache in case a rolled-back test populated it.
-     */
-    private void seedUnknownPatient() {
-        Integer people = jdbc.queryForObject("SELECT count(*) FROM clinlims.person WHERE last_name = 'UNKNOWN_'",
-                Integer.class);
-        if (people == 0) {
-            jdbc.update("INSERT INTO clinlims.person (id, last_name, lastupdated) VALUES (97301, 'UNKNOWN_', NOW())");
-        }
-        Long personId = jdbc.queryForObject(
-                "SELECT id FROM clinlims.person WHERE last_name = 'UNKNOWN_' ORDER BY id LIMIT 1", Long.class);
-        Integer providers = jdbc.queryForObject("SELECT count(*) FROM clinlims.provider WHERE person_id = ?",
-                Integer.class, personId);
-        if (providers == 0) {
-            jdbc.update("INSERT INTO clinlims.provider (id, person_id, active, lastupdated)"
-                    + " VALUES (97302, ?, false, NOW())", personId);
-        }
-        Integer patients = jdbc.queryForObject("SELECT count(*) FROM clinlims.patient WHERE person_id = ?",
-                Integer.class, personId);
-        if (patients == 0) {
-            jdbc.update("INSERT INTO clinlims.patient (id, person_id, lastupdated) VALUES (97303, ?, NOW())", personId);
-        }
-        org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();
     }
 
     private void seedSampleType(long id, String description) {
@@ -180,31 +78,10 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                 + " VALUES (nextval('sample_type_test_seq'), ?, ?, 'false')", sampleTypeId, testId);
     }
 
-    @After
-    public void tearDown() {
-        cleanup();
-    }
 
-    private void cleanup() {
-        // the reviewer-choice case persists real records; unwind them first
-        jdbc.update("DELETE FROM clinlims.result WHERE analysis_id IN (SELECT a.id FROM clinlims.analysis a"
-                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
-                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?)", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id IN (SELECT si.id FROM clinlims.sample_item si"
-                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?)", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE samp_id IN"
-                + " (SELECT id FROM clinlims.sample WHERE accession_number = ?)", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.sample_human WHERE samp_id IN"
-                + " (SELECT id FROM clinlims.sample WHERE accession_number = ?)", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.observation_history WHERE sample_id IN"
-                + " (SELECT id FROM clinlims.sample WHERE accession_number = ?)", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.sample WHERE accession_number = ?", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.analyzer_results WHERE accession_number = ?", ACCESSION);
-        jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
-        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", MULTI_TYPE_TEST);
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", MULTI_TYPE_TEST);
-        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id IN (?, ?)", TYPE_A, TYPE_B);
-        jdbc.update("DELETE FROM clinlims.localization WHERE id IN (?, ?)", TYPE_A, TYPE_B);
+    @AfterTransaction
+    public void resetUnknownPatientCache() {
+        org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();
         typeOfSampleService.clearCache();
     }
 
