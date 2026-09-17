@@ -2302,7 +2302,7 @@ enforcement).
       (Template: .specify/templates/testing/JUnit4ServiceTest.java.template)
 - [ ] T010a [P] [US1] ORM validation test in
       src/test/java/org/openelisglobal/storage/HibernateMappingValidationTest.java
-      (Template: .specify/templates/testing/DataJpaTestDao.java.template)
+      (extend the existing database-free mapping validation in this class)
 - [ ] T011 [P] [US1] Controller component test for HTTP mapping in
       src/test/java/org/openelisglobal/storage/controller/StorageLocationControllerTest.java
       (Template: .specify/templates/testing/WebMvcTestController.java.template)
