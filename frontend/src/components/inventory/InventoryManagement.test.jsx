@@ -20,6 +20,7 @@ vi.mock("./InventoryService", () => ({
 }));
 
 // Only the dashboard's refetch on tab activation is under test.
+vi.mock("./InventoryItemsBoard", () => ({ default: () => null }));
 vi.mock("./InventoryCatalog", () => ({ default: () => null }));
 vi.mock("./InventoryReports", () => ({ default: () => null }));
 vi.mock("./LotEntryModal", () => ({ default: () => null }));
@@ -62,6 +63,9 @@ describe("InventoryManagement tabs", () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(
+      screen.getByRole("tab", { name: messages["inventory.tab.dashboard"] }),
+    );
     await waitFor(() =>
       expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(1),
     );

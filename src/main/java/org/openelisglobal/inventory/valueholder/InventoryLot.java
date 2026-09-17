@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -137,6 +138,7 @@ public class InventoryLot extends BaseObject<Long> {
      * than {@link #isAvailableForUse()}, which gates consumption.
      * InventoryLotDAOImpl#getAvailableQuantityByItem restates this rule in HQL.
      */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     public boolean countsAsAvailableStock() {
         return !isExpired() && currentQuantity != null && currentQuantity > 0
                 && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
