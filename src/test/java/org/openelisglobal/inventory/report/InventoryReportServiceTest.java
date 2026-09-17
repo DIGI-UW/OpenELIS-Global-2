@@ -1,7 +1,6 @@
 package org.openelisglobal.inventory.report;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -83,6 +82,14 @@ public class InventoryReportServiceTest {
         return new InventoryReportRequest(reportType, exportFormat, null, null, false, true, false, false);
     }
 
+    private void assertNumericColumns(ReportTable table, int... expected) {
+        java.util.Set<Integer> expectedSet = java.util.Arrays.stream(expected).boxed()
+                .collect(java.util.stream.Collectors.toSet());
+        for (int col = 0; col < table.getHeaders().size(); col++) {
+            assertEquals(table.getHeaders().get(col), expectedSet.contains(col), table.isNumericColumn(col));
+        }
+    }
+
     @Test
     public void generateReport_unknownType_throws() {
         try {
@@ -127,6 +134,7 @@ public class InventoryReportServiceTest {
 
         assertEquals(List.of("Item Code", "Item Name", "Type", "Category", "Location", "Available Quantity",
                 "Total Quantity", "Units", "Status"), table.getHeaders());
+        assertNumericColumns(table, 5, 6);
         assertEquals(2, table.getRows().size());
         List<String> row = table.getRows().get(0);
         assertEquals("REAGENT_A", row.get(0));
@@ -155,6 +163,7 @@ public class InventoryReportServiceTest {
 
         assertEquals(List.of("Item Code", "Item Name", "Type", "Category", "Location", "Available Quantity",
                 "Total Quantity", "Low Stock Threshold", "Units"), table.getHeaders());
+        assertNumericColumns(table, 5, 6, 7);
         assertEquals(2, table.getRows().size());
         List<String> row = table.getRows().get(0);
         assertEquals("RDT_A", row.get(0));
@@ -268,6 +277,22 @@ public class InventoryReportServiceTest {
     }
 
     @Test
+    public void expirationForecast_lotExpiredEarlierTodayIsExpired_notThisWeek() {
+        InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
+        InventoryLot expiredThisMorning = lot(item, "TODAY1", 5.0, QCStatus.PASSED);
+        expiredThisMorning.setExpirationDate(new Timestamp(System.currentTimeMillis() - 12 * 3600_000L));
+        when(inventoryLotService.getAll()).thenReturn(List.of(expiredThisMorning));
+
+        ReportTable table = reportService.generateReport(
+                new InventoryReportRequest("EXPIRATION_FORECAST", "CSV", null, null, false, true, false, false));
+
+        List<String> row = table.getRows().get(0);
+        assertEquals("-1", row.get(6));
+        assertEquals("EXPIRED", row.get(7));
+    }
+
+    @Test
     public void expirationForecast_honorsDateRange() {
         InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
@@ -318,6 +343,7 @@ public class InventoryReportServiceTest {
 
         assertEquals(List.of("Item Code", "Item Name", "Type", "Total Quantity Used", "Usage Events",
                 "Avg Quantity Per Use", "First Use", "Last Use"), table.getHeaders());
+        assertNumericColumns(table, 3, 4, 5);
         assertEquals(3, table.getRows().size());
         List<String> topRow = table.getRows().get(0);
         assertEquals("REAGENT_A", topRow.get(0));
@@ -332,7 +358,7 @@ public class InventoryReportServiceTest {
     }
 
     @Test
-    public void transactionHistory_filtersByDateRange() {
+    public void transactionHistory_rendersEachTransactionAsARow() {
         InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
         InventoryLot lot = lot(item, "LOT1", 10.0, QCStatus.PASSED);
         InventoryTransaction transaction = new InventoryTransaction();
@@ -353,7 +379,12 @@ public class InventoryReportServiceTest {
         ReportTable table = reportService.generateReport(req);
 
         assertEquals(1, table.getRows().size());
-        assertEquals("RECEIPT", table.getRows().get(0).get(4));
+        List<String> row = table.getRows().get(0);
+        assertEquals("REAGENT_A", row.get(1));
+        assertEquals("LOT1", row.get(3));
+        assertEquals("RECEIPT", row.get(4));
+        assertEquals("10", row.get(5));
+        assertEquals("1", row.get(7));
     }
 
     @Test
@@ -375,9 +406,9 @@ public class InventoryReportServiceTest {
 
     @Test
     public void stockLevels_groupByType_sortsRowsByTypeThenName() {
-        InventoryItem cartridge = item(1005L, "CART_A", "Cartridge A", ItemType.CARTRIDGE, true);
-        InventoryItem reagent = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
-        when(inventoryItemService.getAllActive()).thenReturn(List.of(cartridge, reagent));
+        InventoryItem cartridge = item(1005L, "CART_A", "Zeta Cartridge", ItemType.CARTRIDGE, true);
+        InventoryItem reagent = item(1000L, "REAGENT_A", "Alpha Reagent", ItemType.REAGENT, true);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent, cartridge));
         when(inventoryLotService.getAll()).thenReturn(List.of());
 
         InventoryReportRequest req = new InventoryReportRequest("STOCK_LEVELS", "CSV", null, null, false, true, true,
@@ -385,7 +416,7 @@ public class InventoryReportServiceTest {
         ReportTable table = reportService.generateReport(req);
 
         assertEquals(3, table.getRows().size());
-        assertTrue("CARTRIDGE sorts before REAGENT",
-                table.getRows().get(0).get(2).compareTo(table.getRows().get(1).get(2)) < 0);
+        assertEquals("Zeta Cartridge", table.getRows().get(0).get(1));
+        assertEquals("Alpha Reagent", table.getRows().get(1).get(1));
     }
 }

@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.service.InventoryItemService;
@@ -27,9 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Builds the tabular data behind each report type as a plain
- * {@link ReportTable}. Headers stay in English: a download is not rendered UI,
- * so react-intl misses it.
+ * Headers stay in English: a download is not rendered UI, so react-intl misses
+ * it.
  */
 @Service
 public class InventoryReportServiceImpl implements InventoryReportService {
@@ -101,7 +101,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 item -> summarizeLocation(lotsByItemId.getOrDefault(item.getId(), List.of()), locationsByLotId)));
 
         ReportTable table = new ReportTable("Stock Levels", List.of("Item Code", "Item Name", "Type", "Category",
-                "Location", "Available Quantity", "Total Quantity", "Units", "Status"));
+                "Location", "Available Quantity", "Total Quantity", "Units", "Status"), Set.of(5, 6));
 
         List<InventoryItem> sorted = sortItems(items, request, locationByItemId);
         double totalSum = 0;
@@ -139,7 +139,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         items = sortItems(items, request, locationByItemId);
 
         ReportTable table = new ReportTable("Low Stock Items", List.of("Item Code", "Item Name", "Type", "Category",
-                "Location", "Available Quantity", "Total Quantity", "Low Stock Threshold", "Units"));
+                "Location", "Available Quantity", "Total Quantity", "Low Stock Threshold", "Units"), Set.of(5, 6, 7));
         double availableSum = 0;
         double totalSum = 0;
         for (InventoryItem item : items) {
@@ -189,13 +189,14 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         }
         allLots.sort(comparator);
 
-        ReportTable table = new ReportTable("Expiration Forecast",
-                List.of("Item Code", "Item Name", "Type", "Lot Number", "Location", "Expiration Date",
-                        "Days Until Expiration", "Urgency", "Current Quantity", "Status"));
+        ReportTable table = new ReportTable(
+                "Expiration Forecast", List.of("Item Code", "Item Name", "Type", "Lot Number", "Location",
+                        "Expiration Date", "Days Until Expiration", "Urgency", "Current Quantity", "Status"),
+                Set.of(6, 8));
         long now = System.currentTimeMillis();
         for (InventoryLot lot : allLots) {
             InventoryItem item = itemsById.get(lot.getInventoryItem().getId());
-            long daysUntil = (lot.getEffectiveExpirationDate().getTime() - now) / (1000L * 60 * 60 * 24);
+            long daysUntil = Math.floorDiv(lot.getEffectiveExpirationDate().getTime() - now, 1000L * 60 * 60 * 24);
             table.addRow(List.of(item.getCode(), item.getName(),
                     nullToEmpty(item.getItemType() == null ? null : item.getItemType().name()), lot.getLotNumber(),
                     resolveLotLocation(lot, locationsByLotId), formatDate(lot.getEffectiveExpirationDate()),
@@ -235,7 +236,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 .collect(Collectors.groupingBy(usage -> usage.getInventoryItem().getId()));
 
         ReportTable table = new ReportTable("Usage Trends", List.of("Item Code", "Item Name", "Type",
-                "Total Quantity Used", "Usage Events", "Avg Quantity Per Use", "First Use", "Last Use"));
+                "Total Quantity Used", "Usage Events", "Avg Quantity Per Use", "First Use", "Last Use"),
+                Set.of(3, 4, 5));
 
         List<Map.Entry<Long, List<InventoryUsage>>> sortedByUsage = usagesByItemId.entrySet().stream()
                 .sorted(Comparator
@@ -281,7 +283,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         Map<Integer, String> userNameCache = new HashMap<>();
 
         ReportTable table = new ReportTable("Transaction History", List.of("Date", "Item Code", "Item Name",
-                "Lot Number", "Transaction Type", "Quantity Change", "Quantity After", "Performed By"));
+                "Lot Number", "Transaction Type", "Quantity Change", "Quantity After", "Performed By"), Set.of(5, 6));
         for (InventoryTransaction transaction : transactions) {
             InventoryLot lot = transaction.getLot();
             InventoryItem item = lot != null ? lot.getInventoryItem() : null;
@@ -306,7 +308,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
         ReportTable table = new ReportTable("Lot Traceability",
                 List.of("Item Code", "Item Name", "Lot Number", "Receipt Date", "Expiration Date", "Initial Quantity",
-                        "Current Quantity", "Status", "QC Status", "Location"));
+                        "Current Quantity", "Status", "QC Status", "Location"),
+                Set.of(5, 6));
         for (InventoryLot lot : lots) {
             InventoryItem item = lot.getInventoryItem();
             table.addRow(List.of(item.getCode(), item.getName(), lot.getLotNumber(), formatDate(lot.getReceiptDate()),

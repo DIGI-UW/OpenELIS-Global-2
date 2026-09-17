@@ -5104,6 +5104,7 @@
   "reports.error.generationFailed": "Failed to generate report. Please try again.",
   "reports.error.invalidDate": "Invalid date",
   "reports.error.invalidDateRange": "End date must be after start date",
+  "reports.error.unknownExportFormat": "Unknown export format",
   "reports.error.unknownReportType": "Unknown report type",
   "reports.export": "Export",
   "reports.export.byDate": "Export By Date",

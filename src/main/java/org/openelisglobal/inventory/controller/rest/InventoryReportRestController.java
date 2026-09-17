@@ -28,8 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InventoryReportRestController {
 
-    private static final Set<String> VALID_REPORT_TYPES = Set.of("STOCK_LEVELS", "EXPIRATION_FORECAST", "USAGE_TRENDS",
-            "LOT_TRACEABILITY", "LOW_STOCK", "TRANSACTION_HISTORY");
     private static final Set<String> VALID_EXPORT_FORMATS = Set.of("PDF", "EXCEL", "CSV");
 
     @Autowired
@@ -46,17 +44,12 @@ public class InventoryReportRestController {
             @RequestParam(required = false, defaultValue = "false") boolean groupByLocation,
             HttpServletResponse response) throws IOException {
         try {
-            if (!VALID_REPORT_TYPES.contains(reportType)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown report type: " + reportType);
-                return;
-            }
-            if (!VALID_EXPORT_FORMATS.contains(exportFormat)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown export format: " + exportFormat);
-                return;
-            }
-
             ReportTable table;
             try {
+                if (!VALID_EXPORT_FORMATS.contains(exportFormat)) {
+                    throw new LocalizedValidationException("reports.error.unknownExportFormat",
+                            "Unknown export format: " + exportFormat);
+                }
                 InventoryReportRequest request = new InventoryReportRequest(reportType, exportFormat,
                         parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, groupByType,
                         groupByLocation);

@@ -6,9 +6,14 @@ import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.HashMap;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -139,9 +144,19 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
         assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 result.getResponse().getContentType());
         byte[] body = result.getResponse().getContentAsByteArray();
-        assertTrue(body.length > 0);
-        // .xlsx is a zip archive
-        assertEquals("PK", new String(body, 0, 2, java.nio.charset.StandardCharsets.US_ASCII));
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(body))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row itemRow = null;
+            for (Row row : sheet) {
+                if (row.getCell(0) != null && (CODE_PREFIX + "REAGENT").equals(row.getCell(0).getStringCellValue())) {
+                    itemRow = row;
+                }
+            }
+            assertTrue("item row present in sheet", itemRow != null);
+            assertEquals(25.0, itemRow.getCell(5).getNumericCellValue(), 0.0);
+            assertEquals(25.0, itemRow.getCell(6).getNumericCellValue(), 0.0);
+            assertEquals("mL", itemRow.getCell(7).getStringCellValue());
+        }
     }
 
     @Test
@@ -152,6 +167,7 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
                 .andReturn();
 
         assertEquals(400, result.getResponse().getStatus());
+        assertEquals("reports.error.unknownReportType", errorCodeOf(result));
     }
 
     @Test
@@ -162,6 +178,7 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
                 .andReturn();
 
         assertEquals(400, result.getResponse().getStatus());
+        assertEquals("reports.error.unknownExportFormat", errorCodeOf(result));
     }
 
     @Test

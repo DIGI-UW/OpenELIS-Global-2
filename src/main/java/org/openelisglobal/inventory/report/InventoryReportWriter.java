@@ -104,7 +104,13 @@ public final class InventoryReportWriter {
             for (java.util.List<String> row : table.getRows()) {
                 Row excelRow = sheet.createRow(rowIndex++);
                 for (int col = 0; col < row.size(); col++) {
-                    excelRow.createCell(col).setCellValue(row.get(col));
+                    Cell cell = excelRow.createCell(col);
+                    String value = row.get(col);
+                    if (table.isNumericColumn(col) && value != null && PLAIN_NUMBER.matcher(value).matches()) {
+                        cell.setCellValue(Double.parseDouble(value));
+                    } else {
+                        cell.setCellValue(value);
+                    }
                 }
             }
 

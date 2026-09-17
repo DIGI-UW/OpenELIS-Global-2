@@ -7,6 +7,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.Test;
@@ -99,14 +104,33 @@ public class InventoryReportWriterTest {
     }
 
     @Test
-    public void writeExcel_writesEveryCellAsGiven() throws Exception {
+    public void writeExcel_typesQuantityColumnsAsNumbersAndIdentifiersAsText() throws Exception {
+        ReportTable table = new ReportTable("Transaction History",
+                List.of("Item Code", "Lot Number", "Quantity Change", "Quantity After"), Set.of(2, 3));
+        table.addRow(List.of("REAGENT_A", "000123", "-5", "20"));
+        table.addRow(List.of("100", "LOT-2", "10", "30"));
+        table.addRow(List.of("REAGENT_A", "000123", "1.50", "31.50"));
+        table.addRow(List.of("TOTAL (3 items)", "", "6.50", ""));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        InventoryReportWriter.writeExcel(transactionHistoryTable(), out);
+        InventoryReportWriter.writeExcel(table, out);
 
         try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(out.toByteArray()))) {
-            assertEquals("Transaction History", workbook.getSheetAt(0).getSheetName());
-            assertEquals("Quantity Change", workbook.getSheetAt(0).getRow(0).getCell(3).getStringCellValue());
-            assertEquals("-5", workbook.getSheetAt(0).getRow(1).getCell(3).getStringCellValue());
+            Sheet sheet = workbook.getSheetAt(0);
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+            Row scratch = sheet.createRow(sheet.getLastRowNum() + 1);
+            Cell sum = scratch.createCell(0);
+            sum.setCellFormula("SUM(C2:C4)");
+            assertEquals(6.5, evaluator.evaluate(sum).getNumberValue(), 0.0001);
+            // The TOTAL row's empty Quantity After cell must not count as a 0.
+            Cell count = scratch.createCell(1);
+            count.setCellFormula("COUNT(D2:D5)");
+            assertEquals(3.0, evaluator.evaluate(count).getNumberValue(), 0.0);
+
+            assertEquals("Transaction History", sheet.getSheetName());
+            assertEquals("Quantity Change", sheet.getRow(0).getCell(2).getStringCellValue());
+            assertEquals(-5.0, sheet.getRow(1).getCell(2).getNumericCellValue(), 0.0);
+            assertEquals("000123", sheet.getRow(1).getCell(1).getStringCellValue());
+            assertEquals("100", sheet.getRow(2).getCell(0).getStringCellValue());
         }
     }
 }
