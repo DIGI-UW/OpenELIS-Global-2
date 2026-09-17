@@ -1262,7 +1262,7 @@ import { BrowserRouter } from "react-router-dom";
 import ComponentName from "./ComponentName";
 import messages from "../../../languages/en.json";
 
-// Mock utilities BEFORE imports (Vitest hoists vi.mock automatically)
+// Vitest hoists vi.mock automatically, regardless of its position here.
 vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
@@ -1289,7 +1289,7 @@ describe("ComponentName", () => {
     const button = screen.getByRole("button", { name: /submit/i });
     await userEvent.click(button);
 
-    // Assert: Wait for async element (use queryBy* in waitFor)
+    // Assert: waitFor retries thrown queries or assertions until success.
     await waitFor(() => {
       const element = screen.queryByText("Success");
       expect(element).toBeInTheDocument();
@@ -1304,8 +1304,9 @@ describe("ComponentName", () => {
   Router → Component → Utils → Messages
 - **userEvent vs fireEvent**: Prefer `userEvent` for user interactions (more
   realistic)
-- **Async Testing**: Use `waitFor` with `queryBy*` (NOT `getBy*`) or `findBy*`
-  for async elements
+- **Async Testing**: Prefer `findBy*` for elements that appear asynchronously.
+  In `waitFor`, assert the expected state; thrown queries and assertions retry.
+  Use `queryBy*` for absence checks.
 - **DON'T**: Use `setTimeout` (no retry logic - use `waitFor` instead)
 - **Carbon Components**: Use `userEvent`, `waitFor` for portals, `within()` for
   scoped queries
@@ -1315,7 +1316,8 @@ describe("ComponentName", () => {
 **Anti-Patterns:**
 
 - ❌ Using `setTimeout` for async operations (use `waitFor` instead)
-- ❌ Using `getBy*` in `waitFor` (use `queryBy*` instead)
+- ❌ Returning false from `waitFor` instead of asserting (only thrown errors
+  retry)
 - ❌ Using `fireEvent` when `userEvent` works (prefer `userEvent`)
 - ❌ Testing implementation details (test user-visible behavior)
 - ❌ Inconsistent import order
@@ -1513,9 +1515,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
->   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
->   `core-demo-video` run on the build stack only.
+> - For local execution, start `scripts/dev-stack up` and export
+>   `scripts/dev-stack env` before selecting a registered project. Analyzer
+>   projects require the bridge and simulator services provided by that stack.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -1535,21 +1537,24 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
-| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
-| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
-| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
-| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
-| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+Common projects are listed below; `playwright.config.ts` contains the full list
+and exact test selections.
+
+| Project                | Purpose                                    |
+| ---------------------- | ------------------------------------------ |
+| `core-app`             | Core application browser tests             |
+| `core-demo`            | Core demonstration workflows               |
+| `core-demo-video`      | Core demonstrations with video             |
+| `harness-foundational` | Analyzer infrastructure and workflow tests |
+| `harness-demo`         | Analyzer demonstration workflows           |
+| `harness-demo-video`   | Analyzer demonstrations with video         |
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
+The build entry point is `.github/workflows/e2e-playwright.yml`; browser
+execution is defined in `.github/workflows/e2e-playwright-reusable.yml` and its
+callers. Check those files for the current project selection and fixture mode.
+CI fixture setup is separate from local development through `scripts/dev-stack`.
 
 #### Key Patterns
 
@@ -1676,7 +1681,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
 ```
 
 **Harness demos:**

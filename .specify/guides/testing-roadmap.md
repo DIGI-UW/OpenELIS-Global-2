@@ -1248,7 +1248,7 @@ test("testFireEventFallback", () => {
 **DO - Use waitFor**:
 
 ```javascript
-// ✅ CORRECT: waitFor with queryBy* (doesn't throw during retries)
+// ✅ CORRECT: the assertion throws until the expected element is present
 test("testAsyncOperation", async () => {
   renderWithIntl(<ComponentName />);
 
@@ -1302,14 +1302,18 @@ test("testAsyncOperation", async () => {
 });
 ```
 
-**DON'T - Use getBy\* in waitFor**:
+**DO - Use getBy\* in waitFor for expected presence**:
 
 ```javascript
-// ❌ WRONG: getBy* throws immediately, breaks waitFor retry logic
+// ✅ CORRECT: waitFor retries thrown queries/assertions until success or timeout
 await waitFor(() => {
-  expect(screen.getByText("Loaded Data")).toBeInTheDocument(); // Throws if not found
+  expect(screen.getByText("Loaded Data")).toBeInTheDocument();
 });
 ```
+
+Prefer `findBy*` when waiting only for an element to appear. Use `queryBy*` for
+absence assertions. Returning `false` from a `waitFor` callback does not retry;
+the callback must throw until the expected state is reached.
 
 #### Carbon Component Testing
 
@@ -2002,7 +2006,7 @@ module.exports = defineConfig({
 ### Playwright E2E Testing
 
 **Reference**:
-[Playwright Best Practices Guide](.specify/guides/playwright-best-practices.md)
+[Playwright Best Practices Guide](playwright-best-practices.md)
 for comprehensive patterns and examples.
 
 **Command-first workflow**:
@@ -2390,7 +2394,7 @@ npm run pw:test -- --project=core-app file.spec.ts  # Select its registered proj
   `.specify/templates/testing/VitestComponent.test.jsx.template`
 - Frontend E2E (Cypress): `.specify/templates/testing/CypressE2E.cy.js.template`
 - Frontend E2E (Playwright):
-  [Playwright Best Practices](.specify/guides/playwright-best-practices.md)
+  [Playwright Best Practices](playwright-best-practices.md)
 
 ### Common Anti-Patterns
 
