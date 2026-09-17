@@ -1,37 +1,19 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
-  Form,
   Heading,
-  Button,
-  Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
   Select,
   SelectItem,
-  Stack,
   ClickableTile,
   Modal,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -39,8 +21,17 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import CustomCheckBox from "../../common/CustomCheckBox";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import ServerDataState from "../../utils/ServerDataState";
+
+const TEST_SECTION_TEST_ASSIGN_ENDPOINT = "/rest/TestSectionTestAssign";
+const NO_SELECTION = {
+  testSectionIdNew: "",
+  testSectionNameNew: "",
+  testId: "",
+  testValue: "",
+  testSectionNameOld: "",
+  testSectionIdOld: "",
+};
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -64,35 +55,25 @@ function TestSectionTestAssign() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [testSectionTestAssignModal, setTestSectionTestAssignModal] =
     useState(false);
-  const [testSectionTestAssign, setTestSectionTestAssign] = useState({});
-  const [testSectionTestAssignPost, setTestSectionTestAssignPost] = useState({
-    testSectionIdNew: "",
-    testSectionNameNew: "",
-    testId: "",
-    testValue: "",
-    testSectionNameOld: "",
-    testSectionIdOld: "",
-  });
-  const componentMounted = useRef(false);
-
-  const handleTestSectionTestAssignList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestSectionTestAssign(res);
-    }
-  };
+  const testSectionTestAssignQuery = useServerData(
+    TEST_SECTION_TEST_ASSIGN_ENDPOINT,
+  );
+  const { data: testSectionTestAssign } = testSectionTestAssignQuery;
+  const invalidateServerData = useInvalidateServerData();
+  const [testSectionTestAssignPost, setTestSectionTestAssignPost] =
+    useState(NO_SELECTION);
 
   const handlePostTestSectionTestAssignListCall = () => {
     if (
       !testSectionTestAssignPost.testId ||
       !testSectionTestAssignPost.testSectionIdNew
     ) {
-      window.location.reload();
+      setTestSectionTestAssignModal(false);
+      setConfirmation(false);
+      setTestSectionTestAssignPost(NO_SELECTION);
       return;
     }
     postToOpenElisServerJsonResponse(
@@ -110,7 +91,6 @@ function TestSectionTestAssign() {
 
   const handlePostTestSectionTestAssignListCallBack = (res) => {
     if (res) {
-      setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -120,9 +100,10 @@ function TestSectionTestAssign() {
         }),
         kind: NotificationKinds.success,
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      setNotificationVisible(true);
+      setConfirmation(false);
+      setTestSectionTestAssignPost(NO_SELECTION);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -130,32 +111,11 @@ function TestSectionTestAssign() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(
-      `/rest/TestSectionTestAssign`,
-      handleTestSectionTestAssignList,
-    );
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
+  if (!testSectionTestAssign)
+    return <ServerDataState query={testSectionTestAssignQuery} />;
 
   return (
     <>
@@ -290,7 +250,8 @@ function TestSectionTestAssign() {
         }}
         onRequestClose={() => {
           setTestSectionTestAssignModal(false);
-          window.location.reload();
+          setConfirmation(false);
+          setTestSectionTestAssignPost(NO_SELECTION);
         }}
         preventCloseOnClickOutside={true}
         shouldSubmitOnEnter={true}

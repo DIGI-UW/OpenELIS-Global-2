@@ -7,12 +7,9 @@ import {
   TextArea,
   Select,
   SelectItem,
-  MultiSelect,
-  FileUploader,
   FilterableMultiSelect,
   Grid,
   Column,
-  InlineLoading,
   Section,
   Heading,
   Tile,
@@ -22,9 +19,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -43,13 +37,7 @@ import {
   Search,
   Layer,
 } from "@carbon/react";
-import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
-} from "@carbon/react/icons";
+import { Launch } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -61,16 +49,16 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
-import { Add, Json } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
+    { label: "notebook.label.entry", link: "" },
   ];
 
   const MODES = Object.freeze({

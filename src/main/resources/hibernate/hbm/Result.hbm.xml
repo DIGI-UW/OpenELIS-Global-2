@@ -49,15 +49,37 @@
             column="min_normal" />
         <property name="maxNormal" type="java.lang.Double"
             column="max_normal" />
+        <!-- Both columns are nullable and both accessors are int, so Hibernate
+            reads and writes the fields directly: through the setters a NULL could not
+            be assigned at all, and through the getters a NULL could not be written back
+            (OGC-1170). The getters keep returning int, substituting a safe value for
+            callers. -->
         <property name="significantDigits" type="java.lang.Integer"
-            column="significant_digits" />
+            column="significant_digits" access="field" />
         <property name="grouping" type="java.lang.Integer"
-            column="grouping" />
+            column="grouping" access="field" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <many-to-one name="parentResult"
             class="org.openelisglobal.result.valueholder.Result" fetch="select">
             <column name="parent_id" precision="10" scale="0" />
         </many-to-one>
+        <property name="qcEvaluation">
+            <column name="qc_evaluation" length="10" />
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.result.valueholder.QcEvaluation</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="qcEvaluationDetail" type="java.lang.String">
+            <column name="qc_evaluation_detail" length="500" />
+        </property>
+        <property name="expandedUncertainty"
+            type="java.math.BigDecimal">
+            <column name="expanded_uncertainty" />
+        </property>
+        <property name="coverageFactor" type="java.math.BigDecimal">
+            <column name="coverage_factor" />
+        </property>
     </class>
 </hibernate-mapping>

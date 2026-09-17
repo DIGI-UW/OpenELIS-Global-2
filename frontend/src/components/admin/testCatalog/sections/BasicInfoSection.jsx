@@ -4,6 +4,8 @@ import {
   Stack,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   Toggle,
@@ -20,7 +22,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import useDomains from "../../../common/useDomains";
@@ -70,6 +72,12 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
+const CULTURE_WORKFLOW_TYPES = [
+  "BACTERIOLOGY",
+  "MYCOBACTERIOLOGY_TB",
+  "MYCOLOGY",
+];
+
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
   const intl = useIntl();
@@ -96,6 +104,9 @@ const BasicInfoSection = ({ testId }) => {
   // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
+  // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
+  // shown beside the toggle right after the test goes Active, never a block.
+  const [activationWarnings, setActivationWarnings] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -282,7 +293,29 @@ const BasicInfoSection = ({ testId }) => {
             );
           });
         } else if (response && response.status === 409) {
-          setCodeError(true);
+          // Code-in-use answers a bodyless 409; a description conflict names
+          // itself in the body (OGC-1180) — the name doubles as the description,
+          // so "code is taken" would point the user at the wrong field.
+          response
+            .json()
+            .then((body) => body && body.conflict === "description")
+            .catch(() => false)
+            .then((isDescriptionConflict) => {
+              if (isDescriptionConflict) {
+                setNotificationVisible(true);
+                addNotification({
+                  kind: "error",
+                  title: intl.formatMessage({
+                    id: "label.testCatalog.section.basic-info",
+                  }),
+                  message: intl.formatMessage({
+                    id: "error.testCatalog.description.inUse",
+                  }),
+                });
+              } else {
+                setCodeError(true);
+              }
+            });
         } else {
           setNotificationVisible(true);
           addNotification({
@@ -297,13 +330,15 @@ const BasicInfoSection = ({ testId }) => {
 
   const handleSave = () => {
     setSaving(true);
-    putToOpenElisServer(
+    putToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/basic-info`,
       JSON.stringify(form),
-      (status) => {
+      (res) => {
         setSaving(false);
         setNotificationVisible(true);
-        if (status === 200) {
+        // A successful save echoes the BasicInfo body, which has no status
+        // field; the helper folds an error response's status into the JSON.
+        if (res && res.testId && !res.status) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -311,6 +346,21 @@ const BasicInfoSection = ({ testId }) => {
             }),
             message: intl.formatMessage({
               id: "label.testCatalog.basicInfo.saved",
+            }),
+          });
+        } else if (
+          res &&
+          res.status === 409 &&
+          res.conflict === "description"
+        ) {
+          // test_desc_uk — the description belongs to another test (OGC-1180).
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.description.inUse",
             }),
           });
         } else {
@@ -339,7 +389,22 @@ const BasicInfoSection = ({ testId }) => {
         } else if (res && !res.error) {
           setAckModalOpen(false);
           setCoverageReport(null);
-          update({ active: true });
+          // Activation also makes the test orderable, so take both flags from the
+          // response rather than assuming.
+          update({
+            active: res.active !== undefined ? res.active : true,
+            ...(res.orderable !== undefined
+              ? { orderable: res.orderable }
+              : {}),
+          });
+          const integrity = res.loincIntegrity;
+          setActivationWarnings(
+            integrity &&
+              (integrity.noLoinc ||
+                (integrity.duplicates && integrity.duplicates.length > 0))
+              ? integrity
+              : null,
+          );
           setNotificationVisible(true);
           addNotification({
             kind: "success",
@@ -633,6 +698,32 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
+      <Select
+        id="basic-info-culture-workflow-type"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+        })}
+        value={form.cultureWorkflowType || ""}
+        onChange={(event) =>
+          update({ cultureWorkflowType: event.target.value || "" })
+        }
+      >
+        <SelectItem
+          value=""
+          text={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
+          })}
+        />
+        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
+          <SelectItem
+            key={workflowType}
+            value={workflowType}
+            text={intl.formatMessage({
+              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
+            })}
+          />
+        ))}
+      </Select>
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -645,10 +736,40 @@ const BasicInfoSection = ({ testId }) => {
           if (checked && !form.active) {
             handleActivate(null);
           } else {
-            update({ active: checked });
+            // Activation sets orderable, so deactivation clears it again.
+            update({ active: checked, orderable: false });
+            setActivationWarnings(null);
           }
         }}
       />
+      {activationWarnings && activationWarnings.noLoinc && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="activation-no-loinc-warning"
+          title={intl.formatMessage({ id: "warning.testCatalog.noLoinc" })}
+        />
+      )}
+      {activationWarnings &&
+        activationWarnings.duplicates &&
+        activationWarnings.duplicates.length > 0 && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="activation-duplicate-loinc-warning"
+            title={intl.formatMessage(
+              { id: "warning.testCatalog.duplicateLoinc" },
+              {
+                code: activationWarnings.loinc,
+                testName: activationWarnings.duplicates
+                  .map((d) => d.name)
+                  .join(", "),
+              },
+            )}
+          />
+        )}
       {!form.active && completenessGaps.length > 0 && (
         <InlineNotification
           kind="info"

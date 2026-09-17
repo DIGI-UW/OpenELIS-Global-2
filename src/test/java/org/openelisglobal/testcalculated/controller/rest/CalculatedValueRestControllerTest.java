@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
@@ -120,5 +121,56 @@ public class CalculatedValueRestControllerTest {
         verify(testCalculationService, times(1)).getAll();
         assertEquals(Boolean.TRUE, activeRule.getToggled());
         assertEquals(Boolean.FALSE, inactiveRule.getToggled());
+    }
+
+    /**
+     * A link from the Test Editor's Reflex &amp; Calc section names one
+     * calculation, so the endpoint must answer with that calculation alone rather
+     * than the whole collection the editor was opened from.
+     */
+    @Test
+    public void getWithId_returnsOnlyThatCalculation() throws Exception {
+        Calculation wanted = new Calculation();
+        wanted.setId(7);
+        wanted.setActive(true);
+        wanted.setOperations(new ArrayList<>());
+        Calculation other = new Calculation();
+        other.setId(8);
+        other.setActive(true);
+        other.setOperations(new ArrayList<>());
+        when(testCalculationService.getAll()).thenReturn(new ArrayList<>(Arrays.asList(wanted, other)));
+
+        mockMvc.perform(get("/rest/test-calculations?id=7")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(7));
+    }
+
+    /** No id keeps the existing behaviour: the whole collection. */
+    @Test
+    public void getWithoutId_returnsEveryCalculation() throws Exception {
+        Calculation one = new Calculation();
+        one.setId(7);
+        one.setActive(true);
+        one.setOperations(new ArrayList<>());
+        Calculation two = new Calculation();
+        two.setId(8);
+        two.setActive(false);
+        two.setOperations(new ArrayList<>());
+        when(testCalculationService.getAll()).thenReturn(new ArrayList<>(Arrays.asList(one, two)));
+
+        mockMvc.perform(get("/rest/test-calculations")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    /** A blank id is not a filter — it must not empty the list. */
+    @Test
+    public void getWithBlankId_returnsEveryCalculation() throws Exception {
+        Calculation one = new Calculation();
+        one.setId(7);
+        one.setActive(true);
+        one.setOperations(new ArrayList<>());
+        when(testCalculationService.getAll()).thenReturn(new ArrayList<>(Arrays.asList(one)));
+
+        mockMvc.perform(get("/rest/test-calculations?id=")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
     }
 }

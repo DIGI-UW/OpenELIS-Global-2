@@ -19,10 +19,8 @@ import {
   RadioButtonGroup,
   Section,
   TextInput,
-  Toggle,
 } from "@carbon/react";
 import {
-  getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Environmental workflow reduced from 4 steps to 3 (Enter → Label → QA).
+        The Collect step is eliminated: the Order page now creates sample_items
+        directly (same pattern as Vector). Remove the Collect nav entry and
+        reorder Label→2, QA→3 to fill the gap.
+    -->
+
+    <changeSet id="nav-env-030-deactivate-collect" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_collect'
+            </sqlCheck>
+        </preConditions>
+        <comment>Deactivate the Environmental Collect step menu entry (workflow now 3 steps)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id = 'menu_environmental_collect'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="nav-env-030-reorder-label" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_label'
+            </sqlCheck>
+        </preConditions>
+        <comment>Move Environmental Label step to presentation_order 2 (was 3)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" valueNumeric="2"/>
+            <where>element_id = 'menu_environmental_label'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="nav-env-030-reorder-qa" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Move Environmental QA step to presentation_order 3 (was 4)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" valueNumeric="3"/>
+            <where>element_id = 'menu_environmental_qa'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

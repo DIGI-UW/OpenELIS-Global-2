@@ -82,6 +82,18 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Y", dictionary.getIsActive());
     }
 
+    /**
+     * Regression for the 500 on /rest/test-display-beans-map: legacy TEST_RESULT
+     * rows can carry raw text where a dictionary id belongs, and the lookup used to
+     * propagate the id-parse failure as LIMSRuntimeException, taking down every
+     * page that resolves result values. Non-numeric ids must read as not-found.
+     */
+    @Test
+    public void getDictionaryById_shouldReturnNullForNonNumericId() {
+        assertNull(dictionaryService.getDictionaryById("HIV1"));
+        assertNull(dictionaryService.getDictionaryById("  "));
+    }
+
     @Test
     public void getDictionaryEntrysByNameAndCategoryDescription_shouldGetDictionaryEntrysByNameAndCategoryDescription() {
         Dictionary dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Dictionary Entry 1",

@@ -7,6 +7,12 @@ import {
   Section,
   ClickableTile,
   Toggle,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Tag,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -25,6 +31,8 @@ import { TestStepForm } from "./customComponents/TestStepForm";
 import { mapTestCatBeanToFormData } from "./customComponents/TestFormData";
 import SearchTestNames from "./SearchTestNames";
 import TestModifyFilters from "./TestModifyFilters";
+import TestComplianceThresholds from "../complianceStandards/TestComplianceThresholds";
+import MethodsSection from "./MethodsSection";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -50,8 +58,10 @@ function TestModifyEntry() {
   const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
+  const [selectedTestBean, setSelectedTestBean] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState("");
   const [selectedTestSection, setSelectedTestSection] = useState("");
+  const [complianceThresholdCount, setComplianceThresholdCount] = useState(0);
 
   const componentMounted = useRef(false);
 
@@ -60,7 +70,7 @@ function TestModifyEntry() {
   };
 
   // Internal helper that actually calls the backend
-  const handleApiCall = useCallback((queryParams) => {
+  const handleApiCall = useCallback((queryParams, editingTestId = null) => {
     setIsLoading(true);
     const apiUrl = queryParams
       ? `/rest/TestModifyEntry?${queryParams}`
@@ -80,6 +90,16 @@ function TestModifyEntry() {
         setFilteredTests(testListFormat);
         setSearchFilteredTests(testListFormat);
         setTestModifyList(res);
+
+        // Keep the selected test bean up-to-date after a save
+        if (editingTestId != null) {
+          const refreshed = res.testCatBeanList.find(
+            (t) => t.id === editingTestId,
+          );
+          if (refreshed) {
+            setSelectedTestBean(refreshed);
+          }
+        }
       } else {
         // If no filters or no results, handle empty state
         const emptyList = [];
@@ -135,6 +155,8 @@ function TestModifyEntry() {
 
   const handleCancelEdit = useCallback(() => {
     setSelectedTestIdToEdit(null);
+    setSelectedTestBean(null);
+    setComplianceThresholdCount(0);
   }, []);
 
   // Load filter metadata on component mount (sample types, test sections, etc.)
@@ -187,6 +209,9 @@ function TestModifyEntry() {
         kind: NotificationKinds.success,
       });
 
+      setSelectedTestIdToEdit(null);
+      setComplianceThresholdCount(0);
+
       const params = new URLSearchParams();
       if (selectedSampleType && selectedSampleType.trim() !== "") {
         params.append("sampleType", selectedSampleType);
@@ -194,7 +219,7 @@ function TestModifyEntry() {
       if (selectedTestSection && selectedTestSection.trim() !== "") {
         params.append("testSection", selectedTestSection);
       }
-      handleApiCall(params.toString());
+      handleApiCall(params.toString(), selectedTestIdToEdit);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -343,11 +368,7 @@ function TestModifyEntry() {
           <hr />
           <br />
           {selectedTestIdToEdit ? (
-            <CustomTestDataDisplay
-              testToDisplay={testMonifyList?.testCatBeanList?.find(
-                (test) => test.id === selectedTestIdToEdit,
-              )}
-            />
+            <CustomTestDataDisplay testToDisplay={selectedTestBean} />
           ) : (
             <>
               <TestModifyFilters
@@ -395,18 +416,45 @@ function TestModifyEntry() {
           <br />
           <hr />
           {selectedTestIdToEdit ? (
-            <>
-              <TestStepForm
-                initialData={mapTestCatBeanToFormData(
-                  testMonifyList?.testCatBeanList?.find(
-                    (test) => test.id === selectedTestIdToEdit,
-                  ),
-                )}
-                postCall={handleTestModifyEntryPostCall}
-                cancelCall={handleCancelEdit}
-                mode="edit"
-              />
-            </>
+            <Tabs>
+              <TabList aria-label="Test editor sections" contained>
+                <Tab>
+                  <FormattedMessage id="configuration.test.modify.tab.configuration" />
+                </Tab>
+                <Tab>
+                  <FormattedMessage id="configuration.test.modify.tab.compliance" />
+                  {complianceThresholdCount > 0 && (
+                    <Tag type="teal" size="sm" style={{ marginLeft: "0.5rem" }}>
+                      {complianceThresholdCount}
+                    </Tag>
+                  )}
+                </Tab>
+                <Tab>
+                  <FormattedMessage id="admin.testCatalog.methods.title" />
+                </Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                  {selectedTestBean && (
+                    <TestStepForm
+                      initialData={mapTestCatBeanToFormData(selectedTestBean)}
+                      postCall={handleTestModifyEntryPostCall}
+                      cancelCall={handleCancelEdit}
+                      mode="edit"
+                    />
+                  )}
+                </TabPanel>
+                <TabPanel>
+                  <TestComplianceThresholds
+                    embeddedTestId={selectedTestIdToEdit}
+                    onCountChange={setComplianceThresholdCount}
+                  />
+                </TabPanel>
+                <TabPanel>
+                  <MethodsSection testId={selectedTestIdToEdit} />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           ) : (
             <>
               {searchFilteredTests && searchFilteredTests.length > 0 ? (
@@ -423,6 +471,10 @@ function TestModifyEntry() {
                         <ClickableTile
                           id={test.id}
                           onClick={() => {
+                            const bean = testMonifyList?.testCatBeanList?.find(
+                              (t) => t.id === test.id,
+                            );
+                            setSelectedTestBean(bean || null);
                             setSelectedTestIdToEdit(test.id);
                           }}
                         >

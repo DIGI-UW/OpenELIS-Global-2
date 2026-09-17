@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - a reflex rule names two specimens, and they are not the
+    same specimen.
+
+    The condition names the specimen whose result fires the rule; the action
+    names the specimen the generated test is reported on. The rule builder has
+    collected both since the editor was written - reflex_rule_condition.sample_id
+    and reflex_rule_action.sample_id - but test_reflex, the row the executor
+    reads, had only one column for them. 076/081 gave that column to the trigger,
+    which is what the executor matches on, leaving the target with nowhere to
+    live: the generated test fell back to guessing from the added test's own
+    configuration and, when that was ambiguous, landed on whichever specimen
+    happened to trigger it.
+
+    The target now has its own column, so trigger and target can differ - which
+    is the whole point of authoring them separately. NULL means the rule names no
+    target specimen, and the executor keeps inferring one from the added test.
+    -->
+
+    <changeSet id="reflex-target-sample-type-001" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="test_reflex"/>
+                <tableExists schemaName="clinlims" tableName="type_of_sample"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="test_reflex" columnName="add_sample_type_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>The specimen a reflexed test is reported on, apart from the one that triggers it</comment>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="add_sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reflex"
+            baseColumnNames="add_sample_type_id" constraintName="fk_test_reflex_add_sample_type"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+    <!--
+    Rules authored before this column existed have their target specimen on the
+    action that produced the row, joined by the test_reflex_id the save wrote
+    back. Only NULL rows are touched, so re-running finds nothing to do.
+    -->
+    <changeSet id="reflex-target-sample-type-002-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="test_reflex" columnName="add_sample_type_id"/>
+                <columnExists schemaName="clinlims" tableName="reflex_rule_action" columnName="sample_id"/>
+            </and>
+        </preConditions>
+        <comment>Carry each reflex action's specimen onto the row the executor reads</comment>
+        <sql>
+            UPDATE clinlims.test_reflex tr
+            SET add_sample_type_id = CAST(act.sample_id AS NUMERIC)
+            FROM clinlims.reflex_rule_action act
+            WHERE tr.add_sample_type_id IS NULL
+              AND act.test_reflex_id IS NOT NULL
+              AND CAST(act.test_reflex_id AS NUMERIC) = tr.id
+              AND act.sample_id ~ '^[0-9]+$'
+              AND EXISTS (
+                  SELECT 1 FROM clinlims.type_of_sample t
+                  WHERE t.id = CAST(act.sample_id AS NUMERIC)
+              );
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.test_reflex SET add_sample_type_id = NULL;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

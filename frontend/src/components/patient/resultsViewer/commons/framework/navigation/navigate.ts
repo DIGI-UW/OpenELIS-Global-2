@@ -3,10 +3,6 @@ import { navigateToUrl } from "single-spa";
 import { interpolateUrl } from "./interpolate-string";
 import type {} from "../globals/types";
 
-function trimTrailingSlash(str: string) {
-  return str.replace(/\/$/, "");
-}
-
 export type TemplateParams = { [key: string]: string };
 
 export interface NavigateOptions {
@@ -44,7 +40,6 @@ export interface NavigateOptions {
  * will become `/openmrs/bar`.
  */
 export function navigate({ to, templateParams }: NavigateOptions): void {
-  //const openmrsSpaBase = trimTrailingSlash(window.getOpenmrsSpaBase());
   const target = interpolateUrl(to, templateParams);
   // const isSpaPath = target.startsWith(openmrsSpaBase);
   const isSpaPath = true;

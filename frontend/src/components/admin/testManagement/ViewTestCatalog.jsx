@@ -22,8 +22,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  Section,
-  Heading,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -52,9 +50,14 @@ const TestCatalog = () => {
     getFromOpenElisServer(`/rest/TestCatalog`, handleCatalog);
   }, []);
 
+  // A failed catalog fetch used to leave `data` undefined, so selecting a
+  // section (notably "All") crashed the page on data.map. Coerce both lists so
+  // the page degrades to "no tests" instead of unmounting.
   const handleCatalog = (res) => {
-    setTestSectionList(res.testSectionList);
-    setData(res.testCatalogList);
+    setTestSectionList(
+      Array.isArray(res?.testSectionList) ? res.testSectionList : [],
+    );
+    setData(Array.isArray(res?.testCatalogList) ? res.testCatalogList : []);
   };
 
   const handleToggle = () => {

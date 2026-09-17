@@ -7,5 +7,5 @@ import org.openelisglobal.coldstorage.valueholder.Freezer;
 public interface ReadingIngestionService {
 
     void ingest(Freezer freezer, OffsetDateTime recordedAt, BigDecimal temperature, BigDecimal humidity,
-            boolean transmissionOk, String errorMessage);
+            BigDecimal temperature2, boolean transmissionOk, String errorMessage);
 }

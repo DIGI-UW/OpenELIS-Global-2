@@ -24,7 +24,6 @@ import { initialReportFormValues, selectOptions } from "./ViewNonConforming";
 import {
   getDifferenceInDays,
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";

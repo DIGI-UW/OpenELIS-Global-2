@@ -11,21 +11,42 @@ import {
   Link,
   Button,
   Loading,
+  Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import ImportIssuesPanel from "./ImportIssuesPanel";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+const importIssuesBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+  {
+    label: "analyzer.importIssues.title",
+    link: "/AnalyzerResults?view=import-issues",
+  },
+];
+
+/**
+ * The page title for an analyzer worklist. The URL carries the analyzer's id;
+ * the name is resolved server-side, so until it arrives (or when the id matches
+ * no analyzer) the bare label is shown — the id is never surfaced as a title.
+ */
+export const analyzerPageTitle = (label, analyzerName) =>
+  analyzerName ? `${label}: ${analyzerName}` : label;
+
+export const getAnalyzerResultsView = (search) =>
+  new URLSearchParams(search).get("view") || "";
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
-  const [type, setType] = useState("");
-  const [queryMode, setQueryMode] = useState("type");
+  // The analyzer's display name, resolved server-side from the id in the URL.
+  const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
@@ -35,27 +56,23 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
-  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [searchTermToPage, setSearchTermToPage] = useState([]);
   const [labNumber, setLabNumber] = useState("");
+  const location = useLocation();
+  const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
+  const view = getAnalyzerResultsView(location.search);
   const intl = useIntl();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
-    const analyzerId = params.get("id");
-    const analyserType = params.get("type");
-    if (analyzerId) {
-      setQueryMode("id");
-      setQueryValue(analyzerId);
-      setType(analyzerId);
-      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else if (analyserType) {
-      setQueryMode("type");
-      setQueryValue(analyserType);
-      setType(analyserType);
-      setUrl("/rest/AnalyzerResults?type=" + analyserType);
+    if (!selectedAnalyzerId) {
+      return;
     }
-  }, []);
+    setQueryValue(selectedAnalyzerId);
+    setUrl("/rest/AnalyzerResults?id=" + selectedAnalyzerId);
+    // drop the previous analyzer's name so a stale title never shows while the
+    // new one is in flight
+    setAnalyzerName("");
+  }, [selectedAnalyzerId]);
 
   useEffect(() => {
     if (url) {
@@ -63,6 +80,15 @@ const Index = () => {
       getFromOpenElisServer(url, handleResults);
     }
   }, [url]);
+
+  /** Rereads the worklist the address bar names, after a write changes it. */
+  const refreshResults = () => {
+    if (!url) {
+      return;
+    }
+    setIsLoading(true);
+    getFromOpenElisServer(url, handleResults);
+  };
 
   const extractUniqueGroups = (data) => {
     const seenGroups = new Set();
@@ -89,33 +115,37 @@ const Index = () => {
     if (data) {
       setResults(data);
       setIsLoading(false);
-      if (data.paging) {
-        var { totalPages, currentPage, searchTermToPage } = data.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          setSearchTermToPage(searchTermToPage);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
+      // the server echoes the analyzer's name in `type`, resolved from the id;
+      // it comes back null for an id that matches no analyzer
+      if (typeof data.type === "string" && data.type.trim()) {
+        setAnalyzerName(data.type.trim());
       }
+      const totalPages = Number(data.paging?.totalPages) || 1;
+      const currentPage = Number(data.paging?.currentPage) || 1;
+      const hasMultiplePages = totalPages > 1;
+      setSearchTermToPage(
+        Array.isArray(data.paging?.searchTermToPage)
+          ? data.paging.searchTermToPage
+          : [],
+      );
+      setPagination(hasMultiplePages);
+      setCurrentApiPage(hasMultiplePages ? currentPage : null);
+      setTotalApiPages(hasMultiplePages ? totalPages : null);
+      setNextPage(
+        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
+      );
+      setPreviousPage(
+        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
+      );
 
       if (data.resultList.length == 0) {
+        setSampleGroup([]);
         addNotification({
           kind: NotificationKinds.warning,
           title: intl.formatMessage({ id: "notification.title" }),
           message:
             intl.formatMessage({ id: "validation.search.noresult.analyser" }) +
-            type,
+            (data.type || analyzerName || queryValue),
         });
         setNotificationVisible(true);
       } else {
@@ -123,18 +153,44 @@ const Index = () => {
       }
     }
   };
+  if (view === "import-issues") {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={importIssuesBreadcrumbs} />
+        <ImportIssuesPanel />
+      </>
+    );
+  }
+
+  if (!selectedAnalyzerId) {
+    return <Redirect to="/analyzers" />;
+  }
+
+  const pageTitle = analyzerPageTitle(
+    intl.formatMessage({ id: "banner.menu.results.analyzer" }),
+    analyzerName,
+  );
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+    {
+      label: analyzerName || "banner.menu.results.analyzer",
+      isCurrentPage: true,
+    },
+  ];
+
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Section>
-              <Heading>{type}</Heading>
+      <Stack gap={5}>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section level={1}>
+              <Heading>{pageTitle}</Heading>
             </Section>
-          </Section>
-        </Column>
-      </Grid>
+          </Column>
+        </Grid>
+      </Stack>
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
@@ -158,11 +214,17 @@ const Index = () => {
               <Button
                 style={{ marginTop: "20px" }}
                 onClick={() => {
-                  const page = searchTermToPage.find(
+                  const pageMapping = searchTermToPage.find(
                     (item) => item.id === labNumber,
-                  ).value;
+                  );
+                  if (!pageMapping) {
+                    return;
+                  }
                   setIsLoading(true);
-                  getFromOpenElisServer(url + "&page=" + page, handleResults);
+                  getFromOpenElisServer(
+                    url + "&page=" + pageMapping.value,
+                    handleResults,
+                  );
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
@@ -208,11 +270,10 @@ const Index = () => {
           </Grid>
         </>
         <AnalyserResults
-          type={type}
-          queryMode={queryMode}
-          queryValue={queryValue}
+          analyzerId={queryValue}
           results={results}
           sampleGroup={sampleGroup}
+          refreshResults={refreshResults}
         />
       </div>
     </>

@@ -830,7 +830,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
-    private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
+    TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
         List<TestResult> all = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
         if (all == null || all.isEmpty()) {
             return null;
@@ -844,7 +844,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     resultItem.getResult());
             // Only trust the test-scoped dictionary match when it belongs to the target
             // component; otherwise fall through to the component-filtered candidates.
-            if (testResult != null && !candidates.contains(testResult)) {
+            String resolvedTestResultId = testResult == null ? null : testResult.getId();
+            boolean belongsToComponent = candidates.stream()
+                    .anyMatch(candidate -> candidate.getId().equals(resolvedTestResultId));
+            if (testResult != null && !belongsToComponent) {
                 testResult = null;
             }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {

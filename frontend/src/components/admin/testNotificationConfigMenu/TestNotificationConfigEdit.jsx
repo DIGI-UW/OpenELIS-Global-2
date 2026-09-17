@@ -6,39 +6,22 @@ import {
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Modal,
   TextInput,
-  Dropdown,
   TextArea,
   Checkbox,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { ArrowLeft, ArrowRight, Cost } from "@carbon/icons-react";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -55,6 +38,7 @@ function TestNotificationConfigEdit() {
 
   const intl = useIntl();
   const location = useLocation();
+  const history = useHistory();
 
   const ID = (() => {
     const search = location.search;
@@ -769,9 +753,7 @@ function TestNotificationConfigEdit() {
                 </Button>{" "}
                 <Button
                   onClick={() =>
-                    window.location.assign(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
+                    history.push("/MasterListsPage/testNotificationConfigMenu")
                   }
                   kind="tertiary"
                   type="button"

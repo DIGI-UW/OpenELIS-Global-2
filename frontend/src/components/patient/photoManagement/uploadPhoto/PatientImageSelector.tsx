@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { UserAvatar, View } from "@carbon/icons-react";
 import { Modal } from "@carbon/react";
 import ImagePreviewModal from "./ImagePreviewModal";
@@ -36,8 +37,11 @@ const PatientImageSelector = ({
       <div className="image-selector-content">
         <div
           className="image-display"
-          onClick={() => !disabled && setIsModalOpen(true)}
-          style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+          // View mode opens the read-only viewer; edit mode opens the picker.
+          onClick={() =>
+            disabled ? setIsViewModalOpen(true) : setIsModalOpen(true)
+          }
+          style={disabled ? { cursor: "zoom-in" } : {}}
         >
           {value ? (
             <div className="image-with-overlay">
@@ -73,30 +77,38 @@ const PatientImageSelector = ({
         </div>
       </div>
 
-      <ImagePreviewModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onImageSelect={handleImageSelect}
-        currentImage={value}
-      />
+      {/* Portalled out of the form: the patient form wraps its fields in a
+          disabled fieldset in view mode, which would otherwise disable the
+          dialog's own Close and Cancel buttons along with them. */}
+      {createPortal(
+        <>
+          <ImagePreviewModal
+            open={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onImageSelect={handleImageSelect}
+            currentImage={value}
+          />
 
-      <Modal
-        open={isViewModalOpen}
-        onRequestClose={() => setIsViewModalOpen(false)}
-        modalHeading={intl.formatMessage({ id: "patient.photo.view" })}
-        passiveModal
-        size="lg"
-      >
-        {value && (
-          <div className="patient-photo-view-container">
-            <img
-              src={value}
-              alt={intl.formatMessage({ id: "patient.photo.preview.alt" })}
-              className="patient-photo-view-image"
-            />
-          </div>
-        )}
-      </Modal>
+          <Modal
+            open={isViewModalOpen}
+            onRequestClose={() => setIsViewModalOpen(false)}
+            modalHeading={intl.formatMessage({ id: "patient.photo.view" })}
+            passiveModal
+            size="lg"
+          >
+            {value && (
+              <div className="patient-photo-view-container">
+                <img
+                  src={value}
+                  alt={intl.formatMessage({ id: "patient.photo.preview.alt" })}
+                  className="patient-photo-view-image"
+                />
+              </div>
+            )}
+          </Modal>
+        </>,
+        document.body,
+      )}
     </div>
   );
 };

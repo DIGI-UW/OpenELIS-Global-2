@@ -166,7 +166,7 @@ public class BarcodeInfoServiceImpl implements BarcodeInfoService {
             info = new SampleBarcodeInfo();
             info.setSample(sample);
             info.setPrintedOrderCount(0);
-            sampleBarcodeInfoService.insert(info);
+            info = sampleBarcodeInfoService.get(sampleBarcodeInfoService.insert(info));
         }
         int current = info.getPrintedOrderCount() != null ? info.getPrintedOrderCount() : 0;
         info.setPrintedOrderCount(current + count);
@@ -182,7 +182,7 @@ public class BarcodeInfoServiceImpl implements BarcodeInfoService {
             info = new SampleItemBarcodeInfo();
             info.setSampleItem(sampleItem);
             info.setPrintedSpecimenCount(0);
-            sampleItemBarcodeInfoService.insert(info);
+            info = sampleItemBarcodeInfoService.get(sampleItemBarcodeInfoService.insert(info));
         }
         int current = info.getPrintedSpecimenCount() != null ? info.getPrintedSpecimenCount() : 0;
         info.setPrintedSpecimenCount(current + count);

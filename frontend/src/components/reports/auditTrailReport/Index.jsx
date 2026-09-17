@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { Loading } from "@carbon/react";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "./AuditTrailReport";
@@ -10,6 +10,7 @@ import SystemAuditEvents from "./SystemAuditEvents";
 const AuditTrailReportIndex = () => {
   const { notificationVisible } = useContext(NotificationContext);
   const location = useLocation();
+  const history = useHistory();
 
   const [type, setType] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +22,7 @@ const AuditTrailReportIndex = () => {
       setType(paramType);
       setIsLoading(false);
     } else {
-      window.location.href = "/AuditTrailReport?type=system";
+      history.replace("/AuditTrailReport?type=system");
     }
   }, [location.search]);
 

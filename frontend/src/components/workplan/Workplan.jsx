@@ -173,7 +173,10 @@ export default function Workplan(props) {
   let showAccessionNumber = false;
   let currentAccessionNumber = "";
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: `workplan.${type}.title`, link: `/${sourceTitle}` },
+  ];
 
   return (
     <>

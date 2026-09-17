@@ -86,18 +86,12 @@ public class PatientManagementRestController extends BaseRestController {
             }
             try {
                 String sysUserId = getSysUserId(request);
-                patientService.persistPatientData(patientInfo, patient, sysUserId);
+                // One transaction for the patient and everything submitted with it: a
+                // failure saving the photo used to leave the patient persisted behind
+                // an error message, so the user could not tell what had been kept.
+                patientService.persistPatientDataWithAttachments(patientInfo, patient, sysUserId);
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
-                photoService.savePhoto(patient.getId(), patientInfo.getPhoto(), sysUserId);
-                if (patientInfo.getIdDocuments() != null) {
-                    for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
-                        if (docInfo.getId() == null && docInfo.getData() != null) {
-                            idDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
-                                    docInfo.getDescription(), sysUserId);
-                        }
-                    }
-                }
             } catch (LIMSRuntimeException e) {
                 // Previously this exception was logged and silently swallowed,
                 // so the client got HTTP 200 even when the save failed. Now we

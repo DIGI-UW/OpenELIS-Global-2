@@ -261,7 +261,8 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                     Test test = new Test();
                     test.setId(testId);
                     testService.getData(test);
-                    data.setTestName(TestServiceImpl.getUserLocalizedReportingTestName(test));
+                    data.setTestName(TestServiceImpl.getUserLocalizedReportingTestName(test,
+                            appendSampleTypeToTestName() ? parentData.getSampleType() : null));
 
                     String uom = getUnitOfMeasure(test);
                     if (reportReferralResultValue != null) {
@@ -459,6 +460,11 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
 
     @Override
     protected boolean useReportingDescription() {
+        return true;
+    }
+
+    @Override
+    protected boolean appendSampleTypeToTestName() {
         return true;
     }
 }

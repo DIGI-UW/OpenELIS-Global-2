@@ -27,6 +27,7 @@ import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
 import AlertsTab from "./AlertsTab";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./QCDashboard.css";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -130,6 +131,13 @@ const QCDashboard = () => {
       {/* Header */}
       <div className="qc-dashboard-header" data-testid="qc-dashboard-header">
         <div className="qc-dashboard-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "qc.dashboard.title", link: "" },
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

@@ -33,3 +33,10 @@ current_failures.txt
 .env
 .env.*
 !.env.example
+
+# Translation overrides are supplied by the deployment at run time, never baked.
+# dev.docker-compose.yml mounts volume/translation at public/translation, and
+# Docker creates that host directory to hang the mount on — so it exists locally
+# even though nothing in the repository puts it there. Excluding it keeps a
+# locally-built image identical to a CI-built one.
+public/translation

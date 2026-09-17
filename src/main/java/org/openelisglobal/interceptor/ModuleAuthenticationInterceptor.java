@@ -47,18 +47,17 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     private UserRoleService userRoleService;
     @Autowired
     private PermissionModuleService<PermissionModule> permissionModuleService;
-    String path;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
-        path = request.getRequestURI().substring(request.getContextPath().length());
+        String path = request.getRequestURI().substring(request.getContextPath().length());
         Errors errors = new BaseErrors();
-        if (!hasPermission(errors, request)) {
+        if (!hasPermission(errors, request, path)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
             LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
-            if (isRestFullPath()) {
+            if (isRestFullPath(path)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
@@ -79,16 +78,16 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             ModelAndView modelAndView) {
     }
 
-    protected boolean hasPermission(Errors errors, HttpServletRequest request) {
+    protected boolean hasPermission(Errors errors, HttpServletRequest request, String path) {
         if (ConfigurationProperties.getInstance().getPropertyValue("permissions.agent").equalsIgnoreCase("ROLE")) {
-            return hasPermissionForUrl(request, USE_PARAMETERS) || userModuleService.isUserAdmin(request);
+            return hasPermissionForUrl(request, USE_PARAMETERS, path) || userModuleService.isUserAdmin(request);
         } else {
             return userModuleService.isVerifyUserModule(request) || userModuleService.isUserAdmin(request);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private boolean hasPermissionForUrl(HttpServletRequest request, boolean useParameters) {
+    private boolean hasPermissionForUrl(HttpServletRequest request, boolean useParameters, String path) {
         HashSet<String> accessMap = (HashSet<String>) request.getSession()
                 .getAttribute(IActionConstants.PERMITTED_ACTIONS_MAP);
         if (accessMap == null) {
@@ -109,7 +108,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             // auto-allowed for any authenticated user. Admin-only controllers are
             // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
             // Full per-role module mappings are a future enhancement.
-            if (isRestFullPath()) {
+            if (isRestFullPath(path)) {
                 return true;
             }
             LogEvent.logWarn("ModuleAuthenticationInterceptor", "hasPermissionForUrl()",
@@ -166,9 +165,9 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
         return usd.getSystemUserId();
     }
 
-    private boolean isRestFullPath() {
-        if (path.startsWith("/rest") || path.startsWith("/Provider") || path.startsWith("/dbImage")
-                || path.startsWith("/logging")) {
+    private boolean isRestFullPath(String path) {
+        if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
+                || path.startsWith("/dbImage") || path.startsWith("/logging")) {
             return true;
         }
         return false;

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="098-remove-superseded-analyzer-schema" author="codex">
+        <preConditions onFail="HALT" onError="HALT">
+            <columnExists tableName="analyzer" columnName="bridge_connection_id"/>
+            <columnExists tableName="analyzer" columnName="site_binding_revision_id"/>
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*)
+                FROM analyzer a
+                WHERE (is_active IS TRUE OR COALESCE(status, 'SETUP') <> 'INACTIVE')
+                  AND (
+                    NULLIF(TRIM(bridge_connection_id), '') IS NULL
+                    OR site_binding_revision_id IS NULL
+                  )
+                  AND NOT (
+                    COALESCE(status, '') = 'SETUP'
+                    AND NULLIF(TRIM(bridge_connection_id), '') IS NULL
+                    AND site_binding_revision_id IS NULL
+                    AND last_activated_date IS NULL
+                    AND latest_activation_record_id IS NULL
+                    AND NULLIF(TRIM(test_unit_ids), '') IS NULL
+                    AND scrip_id IS NULL
+                    AND NULLIF(TRIM(machine_id), '') IS NULL
+                    AND analyzer_type_id IS NULL
+                    AND NULLIF(TRIM(identifier_pattern), '') IS NULL
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_field WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_field_mapping WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_test_map WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_plugin_config WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_experiment WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_file_upload WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_pending_code WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_activation_record WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_results WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analysis WHERE analyzer_id = a.id)
+                  )
+            ]]></sqlCheck>
+        </preConditions>
+        <comment>
+            Complete the verified analyzer cutover. Operational analyzers retain
+            only OpenELIS-owned state and exact Bridge/catalog references. Analyzer
+            communication, profile/runtime configuration, parsing, and portable
+            mappings remain Bridge-owned; inactive intentionally excluded records
+            retain only their non-runtime OpenELIS history.
+            Empty SETUP drafts have no runtime configuration to migrate and retain
+            their identity and lifecycle unchanged. SETUP alone is not evidence of
+            an empty draft: configuration, partial references, and usage history
+            still require a verified cutover.
+        </comment>
+
+        <sql splitStatements="false"><![CDATA[
+            DROP TABLE IF EXISTS analyzer_run CASCADE;
+            DROP TABLE IF EXISTS analyzer_file_upload CASCADE;
+            DROP TABLE IF EXISTS analyzer_experiment CASCADE;
+            DROP TABLE IF EXISTS analyzer_pending_code CASCADE;
+            DROP TABLE IF EXISTS analyzer_plugin_config CASCADE;
+            DROP TABLE IF EXISTS qualitative_result_mapping CASCADE;
+            DROP TABLE IF EXISTS unit_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field CASCADE;
+            DROP TABLE IF EXISTS validation_rule_configuration CASCADE;
+            DROP TABLE IF EXISTS custom_field_type CASCADE;
+            DROP TABLE IF EXISTS analyzer_test_map CASCADE;
+            DROP TABLE IF EXISTS analyzer_type CASCADE;
+
+            DROP SEQUENCE IF EXISTS analyzer_type_seq CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_experiment_seq CASCADE;
+
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS scrip_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS machine_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS analyzer_type CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS description CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS location CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS has_setup_page CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS analyzer_type_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS identifier_pattern CASCADE;
+        ]]></sql>
+
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    RAISE EXCEPTION
+                        'OGC-1054 analyzer schema cutover is irreversible; restore the pre-cutover backup instead';
+                END
+                $$;
+            ]]></sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -17,7 +17,12 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { useHistory, useLocation, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useHistory,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import {
   Grid,
   Column,
@@ -40,12 +45,14 @@ import {
   Tile,
   Loading,
   Pagination,
+  Link as CarbonLink,
 } from "@carbon/react";
 import {
   DEFAULT_SAMPLE_TYPE_SECTION,
   isValidSampleTypeSection,
 } from "./sectionConfig";
 import TerminologySection from "./sections/TerminologySection";
+import LocalizationSection from "../testCatalog/sections/LocalizationSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
 import AssociatedTestsSection from "./sections/AssociatedTestsSection";
@@ -55,6 +62,7 @@ import {
   Save,
   CheckmarkFilled,
   WarningFilled,
+  ArrowLeft,
 } from "@carbon/react/icons";
 import { injectIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -71,7 +79,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "configuration.sampleType.manage",
-    link: "/MasterListsPage/SampleTypeManagement",
+    link: "/MasterListsPage/SampleTypeEditor",
   },
 ];
 
@@ -89,7 +97,7 @@ function SampleTypeManagement({ intl }) {
   const basePath = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
-  const listUrl = `${basePath}/SampleTypeManagement`;
+  const listUrl = `${basePath}/SampleTypeEditor`;
 
   // View is derived from the URL: no id → list, "new" → add, otherwise → editor.
   const view = !sampleTypeId
@@ -140,7 +148,26 @@ function SampleTypeManagement({ intl }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showEditSuccess, setShowEditSuccess] = useState(false);
+  const [whonetCodeSaved, setWhonetCodeSaved] = useState(false);
   const nameInputRef = useRef(null);
+  const whonetCodeInputRef = useRef(null);
+
+  const whonetRepair = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedReturn = params.get("returnTo") || "";
+    const returnTo =
+      requestedReturn === "/Microbiology/whonet" ||
+      requestedReturn.startsWith("/Microbiology/whonet?")
+        ? requestedReturn
+        : "";
+    return { focus: params.get("focus") === "whonet", returnTo };
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!showSuccess) return undefined;
+    const timerId = setTimeout(() => setShowSuccess(false), 3000);
+    return () => clearTimeout(timerId);
+  }, [showSuccess]);
 
   // Associated tests for the sample type currently being edited
   const [associatedTests, setAssociatedTests] = useState([]);
@@ -183,6 +210,7 @@ function SampleTypeManagement({ intl }) {
               domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
+              whonetCode: item.whonetCode || "",
             }));
             setSampleTypes(sampleTypeData);
           } else {
@@ -305,7 +333,9 @@ function SampleTypeManagement({ intl }) {
       testCount: st.testCount,
       abbreviation: st.abbreviation || "",
       sortOrder: st.sortOrder || 0,
+      whonetCode: st.whonetCode || "",
     });
+    setWhonetCodeSaved(false);
     setFormErrors({});
     setShowSuccess(false);
     loadAssociatedTests(st.id);
@@ -331,10 +361,23 @@ function SampleTypeManagement({ intl }) {
       testCount: 0,
       abbreviation: "",
       sortOrder: sampleTypes.length + 1,
+      whonetCode: "",
     });
     setFormErrors({});
     setShowSuccess(false);
   }, [view, sampleTypes.length, editingType]);
+
+  useEffect(() => {
+    if (
+      whonetRepair.focus &&
+      view === "editor" &&
+      activeSection === DEFAULT_SAMPLE_TYPE_SECTION &&
+      editingType?.id &&
+      whonetCodeInputRef.current
+    ) {
+      whonetCodeInputRef.current.focus();
+    }
+  }, [activeSection, editingType?.id, view, whonetRepair.focus]);
 
   // Clear editor state when returning to the list URL.
   useEffect(() => {
@@ -428,6 +471,7 @@ function SampleTypeManagement({ intl }) {
         testCount: item.testCount || 0,
         abbreviation: item.abbreviation || "",
         sortOrder: item.sortOrder || 0,
+        whonetCode: item.whonetCode || "",
       }));
       setSampleTypes(mapped);
       return mapped;
@@ -491,7 +535,6 @@ function SampleTypeManagement({ intl }) {
           );
         } else {
           setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
           setEditingType(null);
           history.push(listUrl);
         }
@@ -506,6 +549,7 @@ function SampleTypeManagement({ intl }) {
           isActive:
             editingType.active !== undefined ? editingType.active : true,
           sortOrder: editingType.sortOrder || 0,
+          whonetCode: editingType.whonetCode?.trim() || "",
         };
         await new Promise((resolve, reject) => {
           putToOpenElisServer(
@@ -539,6 +583,7 @@ function SampleTypeManagement({ intl }) {
                   testCount: d.testCount,
                   abbreviation: d.abbreviation || "",
                   sortOrder: d.sortOrder || 0,
+                  whonetCode: d.whonetCode || "",
                 });
               }
               resolve();
@@ -546,7 +591,7 @@ function SampleTypeManagement({ intl }) {
           );
         });
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        setWhonetCodeSaved(Boolean(whonetRepair.returnTo));
         setFormErrors({});
       }
     } catch (error) {
@@ -557,7 +602,15 @@ function SampleTypeManagement({ intl }) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [editingType, view, validateForm, history, listUrl, refreshSampleTypes]);
+  }, [
+    editingType,
+    view,
+    validateForm,
+    history,
+    listUrl,
+    refreshSampleTypes,
+    whonetRepair.returnTo,
+  ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
   if (view === "list") {
@@ -620,7 +673,7 @@ function SampleTypeManagement({ intl }) {
                     >
                       <FormattedMessage
                         id="heading.sampleType.management"
-                        defaultMessage="Sample Type Management"
+                        defaultMessage="Sample Type Editor"
                       />
                     </h2>
                     <p
@@ -818,8 +871,21 @@ function SampleTypeManagement({ intl }) {
                   <TableBody>
                     {paginatedTypes.length > 0 ? (
                       paginatedTypes.map((st) => (
-                        <TableRow key={st.id}>
-                          <TableCell>
+                        <TableRow
+                          key={st.id}
+                          data-cy={`sampleType-row-${st.id}`}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openEditor(st);
+                            }
+                          }}
+                        >
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <div>
                               <span
                                 style={{
@@ -843,12 +909,18 @@ function SampleTypeManagement({ intl }) {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <Tag type={domainColor(st.domain)} size="sm">
                               {domainLabel(st.domain)}
                             </Tag>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <Tag type={st.active ? "green" : "gray"} size="sm">
                               {st.active ? (
                                 <FormattedMessage
@@ -863,7 +935,10 @@ function SampleTypeManagement({ intl }) {
                               )}
                             </Tag>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <span
                               style={{
                                 fontWeight: 500,
@@ -973,7 +1048,7 @@ function SampleTypeManagement({ intl }) {
                 >
                   <FormattedMessage
                     id="heading.sampleType.management"
-                    defaultMessage="Sample Type Management"
+                    defaultMessage="Sample Type Editor"
                   />
                 </h2>
                 <Stack
@@ -1234,6 +1309,29 @@ function SampleTypeManagement({ intl }) {
                               }
                             />
 
+                            {view === "editor" && (
+                              <TextInput
+                                ref={whonetCodeInputRef}
+                                id="sample-type-whonet-code"
+                                labelText={intl.formatMessage({
+                                  id: "label.sampleType.whonetCode",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "helper.sampleType.whonetCode",
+                                })}
+                                value={editingType?.whonetCode || ""}
+                                maxLength={5}
+                                onChange={(event) => {
+                                  setEditingType((previous) => ({
+                                    ...previous,
+                                    whonetCode: event.target.value,
+                                  }));
+                                  setWhonetCodeSaved(false);
+                                }}
+                                autoComplete="off"
+                              />
+                            )}
+
                             {/* FRS v2.1 Basic Info: deactivating a type in use
                             warns but proceeds — no cascade, reversible. */}
                             {view === "editor" &&
@@ -1355,6 +1453,17 @@ function SampleTypeManagement({ intl }) {
                               defaultMessage="Cancel"
                             />
                           </Button>
+                          {whonetRepair.returnTo && whonetCodeSaved && (
+                            <CarbonLink
+                              as={RouterLink}
+                              to={whonetRepair.returnTo}
+                              renderIcon={ArrowLeft}
+                            >
+                              {intl.formatMessage({
+                                id: "label.sampleType.whonetReturn",
+                              })}
+                            </CarbonLink>
+                          )}
                         </Stack>
                       </div>
                     </Tile>
@@ -1451,7 +1560,7 @@ function SampleTypeManagement({ intl }) {
                 )}
 
                 {/* Terminology — multi-row Source/Code/Relationship mappings,
-                mirrors the Test Catalog Editor's Terminology section. */}
+                mirrors the Test Catalogue Editor's Terminology section. */}
                 {activeSection === "terminology" && (
                   <div>
                     <Tile
@@ -1476,6 +1585,42 @@ function SampleTypeManagement({ intl }) {
                         </p>
                       ) : (
                         <TerminologySection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+                {/* The same section the Test Catalogue Editor uses. A sample
+                    type's display name lives in the same localization tables —
+                    including the translations a sample-types configuration file
+                    loaded — reached through the sample type's bridge endpoint. */}
+                {activeSection === "localization" && (
+                  <div>
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage
+                            id="label.sampleType.localization.addHint"
+                            defaultMessage="Save this sample type first, then edit its translations."
+                          />
+                        </p>
+                      ) : (
+                        <LocalizationSection
+                          entity="sampleType"
+                          entityId={sampleTypeId}
+                          refsUrl={`/rest/sample-types/${sampleTypeId}/localization`}
+                        />
                       )}
                     </Tile>
                   </div>

@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useContext, useState, useCallback } from "react";
 import {
   Heading,
   Button,
@@ -15,10 +9,11 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -27,6 +22,15 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import SearchTestNames from "./SearchTestNames";
+
+const TEST_RENAME_ENDPOINT = "/rest/TestRenameEntry";
+// One array, so the list handed to the search box keeps its identity while the
+// read is still on its way and the search box does not refilter every render.
+const NO_TESTS = [];
+const EMPTY_NAMES = {
+  name: { english: "", french: "" },
+  reportingName: { english: "", french: "" },
+};
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -47,65 +51,33 @@ function TestRenameEntry() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [finished, setFinished] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmationStep, setConfirmationStep] = useState(false);
   const [inputError, setInputError] = useState(false);
-  const [testNames, setTestNames] = useState({});
-  const [testNamePost, setTestNamesPost] = useState({});
-  const [testNamesShow, setTestNamesShow] = useState([]);
   const [selectedTest, setSelectedTest] = useState({});
-  const [filteredTests, setFilteredTests] = useState(testNamesShow);
-  const [testNamesLangs, setTestNamesLangs] = useState({
-    name: { english: "", french: "" },
-    reportingName: { english: "", french: "" },
-  });
-  const [testNamesLangsPost, setTestNamesLangsPost] = useState({
-    name: { english: "", french: "" },
-    reportingName: { english: "", french: "" },
-  });
+  const [filteredTests, setFilteredTests] = useState([]);
+  const [nameEdits, setNameEdits] = useState(null);
 
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer("/rest/TestRenameEntry", handleTestNames);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  const handleTestNames = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestNames(res);
-      setTestNamesPost(res);
-      setTestNamesShow(res?.testList);
-    }
-  };
+  const invalidateServerData = useInvalidateServerData();
+  const { data: testNames } = useServerData(TEST_RENAME_ENDPOINT);
+  const testNamesShow = testNames?.testList ?? NO_TESTS;
 
   const handleFilter = useCallback((filtered) => {
     setFilteredTests(filtered);
   }, []);
 
-  useEffect(() => {
-    if (selectedTest && selectedTest.id) {
-      getFromOpenElisServer(
-        `/rest/TestNamesProvider?testId=${selectedTest?.id}`,
-        handleTestNamesLangs,
-      );
-    }
-  }, [selectedTest]);
-
-  const handleTestNamesLangs = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestNamesLangs(res);
-      setTestNamesLangsPost(res);
-    }
-  };
+  // Held off until a test is picked and keyed on it. Until that read arrives
+  // the hook still serves the test picked before, so the names offered for
+  // editing are the empty ones rather than the previous test's.
+  const { data: readNames, isPreviousData } = useServerData(
+    selectedTest?.id
+      ? `/rest/TestNamesProvider?testId=${selectedTest.id}`
+      : null,
+  );
+  const testNamesLangs = isPreviousData || !readNames ? EMPTY_NAMES : readNames;
+  // Only the edits live in state, on top of what the server holds.
+  const testNamesLangsPost = nameEdits ?? testNamesLangs;
 
   function testRenameEntryPost() {
     setIsLoading(true);
@@ -123,9 +95,8 @@ function TestRenameEntry() {
   }
 
   function testRenameEntryPostCallback(res) {
+    setIsLoading(false);
     if (res) {
-      setIsLoading(false);
-      setFinished(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -137,9 +108,10 @@ function TestRenameEntry() {
       });
       setNotificationVisible(true);
       setIsAddModalOpen(false);
-      setTimeout(() => {
-        window.location.reload();
-      }, 10);
+      setConfirmationStep(false);
+      setSelectedTest({});
+      setNameEdits(null);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -147,9 +119,6 @@ function TestRenameEntry() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 10);
     }
   }
 
@@ -157,20 +126,21 @@ function TestRenameEntry() {
     setConfirmationStep(false);
     setIsAddModalOpen(true);
     setSelectedTest(test);
+    setNameEdits(null);
   };
 
-  useEffect(() => {
-    if (selectedTest && testNamesLangsPost && testNamesLangsPost.name) {
-      setTestNamesPost((prev) => ({
-        ...prev,
-        testId: selectedTest?.id,
-        nameEnglish: testNamesLangsPost.name.english,
-        nameFrench: testNamesLangsPost.name.french,
-        reportNameEnglish: testNamesLangsPost.reportingName.english,
-        reportNameFrench: testNamesLangsPost.reportingName.french,
-      }));
-    }
-  }, [testNamesLangsPost, selectedTest]);
+  const testNamePost = {
+    ...testNames,
+    ...(selectedTest?.id
+      ? {
+          testId: selectedTest.id,
+          nameEnglish: testNamesLangsPost?.name?.english,
+          nameFrench: testNamesLangsPost?.name?.french,
+          reportNameEnglish: testNamesLangsPost?.reportingName?.english,
+          reportNameFrench: testNamesLangsPost?.reportingName?.french,
+        }
+      : {}),
+  };
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
@@ -278,13 +248,13 @@ function TestRenameEntry() {
                         value={testNamesLangsPost?.name?.english || ""}
                         onChange={(e) => {
                           const englishName = e.target.value;
-                          setTestNamesLangsPost((prev) => ({
-                            ...prev,
+                          setNameEdits({
+                            ...testNamesLangsPost,
                             name: {
-                              ...prev.name,
+                              ...testNamesLangsPost.name,
                               english: englishName,
                             },
-                          }));
+                          });
                           setInputError(false);
                         }}
                         required
@@ -305,13 +275,13 @@ function TestRenameEntry() {
                         value={testNamesLangsPost?.name?.french || ""}
                         onChange={(e) => {
                           const frenchName = e.target.value;
-                          setTestNamesLangsPost((prev) => ({
-                            ...prev,
+                          setNameEdits({
+                            ...testNamesLangsPost,
                             name: {
-                              ...prev.name,
+                              ...testNamesLangsPost.name,
                               french: frenchName,
                             },
-                          }));
+                          });
                           setInputError(false);
                         }}
                         required
@@ -336,13 +306,13 @@ function TestRenameEntry() {
                         value={testNamesLangsPost?.reportingName?.english || ""}
                         onChange={(e) => {
                           const englishName = e.target.value;
-                          setTestNamesLangsPost((prev) => ({
-                            ...prev,
+                          setNameEdits({
+                            ...testNamesLangsPost,
                             reportingName: {
-                              ...prev.reportingName,
+                              ...testNamesLangsPost.reportingName,
                               english: englishName,
                             },
-                          }));
+                          });
                           setInputError(false);
                         }}
                         required
@@ -363,13 +333,13 @@ function TestRenameEntry() {
                         value={testNamesLangsPost?.reportingName?.french || ""}
                         onChange={(e) => {
                           const frenchName = e.target.value;
-                          setTestNamesLangsPost((prev) => ({
-                            ...prev,
+                          setNameEdits({
+                            ...testNamesLangsPost,
                             reportingName: {
-                              ...prev.reportingName,
+                              ...testNamesLangsPost.reportingName,
                               french: frenchName,
                             },
-                          }));
+                          });
                           setInputError(false);
                         }}
                         required

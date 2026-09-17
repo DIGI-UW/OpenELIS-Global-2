@@ -54,6 +54,10 @@ public class ThresholdProfile extends BaseObject<Long> {
     @Column(name = "min_excursion_minutes")
     private Integer minExcursionMinutes = 5;
 
+    // Not yet wired up to any evaluation logic - its intended semantics (hard
+    // alert cutoff vs. auto-escalation vs. something else) are ambiguous from
+    // existing code/tests, so ThresholdEvaluationServiceImpl deliberately leaves
+    // it unused rather than guessing. See ThresholdEvaluationServiceImpl javadoc.
     @Column(name = "max_duration_minutes")
     private Integer maxDurationMinutes;
 

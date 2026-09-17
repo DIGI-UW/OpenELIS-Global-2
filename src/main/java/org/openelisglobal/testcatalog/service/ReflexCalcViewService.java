@@ -22,7 +22,14 @@ public interface ReflexCalcViewService {
 
     /** A reflex rule whose trigger (source) test is the viewed test. */
     class ReflexRow {
+        /** The test_reflex row's own id. */
         public String id;
+        /**
+         * The Reflex Rules record that owns this row, when one does — a rule's action
+         * records the test_reflex it created. Null for a legacy row configured
+         * directly, which no rule can be opened for.
+         */
+        public Integer ruleId;
         public String ruleName;
         public String triggerCondition;
         public String reflexTests;

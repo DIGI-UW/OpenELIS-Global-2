@@ -10,9 +10,18 @@ import {
   TableBody,
 } from "@carbon/react";
 import { OBSERVATION_INTERPRETATION, useLayoutType } from "../commons";
-import { OverviewPanelData } from "../overview/useOverviewData";
 //import styles from './common-datatable.scss';
 import "./common-datatable.scss";
+
+interface OverviewPanelData {
+  id: string;
+  key?: string;
+  name: string;
+  range: string;
+  interpretation: OBSERVATION_INTERPRETATION;
+  value?: string | number;
+  valueCodeableConcept?: { coding: Array<{ code: string; display: string }> };
+}
 
 interface CommonDataTableProps {
   data: Array<OverviewPanelData>;

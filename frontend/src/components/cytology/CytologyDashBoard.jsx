@@ -20,6 +20,7 @@ import {
   Loading,
   Pagination,
 } from "@carbon/react";
+import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { Search } from "@carbon/react";
 import {
@@ -35,6 +36,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function CytologyDashboard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { notificationVisible } = useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -211,7 +213,7 @@ function CytologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/CytologyCaseView/" + id;
+    history.push("/CytologyCaseView/" + id);
   };
 
   useEffect(() => {
@@ -284,7 +286,10 @@ function CytologyDashboard() {
     };
   }, [filters]);
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
+  ];
 
   return (
     <>

@@ -1,38 +1,15 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
-  Form,
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
   TextInput,
   Checkbox,
   Modal,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -60,7 +37,6 @@ function ResultSelectListAdd() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(true);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [bothFilled, setBothFilled] = useState(false);
   const [englishLangPost, setEnglishLangPost] = useState("");
@@ -68,12 +44,26 @@ function ResultSelectListAdd() {
   const [loincCode, setLoincCode] = useState("");
   const [loincCodeError, setLoincCodeError] = useState(false);
   const [inputError, setInputError] = useState(false);
-  const [ResultSelectListRes, setResultSelectListRes] = useState({});
   const [resultTestsList, setResultTestsList] = useState([]);
   const [resultTestsDirectory, setResultTestsDirectory] = useState([]);
   const [testSelectListJson, setTestSelectListJson] = useState([]);
   const [testSelectListJsonPost, setTestSelectListJsonPost] = useState([]);
-  const componentMounted = useRef(false);
+
+  // Reloading the document was how the screen was emptied. Nothing here comes
+  // from a read, so emptying it is entirely local.
+  const startOver = () => {
+    setIsConfirmModalOpen(false);
+    setBothFilled(false);
+    setEnglishLangPost("");
+    setFrenchLangPost("");
+    setLoincCode("");
+    setLoincCodeError(false);
+    setInputError(false);
+    setResultTestsList([]);
+    setResultTestsDirectory([]);
+    setTestSelectListJson([]);
+    setTestSelectListJsonPost([]);
+  };
 
   const handleResultSelectTestListCall = () => {
     if (!englishLangPost || !frenchLangPost) {
@@ -104,7 +94,6 @@ function ResultSelectListAdd() {
 
   const handlePostResultSelectListCallBack = (res) => {
     if (res) {
-      setResultSelectListRes(res);
       if (res?.tests && res?.testDictionary) {
         setResultTestsList(res?.tests);
         setResultTestsDirectory(res?.testDictionary);
@@ -140,20 +129,17 @@ function ResultSelectListAdd() {
 
   const handlePostSaveResultSelectListCallBack = (res) => {
     if (res) {
-      setIsLoading(false);
-      setResultSelectListRes(res);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.delete.success",
+          id: "notification.resultSelectList.post.save.success",
         }),
         kind: NotificationKinds.success,
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      setNotificationVisible(true);
+      startOver();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -161,17 +147,6 @@ function ResultSelectListAdd() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
-    }
-  };
-
-  const handleResultSelectTestList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setResultSelectListRes(res);
     }
   };
 
@@ -235,27 +210,6 @@ function ResultSelectListAdd() {
       };
     });
   };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(
-      `/rest/ResultSelectListAdd`,
-      handleResultSelectTestList,
-    );
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
 
   return (
     <>
@@ -380,13 +334,7 @@ function ResultSelectListAdd() {
               </Button>{" "}
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <Button
-                type="button"
-                kind="tertiary"
-                onClick={() => {
-                  window.location.reload();
-                }}
-              >
+              <Button type="button" kind="tertiary" onClick={startOver}>
                 <FormattedMessage id="label.button.cancel" />
               </Button>
             </Column>
@@ -493,13 +441,7 @@ function ResultSelectListAdd() {
                     </Button>
                   </Column>
                   <Column lg={4} md={8} sm={4}>
-                    <Button
-                      type="button"
-                      kind="tertiary"
-                      onClick={() => {
-                        window.location.reload();
-                      }}
-                    >
+                    <Button type="button" kind="tertiary" onClick={startOver}>
                       <FormattedMessage id="label.button.cancel" />
                     </Button>
                   </Column>
@@ -521,10 +463,7 @@ function ResultSelectListAdd() {
           setIsConfirmModalOpen(false);
           handlePostSaveResultSelectListCall();
         }}
-        onRequestClose={() => {
-          setIsConfirmModalOpen(false);
-          window.location.reload();
-        }}
+        onRequestClose={startOver}
         preventCloseOnClickOutside={true}
         shouldSubmitOnEnter={true}
       >

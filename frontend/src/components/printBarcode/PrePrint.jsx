@@ -6,7 +6,6 @@ import {
   SelectItem,
   Grid,
   Column,
-  TextInput,
   NumberInput,
   Button,
 } from "@carbon/react";

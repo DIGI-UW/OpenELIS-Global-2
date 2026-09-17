@@ -682,18 +682,23 @@ public class DisplayListService implements LocaleChangeListener {
         }
         case PROGRAM: {
             typeToListMap.put(ListType.PROGRAM, createProgramList());
+            break;
         }
         case DICTIONARY_TEST_RESULTS: {
             typeToListMap.put(ListType.DICTIONARY_TEST_RESULTS, createDictionaryTestResults());
+            break;
         }
         case ARV_ORG_LIST: {
             typeToListMap.put(ListType.ARV_ORG_LIST, createArvOrgList());
+            break;
         }
         case ACTIVE_ORG_LIST: {
             typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+            break;
         }
         case RESULT_TYPE_CODES: {
             typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
+            break;
         }
         }
     }
@@ -1091,7 +1096,7 @@ public class DisplayListService implements LocaleChangeListener {
         List<Method> methods = methodService.getAll();
 
         for (Method method : methods) {
-            methodPairs.add(new IdValuePair(method.getId(), method.getLocalization().getLocalizedValue()));
+            methodPairs.add(new IdValuePair(method.getId(), method.getLocalizedValue()));
         }
 
         return methodPairs;

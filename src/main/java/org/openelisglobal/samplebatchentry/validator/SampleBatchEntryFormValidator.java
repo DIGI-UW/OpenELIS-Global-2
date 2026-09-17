@@ -66,7 +66,7 @@ public class SampleBatchEntryFormValidator implements Validator {
         }
         // validate date not required
         String collectionDate = sampleItem.attributeValue("date").trim();
-        ValidationHelper.validateDateField(collectionDate, "sampleXML", "sampleXML date", errors, DateRelation.PAST,
+        ValidationHelper.validateDateField(collectionDate, "sampleXML", "sampleXML date", errors, DateRelation.ANY,
                 false);
         if (errors.hasErrors()) {
             return;

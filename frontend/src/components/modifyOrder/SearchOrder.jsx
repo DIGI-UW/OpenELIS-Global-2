@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import SearchPatientForm from "../patient/SearchPatientForm";
-import { Button, Column, TextInput, Grid, Form } from "@carbon/react";
+import { Button, Column, Grid, Form } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 

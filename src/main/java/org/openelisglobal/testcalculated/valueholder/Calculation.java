@@ -38,6 +38,15 @@ public class Calculation extends BaseObject<Integer> {
     @Column(name = "result")
     private String result;
 
+    /**
+     * The component of the resulting test that receives the calculated value. A
+     * calculation produces one value and it has to land somewhere specific; null
+     * means the test's primary, which is where a calculation authored before
+     * components existed has always effectively written.
+     */
+    @Column(name = "component_id")
+    private String componentId;
+
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "calculation_id", referencedColumnName = "id")
     private List<Operation> operations;
@@ -131,6 +140,14 @@ public class Calculation extends BaseObject<Integer> {
 
     public void setStringId(String stringId) {
         this.stringId = stringId;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 
     public String getResult() {

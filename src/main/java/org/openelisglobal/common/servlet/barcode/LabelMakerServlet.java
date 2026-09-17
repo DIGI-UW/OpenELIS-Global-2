@@ -391,8 +391,9 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         // the bare block/slide/freezer types have no dispatcher branch; first-party
         // callers route through the *Order variants via
         // BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl.
-        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)
-                && !"blockOrder".equals(type) && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
+        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type)
+                && !"specimenOrder".equals(type) && !"blank".equals(type) && !"blockOrder".equals(type)
+                && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
         // Validate "labNo" (either labNo, labNo.itemNo)
@@ -418,7 +419,8 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
         }
         SampleService sampleService = SpringContext.getBean(SampleService.class);
-        if (sampleService.getSampleByAccessionNumber(labNo) == null) {
+        String accessionForLookup = labNo.contains(".") ? labNo.substring(0, labNo.lastIndexOf(".")) : labNo;
+        if (sampleService.getSampleByAccessionNumber(accessionForLookup) == null) {
             errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
         }
         // validate override

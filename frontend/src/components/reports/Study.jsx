@@ -9,7 +9,10 @@ import {
 import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "label.study.Reports", link: "/StudyReports" },
+];
 export const RoutineReportsMenu = {
   className: "resultSideNav",
   sideNavMenuItems: [

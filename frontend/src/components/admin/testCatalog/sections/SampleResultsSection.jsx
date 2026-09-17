@@ -49,9 +49,12 @@ const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
 const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
 // A single component renders as one flat block (no accordion chrome); 2+
-// components render as accordion panels (FR-34). PlainPanel is the flat wrapper —
-// it ignores the accordion-only `open`/`title` props.
-const PlainPanel = ({ children }) => <div>{children}</div>;
+// components render as accordion panels (FR-34) — for ANY count. The wrapper
+// element types must never depend on components.length: flipping
+// Fragment/PlainPanel to Accordion/AccordionItem when the second component is
+// added made React unmount and remount the entire section (different element
+// types are irreconcilable), losing focus and resetting the scroll position
+// to the top of the page.
 
 /**
  * Live result-entry preview (FR-35): renders a read-only representation of the
@@ -328,26 +331,45 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
+  // After Add Component, land the user on the new component's first field
+  // instead of leaving them wherever the page happens to be.
+  const [focusComponentIndex, setFocusComponentIndex] = useState(null);
+  useEffect(() => {
+    if (focusComponentIndex === null) {
+      return;
+    }
+    const label = document.getElementById(`comp-label-${focusComponentIndex}`);
+    if (label) {
+      label.focus({ preventScroll: true });
+      label.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setFocusComponentIndex(null);
+  }, [focusComponentIndex]);
+
   const addComponent = () =>
-    setComponents((prev) => [
-      ...prev,
-      {
-        // The first (only) component is the primary; its code is fixed to
-        // PRIMARY (mirrored to the legacy test columns).
-        code: prev.length === 0 ? "PRIMARY" : "",
-        label: "",
-        displayOrder: prev.length + 1,
-        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
-        resultType: null,
-        significantDigits: null,
-        defaultResult: "",
-        allowMultipleReadings: false,
-        isPrimary: prev.length === 0,
-        showOnReport: true,
-        options: [],
-        interpretations: [],
-      },
-    ]);
+    setComponents((prev) => {
+      setFocusComponentIndex(prev.length);
+      return [
+        ...prev,
+        {
+          // The first (only) component is the primary; its code is fixed to
+          // PRIMARY (mirrored to the legacy test columns).
+          code: prev.length === 0 ? "PRIMARY" : "",
+          label: "",
+          displayOrder: prev.length + 1,
+          // The type is an explicit choice (FR-56/28) — no silent Numeric
+          // default.
+          resultType: null,
+          significantDigits: null,
+          defaultResult: "",
+          allowMultipleReadings: false,
+          isPrimary: prev.length === 0,
+          showOnReport: true,
+          options: [],
+          interpretations: [],
+        },
+      ];
+    });
 
   // Exactly one component is primary. While one is marked, the other
   // components' Primary toggles are disabled — the current primary must be
@@ -502,6 +524,21 @@ const SampleResultsSection = ({ testId }) => {
   const toInt = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
 
+  // FR-C2 (OGC-1148): both limits >= 0 and LOD <= LOQ when both are set.
+  const detectionLimitProblem = (c) => {
+    const lod = toInt(c.lod);
+    const loq = toInt(c.loq);
+    if ((lod !== null && lod < 0) || (loq !== null && loq < 0)) {
+      return "error.testCatalog.sampleResults.detectionLimitNegative";
+    }
+    if (lod !== null && loq !== null && lod > loq) {
+      return "error.testCatalog.sampleResults.lodGtLoq";
+    }
+    return null;
+  };
+  const detectionLimitsInvalid = (c) =>
+    detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
+
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
     // so default it to the label when left blank. Guide the user with a clear
@@ -541,6 +578,19 @@ const SampleResultsSection = ({ testId }) => {
       });
       return;
     }
+    // FR-C2 (OGC-1148) — detection limits must be coherent before they persist.
+    const badLimits = normalized.map(detectionLimitProblem).find(Boolean);
+    if (badLimits) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage({ id: badLimits }),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
@@ -548,6 +598,8 @@ const SampleResultsSection = ({ testId }) => {
         ...c,
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),
+        lod: toInt(c.lod),
+        loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
           ...o,
           sortOrder: toInt(o.sortOrder),
@@ -635,9 +687,6 @@ const SampleResultsSection = ({ testId }) => {
   }
 
   // One component → flat; several → accordion panels (FR-34).
-  const multipleComponents = components.length > 1;
-  const ListWrapper = multipleComponents ? Accordion : React.Fragment;
-  const ItemWrapper = multipleComponents ? AccordionItem : PlainPanel;
 
   return (
     <Stack gap={6}>
@@ -652,9 +701,9 @@ const SampleResultsSection = ({ testId }) => {
           <FormattedMessage id="label.testCatalog.sampleResults.empty" />
         </p>
       ) : (
-        <ListWrapper>
+        <Accordion>
           {components.map((c, ci) => (
-            <ItemWrapper
+            <AccordionItem
               key={c.id || `new-${ci}`}
               open
               title={componentTitle(c)}
@@ -862,6 +911,60 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
+                    {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
+                    <div
+                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
+                      data-testid={`detection-limits-${ci}`}
+                    >
+                      <NumberInput
+                        id={`comp-lod-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.lod === null || c.lod === undefined ? "" : c.lod
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            lod: value === "" ? null : value,
+                          })
+                        }
+                      />
+                      <NumberInput
+                        id={`comp-loq-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.loq === null || c.loq === undefined ? "" : c.loq
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            loq: value === "" ? null : value,
+                          })
+                        }
+                      />
+                    </div>
                   </>
                 )}
                 <TextInput
@@ -919,7 +1022,9 @@ const SampleResultsSection = ({ testId }) => {
                     >
                       <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
                     </p>
-                    {(c.options || []).length === 0 && (
+                    {/* Empty state or table, never both: an unconditional
+                        TableHead leaves column headings with no rows under them. */}
+                    {(c.options || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -928,86 +1033,87 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.options.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.options || []).map((o, oi) => (
-                          <TableRow key={o.id || `opt-${oi}`}>
-                            <TableCell>
-                              {o.valueName ? (
-                                // Dictionary-backed option: show the entry name, not the
-                                // raw dictionary id stored in `value`.
-                                o.valueName
-                              ) : (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.options || []).map((o, oi) => (
+                            <TableRow key={o.id || `opt-${oi}`}>
+                              <TableCell>
+                                {o.valueName ? (
+                                  // Dictionary-backed option: show the entry name, not the
+                                  // raw dictionary id stored in `value`.
+                                  o.valueName
+                                ) : (
+                                  <TextInput
+                                    id={`opt-value-${ci}-${oi}`}
+                                    labelText=""
+                                    value={o.value || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "options", oi, {
+                                        value: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`opt-value-${ci}-${oi}`}
+                                  id={`opt-order-${ci}-${oi}`}
+                                  type="number"
                                   labelText=""
-                                  value={o.value || ""}
+                                  value={o.sortOrder ?? ""}
                                   onChange={(e) =>
                                     patchChild(ci, "options", oi, {
-                                      value: e.target.value,
+                                      sortOrder: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`opt-order-${ci}-${oi}`}
-                                type="number"
-                                labelText=""
-                                value={o.sortOrder ?? ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "options", oi, {
-                                    sortOrder: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Checkbox
-                                id={`opt-normal-${ci}-${oi}`}
-                                labelText=""
-                                checked={!!o.normal}
-                                onChange={(_e, { checked }) =>
-                                  patchChild(ci, "options", oi, {
-                                    normal: checked,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeOption",
-                                })}
-                                onClick={() => removeChild(ci, "options", oi)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-normal-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.normal}
+                                  onChange={(_e, { checked }) =>
+                                    patchChild(ci, "options", oi, {
+                                      normal: checked,
+                                    })
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeOption",
+                                  })}
+                                  onClick={() => removeChild(ci, "options", oi)}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                     <ComboBox
                       key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
                       id={`opt-add-${ci}`}
@@ -1042,7 +1148,9 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
-                    {(c.interpretations || []).length === 0 && (
+                    {/* Empty state and table are mutually exclusive: a column-header
+                        band with no rows under it reads as broken layout. */}
+                    {(c.interpretations || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -1051,124 +1159,127 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.interpretations.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.interpretations || []).map((it, ii) => (
-                          <TableRow key={it.id || `int-${ii}`}>
-                            <TableCell>
-                              {/* Value field adapts to the result type (FR-32):
-                                  select-list components pick a configured option;
-                                  numeric uses a free-text pattern (>N, N-M, exact). */}
-                              {["D", "M", "C"].includes(c.resultType) ? (
-                                <Select
-                                  id={`int-match-${ci}-${ii}`}
-                                  labelText=""
-                                  value={it.valueMatch || ""}
-                                  onChange={(e) =>
-                                    patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
-                                    })
-                                  }
-                                >
-                                  <SelectItem
-                                    value=""
-                                    text={intl.formatMessage({
-                                      id: "label.testCatalog.sampleResults.interp.selectValue",
-                                    })}
-                                  />
-                                  {(c.options || []).map((o, oi) => (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.interpretations || []).map((it, ii) => (
+                            <TableRow key={it.id || `int-${ii}`}>
+                              <TableCell>
+                                {/* Value field adapts to the result type (FR-32):
+                                    select-list components pick a configured option;
+                                    numeric uses a free-text pattern (>N, N-M, exact). */}
+                                {["D", "M", "C"].includes(c.resultType) ? (
+                                  <Select
+                                    id={`int-match-${ci}-${ii}`}
+                                    labelText=""
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  >
                                     <SelectItem
-                                      key={o.id || oi}
-                                      value={o.value}
-                                      text={o.valueName || o.value}
+                                      value=""
+                                      text={intl.formatMessage({
+                                        id: "label.testCatalog.sampleResults.interp.selectValue",
+                                      })}
                                     />
-                                  ))}
-                                </Select>
-                              ) : (
+                                    {(c.options || []).map((o, oi) => (
+                                      <SelectItem
+                                        key={o.id || oi}
+                                        value={o.value}
+                                        text={o.valueName || o.value}
+                                      />
+                                    ))}
+                                  </Select>
+                                ) : (
+                                  <TextInput
+                                    id={`int-match-${ci}-${ii}`}
+                                    labelText=""
+                                    placeholder={intl.formatMessage({
+                                      id: "label.testCatalog.sampleResults.interp.numericHint",
+                                    })}
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`int-match-${ci}-${ii}`}
+                                  id={`int-text-${ci}-${ii}`}
                                   labelText=""
-                                  placeholder={intl.formatMessage({
-                                    id: "label.testCatalog.sampleResults.interp.numericHint",
-                                  })}
-                                  value={it.valueMatch || ""}
+                                  value={it.text || ""}
                                   onChange={(e) =>
                                     patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
+                                      text: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`int-text-${ci}-${ii}`}
-                                labelText=""
-                                value={it.text || ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    text: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                id={`int-sev-${ci}-${ii}`}
-                                labelText=""
-                                value={it.severity || "NORMAL"}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    severity: e.target.value,
-                                  })
-                                }
-                              >
-                                {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
-                                  <SelectItem
-                                    key={s}
-                                    value={s}
-                                    text={intl.formatMessage({
-                                      id: `label.testCatalog.sampleResults.severity.${s}`,
-                                    })}
-                                  />
-                                ))}
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeInterpretation",
-                                })}
-                                onClick={() =>
-                                  removeChild(ci, "interpretations", ii)
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  id={`int-sev-${ci}-${ii}`}
+                                  labelText=""
+                                  value={it.severity || "NORMAL"}
+                                  onChange={(e) =>
+                                    patchChild(ci, "interpretations", ii, {
+                                      severity: e.target.value,
+                                    })
+                                  }
+                                >
+                                  {["NORMAL", "ABNORMAL", "CRITICAL"].map(
+                                    (s) => (
+                                      <SelectItem
+                                        key={s}
+                                        value={s}
+                                        text={intl.formatMessage({
+                                          id: `label.testCatalog.sampleResults.severity.${s}`,
+                                        })}
+                                      />
+                                    ),
+                                  )}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeInterpretation",
+                                  })}
+                                  onClick={() =>
+                                    removeChild(ci, "interpretations", ii)
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"
@@ -1191,9 +1302,9 @@ const SampleResultsSection = ({ testId }) => {
                   </Button>
                 </div>
               </Stack>
-            </ItemWrapper>
+            </AccordionItem>
           ))}
-        </ListWrapper>
+        </Accordion>
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>

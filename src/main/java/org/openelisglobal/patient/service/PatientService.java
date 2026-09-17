@@ -1,6 +1,7 @@
 package org.openelisglobal.patient.service;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -19,6 +20,9 @@ public interface PatientService extends BaseObjectService<Patient, String> {
 
     List<Patient> getPatientsByNationalId(String nationalId);
 
+    /** The merged patients among the given ids, in one query. */
+    List<Patient> getMergedPatientsIn(Collection<String> patientIds);
+
     Patient getPatientByPerson(Person person);
 
     List<Patient> getPageOfPatients(int startingRecNo);
@@ -34,6 +38,13 @@ public interface PatientService extends BaseObjectService<Patient, String> {
     List<String> getPatientIdentityBySampleStatusIdAndProject(List<Integer> inclusiveStatusIdList, String study);
 
     void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
+
+    /**
+     * Save the patient together with the attachments submitted alongside it — the
+     * photo and any new identification documents — in one transaction, so a patient
+     * is never left persisted after one of them fails.
+     */
+    void persistPatientDataWithAttachments(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
 
     String getGUID(Patient patient);
 

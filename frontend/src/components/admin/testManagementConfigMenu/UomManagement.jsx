@@ -1,47 +1,16 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useRef } from "react";
 import {
-  Form,
   Heading,
-  Button,
-  Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
   UnorderedList,
-  ListItem,
   ClickableTile,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import CustomCheckBox from "../../common/CustomCheckBox";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

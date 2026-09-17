@@ -9,7 +9,7 @@ import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
 
 // Mock Utils
 vi.mock("../utils/Utils", async () => {
@@ -324,7 +324,9 @@ const renderHeader = (options = {}) => {
               <Route
                 path="*"
                 render={({ location }) => (
-                  <span data-testid="current-path">{location.pathname}</span>
+                  <span data-testid="current-path">
+                    {location.pathname + location.search}
+                  </span>
                 )}
               />
             </NotificationContext.Provider>
@@ -337,9 +339,41 @@ const renderHeader = (options = {}) => {
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
+  });
+
+  test("renders Carbon sidenav lists with direct list-item children", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+    });
+
+    const sideNavLists = container.querySelectorAll(
+      ".cds--side-nav__items, .cds--side-nav__menu",
+    );
+    expect(sideNavLists.length).toBeGreaterThan(0);
+    sideNavLists.forEach((list) => {
+      Array.from(list.children).forEach((child) => {
+        expect(child.tagName).toBe("LI");
+      });
+    });
   });
 
   describe("Home item active state", () => {
@@ -743,6 +777,60 @@ describe("Header Component - M2b Enhancement Tests", () => {
       );
     });
 
+    test("configured Admin group preserves the dashboard and exposes stuck analyzer events", async () => {
+      const configuredAdminMenu = [
+        MENU_DATA[0],
+        {
+          ...MENU_DATA[1],
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_administration_dashboard",
+                displayKey: "admin.dashboard.title",
+                actionURL: "/MasterListsPage",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_administration_stuck_analyzer_events",
+                displayKey: "analyzer.importIssues.events.title",
+                actionURL: "/AnalyzerResults?view=import-issues",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ];
+      renderHeader({ menuData: configuredAdminMenu });
+
+      const adminMenu = await screen.findByRole("button", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("id", "menu_administration");
+      fireEvent.click(adminMenu);
+      const adminDashboard = screen.getByRole("link", {
+        name: "Admin dashboard",
+      });
+      expect(adminDashboard).toHaveAttribute(
+        "id",
+        "menu_administration_dashboard_nav",
+      );
+      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
+
+      const stuckEvents = screen.getByRole("link", {
+        name: "Stuck analyzer events",
+      });
+      expect(stuckEvents).toHaveAttribute(
+        "href",
+        "/AnalyzerResults?view=import-issues",
+      );
+      fireEvent.click(stuckEvents);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/AnalyzerResults?view=import-issues",
+      );
+    });
+
     test("admin context renders Admin nav contents instead of main menu contents", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
@@ -795,6 +883,53 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("User panel actions", () => {
+    test.each([{ authenticated: false }, {}])(
+      "unauthenticated or unresolved shell does not request protected header resources",
+      async (sessionDetails) => {
+        renderHeader({
+          sessionDetails,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+        });
+
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/properties",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      },
+    );
+
+    test("subscription state loads only when Notifications is opened", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+      });
+      expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+        "/rest/notification/pnconfig",
+      );
+
+      fireEvent.click(container.querySelector("#notification-Icon"));
+
+      await waitFor(() => {
+        expect(getFromOpenElisServerV2).toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      });
+    });
+
     test("authenticated panel orders locale, change password, then logout", async () => {
       const { container } = renderHeader();
 

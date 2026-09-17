@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import SampleActionsOverflowMenu from "./SampleActionsOverflowMenu";
 import messages from "../../../languages/en.json";

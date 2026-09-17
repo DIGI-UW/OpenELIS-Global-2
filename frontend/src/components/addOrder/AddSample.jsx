@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Link, Row, Stack, Column, Grid } from "@carbon/react";
+import { Button, Link, Column, Grid } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "./SampleType";
 import { FormattedMessage } from "react-intl";
 const AddSample = (props) => {
-  const { samples, setSamples, error } = props;
+  const { samples, setSamples, error, domain } = props;
   const componentMounted = useRef(false);
 
   const [rejectSampleReasons, setRejectSampleReasons] = useState([]);
@@ -131,6 +131,7 @@ const AddSample = (props) => {
                     }}
                     sampleTypeObject={sampleTypeObject}
                     error={error}
+                    domain={domain}
                   />
                 </div>
               );

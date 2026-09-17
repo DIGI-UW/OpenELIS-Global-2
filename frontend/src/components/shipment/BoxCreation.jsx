@@ -1,6 +1,7 @@
 import { Checkmark, Document, Scan, TrashCan } from "@carbon/icons-react";
 import {
   Button,
+  Checkbox,
   Column,
   DataTable,
   Dropdown,
@@ -58,6 +59,7 @@ const BoxCreation = () => {
   const [sampleSearchTerm, setSampleSearchTerm] = useState("");
   const [addedSamples, setAddedSamples] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedResultIds, setSelectedResultIds] = useState([]);
   const [searching, setSearching] = useState(false);
 
   // Reject sample modal
@@ -104,6 +106,10 @@ const BoxCreation = () => {
     fetchRejectionReasons();
     fetchBoxLabelPrefix();
     generateBoxNumber();
+    // Ambient is what an unset box is saved as, so show it as chosen rather than
+    // leaving the field reading "Select" while the summary and the saved box both
+    // say Ambient.
+    setSelectedTemperature(temperatureOptions[0]);
   }, []);
 
   useEffect(() => {
@@ -183,6 +189,61 @@ const BoxCreation = () => {
     return messages.length === 0;
   };
 
+  // Map a SampleItemDTO to the shape stored in addedSamples
+  const buildSampleToAdd = (item) => ({
+    id: item.sampleItemId,
+    sampleItemId: item.sampleItemId,
+    accessionNumber: item.accessionNumber,
+    sampleType: item.typeOfSample || "-",
+    tests: item.referralTests ? item.referralTests.map((t) => t.testName) : [],
+  });
+
+  // Add a single resolved sample item, with dedup + capacity checks
+  const addResolvedSample = (item) => {
+    const sampleToAdd = buildSampleToAdd(item);
+
+    if (
+      addedSamples.some(
+        (s) => s.accessionNumber === sampleToAdd.accessionNumber,
+      )
+    ) {
+      addNotification({
+        kind: "warning",
+        title: intl.formatMessage({ id: "notification.warning" }),
+        message: intl.formatMessage({
+          id: "shipment.error.sampleAlreadyInBox",
+        }),
+      });
+      return;
+    }
+
+    if (capacity - addedSamples.length <= 0) {
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.boxFull" }),
+      });
+      return;
+    }
+
+    setAddedSamples([...addedSamples, sampleToAdd]);
+    setSearchResults([]);
+    setSelectedResultIds([]);
+    setSampleSearchTerm("");
+
+    addNotification({
+      kind: "success",
+      title: intl.formatMessage({ id: "notification.success" }),
+      message: intl.formatMessage(
+        { id: "shipment.notification.sampleAdded" },
+        {
+          accessionNumber: sampleToAdd.accessionNumber,
+          testCount: sampleToAdd.tests.length,
+        },
+      ),
+    });
+  };
+
   const handleSearchSample = async () => {
     if (!sampleSearchTerm.trim()) {
       return;
@@ -198,12 +259,23 @@ const BoxCreation = () => {
       return;
     }
 
+    // Clear any chooser from a previous search
+    setSearchResults([]);
+    setSelectedResultIds([]);
+
+    // A scanned/pasted sample item ID may carry a "-<sortOrder>" suffix (e.g.
+    // DEV...005-6). The accession number stored on the server has no suffix, so
+    // search by the base accession and resolve the specific item from results.
+    const term = sampleSearchTerm.trim();
+    const suffixMatch = term.match(/^(.*)-(\d+)$/);
+    const baseAccession = suffixMatch ? suffixMatch[1] : term;
+
     setSearching(true);
 
     try {
       // Search for sample items by accession number using new SampleItem-based API
       const data = await getFromOpenElisServerV2(
-        `/rest/unassigned-sample/items/search?accessionNumber=${encodeURIComponent(sampleSearchTerm)}`,
+        `/rest/unassigned-sample/items/search?accessionNumber=${encodeURIComponent(baseAccession)}`,
       );
 
       setSearching(false);
@@ -218,63 +290,26 @@ const BoxCreation = () => {
         return;
       }
 
-      // Each SampleItemDTO already groups referral tests
-      // Use the first result as the sample to add
-      const item = data[0];
-      const sampleToAdd = {
-        id: item.sampleItemId,
-        sampleItemId: item.sampleItemId,
-        accessionNumber: item.accessionNumber,
-        sampleType: item.typeOfSample || "-",
-        tests: item.referralTests
-          ? item.referralTests.map((t) => t.testName)
-          : [],
-      };
-
-      // Check if sample already in box
-      const existingSample = addedSamples.find(
-        (s) => s.accessionNumber === sampleToAdd.accessionNumber,
-      );
-
-      if (existingSample) {
-        addNotification({
-          kind: "warning",
-          title: intl.formatMessage({ id: "notification.warning" }),
-          message: intl.formatMessage({
-            id: "shipment.error.sampleAlreadyInBox",
-          }),
-        });
+      // Full ID with suffix: resolve to the exact matching item
+      if (suffixMatch) {
+        const exact = data.find((d) => d.accessionNumber === term);
+        if (exact) {
+          addResolvedSample(exact);
+          return;
+        }
+        // Suffix didn't match a display accession; add directly only if
+        // unambiguous, otherwise fall through to the chooser
+        if (data.length === 1) {
+          addResolvedSample(data[0]);
+          return;
+        }
+      } else if (data.length === 1) {
+        addResolvedSample(data[0]);
         return;
       }
 
-      // Check capacity - one sample per accession number
-      const remainingCapacity = capacity - addedSamples.length;
-      if (remainingCapacity <= 0) {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "notification.error" }),
-          message: intl.formatMessage({ id: "shipment.error.boxFull" }),
-        });
-        return;
-      }
-
-      // Add the grouped sample
-      setAddedSamples([...addedSamples, sampleToAdd]);
-
-      setSampleSearchTerm("");
-
-      // Show success notification
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage(
-          { id: "shipment.notification.sampleAdded" },
-          {
-            accessionNumber: sampleToAdd.accessionNumber,
-            testCount: sampleToAdd.tests.length,
-          },
-        ),
-      });
+      // Multiple matches — let the user pick which item(s) to add
+      setSearchResults(data);
     } catch (error) {
       console.error("Error searching sample:", error);
       setSearching(false);
@@ -284,6 +319,49 @@ const BoxCreation = () => {
         message: intl.formatMessage({ id: "shipment.error.searchFailed" }),
       });
     }
+  };
+
+  const toggleResultSelection = (sampleItemId) => {
+    setSelectedResultIds((prev) =>
+      prev.includes(sampleItemId)
+        ? prev.filter((id) => id !== sampleItemId)
+        : [...prev, sampleItemId],
+    );
+  };
+
+  const handleAddSelected = () => {
+    const toAdd = searchResults.filter(
+      (item) =>
+        selectedResultIds.includes(item.sampleItemId) &&
+        !addedSamples.some((s) => s.accessionNumber === item.accessionNumber),
+    );
+
+    if (toAdd.length === 0) {
+      return;
+    }
+
+    if (toAdd.length > capacity - addedSamples.length) {
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.boxFull" }),
+      });
+      return;
+    }
+
+    setAddedSamples([...addedSamples, ...toAdd.map(buildSampleToAdd)]);
+    setSearchResults([]);
+    setSelectedResultIds([]);
+    setSampleSearchTerm("");
+
+    addNotification({
+      kind: "success",
+      title: intl.formatMessage({ id: "notification.success" }),
+      message: intl.formatMessage(
+        { id: "shipment.notification.samplesAdded" },
+        { count: toAdd.length },
+      ),
+    });
   };
 
   const handleRemoveSample = (sample) => {
@@ -349,7 +427,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -395,13 +472,27 @@ const BoxCreation = () => {
               }
             }
 
-            addNotification({
-              kind: errors > 0 ? "warning" : "success",
-              title: intl.formatMessage({ id: "notification.success" }),
-              message: intl.formatMessage({
-                id: "shipment.notification.boxCreated",
-              }),
-            });
+            addNotification(
+              errors > 0
+                ? {
+                    kind: "error",
+                    title: intl.formatMessage({ id: "notification.error" }),
+                    message: intl.formatMessage(
+                      { id: "shipment.error.partialSampleAdd" },
+                      {
+                        added: addedSamples.length - errors,
+                        total: addedSamples.length,
+                      },
+                    ),
+                  }
+                : {
+                    kind: "success",
+                    title: intl.formatMessage({ id: "notification.success" }),
+                    message: intl.formatMessage({
+                      id: "shipment.notification.boxCreated",
+                    }),
+                  },
+            );
             setLoading(false);
             history.push(`/SampleShipment/box/${response.id}`);
           };
@@ -427,7 +518,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -448,25 +538,41 @@ const BoxCreation = () => {
 
         if (response && response.id) {
           const addSamplesAndMarkReady = async () => {
-            // Add all samples in parallel using Promise.all
-            if (addedSamples.length > 0) {
-              await Promise.all(
-                addedSamples.map(
-                  (sample) =>
-                    new Promise((resolve) => {
-                      postToOpenElisServerJsonResponse(
-                        "/rest/box-sample/items",
-                        JSON.stringify({
-                          shippingBoxId: response.id,
-                          sampleItemId: sample.sampleItemId || sample.id,
-                        }),
-                        () => {
-                          resolve();
-                        },
-                      );
-                    }),
+            // One sample at a time, and each answer read: these all write the same box
+            // row, and a box that quietly holds fewer samples than the operator staged
+            // sends a short shipment to the reference lab.
+            let added = 0;
+            for (const sample of addedSamples) {
+              const ok = await new Promise((resolve) => {
+                postToOpenElisServerJsonResponse(
+                  "/rest/box-sample/items",
+                  JSON.stringify({
+                    shippingBoxId: response.id,
+                    sampleItemId: sample.sampleItemId || sample.id,
+                  }),
+                  (res) => {
+                    resolve(!(res?.error || res?.status >= 400));
+                  },
+                );
+              });
+              if (ok) {
+                added++;
+              }
+            }
+
+            if (added < addedSamples.length) {
+              // Left as a draft on purpose: the operator can still add what is missing.
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({ id: "notification.error" }),
+                message: intl.formatMessage(
+                  { id: "shipment.error.partialSampleAdd" },
+                  { added, total: addedSamples.length },
                 ),
-              );
+              });
+              setLoading(false);
+              history.push(`/SampleShipment/box/${response.id}`);
+              return;
             }
 
             // Mark as ready after all samples added
@@ -756,6 +862,55 @@ const BoxCreation = () => {
                 <FormattedMessage id="shipment.action.scanSample" />
               </Button>
             </div>
+
+            {searchResults.length > 0 && (
+              <div className="sample-search-results">
+                <p className="sample-search-results-heading">
+                  <FormattedMessage id="shipment.sample.multipleMatches" />
+                </p>
+                {searchResults.map((item) => {
+                  const alreadyAdded = addedSamples.some(
+                    (s) => s.accessionNumber === item.accessionNumber,
+                  );
+                  const tests =
+                    item.referralTests && item.referralTests.length > 0
+                      ? item.referralTests.map((t) => t.testName).join(", ")
+                      : "";
+                  return (
+                    <Checkbox
+                      key={item.sampleItemId}
+                      id={`search-result-${item.sampleItemId}`}
+                      labelText={
+                        `${item.accessionNumber} · ${item.typeOfSample || "-"}` +
+                        (tests ? ` · ${tests}` : "")
+                      }
+                      checked={selectedResultIds.includes(item.sampleItemId)}
+                      disabled={alreadyAdded}
+                      onChange={() => toggleResultSelection(item.sampleItemId)}
+                    />
+                  );
+                })}
+                <div className="sample-search-results-actions">
+                  <Button
+                    size="sm"
+                    onClick={handleAddSelected}
+                    disabled={selectedResultIds.length === 0}
+                  >
+                    <FormattedMessage id="shipment.action.addSelected" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    kind="ghost"
+                    onClick={() => {
+                      setSearchResults([]);
+                      setSelectedResultIds([]);
+                    }}
+                  >
+                    <FormattedMessage id="label.cancel" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Samples Table */}
@@ -848,10 +1003,7 @@ const BoxCreation = () => {
                   <FormattedMessage id="shipment.box.temperature" />:
                 </span>
                 <span className="summary-value">
-                  {selectedTemperature?.label ||
-                    intl.formatMessage({
-                      id: "shipment.temperature.ambient",
-                    })}
+                  {selectedTemperature?.label}
                 </span>
               </div>
             </div>
