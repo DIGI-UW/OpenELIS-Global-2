@@ -87,6 +87,18 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceProtocol, results);
     }
 
+    static Result parseStoredObservation(String payload, String accessionNumber, FhirContext fhirContext) {
+        Observation observation = fhirContext.newJsonParser().parseResource(Observation.class, payload);
+        String specimenReference = requireText(observation.getSpecimen().getReference(),
+                "Stored analyzer Observation requires a specimen reference");
+        String deviceReference = requireText(observation.getDevice().getReference(),
+                "Stored analyzer Observation requires a device reference");
+        return parseResult(observation,
+                Map.of(specimenReference,
+                        requireText(accessionNumber, "Stored analyzer Observation requires an accession number")),
+                deviceReference, fhirContext);
+    }
+
     private static Result parseResult(Observation observation, Map<String, String> specimens, String deviceReference,
             FhirContext fhirContext) {
         if (!observation.hasDevice() || !deviceReference.equals(observation.getDevice().getReference())) {

@@ -67,6 +67,12 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     }
 
     @Override
+    @Transactional
+    public AnalyzerResults readAnalyzerResultsForUpdate(String id) {
+        return getBaseObjectDAO().readAnalyzerResultsForUpdate(id);
+    }
+
+    @Override
     public AnalyzerResults readAnalyzerResults(String idString) {
         return getBaseObjectDAO().readAnalyzerResults(idString);
     }

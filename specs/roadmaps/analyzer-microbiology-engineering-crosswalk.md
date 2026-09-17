@@ -5,57 +5,23 @@
 **Purpose:** Preserve technical decisions and repo constraints outside
 Casey-owned product artifacts.
 
+**Analyzer guidance superseded 2026-09-16.** Microbiology material below is
+retained from June 27 and has not been reassessed in this analyzer cleanup.
+
 ## Source Evidence
 
 - Repo: current checkout root (`./`)
-- Analyzer profile files: `projects/analyzer-profiles/{astm,hl7,file}/`
-- Analyzer profile schema:
-  `projects/analyzer-profiles/schema/analyzer-defaults-1.0.schema.json`
-- Analyzer code: `src/main/java/org/openelisglobal/analyzer/`
-- Current analyzer UI: `frontend/src/components/analyzers/`
 - Microbiology Confluence narrative:
   `https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256`
 - Public design repo:
   `https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology`
 
-## Analyzer Engineering Crosswalk
+## Analyzer Guidance — Superseded
 
-### Current Repo Reality
-
-- `AnalyzerType` is an existing OpenELIS plugin/protocol capability model.
-- Bundled analyzer setup profiles are JSON files under
-  `projects/analyzer-profiles`.
-- OpenELIS currently reads profiles from `ANALYZER_PROFILES_DIR`, defaulting to
-  `/data/analyzer-profiles`.
-- Current analyzer creation applies a profile as a one-time template:
-  profile defaults seed analyzer instance config, test mappings, FILE config,
-  QC rules, and bridge registration.
-- Runtime mappings are currently per analyzer, not purely per profile/type.
-
-### Engineering Decisions to Keep Out of Product Specs
-
-| Topic | Current engineering direction | Still open |
-| --- | --- | --- |
-| User-visible analyzer choice | Present ASTM, HL7, File first; hide generic plugin framing where possible | Exact IA and route ownership |
-| Profile authority | Profiles are authoritative runtime templates today as JSON files under `ANALYZER_PROFILES_DIR` | Whether future authoring is OpenELIS UI, Bridge UI, git-backed files, DB-backed drafts, or hybrid |
-| Profile application | Snapshot on analyzer creation for this iteration | Whether sectioned reapply is needed later |
-| Mapping runtime | Keep current per-analyzer runtime mappings; add reusable defaults carefully | Whether Bridge should own more traffic learning or mapping diagnostics |
-| FILE mode | Do not add an OpenELIS app-side poller | Whether Bridge should expose watcher/config UI directly |
-| Bridge ownership | Bridge owns transport/runtime adapter behavior today | Whether Bridge should own profile runtime, diagnostics, and its own admin UI |
-
-### Analyzer Implementation Readiness Gate
-
-Before changing analyzer product tickets, engineering should answer:
-
-- What does OpenELIS need to know to set up an analyzer?
-- What does Bridge need to own to run and diagnose the connection?
-- Which profile fields are runtime adapter config versus OpenELIS catalog
-  mapping?
-- What state must be visible in OpenELIS, Bridge UI, or both?
-- What is the migration path from current per-analyzer mappings?
-
-Do not encode those answers in Casey-facing tickets until engineering has made
-and documented the architecture decision.
+Use the [authoritative analyzer roadmap](./ogc-1054-analyzer-feature-roadmap.md), including the
+[OGC-1220 remediation](./ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation). The former analyzer implementation
+snapshot and open ownership questions are retained in Git history, not as
+current direction here.
 
 ## Microbiology Engineering Crosswalk
 

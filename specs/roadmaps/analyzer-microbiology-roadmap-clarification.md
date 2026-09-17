@@ -1,9 +1,12 @@
 # Analyzer + Microbiology Roadmap Clarification
 
 **Last updated:** 2026-06-27
-**Status:** Draft for roadmap/spec cleanup
+**Status:** Analyzer guidance superseded 2026-09-16; microbiology draft retained
 **Purpose:** Make the analyzer and microbiology roadmaps executable without
 letting product artifacts prescribe implementation architecture.
+
+Microbiology material below is retained from June 27 and has not been
+reassessed in this analyzer cleanup.
 
 ## Core Rule
 
@@ -26,29 +29,12 @@ versus OpenELIS responsibilities.
 | Mockup | Interaction shape, information hierarchy, labels, visible states | Binding component library details beyond project standards, data model, API contract, backend ownership |
 | Engineering crosswalk | Repo state, architecture decisions, schema/API options, tests, migration plan | New product scope, hidden product requirements, Casey-owned workflow rulings |
 
-## Analyzer Product Statement
+## Analyzer Guidance — Superseded
 
-Lab/admin users can choose an analyzer connection path, select or manage a
-reusable analyzer profile, verify mappings against the test catalog, configure
-exceptions, and safely set up an analyzer without needing developer support.
-
-Product artifacts may name user-visible choices such as ASTM, HL7, and File.
-They should not decide whether a profile is implemented as an OpenELIS entity,
-a JSON file, Bridge-owned runtime config, a git-backed catalog, or a Bridge UI.
-
-## Analyzer Engineering Questions to Carry Separately
-
-- Should Bridge own more runtime/profile behavior than it owns today?
-- Does Bridge need its own UI for diagnostics, profile/runtime state, traffic
-  inspection, or connection health?
-- What is the authoritative profile store for each environment: mounted files,
-  git checkout, Bridge config, OpenELIS config, or a combination?
-- Where should traffic learning, diagnostics, and unmapped-code resolution live?
-- What is the right OpenELIS/Bridge contract for FILE mode beyond the visible
-  setup workflow?
-
-These are engineering architecture decisions. They should not be smuggled into
-Casey's Jira titles, FRS language, or mockups.
+Use the [authoritative analyzer roadmap](./ogc-1054-analyzer-feature-roadmap.md), including the
+[OGC-1220 remediation](./ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation). It records the adopted ownership
+model and implementation direction. The former open analyzer questions remain
+in Git history and are no longer implementation instructions.
 
 ## Microbiology Product Statement
 

@@ -35,6 +35,8 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
 
     public AnalyzerResults readAnalyzerResults(String idString);
 
+    AnalyzerResults readAnalyzerResultsForUpdate(String id);
+
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result);
 
     List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision);

@@ -105,6 +105,51 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         return new AnalyzerNormalizedResultImportSummary(analyzer.getId(), staged.size(), held, controlsProcessed);
     }
 
+    @Override
+    @Transactional
+    public AnalyzerNormalizedResultImportSummary reprocessHeldResult(String analyzerId, String resultId, String actor) {
+        String effectiveActor = requireText(actor, "Reprocessing actor is required");
+        Analyzer selected = analyzerService.get(requireText(analyzerId, "Analyzer ID is required"));
+        if (selected == null || selected.getBridgeConnectionId() == null) {
+            throw new IllegalArgumentException("Analyzer has no Bridge connection");
+        }
+        Analyzer analyzer = analyzerService.findByBridgeConnectionIdForUpdate(selected.getBridgeConnectionId())
+                .orElseThrow(() -> new IllegalArgumentException("Analyzer connection is no longer available"));
+        AnalyzerResults held = analyzerResultsService
+                .readAnalyzerResultsForUpdate(requireText(resultId, "Result ID is required"));
+        if (held == null || !analyzer.getId().equals(held.getAnalyzerId())
+                || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())) {
+            throw new IllegalArgumentException("Held result does not belong to this analyzer connection");
+        }
+        if (!held.isReadOnly() || held.getImportIssueReason() == null || held.getImportIssueReason().isBlank()) {
+            throw new IllegalStateException("Only a held normalized result can be reprocessed");
+        }
+        AnalyzerNormalizedResultContract.Result original = AnalyzerNormalizedResultContract
+                .parseStoredObservation(held.getSourcePayload(), held.getAccessionNumber(), fhirContext);
+        AnalyzerNormalizedResultContract contract = new AnalyzerNormalizedResultContract(held.getSourceMessageId(),
+                held.getSourceConnectionId(), held.getSourceProfileId(), held.getSourceProfileRevision(),
+                held.getSourceProtocol(), List.of(original));
+        requireMatchingProfile(analyzer, contract);
+        List<AnalyzerResults> mapped = mapResults(contract, analyzer);
+        if (mapped.isEmpty()) {
+            held.setSysUserId(effectiveActor);
+            analyzerResultsService.delete(held);
+            return new AnalyzerNormalizedResultImportSummary(analyzerId, 0, 0, 0);
+        }
+        AnalyzerResults updated = mapped.get(0);
+        updated.setId(held.getId());
+        updated.setLastupdated(held.getLastupdated());
+        updated.setSysUserId(effectiveActor);
+        analyzerResultsService.update(updated);
+        if (updated.isReadOnly()) {
+            return new AnalyzerNormalizedResultImportSummary(analyzerId, 1, 1, 0);
+        }
+        int controls = updated.getIsControl() && processControl(updated, analyzer) ? 1 : 0;
+        // This explicit, audited row transition never deletes or bypasses a delivery
+        // receipt.
+        return new AnalyzerNormalizedResultImportSummary(analyzerId, 1, 0, controls);
+    }
+
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
         AnalyzerProfileBinding profileBinding = analyzer.getPinnedProfileBinding();
         if (profileBinding == null || profileBinding.getId() == null) {

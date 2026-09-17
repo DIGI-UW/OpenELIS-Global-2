@@ -10,6 +10,8 @@ public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResult
 
     AnalyzerResults readAnalyzerResults(String idString);
 
+    AnalyzerResults readAnalyzerResultsForUpdate(String id);
+
     List<AnalyzerResults> getResultsbyAnalyzer(String analyzerId);
 
     void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId);

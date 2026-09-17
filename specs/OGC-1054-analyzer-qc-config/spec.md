@@ -1,6 +1,6 @@
 # OGC-1054 Analyzer Management Specification
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-16
 
 **Execution:** [authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
@@ -186,9 +186,10 @@ Operational-QC state never changes or invalidates this verification.
 
 Analyzer setup reviews this shared binding. Resolve/Edit opens the same Analyzer
 Types editor with a return URL; no per-analyzer mapping editor exists.
-Authorized users resolve both unknown tests and unknown values through this
-catalog-backed workflow. The original held result remains unchanged; the
-confirmed decision applies to the next matching message.
+Held-result resolution through this catalog-backed workflow is governed by the
+[OGC-1220 remediation section](../roadmaps/ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation).
+That section owns the agreed behavior, implementation order, and acceptance
+checks.
 
 ### Guided Analyzer Setup
 
@@ -243,9 +244,9 @@ profile reference, classification, and raw context. Known traffic reaches the
 correct OE workflow, and normal, held, control, and FILE review shows its source
 analyzer identity and raw source context. Unknown tests or values are durably
 held, visibly flagged, included in Analyzer Type completeness/attention, and
-never clinically posted or dropped. Resolution uses valid active local catalog
-choices, is audited, leaves the held record unchanged, and deterministically
-affects the next matching result.
+never clinically posted or dropped. Mapping correction and recovery of held
+results follow the
+[OGC-1220 remediation section](../roadmaps/ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation).
 
 Control-result recognition is profile/runtime behavior in Bridge. Operational
 QC is a separate linked OpenELIS workflow and result-release concern.

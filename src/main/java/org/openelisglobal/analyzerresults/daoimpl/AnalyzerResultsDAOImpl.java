@@ -70,6 +70,11 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
     }
 
     @Override
+    public AnalyzerResults readAnalyzerResultsForUpdate(String id) {
+        return entityManager.find(AnalyzerResults.class, id, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Override
     public AnalyzerResults readAnalyzerResults(String idString) throws LIMSRuntimeException {
         AnalyzerResults data = null;
         try {

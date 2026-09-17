@@ -1,6 +1,6 @@
 # OGC-1054 Architecture Review
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-16
 
 **Delivery state:** [authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
@@ -11,11 +11,10 @@ the active checkpoint and pull-request state.
 
 ## Verdict
 
-The stacked implementation follows the approved ownership boundary and provides
-the main profile, mapping, guided-setup, connection, activation, result, and QC
-surfaces. It is not an accepted MVP because human review found incomplete
-profile authoring, mapping/attention, connection/QC, and result-review behavior.
-Those findings are now the four bounded M4 remediation slices in the roadmap.
+The original implementation provides the profile, mapping, guided-setup,
+connection, activation, result, and QC surfaces. The roadmap records delivery
+and acceptance state. The current held-result correction is defined only in its
+[OGC-1220 remediation section](../roadmaps/ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation).
 
 ## Product Model
 
@@ -157,17 +156,16 @@ The analyzer demo data may be reset rather than migrated.
 `openelis-work@main` supplies functional and visual intent only. Grist review
 of the assembled feature identified four bounded acceptance gaps:
 
-| Slice                 | Reviewer-visible accepted behavior                                                                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile lifecycle     | Create reaches an editable, publishable draft; duplicate is single-submit, preserves lineage and local mapping work, and leaves its source unchanged |
-| Mapping and attention | Observed unknown tests/values affect completeness and attention and can be resolved through valid local catalog choices                              |
-| Connection and QC     | Latest probe evidence survives reload; control lots save using only mapped Tests; profile names are user-facing                                      |
-| Result review         | Normal, held, control, and FILE rows show analyzer/source context; an externally resent value follows the newly confirmed mapping                    |
+| Slice                 | Reviewer-visible accepted behavior                                                                                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Profile lifecycle     | Create reaches an editable, publishable draft; duplicate is single-submit, preserves lineage and local mapping work, and leaves its source unchanged                                                           |
+| Mapping and attention | Observed unknown tests/values affect completeness and attention and can be resolved through valid local catalog choices                                                                                        |
+| Connection and QC     | Latest probe evidence survives reload; control lots save using only mapped Tests; profile names are user-facing                                                                                                |
+| Result review         | Normal, held, control, and FILE rows show analyzer/source context; held-result recovery follows the [canonical remediation](../roadmaps/ogc-1054-analyzer-feature-roadmap.md#ogc-1220-held-result-remediation) |
 
-The roadmap owns implementation order, pull-request state, test layers, and exit
-gates. Corrections land in the earliest owning existing pull request and are
-restacked into the active integrated checkpoint. No parallel remediation stack
-or additional status document is created.
+These slices describe the original acceptance scope. The roadmap owns current
+implementation order, pull-request state, test layers, and exit gates; it is the
+only remediation plan.
 
 The 17 Grist steps are synchronized after the automated remediation slices pass.
 Final human review uses one unchanged deployment, an external demo operator for
@@ -178,9 +176,10 @@ overlay. Prior reports remain useful findings but do not accept changed code.
 
 - [Functional specification](./spec.md)
 - [Authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
-- [`openelis-work@main` analyzer designs](https://github.com/DIGI-UW/openelis-work/tree/main/designs/analyzer-integration), functional and visual intent only
+- [`openelis-work@main` analyzer designs](https://github.com/DIGI-UW/openelis-work/tree/main/designs/analyzer-integration),
+  functional and visual intent only
 - [OGC-1057 design QA findings](https://github.com/DIGI-UW/openelis-work/blob/qa/ogc-1057-guided-setup-report/designs/analyzer-integration/ogc-1057-qa-report.md)
 - [R0 pull request #4049](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4049)
-- [Active OpenELIS M4 pull request #4138](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4138)
-- [Active Bridge M4 pull request #49](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/49)
-- [Active analyzer-mock M4 pull request #42](https://github.com/DIGI-UW/analyzer-mock-server/pull/42)
+- [Original OpenELIS M4 pull request #4138](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4138)
+- [Original Bridge M4 pull request #49](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/49)
+- [Original analyzer-mock M4 pull request #42](https://github.com/DIGI-UW/analyzer-mock-server/pull/42)
