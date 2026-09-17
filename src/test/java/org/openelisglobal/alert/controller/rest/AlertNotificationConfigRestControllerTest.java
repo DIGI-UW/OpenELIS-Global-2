@@ -38,7 +38,9 @@ public class AlertNotificationConfigRestControllerTest {
     public void saveAlertNotificationConfig_returnsBadRequestForInvalidEscalationDelayMinutes() {
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(1);
-        when(request.getSession()).thenReturn(session);
+        // ControllerUtills.getSysUserId uses getSession(false) so it does not create
+        // a session while reading the actor.
+        when(request.getSession(false)).thenReturn(session);
         when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(userSessionData);
 
         Map<String, Object> config = new HashMap<>();
@@ -52,5 +54,20 @@ public class AlertNotificationConfigRestControllerTest {
         Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         Assert.assertNotNull(response.getBody());
         Assert.assertEquals("Invalid escalationDelayMinutes: must be an integer", response.getBody().get("error"));
+    }
+
+    @Test
+    public void saveAlertNotificationConfig_returnsUnauthorizedWhenSessionHasNoUser() {
+        when(request.getSession(false)).thenReturn(null);
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("escalationDelayMinutes", "abc");
+
+        ResponseEntity<Map<String, String>> response = controller.saveAlertNotificationConfig(config, request);
+
+        Assert.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        Assert.assertNotNull(response.getBody());
+        Assert.assertEquals("Authenticated session required to save alert configuration",
+                response.getBody().get("error"));
     }
 }
