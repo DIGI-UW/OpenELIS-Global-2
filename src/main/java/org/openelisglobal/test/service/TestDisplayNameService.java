@@ -4,7 +4,8 @@ import java.util.Map;
 import org.openelisglobal.test.valueholder.Test;
 
 /**
- * Context-owned test display-name state used by legacy static naming entry points.
+ * Context-owned test display-name state used by legacy static naming entry
+ * points.
  */
 public interface TestDisplayNameService {
 

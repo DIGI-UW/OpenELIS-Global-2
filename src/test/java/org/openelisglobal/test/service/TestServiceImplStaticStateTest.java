@@ -15,9 +15,7 @@ public class TestServiceImplStaticStateTest {
     public void serviceDoesNotRetainMutableStateAcrossApplicationContexts() {
         List<String> mutableStaticFields = Arrays.stream(TestServiceImpl.class.getDeclaredFields())
                 .filter(field -> Modifier.isStatic(field.getModifiers()))
-                .filter(field -> !Modifier.isFinal(field.getModifiers()))
-                .map(Field::getName)
-                .sorted()
+                .filter(field -> !Modifier.isFinal(field.getModifiers())).map(Field::getName).sorted()
                 .collect(Collectors.toList());
 
         assertTrue("Mutable static fields retain collaborators or cached data across test contexts: "
