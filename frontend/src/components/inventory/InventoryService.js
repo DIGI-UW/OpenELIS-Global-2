@@ -163,6 +163,15 @@ export const InventoryItemAPI = {
 };
 
 /**
+ * Items board API (OGC-438)
+ * One row per active item: on-hand, run-out window, order-by date and reorder
+ * status, already sorted by urgency server side.
+ */
+export const InventoryBoardAPI = {
+  get: () => get("/board"),
+};
+
+/**
  * Inventory Lot API
  */
 export const InventoryLotAPI = {
