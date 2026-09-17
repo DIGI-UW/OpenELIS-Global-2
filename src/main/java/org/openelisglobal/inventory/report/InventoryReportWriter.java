@@ -21,13 +21,12 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
- * Renders a {@link ReportTable} into one of the 3 formats
- * {@code InventoryReports.jsx} offers. One writer per format (not one per
- * report type) since every report type reduces to the same headers+rows shape —
- * mirrors {@code AuditTrailReportRestController}'s itext/CSV style, generalized
- * to an arbitrary table instead of the audit-trail-specific columns.
+ * Renders a {@link ReportTable} as CSV, PDF or XLSX — one writer per format,
+ * since every report type reduces to the same headers-plus-rows shape.
  */
 public final class InventoryReportWriter {
+
+    private static final java.util.regex.Pattern PLAIN_NUMBER = java.util.regex.Pattern.compile("[-+]?\\d+(\\.\\d+)?");
 
     private InventoryReportWriter() {
     }
@@ -123,20 +122,21 @@ public final class InventoryReportWriter {
     }
 
     /**
-     * Same CSV-formula-injection guard (CWE-1236) as
-     * {@code AuditTrailReportRestController.csvEscape}.
+     * CSV-formula-injection guard (CWE-1236). Leading whitespace is stripped before
+     * the trigger test, and plain numbers are left numeric.
      */
     private static String csvEscape(String value) {
         if (value == null) {
             return "";
         }
-        if (!value.isEmpty()) {
-            char first = value.charAt(0);
+        String unpadded = value.stripLeading();
+        if (!unpadded.isEmpty() && !PLAIN_NUMBER.matcher(unpadded).matches()) {
+            char first = unpadded.charAt(0);
             if (first == '=' || first == '+' || first == '-' || first == '@') {
                 value = "'" + value;
             }
         }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;

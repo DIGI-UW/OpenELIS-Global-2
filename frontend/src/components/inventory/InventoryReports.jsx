@@ -18,11 +18,12 @@ import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI } from "./InventoryService";
 
-// The DatePicker gives back raw JS Date objects; URLSearchParams would
-// otherwise stringify those via Date.toString() (e.g. "Mon Jul 13 2026..."),
-// which the backend's yyyy-MM-dd parser can't read.
-export const toIsoDate = (date) =>
-  date ? date.toISOString().slice(0, 10) : null;
+// Local calendar fields, not toISOString(): the UTC shift can move the picked day.
+export const toIsoDate = (date) => {
+  if (!date) return null;
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
 
 const InventoryReports = () => {
   const intl = useIntl();
@@ -258,31 +259,39 @@ const InventoryReports = () => {
                   </DatePicker>
                 </div>
 
-                {/* Filter Options */}
-                <FormGroup
-                  legendText={intl.formatMessage({ id: "reports.options" })}
-                >
-                  <Checkbox
-                    id="includeInactive"
-                    labelText={intl.formatMessage({
-                      id: "reports.includeInactive",
-                    })}
-                    checked={formData.includeInactive}
-                    onChange={(e) =>
-                      handleChange("includeInactive", e.target.checked)
-                    }
-                  />
-                  <Checkbox
-                    id="includeExpired"
-                    labelText={intl.formatMessage({
-                      id: "reports.includeExpired",
-                    })}
-                    checked={formData.includeExpired}
-                    onChange={(e) =>
-                      handleChange("includeExpired", e.target.checked)
-                    }
-                  />
-                </FormGroup>
+                {/* Filter Options — only where the report actually honors them */}
+                {[
+                  "STOCK_LEVELS",
+                  "EXPIRATION_FORECAST",
+                  "LOT_TRACEABILITY",
+                ].includes(formData.reportType.id) && (
+                  <FormGroup
+                    legendText={intl.formatMessage({ id: "reports.options" })}
+                  >
+                    <Checkbox
+                      id="includeInactive"
+                      labelText={intl.formatMessage({
+                        id: "reports.includeInactive",
+                      })}
+                      checked={formData.includeInactive}
+                      onChange={(e) =>
+                        handleChange("includeInactive", e.target.checked)
+                      }
+                    />
+                    {formData.reportType.id === "EXPIRATION_FORECAST" && (
+                      <Checkbox
+                        id="includeExpired"
+                        labelText={intl.formatMessage({
+                          id: "reports.includeExpired",
+                        })}
+                        checked={formData.includeExpired}
+                        onChange={(e) =>
+                          handleChange("includeExpired", e.target.checked)
+                        }
+                      />
+                    )}
+                  </FormGroup>
+                )}
 
                 {/* Grouping Options */}
                 {["STOCK_LEVELS", "LOW_STOCK", "EXPIRATION_FORECAST"].includes(

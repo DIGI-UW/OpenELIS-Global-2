@@ -24,14 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Builds the tabular data behind each of the 6 report types
- * {@code InventoryReports.jsx} exposes. Every {@code build*Report} method
- * returns a plain {@link ReportTable}; {@link InventoryReportWriter} turns that
- * into the requested export format. Column headers are plain English — unlike
- * the frontend's react-intl catalog, these files are downloaded artifacts
- * rather than rendered UI, and localizing them would mean adding a parallel set
- * of entries to the legacy Java message-bundle system, which is out of scope
- * here.
+ * Builds the tabular data behind each report type as a plain
+ * {@link ReportTable}. Headers stay in English: a download is not rendered UI,
+ * so react-intl misses it.
  */
 @Service
 public class InventoryReportServiceImpl implements InventoryReportService {
@@ -125,18 +120,16 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * "Low stock" is judged against {@link InventoryLot#isAvailableForUse}
-     * quantity, not the raw sum of every lot — a threshold check against total
-     * quantity would count EXPIRED/DISPOSED/QUARANTINED/QC-failed stock as if it
-     * were usable, which is exactly backwards for an alert meant to answer "what do
-     * we need to reorder." {@code InventoryItemService.getLowStockItems()} now does
-     * this same available-quantity check (previously it delegated to a native-SQL
-     * query with the raw-sum flaw — also the source behind the Inventory
-     * Dashboard's low-stock tile, fixed there too).
+     * Judged on {@link InventoryLot#isAvailableForUse} quantity, so dead stock
+     * cannot pad an item past its reorder threshold and out of the report.
      */
     private ReportTable buildLowStockReport(InventoryReportRequest request) {
-        List<InventoryItem> items = inventoryItemService.getLowStockItems();
-        Map<Long, List<InventoryLot>> lotsByItemId = loadLotsByItemId(items);
+        List<InventoryItem> activeItems = inventoryItemService.getAllActive();
+        Map<Long, List<InventoryLot>> lotsByItemId = loadLotsByItemId(activeItems);
+        List<InventoryItem> items = activeItems.stream().filter(item -> item.getLowStockThreshold() != null)
+                .filter(item -> availableQuantity(lotsByItemId.getOrDefault(item.getId(), List.of())) < item
+                        .getLowStockThreshold())
+                .collect(Collectors.toList());
         Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(lotsByItemId);
         Map<Long, String> locationByItemId = items.stream().collect(Collectors.toMap(InventoryItem::getId,
                 item -> summarizeLocation(lotsByItemId.getOrDefault(item.getId(), List.of()), locationsByLotId)));
@@ -172,10 +165,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 .filter(lot -> lot.getInventoryItem() != null && itemsById.containsKey(lot.getInventoryItem().getId()))
                 .filter(lot -> lot.getEffectiveExpirationDate() != null)
                 .filter(lot -> request.isIncludeExpired() || !lot.isExpired())
-                // Honor the date-range filter the UI already shows for every report type —
-                // previously silently ignored here despite the description promising
-                // "expiring within specified date range." No range provided means no
-                // filter, keeping the previous "show everything ahead" default.
+                // No range given means no filter: show everything ahead.
                 .filter(lot -> request.getStartDate() == null
                         || !lot.getEffectiveExpirationDate().before(request.getStartDate()))
                 .filter(lot -> request.getEndDate() == null
@@ -231,9 +221,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * A "trend" report aggregates — one row per item summarizing consumption over
-     * the range, sorted by heaviest use first — rather than a raw per-transaction
-     * log (which {@code TRANSACTION_HISTORY} already covers).
+     * One row per item, heaviest use first. The raw per-transaction log is
+     * {@code TRANSACTION_HISTORY}'s job.
      */
     private ReportTable buildUsageTrendsReport(InventoryReportRequest request) {
         List<InventoryUsage> usages = inventoryUsageService.getByDateRange(request.getStartDate(),
@@ -338,9 +327,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     /**
      * Usable stock only — {@link InventoryLot#isAvailableForUse()} excludes
-     * EXPIRED/DISPOSED/QUARANTINED lots and anything that failed QC. This is the
-     * number that answers "how much can we actually use," as distinct from
-     * {@link #totalQuantity} (raw physical sum, including dead stock).
+     * expired, disposed, quarantined and QC-failed lots that {@link #totalQuantity}
+     * counts.
      */
     private double availableQuantity(List<InventoryLot> lots) {
         return lots.stream().filter(InventoryLot::isAvailableForUse)
@@ -364,10 +352,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * "Group by" reads here as "cluster adjacent rows in the flat exported table" —
-     * sort by type and/or each item's {@link #summarizeLocation} result
-     * (precomputed by the caller, since it needs the item's lots) ahead of name,
-     * rather than emitting separate section headers.
+     * "Group by" clusters adjacent rows in the flat exported table: sort by type
+     * and/or location ahead of name, rather than emitting section headers.
      */
     private List<InventoryItem> sortItems(List<InventoryItem> items, InventoryReportRequest request,
             Map<Long, String> locationByItemId) {
@@ -388,12 +374,15 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         return item == null || item.getItemType() == null ? null : item.getItemType().name();
     }
 
+    /**
+     * One query for every lot, grouped in memory, rather than a
+     * {@code getByInventoryItemId} round trip per item.
+     */
     private Map<Long, List<InventoryLot>> loadLotsByItemId(List<InventoryItem> items) {
-        Map<Long, List<InventoryLot>> lotsByItemId = new HashMap<>();
-        for (InventoryItem item : items) {
-            lotsByItemId.put(item.getId(), inventoryLotService.getByInventoryItemId(item.getId()));
-        }
-        return lotsByItemId;
+        java.util.Set<Long> itemIds = items.stream().map(InventoryItem::getId).collect(Collectors.toSet());
+        return inventoryLotService.getAll().stream()
+                .filter(lot -> lot.getInventoryItem() != null && itemIds.contains(lot.getInventoryItem().getId()))
+                .collect(Collectors.groupingBy(lot -> lot.getInventoryItem().getId()));
     }
 
     private Map<String, Map<String, Object>> loadLocationsByLotId(Map<Long, List<InventoryLot>> lotsByItemId) {

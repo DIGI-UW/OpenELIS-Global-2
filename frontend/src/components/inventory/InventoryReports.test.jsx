@@ -6,9 +6,24 @@ import InventoryReports, { toIsoDate } from "./InventoryReports";
 import messages from "../../languages/en.json";
 
 describe("InventoryReports — toIsoDate", () => {
-  it("formats a Date as yyyy-MM-dd, not Date.toString()", () => {
-    const date = new Date(Date.UTC(2026, 6, 13)); // July 13, 2026
-    expect(toIsoDate(date)).toBe("2026-07-13");
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = originalTz;
+  });
+
+  // The exported string must be the picked local day in every zone, not the UTC day.
+  it.each([
+    ["Africa/Nairobi", "2026-07-13"],
+    ["Africa/Abidjan", "2026-07-13"],
+    ["America/Port-au-Prince", "2026-07-13"],
+  ])("formats local midnight in %s as %s", (tz, expected) => {
+    process.env.TZ = tz;
+    expect(toIsoDate(new Date(2026, 6, 13))).toBe(expected);
+  });
+
+  it("keeps the picked day for a time late in the local evening", () => {
+    process.env.TZ = "America/Port-au-Prince";
+    expect(toIsoDate(new Date(2026, 6, 13, 23, 30))).toBe("2026-07-13");
   });
 
   it("returns null for a null/undefined date", () => {
@@ -50,5 +65,33 @@ describe("InventoryReports — dropdown options render (not blank)", () => {
     expect(within(listbox).getByText("PDF")).toBeInTheDocument();
     expect(within(listbox).getByText("Excel (.xlsx)")).toBeInTheDocument();
     expect(within(listbox).getByText("CSV")).toBeInTheDocument();
+  });
+});
+
+describe("InventoryReports — filter options follow the report type", () => {
+  const selectReportType = (label) => {
+    fireEvent.click(document.querySelector("#reportType button"));
+    const listbox = document.querySelector("#reportType .cds--list-box__menu");
+    fireEvent.click(within(listbox).getByText(label));
+  };
+
+  it("offers 'include expired lots' only for the report that reads it", () => {
+    renderWithIntl();
+
+    selectReportType("Expiration Forecast");
+    expect(screen.getByLabelText("Include expired lots")).toBeInTheDocument();
+
+    selectReportType("Stock Levels Report");
+    expect(screen.queryByLabelText("Include expired lots")).toBeNull();
+    expect(screen.getByLabelText("Include inactive items")).toBeInTheDocument();
+  });
+
+  it("hides both filters for report types that read neither", () => {
+    renderWithIntl();
+
+    selectReportType("Transaction History");
+
+    expect(screen.queryByLabelText("Include inactive items")).toBeNull();
+    expect(screen.queryByLabelText("Include expired lots")).toBeNull();
   });
 });

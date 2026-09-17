@@ -3,10 +3,8 @@ package org.openelisglobal.inventory.report;
 import java.sql.Timestamp;
 
 /**
- * Parameters for an inventory report, mirroring the fields
- * {@code InventoryReports.jsx} collects: report type and export format are
- * required; the rest are optional filters only some report types honor (see
- * each {@code InventoryReportServiceImpl.build*Report} method for which).
+ * Parameters for an inventory report. Report type and export format are
+ * required; the rest are optional filters only some report types honor.
  */
 public class InventoryReportRequest {
 

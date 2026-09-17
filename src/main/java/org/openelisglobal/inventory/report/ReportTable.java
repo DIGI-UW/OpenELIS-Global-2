@@ -4,10 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A generic tabular result — title, column headers, and string-formatted rows —
- * shared by every inventory report type so {@link InventoryReportWriter} only
- * has to know how to render a table once per export format (CSV/PDF/Excel),
- * instead of once per report type per format.
+ * A generic tabular result shared by every inventory report type, so
+ * {@link InventoryReportWriter} renders once per export format, not per report.
  */
 public class ReportTable {
 

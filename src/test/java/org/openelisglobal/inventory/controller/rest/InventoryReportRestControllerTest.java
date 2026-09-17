@@ -1,10 +1,13 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.HashMap;
 import org.junit.After;
 import org.junit.Before;
@@ -19,14 +22,10 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * The Reports tab ({@code InventoryReports.jsx}) called
- * {@code /rest/inventory/reports/generate}, which never existed on the backend
- * — every "Generate" click 404'd. Covers the new endpoint end-to-end: one
- * report type across all 3 export formats to prove the writer pipeline works,
- * plus the validation error paths (unknown reportType/exportFormat, missing
- * date range for date-scoped report types).
+ * Covers {@code /rest/inventory/reports/generate} end to end: one report type
+ * across all 3 export formats, the date bounds, and the validation error paths.
  */
-public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest {
+public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTest {
 
     private static final String CODE_PREFIX = "RPTTEST_";
 
@@ -36,6 +35,7 @@ public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbc;
     private MockHttpSession mockSession;
+    private long lotId;
 
     @Before
     @Override
@@ -57,6 +57,9 @@ public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest
     }
 
     private void cleanup() {
+        jdbc.update("DELETE FROM clinlims.inventory_transaction WHERE lot_id IN "
+                + "(SELECT l.id FROM clinlims.inventory_lot l JOIN clinlims.inventory_item i "
+                + "ON i.id = l.inventory_item_id WHERE i.code LIKE ?)", CODE_PREFIX + "%");
         jdbc.update("DELETE FROM clinlims.inventory_lot WHERE inventory_item_id IN "
                 + "(SELECT id FROM clinlims.inventory_item WHERE code LIKE ?)", CODE_PREFIX + "%");
         jdbc.update("DELETE FROM clinlims.inventory_item WHERE code LIKE ?", CODE_PREFIX + "%");
@@ -85,6 +88,15 @@ public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest
                 .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(lot))).andReturn();
         assertEquals("test setup: lot creation failed - " + lotResult.getResponse().getContentAsString(), 201,
                 lotResult.getResponse().getStatus());
+        lotId = objectMapper.readTree(lotResult.getResponse().getContentAsString()).get("id").asLong();
+    }
+
+    private void recordTransactionAt(Timestamp transactionDate) {
+        jdbc.update(
+                "INSERT INTO clinlims.inventory_transaction (id, lot_id, transaction_type, quantity_change,"
+                        + " quantity_after, transaction_date, performed_by_user)"
+                        + " VALUES (nextval('clinlims.inventory_transaction_seq'), ?, 'CONSUMPTION', -5, 20, ?, 1)",
+                lotId, transactionDate);
     }
 
     @Test
@@ -98,7 +110,7 @@ public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest
         assertTrue(result.getResponse().getContentType().startsWith("text/csv"));
         String csv = result.getResponse().getContentAsString();
         assertTrue(csv.contains(CODE_PREFIX + "REAGENT"));
-        assertTrue(csv.contains("25")); // total quantity across lots
+        assertTrue(csv.contains("25"));
     }
 
     @Test
@@ -170,6 +182,39 @@ public class InventoryReportRestControllerIT extends BaseWebContextSensitiveTest
                 .andReturn();
 
         assertEquals(200, result.getResponse().getStatus());
+    }
+
+    @Test
+    public void generate_transactionHistorySameDayRange_includesTodaysLaterTransaction() throws Exception {
+        LocalDate today = LocalDate.now();
+        recordTransactionAt(Timestamp.valueOf(today.atTime(17, 45)));
+
+        MvcResult result = mockMvc.perform(
+                post("/rest/inventory/reports/generate").session(mockSession).param("reportType", "TRANSACTION_HISTORY")
+                        .param("exportFormat", "CSV").param("startDate", today.toString())
+                        .param("endDate", today.toString()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus());
+        String csv = result.getResponse().getContentAsString();
+        assertTrue("end date must cover the whole day, not stop at midnight: " + csv,
+                csv.contains(CODE_PREFIX + "REAGENT"));
+    }
+
+    @Test
+    public void generate_transactionHistory_excludesTheDayAfterTheEndDate() throws Exception {
+        LocalDate today = LocalDate.now();
+        recordTransactionAt(Timestamp.valueOf(today.plusDays(1).atStartOfDay()));
+
+        MvcResult result = mockMvc.perform(
+                post("/rest/inventory/reports/generate").session(mockSession).param("reportType", "TRANSACTION_HISTORY")
+                        .param("exportFormat", "CSV").param("startDate", today.toString())
+                        .param("endDate", today.toString()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus());
+        String csv = result.getResponse().getContentAsString();
+        assertFalse("next-day midnight is outside the range: " + csv, csv.contains(CODE_PREFIX + "REAGENT"));
     }
 
     @Test

@@ -3,8 +3,8 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Set;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -18,11 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Backs {@code InventoryReports.jsx}'s "Generate" button — the tab existed on
- * the frontend with a fully-built form (6 report types, 3 export formats,
- * date-range/grouping filters), but this endpoint never existed, so every
- * generate attempt 404'd. See {@code InventoryReportServiceImpl} for what each
- * report type actually queries.
+ * Backs {@code InventoryReports.jsx}'s "Generate" button. See
+ * {@link InventoryReportService} for what each report type queries.
  */
 @RestController
 public class InventoryReportRestController {
@@ -55,7 +52,7 @@ public class InventoryReportRestController {
             ReportTable table;
             try {
                 InventoryReportRequest request = new InventoryReportRequest(reportType, exportFormat,
-                        parseDate(startDate), parseDate(endDate), includeInactive, includeExpired, groupByType,
+                        parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, groupByType,
                         groupByLocation);
                 table = inventoryReportService.generateReport(request);
             } catch (LocalizedValidationException e) {
@@ -81,7 +78,7 @@ public class InventoryReportRestController {
                 InventoryReportWriter.writeExcel(table, response.getOutputStream());
                 break;
             default:
-                // Unreachable — already validated above.
+                // VALID_EXPORT_FORMATS admits no other value.
                 break;
             }
         } catch (Exception e) {
@@ -92,15 +89,27 @@ public class InventoryReportRestController {
         }
     }
 
-    private Timestamp parseDate(String value) {
+    private Timestamp parseStartDate(String value) {
+        LocalDate date = parseLocalDate(value);
+        return date == null ? null : Timestamp.valueOf(date.atStartOfDay());
+    }
+
+    /**
+     * The consuming queries use an inclusive {@code BETWEEN}, so an end date left
+     * at midnight would drop the whole last day.
+     */
+    private Timestamp parseEndDate(String value) {
+        LocalDate date = parseLocalDate(value);
+        return date == null ? null : Timestamp.valueOf(date.atTime(23, 59, 59, 999_000_000));
+    }
+
+    private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            sdf.setLenient(false);
-            return new Timestamp(sdf.parse(value).getTime());
-        } catch (ParseException e) {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException e) {
             throw new LocalizedValidationException("reports.error.invalidDate", "Invalid date: " + value);
         }
     }
