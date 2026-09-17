@@ -1,32 +1,29 @@
 package org.openelisglobal;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import javax.sql.DataSource;
 import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+/** Validates actual sequence allocation, including repeated fixture loading. */
+@Transactional
 public class FixtureLoaderSequenceSynchronizationTest extends BaseWebContextSensitiveTest {
 
-    @Autowired
-    private DataSource dataSource;
-
     @Test
-    public void observationHistoryFixture_advancesItsStandaloneSequence() throws Exception {
+    public void fixtureAdvancesPastImportedIdsWithoutReusingPreviouslyAllocatedIds() throws Exception {
+        long previousNext = jdbcTemplate.queryForObject(
+                "SELECT last_value + CASE WHEN is_called THEN 1 ELSE 0 END FROM clinlims.observation_history_seq",
+                Long.class);
         executeDataSetWithStateManagement("testdata/observation-history.xml");
+        long importedNext = jdbcTemplate
+                .queryForObject("SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.observation_history", Long.class);
+        long allocated = jdbcTemplate.queryForObject("SELECT nextval('clinlims.observation_history_seq')", Long.class);
+        assertEquals("Loading a fixture must avoid both imported IDs and already allocated IDs",
+                Math.max(previousNext, importedNext), allocated);
 
-        try (Connection connection = dataSource.getConnection();
-                Statement statement = connection.createStatement();
-                ResultSet result = statement
-                        .executeQuery("SELECT (SELECT MAX(id) FROM clinlims.observation_history), last_value, is_called"
-                                + " FROM clinlims.observation_history_seq")) {
-            result.next();
-            assertEquals(result.getLong(1) + 1, result.getLong(2));
-            assertFalse(result.getBoolean(3));
-        }
+        executeDataSetWithStateManagement("testdata/observation-history.xml");
+        assertEquals("Reloading the same small fixture must not reallocate the previous ID",
+                Long.valueOf(allocated + 1),
+                jdbcTemplate.queryForObject("SELECT nextval('clinlims.observation_history_seq')", Long.class));
     }
 }

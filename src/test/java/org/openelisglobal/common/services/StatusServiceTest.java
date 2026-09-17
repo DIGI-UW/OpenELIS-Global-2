@@ -20,7 +20,9 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class StatusServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -35,9 +37,6 @@ public class StatusServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/status_service.xml");
-        // Required because StatusService initializes caches at @PostConstruct
-        // which happens before DBUnit loads our dataset.
-        statusService.refreshCache();
     }
 
     @Test

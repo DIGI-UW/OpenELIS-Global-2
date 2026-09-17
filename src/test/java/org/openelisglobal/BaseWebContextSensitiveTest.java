@@ -355,6 +355,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      */
     private void truncateTablesInConnection(Connection conn, String[] tableNames) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
+            // A fixture ownership error must fail with a database diagnostic rather
+            // than leave the test runner waiting indefinitely for its own locks.
+            stmt.setQueryTimeout(30);
             for (String tableName : tableNames) {
                 stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
                 logger.debug("Truncating table: {}", tableName);
@@ -391,8 +394,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     /**
      * Truncates specified test tables while skipping protected Liquibase seed
-     * tables in {@link #PROTECTED_SEED_TABLES}. Delegates to
-     * {@link #truncateTablesInConnection(Connection, String[])}.
+     * tables in {@link #PROTECTED_SEED_TABLES}. Joins the active test transaction
+     * exactly as fixture loading does. Without a test transaction, this helper owns
+     * and commits one atomic cleanup transaction.
      *
      * @param tableNames the tables to truncate
      * @throws SQLException if any truncation fails
@@ -401,8 +405,26 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         Set<String> protectedTables = Set.of(PROTECTED_SEED_TABLES);
         String[] safeTableNames = Arrays.stream(tableNames).filter(t -> !protectedTables.contains(t))
                 .toArray(String[]::new);
-        try (Connection conn = dataSource.getConnection()) {
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        boolean participatesInTestTransaction = DataSourceUtils.isConnectionTransactional(conn, dataSource);
+        try {
+            if (!participatesInTestTransaction) {
+                conn.setAutoCommit(false);
+            }
             truncateTablesInConnection(conn, safeTableNames);
+            if (participatesInTestTransaction) {
+                loadedTransactionalFixture = true;
+            } else {
+                conn.commit();
+            }
+            refreshFixtureCaches();
+        } catch (SQLException e) {
+            if (!participatesInTestTransaction) {
+                conn.rollback();
+            }
+            throw e;
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 
