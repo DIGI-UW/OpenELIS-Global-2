@@ -112,3 +112,13 @@
     min-width: unset;
   }
 }
+
+.inventory-item-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #525252;
+}

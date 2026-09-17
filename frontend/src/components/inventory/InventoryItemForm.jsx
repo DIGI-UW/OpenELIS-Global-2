@@ -12,6 +12,7 @@ import {
   NumberInput,
   TextArea,
   Stack,
+  Button,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
@@ -26,7 +27,13 @@ const toCode = (value) =>
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
+const InventoryItemForm = ({
+  open,
+  onClose,
+  onSave,
+  item = null,
+  observedLeadTime = null,
+}) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -56,6 +63,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     storageRequirements: "",
     compatibleAnalyzers: "",
     testsPerKit: 0,
+    leadTimeDays: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -120,6 +128,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         storageRequirements: item.storageRequirements || "",
         compatibleAnalyzers: item.compatibleAnalyzers || "",
         testsPerKit: item.testsPerKit || 0,
+        leadTimeDays: item.leadTimeDays ?? "",
       });
     } else {
       // Reset to initial state when adding new item
@@ -135,6 +144,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         storageRequirements: "",
         compatibleAnalyzers: "",
         testsPerKit: 0,
+        leadTimeDays: "",
       });
     }
   }, [item, open]);
@@ -224,6 +234,11 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: formData.manufacturer,
         units: formData.units,
         lowStockThreshold: Number(formData.lowStockThreshold) || 0,
+        // Blank stays null, not zero, so the learned lead time can take over.
+        leadTimeDays:
+          formData.leadTimeDays === "" || formData.leadTimeDays == null
+            ? null
+            : Number(formData.leadTimeDays),
       };
 
       // Add type-specific fields only for relevant item types
@@ -381,6 +396,38 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           min={0}
           max={999999}
         />
+
+        <NumberInput
+          id="leadTimeDays"
+          label={<FormattedMessage id="inventory.item.leadTime" />}
+          helperText={intl.formatMessage({
+            id: "inventory.item.leadTime.help",
+          })}
+          value={formData.leadTimeDays}
+          onChange={(e, { value }) => handleChange("leadTimeDays", value)}
+          min={0}
+          max={999}
+          allowEmpty
+        />
+
+        {observedLeadTime != null &&
+          Number(formData.leadTimeDays) !== observedLeadTime && (
+            <div className="inventory-item-suggestion">
+              <span>
+                <FormattedMessage
+                  id="inventory.item.leadTime.observedSuggest"
+                  values={{ days: observedLeadTime }}
+                />
+              </span>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => handleChange("leadTimeDays", observedLeadTime)}
+              >
+                <FormattedMessage id="inventory.item.leadTime.useObserved" />
+              </Button>
+            </div>
+          )}
 
         {/* Type-specific fields */}
         {formData.itemType === "REAGENT" && (

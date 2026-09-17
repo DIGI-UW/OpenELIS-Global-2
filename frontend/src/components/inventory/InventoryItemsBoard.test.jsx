@@ -66,7 +66,10 @@ vi.mock("./DisposeLotModal", () =>
   modalStub("dispose", (p) => `lot:${p.lot.id}`),
 );
 vi.mock("./InventoryItemForm", () =>
-  modalStub("item-form", (p) => `item:${p.item.id}:${p.item.name}`),
+  modalStub(
+    "item-form",
+    (p) => `item:${p.item.id}:${p.item.name}:observed=${p.observedLeadTime}`,
+  ),
 );
 
 vi.mock("./LotDetailsPanel", () => ({
@@ -623,6 +626,43 @@ describe("InventoryItemsBoard", () => {
       );
       expect(screen.getByTestId("item-form-target")).toHaveTextContent(
         `item:${MALARIA.itemId}:${MALARIA.name}`,
+      );
+    });
+
+    it("offers a learned lead time to the editor only when that is the tier in use", async () => {
+      await renderBoard([
+        { ...MALARIA, leadTimeTier: "OBSERVED", leadTimeDays: 12 },
+        CARTRIDGE,
+      ]);
+      InventoryItemAPI.getById.mockResolvedValue({
+        id: MALARIA.itemId,
+        name: MALARIA.name,
+      });
+
+      await openRowMenu(MALARIA.name);
+      fireEvent.click(screen.getByText("Edit item details"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("item-form-target")).toHaveTextContent(
+          "observed=12",
+        ),
+      );
+    });
+
+    it("offers nothing to the editor when the lab already set a lead time", async () => {
+      await renderBoard();
+      InventoryItemAPI.getById.mockResolvedValue({
+        id: CARTRIDGE.itemId,
+        name: CARTRIDGE.name,
+      });
+
+      await openRowMenu(CARTRIDGE.name);
+      fireEvent.click(screen.getByText("Edit item details"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("item-form-target")).toHaveTextContent(
+          "observed=null",
+        ),
       );
     });
 

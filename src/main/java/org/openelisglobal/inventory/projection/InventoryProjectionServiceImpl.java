@@ -10,8 +10,10 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryOrderCycleService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
 
     @Autowired
     private InventoryItemService inventoryItemService;
+
+    @Autowired
+    private InventoryOrderCycleService inventoryOrderCycleService;
 
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
@@ -38,6 +43,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
         List<InventoryItem> items = inventoryItemService.getAllActive();
         Map<Long, Double> usableByItem = inventoryLotDAO.getAvailableQuantityByItem();
         Map<Long, List<InventoryUsage>> usageByItem = usageByItem(windowStart, today);
+        Map<Long, List<Integer>> cycleDaysByItem = cycleDaysByItem(today);
 
         List<InventoryProjection> board = new ArrayList<>(items.size());
         for (InventoryItem item : items) {
@@ -46,9 +52,10 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             InventoryProjection row = InventoryProjectionCalculator.project(
                     usableByItem.getOrDefault(item.getId(), 0.0), dailyUse(usage, windowStart),
                     item.getLowStockThreshold(),
-                    // No order-to-receipt history is recorded yet, so nothing is observed.
-                    InventoryProjectionCalculator.resolveLeadTime(item.getLeadTimeDays(), null), latestUsageDate(usage),
-                    today);
+                    InventoryProjectionCalculator.resolveLeadTime(item.getLeadTimeDays(),
+                            InventoryProjectionCalculator
+                                    .observedLeadTime(cycleDaysByItem.getOrDefault(item.getId(), List.of()))),
+                    latestUsageDate(usage), today);
 
             row.setItemId(item.getId());
             row.setCode(item.getCode());
@@ -65,6 +72,20 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
                 .thenComparing(InventoryProjection::getRunOutEarly, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(InventoryProjection::getName, Comparator.nullsLast(Comparator.naturalOrder())));
         return board;
+    }
+
+    private Map<Long, List<Integer>> cycleDaysByItem(LocalDate today) {
+        Timestamp cutoff = Timestamp
+                .valueOf(today.minusDays(InventoryProjectionCalculator.LEAD_TIME_HISTORY_DAYS).atStartOfDay());
+        Map<Long, List<Integer>> byItem = new HashMap<>();
+        for (InventoryOrderCycle cycle : inventoryOrderCycleService.getReceivedSince(cutoff)) {
+            if (cycle.getInventoryItem() == null || cycle.getInventoryItem().getId() == null) {
+                continue;
+            }
+            byItem.computeIfAbsent(cycle.getInventoryItem().getId(), key -> new ArrayList<>())
+                    .add(cycle.getLeadTimeDays());
+        }
+        return byItem;
     }
 
     private Map<Long, List<InventoryUsage>> usageByItem(LocalDate windowStart, LocalDate today) {
