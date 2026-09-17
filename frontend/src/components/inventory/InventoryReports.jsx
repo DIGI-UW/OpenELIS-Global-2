@@ -168,10 +168,7 @@ const InventoryReports = () => {
       setSuccess(intl.formatMessage({ id: "reports.generation.success" }));
     } catch (err) {
       console.error("Error generating report:", err);
-      setError(
-        err.message ||
-          intl.formatMessage({ id: "reports.error.generationFailed" }),
-      );
+      setError(intl.formatMessage({ id: "reports.error.generationFailed" }));
     } finally {
       setGenerating(false);
     }
@@ -181,6 +178,11 @@ const InventoryReports = () => {
   const isDateRangeRequired = ["USAGE_TRENDS", "TRANSACTION_HISTORY"].includes(
     formData.reportType.id,
   );
+  const readsDateRange = [
+    "USAGE_TRENDS",
+    "TRANSACTION_HISTORY",
+    "EXPIRATION_FORECAST",
+  ].includes(formData.reportType.id);
 
   return (
     <div style={{ marginTop: "2rem" }}>
@@ -227,37 +229,41 @@ const InventoryReports = () => {
                 />
 
                 {/* Date Range */}
-                <div>
-                  <FormLabel>
-                    <FormattedMessage id="reports.dateRange" />
-                    {isDateRangeRequired && (
-                      <span style={{ color: "#da1e28" }}> *</span>
-                    )}
-                  </FormLabel>
-                  <DatePicker
-                    datePickerType="range"
-                    value={[formData.startDate, formData.endDate]}
-                    onChange={(dates) => {
-                      handleChange("startDate", dates[0] || null);
-                      handleChange("endDate", dates[1] || null);
-                    }}
-                  >
-                    <DatePickerInput
-                      id="startDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "reports.startDate",
-                      })}
-                      size="md"
-                    />
-                    <DatePickerInput
-                      id="endDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({ id: "reports.endDate" })}
-                      size="md"
-                    />
-                  </DatePicker>
-                </div>
+                {readsDateRange && (
+                  <div>
+                    <FormLabel>
+                      <FormattedMessage id="reports.dateRange" />
+                      {isDateRangeRequired && (
+                        <span style={{ color: "#da1e28" }}> *</span>
+                      )}
+                    </FormLabel>
+                    <DatePicker
+                      datePickerType="range"
+                      value={[formData.startDate, formData.endDate]}
+                      onChange={(dates) => {
+                        handleChange("startDate", dates[0] || null);
+                        handleChange("endDate", dates[1] || null);
+                      }}
+                    >
+                      <DatePickerInput
+                        id="startDate"
+                        placeholder="mm/dd/yyyy"
+                        labelText={intl.formatMessage({
+                          id: "reports.startDate",
+                        })}
+                        size="md"
+                      />
+                      <DatePickerInput
+                        id="endDate"
+                        placeholder="mm/dd/yyyy"
+                        labelText={intl.formatMessage({
+                          id: "reports.endDate",
+                        })}
+                        size="md"
+                      />
+                    </DatePicker>
+                  </div>
+                )}
 
                 {/* Filter Options — only where the report actually honors them */}
                 {[

@@ -1,10 +1,13 @@
 package org.openelisglobal.inventory.controller.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -13,6 +16,7 @@ import org.openelisglobal.inventory.report.InventoryReportService;
 import org.openelisglobal.inventory.report.InventoryReportWriter;
 import org.openelisglobal.inventory.report.ReportTable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +34,8 @@ public class InventoryReportRestController {
 
     @Autowired
     private InventoryReportService inventoryReportService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/rest/inventory/reports/generate")
     public void generate(@RequestParam String reportType, @RequestParam String exportFormat,
@@ -56,7 +62,7 @@ public class InventoryReportRestController {
                         groupByLocation);
                 table = inventoryReportService.generateReport(request);
             } catch (LocalizedValidationException e) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                sendValidationError(response, e);
                 return;
             }
 
@@ -87,6 +93,20 @@ public class InventoryReportRestController {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error generating report");
             }
         }
+    }
+
+    /**
+     * Same {message, errorCode, params} body as
+     * {@link InventoryItemRestController}.
+     */
+    private void sendValidationError(HttpServletResponse response, LocalizedValidationException e) throws IOException {
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", e.getMessage());
+        body.put("errorCode", e.getErrorCode());
+        body.put("params", e.getParams());
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getOutputStream(), body);
     }
 
     private Timestamp parseStartDate(String value) {

@@ -109,8 +109,9 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
         assertEquals(200, result.getResponse().getStatus());
         assertTrue(result.getResponse().getContentType().startsWith("text/csv"));
         String csv = result.getResponse().getContentAsString();
-        assertTrue(csv.contains(CODE_PREFIX + "REAGENT"));
-        assertTrue(csv.contains("25"));
+        // A freshly received lot is QC-PENDING and still counts as available.
+        assertTrue(csv,
+                csv.contains(CODE_PREFIX + "REAGENT," + CODE_PREFIX + "Reagent,REAGENT,,Unassigned,25,25,mL,Active"));
     }
 
     @Test
@@ -171,6 +172,7 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
                 .andReturn();
 
         assertEquals(400, result.getResponse().getStatus());
+        assertEquals("reports.error.dateRangeRequired", errorCodeOf(result));
     }
 
     @Test
@@ -224,5 +226,10 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
                 .param("endDate", "2030-01-01").contentType(MediaType.APPLICATION_JSON).content("{}")).andReturn();
 
         assertEquals(400, result.getResponse().getStatus());
+        assertEquals("reports.error.invalidDate", errorCodeOf(result));
+    }
+
+    private String errorCodeOf(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("errorCode").asText(null);
     }
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,7 +67,7 @@ public class InventoryReportServiceTest {
         return item;
     }
 
-    private InventoryLot lot(InventoryItem item, String lotNumber, double currentQuantity) {
+    private InventoryLot lot(InventoryItem item, String lotNumber, double currentQuantity, QCStatus qcStatus) {
         InventoryLot lot = new InventoryLot();
         lot.setId((long) lotNumber.hashCode());
         lot.setInventoryItem(item);
@@ -74,7 +75,7 @@ public class InventoryReportServiceTest {
         lot.setCurrentQuantity(currentQuantity);
         lot.setInitialQuantity(currentQuantity);
         lot.setStatus(LotStatus.ACTIVE);
-        lot.setQcStatus(QCStatus.PASSED);
+        lot.setQcStatus(qcStatus);
         return lot;
     }
 
@@ -117,8 +118,8 @@ public class InventoryReportServiceTest {
         InventoryItem reagent = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent));
 
-        InventoryLot usableLot = lot(reagent, "LOT1", 10.0);
-        InventoryLot expiredLot = lot(reagent, "LOT2", 5.0);
+        InventoryLot usableLot = lot(reagent, "LOT1", 10.0, QCStatus.PASSED);
+        InventoryLot expiredLot = lot(reagent, "LOT2", 5.0, QCStatus.PASSED);
         expiredLot.setStatus(LotStatus.EXPIRED);
         when(inventoryLotService.getAll()).thenReturn(List.of(usableLot, expiredLot));
 
@@ -145,8 +146,8 @@ public class InventoryReportServiceTest {
         lowOnAvailable.setLowStockThreshold(20);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(lowOnAvailable));
 
-        InventoryLot usable = lot(lowOnAvailable, "LOT1", 3.0);
-        InventoryLot disposed = lot(lowOnAvailable, "LOT2", 100.0);
+        InventoryLot usable = lot(lowOnAvailable, "LOT1", 3.0, QCStatus.PASSED);
+        InventoryLot disposed = lot(lowOnAvailable, "LOT2", 100.0, QCStatus.PASSED);
         disposed.setStatus(LotStatus.DISPOSED);
         when(inventoryLotService.getAll()).thenReturn(List.of(usable, disposed));
 
@@ -168,8 +169,8 @@ public class InventoryReportServiceTest {
         wellStocked.setLowStockThreshold(20);
         InventoryItem noThreshold = item(1002L, "RDT_B", "RDT B", ItemType.RDT, true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(wellStocked, noThreshold));
-        when(inventoryLotService.getAll())
-                .thenReturn(List.of(lot(wellStocked, "LOT1", 50.0), lot(noThreshold, "LOT2", 1.0)));
+        when(inventoryLotService.getAll()).thenReturn(List.of(lot(wellStocked, "LOT1", 50.0, QCStatus.PASSED),
+                lot(noThreshold, "LOT2", 1.0, QCStatus.PASSED)));
 
         ReportTable table = reportService.generateReport(request("LOW_STOCK", "CSV"));
 
@@ -178,13 +179,75 @@ public class InventoryReportServiceTest {
     }
 
     @Test
+    public void stockLevels_availableCountsQcPendingLots_notQcFailedOrQuarantinedOnes() {
+        InventoryItem reagent = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent));
+        when(inventoryLotService.getAll()).thenReturn(List.of(lot(reagent, "PENDING1", 10.0, QCStatus.PENDING),
+                lot(reagent, "PASSED1", 5.0, QCStatus.PASSED), lot(reagent, "FAILED1", 100.0, QCStatus.FAILED),
+                lot(reagent, "QUARANTINED1", 50.0, QCStatus.QUARANTINED)));
+
+        ReportTable table = reportService.generateReport(request("STOCK_LEVELS", "CSV"));
+
+        List<String> row = table.getRows().get(0);
+        assertEquals("REAGENT_A", row.get(0));
+        assertEquals("15", row.get(5));
+        assertEquals("165", row.get(6));
+    }
+
+    @Test
+    public void lowStock_qcPendingStockKeepsAnItemOffTheReport() {
+        InventoryItem awaitingQc = item(1001L, "RDT_A", "RDT A", ItemType.RDT, true);
+        awaitingQc.setLowStockThreshold(20);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(awaitingQc));
+        when(inventoryLotService.getAll()).thenReturn(List.of(lot(awaitingQc, "LOT1", 500.0, QCStatus.PENDING)));
+
+        ReportTable table = reportService.generateReport(request("LOW_STOCK", "CSV"));
+
+        assertEquals(1, table.getRows().size());
+        assertEquals("TOTAL (0 items)", table.getRows().get(0).get(0));
+    }
+
+    @Test
+    public void lowStock_qcFailedStockDoesNotKeepAnItemOffTheReport() {
+        InventoryItem failedQc = item(1001L, "RDT_A", "RDT A", ItemType.RDT, true);
+        failedQc.setLowStockThreshold(20);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(failedQc));
+        when(inventoryLotService.getAll()).thenReturn(
+                List.of(lot(failedQc, "LOT1", 3.0, QCStatus.PASSED), lot(failedQc, "LOT2", 500.0, QCStatus.FAILED)));
+
+        ReportTable table = reportService.generateReport(request("LOW_STOCK", "CSV"));
+
+        assertEquals(2, table.getRows().size());
+        List<String> row = table.getRows().get(0);
+        assertEquals("RDT_A", row.get(0));
+        assertEquals("3", row.get(5));
+        assertEquals("503", row.get(6));
+    }
+
+    @Test
+    public void quantities_useADotDecimalUnderADecimalCommaDefaultLocale() {
+        InventoryItem reagent = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
+        when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent));
+        when(inventoryLotService.getAll()).thenReturn(List.of(lot(reagent, "LOT1", 1.5, QCStatus.PASSED)));
+
+        Locale original = Locale.getDefault();
+        Locale.setDefault(Locale.FRANCE);
+        try {
+            ReportTable table = reportService.generateReport(request("STOCK_LEVELS", "CSV"));
+            assertEquals("1.50", table.getRows().get(0).get(5));
+        } finally {
+            Locale.setDefault(original);
+        }
+    }
+
+    @Test
     public void expirationForecast_excludesExpiredLotsByDefault_includesWhenRequested() {
         InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
 
-        InventoryLot expiredLot = lot(item, "EXPIRED1", 5.0);
+        InventoryLot expiredLot = lot(item, "EXPIRED1", 5.0, QCStatus.PASSED);
         expiredLot.setExpirationDate(new Timestamp(System.currentTimeMillis() - 86_400_000L));
-        InventoryLot futureLot = lot(item, "FUTURE1", 5.0);
+        InventoryLot futureLot = lot(item, "FUTURE1", 5.0, QCStatus.PASSED);
         futureLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 45));
         when(inventoryLotService.getAll()).thenReturn(List.of(expiredLot, futureLot));
 
@@ -209,9 +272,9 @@ public class InventoryReportServiceTest {
         InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
         when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
 
-        InventoryLot soonLot = lot(item, "SOON1", 5.0);
+        InventoryLot soonLot = lot(item, "SOON1", 5.0, QCStatus.PASSED);
         soonLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 5));
-        InventoryLot laterLot = lot(item, "LATER1", 5.0);
+        InventoryLot laterLot = lot(item, "LATER1", 5.0, QCStatus.PASSED);
         laterLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86_400_000L * 90));
         when(inventoryLotService.getAll()).thenReturn(List.of(soonLot, laterLot));
 
@@ -231,17 +294,17 @@ public class InventoryReportServiceTest {
 
         InventoryUsage use1 = new InventoryUsage();
         use1.setInventoryItem(heavilyUsed);
-        use1.setLot(lot(heavilyUsed, "LOT1", 10.0));
+        use1.setLot(lot(heavilyUsed, "LOT1", 10.0, QCStatus.PASSED));
         use1.setQuantityUsed(6.0);
         use1.setUsageDate(new Timestamp(System.currentTimeMillis() - 3600_000L));
         InventoryUsage use2 = new InventoryUsage();
         use2.setInventoryItem(heavilyUsed);
-        use2.setLot(lot(heavilyUsed, "LOT1", 10.0));
+        use2.setLot(lot(heavilyUsed, "LOT1", 10.0, QCStatus.PASSED));
         use2.setQuantityUsed(4.0);
         use2.setUsageDate(new Timestamp(System.currentTimeMillis()));
         InventoryUsage use3 = new InventoryUsage();
         use3.setInventoryItem(lightlyUsed);
-        use3.setLot(lot(lightlyUsed, "LOT2", 10.0));
+        use3.setLot(lot(lightlyUsed, "LOT2", 10.0, QCStatus.PASSED));
         use3.setQuantityUsed(1.0);
         use3.setUsageDate(new Timestamp(System.currentTimeMillis()));
 
@@ -271,7 +334,7 @@ public class InventoryReportServiceTest {
     @Test
     public void transactionHistory_filtersByDateRange() {
         InventoryItem item = item(1000L, "REAGENT_A", "Reagent A", ItemType.REAGENT, true);
-        InventoryLot lot = lot(item, "LOT1", 10.0);
+        InventoryLot lot = lot(item, "LOT1", 10.0, QCStatus.PASSED);
         InventoryTransaction transaction = new InventoryTransaction();
         transaction.setLot(lot);
         transaction.setTransactionType(TransactionType.RECEIPT);
@@ -297,8 +360,8 @@ public class InventoryReportServiceTest {
     public void lotTraceability_excludesInactiveItemsUnlessRequested() {
         InventoryItem activeItem = item(1003L, "ACTIVE_A", "Active Item", ItemType.REAGENT, true);
         InventoryItem inactiveItem = item(1004L, "INACTIVE_A", "Inactive Item", ItemType.REAGENT, false);
-        when(inventoryLotService.getAll())
-                .thenReturn(List.of(lot(activeItem, "LOT1", 5.0), lot(inactiveItem, "LOT2", 5.0)));
+        when(inventoryLotService.getAll()).thenReturn(List.of(lot(activeItem, "LOT1", 5.0, QCStatus.PASSED),
+                lot(inactiveItem, "LOT2", 5.0, QCStatus.PASSED)));
 
         ReportTable onlyActive = reportService.generateReport(
                 new InventoryReportRequest("LOT_TRACEABILITY", "CSV", null, null, false, true, false, false));

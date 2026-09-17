@@ -94,4 +94,18 @@ describe("InventoryReports — filter options follow the report type", () => {
     expect(screen.queryByLabelText("Include inactive items")).toBeNull();
     expect(screen.queryByLabelText("Include expired lots")).toBeNull();
   });
+
+  it("offers the date range only for report types that read it", () => {
+    renderWithIntl();
+
+    selectReportType("Stock Levels Report");
+    expect(screen.queryByLabelText("Start Date")).toBeNull();
+
+    selectReportType("Expiration Forecast");
+    expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
+    expect(screen.getByLabelText("End Date")).toBeInTheDocument();
+
+    selectReportType("Low Stock Alert");
+    expect(screen.queryByLabelText("Start Date")).toBeNull();
+  });
 });

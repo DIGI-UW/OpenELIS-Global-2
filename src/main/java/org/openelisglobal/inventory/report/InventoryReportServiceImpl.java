@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LocalizedValidationException;
@@ -12,6 +13,8 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -120,8 +123,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * Judged on {@link InventoryLot#isAvailableForUse} quantity, so dead stock
-     * cannot pad an item past its reorder threshold and out of the report.
+     * Judged on {@link #availableQuantity}, so dead stock cannot pad an item past
+     * its reorder threshold and out of the report.
      */
     private ReportTable buildLowStockReport(InventoryReportRequest request) {
         List<InventoryItem> activeItems = inventoryItemService.getAllActive();
@@ -165,7 +168,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 .filter(lot -> lot.getInventoryItem() != null && itemsById.containsKey(lot.getInventoryItem().getId()))
                 .filter(lot -> lot.getEffectiveExpirationDate() != null)
                 .filter(lot -> request.isIncludeExpired() || !lot.isExpired())
-                // No range given means no filter: show everything ahead.
                 .filter(lot -> request.getStartDate() == null
                         || !lot.getEffectiveExpirationDate().before(request.getStartDate()))
                 .filter(lot -> request.getEndDate() == null
@@ -326,13 +328,18 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * Usable stock only — {@link InventoryLot#isAvailableForUse()} excludes
-     * expired, disposed, quarantined and QC-failed lots that {@link #totalQuantity}
-     * counts.
+     * Wider than {@link InventoryLot#isAvailableForUse()}, which gates consumption:
+     * a lot awaiting QC is still on the shelf and should not trigger a reorder.
      */
     private double availableQuantity(List<InventoryLot> lots) {
-        return lots.stream().filter(InventoryLot::isAvailableForUse)
+        return lots.stream().filter(InventoryReportServiceImpl::countsAsAvailable)
                 .mapToDouble(l -> l.getCurrentQuantity() != null ? l.getCurrentQuantity() : 0.0).sum();
+    }
+
+    private static boolean countsAsAvailable(InventoryLot lot) {
+        return !lot.isExpired() && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0
+                && (lot.getStatus() == LotStatus.ACTIVE || lot.getStatus() == LotStatus.IN_USE)
+                && (lot.getQcStatus() == QCStatus.PASSED || lot.getQcStatus() == QCStatus.PENDING);
     }
 
     private String nullToEmpty(String value) {
@@ -452,6 +459,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         if (value == Math.floor(value) && !Double.isInfinite(value)) {
             return Long.toString((long) value);
         }
-        return String.format("%.2f", value);
+        return String.format(Locale.ROOT, "%.2f", value);
     }
 }
