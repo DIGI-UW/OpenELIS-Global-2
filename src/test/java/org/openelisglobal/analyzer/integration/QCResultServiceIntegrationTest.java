@@ -3,6 +3,8 @@ package org.openelisglobal.analyzer.integration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.Before;
@@ -11,6 +13,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for QCResultService.createQCResult().
@@ -27,7 +30,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <li>lot-no-stats: ACTIVE lot without statistics (for error path testing)</li>
  * </ul>
  */
+@Transactional
 public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private QCResultService qcResultService;
@@ -48,6 +55,10 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
 
         assertNotNull("Should return persisted QCResult", result);
         assertNotNull("Result ID should be generated", result.getId());
+        entityManager.flush();
+        entityManager.clear();
+        result = qcResultService.get(result.getId());
+        assertNotNull("The QC result must exist in the database", result);
         assertEquals("Result value should be 110.0", 0, new BigDecimal("110.0").compareTo(result.getResultValue()));
         assertEquals("Z-score should be 2.0000", 0, new BigDecimal("2.0000").compareTo(result.getZScore()));
         assertEquals("Control lot ID should match", "lot-001", result.getControlLotId());
@@ -65,6 +76,10 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
         QCResult result = qcResultService.createQCResult("1", "1", "lot-001", "NORMAL", new BigDecimal("90.0"), "mg/dL",
                 LocalDateTime.now());
 
+        entityManager.flush();
+        entityManager.clear();
+        result = qcResultService.get(result.getId());
+        assertNotNull("The QC result must exist in the database", result);
         assertEquals("Z-score should be -2.0000", 0, new BigDecimal("-2.0000").compareTo(result.getZScore()));
     }
 

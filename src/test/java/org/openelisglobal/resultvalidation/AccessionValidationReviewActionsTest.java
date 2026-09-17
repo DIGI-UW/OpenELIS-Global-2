@@ -2,14 +2,16 @@ package org.openelisglobal.resultvalidation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,13 +19,13 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -33,6 +35,7 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OGC-1030 (Validation v4 slice V4) — send for retest (FR-D3), reject via
@@ -41,7 +44,11 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * {@code testdata/validation-review-panel.xml} — accession VAL-RP-001, analyses
  * 100 and 102 awaiting validation.
  */
+@Transactional
 public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String ACCESSION = "VAL-RP-001";
     private static final String ANALYSIS_ID = "100";
@@ -53,6 +60,12 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
     private MockHttpSession session;
     private String retestFlagBefore;
     private String rejectFlagBefore;
@@ -62,11 +75,9 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         super.setUp();
         executeDataSetWithStateManagement("testdata/validation-review-panel.xml");
         authenticateAs("testUser");
-        statusService.refreshCache();
-        ValidationLabUnitRoles.grantValidationOnAllLabUnits(jdbcTemplate, 9402);
-        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
-        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
-                .thenReturn(List.of(new IdValuePair("1", "Environmental")));
+        userService.saveUserLabUnitRoles(systemUserService.get("1"), Map.of("AllLabUnits", Set.of("9400")), "1");
+        entityManager.flush();
+        entityManager.clear();
         session = buildValidatorSession();
         retestFlagBefore = ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED);
         rejectFlagBefore = ConfigurationProperties.getInstance().getPropertyValue(Property.allowResultRejection);
@@ -119,6 +130,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/retest").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("", "I", "")))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("retestNoteRequired"));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(ANALYSIS_ID).getStatusId());
@@ -131,6 +144,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/retest").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("Repeat with a fresh dilution", "I", "")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("retest"));
+        entityManager.flush();
+        entityManager.clear();
 
         Analysis analysis = analysisService.get(ANALYSIS_ID);
         assertEquals(statusService.getStatusID(AnalysisStatus.BiologistRejected), analysis.getStatusId());
@@ -149,6 +164,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/reject").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("", "I", ",\"nceNumber\":\"NCE-1\"")))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("rejectionDisabled"));
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
@@ -159,6 +176,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(rowBody("Contaminated aliquot", "I", ",\"nceNumber\":\"NCE-2026-0007\"")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("rejected"));
+        entityManager.flush();
+        entityManager.clear();
 
         Analysis analysis = analysisService.get(ANALYSIS_ID);
         assertEquals(statusService.getStatusID(AnalysisStatus.BiologistRejected), analysis.getStatusId());
@@ -179,6 +198,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
                 .contentType(MediaType.APPLICATION_JSON).content(rowBody("", "E", ",\"analysisLastupdated\":\"1\"")))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("stale"))
                 .andExpect(jsonPath("$.analysisId").value(ANALYSIS_ID));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals("a stale request must not release", statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(ANALYSIS_ID).getStatusId());
@@ -197,6 +218,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(rowBody("", "E", ",\"analysisLastupdated\":\"" + current + "\""))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.outcome").value("released"));
+        entityManager.flush();
+        entityManager.clear();
     }
 
     // ---- auto-validated view (FR-A4) -----------------------------------------

@@ -4,14 +4,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,16 +21,16 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -38,6 +40,7 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OGC-1029 (Validation v4 slice V3) — the guarded bulk release: the server
@@ -47,7 +50,11 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * accession VAL-BR-001; analysis 100 is clear (10.5 in 5.0 - 20.0, QC passed),
  * analysis 102 is abnormal (25.0).
  */
+@Transactional
 public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String ACCESSION = "VAL-BR-001";
     private static final String CLEAR_ID = "100";
@@ -69,7 +76,10 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
     private org.openelisglobal.typeoftestresult.service.TypeOfTestResultService typeOfTestResultService;
 
     @Autowired
-    private org.openelisglobal.resultlimit.service.ResultLimitService resultLimitService;
+    private UserService userService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     private MockHttpSession session;
     private String bulkFlagBefore;
@@ -78,33 +88,19 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/validation-bulk-release.xml");
-        // "All ages" limits carry max_age = Infinity (ResultLimit.ageLimitsAreDefault);
-        // DBUnit cannot write that literal, so the fixture's placeholder is replaced
-        // here. The limit must also point at the Numeric result type: other fixtures
-        // in the same JVM replace the type rows, and ResultLimitServiceImpl caches the
-        // Numeric id at @PostConstruct — so resolve the current row and re-run that
-        // initialiser to keep the two in step whatever ran before this class.
+        // DbUnit cannot represent the Infinity sentinel for an all-ages limit.
+        // Resolve the migration-owned Numeric type; do not recreate missing seeds
+        // or reinitialize the production service to match damaged shared state.
         org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult numeric = typeOfTestResultService
                 .getTypeOfTestResultByType("N");
-        if (numeric == null) {
-            jdbcTemplate.update("INSERT INTO clinlims.type_of_test_result (id, description, test_result_type,"
-                    + " hl7_value, lastupdated) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM"
-                    + " clinlims.type_of_test_result), 'Numeric', 'N', 'NM', NOW())");
-            numeric = typeOfTestResultService.getTypeOfTestResultByType("N");
-        }
+        assertNotNull("Numeric result type must be provided by database migrations", numeric);
         jdbcTemplate.update(
                 "UPDATE clinlims.result_limits SET max_age = 'Infinity', test_result_type_id = ? WHERE id = 1",
                 Integer.valueOf(numeric.getId()));
-        ((org.openelisglobal.resultlimit.service.ResultLimitServiceImpl) org.springframework.test.util.AopTestUtils
-                .getTargetObject(resultLimitService)).initializeGlobalVariables();
         authenticateAs("testUser");
-        statusService.refreshCache();
-        ValidationLabUnitRoles.grantValidationOnAllLabUnits(jdbcTemplate, 9401);
-        // DisplayListService is a Mockito mock in the test profile (AppTestConfig), so
-        // the active-section list the filter consults has to be stubbed explicitly.
-        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
-        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
-                .thenReturn(List.of(new IdValuePair("1", "Environmental")));
+        userService.saveUserLabUnitRoles(systemUserService.get("1"), Map.of("AllLabUnits", Set.of("9400")), "1");
+        entityManager.flush();
+        entityManager.clear();
         session = buildValidatorSession();
         bulkFlagBefore = ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR);
         ConfigurationProperties.getInstance().setPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR, "true");
@@ -169,6 +165,8 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("bulkReleaseDisabled"));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(CLEAR_ID).getStatusId());
@@ -186,6 +184,8 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 .andExpect(jsonPath("$.skipped[0].reason").value("notClear"))
                 .andExpect(jsonPath("$.skipped[1].analysisId").value("999999"))
                 .andExpect(jsonPath("$.skipped[1].reason").value("notFound"));
+        entityManager.flush();
+        entityManager.clear();
 
         Analysis released = analysisService.get(CLEAR_ID);
         assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), released.getStatusId());
@@ -210,6 +210,8 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(ABNORMAL_ID, "", ""))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
                 .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+        entityManager.flush();
+        entityManager.clear();
 
         assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(ABNORMAL_ID).getStatusId());
@@ -222,5 +224,7 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
         mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"accessionNumber\":\"" + ACCESSION + "\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("noRows"));
+        entityManager.flush();
+        entityManager.clear();
     }
 }

@@ -6,6 +6,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,6 +30,7 @@ import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
 import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for the S-08 FR-04 validation QC acknowledgment flow: the
@@ -39,7 +42,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * client analysis (id=100) in TechnicalAcceptance and a BLANK QC analysis
  * (id=101) whose Result is pre-stamped {@code qc_evaluation=FAIL}.
  */
+@Transactional
 public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String ACCESSION = "VAL-QC-ACK-001";
     private static final String CLIENT_ANALYSIS_ID = "100";
@@ -105,6 +112,7 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     @Test
     public void persistdata_withoutAck_throwsQcAcknowledgmentRequiredException() {
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         assertNotNull(clientAnalysis);
 
         // Simulate the validation controller's transition to Finalized for the
@@ -138,6 +146,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("Reviewed — repeat passed");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
         // Confirm round-trip.
         List<ValidationQcAcknowledgment> persisted = qcAckDAO.findByAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
@@ -146,13 +156,12 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
 
         // Now the gate should let the release through.
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         clientAnalysis.setStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
         List<Analysis> analysisUpdateList = new ArrayList<>();
         analysisUpdateList.add(clientAnalysis);
 
-        // Should not throw — the gate is satisfied. Any other downstream errors
-        // (notification, sample finishing) would mask the gate result, so the
-        // assertion is just "no QcAcknowledgmentRequiredException".
+        // The acknowledged release must persist the client's status.
         try {
             resultValidationService.persistdata(Collections.emptyList(), analysisUpdateList, new ArrayList<Result>(),
                     new ArrayList<AnalysisItem>(), new ArrayList<Sample>(), new ArrayList<Note>(), null,
@@ -160,6 +169,10 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         } catch (QcAcknowledgmentRequiredException unexpected) {
             fail("Gate should pass once an ack row exists for the failed analysis");
         }
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized),
+                analysisService.get(CLIENT_ANALYSIS_ID).getStatusId());
     }
 
     @Test
@@ -171,9 +184,12 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("ack");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
         String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         clientAnalysis.setStatusId(finalizedId);
         clientAnalysis.setReleasedDate(new Timestamp(System.currentTimeMillis()));
         List<Analysis> analysisUpdateList = new ArrayList<>();
@@ -182,6 +198,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         resultValidationService.persistdata(Collections.emptyList(), analysisUpdateList, new ArrayList<Result>(),
                 new ArrayList<AnalysisItem>(), new ArrayList<Sample>(), new ArrayList<Note>(), null,
                 Collections.emptyList(), "1");
+        entityManager.flush();
+        entityManager.clear();
 
         // QC analysis must have flipped to Finalized with released_date NULL.
         Analysis qcAfter = analysisService.get(QC_ANALYSIS_ID);
@@ -202,6 +220,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("auditable note");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
         assertNotNull(ack.getId());
         var rows = historyService.getHistoryByRefIdAndRefTableId(ack.getId().toString(),
