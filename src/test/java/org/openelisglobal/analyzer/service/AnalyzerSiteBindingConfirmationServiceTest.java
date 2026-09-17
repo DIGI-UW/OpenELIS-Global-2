@@ -136,6 +136,27 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     }
 
     @Test
+    public void confirmsResolvedDecisionsWhileOtherRowsRemainUnresolved() throws Exception {
+        AnalyzerSiteBindingSnapshot base = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingTest pending = test(base.revision(), "PENDING", AnalyzerSiteBindingMappingState.UNRESOLVED);
+        AnalyzerSiteBindingSnapshot candidate = new AnalyzerSiteBindingSnapshot(base.binding(), base.revision(),
+                List.of(base.tests().get(0), base.tests().get(1), pending), base.results());
+
+        AnalyzerSiteBindingConfirmationView view = service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(),
+                "17");
+
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, view.state());
+        assertEquals(exactRequest().confirmedRows(), view.confirmedRows());
+        assertEquals(exactRequest().excludedRows(), view.excludedRows());
+        assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED, pending.getMappingState());
+        ArgumentCaptor<AnalyzerSiteBindingConfirmation> written = ArgumentCaptor
+                .forClass(AnalyzerSiteBindingConfirmation.class);
+        verify(confirmationDAO).insert(written.capture());
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(written.getValue()));
+        assertTrue(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).mappingsCurrent());
+    }
+
+    @Test
     public void rejectsUnresolvedOrOmittedSourceRowsBeforeWriting() {
         AnalyzerSiteBindingSnapshot unresolved = completeCandidate("61", BINDING_FINGERPRINT);
         unresolved.tests().get(0).setMappingState(AnalyzerSiteBindingMappingState.UNRESOLVED);

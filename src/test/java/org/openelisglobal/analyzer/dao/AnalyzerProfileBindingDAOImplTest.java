@@ -1,98 +1,124 @@
 package org.openelisglobal.analyzer.dao;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertTrue;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
-import java.util.Optional;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
+import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
-@RunWith(MockitoJUnitRunner.class)
-public class AnalyzerProfileBindingDAOImplTest {
-
-    @Mock
+/**
+ * PostgreSQL query discrimination; mapping decisions are exercised in
+ * AnalyzerMappingLifecycleIntegrationTest.
+ */
+@Transactional
+public class AnalyzerProfileBindingDAOImplTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private AnalyzerProfileBindingDAO dao;
+    @PersistenceContext
     private EntityManager entityManager;
 
-    @Mock
-    private Session session;
-
-    @Mock
-    private Query<AnalyzerProfileBinding> bindingQuery;
-
-    @Mock
-    private Query<Long> countQuery;
-
-    @Mock
-    private Query<Analyzer> analyzerQuery;
-
-    private AnalyzerProfileBindingDAOImpl dao;
+    private String profileId;
+    private String otherProfileId;
+    private AnalyzerProfileBinding firstRevision;
+    private AnalyzerProfileBinding secondRevision;
+    private AnalyzerProfileBinding otherProfile;
+    private String alpha;
+    private String beta;
+    private String zeta;
+    private String unrelated;
 
     @Before
-    public void setUp() {
-        dao = new AnalyzerProfileBindingDAOImpl();
-        ReflectionTestUtils.setField(dao, "entityManager", entityManager);
-        when(entityManager.unwrap(Session.class)).thenReturn(session);
+    public void createQueryFixtures() {
+        profileId = "query." + UUID.randomUUID();
+        otherProfileId = "query.other." + UUID.randomUUID();
+        firstRevision = profile(profileId, 1);
+        secondRevision = profile(profileId, 2);
+        otherProfile = profile(otherProfileId, 1);
+        AnalyzerSiteBinding firstBinding = binding(firstRevision);
+        alpha = analyzer("Alpha", revision(firstBinding, 1));
+        zeta = analyzer("zeta", revision(firstBinding, 2));
+        beta = analyzer("beta", revision(binding(secondRevision), 1));
+        unrelated = analyzer("Unrelated", revision(binding(otherProfile), 1));
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
-    public void findByProfileIdAndRevisionUsesExactImmutableIdentity() {
-        String hql = "FROM AnalyzerProfileBinding b WHERE b.profileId = :profileId "
-                + "AND b.profileRevision = :profileRevision";
-        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
-        when(session.createQuery(eq(hql), eq(AnalyzerProfileBinding.class))).thenReturn(bindingQuery);
-        when(bindingQuery.setParameter("profileId", "site.mock-hematology")).thenReturn(bindingQuery);
-        when(bindingQuery.setParameter("profileRevision", 3)).thenReturn(bindingQuery);
-        when(bindingQuery.getResultList()).thenReturn(List.of(binding));
-
-        Optional<AnalyzerProfileBinding> result = dao.findByProfileIdAndRevision(" site.mock-hematology ", 3);
-
-        assertSame(binding, result.orElseThrow());
-        verify(bindingQuery).setParameter("profileId", "site.mock-hematology");
-        verify(bindingQuery).setParameter("profileRevision", 3);
+    public void profileLookupRequiresBothExactProfileAndRevision() {
+        assertEquals(firstRevision.getId(),
+                dao.findByProfileIdAndRevision(" " + profileId + " ", 1).orElseThrow().getId());
+        assertEquals(secondRevision.getId(), dao.findByProfileIdAndRevision(profileId, 2).orElseThrow().getId());
+        assertEquals(otherProfile.getId(), dao.findByProfileIdAndRevision(otherProfileId, 1).orElseThrow().getId());
+        assertTrue(dao.findByProfileIdAndRevision(profileId, 3).isEmpty());
+        assertTrue(dao.findByProfileIdAndRevision("missing", 1).isEmpty());
     }
 
     @Test
-    public void countAnalyzersByBindingIdUsesAuthoritativeSiteBindingReference() {
-        String hql = "SELECT COUNT(a) FROM Analyzer a WHERE "
-                + "a.siteBindingRevision.siteBinding.profileBinding.id = :bindingId";
-        when(session.createQuery(eq(hql), eq(Long.class))).thenReturn(countQuery);
-        when(countQuery.setParameter("bindingId", "41")).thenReturn(countQuery);
-        when(countQuery.uniqueResult()).thenReturn(2L);
-
-        assertEquals(2L, dao.countAnalyzersByBindingId("41"));
-        verify(countQuery).setParameter("bindingId", "41");
+    public void countsOnlyAnalyzersWhoseSelectedMappingBelongsToTheRequestedProfileRevision() {
+        assertEquals(2L, dao.countAnalyzersByBindingId(firstRevision.getId()));
+        assertEquals(1L, dao.countAnalyzersByBindingId(secondRevision.getId()));
+        assertEquals(1L, dao.countAnalyzersByBindingId(otherProfile.getId()));
+        assertEquals(0L, dao.countAnalyzersByBindingId("0"));
     }
 
     @Test
-    public void findAnalyzersByProfileIdReturnsNamedReferencesAcrossPinnedRevisions() {
-        String hql = "SELECT a FROM Analyzer a " + "JOIN a.siteBindingRevision r " + "JOIN r.siteBinding s "
-                + "JOIN s.profileBinding b " + "WHERE b.profileId = :profileId " + "ORDER BY LOWER(a.name), a.id";
-        Analyzer first = new Analyzer();
-        first.setId("17");
-        first.setName("GeneXpert - Main Lab");
-        Analyzer second = new Analyzer();
-        second.setId("22");
-        second.setName("GeneXpert - TB Bench");
-        when(session.createQuery(eq(hql), eq(Analyzer.class))).thenReturn(analyzerQuery);
-        when(analyzerQuery.setParameter("profileId", "shipped.genexpert")).thenReturn(analyzerQuery);
-        when(analyzerQuery.getResultList()).thenReturn(List.of(first, second));
+    public void profileQueryIncludesBothPinnedRevisionsAndExcludesOtherProfiles() {
+        assertEquals(List.of(alpha, beta, zeta), ids(dao.findAnalyzersByProfileId(" " + profileId + " ")));
+        assertEquals(List.of(unrelated), ids(dao.findAnalyzersByProfileId(otherProfileId)));
+        assertTrue(dao.findAnalyzersByProfileId("missing").isEmpty());
+        assertTrue(dao.findAnalyzersByProfileId(null).isEmpty());
+    }
 
-        List<Analyzer> result = dao.findAnalyzersByProfileId(" shipped.genexpert ");
+    private AnalyzerProfileBinding profile(String id, int number) {
+        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
+        profile.setProfileId(id);
+        profile.setProfileRevision(number);
+        profile.setProfileFingerprint("sha256:" + "a".repeat(64));
+        entityManager.persist(profile);
+        return profile;
+    }
 
-        assertEquals(List.of(first, second), result);
-        verify(analyzerQuery).setParameter("profileId", "shipped.genexpert");
+    private AnalyzerSiteBinding binding(AnalyzerProfileBinding profile) {
+        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+        binding.setProfileBinding(profile);
+        binding.setCreatedBy(TEST_SYS_USER_ID);
+        entityManager.persist(binding);
+        return binding;
+    }
+
+    private AnalyzerSiteBindingRevision revision(AnalyzerSiteBinding binding, int number) {
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setSiteBinding(binding);
+        revision.setRevisionNumber(number);
+        revision.setBindingFingerprint("sha256:" + Integer.toHexString(number).repeat(64));
+        revision.setCreatedBy(TEST_SYS_USER_ID);
+        entityManager.persist(revision);
+        return revision;
+    }
+
+    private String analyzer(String name, AnalyzerSiteBindingRevision revision) {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setName(name);
+        analyzer.ensureFhirUuid();
+        analyzer.setSiteBindingRevision(revision);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+        analyzer.setActive(false);
+        entityManager.persist(analyzer);
+        return analyzer.getId();
+    }
+
+    private List<String> ids(List<Analyzer> analyzers) {
+        return analyzers.stream().map(Analyzer::getId).toList();
     }
 }

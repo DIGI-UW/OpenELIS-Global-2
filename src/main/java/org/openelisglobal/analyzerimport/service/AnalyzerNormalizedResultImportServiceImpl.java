@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
@@ -37,6 +39,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private final AnalyzerService analyzerService;
     private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerSiteBindingConfirmationService confirmationService;
     private final AnalyzerResultsService analyzerResultsService;
     private final TestResultService testResultService;
     private final QCResultProcessingService qcResultProcessingService;
@@ -46,7 +49,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
             AnalyzerSiteBindingService siteBindingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
-            FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO) {
+            FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
+            AnalyzerSiteBindingConfirmationService confirmationService) {
         this.analyzerService = analyzerService;
         this.siteBindingService = siteBindingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -54,6 +58,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.qcResultProcessingService = qcResultProcessingService;
         this.fhirContext = fhirContext;
         this.receiptDAO = receiptDAO;
+        this.confirmationService = confirmationService;
     }
 
     @Override
@@ -111,7 +116,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingSiteBinding",
                     "Analyzer has no profile-scoped site binding");
         }
-        AnalyzerSiteBindingSnapshot binding = siteBindingService.findCurrentByProfileBindingId(profileBinding.getId())
+        AnalyzerSiteBindingSnapshot binding = siteBindingService
+                .findByRevisionId(analyzer.getSiteBindingRevision().getId())
                 .orElseThrow(() -> new AnalyzerNormalizedResultImportException(
                         "analyzer.fhirImport.error.missingSiteBinding", "Analyzer site binding does not exist"));
         Map<String, AnalyzerSiteBindingTest> testsBySource = binding.tests().stream()
@@ -120,14 +126,21 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .toMap(row -> new ResultKey(row.getId().getSourceRowKey(), row.getId().getRawValue()), row -> row));
         Set<String> sourcesWithResultMappings = binding.results().stream().map(row -> row.getId().getSourceRowKey())
                 .collect(Collectors.toSet());
-        return contract.results().stream().map(result -> toStagedResult(contract, result, analyzer, testsBySource,
-                resultsBySource, sourcesWithResultMappings)).flatMap(Optional::stream).toList();
+        Map<String, Boolean> confirmedByRecognition = new HashMap<>();
+        return contract.results().stream().map(result -> {
+            boolean confirmed = confirmedByRecognition.computeIfAbsent(result.recognitionFingerprint(),
+                    fingerprint -> confirmationService.assessCurrent(binding, fingerprint).currentConfirmation()
+                            .isPresent());
+            return toStagedResult(contract, result, analyzer, testsBySource, resultsBySource, sourcesWithResultMappings,
+                    confirmed);
+        }).flatMap(Optional::stream).toList();
     }
 
     private Optional<AnalyzerResults> toStagedResult(AnalyzerNormalizedResultContract contract,
             AnalyzerNormalizedResultContract.Result result, Analyzer analyzer,
             Map<String, AnalyzerSiteBindingTest> testsBySource,
-            Map<ResultKey, AnalyzerSiteBindingResult> resultsBySource, Set<String> sourcesWithResultMappings) {
+            Map<ResultKey, AnalyzerSiteBindingResult> resultsBySource, Set<String> sourcesWithResultMappings,
+            boolean mappingConfirmed) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(analyzer.getId());
         row.setAccessionNumber(result.accessionNumber());
@@ -141,6 +154,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setLotNumber(result.lotNumber());
         row.setControlLevel(result.controlLevel());
         copySourceContext(row, contract, result);
+        if (!mappingConfirmed) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
+            return Optional.of(row);
+        }
 
         AnalyzerSiteBindingTest testMapping = testsBySource.get(result.rawTestCode());
         if (testMapping == null) {

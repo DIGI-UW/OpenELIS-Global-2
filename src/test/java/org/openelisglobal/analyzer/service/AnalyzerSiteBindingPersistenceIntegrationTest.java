@@ -4,37 +4,51 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import javax.sql.DataSource;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingConfirmationDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingResultDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingRevisionDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
+import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
@@ -43,11 +57,20 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * Local services and transactions run for real; only Bridge HTTP responses are
+ * substituted.
+ */
+@ContextConfiguration(classes = AnalyzerSiteBindingPersistenceIntegrationTest.BridgeTransportConfig.class)
+@TestPropertySource(properties = "analyzer.bridge.url=http://bridge.test")
 public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String PROFILE_FINGERPRINT = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -78,19 +101,10 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     private AnalyzerSiteBindingRevisionDAO revisionDAO;
 
     @Autowired
-    private AnalyzerSiteBindingTestDAO siteBindingTestDAO;
-
-    @Autowired
-    private AnalyzerSiteBindingResultDAO siteBindingResultDAO;
-
-    @Autowired
     private AnalyzerSiteBindingConfirmationDAO confirmationDAO;
 
     @Autowired
     private HistoryService historyService;
-
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
 
     @Autowired
     private DataSource dataSource;
@@ -101,56 +115,105 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private AnalyzerSiteBindingService siteBindingService;
+    @Autowired
+    private AnalyzerSiteBindingConfirmationService confirmationService;
+    @Autowired
+    private AnalyzerActivationRecordService activationRecordService;
+    @Autowired
+    private TestService testService;
+    @Autowired
+    private TestResultService testResultService;
+    @Autowired
+    private SystemUserService systemUserService;
+    @Autowired
+    private DictionaryService dictionaryService;
+    @Autowired
+    private DictionaryCategoryService dictionaryCategoryService;
+
+    @Autowired
+    private AnalyzerActivationService activationService;
+    @Autowired
+    private AnalyzerConnectionProbeService probeService;
+    @Autowired
+    private BridgeHttpClient bridgeHttpClient;
+    @Autowired
+    private TestSectionService testSectionService;
+    @Autowired
+    private LocalizationService localizationService;
+
+    // A lite configuration registered only by this test. It is deliberately not
+    // a component-scanned @Configuration, so other suites retain their own HTTP
+    // boundary.
+    public static class BridgeTransportConfig {
+        @Bean
+        @Primary
+        public BridgeHttpClient persistenceBridgeHttpClient() {
+            return mock(BridgeHttpClient.class);
+        }
+    }
+
+    private Map<String, Integer> initialCounts;
+
+    @Before
+    public void prepareExternalTransportAndSnapshotOwnedTables() {
+        reset(bridgeHttpClient);
+        initialCounts = fixtureTableCounts();
+    }
+
+    @After
+    public void verifyFixtureCleanup() {
+        reset(bridgeHttpClient);
+        assertEquals("Persistence tests must leave no owned records or history behind", initialCounts,
+                fixtureTableCounts());
+    }
+
+    private Map<String, Integer> fixtureTableCounts() {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String table : List.of("analyzer", "analyzer_profile_binding", "analyzer_site_binding",
+                "analyzer_site_binding_revision", "analyzer_site_binding_test", "analyzer_site_binding_result",
+                "analyzer_site_binding_confirmation", "analyzer_activation_record", "system_user", "test",
+                "test_result", "dictionary", "dictionary_category", "test_section", "localization", "qc_control_lot",
+                "qc_statistics", "westgard_rule_config", "history")) {
+            counts.put(table, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims." + table, Integer.class));
+        }
+        return counts;
+    }
+
     @Test
     public void savedCatalogBindingsAndConfirmationReloadFromPostgres() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
-            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            String testId = jdbc.queryForObject("SELECT nextval('test_seq')", Long.class).toString();
-            String resultOptionId = jdbc.queryForObject("SELECT nextval('test_result_seq')", Long.class).toString();
-            jdbc.update(
-                    "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
-                            + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
-                    Long.valueOf(testId), "Analyzer binding persistence test", "Analyzer binding persistence test",
-                    UUID.randomUUID());
-            jdbc.update("INSERT INTO test_result (id, test_id, tst_rslt_type, value, sort_order, is_active, "
-                    + "is_normal, lastupdated) VALUES (?, ?, 'D', 'POSITIVE', 1, TRUE, TRUE, CURRENT_TIMESTAMP)",
-                    Long.valueOf(resultOptionId), Long.valueOf(testId));
-
-            org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
-            test.setId(testId);
-            test.setIsActive("Y");
+            org.openelisglobal.test.valueholder.Test test = createTest("Analyzer binding persistence test");
+            String testId = test.getId();
+            DictionaryCategory category = new DictionaryCategory();
+            category.setCategoryName("Persistence result values");
+            category.setDescription("Owned by the persistence test");
+            category.setLocalAbbreviation("PERSIST");
+            category.setSysUserId(TEST_SYS_USER_ID);
+            dictionaryCategoryService.insert(category);
+            Dictionary positive = new Dictionary();
+            positive.setDictionaryCategory(category);
+            positive.setDictEntry("Positive");
+            positive.setIsActive("Y");
+            positive.setSysUserId(TEST_SYS_USER_ID);
+            dictionaryService.insert(positive);
             TestResult resultOption = new TestResult();
-            resultOption.setId(resultOptionId);
-            resultOption.setIsActive(true);
-            resultOption.setTestResultType("D");
             resultOption.setTest(test);
-
-            TestService testService = mock(TestService.class);
-            TestResultService testResultService = mock(TestResultService.class);
-            SystemUserService systemUserService = mock(SystemUserService.class);
-            AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class);
+            resultOption.setTestResultType("D");
+            resultOption.setValue(positive.getId());
+            resultOption.setIsActive(true);
+            resultOption.setSysUserId(TEST_SYS_USER_ID);
+            String resultOptionId = testResultService.insert(resultOption);
             SystemUser actor = new SystemUser();
-            actor.setId(TEST_SYS_USER_ID);
+            actor.setLoginName("reviewer-" + UUID.randomUUID().toString().substring(0, 12));
             actor.setFirstName("Integration");
             actor.setLastName("Reviewer");
-            when(testService.get(testId)).thenReturn(test);
-            when(testResultService.get(resultOptionId)).thenReturn(resultOption);
-            when(systemUserService.getUserById(TEST_SYS_USER_ID)).thenReturn(actor);
-            when(mappingCatalogService.searchActiveTests(null))
-                    .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption(testId,
-                            "Analyzer binding persistence test", "TEST", List.of())));
-            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(
-                    List.of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive")));
-
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
-            AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
-                    revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService,
-                    testResultService);
-            AnalyzerSiteBindingConfirmationService confirmationService = new AnalyzerSiteBindingConfirmationServiceImpl(
-                    confirmationDAO, auditTrailService, systemUserService, mappingCatalogService);
+            actor.setIsActive("Y");
+            actor.setIsEmployee("Y");
+            actor.setSysUserId(TEST_SYS_USER_ID);
+            String reviewerId = systemUserService.insert(actor);
 
             String profileId = "site.persistence." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
@@ -174,7 +237,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                     List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null),
                             new AnalyzerSiteBindingSourceRow("RAW-A", "POS")),
                     List.of());
-            confirmationService.confirm(saved, RECOGNITION_FINGERPRINT, request, TEST_SYS_USER_ID);
+            confirmationService.confirm(saved, RECOGNITION_FINGERPRINT, request, reviewerId);
             var storedVerification = confirmationDAO.findByRevisionId(saved.revision().getId()).orElseThrow();
 
             Analyzer analyzer = new Analyzer();
@@ -186,8 +249,6 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             analyzer.setSysUserId(TEST_SYS_USER_ID);
             analyzerDAO.insert(analyzer);
 
-            AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
-                    activationRecordDAO, auditTrailService);
             ObjectNode firstAcknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-1", 1);
             var firstRecord = activationRecordService.retain(analyzer, saved.revision(), storedVerification,
                     firstAcknowledgement, "ACTIVE", TEST_SYS_USER_ID);
@@ -216,7 +277,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmation.state());
             assertEquals(PROFILE_FINGERPRINT, storedConfirmation.getProfileRevisionFingerprint());
             assertNotNull(storedConfirmation.getAuditEventId());
-            assertEquals(TEST_SYS_USER_ID, confirmation.confirmedBy());
+            assertEquals(reviewerId, confirmation.confirmedBy());
+            assertEquals(reviewerId, historyService.get(storedConfirmation.getAuditEventId()).getSysUserId());
             assertEquals("Integration Reviewer", confirmation.confirmedByDisplayName());
             assertNotNull(confirmation.confirmedAt());
             assertEquals(request.confirmedRows(), confirmation.confirmedRows());
@@ -237,13 +299,6 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     public void sharedMappingCanReturnToTheContentOfAnEarlierRevision() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
-            AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
-                    revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, mock(TestService.class),
-                    mock(TestResultService.class));
-
             String profileId = "site.revert." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
             profileBinding.setProfileId(profileId);
@@ -334,6 +389,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         } finally {
             transaction.executeWithoutResult(status -> {
                 JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM history WHERE reference_id = ? AND reference_table = "
+                        + "(SELECT id FROM reference_tables WHERE name = 'analyzer')", fixture.analyzerId());
                 jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
                 jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
                         Long.valueOf(fixture.revisionId()));
@@ -389,6 +446,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         } finally {
             transaction.executeWithoutResult(status -> {
                 JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM history WHERE reference_id = ? AND reference_table = "
+                        + "(SELECT id FROM reference_tables WHERE name = 'analyzer')", fixture.analyzerId());
                 jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
                 jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
                         Long.valueOf(fixture.reviewedRevisionId()));
@@ -436,14 +495,16 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         });
 
         try {
-            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
             ObjectNode connection = probeDocument(fixture, false);
             ObjectNode evidence = probeDocument(fixture, true);
-            when(bridgeClient.getConnection(fixture.connectionId())).thenReturn(connection);
-            when(bridgeClient.probe(fixture.connectionId(), 1, "probe-after-transaction")).thenReturn(evidence);
-            AnalyzerConnectionProbeService probeService = new AnalyzerConnectionProbeService(analyzerService,
-                    bridgeClient, () -> "probe-after-transaction");
-
+            stubGet(connectionUrl(fixture.connectionId()), connection);
+            stubPost(connectionUrl(fixture.connectionId()) + "/probe", request -> {
+                assertEquals("1.0", request.path("schemaVersion").asText());
+                assertEquals(fixture.connectionId(), request.path("connectionId").asText());
+                assertEquals(1, request.path("expectedConfigRevision").asInt());
+                UUID.fromString(request.path("requestId").asText());
+                return evidence.deepCopy().put("requestId", request.path("requestId").asText());
+            });
             AnalyzerConnectionProbeView result = probeService.probe(fixture.analyzerId());
 
             assertEquals("SUCCEEDED", result.status());
@@ -451,6 +512,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         } finally {
             transaction.executeWithoutResult(status -> {
                 JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM history WHERE reference_id = ? AND reference_table = "
+                        + "(SELECT id FROM reference_tables WHERE name = 'analyzer')", fixture.analyzerId());
                 jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
                 jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
                         Long.valueOf(fixture.revisionId()));
@@ -465,90 +528,41 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     public void activationAndDeactivationPersistExactBridgeAcknowledgementsWithoutChangingTheLoadedVersion() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
-            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            String qcTestId = jdbc.queryForObject("SELECT nextval('test_seq')", Long.class).toString();
-            jdbc.update(
-                    "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
-                            + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
-                    Long.valueOf(qcTestId), "Analyzer activation QC independence test",
-                    "Analyzer activation QC independence test", UUID.randomUUID());
-
-            String profileId = "site.activation." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerSiteBindingRevision revision = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
-            AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
-            confirmation.setSiteBindingRevision(revision);
-            confirmation.setProfileId(profileId);
-            confirmation.setProfileRevision(1);
-            confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
-            confirmation.setBindingFingerprint(revision.getBindingFingerprint());
-            confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
-            confirmation.setConfirmedRowsJson("[]");
-            confirmation.setExcludedRowsJson("[]");
-            confirmation.setConfirmedBy(TEST_SYS_USER_ID);
-            confirmation.setSysUserId(TEST_SYS_USER_ID);
-            confirmationDAO.insert(confirmation);
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Activation persistence test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(revision);
-            analyzer.setTestUnitIds(List.of("1"));
-            analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
+            String qcTestId = createTest("Analyzer activation QC independence test").getId();
+            AnalyzerInstanceRequest request = new AnalyzerInstanceRequest();
+            request.setName("Activation persistence test");
+            request.setProfileId(AnalyzerTestProfileCatalog.PROFILE_ID);
+            request.setProfileRevision(AnalyzerTestProfileCatalog.PROFILE_REVISION);
+            request.setTestUnitIds(List.of(createLabUnit()));
+            AnalyzerInstanceState created = analyzerInstanceLocalStateService.create(request, TEST_SYS_USER_ID);
+            analyzerInstanceLocalStateService.attachBridgeConnection(created.analyzerId(),
+                    "bridge-" + UUID.randomUUID(), TEST_SYS_USER_ID);
+            Analyzer analyzer = analyzerService.getWithBinding(created.analyzerId()).orElseThrow();
+            AnalyzerProfileBinding profileBinding = analyzer.getPinnedProfileBinding();
+            AnalyzerSiteBindingRevision revision = analyzer.getSiteBindingRevision();
+            AnalyzerSiteBindingSnapshot snapshot = siteBindingService.findByRevisionId(revision.getId()).orElseThrow();
+            confirmationService.confirm(snapshot, AnalyzerTestProfileCatalog.RECOGNITION_FINGERPRINT,
+                    new AnalyzerSiteBindingConfirmationRequest(revision.getBindingFingerprint(),
+                            AnalyzerTestProfileCatalog.RECOGNITION_FINGERPRINT, List.of(), List.of()),
+                    TEST_SYS_USER_ID);
             entityManager.flush();
             entityManager.clear();
 
-            AnalyzerSiteBindingSnapshot snapshot = new AnalyzerSiteBindingSnapshot(binding, revision, List.of(),
-                    List.of());
-            BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
-            AnalyzerSiteBindingService siteBindingService = mock(AnalyzerSiteBindingService.class);
-            AnalyzerSiteBindingConfirmationService confirmationService = mock(
-                    AnalyzerSiteBindingConfirmationService.class);
-            TestSectionService testSectionService = mock(TestSectionService.class);
-            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
-            when(profileCatalogService.getProfile(profileId, 1)).thenReturn(
-                    new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
-                            new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
-                                    "No automated control recognition", true, List.of())));
-            when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(java.util.Optional.of(snapshot));
-            when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                    .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(confirmation));
-            TestSection activeUnit = new TestSection();
-            activeUnit.setId("1");
-            activeUnit.setIsActive("Y");
-            when(testSectionService.get("1")).thenReturn(activeUnit);
-
-            ObjectNode connection = connectionDocument(analyzer, profileBinding);
-            ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-persistence", 1);
-            when(bridgeClient.getConnection(analyzer.getBridgeConnectionId())).thenReturn(connection);
-            when(bridgeClient.applyRuntimeCommand(analyzer.getBridgeConnectionId(), 1, "ACTIVATE",
-                    "activate-persistence")).thenReturn(acknowledgement);
-
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
-            AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
-                    activationRecordDAO, auditTrailService);
-            AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
-                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
-                    activationRecordService, java.time.Clock.systemUTC(), () -> "activate-persistence",
-                    () -> "deactivate-persistence");
+            stubGet(connectionUrl(analyzer.getBridgeConnectionId()), connectionDocument(analyzer, profileBinding));
+            List<ObjectNode> acknowledgements = new ArrayList<>();
+            stubPost(connectionUrl(analyzer.getBridgeConnectionId()) + "/runtime", command -> {
+                assertEquals("1.0", command.path("schemaVersion").asText());
+                assertEquals(analyzer.getBridgeConnectionId(), command.path("connectionId").asText());
+                assertEquals(1, command.path("expectedConfigRevision").asInt());
+                String action = acknowledgements.isEmpty() ? "ACTIVATE" : "DEACTIVATE";
+                assertEquals(action, command.path("action").asText());
+                UUID.fromString(command.path("commandId").asText());
+                ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, profileBinding,
+                        command.path("commandId").asText(), action, "ACTIVATE".equals(action) ? "ACTIVE" : "INACTIVE",
+                        acknowledgements.size() + 1);
+                acknowledgements.add(acknowledgement);
+                return acknowledgement;
+            });
 
             AnalyzerActivationResult readinessBeforeQc = activationService.readiness(analyzer.getId());
             String confirmationIdBeforeQc = confirmationDAO.findByRevisionId(revision.getId()).orElseThrow().getId();
@@ -583,11 +597,6 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertTrue(reloaded.isActive());
             assertNotNull(reloaded.getLatestActivationRecord());
 
-            ObjectNode deactivationAcknowledgement = runtimeAcknowledgement(reloaded, profileBinding,
-                    "deactivate-persistence", "DEACTIVATE", "INACTIVE", 2);
-            when(bridgeClient.applyRuntimeCommand(reloaded.getBridgeConnectionId(), 1, "DEACTIVATE",
-                    "deactivate-persistence")).thenReturn(deactivationAcknowledgement);
-
             AnalyzerDeactivationResult deactivation = activationService.deactivate(reloaded.getId(), TEST_SYS_USER_ID);
             entityManager.flush();
             entityManager.clear();
@@ -596,9 +605,65 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertTrue(deactivation.deactivated());
             assertEquals(Analyzer.AnalyzerStatus.INACTIVE, deactivated.getStatus());
             assertFalse(deactivated.isActive());
-            assertEquals(2, activationRecordDAO.findByAnalyzerId(analyzer.getId()).size());
+            var retained = activationRecordDAO.findByAnalyzerId(analyzer.getId());
+            assertEquals(2, acknowledgements.size());
+            assertEquals(2, retained.size());
+            assertEquals(acknowledgements.get(0), parseJson(retained.get(0).getRuntimeAcknowledgementJson()));
+            assertEquals(acknowledgements.get(1), parseJson(retained.get(1).getRuntimeAcknowledgementJson()));
             status.setRollbackOnly();
         });
+    }
+
+    private String createLabUnit() {
+        Localization localization = new Localization();
+        localization.setDescription("test section name");
+        localization.setLocalizedValue("en", "Activation persistence");
+        localization.setSysUserId(TEST_SYS_USER_ID);
+        localizationService.insert(localization);
+        TestSection unit = new TestSection();
+        unit.setLocalization(localization);
+        unit.setTestSectionName("Activation test");
+        unit.setDescription("Owned by the activation persistence test");
+        unit.setIsActive("Y");
+        unit.setSysUserId(TEST_SYS_USER_ID);
+        return testSectionService.insert(unit);
+    }
+
+    private static String connectionUrl(String connectionId) {
+        return "http://bridge.test/api/connections/" + connectionId;
+    }
+
+    private void stubGet(String url, ObjectNode response) {
+        try {
+            when(bridgeHttpClient.get(eq(url), eq(Duration.ofSeconds(10))))
+                    .thenReturn(new BridgeHttpClient.BridgeResponse(200, response.toString()));
+        } catch (IOException exception) {
+            throw new AssertionError("Cannot configure external transport fixture", exception);
+        }
+    }
+
+    private void stubPost(String url, Function<ObjectNode, ObjectNode> response) {
+        try {
+            // Command/request IDs are generated by the real service. The callback
+            // validates the complete request before returning matching evidence.
+            when(bridgeHttpClient.post(eq(url), argThat(body -> body != null), eq(Duration.ofSeconds(10))))
+                    .thenAnswer(call -> new BridgeHttpClient.BridgeResponse(200,
+                            response.apply(parseJson(call.getArgument(1))).toString()));
+        } catch (IOException exception) {
+            throw new AssertionError("Cannot configure external transport fixture", exception);
+        }
+    }
+
+    private org.openelisglobal.test.valueholder.Test createTest(String description) {
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setName(description);
+        test.setDescription(description);
+        test.setGuid(UUID.randomUUID().toString());
+        test.setIsActive("Y");
+        test.setIsReportable("Y");
+        test.setSysUserId(TEST_SYS_USER_ID);
+        testService.insert(test);
+        return test;
     }
 
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
@@ -688,6 +753,11 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         connection.put("schemaVersion", "1.0");
         connection.put("connectionId", analyzer.getBridgeConnectionId());
         connection.put("clientAnalyzerId", analyzer.getId());
+        connection.put("displayName", analyzer.getName());
+        connection.putArray("fields");
+        connection.put("desiredRuntimeState", "INACTIVE");
+        connection.put("actualRuntimeState", "INACTIVE");
+        connection.put("updatedAt", "2026-08-25T16:00:00Z");
         connection.putObject("profileRef").put("profileId", profile.getProfileId())
                 .put("revision", profile.getProfileRevision()).put("fingerprint", profile.getProfileFingerprint());
         connection.put("configRevision", 1);
@@ -704,6 +774,12 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             document.put("requestId", "probe-after-transaction");
         } else {
             document.put("clientAnalyzerId", fixture.analyzerId());
+            document.put("displayName", "Connection probe persistence test");
+            document.putArray("fields");
+            document.put("desiredRuntimeState", "INACTIVE");
+            document.put("actualRuntimeState", "INACTIVE");
+            document.put("updatedAt", "2026-08-25T16:00:00Z");
+            document.putObject("readiness").put("ready", true).putArray("blockers");
         }
         document.putObject("profileRef").put("profileId", fixture.profileId()).put("revision", 1).put("fingerprint",
                 PROFILE_FINGERPRINT);

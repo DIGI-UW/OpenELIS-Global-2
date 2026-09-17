@@ -83,19 +83,19 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision) {
+    public List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision) {
         try {
-            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason = :reason "
+            String hql = "FROM AnalyzerResults a WHERE a.isReadOnly = true AND a.importIssueReason IN (:reasons) "
                     + "AND a.sourceProfileId = :profileId AND a.sourceProfileRevision = :profileRevision "
                     + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
-            query.setParameter("reason", AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+            query.setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES);
             query.setParameter("profileId", profileId);
             query.setParameter("profileRevision", profileRevision);
             return query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error finding held analyzer result values", e);
+            throw new LIMSRuntimeException("Error finding held analyzer mapping results", e);
         }
     }
 
