@@ -49,7 +49,7 @@
         <sql>
             ALTER TABLE clinlims.qi_config
             ADD CONSTRAINT qi_config_indicator_chk
-            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE'))
+            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK'))
         </sql>
 
         <addForeignKeyConstraint
@@ -96,23 +96,27 @@
         </rollback>
     </changeSet>
 
-    <!-- Shipped default config for the 4 dashboard indicators (prod baseline, not
-         dev data): every install must boot with the indicators enabled and sane
-         defaults, exactly as qa/004 seeds the permission model. NCE ships without
-         numeric thresholds until OGC-712 defines its bands. -->
+    <!-- Shipped default config for the five dashboard indicators (prod baseline,
+         not dev data): every install must boot with the indicators configured and
+         sane defaults, exactly as qa/004 seeds the permission model. NCE ships
+         without numeric thresholds until its bands are defined. -->
     <changeSet author="openelisglobal" id="qi-config-003-seed-default-indicators">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.qi_config WHERE indicator_key = 'TAT' AND test_category_id IS NULL</sqlCheck>
         </preConditions>
-        <comment>Seed default rows for TAT, REJECTION, AMENDMENT, NCE. last_updated (the
+        <comment>Seed default rows for TAT, REJECTION, AMENDMENT, NCE, CALLBACK. last_updated (the
         BaseObject @Version column) MUST be set non-null, else Hibernate treats a
         seeded row as stale/unsaved on the first optimistic-locked update.</comment>
+        <!-- TAT thresholds are mean-TAT HOURS, LOWER_BETTER (matching QiIndicator):
+             every TAT surface computes a mean duration. An on-time compliance %
+             would need the per-test targets in test.time_ta_*, which are
+             unpopulated and have no admin UI. -->
         <insert schemaName="clinlims" tableName="qi_config">
             <column name="id" valueSequenceNext="qi_config_id_seq"/>
             <column name="indicator_key" value="TAT"/>
             <column name="is_enabled" valueBoolean="true"/>
-            <column name="target_threshold" valueNumeric="90"/>
-            <column name="action_threshold" valueNumeric="80"/>
+            <column name="target_threshold" valueNumeric="24"/>
+            <column name="action_threshold" valueNumeric="48"/>
             <column name="lastupdated" valueDate="now()"/>
             <column name="last_updated" valueDate="now()"/>
         </insert>
@@ -141,9 +145,21 @@
             <column name="lastupdated" valueDate="now()"/>
             <column name="last_updated" valueDate="now()"/>
         </insert>
+        <!-- CALLBACK ships DISABLED: critical-callback compliance is an opt-in
+             programme a lab turns on in the QI Configuration page. Targets follow
+             "every one, every time": target 100%, action 95%. -->
+        <insert schemaName="clinlims" tableName="qi_config">
+            <column name="id" valueSequenceNext="qi_config_id_seq"/>
+            <column name="indicator_key" value="CALLBACK"/>
+            <column name="is_enabled" valueBoolean="false"/>
+            <column name="target_threshold" valueNumeric="100"/>
+            <column name="action_threshold" valueNumeric="95"/>
+            <column name="lastupdated" valueDate="now()"/>
+            <column name="last_updated" valueDate="now()"/>
+        </insert>
         <rollback>
             <delete schemaName="clinlims" tableName="qi_config">
-                <where>indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE') AND test_category_id IS NULL</where>
+                <where>indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK') AND test_category_id IS NULL</where>
             </delete>
         </rollback>
     </changeSet>

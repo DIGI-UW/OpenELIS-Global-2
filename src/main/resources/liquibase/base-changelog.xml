@@ -52,20 +52,15 @@
 
   <include file="liquibase/qa/006-add-capa-register-menu.xml" />
 
-  <!-- QI configuration (OGC-709) -->
+  <!-- QI configuration and its indicator defaults (OGC-709/710/714) -->
   <include file="liquibase/qa/007-create-qi-config-table.xml" />
 
   <!-- Critical callback capture (OGC-714) -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
-  <include file="liquibase/qa/009-add-callback-qi-indicator.xml" />
 
-  <!-- OGC-710: TAT thresholds become duration (hours) -->
-  <include file="liquibase/qa/010-tat-duration-thresholds.xml" />
-
-  <!-- OGC-710: index for the rejection cohort queries -->
+  <!-- Indexes for the QI cohort queries: started_date (rejection) and
+       released_date (amendment, TAT, callback — polled by the evaluator) -->
   <include file="liquibase/qa/011-analysis-started-date-index.xml" />
-
-  <!-- OGC-714: index for the released-cohort QI queries (polled) -->
   <include file="liquibase/qa/012-analysis-released-date-index.xml" />
 
   <!-- OGC-686: accrediting bodies + per-test accreditation -->

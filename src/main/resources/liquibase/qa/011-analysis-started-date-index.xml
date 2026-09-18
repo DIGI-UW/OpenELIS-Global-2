@@ -13,6 +13,11 @@
     range scan instead of a full-table scan.
     -->
     <changeSet author="openelisglobal" id="qi-rejection-001-analysis-started-date-index">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date"/>
+            </not>
+        </preConditions>
         <comment>Index analysis.started_date for the rejection cohort queries</comment>
         <createIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date">
             <column name="started_date" />

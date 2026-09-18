@@ -200,28 +200,7 @@
         </insert>
     </changeSet>
 
-    <!-- Rehome existing EQA menu group under Quality Assurance -->
-    <changeSet author="openelisglobal" id="qa-010-rehome-menu-eqa">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa'
-            </sqlCheck>
-        </preConditions>
-        <comment>Moves the existing EQA menu group under Quality Assurance</comment>
-        <sql>
-            UPDATE clinlims.menu
-            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa'),
-                presentation_order = 30
-            WHERE element_id = 'menu_eqa';
-        </sql>
-        <rollback>
-            <sql>
-                UPDATE clinlims.menu SET parent_id = NULL WHERE element_id = 'menu_eqa';
-            </sql>
-        </rollback>
-    </changeSet>
-
-    <!-- Quality Indicators pillar (placeholder until v1 MVP) -->
+    <!-- Quality Indicators pillar -->
     <changeSet author="openelisglobal" id="qa-011-add-menu-qa-qi">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
@@ -234,7 +213,8 @@
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa')" />
             <column name="presentation_order" value="40" />
             <column name="element_id" value="menu_qa_qi" />
-            <column name="action_url" value="/qa/qi" />
+            <!-- expand-only parent: its children carry the routes -->
+            <column name="action_url" value="" />
             <column name="display_key" value="sideNav.label.qa.qi" />
             <column name="tool_tip_key" value="sideNav.label.qa.qi" />
             <column name="new_window" valueBoolean="false" />
