@@ -151,6 +151,9 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "kit_test_type", length = 50)
     private String kitTestType; // HIV, SYPHILIS, etc.
 
+    @Column(name = "last_counted_at")
+    private Timestamp lastCountedAt;
+
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";
 
