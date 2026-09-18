@@ -5,6 +5,7 @@ import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +25,7 @@ public class SiteInformationConfigurationHandlerTest {
     @Before
     public void setUp() {
         siteInformationService = mock(SiteInformationService.class);
-        siteInformationDomainService = mock(SiteInformationDomainService.class);
+        siteInformationDomainService = mock(SiteInformationDomainService.class, withSettings().withoutAnnotations());
         handler = new SiteInformationConfigurationHandler();
         ReflectionTestUtils.setField(handler, "siteInformationService", siteInformationService);
         ReflectionTestUtils.setField(handler, "siteInformationDomainService", siteInformationDomainService);

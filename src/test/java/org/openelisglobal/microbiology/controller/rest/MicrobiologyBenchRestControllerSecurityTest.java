@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -106,17 +107,17 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
 
         @Bean
         MicroCaseTimelineService microCaseTimelineService() {
-            return mock(MicroCaseTimelineService.class);
+            return mock(MicroCaseTimelineService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         MicroReportReleaseService microReportReleaseService() {
-            return mock(MicroReportReleaseService.class);
+            return mock(MicroReportReleaseService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         MicroReportProjectionService microReportProjectionService() {
-            return mock(MicroReportProjectionService.class);
+            return mock(MicroReportProjectionService.class, withSettings().withoutAnnotations());
         }
 
         @Bean

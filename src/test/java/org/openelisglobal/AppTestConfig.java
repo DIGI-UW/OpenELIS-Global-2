@@ -3,6 +3,7 @@ package org.openelisglobal;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -206,7 +207,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public WHONetReportService whonetReportService() {
-        return mock(WHONetReportService.class);
+        return mock(WHONetReportService.class, withSettings().withoutAnnotations());
     }
 
     @Bean
@@ -228,7 +229,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public TruststoreService truststoreService() {
-        return mock(TruststoreService.class);
+        return mock(TruststoreService.class, withSettings().withoutAnnotations());
     }
 
     @Bean()
@@ -258,13 +259,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("test")
     public TestNotificationConfigService testNotificationConfigService() {
-        return mock(TestNotificationConfigService.class);
+        return mock(TestNotificationConfigService.class, withSettings().withoutAnnotations());
     }
 
     @Bean()
     @Profile("test")
     public TestNotificationService testNotificationService() {
-        return mock(TestNotificationService.class);
+        return mock(TestNotificationService.class, withSettings().withoutAnnotations());
     }
 
     @Bean()
@@ -276,7 +277,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("test")
     public AnalysisNotificationConfigService analysisNotificationConfigService() {
-        return mock(AnalysisNotificationConfigService.class);
+        return mock(AnalysisNotificationConfigService.class, withSettings().withoutAnnotations());
     }
 
     @Bean()
@@ -401,13 +402,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("Test")
     public RequesterTypeService RequesterTypeService() {
-        return mock(RequesterTypeService.class);
+        return mock(RequesterTypeService.class, withSettings().withoutAnnotations());
     }
 
     @Bean()
     @Profile("Test")
     public OrganizationTypeService OrganizationTypeService() {
-        return mock(OrganizationTypeService.class);
+        return mock(OrganizationTypeService.class, withSettings().withoutAnnotations());
     }
 
     @Override

@@ -1,6 +1,7 @@
 package org.openelisglobal.dataexport.controller.rest;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -102,7 +103,8 @@ public class DataExportStatusRestControllerSecurityTest extends SecuritySliceMoc
 
         @Bean
         DataExportStatusViewService dataExportStatusViewService() {
-            DataExportStatusViewService service = mock(DataExportStatusViewService.class);
+            DataExportStatusViewService service = mock(DataExportStatusViewService.class,
+                    withSettings().withoutAnnotations());
             org.mockito.Mockito.when(service.getAllStatuses()).thenReturn(List.of());
             org.mockito.Mockito.when(service.getAttemptsForTask(org.mockito.ArgumentMatchers.anyLong(),
                     org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
