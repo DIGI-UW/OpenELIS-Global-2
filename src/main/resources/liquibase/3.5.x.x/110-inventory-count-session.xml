@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-count-session.xml">
+
+    <!--
+    OGC-438: a physical count, and the two things it leaves behind.
+
+    There is no count session table here on purpose. inventory_transaction already carries a
+    (reference_id, reference_type) pair for exactly this job — it is indexed as a pair, and
+    ADJUSTMENT has been a legal reference_type since the module was created without ever being
+    used. A count session is therefore a number from this sequence, written onto every adjustment
+    the session commits: one confirmed count, one group, queryable by the index that is already
+    there. A table would add a row whose only content is the id it hands out, plus a scope and a
+    user and a timestamp that every transaction in the group already carries.
+
+    last_counted_at answers the other question a count is asked: when was this last verified. It
+    goes on the item rather than the lot because that is the grain the board reports at, and
+    because a lot that has since been consumed would take its own stamp with it.
+
+    Note the column is not last_updated, which every write to the row touches, and not ordered_at,
+    which is an ordering mark. Counting is its own event.
+    -->
+    <changeSet author="OGC" id="OGC-438-add-inventory-count-session">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="last_counted_at" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence schemaName="clinlims" sequenceName="inventory_count_session_seq" startValue="1"
+            incrementBy="1"/>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <!-- When this item was last physically counted, whether or not the count changed it. -->
+            <column name="last_counted_at" type="TIMESTAMP"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="last_counted_at" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_count_session_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

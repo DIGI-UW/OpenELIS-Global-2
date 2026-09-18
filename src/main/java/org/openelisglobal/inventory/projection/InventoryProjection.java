@@ -67,6 +67,16 @@ public class InventoryProjection {
 
     private String units;
 
+    /** Whether this item is counted and received lot by lot. */
+    private boolean trackLots;
+
+    /**
+     * When the item was last physically counted. Null until somebody has counted it
+     * — a board that shows a date it invented is worse than one showing none.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate lastCountedOn;
+
     /**
      * False for an item that has been deactivated. Such a row only appears when it
      * was asked for, and the board marks it rather than letting it look ordinary.

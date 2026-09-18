@@ -183,6 +183,15 @@ export const InventoryBoardAPI = {
     get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
 };
 
+/**
+ * Committing a physical count. One call for the whole session: a count is a
+ * single decision taken at the shelf, and a per-lot loop would leave half a
+ * shelf adjusted the first time one call failed.
+ */
+export const InventoryCountAPI = {
+  record: (entries) => post("/count", { entries }),
+};
+
 /** The tag directory: light governance over free-form tags. */
 export const InventoryTagAPI = {
   /** Every tag with how many items carry it and whether it is still offered. */

@@ -9781,5 +9781,20 @@
   "catalog.item.trackLots.help": "Turn on for anything received in batches with an expiry date. Turn off for consumables counted as a single pool.",
   "catalog.item.form.help": "This defines a kind of item. To add more of one that already exists, use Receive stock.",
   "inventory.item.form.title.add": "New item",
-  "inventory.item.form.title.edit": "Edit item"
+  "inventory.item.form.title.edit": "Edit item",
+  "inventory.count.enter": "Count mode",
+  "inventory.count.leave": "Leave count mode",
+  "inventory.count.confirm": "Confirm count",
+  "inventory.count.expected": "of {expected} {units}",
+  "inventory.count.matches": "Matches",
+  "inventory.count.perLot": "Count each lot below ({expected} {units} expected here)",
+  "inventory.count.nothingHere": "Nothing here to count",
+  "inventory.count.countOf": "Counted quantity for {item}",
+  "inventory.count.tally": "{counted, plural, =0 {Nothing counted yet} one {# lot counted} other {# lots counted}}",
+  "inventory.count.scoped": "Counting {location}. Only stock in this location is listed, and only what you type is committed.",
+  "inventory.count.unscoped": "Counting everywhere. Filter by location to count one shelf at a time. Only what you type is committed.",
+  "inventory.count.done": "Count recorded: {adjusted, plural, =0 {no corrections} one {# correction} other {# corrections}}, {confirmed, plural, =0 {none confirmed} one {# lot confirmed} other {# lots confirmed}}.",
+  "inventory.count.lastCounted": "Counted {date}",
+  "inventory.count.neverCounted": "Never counted",
+  "inventory.count.column": "Last count"
 }
