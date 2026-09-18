@@ -52,17 +52,19 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (formData.newQuantity < 0) {
-      setError("Quantity cannot be negative");
+      setError(intl.formatMessage({ id: "adjustment.error.negativeQuantity" }));
       return false;
     }
 
     if (!formData.reason) {
-      setError("Please select a reason for adjustment");
+      setError(intl.formatMessage({ id: "adjustment.error.reasonRequired" }));
       return false;
     }
 
     if (formData.reason === "OTHER" && !formData.notes?.trim()) {
-      setError("Please provide notes when selecting 'Other' as reason");
+      setError(
+        intl.formatMessage({ id: "common.error.notesRequiredForOther" }),
+      );
       return false;
     }
 

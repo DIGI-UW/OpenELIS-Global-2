@@ -46,12 +46,14 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (!formData.reason) {
-      setError("Please select a disposal reason");
+      setError(intl.formatMessage({ id: "disposal.error.reasonRequired" }));
       return false;
     }
 
     if (formData.reason === "OTHER" && !formData.notes?.trim()) {
-      setError("Please provide notes when selecting 'Other' as reason");
+      setError(
+        intl.formatMessage({ id: "common.error.notesRequiredForOther" }),
+      );
       return false;
     }
 

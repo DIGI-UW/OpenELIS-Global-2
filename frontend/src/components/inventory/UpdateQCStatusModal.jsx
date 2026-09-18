@@ -45,12 +45,12 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (!formData.qcStatus) {
-      setError("Please select a QC status");
+      setError(intl.formatMessage({ id: "qc.status.error.required" }));
       return false;
     }
 
     if (formData.qcStatus === "FAILED" && !formData.notes?.trim()) {
-      setError("Please provide notes explaining QC failure");
+      setError(intl.formatMessage({ id: "qc.status.error.notesRequired" }));
       return false;
     }
 
@@ -124,17 +124,22 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
             <FormattedMessage id="qc.status.current" />
           </FormLabel>
           <p>
-            <strong>{lot.qcStatus || "PENDING"}</strong>
+            {/* Through the same keys the dropdown below uses. Printing the Java
+                constant here made the modal read "Current QC Status: PENDING"
+                above a list offering "Pending". */}
+            <strong>
+              <FormattedMessage
+                id={`lot.qcStatus.${lot.qcStatus || "PENDING"}`}
+              />
+            </strong>
           </p>
         </div>
 
         {formData.qcStatus === "FAILED" && (
           <InlineNotification
             kind="warning"
-            title={intl.formatMessage({ id: "qc.status.failed.warning.title" })}
-            subtitle={intl.formatMessage({
-              id: "qc.status.failed.warning.message",
-            })}
+            title={intl.formatMessage({ id: "qc.status.warning.title" })}
+            subtitle={intl.formatMessage({ id: "qc.status.warning.message" })}
             hideCloseButton
             lowContrast
           />
@@ -157,7 +162,7 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
         {/* Notes */}
         <TextArea
           id="notes"
-          labelText={intl.formatMessage({ id: "qc.status.notes" })}
+          labelText={intl.formatMessage({ id: "common.notes" })}
           value={formData.notes}
           onChange={(e) => handleChange("notes", e.target.value)}
           placeholder={intl.formatMessage({

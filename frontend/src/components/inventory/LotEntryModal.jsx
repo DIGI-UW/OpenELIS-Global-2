@@ -163,22 +163,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
 
   const validate = () => {
     if (!formData.inventoryItem) {
-      setError("Please select a catalog item");
+      setError(intl.formatMessage({ id: "inventory.receive.error.noItem" }));
       return false;
     }
 
     if (isEdit && !formData.lotNumber?.trim()) {
-      setError("Lot number is required");
+      setError(intl.formatMessage({ id: "lot.error.numberRequired" }));
       return false;
     }
 
     if (!formData.currentQuantity || formData.currentQuantity <= 0) {
-      setError("Quantity must be greater than 0");
+      setError(intl.formatMessage({ id: "inventory.receive.error.quantity" }));
       return false;
     }
 
     if (!isEdit && !pendingAssignment) {
-      setError("Please assign a storage location");
+      setError(intl.formatMessage({ id: "lot.error.locationRequired" }));
       return false;
     }
 
@@ -371,7 +371,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
           <Dropdown
             id="inventoryItem"
             titleText={<FormattedMessage id="lot.selectItem" />}
-            label="Select catalog item"
+            label={intl.formatMessage({ id: "lot.selectItem" })}
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
@@ -429,28 +429,33 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
             disabled={lotFieldsLocked}
           />
 
+          {/* Y-m-d, the one date format the module uses. Receive read d/m/Y,
+              Reports m/d/Y and this the browser default, so a date typed on
+              the wrong screen was read as a different date without a word. */}
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={formData.expirationDate}
             onChange={([date]) => handleChange("expirationDate", date)}
           >
             <DatePickerInput
               id="expirationDate"
               labelText={<FormattedMessage id="lot.expirationDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
               disabled={lotFieldsLocked}
             />
           </DatePicker>
 
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={formData.receiptDate}
             onChange={([date]) => handleChange("receiptDate", date)}
           >
             <DatePickerInput
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
               disabled={lotFieldsLocked}
             />
           </DatePicker>
@@ -506,7 +511,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
           <Dropdown
             id="qcStatus"
             titleText={<FormattedMessage id="lot.qcStatus" />}
-            label="Select QC status"
+            label={intl.formatMessage({ id: "qc.status.select" })}
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
@@ -522,7 +527,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
           <Dropdown
             id="status"
             titleText={<FormattedMessage id="lot.status" />}
-            label="Select status"
+            label={intl.formatMessage({ id: "lot.status.select" })}
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={

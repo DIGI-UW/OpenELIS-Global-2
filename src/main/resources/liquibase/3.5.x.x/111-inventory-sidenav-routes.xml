@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-sidenav-routes.xml">
+
+    <!--
+    OGC-438: the three inventory surfaces become three menu entries.
+
+    Until now the module was one menu row pointing at /inventory, and the three
+    surfaces were tabs inside it, reachable only by clicking. They are now three
+    routes, so each gets its own row under the existing Inventory parent and each
+    is deep-linkable.
+
+    The parent menu_inventory already exists with an empty action_url, which is
+    what makes it expandable, so nothing here has to restructure it — unlike the
+    Storage precedent in 3.3.x.x/029, which had to blank a leaf's URL first.
+
+    menu_inventory_management is repointed rather than replaced: it already holds
+    /inventory, which is still the Items route, so a new row would leave a
+    duplicate. Only its label changes, because "Inventory Management" named the
+    whole tab shell and now names one surface of three.
+
+    Menu rows carry no role of their own — the menu table has no role column — so
+    these three are visible to every authenticated user, exactly as the single row
+    was before. What gates the module is the route guard in the browser and the
+    @PreAuthorize on the REST controllers.
+    -->
+
+    <changeSet author="openelisglobal" id="OGC-438-rename-inventory-menu-to-items">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_inventory_management'
+                  AND display_key = 'sidenav.label.inventory.management';
+            </sqlCheck>
+        </preConditions>
+        <comment>The Inventory Management row now names the Items board alone</comment>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="display_key" value="sidenav.label.inventory.items"/>
+            <column name="tool_tip_key" value="sidenav.label.inventory.items.tooltip"/>
+            <where>element_id = 'menu_inventory_management'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="display_key" value="sidenav.label.inventory.management"/>
+                <column name="tool_tip_key" value="sidenav.label.inventory.management.tooltip"/>
+                <where>element_id = 'menu_inventory_management'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-438-add-inventory-receive-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_receive';
+            </sqlCheck>
+        </preConditions>
+        <comment>Receive, as a sibling of Items under Inventory</comment>
+        <insert schemaName="clinlims" tableName="menu">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')"/>
+            <column name="presentation_order" value="2"/>
+            <column name="element_id" value="menu_inventory_receive"/>
+            <column name="action_url" value="/inventory/receive"/>
+            <column name="display_key" value="sidenav.label.inventory.receive"/>
+            <column name="tool_tip_key" value="sidenav.label.inventory.receive.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="menu">
+                <where>element_id = 'menu_inventory_receive'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-438-add-inventory-reports-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_reports';
+            </sqlCheck>
+        </preConditions>
+        <comment>Reports, as a sibling of Items under Inventory</comment>
+        <insert schemaName="clinlims" tableName="menu">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_inventory_reports"/>
+            <column name="action_url" value="/inventory/reports"/>
+            <column name="display_key" value="sidenav.label.inventory.reports"/>
+            <column name="tool_tip_key" value="sidenav.label.inventory.reports.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="menu">
+                <where>element_id = 'menu_inventory_reports'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
