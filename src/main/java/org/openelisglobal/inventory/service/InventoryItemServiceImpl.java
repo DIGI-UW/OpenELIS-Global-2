@@ -210,6 +210,18 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional(readOnly = true)
+    public InventoryItem getByUpc(String upc) {
+        return inventoryItemDAO.getByUpc(upc);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryItem getByExactName(String name) {
+        return inventoryItemDAO.getByExactName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryItem getByFhirUuid(String fhirUuid) {
         return inventoryItemDAO.getByFhirUuid(fhirUuid);
     }

@@ -128,6 +128,40 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
     @Override
     @Transactional(readOnly = true)
+    public InventoryItem getByUpc(String upc) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            cq.select(root).where(cb.equal(root.get("upc"), upc));
+
+            List<InventoryItem> results = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting inventory item by UPC", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryItem getByExactName(String name) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            cq.select(root).where(cb.equal(cb.lower(root.get("name")), name.toLowerCase()));
+
+            List<InventoryItem> results = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting inventory item by name", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
