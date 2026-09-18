@@ -122,3 +122,16 @@
   font-size: 0.75rem;
   color: #525252;
 }
+
+.inventory-item-tags__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.inventory-item-derived {
+  font-size: 0.75rem;
+  color: #525252;
+  margin: 0;
+}

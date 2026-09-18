@@ -3,13 +3,17 @@ package org.openelisglobal.inventory.valueholder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
@@ -17,9 +21,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
@@ -53,10 +60,17 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /** Superseded by tags; still NOT NULL, so insert fills it in. */
     @Column(name = "item_type", nullable = false, length = 50)
-    @NotNull
     @Enumerated(EnumType.STRING)
     private ItemType itemType;
+
+    /** Eager: items go straight to the browser from several endpoints. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "inventory_item_tag", joinColumns = @JoinColumn(name = "item_id"))
+    @Column(name = "tag", nullable = false, length = 255)
+    @BatchSize(size = 50)
+    private Set<String> tags = new LinkedHashSet<>();
 
     @Column(name = "category", length = 100)
     private String category;

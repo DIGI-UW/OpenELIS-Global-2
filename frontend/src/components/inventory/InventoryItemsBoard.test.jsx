@@ -99,7 +99,7 @@ const CARTRIDGE = {
   itemId: 1,
   code: "GENEXPERT_MTB_RIF",
   name: "GeneXpert MTB/RIF cartridge",
-  itemType: "CARTRIDGE",
+  tags: ["Cartridge", "TB", "Cold chain"],
   units: "tests",
   onHand: 12,
   lowStockThreshold: 20,
@@ -122,7 +122,7 @@ const SYPHILIS = {
   itemId: 2,
   code: "SYPHILIS_RDT_KIT",
   name: "Syphilis RDT kit",
-  itemType: "SYPHILIS_KIT",
+  tags: ["Syphilis kit"],
   units: "tests",
   onHand: 8,
   lowStockThreshold: 10,
@@ -145,7 +145,7 @@ const MALARIA = {
   itemId: 3,
   code: "MALARIA_RDT",
   name: "Malaria RDT (P.f/P.v)",
-  itemType: "RDT",
+  tags: ["RDT", "Malaria"],
   units: "tests",
   onHand: 60,
   lowStockThreshold: 25,
@@ -273,7 +273,8 @@ describe("InventoryItemsBoard", () => {
     // cells[0] is the expand control column.
     expect(cells[1]).toHaveTextContent(CARTRIDGE.name);
     expect(cells[1]).toHaveTextContent("GENEXPERT_MTB_RIF");
-    expect(cells[1]).toHaveTextContent("Analyzer Cartridge");
+    expect(cells[1]).toHaveTextContent("Cartridge");
+    expect(cells[1]).toHaveTextContent("TB");
     expect(cells[2]).toHaveTextContent("12 tests");
     expect(cells[3]).toHaveTextContent("+40% / 30d");
     expect(cells[4]).toHaveTextContent(`${dayLabel(8)} – ${dayLabel(12)}`);
@@ -438,6 +439,48 @@ describe("InventoryItemsBoard", () => {
     expect(bodyRows().map((row) => row.textContent)[2]).toContain(
       SYPHILIS.name,
     );
+  });
+
+  it("finds an item by a tag that appears nowhere in its name, code or lots", async () => {
+    await renderBoard();
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "Cold chain" },
+    });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent(CARTRIDGE.name);
+  });
+
+  it("matches a tag without regard to case", async () => {
+    await renderBoard();
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "COLD CHAIN" },
+    });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent(CARTRIDGE.name);
+  });
+
+  it("shows an item's tags on its row so the search term is visible", async () => {
+    await renderBoard();
+    const row = rowNamed(MALARIA.name);
+    expect(within(row).getByText("RDT")).toBeInTheDocument();
+    expect(within(row).getByText("Malaria")).toBeInTheDocument();
+  });
+
+  it("renders a row with no tags without leaving a stray separator", async () => {
+    await renderBoard([{ ...CARTRIDGE, tags: [] }], []);
+    const row = rowNamed(CARTRIDGE.name);
+    expect(within(row).getAllByRole("cell")[1]).toHaveTextContent(
+      CARTRIDGE.code,
+    );
+    expect(within(row).queryByText("Cartridge")).not.toBeInTheDocument();
+  });
+
+  it("does not take the keyboard hostage with a dialog role", async () => {
+    await renderBoard();
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(document.body).toHaveFocus();
   });
 
   it("offers a recovery hint when filters match nothing", async () => {
@@ -838,7 +881,7 @@ describe("InventoryItemsBoard", () => {
 
     it("banners only the items that are critical and not already ordered", async () => {
       await renderBoard();
-      const banner = screen.getByRole("alertdialog");
+      const banner = screen.getByRole("status");
       expect(banner).toHaveTextContent(CARTRIDGE.name);
       expect(banner).not.toHaveTextContent(MALARIA.name);
     });
@@ -849,7 +892,7 @@ describe("InventoryItemsBoard", () => {
         SYPHILIS,
         MALARIA,
       ]);
-      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
       const row = rowNamed(CARTRIDGE.name);
       expect(row).toBeInTheDocument();

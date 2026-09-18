@@ -145,3 +145,10 @@
 .board-suggestions-button {
   flex: 0 0 auto;
 }
+
+.board-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  margin-top: 0.25rem;
+}

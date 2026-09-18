@@ -10,6 +10,9 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
 
     List<ItemType> getAllItemTypes();
 
+    /** Every distinct tag any item carries, alphabetically. */
+    List<String> getAllTags();
+
     int markOrdered(List<Long> itemIds, String note, LocalDate expectedDate, String sysUserId);
 
     int clearOrdered(List<Long> itemIds, String sysUserId);

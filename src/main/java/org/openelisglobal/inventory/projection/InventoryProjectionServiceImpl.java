@@ -61,6 +61,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setCode(item.getCode());
             row.setName(item.getName());
             row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
+            row.setTags(item.getTags() == null ? List.of() : new ArrayList<>(item.getTags()));
             row.setUnits(item.getUnits());
             row.setOrderedOn(item.getOrderedAt() == null ? null : item.getOrderedAt().toLocalDateTime().toLocalDate());
             row.setOrderExpectedDate(item.getOrderExpectedDate());

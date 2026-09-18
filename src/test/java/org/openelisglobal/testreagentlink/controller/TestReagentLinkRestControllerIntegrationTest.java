@@ -33,7 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
  * OGC-949 / OGC-987 — Test↔Reagent linkage REST endpoints, round-tripped
  * against a real DB. Covers the happy path (link + list with inventory stock),
  * the 409 duplicate guard, the 404 guards (unknown test / reagent / link), and
- * the 400 validation guards (bad usage type, non-reagent inventory item).
+ * the 400 validation guard on the usage type.
  *
  * <p>
  * The class is gated by {@code @PreAuthorize("hasRole('ADMIN')")}; non-admins
@@ -167,10 +167,12 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     }
 
     @Test
-    public void link_nonReagentInventoryItem_throwsBadRequest() {
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest()));
-        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    public void link_anyInventoryItem_succeedsWhateverItsLegacyType() {
+        ReagentLinkResponse r = controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest())
+                .getBody();
+
+        assertNotNull(r);
+        assertEquals(nonReagentId, r.reagentId);
     }
 
     @Test

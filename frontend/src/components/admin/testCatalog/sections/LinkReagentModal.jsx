@@ -41,7 +41,7 @@ const LinkReagentModal = ({
     setSelected([]);
     setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
-    getFromOpenElisServer("/rest/inventory/items/type/REAGENT", (res) => {
+    getFromOpenElisServer("/rest/inventory/items", (res) => {
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items
