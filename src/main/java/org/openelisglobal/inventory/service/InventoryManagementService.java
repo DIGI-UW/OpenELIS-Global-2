@@ -35,6 +35,9 @@ public interface InventoryManagementService {
      */
     InventoryLot receiveInventory(InventoryLot lotData, String sysUserId);
 
+    /** One transaction: a failing line rolls back the whole delivery. */
+    List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId);
+
     /**
      * Check if sufficient inventory is available for a given item and quantity
      *
