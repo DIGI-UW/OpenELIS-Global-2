@@ -31,7 +31,7 @@ import { useHistory } from "react-router-dom";
 import {
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -65,6 +65,20 @@ export const filterTitles = (titles, { search, status }) => {
     if (status === "inactive" && title.active) return false;
     return true;
   });
+};
+
+/**
+ * A rejected save answers with the reason as a JSON string, so the body arrives
+ * quoted and its own quotes escaped. Unwrap it for display, and fall back to the
+ * raw body for anything that answers in plain text.
+ */
+export const plainMessage = (body) => {
+  try {
+    const parsed = JSON.parse(body);
+    return typeof parsed === "string" ? parsed : body;
+  } catch {
+    return body;
+  }
 };
 
 const blankDraft = { title: "", abbreviation: "", sortOrder: "", active: true };
@@ -156,23 +170,18 @@ const ProviderTitleMenu = () => {
         );
       }
     };
+    const handle = async (response) => {
+      if (response && response.ok) {
+        done(true);
+      } else {
+        const text = response ? await response.text().catch(() => "") : "";
+        done(false, plainMessage(text));
+      }
+    };
     if (editing === "new") {
-      postToOpenElisServerJsonResponse(ENDPOINT, body, (created) =>
-        done(created && created.id, typeof created === "string" ? created : ""),
-      );
+      postToOpenElisServerFullResponse(ENDPOINT, body, handle);
     } else {
-      putToOpenElisServerFullResponse(
-        `${ENDPOINT}/${editing}`,
-        body,
-        async (response) => {
-          if (response && response.ok) {
-            done(true);
-          } else {
-            const text = response ? await response.text().catch(() => "") : "";
-            done(false, text);
-          }
-        },
-      );
+      putToOpenElisServerFullResponse(`${ENDPOINT}/${editing}`, body, handle);
     }
   };
 

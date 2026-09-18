@@ -25,6 +25,15 @@ const run = Date.now()
   .join("");
 const SURNAME = `Kila${run}`;
 
+/** Finds one provider by surname through the page's own search, so the
+ *  assertion never depends on which page of the list it landed on. */
+const findProvider = async (page: Page, surname: string) => {
+  await page.locator("#provider-search-bar").fill(surname);
+  const row = page.locator("table tbody tr").filter({ hasText: surname });
+  await expect(row.first()).toBeVisible({ timeout: NAV_TIMEOUT });
+  return row.first();
+};
+
 const csrfToken = async (page: Page): Promise<string> => {
   const state = await page.context().storageState();
   for (const origin of state.origins) {
@@ -36,7 +45,7 @@ const csrfToken = async (page: Page): Promise<string> => {
 };
 
 /** A provider carrying a title, created through the same endpoint the form uses. */
-const createTitledProvider = async (page: Page) => {
+const createTitledProvider = async (page: Page, lastName: string = SURNAME) => {
   const token = await csrfToken(page);
   const response = await page.request.post(
     `${API_PREFIX}/rest/Provider/FhirUuid?fhirUuid=`,
@@ -45,7 +54,7 @@ const createTitledProvider = async (page: Page) => {
         person: {
           titleCode: "Dr",
           firstName: "John",
-          lastName: SURNAME,
+          lastName,
           workPhone: "555",
         },
         active: true,
@@ -91,8 +100,7 @@ test.describe("Provider titles (OGC-1223)", () => {
     });
 
     // The provider's own row carries the title.
-    const created = page.locator("table tbody tr").filter({ hasText: SURNAME });
-    await expect(created).toHaveCount(1, { timeout: LONG_TIMEOUT });
+    const created = await findProvider(page, SURNAME);
     await expect(created).toContainText("Dr");
 
     // Searching the title returns nobody: "Dr" must not mean every doctor.
@@ -110,6 +118,66 @@ test.describe("Provider titles (OGC-1223)", () => {
     const body = await filtered.json();
     expect(body.providers.length).toBeGreaterThan(0);
     expect(Number(body.totalRecordCount)).toBe(body.providers.length);
+  });
+
+  test("a duplicate title is refused in the server's own words", async ({
+    page,
+  }) => {
+    await page.goto(TITLES_PAGE, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("table tbody tr").first()).toBeVisible({
+      timeout: NAV_TIMEOUT,
+    });
+
+    await page.getByTestId("provider-title-add").click();
+    await page.locator("#provider-title-name").fill("Doctor");
+    await page.locator("#provider-title-abbreviation").fill("Dr");
+    await page
+      .locator(
+        ".cds--modal.is-visible .cds--modal-footer button.cds--btn--primary",
+      )
+      .click();
+
+    // The body arrives as a JSON string; a page that forwards it raw shows the
+    // quotes, and one that tries to parse it shows a generic failure instead.
+    await expect(
+      page.locator(".cds--modal.is-visible .cds--inline-notification"),
+    ).toContainText('"Doctor" is already in the list', {
+      timeout: LONG_TIMEOUT,
+    });
+    // The form stays open on the rejected values so they can be corrected.
+    await expect(page.locator("#provider-title-name")).toHaveValue("Doctor");
+  });
+
+  test("editing a provider keeps the title it already had", async ({
+    page,
+  }) => {
+    // Its own surname: the other tests reuse theirs, and this one has to find
+    // exactly one row to open.
+    const surname = `${SURNAME}Edit`;
+    await createTitledProvider(page, surname);
+
+    await page.goto(PROVIDERS_PAGE, { waitUntil: "domcontentloaded" });
+    const row = await findProvider(page, surname);
+
+    await row.locator("td").first().click();
+    await page.getByRole("button", { name: "Modify" }).click();
+
+    // The update form used to open blank here, which saved the title away.
+    await expect(page.locator("#updateProviderTitle")).toHaveValue("Dr", {
+      timeout: LONG_TIMEOUT,
+    });
+
+    await page.locator(".cds--modal.is-visible #telephone").fill("556");
+    await page
+      .locator(
+        ".cds--modal.is-visible .cds--modal-footer button.cds--btn--primary",
+      )
+      .click();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const saved = await findProvider(page, surname);
+    await expect(saved).toContainText("Dr");
+    await expect(saved).toContainText("556");
   });
 
   test("the order entry typeahead shows the titled name", async ({ page }) => {

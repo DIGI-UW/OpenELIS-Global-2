@@ -21,19 +21,19 @@ vi.mock("react-router-dom", async (importOriginal) => {
 const {
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } = vi.hoisted(() => ({
   getFromOpenElisServer: vi.fn(),
   patchToOpenElisServerJsonResponse: vi.fn(),
-  postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
   putToOpenElisServerFullResponse: vi.fn(),
 }));
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 }));
 
@@ -45,7 +45,10 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
-import ProviderTitleMenu, { filterTitles } from "./ProviderTitleMenu";
+import ProviderTitleMenu, {
+  filterTitles,
+  plainMessage,
+} from "./ProviderTitleMenu";
 import messages from "../../../languages/en.json";
 
 const TITLES = [
@@ -157,10 +160,18 @@ describe("ProviderTitleMenu (OGC-1223)", () => {
     );
   });
 
+  // The server answers a rejected save with the reason as a JSON string, so the
+  // body arrives quoted. A mock that hands the callback a bare string agrees
+  // with any implementation and hid this from the suite until the page was
+  // driven in a browser.
   it("surfaces the server's duplicate message rather than failing silently", async () => {
     serve();
-    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
-      cb('"Dr" is already in the list'),
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        text: () => Promise.resolve('"\\"Doctor\\" is already in the list"'),
+      }),
     );
     wrap();
     await screen.findByText("Doctor");
@@ -175,8 +186,69 @@ describe("ProviderTitleMenu (OGC-1223)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(
-      await screen.findByText('"Dr" is already in the list'),
+      await screen.findByText('"Doctor" is already in the list'),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the form open on a rejected save so it can be corrected", async () => {
+    serve();
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        text: () => Promise.resolve('"\\"Doctor\\" is already in the list"'),
+      }),
+    );
+    wrap();
+    await screen.findByText("Doctor");
+
+    fireEvent.click(screen.getByTestId("provider-title-add"));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Doctor" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText('"Doctor" is already in the list');
+    expect(screen.getByLabelText("Title")).toHaveValue("Doctor");
+  });
+
+  it("closes the form and reloads the list once the save is accepted", async () => {
+    serve();
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({ ok: true, status: 201, text: () => Promise.resolve("") }),
+    );
+    wrap();
+    await screen.findByText("Doctor");
+    const loadsBefore = getFromOpenElisServer.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId("provider-title-add"));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Registrar" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(getFromOpenElisServer.mock.calls.length).toBeGreaterThan(
+        loadsBefore,
+      ),
+    );
+    expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
+  });
+});
+
+describe("plainMessage (pure)", () => {
+  it("unwraps the quoted string the server sends", () => {
+    expect(plainMessage('"\\"Doctor\\" is already in the list"')).toBe(
+      '"Doctor" is already in the list',
+    );
+  });
+
+  it("passes a plain-text body through untouched", () => {
+    expect(plainMessage("Something went wrong")).toBe("Something went wrong");
+  });
+
+  it("leaves a JSON object body alone", () => {
+    expect(plainMessage('{"error":"nope"}')).toBe('{"error":"nope"}');
   });
 });
 

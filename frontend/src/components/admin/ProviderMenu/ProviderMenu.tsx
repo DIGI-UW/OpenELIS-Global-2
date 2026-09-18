@@ -17,6 +17,7 @@ import {
   TableContainer,
   Pagination,
   Search,
+  InlineNotification,
   Modal,
   Select,
   SelectItem,
@@ -43,6 +44,7 @@ import { looksLikeATitle } from "../../provider/providerDisplayName";
 import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 interface ProviderPerson {
+  titleCode?: string;
   lastName: string;
   firstName: string;
   workPhone?: string;
@@ -67,6 +69,7 @@ interface ProviderMenuResponse {
 interface ProviderTableRow {
   id: string;
   fhirUuid: string;
+  titleCode?: string;
   lastName: string;
   firstName: string;
   active: boolean;
@@ -312,6 +315,7 @@ function ProviderMenu() {
   };
 
   const openAddModal = () => {
+    setTitleCode("");
     setLastName("");
     setFirstName("");
     setTelephone("");
@@ -328,6 +332,7 @@ function ProviderMenu() {
   const openUpdateModal = (providerId: string) => {
     const provider = providerMenuListShow.find((p) => p.id === providerId)!;
     setCurrentProvider(provider);
+    setTitleCode(provider.titleCode || "");
     setLastName(provider.lastName);
     setFirstName(provider.firstName);
     setTelephone(provider.telephone);
@@ -635,7 +640,7 @@ function ProviderMenu() {
           onRequestClose={closeUpdateModal}
         >
           <Select
-            id="providerTitle"
+            id="updateProviderTitle"
             labelText={intl.formatMessage({ id: "provider.title.field" })}
             value={titleCode}
             onChange={(e) => setTitleCode(e.target.value)}

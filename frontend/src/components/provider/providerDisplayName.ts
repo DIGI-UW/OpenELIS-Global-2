@@ -9,17 +9,24 @@
  * some client-side for the order screens.
  */
 
-const parts = (...values) =>
+const parts = (...values: (string | null | undefined)[]): string[] =>
   values
     .map((value) => (value == null ? "" : String(value).trim()))
     .filter((value) => value.length > 0);
 
 /** `Dr John Kila` — the form a person reads. */
-export const titledProviderName = (title, firstName, lastName) =>
-  parts(title, firstName, lastName).join(" ");
+export const titledProviderName = (
+  title?: string | null,
+  firstName?: string | null,
+  lastName?: string | null,
+): string => parts(title, firstName, lastName).join(" ");
 
 /** `Kila, Dr John` — the form an administrator scans in a sorted list. */
-export const titledProviderNameFamilyFirst = (title, firstName, lastName) => {
+export const titledProviderNameFamilyFirst = (
+  title?: string | null,
+  firstName?: string | null,
+  lastName?: string | null,
+): string => {
   const given = parts(title, firstName).join(" ");
   const family = parts(lastName).join("");
   if (!family) {
@@ -32,7 +39,16 @@ export const titledProviderNameFamilyFirst = (title, firstName, lastName) => {
  * The titled name of a provider-shaped object from the API, which carries
  * either a resolved abbreviation or the raw code.
  */
-export const providerDisplayName = (provider) => {
+export interface TitledProvider {
+  titleCode?: string | null;
+  titleAbbreviation?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
+export const providerDisplayName = (
+  provider?: TitledProvider | null,
+): string => {
   if (!provider) {
     return "";
   }
@@ -68,7 +84,7 @@ const TITLE_TOKENS = [
   "rmo",
 ];
 
-export const looksLikeATitle = (value) => {
+export const looksLikeATitle = (value?: string | null): boolean => {
   if (!value) {
     return false;
   }
