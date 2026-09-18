@@ -1,0 +1,85 @@
+name: Good First Issue Candidate Template
+description: Propose a potential Good First Issue (Candidate)
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! 😊
+        We truly appreciate your time and effort.
+
+        > ⚠️ **Good First Issue — Candidate**
+        > This issue is not yet a confirmed Good First Issue. It is being evaluated for suitability and may require clarification or refinement before it is ready to be picked up.
+        >
+        > Please wait for maintainer confirmation before starting work, so we can make sure the issue is fully ready.
+        
+        ### 🆕🐥 First-Time Friendly
+        **Who is this issue for?**
+        This issue is especially welcoming for people who are new to contributing to **OpenELIS Global 2**.
+        We know that opening your first pull request can feel like a big step. Issues labeled **Good First Issue** are designed to make that experience easier, clearer, and more comfortable.
+        No prior knowledge of lab informatics is required. Just a basic familiarity with the tech stack and Git is more than enough to get started.
+
+        ### 📋 About Good First Issues
+        Good First Issues are designed to make getting started as smooth and stress-free as possible. They usually focus on:
+        * Small, clearly scoped changes
+        * Straightforward updates to existing code or docs
+        * Simple refactors, test additions, or clarity improvements
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select the main technical area of this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 👾 Description of the Issue
+      description: Describe the issue in a way that’s easy for new contributors to understand. Aim to keep the explanation clear and accessible. Links to relevant files are always helpful.
+      placeholder: |
+        Edit here. Example:
+        The file README.md contains a typo on line 42.
+        Current text: "See the contibution guide for more details."
+        Should be: "See the contribution guide for more details."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: Describe the solution at a high level. Focus on what should be done, not why or alternative approaches.
+      placeholder: |
+        Edit here. Example:
+        Fix the typo in README.md by changing "contibution" to "contribution".
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_steps
+    attributes:
+      label: 👩‍💻 Implementation Steps (End-to-End)
+      description: Please write out the end-to-end process for completing this issue. Step-by-step instructions make it much easier for first-time contributors.
+      placeholder: |
+        Edit here. Example:
+        1. Open README.md
+        2. Go to line 42
+        3. Change contibution to contribution
+        4. Save the file and verify
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 🤔 Additional Information
+      description: Extra context, screenshots, error logs, or links that might help the contributor.
+      placeholder: Optional context or helpful resources.
