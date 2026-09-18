@@ -104,7 +104,30 @@ public class ResultUtil {
     private static final ResultSignatureService resultSigService = SpringContext.getBean(ResultSignatureService.class);
 
     private static String RESULT_EDIT_ROLE_ID;
+    private static boolean resultEditRoleMissingLogged;
     private static String REFERRAL_CONFORMATION_ID;
+
+    /**
+     * The Results role id, resolved on first use. Was never assigned, so
+     * {@link #userNotInRole} treated every non-admin as lacking the role when
+     * role-based result editing is enabled (issue-2854).
+     */
+    private static String resultEditRoleId() {
+        if (RESULT_EDIT_ROLE_ID == null) {
+            org.openelisglobal.role.valueholder.Role editRole = SpringContext
+                    .getBean(org.openelisglobal.role.service.RoleService.class)
+                    .getRoleByName(org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+            if (editRole != null && !"-1".equals(editRole.getId())) {
+                RESULT_EDIT_ROLE_ID = editRole.getId();
+            } else if (!resultEditRoleMissingLogged) {
+                resultEditRoleMissingLogged = true;
+                LogEvent.logWarn("ResultUtil", "resultEditRoleId", "Results role '"
+                        + org.openelisglobal.common.constants.Constants.ROLE_RESULTS
+                        + "' not found; non-admin result editing is denied when roleRequiredForModifyResults is enabled");
+            }
+        }
+        return RESULT_EDIT_ROLE_ID;
+    }
 
     /**
      * The "Confirmation" referral type id, resolved on first use. The field was
@@ -732,8 +755,12 @@ public class ResultUtil {
         if (userModuleService.isUserAdmin(request)) {
             return false;
         }
+        String resultEditRoleId = resultEditRoleId();
+        if (resultEditRoleId == null) {
+            return true;
+        }
         List<String> roleIds = userRoleService.getRoleIdsForUser(ControllerUtills.getSysUserId(request));
-        return !roleIds.contains(RESULT_EDIT_ROLE_ID);
+        return !roleIds.contains(resultEditRoleId);
     }
 
     public static Patient getPatient(Sample sample) {
