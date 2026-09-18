@@ -204,4 +204,67 @@ public class PatientSearchFacadeTest extends BaseWebContextSensitiveTest {
         JsonNode resource = search("_id", JOHN_DOE_UUID).get("entry").get(0).get("resource");
         assertTrue(resource.get("meta").get("lastUpdated").asText().startsWith("2023-11-01"));
     }
+
+    @Test
+    public void search_byAddressState_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("address-state", "Kampala Metropolitan")));
+
+        assertEquals(2, search("address-state", "Texas").get("total").asInt());
+
+        assertEquals(0, search("address-state", "California").get("total").asInt());
+    }
+
+    @Test
+    public void search_byAddressPostalCode_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("address-postalcode", "256")));
+
+        assertEquals(2, search("address-postalcode", "001").get("total").asInt());
+
+        assertEquals(0, search("address-postalcode", "999").get("total").asInt());
+    }
+
+    @Test
+    public void search_byAddressCountry_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("address-country", "Uganda")));
+
+        assertEquals(2, search("address-country", "USA").get("total").asInt());
+
+        assertEquals(0, search("address-country", "Canada").get("total").asInt());
+    }
+
+    @Test
+    public void search_byEmail_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("email", "john@gmail.com")));
+
+        assertEquals(List.of(JAMES_MULIZI_UUID), patientIds(search("email", "james@gmail.com")));
+
+        assertEquals(List.of(FAITH_KUKKI_UUID), patientIds(search("email", "siannah@gmail.com")));
+
+        assertEquals(0, search("email", "unknown@example.com").get("total").asInt());
+    }
+
+    @Test
+    public void search_byPhone_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("phone", "12345678")));
+
+        assertEquals(List.of(JAMES_MULIZI_UUID), patientIds(search("phone", "8000001")));
+
+        assertEquals(List.of(FAITH_KUKKI_UUID), patientIds(search("phone", "8000003")));
+
+        assertEquals(0, search("phone", "99999999").get("total").asInt());
+    }
+
+    @Test
+    public void search_byTelecom_matchesPhoneOrEmail() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("telecom", "12345678")));
+
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("telecom", "john@gmail.com")));
+
+        assertEquals(List.of(JAMES_MULIZI_UUID), patientIds(search("telecom", "james@gmail.com")));
+
+        assertEquals(List.of(FAITH_KUKKI_UUID), patientIds(search("telecom", "8000003")));
+
+        assertEquals(0, search("telecom", "unknown@example.com").get("total").asInt());
+    }
+
 }
