@@ -3,6 +3,13 @@ import { Button, TextArea } from "@carbon/react";
 import { Warning, Checkmark, Undo } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
 
+interface AcceptUnconditionallyGuardProps {
+  rowId: string | number;
+  accepted: boolean;
+  onAccept?: (reason: string) => void;
+  onUnaccept?: () => void;
+}
+
 /**
  * OGC-745: inline two-stage gate for unconditional result acceptance.
  * Replaces the inline-checkbox + native alert() that previously fired only
@@ -22,12 +29,13 @@ const AcceptUnconditionallyGuard = ({
   accepted,
   onAccept,
   onUnaccept,
-}) => {
+}: AcceptUnconditionallyGuardProps) => {
   const intl = useIntl();
   const [armed, setArmed] = useState(false);
   const [reason, setReason] = useState("");
 
-  const t = (id, defaultMessage) => intl.formatMessage({ id, defaultMessage });
+  const t = (id: string, defaultMessage: string) =>
+    intl.formatMessage({ id, defaultMessage });
 
   if (accepted) {
     return (

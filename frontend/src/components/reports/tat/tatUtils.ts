@@ -1,7 +1,7 @@
 /**
  * Format TAT hours as a human-readable string (e.g., "2h 30m").
  */
-export function formatTat(hours) {
+export function formatTat(hours?: number | null): string {
   if (hours == null) return "—";
   const totalMinutes = Math.round(hours * 60);
   const h = Math.floor(totalMinutes / 60);
