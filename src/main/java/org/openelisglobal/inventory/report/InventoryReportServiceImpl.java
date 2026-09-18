@@ -3,7 +3,6 @@ package org.openelisglobal.inventory.report;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -14,13 +13,12 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.openelisglobal.storage.service.SampleStorageService;
-import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryReportServiceImpl implements InventoryReportService {
 
     private static final String UNASSIGNED_LOCATION = "Unassigned";
-    private static final String MULTIPLE_LOCATIONS = "Multiple locations";
 
     @Autowired
     private InventoryItemService inventoryItemService;
@@ -50,9 +47,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Autowired
     private SampleStorageService sampleStorageService;
 
-    @Autowired
-    private SystemUserService systemUserService;
-
     private final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal
             .withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
     private final ThreadLocal<SimpleDateFormat> dateTimeFormat = ThreadLocal
@@ -62,20 +56,16 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Transactional(readOnly = true)
     public ReportTable generateReport(InventoryReportRequest request) {
         switch (request.getReportType()) {
-        case "STOCK_LEVELS":
-            return buildStockLevelsReport(request);
-        case "EXPIRATION_FORECAST":
-            return buildExpirationForecastReport(request);
-        case "USAGE_TRENDS":
+        case "RECEIVED":
             requireDateRange(request);
-            return buildUsageTrendsReport(request);
-        case "LOT_TRACEABILITY":
-            return buildLotTraceabilityReport(request);
-        case "LOW_STOCK":
-            return buildLowStockReport(request);
-        case "TRANSACTION_HISTORY":
+            return buildReceivedReport(request);
+        case "CONSUMED":
             requireDateRange(request);
-            return buildTransactionHistoryReport(request);
+            return buildConsumedReport(request);
+        case "STOCK_ON_HAND":
+            return buildStockOnHandReport(request);
+        case "EXPIRING":
+            return buildExpiringReport(request);
         default:
             throw new LocalizedValidationException("reports.error.unknownReportType",
                     "Unknown report type: " + request.getReportType());
@@ -89,153 +79,59 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         }
     }
 
-    private ReportTable buildStockLevelsReport(InventoryReportRequest request) {
-        List<InventoryItem> items = request.isIncludeInactive() ? inventoryItemService.getAll()
-                : inventoryItemService.getAllActive();
+    /**
+     * What arrived in the period, one row per receipt. Reads RECEIPT transactions
+     * rather than lot receipt dates: a lot's {@code receipt_date} is overwritten by
+     * every later receive against it, and every lot carried over by the legacy
+     * migration shares that migration's timestamp, so it cannot answer "what came
+     * in during August". Stock that predates the transaction log therefore does not
+     * appear here, which is correct for a period report — it was not received in
+     * the period.
+     */
+    private ReportTable buildReceivedReport(InventoryReportRequest request) {
+        List<InventoryTransaction> receipts = inventoryTransactionService.getByTypeAndDateRange(TransactionType.RECEIPT,
+                request.getStartDate(), request.getEndDate());
 
-        Map<Long, List<InventoryLot>> lotsByItemId = loadLotsByItemId(items);
-        Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(lotsByItemId);
-        Map<Long, String> locationByItemId = items.stream().collect(Collectors.toMap(InventoryItem::getId,
-                item -> summarizeLocation(lotsByItemId.getOrDefault(item.getId(), List.of()), locationsByLotId)));
+        ReportTable table = new ReportTable("Received", List.of("Date Received", "Item Code", "Item Name", "Tags",
+                "Lot Number", "Quantity Received", "Expiration Date"), Set.of(5));
 
-        ReportTable table = new ReportTable("Stock Levels", List.of("Item Code", "Item Name", "Type", "Category",
-                "Location", "Available Quantity", "Total Quantity", "Units", "Status"), Set.of(5, 6));
-
-        List<InventoryItem> sorted = sortItems(items, request, locationByItemId);
-        double totalSum = 0;
-        double availableSum = 0;
-        for (InventoryItem item : sorted) {
-            List<InventoryLot> lots = lotsByItemId.getOrDefault(item.getId(), List.of());
-            double totalQuantity = totalQuantity(lots);
-            double availableQuantity = availableQuantity(lots);
-            totalSum += totalQuantity;
-            availableSum += availableQuantity;
-            table.addRow(List.of(item.getCode(), item.getName(),
-                    nullToEmpty(item.getItemType() == null ? null : item.getItemType().name()),
-                    nullToEmpty(item.getCategory()), locationByItemId.get(item.getId()),
-                    formatNumber(availableQuantity), formatNumber(totalQuantity), item.getUnits(),
-                    item.isActive() ? "Active" : "Inactive"));
+        double totalReceived = 0;
+        int rows = 0;
+        for (InventoryTransaction receipt : receipts) {
+            InventoryLot lot = receipt.getLot();
+            InventoryItem item = lot != null ? lot.getInventoryItem() : null;
+            if (item == null || !matchesTags(item, request)) {
+                continue;
+            }
+            double quantity = receipt.getQuantityChange() != null ? receipt.getQuantityChange() : 0.0;
+            totalReceived += quantity;
+            rows++;
+            table.addRow(List.of(formatDateTime(receipt.getTransactionDate()), nullToEmpty(item.getCode()),
+                    nullToEmpty(item.getName()), formatTags(item), nullToEmpty(lot.getLotNumber()),
+                    formatNumber(quantity), formatDate(lot.getEffectiveExpirationDate())));
         }
-        addQuantityTotalsRow(table, sorted.size(), 5, availableSum, 6, totalSum);
+        addTotalsRow(table, rows + " receipts", Map.of(5, totalReceived));
         return table;
     }
 
     /**
-     * Judged on {@link #availableQuantity}, so dead stock cannot pad an item past
-     * its reorder threshold and out of the report.
+     * What was used in the period, one row per item. Reads {@code inventory_usage},
+     * the same table the board projects from, so the report and the run-out
+     * estimate cannot disagree. Wastage is deliberately excluded: disposal, manual
+     * adjustment and count shrinkage write a transaction and no usage row, and
+     * folding them in here would report them as consumption.
      */
-    private ReportTable buildLowStockReport(InventoryReportRequest request) {
-        List<InventoryItem> activeItems = inventoryItemService.getAllActive();
-        Map<Long, List<InventoryLot>> lotsByItemId = loadLotsByItemId(activeItems);
-        List<InventoryItem> items = activeItems.stream().filter(item -> item.getLowStockThreshold() != null)
-                .filter(item -> availableQuantity(lotsByItemId.getOrDefault(item.getId(), List.of())) < item
-                        .getLowStockThreshold())
-                .collect(Collectors.toList());
-        Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(lotsByItemId);
-        Map<Long, String> locationByItemId = items.stream().collect(Collectors.toMap(InventoryItem::getId,
-                item -> summarizeLocation(lotsByItemId.getOrDefault(item.getId(), List.of()), locationsByLotId)));
-        items = sortItems(items, request, locationByItemId);
-
-        ReportTable table = new ReportTable("Low Stock Items", List.of("Item Code", "Item Name", "Type", "Category",
-                "Location", "Available Quantity", "Total Quantity", "Low Stock Threshold", "Units"), Set.of(5, 6, 7));
-        double availableSum = 0;
-        double totalSum = 0;
-        for (InventoryItem item : items) {
-            List<InventoryLot> lots = lotsByItemId.getOrDefault(item.getId(), List.of());
-            double availableQuantity = availableQuantity(lots);
-            double totalQuantity = totalQuantity(lots);
-            availableSum += availableQuantity;
-            totalSum += totalQuantity;
-            table.addRow(List.of(item.getCode(), item.getName(),
-                    nullToEmpty(item.getItemType() == null ? null : item.getItemType().name()),
-                    nullToEmpty(item.getCategory()), locationByItemId.get(item.getId()),
-                    formatNumber(availableQuantity), formatNumber(totalQuantity),
-                    item.getLowStockThreshold().toString(), item.getUnits()));
-        }
-        addQuantityTotalsRow(table, items.size(), 5, availableSum, 6, totalSum);
-        return table;
-    }
-
-    private ReportTable buildExpirationForecastReport(InventoryReportRequest request) {
-        List<InventoryItem> items = request.isIncludeInactive() ? inventoryItemService.getAll()
-                : inventoryItemService.getAllActive();
-        Map<Long, InventoryItem> itemsById = items.stream()
-                .collect(Collectors.toMap(InventoryItem::getId, i -> i, (a, b) -> a));
-
-        List<InventoryLot> allLots = inventoryLotService.getAll().stream()
-                .filter(lot -> lot.getInventoryItem() != null && itemsById.containsKey(lot.getInventoryItem().getId()))
-                .filter(lot -> lot.getEffectiveExpirationDate() != null)
-                .filter(lot -> request.isIncludeExpired() || !lot.isExpired())
-                .filter(lot -> request.getStartDate() == null
-                        || !lot.getEffectiveExpirationDate().before(request.getStartDate()))
-                .filter(lot -> request.getEndDate() == null
-                        || !lot.getEffectiveExpirationDate().after(request.getEndDate()))
-                .collect(Collectors.toList());
-
-        Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(allLots);
-
-        Comparator<InventoryLot> byExpiration = Comparator.comparing(InventoryLot::getEffectiveExpirationDate);
-        Comparator<InventoryLot> comparator = byExpiration;
-        if (request.isGroupByType()) {
-            comparator = Comparator
-                    .comparing(
-                            (InventoryLot l) -> nullToEmpty(itemTypeName(itemsById.get(l.getInventoryItem().getId()))))
-                    .thenComparing(byExpiration);
-        } else if (request.isGroupByLocation()) {
-            comparator = Comparator.comparing((InventoryLot l) -> resolveLotLocation(l, locationsByLotId))
-                    .thenComparing(byExpiration);
-        }
-        allLots.sort(comparator);
-
-        ReportTable table = new ReportTable(
-                "Expiration Forecast", List.of("Item Code", "Item Name", "Type", "Lot Number", "Location",
-                        "Expiration Date", "Days Until Expiration", "Urgency", "Current Quantity", "Status"),
-                Set.of(6, 8));
-        long now = System.currentTimeMillis();
-        for (InventoryLot lot : allLots) {
-            InventoryItem item = itemsById.get(lot.getInventoryItem().getId());
-            long daysUntil = Math.floorDiv(lot.getEffectiveExpirationDate().getTime() - now, 1000L * 60 * 60 * 24);
-            table.addRow(List.of(item.getCode(), item.getName(),
-                    nullToEmpty(item.getItemType() == null ? null : item.getItemType().name()), lot.getLotNumber(),
-                    resolveLotLocation(lot, locationsByLotId), formatDate(lot.getEffectiveExpirationDate()),
-                    Long.toString(daysUntil), expirationUrgency(daysUntil),
-                    formatNumber(lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0),
-                    lot.getStatus() != null ? lot.getStatus().name() : ""));
-        }
-        return table;
-    }
-
-    /**
-     * At-a-glance triage bucket so the reader doesn't have to do date math per row.
-     */
-    private String expirationUrgency(long daysUntil) {
-        if (daysUntil < 0) {
-            return "EXPIRED";
-        }
-        if (daysUntil <= 7) {
-            return "THIS_WEEK";
-        }
-        if (daysUntil <= 30) {
-            return "THIS_MONTH";
-        }
-        return "LATER";
-    }
-
-    /**
-     * One row per item, heaviest use first. The raw per-transaction log is
-     * {@code TRANSACTION_HISTORY}'s job.
-     */
-    private ReportTable buildUsageTrendsReport(InventoryReportRequest request) {
+    private ReportTable buildConsumedReport(InventoryReportRequest request) {
         List<InventoryUsage> usages = inventoryUsageService.getByDateRange(request.getStartDate(),
                 request.getEndDate());
 
         Map<Long, List<InventoryUsage>> usagesByItemId = usages.stream()
                 .filter(usage -> usage.getInventoryItem() != null)
+                .filter(usage -> matchesTags(usage.getInventoryItem(), request))
                 .collect(Collectors.groupingBy(usage -> usage.getInventoryItem().getId()));
 
-        ReportTable table = new ReportTable("Usage Trends", List.of("Item Code", "Item Name", "Type",
-                "Total Quantity Used", "Usage Events", "Avg Quantity Per Use", "First Use", "Last Use"),
-                Set.of(3, 4, 5));
+        ReportTable table = new ReportTable("Consumed", List.of("Item Code", "Item Name", "Tags", "Total Quantity Used",
+                "Usage Events", "Avg Quantity Per Use", "First Use", "Last Use"), Set.of(3, 4, 5));
 
         List<Map.Entry<Long, List<InventoryUsage>>> sortedByUsage = usagesByItemId.entrySet().stream()
                 .sorted(Comparator
@@ -257,75 +153,71 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             grandTotalUsed += totalUsed;
             totalEvents += eventCount;
 
-            table.addRow(List.of(item.getCode(), item.getName(),
-                    nullToEmpty(item.getItemType() == null ? null : item.getItemType().name()), formatNumber(totalUsed),
-                    Integer.toString(eventCount), formatNumber(eventCount == 0 ? 0.0 : totalUsed / eventCount),
-                    formatDateTime(firstUse), formatDateTime(lastUse)));
+            table.addRow(List.of(nullToEmpty(item.getCode()), nullToEmpty(item.getName()), formatTags(item),
+                    formatNumber(totalUsed), Integer.toString(eventCount),
+                    formatNumber(eventCount == 0 ? 0.0 : totalUsed / eventCount), formatDateTime(firstUse),
+                    formatDateTime(lastUse)));
         }
-        List<String> totalsRow = new java.util.ArrayList<>(
-                java.util.Collections.nCopies(table.getHeaders().size(), ""));
-        totalsRow.set(0, "TOTAL (" + sortedByUsage.size() + " items)");
-        totalsRow.set(3, formatNumber(grandTotalUsed));
-        totalsRow.set(4, Integer.toString(totalEvents));
-        table.addRow(totalsRow);
+        addTotalsRow(table, sortedByUsage.size() + " items", Map.of(3, grandTotalUsed, 4, (double) totalEvents));
         return table;
     }
 
-    private double totalQuantityUsed(List<InventoryUsage> usages) {
-        return usages.stream().mapToDouble(u -> u.getQuantityUsed() != null ? u.getQuantityUsed() : 0.0).sum();
-    }
+    /**
+     * Stock as it stood at a chosen instant, one row per lot with its expiry.
+     *
+     * <p>
+     * With no date, this is today and the lot's own quantity answers it. With a
+     * date, the quantity comes from replaying {@code inventory_transaction}: the
+     * lot table holds only today's figure, while {@code quantity_after} records
+     * what each write left behind. A lot with no transaction before that instant is
+     * omitted rather than shown as zero — it had not been received yet.
+     *
+     * <p>
+     * The replay is only as good as the transaction log. A write that moves stock
+     * without recording a transaction leaves this report reporting the last figure
+     * that was recorded; {@code PUT /rest/inventory/lots/{id}} is one such path and
+     * is a known open defect, not something this report papers over.
+     */
+    private ReportTable buildStockOnHandReport(InventoryReportRequest request) {
+        List<InventoryItem> items = request.isIncludeInactive() ? inventoryItemService.getAll()
+                : inventoryItemService.getAllActive();
+        Map<Long, InventoryItem> itemsById = items.stream().filter(item -> matchesTags(item, request))
+                .collect(Collectors.toMap(InventoryItem::getId, item -> item, (a, b) -> a));
 
-    private ReportTable buildTransactionHistoryReport(InventoryReportRequest request) {
-        List<InventoryTransaction> transactions = inventoryTransactionService.getByDateRange(request.getStartDate(),
-                request.getEndDate());
-        Map<Integer, String> userNameCache = new HashMap<>();
+        boolean asOfPastDate = request.getEndDate() != null;
+        Map<Long, Double> quantityByLotId = asOfPastDate
+                ? inventoryTransactionService.getQuantityOnHandAsOf(request.getEndDate())
+                : Map.of();
 
-        ReportTable table = new ReportTable("Transaction History", List.of("Date", "Item Code", "Item Name",
-                "Lot Number", "Transaction Type", "Quantity Change", "Quantity After", "Performed By"), Set.of(5, 6));
-        for (InventoryTransaction transaction : transactions) {
-            InventoryLot lot = transaction.getLot();
-            InventoryItem item = lot != null ? lot.getInventoryItem() : null;
-            table.addRow(List.of(formatDateTime(transaction.getTransactionDate()), item != null ? item.getCode() : "",
-                    item != null ? item.getName() : "", lot != null ? lot.getLotNumber() : "",
-                    transaction.getTransactionType() != null ? transaction.getTransactionType().name() : "",
-                    formatNumber(transaction.getQuantityChange() != null ? transaction.getQuantityChange() : 0.0),
-                    formatNumber(transaction.getQuantityAfter() != null ? transaction.getQuantityAfter() : 0.0),
-                    resolveUserName(transaction.getPerformedByUser(), userNameCache)));
-        }
-        return table;
-    }
-
-    private ReportTable buildLotTraceabilityReport(InventoryReportRequest request) {
-        List<InventoryLot> lots = inventoryLotService.getAll().stream().filter(lot -> lot.getInventoryItem() != null)
-                .filter(lot -> request.isIncludeInactive() || lot.getInventoryItem().isActive())
-                .sorted(Comparator.comparing((InventoryLot l) -> l.getInventoryItem().getName(),
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(InventoryLot::getLotNumber, Comparator.nullsLast(Comparator.naturalOrder())))
+        List<InventoryLot> lots = inventoryLotService.getAll().stream()
+                .filter(lot -> lot.getInventoryItem() != null && itemsById.containsKey(lot.getInventoryItem().getId()))
+                .sorted(Comparator
+                        .comparing(
+                                (InventoryLot l) -> nullToEmpty(itemsById.get(l.getInventoryItem().getId()).getName()))
+                        .thenComparing(l -> nullToEmpty(l.getLotNumber())))
                 .collect(Collectors.toList());
         Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(lots);
 
-        ReportTable table = new ReportTable("Lot Traceability",
-                List.of("Item Code", "Item Name", "Lot Number", "Receipt Date", "Expiration Date", "Initial Quantity",
-                        "Current Quantity", "Status", "QC Status", "Location"),
-                Set.of(5, 6));
+        ReportTable table = new ReportTable("Stock on Hand", List.of("Item Code", "Item Name", "Tags", "Lot Number",
+                "Expiration Date", "Quantity", "Location", "Status", "QC Status"), Set.of(5));
+
+        double totalQuantity = 0;
+        int rows = 0;
         for (InventoryLot lot : lots) {
-            InventoryItem item = lot.getInventoryItem();
-            table.addRow(List.of(item.getCode(), item.getName(), lot.getLotNumber(), formatDate(lot.getReceiptDate()),
-                    formatDate(lot.getExpirationDate()),
-                    formatNumber(lot.getInitialQuantity() != null ? lot.getInitialQuantity() : 0.0),
-                    formatNumber(lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0),
-                    lot.getStatus() != null ? lot.getStatus().name() : "",
-                    lot.getQcStatus() != null ? lot.getQcStatus().name() : "",
-                    resolveLotLocation(lot, locationsByLotId)));
+            Double quantity = asOfPastDate ? quantityByLotId.get(lot.getId()) : lot.getCurrentQuantity();
+            if (quantity == null || quantity <= 0) {
+                continue;
+            }
+            InventoryItem item = itemsById.get(lot.getInventoryItem().getId());
+            totalQuantity += quantity;
+            rows++;
+            table.addRow(List.of(nullToEmpty(item.getCode()), nullToEmpty(item.getName()), formatTags(item),
+                    nullToEmpty(lot.getLotNumber()), formatDate(lot.getEffectiveExpirationDate()),
+                    formatNumber(quantity), resolveLotLocation(lot, locationsByLotId), readable(lot.getStatus()),
+                    readable(lot.getQcStatus())));
         }
+        addTotalsRow(table, rows + " lots", Map.of(5, totalQuantity));
         return table;
-    }
-
-    // --- shared helpers ---
-
-    /** Raw physical sum across every lot, regardless of usability. */
-    private double totalQuantity(List<InventoryLot> lots) {
-        return lots.stream().mapToDouble(l -> l.getCurrentQuantity() != null ? l.getCurrentQuantity() : 0.0).sum();
     }
 
     /**
@@ -337,59 +229,124 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 .sum();
     }
 
+    /**
+     * Lots whose effective expiry falls in the chosen window, soonest first. The
+     * effective date is the earlier of the printed expiry and any shortened
+     * after-opening date, so a lot opened last week sorts by when it actually goes
+     * off.
+     */
+    private ReportTable buildExpiringReport(InventoryReportRequest request) {
+        List<InventoryItem> items = request.isIncludeInactive() ? inventoryItemService.getAll()
+                : inventoryItemService.getAllActive();
+        Map<Long, InventoryItem> itemsById = items.stream().filter(item -> matchesTags(item, request))
+                .collect(Collectors.toMap(InventoryItem::getId, i -> i, (a, b) -> a));
+
+        List<InventoryLot> allLots = inventoryLotService.getAll().stream()
+                .filter(lot -> lot.getInventoryItem() != null && itemsById.containsKey(lot.getInventoryItem().getId()))
+                .filter(lot -> lot.getEffectiveExpirationDate() != null)
+                .filter(lot -> request.isIncludeExpired() || !lot.isExpired())
+                .filter(lot -> request.getStartDate() == null
+                        || !lot.getEffectiveExpirationDate().before(request.getStartDate()))
+                .filter(lot -> request.getEndDate() == null
+                        || lot.getEffectiveExpirationDate().before(request.getEndDate()))
+                .sorted(Comparator.comparing(InventoryLot::getEffectiveExpirationDate)).collect(Collectors.toList());
+
+        Map<String, Map<String, Object>> locationsByLotId = loadLocationsByLotId(allLots);
+
+        ReportTable table = new ReportTable("Expiring", List.of("Item Code", "Item Name", "Tags", "Lot Number",
+                "Location", "Expiration Date", "Days Until Expiration", "Urgency", "Quantity", "Status"), Set.of(6, 8));
+        long now = System.currentTimeMillis();
+        double totalQuantity = 0;
+        for (InventoryLot lot : allLots) {
+            InventoryItem item = itemsById.get(lot.getInventoryItem().getId());
+            long daysUntil = Math.floorDiv(lot.getEffectiveExpirationDate().getTime() - now, 1000L * 60 * 60 * 24);
+            double quantity = lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0;
+            totalQuantity += quantity;
+            table.addRow(List.of(nullToEmpty(item.getCode()), nullToEmpty(item.getName()), formatTags(item),
+                    nullToEmpty(lot.getLotNumber()), resolveLotLocation(lot, locationsByLotId),
+                    formatDate(lot.getEffectiveExpirationDate()), Long.toString(daysUntil),
+                    expirationUrgency(daysUntil), formatNumber(quantity), readable(lot.getStatus())));
+        }
+        addTotalsRow(table, allLots.size() + " lots", Map.of(8, totalQuantity));
+        return table;
+    }
+
+    /**
+     * At-a-glance triage bucket so the reader doesn't have to do date math per row.
+     */
+    private String expirationUrgency(long daysUntil) {
+        if (daysUntil < 0) {
+            return "Expired";
+        }
+        if (daysUntil <= 7) {
+            return "This week";
+        }
+        if (daysUntil <= 30) {
+            return "This month";
+        }
+        return "Later";
+    }
+
+    private double totalQuantityUsed(List<InventoryUsage> usages) {
+        return usages.stream().mapToDouble(u -> u.getQuantityUsed() != null ? u.getQuantityUsed() : 0.0).sum();
+    }
+
+    /**
+     * An item passes when it carries any of the requested tags. No tags requested
+     * means no filter at all, rather than "items with no tags".
+     */
+    private boolean matchesTags(InventoryItem item, InventoryReportRequest request) {
+        if (request.getTags().isEmpty()) {
+            return true;
+        }
+        if (item.getTags() == null) {
+            return false;
+        }
+        return item.getTags().stream()
+                .anyMatch(tag -> request.getTags().stream().anyMatch(wanted -> wanted.equalsIgnoreCase(tag)));
+    }
+
+    private String formatTags(InventoryItem item) {
+        if (item.getTags() == null || item.getTags().isEmpty()) {
+            return "";
+        }
+        return item.getTags().stream().sorted().collect(Collectors.joining(", "));
+    }
+
+    // --- shared helpers ---
+
     private String nullToEmpty(String value) {
         return value != null ? value : "";
     }
 
     /**
-     * Appends a "TOTAL (N items)" row with two summed quantity columns filled in.
+     * An enum constant as a reader would write it: "In use", not IN_USE. These
+     * reports are printed and read by people, and the Java name of a constant is an
+     * implementation detail that happened to reach the page.
      */
-    private void addQuantityTotalsRow(ReportTable table, int itemCount, int availableColumnIndex, double availableSum,
-            int totalColumnIndex, double totalSum) {
+    private String readable(Enum<?> value) {
+        if (value == null) {
+            return "";
+        }
+        String words = value.name().replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
+        return Character.toUpperCase(words.charAt(0)) + words.substring(1);
+    }
+
+    /**
+     * Appends a "TOTAL (...)" row with the given columns summed. Reports differ in
+     * which columns carry a quantity, so the caller names them rather than the
+     * helper guessing.
+     */
+    private void addTotalsRow(ReportTable table, String label, Map<Integer, Double> sumsByColumn) {
+        if (table.getRows().isEmpty()) {
+            // A totals row over nothing is not a total, and it leaves the caller unable
+            // to tell an empty report from a one-row one.
+            return;
+        }
         List<String> row = new java.util.ArrayList<>(java.util.Collections.nCopies(table.getHeaders().size(), ""));
-        row.set(0, "TOTAL (" + itemCount + " items)");
-        row.set(availableColumnIndex, formatNumber(availableSum));
-        row.set(totalColumnIndex, formatNumber(totalSum));
+        row.set(0, "TOTAL (" + label + ")");
+        sumsByColumn.forEach((column, sum) -> row.set(column, formatNumber(sum)));
         table.addRow(row);
-    }
-
-    /**
-     * "Group by" clusters adjacent rows in the flat exported table: sort by type
-     * and/or location ahead of name, rather than emitting section headers.
-     */
-    private List<InventoryItem> sortItems(List<InventoryItem> items, InventoryReportRequest request,
-            Map<Long, String> locationByItemId) {
-        Comparator<InventoryItem> comparator = Comparator.comparing(InventoryItem::getName,
-                Comparator.nullsLast(Comparator.naturalOrder()));
-        if (request.isGroupByLocation()) {
-            comparator = Comparator.comparing((InventoryItem i) -> locationByItemId.getOrDefault(i.getId(), ""))
-                    .thenComparing(comparator);
-        }
-        if (request.isGroupByType()) {
-            comparator = Comparator.comparing((InventoryItem i) -> nullToEmpty(itemTypeName(i)))
-                    .thenComparing(comparator);
-        }
-        return items.stream().sorted(comparator).collect(Collectors.toList());
-    }
-
-    private String itemTypeName(InventoryItem item) {
-        return item == null || item.getItemType() == null ? null : item.getItemType().name();
-    }
-
-    /**
-     * One query for every lot, grouped in memory, rather than a
-     * {@code getByInventoryItemId} round trip per item.
-     */
-    private Map<Long, List<InventoryLot>> loadLotsByItemId(List<InventoryItem> items) {
-        java.util.Set<Long> itemIds = items.stream().map(InventoryItem::getId).collect(Collectors.toSet());
-        return inventoryLotService.getAll().stream()
-                .filter(lot -> lot.getInventoryItem() != null && itemIds.contains(lot.getInventoryItem().getId()))
-                .collect(Collectors.groupingBy(lot -> lot.getInventoryItem().getId()));
-    }
-
-    private Map<String, Map<String, Object>> loadLocationsByLotId(Map<Long, List<InventoryLot>> lotsByItemId) {
-        List<InventoryLot> allLots = lotsByItemId.values().stream().flatMap(List::stream).collect(Collectors.toList());
-        return loadLocationsByLotId(allLots);
     }
 
     private Map<String, Map<String, Object>> loadLocationsByLotId(List<InventoryLot> lots) {
@@ -408,38 +365,6 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         }
         String path = String.valueOf(location.get("hierarchicalPath"));
         return path.isEmpty() ? UNASSIGNED_LOCATION : path;
-    }
-
-    private String summarizeLocation(List<InventoryLot> lots, Map<String, Map<String, Object>> locationsByLotId) {
-        java.util.Set<String> distinctLocations = lots.stream().map(lot -> resolveLotLocation(lot, locationsByLotId))
-                .filter(loc -> !UNASSIGNED_LOCATION.equals(loc)).collect(Collectors.toSet());
-        if (distinctLocations.isEmpty()) {
-            return UNASSIGNED_LOCATION;
-        }
-        if (distinctLocations.size() == 1) {
-            return distinctLocations.iterator().next();
-        }
-        return MULTIPLE_LOCATIONS;
-    }
-
-    private String resolveUserName(Integer userId, Map<Integer, String> cache) {
-        if (userId == null) {
-            return "";
-        }
-        return cache.computeIfAbsent(userId, id -> {
-            try {
-                SystemUser user = systemUserService.get(id.toString());
-                if (user == null) {
-                    return id.toString();
-                }
-                String first = user.getFirstName() != null ? user.getFirstName().trim() : "";
-                String last = user.getLastName() != null ? user.getLastName().trim() : "";
-                String combined = (first + " " + last).trim();
-                return combined.isEmpty() ? id.toString() : combined;
-            } catch (Exception e) {
-                return id.toString();
-            }
-        });
     }
 
     private String formatDate(Timestamp timestamp) {
