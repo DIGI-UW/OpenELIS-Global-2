@@ -123,6 +123,27 @@ describe("InventoryLotsPage", () => {
     expect(Utils.getFromOpenElisServer.mock.calls.length).toBe(before);
   });
 
+  it("does not refetch when the page is turned, since the slice is local", async () => {
+    const lots = Array.from({ length: 30 }, (_, i) => ({
+      ...assignedLot,
+      id: 8000 + i,
+      lotNumber: `LOT-${i}`,
+    }));
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => cb(lots));
+    renderPage();
+    await screen.findByText("LOT-0");
+    const before = Utils.getFromOpenElisServer.mock.calls.length;
+
+    fireEvent.click(screen.getByLabelText("Next page"));
+    expect(await screen.findByText("LOT-25")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/items per page/i), {
+      target: { value: "50" },
+    });
+
+    expect(Utils.getFromOpenElisServer.mock.calls.length).toBe(before);
+  });
+
   it("counts what the search actually matched, not the unfiltered listing", async () => {
     Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([assignedLot, releasedLot]),

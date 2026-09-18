@@ -204,10 +204,17 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
           <Dropdown
             id="storage-add-modal-parent"
             titleText={intl.formatMessage({ id: meta.parentLabelId })}
-            label={intl.formatMessage({
-              id: "storage.picker.select",
-              defaultMessage: "Select",
-            })}
+            label={intl.formatMessage(
+              { id: "storage.picker.select", defaultMessage: "Select {level}" },
+              {
+                level: intl
+                  .formatMessage({
+                    id: meta.parentLabelId,
+                    defaultMessage: meta.parentLabel,
+                  })
+                  .toLowerCase(),
+              },
+            )}
             items={parentItems}
             itemToString={(item) => item?.text || ""}
             selectedItem={
@@ -227,8 +234,8 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
               defaultMessage: "Device type",
             })}
             label={intl.formatMessage({
-              id: "storage.picker.select",
-              defaultMessage: "Select",
+              id: "storage.picker.selectDeviceType",
+              defaultMessage: "Select device type",
             })}
             items={deviceTypes}
             itemToString={(item) => item || ""}
@@ -248,7 +255,7 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
                 defaultMessage: "Grid size",
               })}
               label={intl.formatMessage({
-                id: "storage.picker.select",
+                id: "label.select",
                 defaultMessage: "Select",
               })}
               items={GRID_PRESETS}

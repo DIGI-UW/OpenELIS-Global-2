@@ -310,7 +310,7 @@ export default function EditLocationPage({ type }) {
               defaultMessage: "Device type",
             })}
             label={intl.formatMessage({
-              id: "storage.picker.select",
+              id: "storage.picker.selectDeviceType",
               defaultMessage: "Select device type",
             })}
             items={deviceTypes}

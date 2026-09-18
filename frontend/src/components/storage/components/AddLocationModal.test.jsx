@@ -121,6 +121,31 @@ describe("AddLocationModal", () => {
     expect(screen.getByText("Create").closest("button")).toBeEnabled();
   });
 
+  it("names the parent level in the parent picker", async () => {
+    renderModal({ level: "rack" });
+
+    await waitFor(() =>
+      expect(screen.getByText("Select shelf")).toBeInTheDocument(),
+    );
+  });
+
+  it("asks for a device type by name rather than by level", async () => {
+    renderModal({ level: "device" });
+
+    expect(await screen.findByText("Select device type")).toBeInTheDocument();
+  });
+
+  it("leaves no unsubstituted message placeholder on any level", async () => {
+    for (const level of ["room", "device", "shelf", "rack", "box"]) {
+      const { unmount } = renderModal({ level });
+      await waitFor(() =>
+        expect(screen.getByText(/^Add /)).toBeInTheDocument(),
+      );
+      expect(document.body.textContent).not.toContain("{level}");
+      unmount();
+    }
+  });
+
   it("posts a room to its own endpoint and reports success", async () => {
     const onCreated = vi.fn();
     renderModal({ level: "room", onCreated });

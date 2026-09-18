@@ -30,12 +30,10 @@ export default function InventoryLotsPage({ embedded = false }) {
   const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // searchTerm stays out of the fetch: the hook has no search endpoint for
-  // lots, so passing it would only refire the effect against the same url.
+  // The lots endpoint neither searches nor pages, so the search term and the
+  // page controls stay local and out of the fetch, which would only refire.
   const { items, loading } = useStorageTableData({
     listUrl: "/rest/storage/inventory-lots",
-    page,
-    pageSize,
   });
 
   const crumbs = [
