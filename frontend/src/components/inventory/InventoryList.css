@@ -158,3 +158,10 @@
   flex: 1 1 14rem;
   min-width: 0;
 }
+
+.quick-receive-location {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.25rem;
+}

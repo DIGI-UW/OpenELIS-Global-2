@@ -47,6 +47,7 @@ import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
 import ManageTagsModal from "./ManageTagsModal";
+import QuickReceiveModal from "./QuickReceiveModal";
 import QuickLogUsageModal from "./QuickLogUsageModal";
 import ReorderSuggestionsModal, {
   isSuggested,
@@ -1168,12 +1169,24 @@ const InventoryItemsBoard = () => {
 
       {/* Mounted only while active: these modals seed form state once and never reset it. */}
       {action?.kind === "receive" && (
-        <LotEntryModal
+        <QuickReceiveModal
           open
-          lot={null}
-          item={{ id: action.row.itemId }}
+          items={rows}
+          initialItemId={action.row?.itemId ?? null}
           onClose={closeAction}
-          onSave={() => onActionSaved("lot.save.success")}
+          onSave={(received) => {
+            setAction(null);
+            refresh();
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                { id: "inventory.receive.success" },
+                { quantity: received.quantity, units: received.units },
+              ),
+            });
+          }}
+          onDefineNew={(upc) => setAction({ kind: "newItem", upc })}
         />
       )}
       {action?.kind === "editLot" && (
@@ -1235,6 +1248,7 @@ const InventoryItemsBoard = () => {
         <InventoryItemForm
           open
           item={null}
+          initialUpc={action.upc ?? null}
           onClose={closeAction}
           onSave={() => onActionSaved("inventory.item.created")}
         />

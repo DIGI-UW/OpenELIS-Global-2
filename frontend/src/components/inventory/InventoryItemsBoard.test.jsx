@@ -70,6 +70,9 @@ vi.mock("./UpdateQCStatusModal", () =>
 vi.mock("./DisposeLotModal", () =>
   modalStub("dispose", (p) => `lot:${p.lot.id}`),
 );
+vi.mock("./QuickReceiveModal", () =>
+  modalStub("quick-receive", (p) => `receive:item:${p.initialItemId}`),
+);
 vi.mock("./ManageTagsModal", () =>
   modalStub("manage-tags", () => "manage-tags"),
 );
@@ -986,7 +989,7 @@ describe("InventoryItemsBoard", () => {
       await openRowMenu(MALARIA.name);
       fireEvent.click(screen.getByText("Receive stock"));
 
-      expect(screen.getByTestId("lot-entry-target")).toHaveTextContent(
+      expect(screen.getByTestId("quick-receive-target")).toHaveTextContent(
         `receive:item:${MALARIA.itemId}`,
       );
     });
@@ -1081,7 +1084,7 @@ describe("InventoryItemsBoard", () => {
 
       await openRowMenu(MALARIA.name);
       fireEvent.click(screen.getByText("Receive stock"));
-      fireEvent.click(screen.getByText("lot-entry-save"));
+      fireEvent.click(screen.getByText("quick-receive-save"));
 
       await waitFor(() =>
         expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2),

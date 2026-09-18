@@ -201,6 +201,7 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setTestsPerKit(item.getTestsPerKit());
 
             existingItem.setCatalogNumber(item.getCatalogNumber());
+            existingItem.setUpc(item.getUpc());
             existingItem.setExpirationAlertDays(item.getExpirationAlertDays());
             existingItem.setTrackLots(item.getTrackLots());
 

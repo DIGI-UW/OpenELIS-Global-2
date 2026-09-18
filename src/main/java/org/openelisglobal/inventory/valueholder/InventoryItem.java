@@ -81,6 +81,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "catalog_number", length = 100)
     private String catalogNumber;
 
+    @Column(name = "upc", length = 64)
+    @Size(max = 64)
+    private String upc;
+
     @Column(name = "storage_requirements", length = 255)
     private String storageRequirements;
 

@@ -35,6 +35,7 @@ const EMPTY_FORM = {
   category: "",
   manufacturer: "",
   catalogNumber: "",
+  upc: "",
   units: "",
   lowStockThreshold: 0,
   expirationAlertDays: "",
@@ -52,6 +53,7 @@ const InventoryItemForm = ({
   onSave,
   item = null,
   observedLeadTime = null,
+  initialUpc = null,
 }) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -70,7 +72,9 @@ const InventoryItemForm = ({
   const isEdit = !!item;
 
   // Form state
-  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [formData, setFormData] = useState(
+    initialUpc ? { ...EMPTY_FORM, upc: initialUpc } : EMPTY_FORM,
+  );
 
   const [saving, setSaving] = useState(false);
   const normalizedCode = toCode(formData.code);
@@ -111,6 +115,7 @@ const InventoryItemForm = ({
         category: item.category || "",
         manufacturer: item.manufacturer || "",
         catalogNumber: item.catalogNumber || "",
+        upc: item.upc || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
         expirationAlertDays: item.expirationAlertDays ?? "",
@@ -122,9 +127,9 @@ const InventoryItemForm = ({
         leadTimeDays: item.leadTimeDays ?? "",
       });
     } else {
-      setFormData(EMPTY_FORM);
+      setFormData(initialUpc ? { ...EMPTY_FORM, upc: initialUpc } : EMPTY_FORM);
     }
-  }, [item, open]);
+  }, [item, open, initialUpc]);
 
   // Handle input changes
   const handleChange = (field, value) => {
@@ -220,6 +225,7 @@ const InventoryItemForm = ({
       sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
       sanitizedData.testsPerKit = optionalNumber(formData.testsPerKit);
       sanitizedData.catalogNumber = formData.catalogNumber;
+      sanitizedData.upc = formData.upc?.trim() || null;
       sanitizedData.expirationAlertDays = optionalNumber(
         formData.expirationAlertDays,
       );
@@ -390,6 +396,13 @@ const InventoryItemForm = ({
             labelText={<FormattedMessage id="catalog.item.catalogNumber" />}
             value={formData.catalogNumber}
             onChange={(e) => handleChange("catalogNumber", e.target.value)}
+          />
+          <TextInput
+            id="upc"
+            labelText={<FormattedMessage id="catalog.item.upc" />}
+            helperText={intl.formatMessage({ id: "catalog.item.upc.help" })}
+            value={formData.upc}
+            onChange={(e) => handleChange("upc", e.target.value)}
           />
           <TextInput
             id="units"
