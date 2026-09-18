@@ -6,6 +6,8 @@ import java.sql.Timestamp;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
@@ -160,7 +162,7 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> create(@Valid @RequestBody InventoryLot lot, HttpServletRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody InventoryLot lot, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -183,14 +185,19 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot savedLot = inventoryLotService.save(lot);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> update(@PathVariable String id, @Valid @RequestBody InventoryLot lot,
+    public ResponseEntity<?> update(@PathVariable String id, @Valid @RequestBody InventoryLot lot,
             HttpServletRequest request) {
         try {
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
@@ -220,9 +227,14 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot updatedLot = inventoryLotService.update(lot);
             return ResponseEntity.ok(updatedLot);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
@@ -285,8 +297,8 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/{id}/adjust", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> adjustQuantity(@PathVariable String id,
-            @RequestBody AdjustQuantityRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> adjustQuantity(@PathVariable String id, @RequestBody AdjustQuantityRequest request,
+            HttpServletRequest httpRequest) {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -294,18 +306,21 @@ public class InventoryLotRestController extends BaseRestController {
             InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
                     request.getReason(), sysUserId);
             return ResponseEntity.ok(lot);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
     @PostMapping(value = "/{id}/dispose", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> disposeLot(@PathVariable String id,
-            @RequestBody(required = false) DisposeRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> disposeLot(@PathVariable String id, @RequestBody(required = false) DisposeRequest request,
+            HttpServletRequest httpRequest) {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -314,12 +329,15 @@ public class InventoryLotRestController extends BaseRestController {
             String notes = request != null ? request.getNotes() : null;
             InventoryLot lot = inventoryLotService.disposeLot(Long.valueOf(id), reason, notes, sysUserId);
             return ResponseEntity.ok(lot);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 

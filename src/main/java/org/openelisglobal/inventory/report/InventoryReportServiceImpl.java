@@ -14,8 +14,6 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -331,18 +329,12 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     /**
-     * Wider than {@link InventoryLot#isAvailableForUse()}, which gates consumption:
-     * a lot awaiting QC is still on the shelf and should not trigger a reorder.
+     * Sum of {@link InventoryLot#countsAsAvailableStock()} stock, the rule the
+     * low-stock alert shares so tile and report cannot disagree.
      */
     private double availableQuantity(List<InventoryLot> lots) {
-        return lots.stream().filter(InventoryReportServiceImpl::countsAsAvailable)
-                .mapToDouble(l -> l.getCurrentQuantity() != null ? l.getCurrentQuantity() : 0.0).sum();
-    }
-
-    private static boolean countsAsAvailable(InventoryLot lot) {
-        return !lot.isExpired() && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0
-                && (lot.getStatus() == LotStatus.ACTIVE || lot.getStatus() == LotStatus.IN_USE)
-                && (lot.getQcStatus() == QCStatus.PASSED || lot.getQcStatus() == QCStatus.PENDING);
+        return lots.stream().filter(InventoryLot::countsAsAvailableStock).mapToDouble(InventoryLot::getCurrentQuantity)
+                .sum();
     }
 
     private String nullToEmpty(String value) {

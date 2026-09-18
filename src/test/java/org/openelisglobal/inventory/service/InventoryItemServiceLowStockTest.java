@@ -19,11 +19,11 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 /**
- * "Low stock" must be judged against usable quantity
- * ({@link InventoryLot#isAvailableForUse()}), not the raw sum of every lot — a
- * raw-total check counts expired/disposed stock as usable, so an item sitting
- * on a pile of dead inventory would never trip the alert. This also backs the
- * Inventory Dashboard's low-stock tile via the same code path.
+ * "Low stock" is judged against stock a reorder can count on
+ * ({@link InventoryLot#countsAsAvailableStock()}): usable now or awaiting QC,
+ * never expired, disposed, quarantined or failed. The same predicate and the
+ * same strict-below boundary drive the dashboard tile, the alerts endpoint and
+ * the Low Stock report, so they cannot disagree about an item.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceLowStockTest {
@@ -58,7 +58,7 @@ public class InventoryItemServiceLowStockTest {
     }
 
     @Test
-    public void getLowStockItems_flagsItem_whenAvailableQuantityAtOrBelowThreshold() {
+    public void getLowStockItems_flagsItem_whenAvailableQuantityBelowThreshold() {
         InventoryItem lowItem = item(1000L, "REAGENT_A", 20);
         when(inventoryItemDAO.getAllActive()).thenReturn(List.of(lowItem));
         // 3 usable + 100 disposed = 103 total, but only 3 usable — a raw-total
@@ -97,6 +97,41 @@ public class InventoryItemServiceLowStockTest {
         // Available quantity is 0 (none of these lots are usable) — below the
         // threshold of 10, so the item IS flagged despite 90 units of total stock.
         assertEquals(1, result.size());
+    }
+
+    @Test
+    public void getLowStockItems_countsStockAwaitingQcAsOnTheShelf() {
+        InventoryItem awaitingQc = item(1004L, "REAGENT_E", 20);
+        when(inventoryItemDAO.getAllActive()).thenReturn(List.of(awaitingQc));
+        when(inventoryLotDAO.getByInventoryItemId(1004L))
+                .thenReturn(List.of(lot(500.0, LotStatus.ACTIVE, QCStatus.PENDING)));
+
+        List<InventoryItem> result = inventoryItemService.getLowStockItems();
+
+        assertTrue("500 units awaiting QC are on the shelf, not a reorder trigger", result.isEmpty());
+    }
+
+    @Test
+    public void getLowStockItems_doesNotFlagItemExactlyAtThreshold() {
+        InventoryItem atThreshold = item(1005L, "REAGENT_F", 10);
+        when(inventoryItemDAO.getAllActive()).thenReturn(List.of(atThreshold));
+        when(inventoryLotDAO.getByInventoryItemId(1005L))
+                .thenReturn(List.of(lot(10.0, LotStatus.ACTIVE, QCStatus.PASSED)));
+
+        List<InventoryItem> result = inventoryItemService.getLowStockItems();
+
+        assertTrue("low stock means strictly below the threshold", result.isEmpty());
+    }
+
+    @Test
+    public void getLowStockItems_neverFlagsThresholdZero() {
+        InventoryItem noAlert = item(1006L, "REAGENT_G", 0);
+        when(inventoryItemDAO.getAllActive()).thenReturn(List.of(noAlert));
+        when(inventoryLotDAO.getByInventoryItemId(1006L)).thenReturn(List.of());
+
+        List<InventoryItem> result = inventoryItemService.getLowStockItems();
+
+        assertTrue("threshold 0 means 'no alert for this item'", result.isEmpty());
     }
 
     @Test

@@ -4,8 +4,12 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -99,7 +103,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
 
         if (availableLots == null || availableLots.isEmpty()) {
-            throw new IllegalStateException(describeWhyNoLotsAvailable(itemId));
+            throw noAvailableLots(itemId);
         }
 
         // Check if sufficient inventory is available
@@ -166,15 +170,50 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
                 existingLotNumbers::contains);
     }
 
-    private String describeWhyNoLotsAvailable(Long itemId) {
-        List<InventoryLot> allLots = inventoryLotService.getByInventoryItemId(itemId);
-        long pendingQc = allLots.stream().filter(lot -> lot.getQcStatus() == QCStatus.PENDING)
-                .filter(lot -> lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0).count();
-        if (pendingQc > 0) {
-            return "No QC-passed lots available for item: " + itemId + " (" + pendingQc
-                    + " lot(s) with stock are still awaiting QC, mark QC as passed to use them)";
+    /**
+     * Names the item and the kind of unexpired stock standing in the way, so the
+     * user knows whether to pass QC, release a quarantine, or reorder.
+     */
+    private LocalizedValidationException noAvailableLots(Long itemId) {
+        InventoryItem item;
+        try {
+            item = inventoryItemService.get(itemId);
+        } catch (ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Inventory item not found: " + itemId);
         }
-        return "No available lots for item: " + itemId;
+        List<InventoryLot> stocked = inventoryLotService.getByInventoryItemId(itemId).stream()
+                .filter(lot -> !lot.isExpired() && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0)
+                .collect(Collectors.toList());
+        String label = item.getName() + " (" + item.getCode() + ")";
+
+        long awaitingQc = count(stocked, lot -> lot.getQcStatus() == QCStatus.PENDING);
+        if (awaitingQc > 0) {
+            return refusal("inventory.consume.error.noLotsAwaitingQc", "No QC-passed stock for " + label + ": "
+                    + awaitingQc + " lot(s) with stock are awaiting QC; mark QC as passed to use them", item,
+                    awaitingQc);
+        }
+        long quarantined = count(stocked,
+                lot -> lot.getStatus() == LotStatus.QUARANTINED || lot.getQcStatus() == QCStatus.QUARANTINED);
+        if (quarantined > 0) {
+            return refusal("inventory.consume.error.noLotsQuarantined",
+                    "No usable stock for " + label + ": " + quarantined + " lot(s) with stock are quarantined", item,
+                    quarantined);
+        }
+        long failedQc = count(stocked, lot -> lot.getQcStatus() == QCStatus.FAILED);
+        if (failedQc > 0) {
+            return refusal("inventory.consume.error.noLotsQcFailed",
+                    "No usable stock for " + label + ": " + failedQc + " lot(s) with stock failed QC", item, failedQc);
+        }
+        return refusal("inventory.consume.error.noLots", "No stock available for " + label, item, 0);
+    }
+
+    private long count(List<InventoryLot> lots, Predicate<InventoryLot> predicate) {
+        return lots.stream().filter(predicate).count();
+    }
+
+    private LocalizedValidationException refusal(String errorCode, String message, InventoryItem item, long count) {
+        return new LocalizedValidationException(errorCode, message,
+                Map.of("code", item.getCode(), "name", item.getName(), "count", Long.toString(count)));
     }
 
     @Override
@@ -219,6 +258,10 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         return savedLot;
     }
 
+    /**
+     * Counts a lot only if {@link InventoryLot#isAvailableForUse()}, the per-lot
+     * rule consumption enforces, so a "yes" here cannot turn into a 409 there.
+     */
     @Override
     @Transactional(readOnly = true)
     public boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded) {
@@ -226,8 +269,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             return true;
         }
 
-        Double totalAvailable = inventoryLotService.getTotalCurrentQuantity(itemId);
-        return totalAvailable != null && totalAvailable >= quantityNeeded;
+        double available = inventoryLotService.getByInventoryItemId(itemId).stream()
+                .filter(InventoryLot::isAvailableForUse).mapToDouble(InventoryLot::getCurrentQuantity).sum();
+        return available >= quantityNeeded;
     }
 
     @Override

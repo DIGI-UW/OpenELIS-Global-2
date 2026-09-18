@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryManagementService;
@@ -51,6 +52,8 @@ public class InventoryManagementRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(InventoryErrorBody.localized(e));
         } catch (IllegalStateException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getMessage()));
@@ -72,6 +75,8 @@ public class InventoryManagementRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

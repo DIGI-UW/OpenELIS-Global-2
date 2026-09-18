@@ -93,30 +93,20 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     }
 
     /**
-     * "Low stock" is judged against usable quantity
-     * ({@link InventoryLot#isAvailableForUse()}, which excludes
-     * EXPIRED/DISPOSED/QUARANTINED lots and anything that failed QC) rather than
-     * the raw sum of every lot. A raw total counts an item sitting on a pile of
-     * expired or disposed stock as well stocked, which is backwards for an alert
-     * meant to answer "what do we need to reorder". Computed in Java rather than
-     * SQL because replicating isAvailableForUse()'s expiry, status and QC rules in
-     * a query is more error-prone than reusing the one implementation we have.
-     *
-     * <p>
-     * Trade-off: one lot query per active item. Fine at the scale inventory runs at
-     * today; batch it into a single grouped query if that changes.
+     * Strictly below threshold on {@link InventoryLot#countsAsAvailableStock()}
+     * stock, the rule the Low Stock report shares; one lot query per active item.
      */
     @Override
     @Transactional(readOnly = true)
     public List<InventoryItem> getLowStockItems() {
         return inventoryItemDAO.getAllActive().stream().filter(item -> item.getLowStockThreshold() != null)
-                .filter(item -> availableQuantity(item.getId()) <= item.getLowStockThreshold())
+                .filter(item -> availableQuantity(item.getId()) < item.getLowStockThreshold())
                 .collect(Collectors.toList());
     }
 
     private double availableQuantity(Long itemId) {
-        return inventoryLotDAO.getByInventoryItemId(itemId).stream().filter(InventoryLot::isAvailableForUse)
-                .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
+        return inventoryLotDAO.getByInventoryItemId(itemId).stream().filter(InventoryLot::countsAsAvailableStock)
+                .mapToDouble(InventoryLot::getCurrentQuantity).sum();
     }
 
     @Override

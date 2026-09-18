@@ -3,6 +3,8 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -31,6 +33,36 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     protected InventoryLotDAO getBaseObjectDAO() {
         return inventoryLotDAO;
+    }
+
+    @Override
+    @Transactional
+    public Long insert(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.insert(lot);
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot update(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.update(lot);
+    }
+
+    // barcode is UNIQUE and nullable: '' would make barcode-less lots collide.
+    private void normalizeBarcode(InventoryLot lot) {
+        String barcode = lot.getBarcode() == null ? null : lot.getBarcode().trim();
+        if (barcode == null || barcode.isEmpty()) {
+            lot.setBarcode(null);
+            return;
+        }
+        lot.setBarcode(barcode);
+        InventoryLot holder = inventoryLotDAO.getByBarcode(barcode);
+        if (holder != null && !holder.getId().equals(lot.getId())) {
+            throw new LocalizedValidationException("inventory.lot.error.duplicateBarcode",
+                    "Barcode " + barcode + " is already assigned to lot " + holder.getLotNumber(),
+                    Map.of("barcode", barcode, "lotNumber", holder.getLotNumber()));
+        }
     }
 
     @Override
@@ -166,6 +198,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        if (lot.getStatus() == LotStatus.DISPOSED || lot.getStatus() == LotStatus.CONSUMED) {
+            throw new IllegalStateException("Cannot adjust a " + lot.getStatus() + " lot: " + lot.getLotNumber());
+        }
+
         if (newQuantity < 0) {
             throw new IllegalArgumentException("Quantity cannot be negative");
         }
@@ -178,7 +214,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
 
         // Update status based on quantity
-        if (newQuantity == 0 && lot.getStatus() != LotStatus.DISPOSED) {
+        if (newQuantity == 0) {
             lot.setStatus(LotStatus.CONSUMED);
         }
 
@@ -197,6 +233,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
+        }
+
+        if (lot.getStatus() == LotStatus.DISPOSED) {
+            throw new IllegalStateException("Lot already disposed: " + lot.getLotNumber());
         }
 
         Double quantityDisposed = lot.getCurrentQuantity();
