@@ -9745,5 +9745,21 @@
   "inventory.item.tags.add": "Type to find or add a tag",
   "inventory.item.tags.remove": "Remove the tag {tag}",
   "inventory.item.autoConsume.help": "There is no auto-consume setting. An item is consumed automatically when a test in the Test Catalog is linked to it.",
-  "inventory.search.placeholder.board": "Search by item name, code, tag or lot number"
+  "inventory.search.placeholder.board": "Search by item name, code, tag or lot number",
+  "inventory.filter.tags": "Filter by Tags",
+  "inventory.filter.tags.clear": "Clear tags",
+  "inventory.tags.manage": "Manage tags",
+  "inventory.tags.help": "Tidy up your tags. Deactivating one stops it being suggested or offered as a filter. Items already carrying it keep it.",
+  "inventory.tags.tag": "Tag",
+  "inventory.tags.usage": "Items",
+  "inventory.tags.status": "Status",
+  "inventory.tags.active": "Active",
+  "inventory.tags.deactivated": "Deactivated",
+  "inventory.tags.deactivate": "Deactivate",
+  "inventory.tags.reactivate": "Reactivate",
+  "inventory.tags.showDeactivated": "Show deactivated",
+  "inventory.tags.new": "New tag",
+  "inventory.tags.add": "Add tag",
+  "inventory.tags.none": "No tags yet. Add one here, or tag an item directly.",
+  "inventory.tags.error.blank": "A tag needs a name."
 }

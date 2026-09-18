@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-tag-directory.xml">
+
+    <!--
+    OGC-438: somewhere to keep the state a free-form tag cannot hold by itself.
+
+    Tags live on items as plain strings, which is what makes them free-form, and that is all most of
+    them ever need. Two things do not fit on a string: whether a tag should still be offered when
+    someone is classifying an item, and a tag that a lab has created but not yet applied to anything.
+    Both are properties of the tag rather than of any item carrying it, so they get a row here.
+
+    This is a directory, not the managed entity the redesign removed. Nothing hangs behaviour off a
+    row in it, an item's tags are still the strings on the item, and a tag with no row here is a
+    perfectly ordinary tag in good standing — rows appear only when a tag is deactivated or created
+    ahead of use. Deactivating is deliberately not deleting: items already carrying the tag keep it
+    and go on displaying it, which is what lets a lab consolidate "glove" and "gloves" without
+    rewriting its own history.
+
+    The unique index is on lower(name) because the write path already folds a tag to the spelling
+    already in use, and two rows differing only in case would be two directory entries for one tag.
+    -->
+    <changeSet author="OGC" id="OGC-438-create-inventory-tag">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_tag" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence schemaName="clinlims" sequenceName="inventory_tag_seq" startValue="1"
+            incrementBy="1"/>
+
+        <createTable tableName="inventory_tag" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="inventory_tag_pkey" nullable="false"/>
+            </column>
+            <!-- The tag itself, spelled exactly as it is stored on the items carrying it. -->
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- 'N' stops the tag being suggested or offered as a filter. It never removes it from
+                 an item. -->
+            <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="NUMERIC(10)"/>
+            <!-- BaseObject maps its lastupdated property to a last_updated column. -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.inventory_tag
+            ADD CONSTRAINT chk_inventory_tag_is_active CHECK (is_active IN ('Y', 'N'));
+
+            CREATE UNIQUE INDEX uq_inventory_tag_name
+            ON clinlims.inventory_tag (lower(name));
+        </sql>
+
+        <rollback>
+            <dropTable tableName="inventory_tag" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_tag_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

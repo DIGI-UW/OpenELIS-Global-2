@@ -142,6 +142,7 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryOrderCycle</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTag</class>
 
         <!-- Shipment Management entities (OGC-62) -->
         <class>org.openelisglobal.shipment.valueholder.ShippingBox</class>

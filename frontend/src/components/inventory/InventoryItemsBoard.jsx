@@ -26,6 +26,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   ActionableNotification,
+  FilterableMultiSelect,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -40,6 +41,7 @@ import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
+import ManageTagsModal from "./ManageTagsModal";
 import QuickLogUsageModal from "./QuickLogUsageModal";
 import ReorderSuggestionsModal, {
   isSuggested,
@@ -133,6 +135,9 @@ const InventoryItemsBoard = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState([]);
+  const [activeTags, setActiveTags] = useState([]);
+  const [manageTagsOpen, setManageTagsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
   const [detailLot, setDetailLot] = useState(null);
@@ -159,10 +164,17 @@ const InventoryItemsBoard = () => {
   // action.
   const refresh = useCallback(
     () =>
-      Promise.all([InventoryBoardAPI.get(), InventoryLotAPI.getAll()])
-        .then(([board, allLots]) => {
+      Promise.all([
+        InventoryBoardAPI.get(),
+        InventoryLotAPI.getAll(),
+        // Which tags may still be offered as a filter. A failure here costs the
+        // filter its list, never the board its rows, so it is caught separately.
+        InventoryItemAPI.getTags().catch(() => []),
+      ])
+        .then(([board, allLots, tags]) => {
           setRows(Array.isArray(board) ? board : []);
           setLots(Array.isArray(allLots) ? allLots : []);
+          setActiveTags(Array.isArray(tags) ? tags : []);
           setError(null);
         })
         .catch((err) => setError(err.message)),
@@ -222,11 +234,36 @@ const InventoryItemsBoard = () => {
     return [...paths].sort();
   }, [lots]);
 
+  // What the board can be filtered by: the tags its own rows carry, minus the
+  // ones that have been retired. A retired tag stays on the items that carry it
+  // and goes on showing in their rows — it just stops being offered here, which
+  // is the whole difference between retiring a tag and deleting it. Search still
+  // finds it, so a row tagged with one is never unreachable.
+  const tagOptions = useMemo(() => {
+    const retired = new Set(activeTags);
+    const names = new Set();
+    rows.forEach((row) =>
+      (row.tags || []).forEach((tag) => {
+        if (retired.size === 0 || retired.has(tag)) names.add(tag);
+      }),
+    );
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [rows, activeTags]);
+
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matched = rows.filter((row) => {
       const itemLots = lotsByItem.get(row.itemId) || [];
       if (statusFilter && row.status !== statusFilter) return false;
+      // Any, not all: an item carrying one of the selected tags belongs in the
+      // result. Requiring every one of them would make a second selection an
+      // intersection, which is not what picking two labels means.
+      if (
+        tagFilter.length > 0 &&
+        !tagFilter.some((tag) => row.tags?.includes(tag))
+      ) {
+        return false;
+      }
       if (
         locationFilter &&
         !itemLots.some(
@@ -260,7 +297,7 @@ const InventoryItemsBoard = () => {
       if (left == null || right == null) return compare(left, right);
       return sort.ascending ? compare(left, right) : compare(right, left);
     });
-  }, [rows, lotsByItem, search, statusFilter, locationFilter, sort]);
+  }, [rows, lotsByItem, search, statusFilter, locationFilter, tagFilter, sort]);
 
   const toggleSort = (key) =>
     setSort((current) =>
@@ -695,6 +732,26 @@ const InventoryItemsBoard = () => {
             <SelectItem key={path} value={path} text={path} />
           ))}
         </Select>
+        <div className="board-tag-filter">
+          <FilterableMultiSelect
+            id="inventory-board-tag-filter"
+            titleText={<FormattedMessage id="inventory.filter.tags" />}
+            placeholder={intl.formatMessage({ id: "inventory.filter.tags" })}
+            items={tagOptions}
+            itemToString={(item) => item || ""}
+            selectedItems={tagFilter}
+            onChange={({ selectedItems }) => setTagFilter(selectedItems || [])}
+            size="lg"
+          />
+        </div>
+        <Button
+          kind="tertiary"
+          size="lg"
+          className="board-manage-tags"
+          onClick={() => setManageTagsOpen(true)}
+        >
+          <FormattedMessage id="inventory.tags.manage" />
+        </Button>
         <Button
           kind="tertiary"
           size="lg"
@@ -713,6 +770,33 @@ const InventoryItemsBoard = () => {
           {suggestionCount > 0 ? ` (${suggestionCount})` : ""}
         </Button>
       </div>
+
+      {/* Outside the toolbar on purpose: as a flex child the chips would wrap
+          into the controls. Labels, not a count, so what is filtering the table
+          is readable without opening the menu. */}
+      {tagFilter.length > 0 && (
+        <div className="board-tag-chips">
+          {tagFilter.map((tag) => (
+            <Tag
+              key={tag}
+              type="cool-gray"
+              filter
+              onClose={() =>
+                setTagFilter(tagFilter.filter((kept) => kept !== tag))
+              }
+              title={intl.formatMessage(
+                { id: "inventory.item.tags.remove" },
+                { tag },
+              )}
+            >
+              {tag}
+            </Tag>
+          ))}
+          <Button kind="ghost" size="sm" onClick={() => setTagFilter([])}>
+            <FormattedMessage id="inventory.filter.tags.clear" />
+          </Button>
+        </div>
+      )}
 
       <TableContainer>
         <Table size="md" useZebraStyles={false}>
@@ -909,6 +993,20 @@ const InventoryItemsBoard = () => {
           initialItemId={action.row?.itemId ?? null}
           onClose={closeAction}
           onSave={() => onActionSaved("usage.record.success")}
+        />
+      )}
+
+      {manageTagsOpen && (
+        <ManageTagsModal
+          open
+          onClose={() => setManageTagsOpen(false)}
+          onSave={() => {
+            // A retired tag stops being offered, and a row may now be carrying a
+            // tag that was only just created, so both the board and any active
+            // filter have to be read again.
+            setTagFilter([]);
+            refresh();
+          }}
         />
       )}
 

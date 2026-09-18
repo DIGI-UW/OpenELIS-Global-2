@@ -13,6 +13,7 @@ import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryTagService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -36,13 +37,18 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @Autowired
+    private InventoryTagService inventoryTagService;
+
     /**
-     * Suggestions for the item editor's tag typeahead: every tag already in use.
+     * Suggestions for the item editor's tag typeahead. Retired tags are left out:
+     * the point of retiring one is that it stops being offered for new tagging,
+     * while every item already carrying it keeps it.
      */
     @GetMapping(value = "/tags", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<String>> getAllTags() {
         try {
-            return ResponseEntity.ok(inventoryItemService.getAllTags());
+            return ResponseEntity.ok(inventoryTagService.getActiveTagNames());
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
