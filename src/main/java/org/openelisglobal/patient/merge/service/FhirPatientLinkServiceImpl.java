@@ -37,15 +37,11 @@ public class FhirPatientLinkServiceImpl implements FhirPatientLinkService {
         Optional<Patient> mergedFhirPatientOpt = fhirPersistenceService.getPatientByUuid(mergedFhirUuid);
 
         if (!primaryFhirPatientOpt.isPresent()) {
-            LogEvent.logWarn(this.getClass().getName(), "updatePatientLinks",
-                    "Primary patient FHIR resource not found for UUID: " + primaryFhirUuid);
             throw new FhirLocalPersistingException(
                     "Primary patient FHIR resource not found with UUID: " + primaryFhirUuid);
         }
 
         if (!mergedFhirPatientOpt.isPresent()) {
-            LogEvent.logWarn(this.getClass().getName(), "updatePatientLinks",
-                    "Merged patient FHIR resource not found for UUID: " + mergedFhirUuid);
             throw new FhirLocalPersistingException(
                     "Merged patient FHIR resource not found with UUID: " + mergedFhirUuid);
         }
@@ -88,5 +84,29 @@ public class FhirPatientLinkServiceImpl implements FhirPatientLinkService {
     public boolean hasFhirResource(String patientId) {
         org.openelisglobal.patient.valueholder.Patient patient = patientDAO.getData(patientId);
         return patient != null && patient.getFhirUuid() != null;
+    }
+
+    @Override
+    public boolean verifyFhirResourcesExist(String primaryPatientId, String mergedPatientId) {
+        if (!hasFhirResource(primaryPatientId) || !hasFhirResource(mergedPatientId)) {
+            return false;
+        }
+
+        org.openelisglobal.patient.valueholder.Patient primaryPatient = patientDAO.getData(primaryPatientId);
+        org.openelisglobal.patient.valueholder.Patient mergedPatient = patientDAO.getData(mergedPatientId);
+
+        String primaryFhirUuid = primaryPatient.getFhirUuidAsString();
+        String mergedFhirUuid = mergedPatient.getFhirUuidAsString();
+
+        try {
+            Optional<Patient> primaryFhirPatient = fhirPersistenceService.getPatientByUuid(primaryFhirUuid);
+            Optional<Patient> mergedFhirPatient = fhirPersistenceService.getPatientByUuid(mergedFhirUuid);
+
+            return primaryFhirPatient.isPresent() && mergedFhirPatient.isPresent();
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "verifyFhirResourcesExist",
+                    "Failed to verify FHIR resources due to FHIR server error: " + e.getMessage());
+            return false;
+        }
     }
 }
