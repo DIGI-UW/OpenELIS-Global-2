@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -25,11 +26,13 @@ import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.security.WithDaemonUser;
+import org.openelisglobal.security.login.CustomUserDetailsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -174,63 +177,35 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * gates require (roles alone are not enough under privilege-based RBAC).
      */
     protected static List<SimpleGrantedAuthority> fullTestAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"),
-                new SimpleGrantedAuthority("PRIV_ADMIN_SYSTEM"), new SimpleGrantedAuthority("PRIV_ALERT_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_ALERT_VIEW"), new SimpleGrantedAuthority("PRIV_ANALYTE_VIEW"),
-                new SimpleGrantedAuthority("PRIV_ANALYZER_CONFIGURE"),
-                new SimpleGrantedAuthority("PRIV_ANALYZER_IMPORT"), new SimpleGrantedAuthority("PRIV_AUDIT_VIEW"),
-                new SimpleGrantedAuthority("PRIV_BARCODE_MANAGE"), new SimpleGrantedAuthority("PRIV_BARCODE_VIEW"),
-                new SimpleGrantedAuthority("PRIV_BRANDING_MANAGE"), new SimpleGrantedAuthority("PRIV_BRANDING_VIEW"),
-                new SimpleGrantedAuthority("PRIV_CALENDAR_MANAGE"), new SimpleGrantedAuthority("PRIV_CALENDAR_VIEW"),
-                new SimpleGrantedAuthority("PRIV_COLDSTORAGE_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_COLDSTORAGE_VIEW"),
-                new SimpleGrantedAuthority("PRIV_DICTIONARY_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_DICTIONARY_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_ESIG_USE"),
-                new SimpleGrantedAuthority("PRIV_EXTCONNECTION_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_EXTCONNECTION_VIEW"),
-                new SimpleGrantedAuthority("PRIV_INVENTORY_MANAGE"), new SimpleGrantedAuthority("PRIV_INVENTORY_VIEW"),
-                new SimpleGrantedAuthority("PRIV_LOCALIZATION_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_LOCALIZATION_VIEW"), new SimpleGrantedAuthority("PRIV_METHOD_VIEW"),
-                new SimpleGrantedAuthority("PRIV_NCE_CREATE"), new SimpleGrantedAuthority("PRIV_NCE_EDIT"),
-                new SimpleGrantedAuthority("PRIV_NCE_VIEW"), new SimpleGrantedAuthority("PRIV_NOTEBOOK_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_NOTEBOOK_VIEW"),
-                new SimpleGrantedAuthority("PRIV_NOTIFICATION_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_NOTIFICATION_VIEW"), new SimpleGrantedAuthority("PRIV_ORDER_CREATE"),
-                new SimpleGrantedAuthority("PRIV_ORDER_EDIT"), new SimpleGrantedAuthority("PRIV_ORDER_VIEW"),
-                new SimpleGrantedAuthority("PRIV_ORGANIZATION_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_ORGANIZATION_VIEW"), new SimpleGrantedAuthority("PRIV_PANEL_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_PANEL_VIEW"), new SimpleGrantedAuthority("PRIV_PATIENT_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_PATIENT_EDIT"), new SimpleGrantedAuthority("PRIV_PATIENT_VIEW"),
-                new SimpleGrantedAuthority("PRIV_PROVIDER_MANAGE"), new SimpleGrantedAuthority("PRIV_PROVIDER_VIEW"),
-                new SimpleGrantedAuthority("PRIV_REFERRAL_MANAGE"), new SimpleGrantedAuthority("PRIV_REFERRAL_VIEW"),
-                new SimpleGrantedAuthority("PRIV_REPORT_RUN"), new SimpleGrantedAuthority("PRIV_RESULT_ENTER"),
-                new SimpleGrantedAuthority("PRIV_RESULT_PATHOLOGY_SIGN_OFF"),
-                new SimpleGrantedAuthority("PRIV_RESULT_VALIDATE"), new SimpleGrantedAuthority("PRIV_RESULT_VIEW"),
-                new SimpleGrantedAuthority("PRIV_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_ROLE_VIEW"),
-                new SimpleGrantedAuthority("PRIV_SAMPLE_REQUESTER_VIEW"),
-                new SimpleGrantedAuthority("PRIV_SAMPLE_STATUS_VIEW"),
-                new SimpleGrantedAuthority("PRIV_SAMPLE_TYPE_VIEW"),
-                new SimpleGrantedAuthority("PRIV_SAMPLE_TYPE_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_SHIPMENT_MANAGE"), new SimpleGrantedAuthority("PRIV_SHIPMENT_VIEW"),
-                new SimpleGrantedAuthority("PRIV_SITE_INFO_VIEW"), new SimpleGrantedAuthority("PRIV_STORAGE_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_STORAGE_VIEW"), new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"),
-                new SimpleGrantedAuthority("PRIV_SYSTEM_USER_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_SYSTEM_USER_VIEW"), new SimpleGrantedAuthority("PRIV_TESTCALC_VIEW"),
-                new SimpleGrantedAuthority("PRIV_TEST_CONFIGURE"), new SimpleGrantedAuthority("PRIV_USER_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_USER_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_USER_ROLE_VIEW"),
-                // Remaining seeded privileges — this set is meant to be the COMPLETE
-                // privilege catalog (a test super-user), so every seeded privilege must
-                // appear or newly-gated service methods AccessDenied under it.
-                new SimpleGrantedAuthority("PRIV_ANALYTE_MANAGE"), new SimpleGrantedAuthority("PRIV_METHOD_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_NCE_ASSIGN"), new SimpleGrantedAuthority("PRIV_ORDER_CANCEL"),
-                new SimpleGrantedAuthority("PRIV_PATIENT_CREATE"), new SimpleGrantedAuthority("PRIV_PROGRAM_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_PROGRAM_VIEW"), new SimpleGrantedAuthority("PRIV_REPORT_CONFIGURE"),
-                new SimpleGrantedAuthority("PRIV_REPORT_EXPORT"), new SimpleGrantedAuthority("PRIV_RESULT_MODIFY"),
-                new SimpleGrantedAuthority("PRIV_SAMPLE_REQUESTER_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_SHIPMENT_CREATE"), new SimpleGrantedAuthority("PRIV_SHIPMENT_DELETE"),
-                new SimpleGrantedAuthority("PRIV_SHIPMENT_EDIT"), new SimpleGrantedAuthority("PRIV_SITEINFO_VIEW"),
-                new SimpleGrantedAuthority("PRIV_TESTCALC_MANAGE"));
+        // Derived from Privileges.java by reflection rather than hand-listed. The
+        // literal list this replaces had drifted: it was missing five real
+        // privileges (micro:view, micro:bench, micro:supervise, order:delete,
+        // result:cytopathology-sign-off) and still granted three that no longer
+        // exist (PRIV_ADMIN_SYSTEM, PRIV_ORDER_CANCEL, PRIV_SITEINFO_VIEW). The
+        // three micro:* gaps failed 26 microbiology integration tests with
+        // AccessDenied — the gate was right, the test super-user simply did not
+        // hold the new privilege. Deriving the set means adding a privilege
+        // constant can never again silently break unrelated suites.
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        authorities.add(new SimpleGrantedAuthority("ROLE_RESULTS"));
+        for (java.lang.reflect.Field field : Privileges.class.getDeclaredFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers()) || field.getType() != String.class) {
+                continue;
+            }
+            try {
+                String value = (String) field.get(null);
+                // Skip the Global Admin sentinel ("*"): it is never a stored
+                // privilege name and never becomes a PRIV_ authority.
+                if (value == null || !value.contains(":")) {
+                    continue;
+                }
+                authorities.add(new SimpleGrantedAuthority(CustomUserDetailsService.toPrivAuthority(value)));
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Could not read privilege constant " + field.getName(), e);
+            }
+        }
+        return authorities;
     }
 
     @After
