@@ -5,11 +5,23 @@ on:
     paths:
       - ".github/scripts/**"
       - ".github/workflows/**"
+      - "volume/nginx/**"
+      - "volume/review/**"
+      - "dev.docker-compose.yml"
+      - "docker-compose*.yml"
+      - "install/installerTemplate/linux/templates/nginx.conf"
+      - "install/installerTemplate/linux/templates/docker-compose.yml"
   push:
     branches: [develop]
     paths:
       - ".github/scripts/**"
       - ".github/workflows/**"
+      - "volume/nginx/**"
+      - "volume/review/**"
+      - "dev.docker-compose.yml"
+      - "docker-compose*.yml"
+      - "install/installerTemplate/linux/templates/nginx.conf"
+      - "install/installerTemplate/linux/templates/docker-compose.yml"
 
 permissions:
   contents: read
