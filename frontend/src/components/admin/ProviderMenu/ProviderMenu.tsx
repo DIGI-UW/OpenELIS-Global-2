@@ -18,6 +18,8 @@ import {
   Pagination,
   Search,
   Modal,
+  Select,
+  SelectItem,
   TextInput,
   Dropdown,
 } from "@carbon/react";
@@ -37,6 +39,7 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { looksLikeATitle } from "../../provider/providerDisplayName";
 import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 interface ProviderPerson {
@@ -145,6 +148,11 @@ function ProviderMenu() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [currentProvider, setCurrentProvider] =
     useState<ProviderTableRow | null>(null);
+  const [titleCode, setTitleCode] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
+  const [providerTitles, setProviderTitles] = useState<
+    { code: string; label: string }[]
+  >([]);
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [telephone, setTelephone] = useState<string | undefined>("");
@@ -172,12 +180,28 @@ function ProviderMenu() {
 
   // Browsing and searching are the same list from two endpoints, so which one
   // is read follows the search box rather than both being read at once.
+  // The title is a filter, never a search term: typing "Dr" in the search box
+  // must not return every doctor (OGC-1223, FR-9).
+  const titleParam = titleFilter
+    ? `&titleCode=${encodeURIComponent(titleFilter)}`
+    : "";
   const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
     panelSearchTerm
-      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`
-      : `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}${titleParam}`
+      : `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}${titleParam}`,
   );
   const invalidateServerData = useInvalidateServerData();
+
+  // The titles a provider may be given. An inactive one already on a record
+  // is still shown, so the dropdown adds it when editing (OGC-1223).
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/dictionary/categories/providerTitle/entries",
+      (response: { code: string; label: string }[] | undefined) => {
+        setProviderTitles(Array.isArray(response) ? response : []);
+      },
+    );
+  }, []);
 
   useEffect(() => {
     if (providerMenuList?.providers) {
@@ -185,6 +209,7 @@ function ProviderMenu() {
         return {
           id: item.id,
           fhirUuid: item.fhirUuid,
+          titleCode: item.person.titleCode,
           lastName: item.person.lastName,
           firstName: item.person.firstName,
           active: item.active,
@@ -321,6 +346,7 @@ function ProviderMenu() {
   const handleAddProvider = () => {
     const newProvider = {
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -342,6 +368,7 @@ function ProviderMenu() {
     const updatedProvider = {
       fhirUuid: currentProvider!.fhirUuid,
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -458,6 +485,30 @@ function ProviderMenu() {
           </Column>
         </Grid>
         <br />
+        {providerTitles.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="providerTitleFilter"
+                labelText={intl.formatMessage({ id: "provider.title.filter" })}
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "provider.title.filter.all" })}
+                />
+                {providerTitles.map((option) => (
+                  <SelectItem
+                    key={option.code}
+                    value={option.code}
+                    text={option.label}
+                  />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+        )}
         <ActionPaginationButtonType
           selectedRowIds={selectedRowIds}
           modifyButton={modifyButton}
@@ -485,6 +536,32 @@ function ProviderMenu() {
           onRequestSubmit={handleAddProvider}
           onRequestClose={closeAddModal}
         >
+          <Select
+            id="providerTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -557,6 +634,32 @@ function ProviderMenu() {
           onRequestSubmit={handleUpdateProvider}
           onRequestClose={closeUpdateModal}
         >
+          <Select
+            id="providerTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -651,6 +754,12 @@ function ProviderMenu() {
                       key: "select",
                       header: intl.formatMessage({
                         id: "provider.select",
+                      }),
+                    },
+                    {
+                      key: "titleCode",
+                      header: intl.formatMessage({
+                        id: "provider.title.field",
                       }),
                     },
                     {

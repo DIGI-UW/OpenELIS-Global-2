@@ -19,6 +19,7 @@ import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
+import ProviderTitleMenu from "./providerTitle/ProviderTitleMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
@@ -122,6 +123,7 @@ function Admin() {
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
+      <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
       <Redirect

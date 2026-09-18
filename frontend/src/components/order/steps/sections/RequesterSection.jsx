@@ -20,6 +20,7 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
 import {
   forgetRequester,
@@ -671,6 +672,8 @@ const RequesterSection = ({
           providerPersonId: provider.personId,
           providerFirstName: provider.firstName,
           providerLastName: provider.lastName,
+          providerTitleCode: provider.titleCode || "",
+          providerTitleAbbreviation: provider.titleAbbreviation || "",
           providerWorkPhone: provider.phone,
           providerFax: provider.fax || "",
           providerEmail: provider.email || "",
@@ -2083,10 +2086,7 @@ const RequesterSection = ({
                 </Link>
               </div>
               <div className="selected-card-content">
-                <h5>
-                  {effectiveSelectedProvider.firstName}{" "}
-                  {effectiveSelectedProvider.lastName}
-                </h5>
+                <h5>{providerDisplayName(effectiveSelectedProvider)}</h5>
                 <p>
                   {effectiveSelectedProvider.phone &&
                     `Phone: ${effectiveSelectedProvider.phone}`}
