@@ -56,7 +56,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
   it("leaves the code as typed, previews the normalized form, and submits that form on create", async () => {
     InventoryItemAPI.create.mockResolvedValue({
       id: 1000,
-      code: "MY_REAGENT_1",
+      code: "MY-REAGENT-1",
     });
     const onSave = vi.fn();
     renderForm({ onSave });
@@ -68,7 +68,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(codeInput, { target: { value: "my reagent 1" } });
     expect(codeInput).toHaveValue("my reagent 1");
     expect(
-      screen.getByText("Will be saved as MY_REAGENT_1"),
+      screen.getByText("Will be saved as MY-REAGENT-1"),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
@@ -78,7 +78,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     await waitFor(() => {
       expect(InventoryItemAPI.create).toHaveBeenCalledWith(
-        expect.objectContaining({ code: "MY_REAGENT_1", name: "My Reagent" }),
+        expect.objectContaining({ code: "MY-REAGENT-1", name: "My Reagent" }),
       );
     });
     expect(onSave).toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
   it("normalizes the code like the server does on save and caps the input at 64 characters", async () => {
     InventoryItemAPI.create.mockResolvedValue({
       id: 1003,
-      code: "MY_REAGENT_V1",
+      code: "MY-REAGENT-V1",
     });
     renderForm();
 
@@ -100,7 +100,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(codeInput, { target: { value: " my reagent, v1 " } });
     expect(codeInput).toHaveValue(" my reagent, v1 ");
     expect(
-      screen.getByText("Will be saved as MY_REAGENT_V1"),
+      screen.getByText("Will be saved as MY-REAGENT-V1"),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
@@ -110,7 +110,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     await waitFor(() => {
       expect(InventoryItemAPI.create).toHaveBeenCalledWith(
-        expect.objectContaining({ code: "MY_REAGENT_V1" }),
+        expect.objectContaining({ code: "MY-REAGENT-V1" }),
       );
     });
   });
@@ -119,9 +119,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     renderForm();
 
     const codeInput = await screen.findByLabelText(/code/i);
-    fireEvent.change(codeInput, { target: { value: "MY_REAGENT" } });
+    fireEvent.change(codeInput, { target: { value: "MY-REAGENT" } });
 
-    expect(codeInput).toHaveValue("MY_REAGENT");
+    expect(codeInput).toHaveValue("MY-REAGENT");
     expect(screen.queryByText(/will be saved as/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(messages["catalog.item.code.hint"]),
@@ -151,7 +151,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     InventoryItemAPI.update.mockResolvedValue({});
     const existingItem = {
       id: 1002,
-      code: "EXISTING_CODE",
+      code: "EXISTING-CODE",
       name: "Existing Item",
       itemType: "REAGENT",
       units: "mL",
@@ -161,7 +161,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     const codeInput = await screen.findByLabelText(/code/i);
     expect(codeInput).toBeDisabled();
-    expect(codeInput).toHaveValue("EXISTING_CODE");
+    expect(codeInput).toHaveValue("EXISTING-CODE");
 
     fireEvent.click(screen.getByText("Save"));
 
@@ -217,10 +217,10 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
   it("shows the translated message for a duplicate-code error instead of the raw backend text (OGC-658 C8)", async () => {
     const duplicateError = new Error(
-      "Inventory item code already exists: MY_REAGENT",
+      "Inventory item code already exists: MY-REAGENT",
     );
     duplicateError.errorCode = "inventory.item.error.duplicateCode";
-    duplicateError.params = { code: "MY_REAGENT" };
+    duplicateError.params = { code: "MY-REAGENT" };
     InventoryItemAPI.create.mockRejectedValue(duplicateError);
     renderForm();
 
@@ -235,14 +235,14 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          'An inventory item with code "MY_REAGENT" already exists.',
+          'An inventory item with code "MY-REAGENT" already exists.',
         ),
       ).toBeInTheDocument();
     });
     expect(screen.queryByText(duplicateError.message)).not.toBeInTheDocument();
     expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        subtitle: 'An inventory item with code "MY_REAGENT" already exists.',
+        subtitle: 'An inventory item with code "MY-REAGENT" already exists.',
       }),
     );
   });

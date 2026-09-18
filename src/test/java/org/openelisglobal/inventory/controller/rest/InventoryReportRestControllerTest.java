@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTest {
 
-    private static final String CODE_PREFIX = "RPTTEST_";
+    private static final String CODE_PREFIX = "RPTTEST-";
 
     @Autowired
     private javax.sql.DataSource dataSource;

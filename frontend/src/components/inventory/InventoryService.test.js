@@ -53,9 +53,9 @@ describe("InventoryService POST wrappers on a 400 with a translated error", () =
   // The body InventoryItemRestController.create builds for a
   // LocalizedValidationException, as Utils hands it to the callback.
   const duplicateCodeBody = {
-    message: "Inventory item code already exists: MY_REAGENT",
+    message: "Inventory item code already exists: MY-REAGENT",
     errorCode: "inventory.item.error.duplicateCode",
-    params: { code: "MY_REAGENT" },
+    params: { code: "MY-REAGENT" },
     status: 400,
     statusCode: 400,
     statusText: "Bad Request",
@@ -73,7 +73,7 @@ describe("InventoryService POST wrappers on a 400 with a translated error", () =
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe(duplicateCodeBody.message);
     expect(err.errorCode).toBe("inventory.item.error.duplicateCode");
-    expect(err.params).toEqual({ code: "MY_REAGENT" });
+    expect(err.params).toEqual({ code: "MY-REAGENT" });
   });
 });
 

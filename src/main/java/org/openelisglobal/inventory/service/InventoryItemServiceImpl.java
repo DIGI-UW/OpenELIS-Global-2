@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.CodeGenerator;
+import org.openelisglobal.inventory.dao.InventoryItemCodeSequenceDAO;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -23,8 +24,15 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     // inventory_item.code is VARCHAR(64) — see 070-inventory-item-code.xml
     private static final int CODE_MAX_LENGTH = 64;
 
+    // Each miss burns a counter value; a legacy or typed code sitting on the next
+    // slot is rare.
+    private static final int MAX_GENERATE_ATTEMPTS = 100;
+
     @Autowired
     private InventoryItemDAO inventoryItemDAO;
+
+    @Autowired
+    private InventoryItemCodeSequenceDAO codeSequenceDAO;
 
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
@@ -48,7 +56,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     private String resolveCode(InventoryItem item) {
         String supplied = item.getCode();
         if (supplied == null || supplied.trim().isEmpty()) {
-            return CodeGenerator.generateFromName(item.getName(), CODE_MAX_LENGTH, "ITEM", this::codeExists);
+            return generateCode(item.getName());
         }
         String code = CodeGenerator.normalize(supplied, CODE_MAX_LENGTH);
         if (codeExists(code)) {
@@ -56,6 +64,22 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
                     "Inventory item code already exists: " + code, Map.of("code", code));
         }
         return code;
+    }
+
+    /**
+     * Prefix + zero-padded per-prefix counter (PAR-500MG-001), skipping slots a
+     * stored code already holds.
+     */
+    private String generateCode(String name) {
+        String prefix = CodeGenerator.prefixFor(name);
+        for (int attempt = 0; attempt < MAX_GENERATE_ATTEMPTS; attempt++) {
+            String code = prefix + "-" + String.format("%03d", codeSequenceDAO.nextValue(prefix));
+            if (!codeExists(code)) {
+                return code;
+            }
+        }
+        throw new LocalizedValidationException("inventory.item.error.codeGenerationExhausted",
+                "Could not find a free inventory item code for prefix " + prefix, Map.of("prefix", prefix));
     }
 
     private boolean codeExists(String code) {

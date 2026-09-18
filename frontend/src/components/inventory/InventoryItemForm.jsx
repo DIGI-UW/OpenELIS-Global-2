@@ -23,8 +23,8 @@ import { InventoryItemAPI } from "./InventoryService";
 const toCode = (value) =>
   value
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const intl = useIntl();
@@ -327,7 +327,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 : intl.formatMessage({
                     id: "catalog.item.code.hint",
                     defaultMessage:
-                      "Stable identifier used by integrations. Leave blank and we'll generate one from the name.",
+                      "Stable identifier used by integrations. Leave blank and we'll generate one from the name, like PAR-500MG-001.",
                   })
           }
           maxLength={64}
