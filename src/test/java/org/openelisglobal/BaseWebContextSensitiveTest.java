@@ -108,7 +108,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
             { "patient", "patient_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
-            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
+            { "organization", "organization_seq" }, { "analyzer", "analyzer_seq" },
+            { "referral_status_history", "referral_status_history_seq" }, { "calculation", "calculation_seq" },
+            { "result_limits", "result_limits_seq" }, { "site_information", "site_information_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -576,5 +579,46 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         } catch (SQLException e) {
             throw new RuntimeException("Failed to ensure site_information row for " + name, e);
         }
+    }
+
+    /**
+     * Resync all tracked entity sequences to MAX(id)+1. Convenience method for
+     * tests that insert multiple records programmatically across different
+     * entities.
+     */
+    protected void resyncAllSequences() {
+        try (Connection conn = dataSource.getConnection()) {
+            for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
+                resyncSequence("clinlims." + mapping[1], "clinlims." + mapping[0]);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync all sequence mappings", e);
+        }
+    }
+
+    /**
+     * Helper for MockMvc GET requests pre-configured with JSON headers.
+     *
+     * @param url the endpoint URL
+     * @return ResultActions to perform assertions on
+     */
+    protected org.springframework.test.web.servlet.ResultActions performGet(String url) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(url)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .accept(org.springframework.http.MediaType.APPLICATION_JSON));
+    }
+
+    /**
+     * Helper for MockMvc POST requests pre-configured with JSON body and headers.
+     *
+     * @param url     the endpoint URL
+     * @param content the object payload to serialize as JSON
+     * @return ResultActions to perform assertions on
+     */
+    protected org.springframework.test.web.servlet.ResultActions performPost(String url, Object content)
+            throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .accept(org.springframework.http.MediaType.APPLICATION_JSON).content(mapToJson(content)));
     }
 }
