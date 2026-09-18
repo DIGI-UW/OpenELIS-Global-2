@@ -2,6 +2,7 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.storage.valueholder.StorageRack;
 
 /**
@@ -175,13 +176,8 @@ public interface SampleStorageService {
             java.util.List<Long> inventoryLotIds);
 
     /**
-     * Release an InventoryLot's storage location, mirroring what disposal does for
-     * a SampleItem: the location fields are cleared so the slot stops counting
-     * toward occupancy, while the assignment row survives for the audit trail and a
-     * movement record captures where the lot used to be.
-     *
-     * <p>
-     * Safe to call for a lot that has no assignment; it then does nothing.
+     * Clear an InventoryLot's location so the slot stops counting toward occupancy,
+     * keeping the assignment row for audit. A lot with no assignment is a no-op.
      *
      * @param inventoryLotId InventoryLot ID
      * @param reason         Why the lot left storage, recorded on the movement
@@ -192,9 +188,20 @@ public interface SampleStorageService {
     java.util.Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId);
 
     /**
+     * Dispose an InventoryLot and free its storage slot in one transaction, so a
+     * failed release cannot leave a DISPOSED lot still occupying a box.
+     *
+     * @param inventoryLotId InventoryLot ID
+     * @param reason         Why the lot is being disposed
+     * @param notes          Free-text disposal notes, recorded on the transaction
+     * @param sysUserId      Acting user
+     * @return The disposed lot
+     */
+    InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId);
+
+    /**
      * Update an InventoryLot assignment's position and notes in place, the lot
-     * equivalent of {@link #updateAssignmentMetadata}. Use this rather than a move
-     * when the lot has not changed container.
+     * equivalent of {@link #updateAssignmentMetadata}.
      *
      * @param inventoryLotId     InventoryLot ID
      * @param positionCoordinate New coordinate; blank clears it, null leaves it
@@ -205,10 +212,8 @@ public interface SampleStorageService {
             String notes);
 
     /**
-     * List every InventoryLot that has ever been assigned storage, with its current
-     * location resolved — the lot equivalent of
-     * {@link #getAllSamplesWithAssignments}, backing the Storage Management lots
-     * view.
+     * List every InventoryLot ever assigned storage with its location resolved, the
+     * lot equivalent of {@link #getAllSamplesWithAssignments}.
      *
      * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
      *         location, assignedBy and date

@@ -22,7 +22,7 @@ import DevicesPage from "./pages/DevicesPage";
 import ShelvesPage from "./pages/ShelvesPage";
 import RacksPage from "./pages/RacksPage";
 import BoxesPage from "./pages/BoxesPage";
-import "./StorageDashboard.css";
+import "./StorageManagementPage.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/", defaultMessage: "Home" },
@@ -198,20 +198,26 @@ export default function StorageManagementPage() {
               </TabList>
 
               <TabPanels>
+                {/* Carbon only hides an unselected TabPanel, so gate the
+                    children or every tab fetches on every visit. */}
                 <TabPanel>
-                  <LocationTiles
-                    activeLevel={activeLevel.key}
-                    onSelect={(key) => history.push(`/Storage/${key}`)}
-                  />
-                  <LevelTable embedded />
+                  {tabIndex === 0 && (
+                    <>
+                      <LocationTiles
+                        activeLevel={activeLevel.key}
+                        onSelect={(key) => history.push(`/Storage/${key}`)}
+                      />
+                      <LevelTable embedded />
+                    </>
+                  )}
                 </TabPanel>
 
                 <TabPanel>
-                  <SampleItemsPage embedded />
+                  {tabIndex === 1 && <SampleItemsPage embedded />}
                 </TabPanel>
 
                 <TabPanel>
-                  <InventoryLotsPage embedded />
+                  {tabIndex === 2 && <InventoryLotsPage embedded />}
                 </TabPanel>
               </TabPanels>
             </Tabs>

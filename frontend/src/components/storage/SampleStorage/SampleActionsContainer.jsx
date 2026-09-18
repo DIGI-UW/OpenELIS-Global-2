@@ -3,7 +3,7 @@ import SampleActionsOverflowMenu from "./SampleActionsOverflowMenu";
 
 /**
  * Container component that manages sample action overflow menu
- * Modals are managed at the parent level (StorageDashboard) for better performance
+ * Modals are managed at the parent level (SampleItemsPage) for better performance
  *
  * Props:
  * - sample: object - Sample data { id, sampleId, type, status, location }

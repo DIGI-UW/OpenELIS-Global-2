@@ -484,4 +484,47 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
                 .orElseThrow(() -> new AssertionError("Released lot should still be listed"));
         assertEquals("Released lot has no location", "", row.get("location"));
     }
+
+    @Test
+    public void disposeInventoryLot_disposesAndFreesTheSlot() throws SQLException {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        sampleStorageService.disposeInventoryLot(7000L, "expired", "bin 3", "1");
+
+        assertEquals("DISPOSED", lotStatus(7000L));
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNull("Disposal must free the slot", assignment.getLocationId());
+        List<SampleStorageMovement> movements = sampleStorageMovementDAO.findByInventoryLotId(7000L);
+        assertTrue("Disposal must leave a movement naming the reason",
+                movements.stream().anyMatch(m -> "Disposal: expired | Notes: bin 3".equals(m.getReason())));
+    }
+
+    @Test
+    public void disposeInventoryLot_rollsBackTheStatusWhenTheReleaseFails() throws SQLException {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        try {
+            // No such system_user, so only the movement insert in the release half fails.
+            sampleStorageService.disposeInventoryLot(7000L, "expired", null, "424242");
+            fail("Expected fk_movement_user to reject the movement row");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.toString().contains("ConstraintViolationException"));
+        }
+
+        assertEquals("A lot whose release failed must not stay DISPOSED", "ACTIVE", lotStatus(7000L));
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNotNull("The lot must still occupy its box", assignment.getLocationId());
+    }
+
+    private String lotStatus(long lotId) throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn
+                        .prepareStatement("SELECT status FROM clinlims.inventory_lot WHERE id = ?")) {
+            ps.setLong(1, lotId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getString(1);
+            }
+        }
+    }
 }

@@ -105,4 +105,48 @@ describe("InventoryLotsPage", () => {
     expect(within(table).getByText("LOT-2025-002")).toBeInTheDocument();
     expect(within(table).queryByText("LOT-2025-001")).not.toBeInTheDocument();
   });
+
+  it("does not refetch while the user types, since the filter is local", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([assignedLot, releasedLot]),
+    );
+    renderPage();
+    await screen.findByText("LOT-2025-001");
+    const before = Utils.getFromOpenElisServer.mock.calls.length;
+
+    "LOT-".split("").forEach((_c, i) =>
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "LOT-".slice(0, i + 1) },
+      }),
+    );
+
+    expect(Utils.getFromOpenElisServer.mock.calls.length).toBe(before);
+  });
+
+  it("counts what the search actually matched, not the unfiltered listing", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([assignedLot, releasedLot]),
+    );
+    renderPage();
+    await screen.findByText("LOT-2025-001");
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "no-such-lot" },
+    });
+
+    expect(screen.getByText(/of 0 items/i)).toBeInTheDocument();
+  });
+
+  it("labels the search box with the lots placeholder", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([assignedLot]),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByPlaceholderText(
+        "Search by lot number, barcode, item or location...",
+      ),
+    ).toBeInTheDocument();
+  });
 });

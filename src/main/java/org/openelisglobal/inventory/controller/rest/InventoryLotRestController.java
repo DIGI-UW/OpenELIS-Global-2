@@ -395,10 +395,7 @@ public class InventoryLotRestController extends BaseRestController {
 
             String reason = request != null ? request.getReason() : null;
             String notes = request != null ? request.getNotes() : null;
-            InventoryLot lot = inventoryLotService.disposeLot(Long.valueOf(id), reason, notes, sysUserId);
-            sampleStorageService.releaseInventoryLotLocation(id,
-                    "Disposal: " + (reason != null ? reason : "") + (notes != null ? " | Notes: " + notes : ""),
-                    sysUserId);
+            InventoryLot lot = sampleStorageService.disposeInventoryLot(Long.valueOf(id), reason, notes, sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);

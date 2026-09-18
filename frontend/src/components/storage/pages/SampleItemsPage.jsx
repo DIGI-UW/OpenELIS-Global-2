@@ -239,7 +239,7 @@ export default function SampleItemsPage({ embedded = false }) {
         <Search
           id="storage-sample-items-search"
           size="md"
-          placeHolderText={intl.formatMessage({
+          placeholder={intl.formatMessage({
             id: "storage.search.samples.placeholder",
             defaultMessage: "Search sample items…",
           })}

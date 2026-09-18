@@ -1111,4 +1111,51 @@ describe("OEHeader menu items whose children are all deactivated", () => {
       expect(getByTestId("current-path").textContent).toBe("/Storage");
     });
   });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
+  });
 });

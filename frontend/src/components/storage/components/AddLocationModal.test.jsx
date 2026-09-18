@@ -25,6 +25,16 @@ const renderModal = (props = {}) =>
     </IntlProvider>,
   );
 
+const chooseParent = async (text) => {
+  const trigger = await waitFor(() => {
+    const el = document.querySelector("#storage-add-modal-parent");
+    expect(el).toBeInTheDocument();
+    return el;
+  });
+  fireEvent.click(trigger.querySelector('[role="combobox"]'));
+  fireEvent.click(await screen.findByRole("option", { name: text }));
+};
+
 beforeEach(() => {
   Utils.getFromOpenElisServer.mockReset();
   Utils.postToOpenElisServerJsonResponse.mockReset();
@@ -85,6 +95,7 @@ describe("AddLocationModal", () => {
     fireEvent.change(screen.getByLabelText(/^code$/i), {
       target: { value: "BX-001" },
     });
+    await chooseParent("Main Lab");
     fireEvent.click(screen.getByText("Create").closest("button"));
 
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
@@ -94,6 +105,20 @@ describe("AddLocationModal", () => {
     expect(payload.label).toBe("Box Alpha");
     expect(payload.rows).toBe(8);
     expect(payload.columns).toBe(12);
+  });
+
+  it("keeps Create disabled until a level below room has a parent", async () => {
+    renderModal({ level: "rack" });
+
+    fireEvent.change(screen.getByLabelText(/^label$/i), {
+      target: { value: "Rack R9" },
+    });
+    // The backend answers 400 "Parent rack not found" for a parentless rack.
+    expect(screen.getByText("Create").closest("button")).toBeDisabled();
+
+    await chooseParent("Main Lab");
+
+    expect(screen.getByText("Create").closest("button")).toBeEnabled();
   });
 
   it("posts a room to its own endpoint and reports success", async () => {

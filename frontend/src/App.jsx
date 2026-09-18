@@ -944,7 +944,7 @@ export default function App() {
                 />
                 {/* Every per-resource URL resolves to the same tabbed page, so
                     existing bookmarks and menu rows keep working. The slug union
-                    keeps /new and /:id/edit matching their own routes. */}
+                    keeps /:id/edit matching its own route below. */}
                 <SecureRoute
                   path="/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)"
                   exact

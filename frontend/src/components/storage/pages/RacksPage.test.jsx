@@ -119,6 +119,10 @@ describe("RacksPage — feedback", () => {
     fireEvent.change(await screen.findByLabelText(/^label$/i), {
       target: { value: "Rack R9" },
     });
+    fireEvent.click(
+      document.querySelector('#storage-add-modal-parent [role="combobox"]'),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Shelf A" }));
     fireEvent.click(screen.getByText("Create").closest("button"));
 
     await waitFor(() => expect(notifyCtx.addNotification).toHaveBeenCalled());

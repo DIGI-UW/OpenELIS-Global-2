@@ -1913,9 +1913,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     previousPositionCoordinate);
         }
 
-        // Clear the location fields but keep the row, matching disposeSampleItem:
-        // occupancy queries filter on locationType/locationId, so clearing them is
-        // what actually frees the slot.
+        // Occupancy filters on locationType/locationId, so clearing them frees
+        // the slot; the row itself stays for audit.
         assignment.setLocationId(null);
         assignment.setLocationType(null);
         assignment.setPositionCoordinate(null);
@@ -1940,6 +1939,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         response.put("previousLocation", previousLocation);
         response.put("movementId", movementId != null ? movementId.toString() : null);
         return response;
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId) {
+        // Both halves in one transaction: a failed release must undo the status
+        // change rather than leave a DISPOSED lot holding its slot.
+        InventoryLot lot = inventoryLotService.disposeLot(inventoryLotId, reason, notes, sysUserId);
+        String movementReason = "Disposal: " + (reason != null ? reason : "")
+                + (notes != null ? " | Notes: " + notes : "");
+        releaseInventoryLotLocation(String.valueOf(inventoryLotId), movementReason, sysUserId);
+        return lot;
     }
 
     /** Load the location entity for a (type, id) pair, or null when unknown. */
@@ -1976,8 +1987,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             throw new LIMSRuntimeException("No storage assignment found for InventoryLot: " + inventoryLotId);
         }
 
-        // A blank value clears the field; null leaves it untouched, so a caller can
-        // patch one field without resending the other.
+        // Blank clears the field, null leaves it, so a caller can patch just one.
         if (positionCoordinate != null) {
             assignment.setPositionCoordinate(positionCoordinate.trim().isEmpty() ? null : positionCoordinate.trim());
         }
@@ -2030,8 +2040,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             map.put("qcStatus", lot.getQcStatus() != null ? lot.getQcStatus().toString() : "");
             map.put("expirationDate", lot.getExpirationDate() != null ? lot.getExpirationDate().toString() : "");
 
-            // Location is null once the lot has been disposed or otherwise released;
-            // the assignment row survives for audit, so report it as unassigned.
+            // A released lot keeps its row with no location; report it unassigned.
             String hierarchicalPath = assignment.getLocationId() != null
                     ? buildHierarchicalPathForAssignment(assignment)
                     : null;

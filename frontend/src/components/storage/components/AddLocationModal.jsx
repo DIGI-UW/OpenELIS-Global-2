@@ -83,6 +83,8 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
 
   const invalid = useMemo(() => {
     if (!form.name.trim()) return true;
+    // Every level below room is rejected by the backend without a parent.
+    if (meta?.parentField && !form.parentId) return true;
     if (level === "device" && !form.deviceType) return true;
     if (level === "box") {
       if (!form.code.trim()) return true;
@@ -90,7 +92,7 @@ export default function AddLocationModal({ level, open, onClose, onCreated }) {
         return true;
     }
     return false;
-  }, [form, level]);
+  }, [form, level, meta?.parentField]);
 
   const handleSubmit = async () => {
     if (invalid) return;

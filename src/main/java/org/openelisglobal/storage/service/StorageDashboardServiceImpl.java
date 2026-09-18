@@ -377,8 +377,7 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 .filter(rack -> Boolean.TRUE.equals(rack.getActive())).collect(Collectors.toList());
         counts.put("racks", activeRacks.size());
 
-        // Boxes complete the five-level hierarchy; the dashboard tiles show one
-        // count per level, so a missing "boxes" key left that tile blank.
+        // The dashboard shows one tile per level, boxes included.
         List<StorageBox> activeBoxes = storageLocationService.getAllBoxes().stream()
                 .filter(box -> Boolean.TRUE.equals(box.getActive())).collect(Collectors.toList());
         counts.put("boxes", activeBoxes.size());

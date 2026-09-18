@@ -20,8 +20,13 @@ import {
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
+import AddLocationModal from "../components/AddLocationModal";
+import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 import useStorageTableData from "../hooks/useStorageTableData";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
+import { storageLevel } from "../storageLevels";
 import { hasRole, Roles } from "../../utils/Utils";
 
 /**
@@ -29,14 +34,13 @@ import { hasRole, Roles } from "../../utils/Utils";
  * pages (Rooms, Devices, Shelves, Racks, Boxes).
  *
  * Each concrete page is a thin wrapper that passes the right config:
+ *   - level: storageLevels key, which drives the Add and Delete modals
  *   - listUrl: backend endpoint (e.g. /rest/storage/rooms)
- *   - nameField: 'name' for Room/Device, 'label' for Shelf/Rack/Box
- *     (backend identifier-field naming is inconsistent)
- *   - parentLabel?: optional parent-hierarchy column header
  *   - editHref?: builder `(row) => "/Storage/.../edit"` to render a
  *     per-row Edit link
  */
 export default function StorageResourcePage({
+  level,
   crumbs,
   heading,
   listUrl,
@@ -48,9 +52,7 @@ export default function StorageResourcePage({
   pageSize,
   setPageSize,
   editHref,
-  onAddRequested,
   searchPlaceholderId,
-  onDeleteRequested,
   // Rendered inside the Storage Management dashboard tab, where the container
   // already supplies the breadcrumb and heading.
   embedded = false,
@@ -60,8 +62,44 @@ export default function StorageResourcePage({
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const isGlobalAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const levelMeta = storageLevel(level);
+
+  // Name the level being acted on — "Rack created", not a generic
+  // "Storage location created" that reads identically for all five.
+  const notify = (kind, messageId, defaultMessage) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id:
+          kind === NotificationKinds.success
+            ? "notification.title"
+            : "notification.error",
+      }),
+      message: intl.formatMessage(
+        { id: messageId, defaultMessage },
+        {
+          level: intl.formatMessage({
+            id: levelMeta.labelId,
+            defaultMessage: levelMeta.label,
+          }),
+        },
+      ),
+    });
+  };
+
+  const refreshAfterWrite = () =>
+    history.replace({
+      pathname: location.pathname,
+      search: `?t=${Date.now()}`,
+    });
 
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",
@@ -89,7 +127,7 @@ export default function StorageResourcePage({
           </Link>
         );
       }
-      if (editHref || (isGlobalAdmin && onDeleteRequested)) {
+      if (editHref || isGlobalAdmin) {
         nextRow.menuActions = (
           <OverflowMenu
             size="sm"
@@ -104,13 +142,13 @@ export default function StorageResourcePage({
                 onClick={() => history.push(editHref(rawItem))}
               />
             )}
-            {isGlobalAdmin && onDeleteRequested && (
+            {isGlobalAdmin && (
               <OverflowMenuItem
                 isDelete
                 itemText={
                   <FormattedMessage id="label.delete" defaultMessage="Delete" />
                 }
-                onClick={() => onDeleteRequested(rawItem)}
+                onClick={() => setDeleteTarget(rawItem)}
               />
             )}
           </OverflowMenu>
@@ -120,18 +158,18 @@ export default function StorageResourcePage({
         ...nextRow,
       };
     });
-  }, [items, mapRow, editHref, history, isGlobalAdmin, onDeleteRequested]);
+  }, [items, mapRow, editHref, history, isGlobalAdmin]);
 
   const effectiveHeaders = useMemo(() => {
     const nextHeaders = [...headers];
     if (editHref) {
       nextHeaders.push({ key: "actions", header: "" });
     }
-    if (editHref || (isGlobalAdmin && onDeleteRequested)) {
+    if (editHref || isGlobalAdmin) {
       nextHeaders.push({ key: "menuActions", header: "" });
     }
     return nextHeaders;
-  }, [headers, editHref, isGlobalAdmin, onDeleteRequested]);
+  }, [headers, editHref, isGlobalAdmin]);
 
   return (
     <div
@@ -158,7 +196,7 @@ export default function StorageResourcePage({
               id: searchPlaceholderId || "label.search",
               defaultMessage: "Search",
             })}
-            placeHolderText={intl.formatMessage({
+            placeholder={intl.formatMessage({
               id: searchPlaceholderId || "label.search",
               defaultMessage: "Search",
             })}
@@ -171,9 +209,13 @@ export default function StorageResourcePage({
         </div>
       )}
 
-      {onAddRequested && isGlobalAdmin && (
+      {isGlobalAdmin && (
         <div style={{ margin: "1rem 0" }}>
-          <Button kind="primary" renderIcon={Add} onClick={onAddRequested}>
+          <Button
+            kind="primary"
+            renderIcon={Add}
+            onClick={() => setAddOpen(true)}
+          >
             <FormattedMessage id="label.add" defaultMessage="Add" />
           </Button>
         </div>
@@ -229,6 +271,36 @@ export default function StorageResourcePage({
           }}
         />
       )}
+
+      <AddLocationModal
+        level={level}
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          notify(
+            NotificationKinds.success,
+            "storage.location.created",
+            "{level} created",
+          );
+          refreshAfterWrite();
+        }}
+      />
+      <DeleteLocationConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        type={level}
+        location={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => {
+          setDeleteTarget(null);
+          notify(
+            NotificationKinds.success,
+            "storage.location.deleted",
+            "{level} deleted",
+          );
+          refreshAfterWrite();
+        }}
+      />
     </div>
   );
 }

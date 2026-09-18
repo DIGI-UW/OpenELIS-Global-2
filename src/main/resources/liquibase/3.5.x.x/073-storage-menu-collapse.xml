@@ -27,6 +27,8 @@
             <column name="action_url" value="/Storage"/>
             <where>element_id = 'menu_storage_management'</where>
         </update>
+        <!-- menu_storage_inventory_lots exists only where a pre-release build
+             created it; both directions list it so they own the same set. -->
         <update tableName="menu" schemaName="clinlims">
             <column name="is_active" valueBoolean="false"/>
             <where>element_id IN ('menu_storage_samples', 'menu_storage_rooms', 'menu_storage_devices',
@@ -41,7 +43,8 @@
             <update tableName="menu" schemaName="clinlims">
                 <column name="is_active" valueBoolean="true"/>
                 <where>element_id IN ('menu_storage_samples', 'menu_storage_rooms', 'menu_storage_devices',
-                    'menu_storage_shelves', 'menu_storage_racks', 'menu_storage_boxes')</where>
+                    'menu_storage_shelves', 'menu_storage_racks', 'menu_storage_boxes',
+                    'menu_storage_inventory_lots')</where>
             </update>
         </rollback>
     </changeSet>

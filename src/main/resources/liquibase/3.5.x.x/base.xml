@@ -287,8 +287,6 @@
 
   <!-- OGC-658: per-prefix counter behind generated inventory item codes (PAR-500MG-001). -->
   <include relativeToChangelogFile="true" file="073-inventory-item-code-sequence.xml"/>
-  <!-- OGC-657: sidenav entry for the Storage Management inventory-lots page -->
-  <include relativeToChangelogFile="true" file="073-storage-inventory-lots-menu.xml"/>
   <!-- OGC-657: Storage Management collapses to one sidenav row; its levels are tabs -->
   <include relativeToChangelogFile="true" file="073-storage-menu-collapse.xml"/>
 

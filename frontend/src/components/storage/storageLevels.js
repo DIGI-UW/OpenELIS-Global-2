@@ -1,3 +1,5 @@
+// nameField differs per level because the backend does: Room/Device carry a
+// name, Shelf/Rack/Box carry a label.
 export const STORAGE_LEVELS = [
   {
     key: "room",
@@ -10,7 +12,6 @@ export const STORAGE_LEVELS = [
     parentField: null,
     parentLabelId: null,
     parentLabel: null,
-    listParam: null,
     addTitleId: "storage.add.room",
     addTitleDefault: "Add Room",
   },
@@ -25,7 +26,6 @@ export const STORAGE_LEVELS = [
     parentField: "parentRoomId",
     parentLabelId: "storage.nav.room",
     parentLabel: "Room",
-    listParam: "roomId",
     addTitleId: "storage.add.device",
     addTitleDefault: "Add Device",
   },
@@ -40,7 +40,6 @@ export const STORAGE_LEVELS = [
     parentField: "parentDeviceId",
     parentLabelId: "storage.nav.device",
     parentLabel: "Device",
-    listParam: "deviceId",
     addTitleId: "storage.add.shelf",
     addTitleDefault: "Add Shelf",
   },
@@ -55,7 +54,6 @@ export const STORAGE_LEVELS = [
     parentField: "parentShelfId",
     parentLabelId: "storage.nav.shelf",
     parentLabel: "Shelf",
-    listParam: "shelfId",
     addTitleId: "storage.add.rack",
     addTitleDefault: "Add Rack",
   },
@@ -70,7 +68,6 @@ export const STORAGE_LEVELS = [
     parentField: "parentRackId",
     parentLabelId: "storage.nav.rack",
     parentLabel: "Rack",
-    listParam: "rackId",
     addTitleId: "storage.add.box",
     addTitleDefault: "Add Box",
   },
@@ -78,6 +75,3 @@ export const STORAGE_LEVELS = [
 
 export const storageLevel = (key) =>
   STORAGE_LEVELS.find((level) => level.key === key) || null;
-
-/** Keys in hierarchy order, e.g. for cascading clears. */
-export const STORAGE_LEVEL_KEYS = STORAGE_LEVELS.map((level) => level.key);

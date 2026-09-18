@@ -30,11 +30,12 @@ export default function InventoryLotsPage({ embedded = false }) {
   const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { items, totalItems, loading } = useStorageTableData({
+  // searchTerm stays out of the fetch: the hook has no search endpoint for
+  // lots, so passing it would only refire the effect against the same url.
+  const { items, loading } = useStorageTableData({
     listUrl: "/rest/storage/inventory-lots",
     page,
     pageSize,
-    searchTerm,
   });
 
   const crumbs = [
@@ -96,9 +97,6 @@ export default function InventoryLotsPage({ embedded = false }) {
     },
   ];
 
-  // The client filters because the listing endpoint has no search twin;
-  // lot counts are small enough that a round trip per keystroke would cost
-  // more than it saves.
   const filtered = useMemo(() => {
     const term = (searchTerm || "").trim().toLowerCase();
     if (!term) return items;
@@ -171,7 +169,7 @@ export default function InventoryLotsPage({ embedded = false }) {
         <Search
           id="storage-inventory-lots-search"
           size="md"
-          placeHolderText={intl.formatMessage({
+          placeholder={intl.formatMessage({
             id: "storage.search.lots.placeholder",
             defaultMessage: "Search lots…",
           })}
@@ -229,7 +227,7 @@ export default function InventoryLotsPage({ embedded = false }) {
           page={page}
           pageSize={pageSize}
           pageSizes={[10, 25, 50, 100]}
-          totalItems={filtered.length || totalItems}
+          totalItems={filtered.length}
           onChange={({ page: nextPage, pageSize: nextSize }) => {
             setPage(nextPage);
             setPageSize(nextSize);
