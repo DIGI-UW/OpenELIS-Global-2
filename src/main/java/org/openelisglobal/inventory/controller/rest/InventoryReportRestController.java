@@ -1,12 +1,14 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.exception.LocalizedValidationException;
@@ -17,6 +19,7 @@ import org.openelisglobal.inventory.report.InventoryReportWriter;
 import org.openelisglobal.inventory.report.ReportTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,9 +42,7 @@ public class InventoryReportRestController {
     public void generate(@RequestParam String reportType, @RequestParam String exportFormat,
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
-            @RequestParam(required = false, defaultValue = "true") boolean includeExpired,
-            @RequestParam(required = false, defaultValue = "false") boolean groupByType,
-            @RequestParam(required = false, defaultValue = "false") boolean groupByLocation,
+            @RequestParam(required = false, defaultValue = "true") boolean includeExpired, HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         try {
             ReportTable table;
@@ -50,10 +51,9 @@ public class InventoryReportRestController {
                     throw new LocalizedValidationException("reports.error.unknownExportFormat",
                             "Unknown export format: " + exportFormat);
                 }
-                InventoryReportRequest request = new InventoryReportRequest(reportType, exportFormat,
-                        parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, groupByType,
-                        groupByLocation);
-                table = inventoryReportService.generateReport(request);
+                table = inventoryReportService
+                        .generateReport(new InventoryReportRequest(reportType, exportFormat, parseStartDate(startDate),
+                                parseEndDate(endDate), includeInactive, includeExpired, tagsOf(request)));
             } catch (LocalizedValidationException e) {
                 sendValidationError(response, e);
                 return;
@@ -88,6 +88,30 @@ public class InventoryReportRestController {
         }
     }
 
+    @PostMapping("/rest/inventory/reports/preview")
+    public ResponseEntity<Object> preview(@RequestParam String reportType,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(required = false, defaultValue = "true") boolean includeExpired, HttpServletRequest request) {
+        try {
+            return ResponseEntity.ok(inventoryReportService
+                    .generateReport(new InventoryReportRequest(reportType, "CSV", parseStartDate(startDate),
+                            parseEndDate(endDate), includeInactive, includeExpired, tagsOf(request))));
+        } catch (LocalizedValidationException e) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", e.getMessage());
+            body.put("errorCode", e.getErrorCode());
+            body.put("params", e.getParams());
+            return ResponseEntity.badRequest().body(body);
+        }
+    }
+
+    // A List<String> @RequestParam would split a lone tag on its commas.
+    private static List<String> tagsOf(HttpServletRequest request) {
+        String[] tags = request.getParameterValues("tags");
+        return tags == null ? null : List.of(tags);
+    }
+
     /**
      * Same {message, errorCode, params} body as
      * {@link InventoryItemRestController}.
@@ -107,13 +131,10 @@ public class InventoryReportRestController {
         return date == null ? null : Timestamp.valueOf(date.atStartOfDay());
     }
 
-    /**
-     * The consuming queries use an inclusive {@code BETWEEN}, so an end date left
-     * at midnight would drop the whole last day.
-     */
+    /** An exclusive end: every consuming query is half-open. */
     private Timestamp parseEndDate(String value) {
         LocalDate date = parseLocalDate(value);
-        return date == null ? null : Timestamp.valueOf(date.atTime(23, 59, 59, 999_000_000));
+        return date == null ? null : Timestamp.valueOf(date.plusDays(1).atStartOfDay());
     }
 
     private LocalDate parseLocalDate(String value) {

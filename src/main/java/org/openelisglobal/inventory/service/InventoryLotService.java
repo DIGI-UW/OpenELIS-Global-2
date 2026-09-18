@@ -92,6 +92,9 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId);
 
+    /** Saves a whole-lot edit; a changed quantity is logged as an adjustment. */
+    InventoryLot editLot(InventoryLot lot, String sysUserId);
+
     /**
      * Dispose of a lot
      *
