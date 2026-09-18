@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -91,7 +92,7 @@ public class MicroWhonetExportRestControllerSecurityTest extends SecuritySliceMo
 
         @Bean
         WHONetReportService whonetReportService() {
-            WHONetReportService service = mock(WHONetReportService.class);
+            WHONetReportService service = mock(WHONetReportService.class, withSettings().withoutAnnotations());
             when(service.previewMicrobiologyExport(org.mockito.ArgumentMatchers.any()))
                     .thenReturn(new MicroWhonetPreviewForm());
             when(service.generateMicrobiologyExport(org.mockito.ArgumentMatchers.any(),

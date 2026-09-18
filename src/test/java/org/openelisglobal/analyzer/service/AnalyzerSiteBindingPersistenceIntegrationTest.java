@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -138,7 +139,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             TestService testService = mock(TestService.class);
             TestResultService testResultService = mock(TestResultService.class);
             SystemUserService systemUserService = mock(SystemUserService.class);
-            AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class);
+            AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class,
+                    withSettings().withoutAnnotations());
             SystemUser actor = new SystemUser();
             actor.setId(TEST_SYS_USER_ID);
             actor.setFirstName("Integration");

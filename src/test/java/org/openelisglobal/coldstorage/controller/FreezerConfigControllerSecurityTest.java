@@ -1,6 +1,7 @@
 package org.openelisglobal.coldstorage.controller;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -76,7 +77,7 @@ public class FreezerConfigControllerSecurityTest extends SecuritySliceMockMvcTes
         @Bean
         SystemConfigService systemConfigService() {
             return new SystemConfigService(mock(SiteInformationService.class),
-                    mock(SiteInformationDomainService.class));
+                    mock(SiteInformationDomainService.class, withSettings().withoutAnnotations()));
         }
 
         @Bean

@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.controller;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -62,22 +63,22 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
 
         @Bean
         AnalyzerTypeCatalogService analyzerTypeCatalogService() {
-            return mock(AnalyzerTypeCatalogService.class);
+            return mock(AnalyzerTypeCatalogService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         BridgeProfileManagementService bridgeProfileManagementService() {
-            return mock(BridgeProfileManagementService.class);
+            return mock(BridgeProfileManagementService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         AnalyzerMappingCatalogService analyzerMappingCatalogService() {
-            return mock(AnalyzerMappingCatalogService.class);
+            return mock(AnalyzerMappingCatalogService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         AnalyzerTypeMappingService analyzerTypeMappingService() {
-            return mock(AnalyzerTypeMappingService.class);
+            return mock(AnalyzerTypeMappingService.class, withSettings().withoutAnnotations());
         }
 
         @Bean

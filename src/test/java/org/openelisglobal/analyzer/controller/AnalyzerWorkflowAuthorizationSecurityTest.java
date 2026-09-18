@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -88,7 +89,7 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
 
         @Bean
         AnalyzerInstanceService analyzerInstanceService() {
-            AnalyzerInstanceService service = mock(AnalyzerInstanceService.class);
+            AnalyzerInstanceService service = mock(AnalyzerInstanceService.class, withSettings().withoutAnnotations());
             when(service.list()).thenReturn(List.of());
             return service;
         }
@@ -100,7 +101,7 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
 
         @Bean
         AnalyzerActivationService analyzerActivationService() {
-            return mock(AnalyzerActivationService.class);
+            return mock(AnalyzerActivationService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
@@ -126,24 +127,24 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
 
         @Bean
         QCControlLotService qcControlLotService() {
-            QCControlLotService service = mock(QCControlLotService.class);
+            QCControlLotService service = mock(QCControlLotService.class, withSettings().withoutAnnotations());
             when(service.getAllControlLots()).thenReturn(List.of());
             return service;
         }
 
         @Bean
         QCStatisticsService qcStatisticsService() {
-            return mock(QCStatisticsService.class);
+            return mock(QCStatisticsService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         WestgardRuleConfigService westgardRuleConfigService() {
-            return mock(WestgardRuleConfigService.class);
+            return mock(WestgardRuleConfigService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         QCDashboardService qcDashboardService() {
-            return mock(QCDashboardService.class);
+            return mock(QCDashboardService.class, withSettings().withoutAnnotations());
         }
 
         @Bean

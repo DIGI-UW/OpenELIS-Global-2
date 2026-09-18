@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -176,7 +177,7 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
             Alert freezerAlert = alert(FREEZER_ALERT_ID, AlertType.FREEZER_TEMPERATURE, "Freezer", 100L);
             Alert analysisAlert = alert(ANALYSIS_ALERT_ID, AlertType.CRITICAL_RESULT, "ANALYSIS", 777L);
 
-            AlertService service = mock(AlertService.class);
+            AlertService service = mock(AlertService.class, withSettings().withoutAnnotations());
             when(service.getAll()).thenReturn(List.of(freezerAlert, analysisAlert));
             when(service.getAlertsByEntity(eq("Freezer"), isNull())).thenReturn(List.of(freezerAlert));
             when(service.getAlertsByEntity(eq("ANALYSIS"), anyLong())).thenReturn(Collections.emptyList());
@@ -187,7 +188,7 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
         @Bean
         FreezerService freezerService() {
-            FreezerService service = mock(FreezerService.class);
+            FreezerService service = mock(FreezerService.class, withSettings().withoutAnnotations());
             when(service.findById(any())).thenReturn(Optional.empty());
             return service;
         }

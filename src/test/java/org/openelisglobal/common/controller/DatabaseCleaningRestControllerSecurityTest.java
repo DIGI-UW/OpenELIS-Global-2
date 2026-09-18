@@ -2,6 +2,7 @@ package org.openelisglobal.common.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -90,7 +91,7 @@ public class DatabaseCleaningRestControllerSecurityTest extends SecuritySliceMoc
 
         @Bean
         HistoryService historyService() {
-            return mock(HistoryService.class);
+            return mock(HistoryService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
