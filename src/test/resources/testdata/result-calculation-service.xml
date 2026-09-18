@@ -56,9 +56,9 @@
         is_reportable="Y" lastupdated="2026-01-01 12:00:00" />
 
     <result_calculation id="1" calculation_id="1"
-        patient_id="1" result_id="1" />
+        patient_id="1" result_id="1" last_updated="2026-01-01 12:00:00" />
     <result_calculation id="2" calculation_id="2"
-        patient_id="1" result_id="2" />
+        patient_id="1" result_id="2" last_updated="2026-01-01 12:00:00" />
     <result_calculation id="3" calculation_id="1"
-        patient_id="2" result_id="1" />
+        patient_id="2" result_id="1" last_updated="2026-01-01 12:00:00" />
 </dataset>
