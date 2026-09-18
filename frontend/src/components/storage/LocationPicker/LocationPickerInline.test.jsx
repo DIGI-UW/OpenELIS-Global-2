@@ -42,6 +42,24 @@ describe("LocationPickerInline", () => {
     });
   });
 
+  it("offers inline creation of levels by default", () => {
+    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
+    expect(
+      screen.getAllByRole("button", { name: /add new/i }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("hides every 'Add new' affordance when allowCreate is false", () => {
+    renderWithIntl(
+      <LocationPickerInline onChange={vi.fn()} allowCreate={false} />,
+    );
+    expect(screen.queryAllByRole("button", { name: /add new/i })).toHaveLength(
+      0,
+    );
+    // The cascade itself is still there for picking.
+    expect(document.querySelector("#location-picker-room")).toBeInTheDocument();
+  });
+
   it("shows the selected hierarchical path when a selection is set", () => {
     renderWithIntl(
       <LocationPickerInline

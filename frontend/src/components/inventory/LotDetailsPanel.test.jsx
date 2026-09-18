@@ -11,10 +11,10 @@ import {
 } from "./InventoryService";
 import messages from "../../languages/en.json";
 
-vi.mock("./InventoryService", () => ({
-  InventoryLotStorageAPI: { getMovements: vi.fn() },
-  TransactionAPI: { getByLot: vi.fn() },
-  UsageAPI: { getByLot: vi.fn() },
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerForBlob: vi.fn(),
 }));
 
 const renderWithIntl = (component) =>
@@ -24,11 +24,13 @@ const renderWithIntl = (component) =>
     </IntlProvider>,
   );
 
+// Spy on the real API objects: vi.spyOn throws when the method is missing,
+// so a wrapper the panel depends on cannot be mocked into existence.
 beforeEach(() => {
-  vi.clearAllMocks();
-  TransactionAPI.getByLot.mockResolvedValue([]);
-  UsageAPI.getByLot.mockResolvedValue([]);
-  InventoryLotStorageAPI.getMovements.mockResolvedValue([]);
+  vi.restoreAllMocks();
+  vi.spyOn(TransactionAPI, "getByLot").mockResolvedValue([]);
+  vi.spyOn(UsageAPI, "getByLot").mockResolvedValue([]);
+  vi.spyOn(InventoryLotStorageAPI, "getMovements").mockResolvedValue([]);
 });
 
 describe("LotDetailsPanel — storage location visibility (OGC-657)", () => {

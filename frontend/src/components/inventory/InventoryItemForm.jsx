@@ -179,9 +179,16 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       return false;
     }
 
-    // Type-specific validation
-    if (formData.itemType === "REAGENT" && !formData.stabilityAfterOpening) {
-      setError("Stability after opening is required for reagents");
+    // Only on create: legacy reagents have NULL stability and must stay
+    // editable without the operator inventing a value.
+    if (
+      !isEdit &&
+      formData.itemType === "REAGENT" &&
+      !formData.stabilityAfterOpening
+    ) {
+      setError(
+        intl.formatMessage({ id: "catalog.item.error.stabilityRequired" }),
+      );
       return false;
     }
 
@@ -221,8 +228,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
       // Add type-specific fields only for relevant item types
       if (formData.itemType === "REAGENT") {
+        // The entity is @Min(1), so an unset value has to go as null, not 0.
         sanitizedData.stabilityAfterOpening =
-          Number(formData.stabilityAfterOpening) || 0;
+          Number(formData.stabilityAfterOpening) || null;
         sanitizedData.storageRequirements = formData.storageRequirements;
       } else if (formData.itemType === "CARTRIDGE") {
         sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;

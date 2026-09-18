@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import InventoryCatalog from "./InventoryCatalog";
@@ -92,5 +93,42 @@ describe("InventoryCatalog — Code column and search (OGC-658 Part C)", () => {
 
     expect(screen.getByText("Reagent A")).toBeInTheDocument();
     expect(screen.queryByText("RDT Kit")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryCatalog — row actions", () => {
+  it("acts on the clicked row after the table has been re-sorted", async () => {
+    // Fetch order is the reverse of name order, so sorting by name moves
+    // Alpha into the first rendered row while the fetch-order array still
+    // holds Zeta there.
+    InventoryItemAPI.getAll.mockResolvedValue([
+      { ...ITEMS[0], id: 2000, code: "ZETA", name: "Zeta", isActive: "N" },
+      { ...ITEMS[1], id: 2001, code: "ALPHA", name: "Alpha", isActive: "N" },
+    ]);
+    InventoryItemAPI.activate.mockResolvedValue({});
+    renderCatalog();
+
+    await screen.findByText("Zeta");
+    fireEvent.click(screen.getByText(messages["catalog.item.name"]));
+    const nameCells = document.querySelectorAll("tbody tr td:nth-child(2)");
+    expect(nameCells[0]).toHaveTextContent("Alpha");
+
+    fireEvent.click(document.querySelectorAll("button.cds--overflow-menu")[0]);
+    fireEvent.click(await screen.findByText(messages["button.activate"]));
+
+    await waitFor(() =>
+      expect(InventoryItemAPI.activate).toHaveBeenCalledWith(2001),
+    );
+  });
+
+  it("shows a low-stock threshold of 0 as 0, not as unset", async () => {
+    InventoryItemAPI.getAll.mockResolvedValue([
+      { ...ITEMS[0], lowStockThreshold: 0 },
+    ]);
+    renderCatalog();
+
+    const row = (await screen.findByText("Reagent A")).closest("tr");
+    expect(within(row).getByText("0")).toBeInTheDocument();
+    expect(within(row).queryByText("-")).not.toBeInTheDocument();
   });
 });

@@ -51,6 +51,7 @@ vi.mock("../storage/LocationPicker/LocationPickerModal", () => ({
           onConfirm({
             selection: { room: { id: 9, name: "Cold Room" } },
             position: null,
+            reason: "Consolidating stock",
             notes: "",
           })
         }
@@ -142,6 +143,66 @@ describe("InventoryDashboard QC gate visibility", () => {
     const table = document.querySelector("table");
     expect(within(table).getByText("Passed")).toBeInTheDocument();
   });
+
+  it("flags a QC-pending lot as Pending QC even when its item is low on stock", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([pendingQcLot]);
+    InventoryItemAPI.getLowStock.mockResolvedValue([
+      { id: "MALARIA_RDT", name: "Malaria RDT" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).getByText("Pending QC")).toBeInTheDocument();
+    expect(within(table).queryByText("Low Stock")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryDashboard status filter", () => {
+  it("filters the rows client-side and offers Disposed", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      lotWithLocation,
+      { ...lotWithoutLocation, lotNumber: "LOT-GONE", status: "DISPOSED" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-GONE");
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-status-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Disposed" }));
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("LOT-GONE")).toBeInTheDocument();
+    expect(within(table).queryByText("LOT-100")).not.toBeInTheDocument();
+    // The controller ignores ?status=, so the filter must not refetch.
+    expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(1);
+    expect(InventoryLotAPI.getAll).toHaveBeenCalledWith();
+  });
+});
+
+describe("InventoryDashboard tab activation", () => {
+  it("refetches when it becomes the active tab again", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
+    const wrap = (active) => (
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={mockNotificationContext}>
+          <InventoryDashboard active={active} />
+        </NotificationContext.Provider>
+      </IntlProvider>
+    );
+    const { rerender } = render(wrap(true));
+
+    await screen.findByText("LOT-100");
+    expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(1);
+
+    rerender(wrap(false));
+    rerender(wrap(true));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.getAll).toHaveBeenCalledTimes(2),
+    );
+  });
 });
 
 describe("InventoryDashboard low stock", () => {
@@ -210,7 +271,9 @@ describe("InventoryDashboard type filter", () => {
       expect(InventoryItemAPI.getItemTypes).toHaveBeenCalled();
     });
 
-    fireEvent.click(document.querySelector("#type-filter button"));
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-type-filter button"),
+    );
     expect(await screen.findByText("Analyzer Cartridge")).toBeInTheDocument();
   });
 });
@@ -285,6 +348,7 @@ describe("InventoryDashboard Location column", () => {
           inventoryLotId: "1",
           locationId: "9",
           locationType: "room",
+          reason: "Consolidating stock",
         }),
       );
     });

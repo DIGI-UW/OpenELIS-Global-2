@@ -56,7 +56,9 @@ const QC_TAG_KIND = {
   QUARANTINED: "magenta",
 };
 
-const InventoryDashboard = () => {
+// `active` is the parent's tab state: Carbon keeps unselected TabPanels
+// mounted, so without it a Catalog edit stays stale here until a reload.
+const InventoryDashboard = ({ active = true }) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -117,11 +119,17 @@ const InventoryDashboard = () => {
 
   const statusOptions = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
-    { id: "ACTIVE", text: "Active" },
-    { id: "IN_USE", text: "In Use" },
-    { id: "EXPIRED", text: "Expired" },
-    { id: "CONSUMED", text: "Consumed" },
-    { id: "QUARANTINED", text: "Quarantined" },
+    ...[
+      "ACTIVE",
+      "IN_USE",
+      "EXPIRED",
+      "CONSUMED",
+      "QUARANTINED",
+      "DISPOSED",
+    ].map((status) => ({
+      id: status,
+      text: intl.formatMessage({ id: `lot.status.${status}` }),
+    })),
   ];
 
   const headers = [
@@ -197,8 +205,8 @@ const InventoryDashboard = () => {
     });
 
   useEffect(() => {
-    fetchLots();
-  }, [typeFilter, statusFilter]);
+    if (active) fetchLots();
+  }, [active]);
 
   const fetchLots = async () => {
     setLoading(true);
@@ -207,9 +215,7 @@ const InventoryDashboard = () => {
       // item's lots, which a per-lot check here cannot reproduce.
       const [lotsResponse, itemsResponse, lowStockResponse] = await Promise.all(
         [
-          InventoryLotAPI.getAll({
-            status: statusFilter !== "ALL" ? statusFilter : undefined,
-          }),
+          InventoryLotAPI.getAll(),
           InventoryItemAPI.getAll(),
           InventoryItemAPI.getLowStock(),
         ],
@@ -301,29 +307,37 @@ const InventoryDashboard = () => {
       );
 
       if (daysUntilExpiry < 0) {
-        return { type: "expired", label: "Expired", kind: "red" };
+        return {
+          type: "expired",
+          label: intl.formatMessage({ id: "stock.status.expired" }),
+          kind: "red",
+        };
       }
 
       const alertDays = item.expirationAlertDays || 30;
       if (daysUntilExpiry <= alertDays) {
         return {
           type: "expiring",
-          label: `Expiring (${daysUntilExpiry}d)`,
+          label: intl.formatMessage(
+            { id: "stock.status.expiringIn" },
+            { days: daysUntilExpiry },
+          ),
           kind: "warm-gray",
         };
       }
     }
 
     if (currentQty === 0) {
-      return { type: "outOfStock", label: "Out of Stock", kind: "red" };
-    }
-
-    if (lowStockItemIds.has(lot.inventoryItem.id)) {
-      return { type: "lowStock", label: "Low Stock", kind: "warm-gray" };
+      return {
+        type: "outOfStock",
+        label: intl.formatMessage({ id: "stock.status.outOfStock" }),
+        kind: "red",
+      };
     }
 
     // Stock that exists but cannot be consumed yet: FEFO only picks QC-passed
-    // lots, so surface the gate instead of a reassuring "In Stock".
+    // lots, so surface the gate instead of a reassuring "In Stock". Checked
+    // before low stock: the gate is what blocks this lot, not the item total.
     if (lot.qcStatus && lot.qcStatus !== "PASSED") {
       return {
         type: "pendingQc",
@@ -332,7 +346,19 @@ const InventoryDashboard = () => {
       };
     }
 
-    return { type: "inStock", label: "In Stock", kind: "green" };
+    if (lowStockItemIds.has(lot.inventoryItem.id)) {
+      return {
+        type: "lowStock",
+        label: intl.formatMessage({ id: "stock.status.lowStock" }),
+        kind: "warm-gray",
+      };
+    }
+
+    return {
+      type: "inStock",
+      label: intl.formatMessage({ id: "stock.status.inStock" }),
+      kind: "green",
+    };
   };
 
   const getFilteredLots = () => {
@@ -354,6 +380,10 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return item?.itemType === typeFilter;
       });
+    }
+
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter((lot) => lot.status === statusFilter);
     }
 
     return filtered;
@@ -475,7 +505,12 @@ const InventoryDashboard = () => {
       }
     : null;
 
-  const handleLocationConfirm = async ({ selection, position, notes }) => {
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
     if (!movingLot) return;
     try {
       const deepest = getDeepestLocationSelection(selection, {
@@ -493,7 +528,7 @@ const InventoryDashboard = () => {
       if (movingLotCurrentLocation) {
         await InventoryLotStorageAPI.moveLocation({
           ...payload,
-          reason: notes || "",
+          reason: reason || "",
         });
       } else {
         await InventoryLotStorageAPI.assignLocation(payload);
@@ -583,7 +618,7 @@ const InventoryDashboard = () => {
                 />
 
                 <Dropdown
-                  id="type-filter"
+                  id="inventory-dashboard-type-filter"
                   titleText=""
                   label={intl.formatMessage({
                     id: "inventory.filter.type",
@@ -600,7 +635,7 @@ const InventoryDashboard = () => {
                 />
 
                 <Dropdown
-                  id="status-filter"
+                  id="inventory-dashboard-status-filter"
                   titleText=""
                   label={intl.formatMessage({
                     id: "inventory.filter.status",
@@ -655,6 +690,9 @@ const InventoryDashboard = () => {
                 ) : (
                   rows.map((row) => {
                     const lot = lotsById.get(row.id);
+                    // DataTable syncs `rows` into its state in an effect, so
+                    // for one render it can still list a just-filtered row.
+                    if (!lot) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {

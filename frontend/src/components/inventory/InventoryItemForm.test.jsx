@@ -173,6 +173,48 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     expect(payload.id).toBeUndefined();
   });
 
+  it("lets a legacy reagent with no stability value be edited without inventing one", async () => {
+    InventoryItemAPI.update.mockResolvedValue({});
+    const onSave = vi.fn();
+    renderForm({
+      onSave,
+      item: {
+        id: 1004,
+        code: "LEGACY",
+        name: "Legacy Reagent",
+        itemType: "REAGENT",
+        units: "mL",
+        stabilityAfterOpening: null,
+      },
+    });
+
+    await screen.findByLabelText(/code/i);
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => expect(InventoryItemAPI.update).toHaveBeenCalled());
+    const [, payload] = InventoryItemAPI.update.mock.calls[0];
+    // The entity is @Min(1), so 0 would be rejected; null keeps it unset.
+    expect(payload.stabilityAfterOpening).toBeNull();
+    expect(onSave).toHaveBeenCalled();
+    expect(
+      screen.queryByText(/stability after opening is required/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still requires stability after opening when creating a reagent", async () => {
+    renderForm();
+
+    fireEvent.change(await screen.findByLabelText(/^item name/i), {
+      target: { value: "New Reagent" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(/stability after opening is required/i),
+    ).toBeInTheDocument();
+    expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
   it("shows the translated message for a duplicate-code error instead of the raw backend text (OGC-658 C8)", async () => {
     const duplicateError = new Error(
       "Inventory item code already exists: MY_REAGENT",

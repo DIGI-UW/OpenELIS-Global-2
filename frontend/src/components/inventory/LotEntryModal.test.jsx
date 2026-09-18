@@ -35,6 +35,7 @@ vi.mock("../storage/LocationPicker/LocationPickerModal", () => ({
             onConfirm({
               selection: { room: { id: 9, name: "Cold Room" } },
               position: null,
+              reason: "Consolidating stock",
               notes: "",
             })
           }
@@ -188,7 +189,11 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
 
     await waitFor(() => {
       expect(InventoryLotStorageAPI.moveLocation).toHaveBeenCalledWith(
-        expect.objectContaining({ inventoryLotId: "11", locationId: "9" }),
+        expect.objectContaining({
+          inventoryLotId: "11",
+          locationId: "9",
+          reason: "Consolidating stock",
+        }),
       );
     });
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();

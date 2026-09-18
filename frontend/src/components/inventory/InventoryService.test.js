@@ -3,7 +3,10 @@ import {
   InventoryLotStorageAPI,
   InventoryManagementAPI,
 } from "./InventoryService";
-import { postToOpenElisServerJsonResponse } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
 vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -71,5 +74,20 @@ describe("InventoryService POST wrappers on a 400 with a translated error", () =
     expect(err.message).toBe(duplicateCodeBody.message);
     expect(err.errorCode).toBe("inventory.item.error.duplicateCode");
     expect(err.params).toEqual({ code: "MY_REAGENT" });
+  });
+});
+
+describe("InventoryLotStorageAPI.getMovements", () => {
+  it("reads the lot's movement rows from the storage movements endpoint", async () => {
+    const rows = [{ id: 1, reason: "Consolidating stock" }];
+    getFromOpenElisServer.mockImplementation((endpoint, callback) =>
+      callback(rows),
+    );
+
+    await expect(InventoryLotStorageAPI.getMovements(7)).resolves.toEqual(rows);
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/storage/inventory-lots/7/movements",
+      expect.any(Function),
+    );
   });
 });

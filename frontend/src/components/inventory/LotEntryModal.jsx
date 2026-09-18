@@ -251,7 +251,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      if (isMountedRef.current) setError(err.message || "Error saving lot");
+      if (isMountedRef.current)
+        setError(err.message || intl.formatMessage({ id: "lot.save.error" }));
     } finally {
       // onSave() above may have unmounted this modal already.
       if (isMountedRef.current) setSaving(false);
@@ -269,7 +270,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     onClose();
   };
 
-  const handleLocationConfirm = async ({ selection, position, notes }) => {
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
     // The assign/move endpoints reject a blank locationId with a 400, and
     // in create mode that rejection would land after the lot is committed.
     if (!getDeepestLocationSelection(selection, { requireAssignable: true })) {
@@ -297,7 +303,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       if (currentLocation) {
         await InventoryLotStorageAPI.moveLocation({
           ...payload,
-          reason: notes || "",
+          reason: reason || "",
         });
       } else {
         await InventoryLotStorageAPI.assignLocation(payload);

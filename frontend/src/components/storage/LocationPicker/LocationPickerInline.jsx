@@ -94,7 +94,11 @@ export default function LocationPickerInline({
           defaultMessage: "Or pick level by level",
         })}
       </p>
-      <CreateForm selection={state.selection} onLevelChange={setLevel} />
+      <CreateForm
+        selection={state.selection}
+        onLevelChange={setLevel}
+        allowCreate={allowCreate}
+      />
       <TextInput
         id="storage-location-picker-inline-position"
         labelText={intl.formatMessage({

@@ -217,9 +217,15 @@ const InventoryCatalog = () => {
     name: item.name,
     itemType: item.itemType,
     units: item.units,
-    lowStockThreshold: item.lowStockThreshold || "-",
+    lowStockThreshold: item.lowStockThreshold ?? "-",
     status: item.isActive ? "Active" : "Inactive",
   }));
+
+  // Carbon reorders the rendered rows when a column is sorted, so the row
+  // body has to resolve its item by id rather than by position.
+  const itemsById = new Map(
+    paginatedItems.map((item) => [String(item.id), item]),
+  );
 
   const handleItemSaved = () => {
     setItemModalOpen(false);
@@ -315,7 +321,7 @@ const InventoryCatalog = () => {
                 />
 
                 <Dropdown
-                  id="type-filter"
+                  id="inventory-catalog-type-filter"
                   titleText=""
                   label={intl.formatMessage({ id: "inventory.filter.type" })}
                   items={itemTypes}
@@ -330,7 +336,7 @@ const InventoryCatalog = () => {
                 />
 
                 <Dropdown
-                  id="status-filter"
+                  id="inventory-catalog-status-filter"
                   titleText=""
                   label={intl.formatMessage({ id: "inventory.filter.status" })}
                   items={statusOptions}
@@ -381,8 +387,11 @@ const InventoryCatalog = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row, rowIndex) => {
-                    const item = paginatedItems[rowIndex];
+                  rows.map((row) => {
+                    const item = itemsById.get(row.id);
+                    // DataTable syncs `rows` into its state in an effect, so
+                    // for one render it can still list a just-filtered row.
+                    if (!item) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {

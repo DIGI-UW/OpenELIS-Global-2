@@ -161,14 +161,8 @@ export const InventoryItemAPI = {
  * Inventory Lot API
  */
 export const InventoryLotAPI = {
-  // Get all lots with optional filters
-  getAll: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.status) params.append("status", filters.status);
-    if (filters.itemId) params.append("itemId", filters.itemId);
-    const query = params.toString();
-    return get(`/lots${query ? `?${query}` : ""}`);
-  },
+  // GET /lots takes no filters; the dashboard filters client-side.
+  getAll: () => get("/lots"),
 
   // Update lot
   update: (id, lot) => put(`/lots/${id}`, lot),
@@ -209,6 +203,10 @@ export const InventoryLotStorageAPI = {
   // Get current location for a lot (empty object if unassigned)
   getLocation: (lotId) =>
     promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}`),
+
+  // Movement-audit rows for a lot (LotDetailsPanel's Movement History)
+  getMovements: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}/movements`),
 
   // Assign a lot to a location for the first time
   assignLocation: (payload) =>

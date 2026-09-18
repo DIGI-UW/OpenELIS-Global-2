@@ -63,14 +63,18 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
   };
 
   const getQCStatusTag = (status) => {
-    const statusMap = {
-      PASSED: { type: "green", label: "Passed" },
-      FAILED: { type: "red", label: "Failed" },
-      PENDING: { type: "gray", label: "Pending" },
-      NOT_REQUIRED: { type: "outline", label: "Not Required" },
+    const tagKind = {
+      PASSED: "green",
+      FAILED: "red",
+      PENDING: "gray",
+      QUARANTINED: "magenta",
     };
-    const config = statusMap[status] || statusMap.PENDING;
-    return <Tag type={config.type}>{config.label}</Tag>;
+    const known = tagKind[status] ? status : "PENDING";
+    return (
+      <Tag type={tagKind[known]}>
+        {intl.formatMessage({ id: `lot.qcStatus.${known}` })}
+      </Tag>
+    );
   };
 
   return (
