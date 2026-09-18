@@ -255,6 +255,9 @@ export const InventoryManagementAPI = {
 
   // Receive new inventory
   receive: (receiveData) => post("/management/receive", receiveData),
+
+  /** A whole delivery in one transaction, so a failed line cannot half-apply. */
+  receiveBatch: (lots) => post("/management/receive/batch", lots),
 };
 
 /**

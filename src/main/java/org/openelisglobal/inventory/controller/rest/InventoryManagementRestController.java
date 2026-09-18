@@ -65,6 +65,31 @@ public class InventoryManagementRestController extends BaseRestController {
         }
     }
 
+    /** A whole delivery, committed as one transaction. */
+    @PostMapping(value = "/receive/batch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> receiveInventoryBatch(@RequestBody java.util.List<InventoryLot> lots,
+            HttpServletRequest httpRequest) {
+        try {
+            UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
+            String sysUserId = String.valueOf(usd.getSystemUserId());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(inventoryManagementService.receiveInventoryBatch(lots, sysUserId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
+            // The same refusals the single-item receive beside this one reports,
+            // reported the same way. Collapsing them into a bodyless 500 told the
+            // delivery screen only that something had gone wrong, on the one path
+            // where a whole delivery is at stake.
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping(value = "/receive", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> receiveInventory(@RequestBody InventoryLot lot, HttpServletRequest httpRequest) {
         try {
