@@ -348,9 +348,8 @@
         manufacturer="MedSupply" catalog_number="GLV-001"
         storage_requirements="Room Temperature" quantity_per_unit="1"
         units="pcs" low_stock_threshold="10" expiration_alert_days="30"
-        stability_after_opening="0" calibration_required="N"
-        individual_tracking="N" is_active="Y"
-        last_updated="2026-01-27 00:00:00" />
+        stability_after_opening="0" calibration_required="N" track_lots="N"
+        is_active="Y" last_updated="2026-01-27 00:00:00" />
 
     <inventory_item id="2" code="SYRINGES"
         fhir_uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" name="Syringes"
@@ -358,9 +357,8 @@
         manufacturer="MedSupply" catalog_number="SYR-005"
         storage_requirements="Room Temperature" quantity_per_unit="1"
         units="pcs" low_stock_threshold="20" expiration_alert_days="30"
-        stability_after_opening="0" calibration_required="N"
-        individual_tracking="N" is_active="Y"
-        last_updated="2026-01-27 00:00:00" />
+        stability_after_opening="0" calibration_required="N" track_lots="N"
+        is_active="Y" last_updated="2026-01-27 00:00:00" />
 
 
 

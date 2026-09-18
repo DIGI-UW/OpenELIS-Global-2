@@ -147,3 +147,14 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+.inventory-item-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inventory-item-pair > .cds--form-item {
+  flex: 1 1 14rem;
+  min-width: 0;
+}

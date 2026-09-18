@@ -136,8 +136,13 @@ public class InventoryItem extends BaseObject<Long> {
     @Min(1)
     private Integer testsPerKit;
 
-    @Column(name = "individual_tracking", length = 1)
-    private String individualTracking = "N";
+    @Column(name = "track_lots", length = 1)
+    private String trackLots = "N";
+
+    @JsonIgnore
+    public boolean tracksLots() {
+        return "Y".equals(trackLots);
+    }
 
     // HIV_KIT/SYPHILIS_KIT-specific fields
     @Column(name = "source_organization", length = 255)
