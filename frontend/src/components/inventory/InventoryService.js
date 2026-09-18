@@ -96,11 +96,16 @@ const put = (endpoint, data) => {
                   .join(", ");
                 throw new Error(errorMessages);
               }
-              throw new Error(
+              const err = new Error(
                 errorJson.message ||
                   errorJson.error ||
                   `Failed to update: HTTP ${response.status}`,
               );
+              // Same translated-error body as post(); the catch below rethrows this
+              // object, so the fields survive.
+              err.errorCode = errorJson.errorCode;
+              err.params = errorJson.params;
+              throw err;
             })
             .catch((e) => {
               if (e.message && !e.message.includes("HTTP")) {
