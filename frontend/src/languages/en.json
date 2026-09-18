@@ -1807,6 +1807,7 @@
   "catalog.item.code.hint": "Stable identifier used by integrations. Leave blank and we'll generate one from the name.",
   "catalog.item.code.locked": "Code is locked once saved so integrations and existing references keep working.",
   "catalog.item.code.placeholder": "Leave blank to auto-generate from name",
+  "catalog.item.code.preview": "Will be saved as {code}",
   "catalog.item.compatibleAnalyzers": "Compatible Analyzers",
   "catalog.item.deactivate.confirm.button": "Deactivate",
   "catalog.item.deactivate.confirm.message": "Are you sure you want to deactivate {itemName}?",

@@ -53,8 +53,11 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     expect(codeInput).toHaveValue("");
   });
 
-  it("uppercases the code as it's typed and submits it on create", async () => {
-    InventoryItemAPI.create.mockResolvedValue({ id: 1000, code: "MY_REAGENT" });
+  it("leaves the code as typed, previews the normalized form, and submits that form on create", async () => {
+    InventoryItemAPI.create.mockResolvedValue({
+      id: 1000,
+      code: "MY_REAGENT_1",
+    });
     const onSave = vi.fn();
     renderForm({ onSave });
 
@@ -62,8 +65,11 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
       target: { value: "My Reagent" },
     });
     const codeInput = screen.getByLabelText(/code/i);
-    fireEvent.change(codeInput, { target: { value: "my_reagent" } });
-    expect(codeInput).toHaveValue("MY_REAGENT");
+    fireEvent.change(codeInput, { target: { value: "my reagent 1" } });
+    expect(codeInput).toHaveValue("my reagent 1");
+    expect(
+      screen.getByText("Will be saved as MY_REAGENT_1"),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
     });
@@ -72,14 +78,17 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     await waitFor(() => {
       expect(InventoryItemAPI.create).toHaveBeenCalledWith(
-        expect.objectContaining({ code: "MY_REAGENT", name: "My Reagent" }),
+        expect.objectContaining({ code: "MY_REAGENT_1", name: "My Reagent" }),
       );
     });
     expect(onSave).toHaveBeenCalled();
   });
 
-  it("normalizes the code like the server does and caps it at 64 characters", async () => {
-    InventoryItemAPI.create.mockResolvedValue({ id: 1003, code: "MY_REAGENT" });
+  it("normalizes the code like the server does on save and caps the input at 64 characters", async () => {
+    InventoryItemAPI.create.mockResolvedValue({
+      id: 1003,
+      code: "MY_REAGENT_V1",
+    });
     renderForm();
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
@@ -89,7 +98,10 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     expect(codeInput).toHaveAttribute("maxlength", "64");
 
     fireEvent.change(codeInput, { target: { value: " my reagent, v1 " } });
-    expect(codeInput).toHaveValue("MY_REAGENT_V1_");
+    expect(codeInput).toHaveValue(" my reagent, v1 ");
+    expect(
+      screen.getByText("Will be saved as MY_REAGENT_V1"),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
     });
@@ -101,6 +113,19 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
         expect.objectContaining({ code: "MY_REAGENT_V1" }),
       );
     });
+  });
+
+  it("keeps the auto-generate hint when the typed code is already in its saved form", async () => {
+    renderForm();
+
+    const codeInput = await screen.findByLabelText(/code/i);
+    fireEvent.change(codeInput, { target: { value: "MY_REAGENT" } });
+
+    expect(codeInput).toHaveValue("MY_REAGENT");
+    expect(screen.queryByText(/will be saved as/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(messages["catalog.item.code.hint"]),
+    ).toBeInTheDocument();
   });
 
   it("submits a null code when left blank, letting the server auto-generate one", async () => {
