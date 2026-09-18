@@ -140,6 +140,10 @@ const AlertsDashboard = () => {
                 id: "alerts.type.microbiology_critical",
               })}
             />
+            <SelectItem
+              value="INVENTORY_LOW"
+              text={intl.formatMessage({ id: "alerts.type.inventory_low" })}
+            />
           </Select>
         </Column>
         <Column lg={4} md={4} sm={4}>

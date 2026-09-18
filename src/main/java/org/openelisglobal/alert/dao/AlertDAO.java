@@ -38,6 +38,18 @@ public interface AlertDAO extends BaseDAO<Alert, Long> {
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
     /**
+     * Alerts of one type, for one kind of entity, that are still outstanding: OPEN
+     * or ACKNOWLEDGED, never RESOLVED.
+     *
+     * <p>
+     * What a sweep that resolves recoveries actually needs.
+     * {@link #getAlertsByEntity(String, Long)} with a null id returns every alert
+     * ever written for the entity type, resolved rows included, which grows without
+     * bound and is re-read on every pass.
+     */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
+
+    /**
      * Get all alerts of a specific type.
      *
      * <p>

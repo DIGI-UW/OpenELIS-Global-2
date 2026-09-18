@@ -183,6 +183,12 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
+    public List<Alert> getOutstandingAlerts(String entityType, AlertType alertType) {
+        return alertDAO.getOutstandingAlerts(entityType, alertType);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Long countActiveAlertsForEntity(String entityType, Long entityId) {
         return alertDAO.countActiveAlertsForEntity(entityType, entityId);
     }
