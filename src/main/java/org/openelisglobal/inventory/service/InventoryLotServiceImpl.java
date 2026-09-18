@@ -215,9 +215,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
-        // Calculate expiry after opening for reagents
+        // An item that declares how long it lasts once opened gets a shortened
+        // expiry; the declaration is the rule. This used to also require the item to
+        // be typed REAGENT, which stopped meaning anything once every item defaulted
+        // to that type, and which was never a second condition anyway: before tags,
+        // the editor only offered the stability field on reagents, so the two were
+        // the same test written twice.
         InventoryItem item = lot.getInventoryItem();
-        if (item != null && item.isReagent() && item.getStabilityAfterOpening() != null) {
+        if (item != null && item.getStabilityAfterOpening() != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTime(openedDate);
             cal.add(Calendar.DAY_OF_MONTH, item.getStabilityAfterOpening());

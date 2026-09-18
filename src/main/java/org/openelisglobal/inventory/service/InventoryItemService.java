@@ -3,12 +3,9 @@ package org.openelisglobal.inventory.service;
 import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
-
-    List<ItemType> getAllItemTypes();
 
     /**
      * Every distinct tag any item carries, alphabetically — the typeahead's
@@ -40,8 +37,6 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
     /**
      * Get items by item type (REAGENT, RDT, CARTRIDGE)
      */
-    List<InventoryItem> getByItemType(ItemType itemType);
-
     /**
      * Get items by category
      */

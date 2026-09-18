@@ -31,9 +31,10 @@ import org.springframework.web.server.ResponseStatusException;
  * linkage that the v2 Reagents tab (OGC-762) consumes.
  *
  * <p>
- * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'};
- * there is no standalone reagent table (see {@link TestReagentLink}). Current
- * stock is read from inventory ({@link InventoryItemService}).
+ * A "reagent" here is any {@code inventory_item}: the type column that once
+ * narrowed it is gone, and a cartridge is the commonest test-linked item there
+ * is. There is no standalone reagent table (see {@link TestReagentLink}).
+ * Current stock is read from inventory ({@link InventoryItemService}).
  *
  * <p>
  * Base path {@code /rest/test-catalog/{testId}/reagents} stays within the

@@ -45,10 +45,10 @@ public class InventoryBoardRestControllerTest extends BaseWebContextSensitiveTes
 
         // Prefix-scoped rows of our own rather than the shared fixture, so other
         // suites' inventory data cannot change what this asserts.
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units,"
+        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, units,"
                 + " low_stock_threshold, lead_time_days, is_active, last_updated)"
                 + " VALUES (nextval('clinlims.inventory_item_seq'), gen_random_uuid(), ?,"
-                + " 'Board Test Cartridge', 'CARTRIDGE', 'tests', 10, 14, 'Y', NOW())", CODE);
+                + " 'Board Test Cartridge', 'tests', 10, 14, 'Y', NOW())", CODE);
         Long itemId = jdbc.queryForObject("SELECT id FROM clinlims.inventory_item WHERE code = ?", Long.class, CODE);
 
         jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
@@ -100,7 +100,7 @@ public class InventoryBoardRestControllerTest extends BaseWebContextSensitiveTes
         JsonNode row = boardRow();
 
         assertEquals("Board Test Cartridge", row.path("name").asText());
-        assertEquals("CARTRIDGE", row.path("itemType").asText());
+        assertTrue("the dropped column must not reappear on a board row", row.path("itemType").isMissingNode());
         assertEquals("tests", row.path("units").asText());
         assertEquals(60.0, row.path("onHand").asDouble(), 0.0001);
         assertEquals(10, row.path("lowStockThreshold").asInt());

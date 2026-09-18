@@ -1,14 +1,13 @@
 package org.openelisglobal.inventory.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -28,11 +27,17 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
 @Getter
 @Setter
 @Entity
+/**
+ * Tolerant of properties it no longer has, so a client still sending the
+ * {@code itemType} this class carried until OGC-438 gets its item created
+ * rather than a 400. The field was the classification; tags are, and an old
+ * payload naming the dead one is stale rather than wrong.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
 public class InventoryItem extends BaseObject<Long> {
@@ -59,17 +64,6 @@ public class InventoryItem extends BaseObject<Long> {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    /**
-     * Superseded by {@link #tags}. The column is still NOT NULL behind a CHECK
-     * constraint pinned to five values, so the service fills it in on insert and
-     * nothing else writes it. Read it for nothing: it is carried until the readers
-     * that live outside this module can be repointed in one move. Bean validation
-     * is off it deliberately, so a caller no longer has to send a type.
-     */
-    @Column(name = "item_type", nullable = false, length = 50)
-    @Enumerated(EnumType.STRING)
-    private ItemType itemType;
 
     /**
      * Free-form classification. Several per item, no managed entity behind them,
@@ -207,31 +201,6 @@ public class InventoryItem extends BaseObject<Long> {
     private String isActive = "Y";
 
     // Business logic helper methods
-    @JsonIgnore
-    public boolean isReagent() {
-        return itemType == ItemType.REAGENT;
-    }
-
-    @JsonIgnore
-    public boolean isCartridge() {
-        return itemType == ItemType.CARTRIDGE;
-    }
-
-    @JsonIgnore
-    public boolean isRDT() {
-        return itemType == ItemType.RDT;
-    }
-
-    @JsonIgnore
-    public boolean isHIVKit() {
-        return itemType == ItemType.HIV_KIT;
-    }
-
-    @JsonIgnore
-    public boolean isSyphilisKit() {
-        return itemType == ItemType.SYPHILIS_KIT;
-    }
-
     @JsonIgnore
     public boolean isActive() {
         return "Y".equals(isActive);

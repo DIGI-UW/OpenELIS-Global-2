@@ -3,7 +3,6 @@ package org.openelisglobal.inventory.dao;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
@@ -12,11 +11,6 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
      * Get all active inventory items
      */
     List<InventoryItem> getAllActive() throws LIMSRuntimeException;
-
-    /**
-     * Get inventory items by type
-     */
-    List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException;
 
     /**
      * Get inventory items by category
@@ -37,8 +31,6 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
      * Get inventory item by FHIR UUID
      */
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
-
-    List<ItemType> getAllItemTypes();
 
     /**
      * Every distinct tag any item carries, alphabetically — the typeahead's

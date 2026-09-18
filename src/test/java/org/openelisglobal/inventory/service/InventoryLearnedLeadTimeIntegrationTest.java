@@ -17,7 +17,6 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.projection.InventoryProjection;
 import org.openelisglobal.inventory.projection.InventoryProjection.LeadTimeTier;
 import org.openelisglobal.inventory.projection.InventoryProjectionService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -63,7 +62,6 @@ public class InventoryLearnedLeadTimeIntegrationTest extends BaseWebContextSensi
         InventoryItem item = new InventoryItem();
         item.setFhirUuid(UUID.randomUUID());
         item.setName("Lead time fixture " + UUID.randomUUID());
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("tests");
         item.setLowStockThreshold(5);
         item.setLeadTimeDays(setLeadTimeDays);

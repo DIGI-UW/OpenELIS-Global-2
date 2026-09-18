@@ -2027,10 +2027,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     lot.getInventoryItem() != null && lot.getInventoryItem().getName() != null
                             ? lot.getInventoryItem().getName()
                             : "");
-            map.put("type",
-                    lot.getInventoryItem() != null && lot.getInventoryItem().getItemType() != null
-                            ? lot.getInventoryItem().getItemType().toString()
-                            : "");
+            // Tags replaced the item type, and were seeded from it, so this column
+            // keeps showing the words it showed before.
+            map.put("type", lot.getInventoryItem() != null ? String.join(", ", lot.getInventoryItem().getTags()) : "");
             map.put("quantity", lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0);
             map.put("status", lot.getStatus() != null ? lot.getStatus().toString() : "");
             map.put("qcStatus", lot.getQcStatus() != null ? lot.getQcStatus().toString() : "");
