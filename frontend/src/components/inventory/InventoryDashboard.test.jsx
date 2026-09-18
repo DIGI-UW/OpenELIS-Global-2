@@ -160,6 +160,20 @@ describe("InventoryDashboard QC gate visibility", () => {
     expect(within(table).queryByText("Pending QC")).not.toBeInTheDocument();
   });
 
+  it("labels a lot quarantined by status Quarantined though its QC is pending", async () => {
+    // What a lot received into quarantine looks like: the consume API calls this
+    // quarantined, so the dashboard must not call it Pending QC.
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, status: "QUARANTINED", qcStatus: "PENDING" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).getByText("Quarantined")).toBeInTheDocument();
+    expect(within(table).queryByText("Pending QC")).not.toBeInTheDocument();
+  });
+
   it("shows each lot's QC status in its own column", async () => {
     InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
     renderDashboard();

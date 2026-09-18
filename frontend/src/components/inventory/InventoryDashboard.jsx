@@ -352,9 +352,13 @@ const InventoryDashboard = ({ active = true }) => {
     // Stock that exists but cannot be consumed: FEFO only picks QC-passed lots,
     // so name the gate instead of a reassuring "In Stock". Checked before low
     // stock: the gate is what blocks this lot, not the item total.
-    if (lot.qcStatus && lot.qcStatus !== "PASSED") {
-      const gate =
-        QC_GATE_STOCK_STATUS[lot.qcStatus] || PENDING_QC_STOCK_STATUS;
+    const quarantinedByStatus = lot.status === "QUARANTINED";
+    if (quarantinedByStatus || (lot.qcStatus && lot.qcStatus !== "PASSED")) {
+      // Quarantine outranks the QC value, as the consume refusal does: a lot
+      // received into quarantine keeps the default pending QC.
+      const gate = quarantinedByStatus
+        ? QC_GATE_STOCK_STATUS.QUARANTINED
+        : QC_GATE_STOCK_STATUS[lot.qcStatus] || PENDING_QC_STOCK_STATUS;
       return {
         type: gate.type,
         label: intl.formatMessage({ id: gate.id }),
