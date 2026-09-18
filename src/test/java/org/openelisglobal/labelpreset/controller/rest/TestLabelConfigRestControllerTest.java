@@ -1,17 +1,14 @@
 package org.openelisglobal.labelpreset.controller.rest;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -27,7 +24,6 @@ import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * Integration test for {@link TestLabelConfigRestController} (OGC-285 M4).
@@ -157,19 +153,9 @@ public class TestLabelConfigRestControllerTest extends BaseWebContextSensitiveTe
 
     @Test
     public void getLabelConfig_returnsDefaultWhenNotPersisted() throws Exception {
-        MvcResult result = mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andReturn();
-
-        ObjectMapper mapper = new ObjectMapper();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body = mapper.readValue(result.getResponse().getContentAsString(), Map.class);
-
-        assertEquals("default allowOrderEntryOverride should be true", Boolean.TRUE,
-                body.get("allowOrderEntryOverride"));
-        assertNotNull("links key must be present", body.get("links"));
-        @SuppressWarnings("unchecked")
-        List<?> links = (List<?>) body.get("links");
-        assertTrue("links must be empty for unpersisted test", links.isEmpty());
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(0));
     }
 
     // -----------------------------------------------------------------------
@@ -181,29 +167,18 @@ public class TestLabelConfigRestControllerTest extends BaseWebContextSensitiveTe
         TestLabelConfigForm form = formWithPerSamplePreset();
         String json = new ObjectMapper().writeValueAsString(form);
 
-        MvcResult putResult = mockMvc
-                .perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isOk()).andReturn();
-
-        ObjectMapper mapper = new ObjectMapper();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> putBody = mapper.readValue(putResult.getResponse().getContentAsString(), Map.class);
-        assertEquals("PUT response toggle should match form", Boolean.TRUE, putBody.get("allowOrderEntryOverride"));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> putLinks = (List<Map<String, Object>>) putBody.get("links");
-        assertEquals("PUT should return 1 link", 1, putLinks.size());
-        assertEquals("link presetId should round-trip", perSamplePreset.getId(), putLinks.get(0).get("presetId"));
+        mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(1))
+                .andExpect(jsonPath("$.links[0].presetId").value(perSamplePreset.getId()))
+                .andExpect(jsonPath("$.links[0].defaultQty").value(1)).andExpect(jsonPath("$.links[0].maxQty").value(5))
+                .andExpect(jsonPath("$.links[0].allowOverride").value(true));
 
         // Verify via GET that the state is durable
-        MvcResult getResult = mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andReturn();
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> getBody = mapper.readValue(getResult.getResponse().getContentAsString(), Map.class);
-        assertEquals("GET should reflect persisted toggle", Boolean.TRUE, getBody.get("allowOrderEntryOverride"));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> getLinks = (List<Map<String, Object>>) getBody.get("links");
-        assertEquals("GET should return 1 persisted link", 1, getLinks.size());
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(1))
+                .andExpect(jsonPath("$.links[0].presetId").value(perSamplePreset.getId()));
     }
 
     // -----------------------------------------------------------------------
@@ -266,13 +241,7 @@ public class TestLabelConfigRestControllerTest extends BaseWebContextSensitiveTe
         mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON)
                 .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
 
-        MvcResult getResult = mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andReturn();
-
-        ObjectMapper mapper = new ObjectMapper();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body = mapper.readValue(getResult.getResponse().getContentAsString(), Map.class);
-        assertFalse("Master toggle should be false after PUT with false",
-                (Boolean) body.get("allowOrderEntryOverride"));
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(false));
     }
 }

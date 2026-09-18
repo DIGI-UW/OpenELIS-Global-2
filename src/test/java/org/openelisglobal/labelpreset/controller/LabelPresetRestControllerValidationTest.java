@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -199,12 +200,11 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
     @Test
     public void post_validForm_returns201WithId() throws Exception {
         LabelPresetForm form = buildValidForm(TEST_PREFIX + "created_ok");
-        MvcResult result = mockMvc
-                .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(form)))
-                .andExpect(status().isCreated()).andReturn();
-
-        LabelPreset created = JSON.readValue(result.getResponse().getContentAsString(), LabelPreset.class);
-        assertNotNull("Created preset should have an id", created.getId());
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(form)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value(TEST_PREFIX + "created_ok"))
+                .andExpect(jsonPath("$.heightMm").value(20)).andExpect(jsonPath("$.widthMm").value(40))
+                .andExpect(jsonPath("$.barcodeType").value("CODE_128"))
+                .andExpect(jsonPath("$.printsPerSample").value(true));
     }
 
     @Test
@@ -215,7 +215,8 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
                 .andExpect(status().isCreated()).andReturn();
         LabelPreset created = JSON.readValue(postResult.getResponse().getContentAsString(), LabelPreset.class);
 
-        mockMvc.perform(get(BASE_URL + "/" + created.getId())).andExpect(status().isOk());
+        mockMvc.perform(get(BASE_URL + "/" + created.getId())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value(TEST_PREFIX + "get_by_id"));
     }
 
     @Test
@@ -254,12 +255,10 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
         LabelPreset source = JSON.readValue(postResult.getResponse().getContentAsString(), LabelPreset.class);
 
         String dupBody = "{\"name\": \"" + TEST_PREFIX + "dup_copy\"}";
-        MvcResult dupResult = mockMvc.perform(post(BASE_URL + "/" + source.getId() + "/duplicate")
-                .contentType(MediaType.APPLICATION_JSON).content(dupBody)).andExpect(status().isCreated()).andReturn();
-
-        LabelPreset copy = JSON.readValue(dupResult.getResponse().getContentAsString(), LabelPreset.class);
-        assertNotNull("Copy should have an id", copy.getId());
-        assertTrue("Copy id should differ from source", !copy.getId().equals(source.getId()));
+        mockMvc.perform(post(BASE_URL + "/" + source.getId() + "/duplicate").contentType(MediaType.APPLICATION_JSON)
+                .content(dupBody)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(TEST_PREFIX + "dup_copy"))
+                .andExpect(jsonPath("$.isSystem").value(false)).andExpect(jsonPath("$.isActive").value(true));
     }
 
     // ── PUT update ────────────────────────────────────────────────────────────
@@ -274,12 +273,10 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
 
         LabelPresetForm updateForm = buildValidForm(TEST_PREFIX + "update_me");
         updateForm.setHeightMm(30);
-        MvcResult updateResult = mockMvc.perform(put(BASE_URL + "/" + created.getId())
-                .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(updateForm)))
-                .andExpect(status().isOk()).andReturn();
-
-        LabelPreset updated = JSON.readValue(updateResult.getResponse().getContentAsString(), LabelPreset.class);
-        assertEquals("Height should be updated", Integer.valueOf(30), updated.getHeightMm());
+        mockMvc.perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(updateForm))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value(TEST_PREFIX + "update_me"))
+                .andExpect(jsonPath("$.heightMm").value(30));
     }
 
     @Test
