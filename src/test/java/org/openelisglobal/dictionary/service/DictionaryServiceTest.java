@@ -1,14 +1,18 @@
 package org.openelisglobal.dictionary.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import org.hibernate.ObjectNotFoundException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -244,6 +248,54 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         List<Dictionary> results = dictionaryService.getPagesOfSearchedDictionaries(1, "Dictionary Entry 1");
         assertEquals(1, results.size());
         assertEquals("Dictionary Entry 1", results.get(0).getDictEntry());
+    }
+
+    @Test(expected = LIMSDuplicateRecordException.class)
+    public void insert_shouldThrowWhenDuplicateDictEntry() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Dictionary Entry 1");
+        dictionary.setLocalAbbreviation("DE1-DUP");
+        dictionary.setIsActive("Y");
+        dictionary.setSortOrder(10);
+        dictionary.setSysUserId("admin");
+
+        dictionaryService.insert(dictionary);
+    }
+
+    @Test
+    public void duplicateDictionaryExists_shouldReturnTrueWhenDictEntryExists() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Dictionary Entry 1");
+        dictionary.setLocalAbbreviation("DE1-UNIQUE");
+
+        assertTrue(dictionaryService.duplicateDictionaryExists(dictionary));
+    }
+
+    @Test
+    public void duplicateDictionaryExists_shouldReturnTrueWhenLocalAbbreviationExists() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Unique Entry Not In Dataset");
+        dictionary.setLocalAbbreviation("DE1");
+
+        assertTrue(dictionaryService.duplicateDictionaryExists(dictionary));
+    }
+
+    @Test
+    public void duplicateDictionaryExists_shouldReturnFalseWhenEntryIsUnique() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Unique Dictionary Entry Not In Dataset");
+        dictionary.setLocalAbbreviation("UNIQUE");
+
+        assertFalse(dictionaryService.duplicateDictionaryExists(dictionary));
+    }
+
+    @Test(expected = ObjectNotFoundException.class)
+    public void get_shouldThrowWhenIdDoesNotExist() {
+        dictionaryService.get("99999");
     }
 
     private Dictionary createDictionaryObject() {
