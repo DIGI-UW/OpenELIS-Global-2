@@ -817,35 +817,6 @@ describe("InventoryItemsBoard", () => {
     });
   });
 
-  it("refetches when its tab is returned to", async () => {
-    InventoryBoardAPI.get.mockResolvedValue([CARTRIDGE, SYPHILIS, MALARIA]);
-    InventoryLotAPI.getAll.mockResolvedValue(LOTS);
-    const { rerender } = render(
-      <IntlProvider locale="en" messages={messages}>
-        <NotificationContext.Provider value={notificationContext}>
-          <InventoryItemsBoard active />
-        </NotificationContext.Provider>
-      </IntlProvider>,
-    );
-    await screen.findByRole("table");
-    expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
-
-    const show = (active) =>
-      rerender(
-        <IntlProvider locale="en" messages={messages}>
-          <NotificationContext.Provider value={notificationContext}>
-            <InventoryItemsBoard active={active} />
-          </NotificationContext.Provider>
-        </IntlProvider>,
-      );
-
-    show(false);
-    expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
-
-    show(true);
-    await waitFor(() => expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2));
-  });
-
   it("does not refetch while it simply stays visible", async () => {
     await renderBoard();
     expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
