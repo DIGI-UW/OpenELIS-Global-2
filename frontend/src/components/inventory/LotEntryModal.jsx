@@ -251,8 +251,13 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      if (isMountedRef.current)
-        setError(err.message || intl.formatMessage({ id: "lot.save.error" }));
+      if (!isMountedRef.current) return;
+      // errorCode is an en.json id; message is the raw backend string.
+      setError(
+        err.errorCode
+          ? intl.formatMessage({ id: err.errorCode }, err.params)
+          : err.message || intl.formatMessage({ id: "lot.save.error" }),
+      );
     } finally {
       // onSave() above may have unmounted this modal already.
       if (isMountedRef.current) setSaving(false);

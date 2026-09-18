@@ -99,8 +99,10 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Quantity needed must be greater than 0");
         }
 
-        // Get available lots sorted by FEFO
-        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+        // The FEFO query has no expiry predicate; isAvailableForUse is the rule
+        // check-availability answers with, so it decides here too.
+        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId).stream()
+                .filter(InventoryLot::isAvailableForUse).collect(Collectors.toList());
 
         if (availableLots == null || availableLots.isEmpty()) {
             throw noAvailableLots(itemId);

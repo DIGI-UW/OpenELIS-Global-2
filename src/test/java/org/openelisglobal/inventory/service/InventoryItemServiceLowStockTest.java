@@ -19,11 +19,8 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 /**
- * "Low stock" is judged against stock a reorder can count on
- * ({@link InventoryLot#countsAsAvailableStock()}): usable now or awaiting QC,
- * never expired, disposed, quarantined or failed. The same predicate and the
- * same strict-below boundary drive the dashboard tile, the alerts endpoint and
- * the Low Stock report, so they cannot disagree about an item.
+ * Low stock is {@link InventoryLot#countsAsAvailableStock()} strictly below the
+ * threshold, for the dashboard tile, the alerts endpoint and the report alike.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryItemServiceLowStockTest {

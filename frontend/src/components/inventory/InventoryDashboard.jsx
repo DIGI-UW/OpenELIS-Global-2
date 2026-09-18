@@ -56,6 +56,20 @@ const QC_TAG_KIND = {
   QUARANTINED: "magenta",
 };
 
+const QC_GATE_STOCK_STATUS = {
+  FAILED: { type: "qcFailed", id: "stock.status.qcFailed", kind: "red" },
+  QUARANTINED: {
+    type: "quarantined",
+    id: "stock.status.quarantined",
+    kind: "magenta",
+  },
+};
+const PENDING_QC_STOCK_STATUS = {
+  type: "pendingQc",
+  id: "stock.status.pendingQc",
+  kind: "cyan",
+};
+
 // `active` is the parent's tab state: Carbon keeps unselected TabPanels
 // mounted, so without it a Catalog edit stays stale here until a reload.
 const InventoryDashboard = ({ active = true }) => {
@@ -335,14 +349,16 @@ const InventoryDashboard = ({ active = true }) => {
       };
     }
 
-    // Stock that exists but cannot be consumed yet: FEFO only picks QC-passed
-    // lots, so surface the gate instead of a reassuring "In Stock". Checked
-    // before low stock: the gate is what blocks this lot, not the item total.
+    // Stock that exists but cannot be consumed: FEFO only picks QC-passed lots,
+    // so name the gate instead of a reassuring "In Stock". Checked before low
+    // stock: the gate is what blocks this lot, not the item total.
     if (lot.qcStatus && lot.qcStatus !== "PASSED") {
+      const gate =
+        QC_GATE_STOCK_STATUS[lot.qcStatus] || PENDING_QC_STOCK_STATUS;
       return {
-        type: "pendingQc",
-        label: intl.formatMessage({ id: "stock.status.pendingQc" }),
-        kind: "cyan",
+        type: gate.type,
+        label: intl.formatMessage({ id: gate.id }),
+        kind: gate.kind,
       };
     }
 

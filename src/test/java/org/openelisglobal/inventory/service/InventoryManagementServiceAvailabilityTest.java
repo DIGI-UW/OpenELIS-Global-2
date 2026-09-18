@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LocalizedValidationException;
+import org.openelisglobal.inventory.service.InventoryManagementService.ConsumptionRecord;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -71,8 +72,7 @@ public class InventoryManagementServiceAvailabilityTest {
     public void isSufficientInventoryAvailable_countsOnlyStockConsumeWouldAccept() {
         when(inventoryLotService.getByInventoryItemId(13L)).thenReturn(List.of(lot(50.0, LotStatus.ACTIVE,
                 QCStatus.PASSED), lot(500.0, LotStatus.ACTIVE, QCStatus.PENDING)));
-        // The raw ACTIVE/IN_USE total the old check consulted; kept so a revert to it
-        // fails this test instead of passing by accident.
+        // The raw ACTIVE/IN_USE total the old check used; a revert to it must fail here.
         lenient().when(inventoryLotService.getTotalCurrentQuantity(13L)).thenReturn(550.0);
 
         assertTrue(service.isSufficientInventoryAvailable(13L, 50.0));
@@ -138,6 +138,34 @@ public class InventoryManagementServiceAvailabilityTest {
 
         assertEquals("inventory.consume.error.noLots", refusal.getErrorCode());
         assertEquals("BLOOD_AGAR", refusal.getParams().get("code"));
+    }
+
+    @Test
+    public void consumeInventoryFEFO_skipsExpiredLotsTheFefoQueryReturns() {
+        InventoryLot expired = lot(5.0, LotStatus.ACTIVE, QCStatus.PASSED);
+        expired.setExpirationDate(new Timestamp(System.currentTimeMillis() - 60_000));
+        InventoryLot fresh = lot(3.0, LotStatus.ACTIVE, QCStatus.PASSED);
+        when(inventoryLotService.getAvailableLotsByItemFEFO(13L)).thenReturn(List.of(expired, fresh));
+
+        List<ConsumptionRecord> consumed = service.consumeInventoryFEFO(13L, 2.0, null, null, "9");
+
+        assertEquals(1, consumed.size());
+        assertEquals(fresh.getLotNumber(), consumed.get(0).getLotNumber());
+        assertEquals("expired stock is never handed out", Double.valueOf(5.0), expired.getCurrentQuantity());
+        assertEquals(Double.valueOf(1.0), fresh.getCurrentQuantity());
+    }
+
+    @Test
+    public void consumeInventoryFEFO_refusesWhenTheOnlyPassedLotIsExpired() {
+        InventoryLot expired = lot(5.0, LotStatus.ACTIVE, QCStatus.PASSED);
+        expired.setExpirationDate(new Timestamp(System.currentTimeMillis() - 60_000));
+        when(inventoryLotService.getAvailableLotsByItemFEFO(13L)).thenReturn(List.of(expired));
+        when(inventoryLotService.getByInventoryItemId(13L)).thenReturn(List.of(expired));
+
+        LocalizedValidationException refusal = consumeExpectingRefusal();
+
+        assertEquals("inventory.consume.error.noLots", refusal.getErrorCode());
+        assertEquals(Double.valueOf(5.0), expired.getCurrentQuantity());
     }
 
     private LocalizedValidationException consumeExpectingRefusal() {

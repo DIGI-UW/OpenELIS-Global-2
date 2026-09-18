@@ -96,6 +96,28 @@ describe("RecordUsageModal", () => {
     expect(await screen.findAllByText(message)).toHaveLength(1);
   });
 
+  it("renders a QC-gate refusal from errorCode and params, not the raw message", async () => {
+    // The shape InventoryService.post builds from the 409 body; the message is
+    // the backend's own wording, which differs from the en.json text.
+    const err = new Error(
+      "No QC-passed stock for Malaria RDT (MAL-RDT): 1 lot(s) with stock are awaiting QC; mark QC as passed to use them",
+    );
+    err.errorCode = "inventory.consume.error.noLotsAwaitingQc";
+    err.params = { name: "Malaria RDT", code: "MAL-RDT", count: "1" };
+    InventoryManagementAPI.consume.mockRejectedValue(err);
+    renderWithIntl(
+      <RecordUsageModal open lot={lot} onClose={vi.fn()} onSave={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByText(messages["button.record"]));
+
+    expect(
+      await screen.findByText(
+        "No QC-passed stock for Malaria RDT (MAL-RDT): 1 lot(s) with stock are awaiting QC. Mark QC as passed to use them.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("does not update state after onSave has unmounted it", async () => {
     InventoryManagementAPI.consume.mockResolvedValue({ consumedLots: [] });
     const onSaved = vi.fn();

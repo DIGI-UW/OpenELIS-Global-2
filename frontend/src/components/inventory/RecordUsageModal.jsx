@@ -103,8 +103,13 @@ const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error recording usage:", err);
-      if (isMountedRef.current)
-        setError(err.message || "Error recording usage");
+      if (!isMountedRef.current) return;
+      // errorCode is an en.json id; message is the raw backend string.
+      setError(
+        err.errorCode
+          ? intl.formatMessage({ id: err.errorCode }, err.params)
+          : err.message || intl.formatMessage({ id: "usage.record.error" }),
+      );
     } finally {
       if (isMountedRef.current) setSaving(false);
     }

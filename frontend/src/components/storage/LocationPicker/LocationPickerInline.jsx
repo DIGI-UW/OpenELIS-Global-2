@@ -26,9 +26,10 @@ import CreateForm from "./components/CreateForm";
  *     it when switching tabs.
  *   - onChange(state) — fired whenever picker state changes; the host
  *     persists `state.selection` + `state.position` with the order form
+ *   - allowCreate?: boolean: false makes the level cascade pick-only
  *
- * State lives in the useLocationPicker reducer; this shell just toggles
- * the mode and forwards select-events to the reducer.
+ * State lives in the useLocationPicker reducer; this shell renders the
+ * search field above the level cascade and forwards their events to it.
  */
 export default function LocationPickerInline({
   initialSelection,

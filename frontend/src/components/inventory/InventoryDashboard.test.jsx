@@ -135,6 +135,31 @@ describe("InventoryDashboard QC gate visibility", () => {
     expect(within(table).queryByText("In Stock")).not.toBeInTheDocument();
   });
 
+  it("labels a QC-failed lot Failed QC rather than Pending QC", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, qcStatus: "FAILED" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    expect(within(table).getByText("Failed QC")).toBeInTheDocument();
+    expect(within(table).queryByText("Pending QC")).not.toBeInTheDocument();
+  });
+
+  it("labels a quarantined lot Quarantined rather than Pending QC", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, qcStatus: "QUARANTINED" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-100");
+    const table = document.querySelector("table");
+    // Once in the QC Status column, once in Stock Status.
+    expect(within(table).getAllByText("Quarantined")).toHaveLength(2);
+    expect(within(table).queryByText("Pending QC")).not.toBeInTheDocument();
+  });
+
   it("shows each lot's QC status in its own column", async () => {
     InventoryLotAPI.getAll.mockResolvedValue([lotWithLocation]);
     renderDashboard();

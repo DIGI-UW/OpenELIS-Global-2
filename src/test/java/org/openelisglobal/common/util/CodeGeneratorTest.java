@@ -22,6 +22,12 @@ public class CodeGeneratorTest {
     }
 
     @Test
+    public void prefixFor_doesNotReuseTheLetterSourceWordAsADigitWord() {
+        assertEquals("VR-500MG", CodeGenerator.prefixFor("VR3 Paracetamol 500mg Tablets"));
+        assertEquals("ML", CodeGenerator.prefixFor("2mL Tube"));
+    }
+
+    @Test
     public void prefixFor_fallsBackToItem_whenNoTokenHasALetter() {
         assertEquals("ITEM", CodeGenerator.prefixFor("   "));
         assertEquals("ITEM", CodeGenerator.prefixFor(null));

@@ -44,7 +44,7 @@ public final class CodeGenerator {
 
     /**
      * The sequence key for a name: 3 letters of its first word with a letter, then
-     * up to 2 words holding a digit (PAR-500MG, SOD-09-500ML, HIV-12).
+     * up to 2 other words holding a digit (PAR-500MG, SOD-09-500ML, HIV-12).
      */
     public static String prefixFor(String name) {
         List<String> tokens = new ArrayList<>();
@@ -58,21 +58,22 @@ public final class CodeGenerator {
         }
 
         String letters = PREFIX_FALLBACK;
-        for (String token : tokens) {
+        int letterSource = -1;
+        for (int i = 0; i < tokens.size(); i++) {
+            String token = tokens.get(i);
             if (token.matches(".*[A-Z].*")) {
                 String onlyLetters = token.replaceAll("[^A-Z]", "");
                 letters = onlyLetters.substring(0, Math.min(PREFIX_LETTERS, onlyLetters.length()));
+                letterSource = i;
                 break;
             }
         }
 
         StringBuilder prefix = new StringBuilder(letters);
         int digitTokens = 0;
-        for (String token : tokens) {
-            if (digitTokens == PREFIX_DIGIT_TOKENS) {
-                break;
-            }
-            if (token.matches(".*[0-9].*")) {
+        for (int i = 0; i < tokens.size() && digitTokens < PREFIX_DIGIT_TOKENS; i++) {
+            String token = tokens.get(i);
+            if (i != letterSource && token.matches(".*[0-9].*")) {
                 prefix.append('-').append(token, 0, Math.min(PREFIX_DIGIT_TOKEN_LENGTH, token.length()));
                 digitTokens++;
             }

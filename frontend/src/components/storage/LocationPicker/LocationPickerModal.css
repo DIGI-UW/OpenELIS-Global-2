@@ -59,12 +59,8 @@
   font-weight: 600;
 }
 
-/*
- * SearchField is shared with the non-modal pickers (LocationPickerPage,
- * LocationPickerInline), so its layout is scoped to the modal rather than
- * turning every instance's results list into an overlay.
- */
-.storage-location-picker-modal-picker .storage-location-picker-search {
+/* The results list below is an overlay on every page, so its anchor cannot be modal-scoped. */
+.storage-location-picker-search {
   position: relative;
 }
 

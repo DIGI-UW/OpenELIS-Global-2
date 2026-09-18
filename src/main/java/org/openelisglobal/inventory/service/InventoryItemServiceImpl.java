@@ -24,8 +24,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     // inventory_item.code is VARCHAR(64) — see 070-inventory-item-code.xml
     private static final int CODE_MAX_LENGTH = 64;
 
-    // Each miss burns a counter value; a legacy or typed code sitting on the next
-    // slot is rare.
+    // Each miss burns a counter value; a legacy or typed code on the next slot is
+    // rare.
     private static final int MAX_GENERATE_ATTEMPTS = 100;
 
     @Autowired

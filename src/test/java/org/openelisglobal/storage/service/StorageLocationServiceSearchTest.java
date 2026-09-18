@@ -200,9 +200,8 @@ public class StorageLocationServiceSearchTest {
 
     @Test
     public void testSearchLocations_Box_IncludesAllParentIdsAndHierarchyType() {
-        // getBoxesForAPI puts the physical format in "type" and the hierarchy level
-        // in "locationType" — the opposite of every other level. searchLocations must
-        // normalise that or the picker rejects the result.
+        // getBoxesForAPI puts the physical format in "type"; unmoved, the picker
+        // rejects the row.
         List<Map<String, Object>> boxes = new ArrayList<>();
         Map<String, Object> box = new HashMap<>();
         box.put("id", 40);
@@ -242,10 +241,7 @@ public class StorageLocationServiceSearchTest {
         assertEquals("Should have parentShelfId", 20, boxResult.get("parentShelfId"));
         assertEquals("Should have parentDeviceId", 10, boxResult.get("parentDeviceId"));
         assertEquals("Should have parentRoomId", 1, boxResult.get("parentRoomId"));
-        String hierarchicalPath = (String) boxResult.get("hierarchicalPath");
-        assertNotNull("Should have hierarchicalPath", hierarchicalPath);
-        assertTrue("Hierarchical path should contain room name", hierarchicalPath.contains("Main Laboratory"));
-        assertTrue("Hierarchical path should contain rack label", hierarchicalPath.contains("Rack R1"));
-        assertTrue("Hierarchical path should end with the box label", hierarchicalPath.endsWith("Box Alpha"));
+        assertEquals("SearchField splits the path on the same separator every other level uses",
+                "Main Laboratory › Main Freezer › Shelf-A › Rack R1 › Box Alpha", boxResult.get("hierarchicalPath"));
     }
 }
