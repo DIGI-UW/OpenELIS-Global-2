@@ -36,6 +36,7 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
     /**
      * Get usage records within a date range (for the Usage Trends report)
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate);
 
     /**

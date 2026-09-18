@@ -43,7 +43,7 @@ public class UserProgramsTest {
         programService = mock(ProgramService.class);
         RoleService roleService = mock(RoleService.class);
         Role role = new Role();
-        role.setId("1");
+        role.setId(1);
         when(roleService.getRoleByName(any())).thenReturn(role);
 
         ReflectionTestUtils.setField(userService, "programService", programService);
