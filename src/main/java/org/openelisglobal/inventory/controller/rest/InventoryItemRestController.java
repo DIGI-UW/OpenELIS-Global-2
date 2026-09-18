@@ -217,6 +217,7 @@ public class InventoryItemRestController extends BaseRestController {
             // list persists on POST and silently does nothing on PUT — which is
             // exactly how editing a lead time returned 200 and changed nothing.
             existingItem.setCatalogNumber(item.getCatalogNumber());
+            existingItem.setUpc(item.getUpc());
             existingItem.setExpirationAlertDays(item.getExpirationAlertDays());
             existingItem.setTrackLots(item.getTrackLots());
 

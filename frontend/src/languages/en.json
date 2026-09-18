@@ -9796,5 +9796,20 @@
   "inventory.count.done": "Count recorded: {adjusted, plural, =0 {no corrections} one {# correction} other {# corrections}}, {confirmed, plural, =0 {none confirmed} one {# lot confirmed} other {# lots confirmed}}.",
   "inventory.count.lastCounted": "Counted {date}",
   "inventory.count.neverCounted": "Never counted",
-  "inventory.count.column": "Last count"
+  "inventory.count.column": "Last count",
+  "catalog.item.upc": "Product barcode (UPC or GTIN)",
+  "catalog.item.upc.help": "The manufacturer's barcode for this product. Every box of it carries the same one, so scanning it says what an item is, not which batch arrived.",
+  "inventory.receive.title": "Receive stock",
+  "inventory.receive.submit": "Receive",
+  "inventory.receive.success": "Received {quantity} {units}. It is on the shelf now, and counts towards on-hand once its QC passes.",
+  "inventory.receive.help": "Adds more of an item that already exists. To define something new, use New item.",
+  "inventory.receive.scan": "Scan a product barcode",
+  "inventory.receive.scan.help": "Scan or type a UPC to pick the item without searching.",
+  "inventory.receive.scan.unknown": "No item carries that barcode",
+  "inventory.receive.quantityWithUnits": "Quantity received ({units})",
+  "inventory.receive.lotNumber.help": "Leave blank and one is generated from the item code and today's date.",
+  "inventory.receive.location.optional": "Not assigned. You can set this now or from the lot later.",
+  "inventory.receive.error.noItem": "Choose the item being received.",
+  "inventory.receive.error.quantity": "Enter how much arrived.",
+  "inventory.receive.error.locationAfterReceive": "The stock was received, but the storage location could not be assigned: {reason}"
 }

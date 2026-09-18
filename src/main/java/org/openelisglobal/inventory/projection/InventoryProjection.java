@@ -71,6 +71,12 @@ public class InventoryProjection {
     private boolean trackLots;
 
     /**
+     * The manufacturer's product barcode, carried so a scan can resolve to a row
+     * the board already holds rather than asking the server what it just fetched.
+     */
+    private String upc;
+
+    /**
      * When the item was last physically counted. Null until somebody has counted it
      * — a board that shows a date it invented is worse than one showing none.
      */

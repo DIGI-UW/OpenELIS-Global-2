@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-upc.xml">
+
+    <!--
+    OGC-438: the manufacturer's product barcode, on the item.
+
+    This is not the lot barcode. A lot barcode identifies one physical box that arrived on one day
+    and is unique to it; a UPC or GTIN identifies a kind of product, and every box of that product
+    ever made carries the same one. They live on different tables because they answer different
+    questions: "which box is this" and "what is this". Scanning a UPC says what arrived, never how
+    much or which batch.
+
+    Unique where it is set, and most items will never set it — a lab mixes stock it buys with stock
+    it is given, and only some of it is barcoded. A plain unique constraint would allow exactly one
+    item with no UPC, so the index is partial.
+    -->
+    <changeSet author="OGC" id="OGC-438-add-upc-to-inventory-item">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="upc" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <!-- A GTIN is at most 14 digits; the column is wider so a scanner that returns a
+                 padded or prefixed code can be stored as it was read rather than silently cut. -->
+            <column name="upc" type="VARCHAR(64)"/>
+        </addColumn>
+
+        <sql>
+            CREATE UNIQUE INDEX uq_inventory_item_upc
+            ON clinlims.inventory_item (upc)
+            WHERE upc IS NOT NULL;
+        </sql>
+
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.uq_inventory_item_upc</sql>
+            <dropColumn tableName="inventory_item" columnName="upc" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
