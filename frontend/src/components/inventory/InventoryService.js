@@ -175,6 +175,14 @@ export const InventoryCountAPI = {
   record: (entries) => post("/count", { entries }),
 };
 
+export const InventoryImportAPI = {
+  preview: (csv) => post("/import/preview", { csv }),
+
+  apply: (csv) => post("/import/apply", { csv }),
+
+  templateUrl: () => `${config.serverBaseUrl}${BASE_PATH}/import/template`,
+};
+
 export const InventoryTagAPI = {
   getDirectory: () => get("/tags"),
 

@@ -27,6 +27,12 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
      */
     InventoryItem getByCode(String code) throws LIMSRuntimeException;
 
+    /** The item carrying this UPC, or null. */
+    InventoryItem getByUpc(String upc) throws LIMSRuntimeException;
+
+    /** The item with this name in any case, deactivated ones included, or null. */
+    InventoryItem getByExactName(String name) throws LIMSRuntimeException;
+
     /**
      * Get inventory item by FHIR UUID
      */
