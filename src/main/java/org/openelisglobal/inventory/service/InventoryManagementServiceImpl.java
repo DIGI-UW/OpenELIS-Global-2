@@ -188,18 +188,18 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
                 .collect(Collectors.toList());
         String label = item.getName() + " (" + item.getCode() + ")";
 
-        long awaitingQc = count(stocked, lot -> lot.getQcStatus() == QCStatus.PENDING);
-        if (awaitingQc > 0) {
-            return refusal("inventory.consume.error.noLotsAwaitingQc", "No QC-passed stock for " + label + ": "
-                    + awaitingQc + " lot(s) with stock are awaiting QC; mark QC as passed to use them", item,
-                    awaitingQc);
-        }
         long quarantined = count(stocked,
                 lot -> lot.getStatus() == LotStatus.QUARANTINED || lot.getQcStatus() == QCStatus.QUARANTINED);
         if (quarantined > 0) {
             return refusal("inventory.consume.error.noLotsQuarantined",
                     "No usable stock for " + label + ": " + quarantined + " lot(s) with stock are quarantined", item,
                     quarantined);
+        }
+        long awaitingQc = count(stocked, lot -> lot.getQcStatus() == QCStatus.PENDING);
+        if (awaitingQc > 0) {
+            return refusal("inventory.consume.error.noLotsAwaitingQc", "No QC-passed stock for " + label + ": "
+                    + awaitingQc + " lot(s) with stock are awaiting QC; mark QC as passed to use them", item,
+                    awaitingQc);
         }
         long failedQc = count(stocked, lot -> lot.getQcStatus() == QCStatus.FAILED);
         if (failedQc > 0) {

@@ -131,6 +131,19 @@ public class InventoryManagementServiceAvailabilityTest {
     }
 
     @Test
+    public void consumeInventoryFEFO_callsAQuarantinedLotQuarantinedThoughItsQcIsStillPending() {
+        // A lot received into quarantine keeps the default PENDING qc; passing QC
+        // would not release it, so do not ask for that.
+        when(inventoryLotService.getByInventoryItemId(13L))
+                .thenReturn(List.of(lot(6.0, LotStatus.QUARANTINED, QCStatus.PENDING)));
+
+        LocalizedValidationException refusal = consumeExpectingRefusal();
+
+        assertEquals("inventory.consume.error.noLotsQuarantined", refusal.getErrorCode());
+        assertEquals("1", refusal.getParams().get("count"));
+    }
+
+    @Test
     public void consumeInventoryFEFO_reportsNoStockWhenNothingIsInTheWay() {
         when(inventoryLotService.getByInventoryItemId(13L)).thenReturn(List.of());
 
