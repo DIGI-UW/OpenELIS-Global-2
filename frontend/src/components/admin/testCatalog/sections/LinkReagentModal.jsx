@@ -41,7 +41,9 @@ const LinkReagentModal = ({
     setSelected([]);
     setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
-    getFromOpenElisServer("/rest/inventory/items/type/REAGENT", (res) => {
+    // Every active item, not only those typed REAGENT: a cartridge is the commonest
+    // test-linked item there is, and item type no longer classifies anything.
+    getFromOpenElisServer("/rest/inventory/items", (res) => {
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items

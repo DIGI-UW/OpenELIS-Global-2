@@ -166,3 +166,12 @@
 .board-suggestions-button {
   flex: 0 0 auto;
 }
+
+/* Tags wrap under the item code. A walk-around surface at tablet width cannot
+   afford a row that grows sideways with the number of tags. */
+.board-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  margin-top: 0.25rem;
+}

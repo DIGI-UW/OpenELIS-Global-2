@@ -144,6 +144,9 @@ export const InventoryItemAPI = {
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
+  /** Every tag any item carries — the item editor's typeahead suggestions. */
+  getTags: () => get("/items/tags"),
+
   // Get all item types
   getItemTypes: () => get("/items/types"),
 

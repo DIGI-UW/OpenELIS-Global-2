@@ -11,6 +11,12 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
     List<ItemType> getAllItemTypes();
 
     /**
+     * Every distinct tag any item carries, alphabetically — the typeahead's
+     * suggestion list.
+     */
+    List<String> getAllTags();
+
+    /**
      * Record that these items have been ordered, stamping each with the moment the
      * mark was made.
      *

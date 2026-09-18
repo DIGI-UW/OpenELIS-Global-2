@@ -302,6 +302,10 @@
        guessed. Beside the other inventory includes for the same reason. -->
   <include relativeToChangelogFile="true" file="107-inventory-order-cycle.xml"/>
 
+  <!-- OGC-438: free-form tags on an item, replacing the single fixed item_type. Beside the other
+       inventory includes for the same reason. -->
+  <include relativeToChangelogFile="true" file="105-inventory-item-tags.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-tags.xml">
+
+    <!--
+    OGC-438: an item's type becomes one or more free-form tags.
+
+    The old inventory_item.item_type is a single VARCHAR(50) pinned to five values by the
+    chk_item_type CHECK constraint, so an item is exactly one of REAGENT, RDT, CARTRIDGE, HIV_KIT or
+    SYPHILIS_KIT and a lab cannot say "this cartridge is also a TB consumable". Tags are metadata
+    only: grouping, filtering and reporting. They carry no behaviour, which is why this is a table of
+    strings and not an entity with a primary key — an entity is the thing being removed here.
+
+    item_type is deliberately left in place and still populated. Dropping it means repointing
+    readers that live in branches not yet merged, so it is carried as a dead column and dropped in
+    one move later. Nothing written from here on reads it for a decision.
+
+    The seed copies each item's current type across as a tag so no existing classification is lost.
+    It runs off the values actually present rather than the five the constraint allows, so an
+    instance that never used SYPHILIS_KIT does not start life with a tag nobody chose. Names are
+    spelled the way a person would write them rather than as SQL constants, because these strings
+    are what shows up on a chip in the item editor from now on.
+    -->
+    <changeSet author="OGC" id="OGC-438-create-inventory-item-tag">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_item_tag" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="inventory_item_tag" schemaName="clinlims">
+            <column name="item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tag" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- The pair is the row: an item cannot carry the same tag twice. -->
+        <addPrimaryKey schemaName="clinlims" tableName="inventory_item_tag"
+            columnNames="item_id, tag"
+            constraintName="pk_inventory_item_tag"/>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="inventory_item_tag"
+            baseColumnNames="item_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item"
+            referencedColumnNames="id"
+            constraintName="inventory_item_tag_item_fk" onDelete="CASCADE"/>
+
+        <!-- Reads go both ways: an item's tags, and every item carrying one tag. -->
+        <createIndex schemaName="clinlims" tableName="inventory_item_tag"
+            indexName="idx_inventory_item_tag_tag">
+            <column name="tag"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="inventory_item_tag" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="OGC" id="OGC-438-seed-inventory-item-tag-from-item-type">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_item_tag" schemaName="clinlims"/>
+            <columnExists tableName="inventory_item" columnName="item_type" schemaName="clinlims"/>
+        </preConditions>
+        <sql splitStatements="false"><![CDATA[
+            INSERT INTO clinlims.inventory_item_tag (item_id, tag)
+            SELECT i.id,
+                   CASE i.item_type
+                       WHEN 'REAGENT'      THEN 'Reagent'
+                       WHEN 'RDT'          THEN 'RDT'
+                       WHEN 'CARTRIDGE'    THEN 'Cartridge'
+                       WHEN 'HIV_KIT'      THEN 'HIV kit'
+                       WHEN 'SYPHILIS_KIT' THEN 'Syphilis kit'
+                       ELSE i.item_type
+                   END
+            FROM clinlims.inventory_item i
+            WHERE i.item_type IS NOT NULL
+            ON CONFLICT (item_id, tag) DO NOTHING;
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.inventory_item_tag</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

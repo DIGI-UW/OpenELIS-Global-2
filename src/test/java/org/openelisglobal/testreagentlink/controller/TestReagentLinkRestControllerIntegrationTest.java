@@ -33,7 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
  * OGC-949 / OGC-987 — Test↔Reagent linkage REST endpoints, round-tripped
  * against a real DB. Covers the happy path (link + list with inventory stock),
  * the 409 duplicate guard, the 404 guards (unknown test / reagent / link), and
- * the 400 validation guards (bad usage type, non-reagent inventory item).
+ * the 400 validation guard on the usage type.
  *
  * <p>
  * The class is gated by {@code @PreAuthorize("hasRole('ADMIN')")}; non-admins
@@ -61,6 +61,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     private TestReagentLinkRestController controller;
     private JdbcTemplate jdbc;
     private Long reagentId;
+    /** An item whose legacy type is not REAGENT — it is linkable all the same. */
     private Long nonReagentId;
 
     @Before
@@ -166,11 +167,19 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
     }
 
+    /**
+     * This case used to assert the opposite. Linking was refused unless the item's
+     * type was REAGENT, which put an analyzer cartridge — the item most likely of
+     * all to be consumed by running a test — permanently out of reach. Item type no
+     * longer classifies anything, so the rule has gone with it.
+     */
     @Test
-    public void link_nonReagentInventoryItem_throwsBadRequest() {
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest()));
-        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    public void link_anyInventoryItem_succeedsWhateverItsLegacyType() {
+        ReagentLinkResponse r = controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest())
+                .getBody();
+
+        assertNotNull(r);
+        assertEquals(nonReagentId, r.reagentId);
     }
 
     @Test

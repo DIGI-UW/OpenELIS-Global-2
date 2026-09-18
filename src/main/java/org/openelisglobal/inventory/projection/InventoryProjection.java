@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.projection;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -60,6 +61,10 @@ public class InventoryProjection {
     private String code;
     private String name;
     private String itemType;
+
+    /** Free-form classification, carried so the board can show and search it. */
+    private List<String> tags;
+
     private String units;
 
     /**
