@@ -44,6 +44,14 @@ li.clickableUserDetails:hover {
   margin: 0 1% 0 18%;
 }
 
+/* Programs V2: cap the persistent search width so it doesn't stretch across
+   the whole toolbar. Carbon's default sets inline-size: 100% on the
+   persistent search container. */
+.programs-toolbar .cds--toolbar-search-container-persistent {
+  inline-size: 500px;
+  flex: 0 0 500px;
+}
+
 .admin-dashboard {
   padding: var(--cds-spacing-05, 1rem) var(--cds-spacing-05, 1rem)
     var(--cds-spacing-07, 2rem);
