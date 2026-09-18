@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.controller;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
@@ -18,8 +19,10 @@ public class MicroReportReleaseRestControllerTest {
 
     @Test
     public void releaseActionsNeedNoUnusedRequestBody() throws Exception {
-        MicroReportReleaseService releaseService = org.mockito.Mockito.mock(MicroReportReleaseService.class);
-        MicroReportProjectionService projectionService = org.mockito.Mockito.mock(MicroReportProjectionService.class);
+        MicroReportReleaseService releaseService = org.mockito.Mockito.mock(MicroReportReleaseService.class,
+                withSettings().withoutAnnotations());
+        MicroReportProjectionService projectionService = org.mockito.Mockito.mock(MicroReportProjectionService.class,
+                withSettings().withoutAnnotations());
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         when(releaseService.releasePreliminary("case-1", "42")).thenReturn(microCase);

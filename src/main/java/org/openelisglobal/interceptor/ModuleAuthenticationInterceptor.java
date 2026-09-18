@@ -56,12 +56,19 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
         if (!hasPermission(errors, request, path)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
-            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
+            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission");
             if (isRestFullPath(path)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                // Unauthenticated requests never reach this interceptor
+                // (SecurityConfig .anyRequest().authenticated() runs in the filter
+                // chain first), so every denial here is an authenticated user lacking
+                // module permission — 403, not 401. This matches SecurityConfig's
+                // AccessDeniedHandler, which returns 403 JSON for the same class of
+                // failure; a 401 would also imply a WWW-Authenticate challenge (not
+                // set) and make frontends force a spurious re-login.
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
-                String jsonResponse = "{ \"status\": 401, \"message\": \"Not Authorized\" }";
+                String jsonResponse = "{ \"status\": 403, \"message\": \"Not Authorized\" }";
                 response.getWriter().write(jsonResponse);
                 response.getWriter().flush();
             } else {
@@ -104,10 +111,13 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             sysModsByUrl = filterParamMatches(request, sysModsByUrl);
         }
         if (sysModsByUrl.isEmpty() && REQUIRE_MODULE) {
-            // SECURITY NOTE: REST endpoints without SystemModuleUrl DB entries are
-            // auto-allowed for any authenticated user. Admin-only controllers are
-            // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
-            // Full per-role module mappings are a future enhancement.
+            // REST endpoints with no SystemModuleUrl entry are allowed PAST this
+            // interceptor for any authenticated user; their authorization is then
+            // enforced by the service-layer @PreAuthorize (PRIV_*) gates. This
+            // interceptor runs BEFORE method security, so returning false here would
+            // deny outright — breaking every non-admin on unmapped infrastructure
+            // endpoints (menu, configuration-properties, home-dashboard/metrics,
+            // user-test-sections). Defer to @PreAuthorize instead of denying.
             if (isRestFullPath(path)) {
                 return true;
             }
@@ -143,11 +153,10 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     private Set<String> getPermittedForms(int systemUserId) {
         Set<String> allPermittedPages = new HashSet<>();
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
 
-        for (String roleId : roleIds) {
-            Set<String> permittedPagesForRole = permissionModuleService
-                    .getAllPermittedPagesFromAgentId(Integer.parseInt(roleId));
+        for (Integer roleId : roleIds) {
+            Set<String> permittedPagesForRole = permissionModuleService.getAllPermittedPagesFromAgentId(roleId);
             allPermittedPages.addAll(permittedPagesForRole);
         }
 
@@ -166,10 +175,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     }
 
     private boolean isRestFullPath(String path) {
-        if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
-                || path.startsWith("/dbImage") || path.startsWith("/logging")) {
-            return true;
-        }
-        return false;
+        return path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
+                || path.startsWith("/dbImage") || path.startsWith("/logging");
     }
 }

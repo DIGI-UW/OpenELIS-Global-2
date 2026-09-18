@@ -1,6 +1,7 @@
 package org.openelisglobal.dataexport.controller.rest;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,7 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -93,18 +93,18 @@ public class DataExportStatusRestControllerSecurityTest extends SecuritySliceMoc
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
-    @EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
+            http.authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN")).httpBasic(Customizer.withDefaults())
                     .csrf(csrf -> csrf.disable());
             return http.build();
         }
 
         @Bean
         DataExportStatusViewService dataExportStatusViewService() {
-            DataExportStatusViewService service = mock(DataExportStatusViewService.class);
+            DataExportStatusViewService service = mock(DataExportStatusViewService.class,
+                    withSettings().withoutAnnotations());
             org.mockito.Mockito.when(service.getAllStatuses()).thenReturn(List.of());
             org.mockito.Mockito.when(service.getAttemptsForTask(org.mockito.ArgumentMatchers.anyLong(),
                     org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());

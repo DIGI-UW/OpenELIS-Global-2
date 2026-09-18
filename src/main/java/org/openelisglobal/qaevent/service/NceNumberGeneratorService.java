@@ -1,5 +1,7 @@
 package org.openelisglobal.qaevent.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 /**
  * Service interface for generating unique NCE numbers. NCE numbers follow the
  * format: NCE-YYYY-NNNNN where YYYY is the year and NNNNN is a sequential
@@ -12,6 +14,7 @@ public interface NceNumberGeneratorService {
      *
      * @return the generated NCE number (e.g., "NCE-2026-00001")
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_CREATE')")
     String generateNceNumber();
 
     /**
@@ -20,6 +23,7 @@ public interface NceNumberGeneratorService {
      * @param year the year to generate the number for
      * @return the generated NCE number
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_CREATE')")
     String generateNceNumber(int year);
 
     /**
@@ -28,6 +32,7 @@ public interface NceNumberGeneratorService {
      * @param year the year
      * @return the current sequence value, or 0 if no NCEs exist for that year
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     int getCurrentSequenceForYear(int year);
 
     /**
@@ -36,6 +41,7 @@ public interface NceNumberGeneratorService {
      * @param nceNumber the NCE number to validate
      * @return true if the format is valid
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     boolean isValidFormat(String nceNumber);
 
     /**
@@ -45,6 +51,7 @@ public interface NceNumberGeneratorService {
      * @return the year component
      * @throws IllegalArgumentException if the format is invalid
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     int parseYear(String nceNumber);
 
     /**
@@ -54,5 +61,6 @@ public interface NceNumberGeneratorService {
      * @return the sequence number component
      * @throws IllegalArgumentException if the format is invalid
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     int parseSequence(String nceNumber);
 }

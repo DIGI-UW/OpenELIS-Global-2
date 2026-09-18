@@ -3,17 +3,26 @@ package org.openelisglobal.localization.service;
 import java.util.List;
 import java.util.Locale;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Every page render (CommonPageAttributesInterceptor localizes the banner/title on"
+        + " all requests, including pre-login /session polls), locale resolution, and localized test/panel names"
+        + " in order entry, results and reports. Localized display strings are UI infrastructure, not privileged"
+        + " data — reads are ungated; mutations remain gated with PRIV_LOCALIZATION_MANAGE")
 public interface LocalizationService extends BaseObjectService<Localization, String> {
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     String insert(Localization localization);
 
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     boolean languageChanged(Localization localization, Localization oldLocalization);
 
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     void updateTestNames(Localization name, Localization reportingName);
 
     String getCurrentLocaleLanguage();

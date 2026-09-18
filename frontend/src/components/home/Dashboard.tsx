@@ -56,6 +56,7 @@ import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
   hasRole,
+  Roles,
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -186,7 +187,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      if (hasRole(userSessionDetails, "Global Administrator")) {
+      if (hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)) {
         setSelectedTestSection("all");
       } else {
         setSelectedTestSection(sections[0]?.id);
@@ -373,7 +374,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setSelectedTile(tile);
     } else {
       setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
         ? setSelectedTestSection("all")
         : setSelectedTestSection(testSections[0]?.id);
     }
@@ -382,7 +383,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
     ) {
       setSelectedTile(tile);
     } else {
@@ -606,10 +607,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
+                            {hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ? (
                               <TabList
                                 style={{ width: "100%" }}
                                 aria-label="List of tabs"

@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
@@ -65,9 +66,10 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
     @Test
     public void testSampleTypeManagement_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(
-                get("/rest/sample-types").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/sample-types")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     // Mutating + terminology endpoints must carry the same ADMIN gate. A
@@ -89,7 +91,9 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     @Test
     public void updateSampleType_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(put("/rest/sample-types/1").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
@@ -102,9 +106,10 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     @Test
     public void getSampleTypeById_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(
-                get("/rest/sample-types/1").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rest/sample-types/1")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
 
     @Test
@@ -122,13 +127,17 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     @Test
     public void updateDisplayOrder_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(put("/rest/sample-types/1/display-order").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/display-order")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"position\":1}")).andExpect(status().isNotFound());
     }
 
     @Test
     public void updateDisplayOrder_AdminRole_InvalidPosition_Returns422() throws Exception {
-        mockMvc.perform(put("/rest/sample-types/1/display-order").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/display-order")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"position\":0}"))
                 .andExpect(status().isUnprocessableEntity());
     }
@@ -143,7 +152,9 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
     @Test
     public void terminology_AdminRole_PassesAuth() throws Exception {
-        mockMvc.perform(get("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(get("/rest/sample-types/1/terminology")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
 
@@ -214,11 +225,17 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     @Test
     public void associatedTests_AdminRole_PassesAuth() throws Exception {
         // mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(get("/rest/sample-types/1/associable-tests").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(get("/rest/sample-types/1/associable-tests")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
-        mockMvc.perform(put("/rest/sample-types/1/tests/2").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/tests/2")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
-        mockMvc.perform(delete("/rest/sample-types/1/tests/2").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(delete("/rest/sample-types/1/tests/2")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
 
@@ -238,22 +255,22 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
         @Bean
         TypeOfSampleService typeOfSampleService() {
-            return mock(TypeOfSampleService.class);
+            return nullStub(TypeOfSampleService.class);
         }
 
         @Bean
         SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService() {
-            return mock(SampleTypeTerminologyMappingService.class);
+            return nullStub(SampleTypeTerminologyMappingService.class);
         }
 
         @Bean
         org.openelisglobal.test.service.TestService testService() {
-            return mock(org.openelisglobal.test.service.TestService.class);
+            return nullStub(org.openelisglobal.test.service.TestService.class);
         }
 
         @Bean
         org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService() {
-            return mock(org.openelisglobal.typeofsample.service.TypeOfSampleTestService.class);
+            return nullStub(org.openelisglobal.typeofsample.service.TypeOfSampleTestService.class);
         }
 
         @Bean

@@ -3,6 +3,7 @@ package org.openelisglobal.configuration.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.configuration.valueholder.UnresolvedReference;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UnresolvedReferenceService extends BaseObjectService<UnresolvedReference, String> {
 
@@ -11,8 +12,10 @@ public interface UnresolvedReferenceService extends BaseObjectService<Unresolved
      * {@link ImportRunContext}) as open decision items of the current import run,
      * folding repeats of the same kind and spelling into the existing open item.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void recordPending(String domain, String fileName, int lineNumber);
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<UnresolvedReference> getOpen();
 
     /**
@@ -22,6 +25,7 @@ public interface UnresolvedReferenceService extends BaseObjectService<Unresolved
      * queue nothing: a name that still does not resolve keeps the item it already
      * has.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void closeResolvable();
 
     /**
@@ -29,5 +33,6 @@ public interface UnresolvedReferenceService extends BaseObjectService<Unresolved
      * {@code targetId} (ALIAS also remembers the spelling for later imports),
      * {@code SKIP} drops it. Returns the closed item.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     UnresolvedReference resolve(String id, String resolution, String targetId, String sysUserId);
 }

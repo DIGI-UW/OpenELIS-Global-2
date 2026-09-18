@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -70,7 +71,8 @@ public class ImportIssuesRestControllerSecurityTest extends SecuritySliceMockMvc
 
         @Bean
         AnalyzerEventPersistenceService analyzerEventPersistenceService() {
-            AnalyzerEventPersistenceService service = mock(AnalyzerEventPersistenceService.class);
+            AnalyzerEventPersistenceService service = mock(AnalyzerEventPersistenceService.class,
+                    withSettings().withoutAnnotations());
             AnalyzerEvent event = new AnalyzerEvent();
             event.setExternalEventId("unmatched-ast");
             event.setEventType("AST_RESULT_AVAILABLE");

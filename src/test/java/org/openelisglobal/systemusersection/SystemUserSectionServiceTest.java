@@ -1,4 +1,4 @@
-package org.openelisglobal.systemUserSection;
+package org.openelisglobal.systemusersection;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

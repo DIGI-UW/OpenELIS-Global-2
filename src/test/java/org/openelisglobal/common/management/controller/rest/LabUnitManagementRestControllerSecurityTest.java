@@ -32,6 +32,26 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @TestPropertySource("classpath:common.properties")
 public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
+    // The controller class gate is hasRole('ADMIN'), but its handlers call
+    // privilege-gated services (TestSection/Test reads -> PRIV_RESULT_VIEW /
+    // PRIV_ORDER_VIEW / PRIV_TEST_CONFIGURE, localization ->
+    // PRIV_LOCALIZATION_MANAGE,
+    // role reads -> PRIV_ROLE_VIEW). An admin principal that carries only
+    // ROLE_ADMIN
+    // clears the class gate but then AccessDenies (403) inside the handler under
+    // privilege-based RBAC. Give the "passes auth" principal both the role and the
+    // privileges the exercised service paths require.
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor adminUser() {
+        return user("admin").authorities(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_RESULT_VIEW"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_ORDER_VIEW"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_TEST_CONFIGURE"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_LOCALIZATION_MANAGE"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_ROLE_VIEW"),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_ROLE_MANAGE"));
+    }
+
     @Test
     public void getLabUnits_WithoutAuthentication_Returns401() throws Exception {
         mockMvc.perform(get("/rest/lab-units-management").contentType(MediaType.APPLICATION_JSON))
@@ -46,8 +66,8 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
 
     @Test
     public void getLabUnits_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(get("/rest/lab-units-management").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+        mockMvc.perform(get("/rest/lab-units-management").with(adminUser()).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
     // Mutating endpoints must carry the same ADMIN gate. A non-admin PUT
@@ -68,8 +88,8 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void updateLabUnit_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(put("/rest/lab-units-management/1").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
+        mockMvc.perform(put("/rest/lab-units-management/1").with(adminUser()).contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isNotFound());
     }
 
     @Test
@@ -81,8 +101,8 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void getLabUnitById_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(get("/rest/lab-units-management/1").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/rest/lab-units-management/1").with(adminUser()).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -100,13 +120,13 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void updateDisplayOrder_AdminRole_PassesAuth() throws Exception {
         // the mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(put("/rest/lab-units-management/1/display-order").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/lab-units-management/1/display-order").with(adminUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"position\":1}")).andExpect(status().isNotFound());
     }
 
     @Test
     public void updateDisplayOrder_AdminRole_InvalidPosition_Returns422() throws Exception {
-        mockMvc.perform(put("/rest/lab-units-management/1/display-order").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/lab-units-management/1/display-order").with(adminUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"position\":0}"))
                 .andExpect(status().isUnprocessableEntity());
     }
@@ -120,8 +140,9 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void assignedTests_AdminRole_PassesAuth() throws Exception {
         // mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(get("/rest/lab-units-management/1/tests").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+        mockMvc.perform(
+                get("/rest/lab-units-management/1/tests").with(adminUser()).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 
     // Create + bulk assignment endpoints carry the same ADMIN gate.
@@ -141,8 +162,8 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void createLabUnit_AdminRole_MissingFallbackName_Returns422() throws Exception {
         // empty body clears auth but fails validation (fallback-locale name required)
-        mockMvc.perform(post("/rest/lab-units-management").with(user("admin").roles("ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(post("/rest/lab-units-management").with(adminUser()).contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isUnprocessableEntity());
     }
 
     @Test
@@ -154,7 +175,7 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void assignableTests_AdminRole_PassesAuth() throws Exception {
         // mocked service returns null → 404: the request cleared the auth gate
-        mockMvc.perform(get("/rest/lab-units-management/1/assignable-tests").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(get("/rest/lab-units-management/1/assignable-tests").with(adminUser())
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
 
@@ -169,9 +190,9 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @Test
     public void bulkAssign_AdminRole_EmptyBody_Returns422() throws Exception {
         // empty body clears auth but fails validation (testIds required)
-        mockMvc.perform(post("/rest/lab-units-management/1/tests/assign").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(post("/rest/lab-units-management/1/tests/assign").with(adminUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnprocessableEntity());
-        mockMvc.perform(post("/rest/lab-units-management/1/tests/reassign").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(post("/rest/lab-units-management/1/tests/reassign").with(adminUser())
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnprocessableEntity());
     }
 
@@ -198,37 +219,37 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
 
         @Bean
         TestSectionService testSectionService() {
-            return mock(TestSectionService.class);
+            return nullStub(TestSectionService.class);
         }
 
         @Bean
         LocalizationService localizationService() {
-            return mock(LocalizationService.class);
+            return nullStub(LocalizationService.class);
         }
 
         @Bean
         SupportedLocaleService supportedLocaleService() {
-            return mock(SupportedLocaleService.class);
+            return nullStub(SupportedLocaleService.class);
         }
 
         @Bean
         TestService testService() {
-            return mock(TestService.class);
+            return nullStub(TestService.class);
         }
 
         @Bean
         TestSectionCreateService testSectionCreateService() {
-            return mock(TestSectionCreateService.class);
+            return nullStub(TestSectionCreateService.class);
         }
 
         @Bean
         TestSectionTestAssignService testSectionTestAssignService() {
-            return mock(TestSectionTestAssignService.class);
+            return nullStub(TestSectionTestAssignService.class);
         }
 
         @Bean
         RoleService roleService() {
-            return mock(RoleService.class);
+            return nullStub(RoleService.class);
         }
 
         @Bean

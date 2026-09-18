@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
@@ -22,15 +23,21 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
         return Optional.empty();
     }
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<Analyzer> getAllWithBindings();
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<Analyzer> getWithBinding(String id);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Analyzer getAnalyzerByName(String name);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<Analyzer> getByName(String name);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerTestCapability> getCapabilitiesForTest(String testId);
 }

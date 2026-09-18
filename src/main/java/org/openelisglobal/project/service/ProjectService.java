@@ -3,7 +3,9 @@ package org.openelisglobal.project.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.project.valueholder.Project;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
 public interface ProjectService extends BaseObjectService<Project, String> {
     void getData(Project project);
 

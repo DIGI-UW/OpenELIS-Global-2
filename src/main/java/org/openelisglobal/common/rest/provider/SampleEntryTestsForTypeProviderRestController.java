@@ -95,7 +95,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
         }
 
-        String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
+        String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {

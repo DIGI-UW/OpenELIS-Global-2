@@ -5,8 +5,10 @@ import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UserTestSectionService {
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestSection> getAllUserTestSectionsByName(HttpServletRequest request, String testSectionName)
             throws LIMSRuntimeException;
 
@@ -20,6 +22,7 @@ public interface UserTestSectionService {
     // LIMSRuntimeException;
 
     // bugzilla 2291 (added boolean onlyTestsFullySetup)
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Test> getAllUserTests(HttpServletRequest request, boolean onlyTestsFullySetup) throws LIMSRuntimeException;
 
     // public List<Object> getSampleTestAnalytes(HttpServletRequest request,

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String> implements RoleService {
+public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Integer> implements RoleService {
     @Autowired
     protected RoleDAO baseObjectDAO;
 
@@ -55,8 +55,13 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
         if (role == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleByName",
                     "Role not found in database: '" + name + "'");
+            // Preserve the never-null contract callers rely on (e.g.
+            // ServiceRequestProvider -> getUserSampleTypes): a sentinel id of -1
+            // matches no persisted role, so downstream role-scoped lookups return
+            // empty rather than NPEing on a null Role. The RBAC migration made the
+            // id Integer; the sentinel moved from "-1" to -1 accordingly.
             Role stub = new Role();
-            stub.setId("-1");
+            stub.setId(-1);
             stub.setName(name);
             return stub;
         }
@@ -71,7 +76,7 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
 
     @Override
     @Transactional(readOnly = true)
-    public Role getRoleById(String roleId) {
+    public Role getRoleById(Integer roleId) {
         return getBaseObjectDAO().getRoleById(roleId);
     }
 }

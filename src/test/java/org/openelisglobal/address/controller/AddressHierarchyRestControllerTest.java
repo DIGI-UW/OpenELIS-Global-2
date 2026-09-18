@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import java.util.List;
 import org.junit.Before;
@@ -26,7 +27,7 @@ public class AddressHierarchyRestControllerTest {
     @Before
     public void setUp() {
         organizationService = mock(OrganizationService.class);
-        organizationTypeService = mock(OrganizationTypeService.class);
+        organizationTypeService = mock(OrganizationTypeService.class, withSettings().withoutAnnotations());
         siteInformationService = mock(SiteInformationService.class);
 
         controller = new AddressHierarchyRestController();

@@ -1,6 +1,7 @@
 package org.openelisglobal.configuration.service;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -33,6 +34,7 @@ public interface CatalogImportService {
      * {@code domains} may name each file's domain in order; a blank or missing
      * entry falls back to the file name's domain prefix.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     ImportPlan preview(List<MultipartFile> files, List<String> domains, String sysUserId);
 
     /**
@@ -41,8 +43,10 @@ public interface CatalogImportService {
      * whatever their checksum says, since the person uploading them asked for that
      * explicitly; the rest of the catalog already in the tree is left alone.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     ImportPlan apply(List<MultipartFile> files, List<String> domains, String sysUserId);
 
     /** The catalog domains that can be imported, in load order. */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<String> getImportableDomains();
 }

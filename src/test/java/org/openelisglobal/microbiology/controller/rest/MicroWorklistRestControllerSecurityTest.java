@@ -6,6 +6,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -100,7 +101,7 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
 
         @Bean
         MicroWorklistService microWorklistService() {
-            MicroWorklistService service = mock(MicroWorklistService.class);
+            MicroWorklistService service = mock(MicroWorklistService.class, withSettings().withoutAnnotations());
             when(service.getWorklistPage(any(MicroWorklistQueryForm.class))).thenReturn(new MicroWorklistPageForm());
             return service;
         }

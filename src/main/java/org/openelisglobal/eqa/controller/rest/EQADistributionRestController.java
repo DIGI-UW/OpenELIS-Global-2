@@ -18,7 +18,6 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +29,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQADistributionRestController extends ControllerUtills {
 
     @Autowired
@@ -43,7 +41,6 @@ public class EQADistributionRestController extends ControllerUtills {
     private SystemUserService systemUserService;
 
     @PostMapping(value = "/distributions", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> createDistribution(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("distributionName");
@@ -155,7 +152,6 @@ public class EQADistributionRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/distributions/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> advanceStatus(@PathVariable Long id) {
         try {
             EQADistribution distribution = distributionService.advanceStatus(id);
@@ -171,7 +167,6 @@ public class EQADistributionRestController extends ControllerUtills {
     }
 
     @PostMapping(value = "/distributions/{id}/barcodes", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> generateBarcodes(@PathVariable Long id) {
         try {
             distributionService.get(id);

@@ -44,9 +44,9 @@ public class UnifiedSystemUserServiceTest extends BaseWebContextSensitiveTest {
         // showing existing user roles
         List<UserRole> userRoles = userRoleService.getAll();
 
-        assertEquals("1", userRoles.get(0).getRoleId());
-        assertEquals("2", userRoles.get(1).getRoleId());
-        assertEquals("3", userRoles.get(2).getRoleId());
+        assertEquals(Integer.valueOf(1), userRoles.get(0).getRoleId());
+        assertEquals(Integer.valueOf(2), userRoles.get(1).getRoleId());
+        assertEquals(Integer.valueOf(3), userRoles.get(2).getRoleId());
 
         userRoles.forEach(ur -> ur.setSysUserId("1"));
         systemUsers.forEach(su -> su.setSysUserId("1"));

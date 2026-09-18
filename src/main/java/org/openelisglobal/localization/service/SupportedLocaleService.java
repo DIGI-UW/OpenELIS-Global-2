@@ -20,8 +20,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.SupportedLocale;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "Login page language picker (/rest/supportedlocales/active is in SecurityConfig's"
+        + " open pages, served before authentication) and locale resolution on every request. Locale reads are UI"
+        + " infrastructure; mutations remain gated with PRIV_LOCALIZATION_MANAGE")
 public interface SupportedLocaleService extends BaseObjectService<SupportedLocale, String> {
 
     /**
@@ -69,5 +74,6 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      * @return the updated SupportedLocale
      * @throws IllegalArgumentException if the locale ID is not found
      */
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     SupportedLocale setFallback(String localeId, String sysUserId);
 }

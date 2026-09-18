@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for generating barcode labels for storage locations Handles label
@@ -18,6 +19,7 @@ public interface LabelManagementService {
      * @return PDF as ByteArrayOutputStream
      * @throws IllegalArgumentException if device is null or code is missing
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     ByteArrayOutputStream generateLabel(StorageDevice device);
 
     /**
@@ -27,6 +29,7 @@ public interface LabelManagementService {
      * @return PDF as ByteArrayOutputStream
      * @throws IllegalArgumentException if shelf is null or code is missing
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     ByteArrayOutputStream generateLabel(StorageShelf shelf);
 
     /**
@@ -36,6 +39,7 @@ public interface LabelManagementService {
      * @return PDF as ByteArrayOutputStream
      * @throws IllegalArgumentException if rack is null or code is missing
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     ByteArrayOutputStream generateLabel(StorageRack rack);
 
     /**
@@ -45,6 +49,7 @@ public interface LabelManagementService {
      * @param locationType The type: "device", "shelf", or "rack"
      * @return true if code exists, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     boolean validateCodeExists(String locationId, String locationType);
 
     /**
@@ -55,5 +60,6 @@ public interface LabelManagementService {
      * @param code         The code used for the label
      * @param userId       The user ID who printed the label
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     void trackPrintHistory(String locationId, String locationType, String code, String userId);
 }

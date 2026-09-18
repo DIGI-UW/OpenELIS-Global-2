@@ -6,8 +6,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -32,6 +34,9 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private PrivilegeService privilegeService;
 
     @Override
     public String getDomainName() {
@@ -68,7 +73,13 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         int activeIndex = findColumnIndex(headers, "active");
         int editableIndex = findColumnIndex(headers, "editable");
         int isGroupingRoleIndex = findColumnIndex(headers, "isGroupingRole");
+        // Spec 012 T047: the inheritance parent may be declared as either
+        // `groupingParent` (legacy grouping meaning) or `parentRole` (functional
+        // privilege-inheritance meaning) — both resolve to grouping_parent.
         int groupingParentIndex = findColumnIndex(headers, "groupingParent");
+        if (groupingParentIndex < 0) {
+            groupingParentIndex = findColumnIndex(headers, "parentRole");
+        }
 
         List<Role> processedRoles = new ArrayList<>();
         String line;
@@ -91,6 +102,21 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Spec 012 T047: a non-grouping role with no effective privileges (direct
+        // or inherited) grants nothing — almost always a configuration mistake.
+        for (Role role : processedRoles) {
+            if (role.getGroupingRole() != null && role.getGroupingRole()) {
+                continue;
+            }
+            Set<String> effective = privilegeService.resolveAllPrivilegesForRole(String.valueOf(role.getId()));
+            if (effective.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                        "Role '" + role.getName().trim() + "' from " + fileName
+                                + " has no effective privileges (direct or inherited) — users assigned"
+                                + " only this role will be denied by every privilege gate");
             }
         }
 
@@ -155,9 +181,10 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             return null;
         }
 
-        // Check if role already exists
+        // Check if role already exists (getRoleByName returns a stub with id=-1 when
+        // not found)
         Role existingRole = roleService.getRoleByName(name);
-        if (existingRole != null) {
+        if (existingRole != null && !Integer.valueOf(-1).equals(existingRole.getId())) {
             // Update existing role
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
                     isGroupingRoleIndex, groupingParentIndex);
@@ -217,7 +244,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "updateRoleFromCsv",
@@ -271,7 +298,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
@@ -279,7 +306,9 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        String roleId = roleService.insert(role);
+        role.setSysUserId("1"); // System user for configuration loading
+
+        Integer roleId = roleService.insert(role);
         role = roleService.get(roleId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "createRole", "Created new role: " + name);
         return role;

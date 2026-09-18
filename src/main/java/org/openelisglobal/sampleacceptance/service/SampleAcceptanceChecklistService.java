@@ -2,6 +2,7 @@ package org.openelisglobal.sampleacceptance.service;
 
 import java.util.List;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Configuration service for the S-09 (OGC-580) Sample Acceptance Checklist —
@@ -35,6 +36,7 @@ public interface SampleAcceptanceChecklistService {
     String ALL_DOMAINS = "ALL";
 
     /** Active lab-wide checklist items, ordered by {@code sortOrder}. */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<Dictionary> listLabWide();
 
     /**
@@ -44,6 +46,7 @@ public interface SampleAcceptanceChecklistService {
      *
      * @param domain CLINICAL, ENVIRONMENTAL, or VECTOR (case-insensitive)
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<Dictionary> listForDomain(String domain);
 
     /**
@@ -54,6 +57,7 @@ public interface SampleAcceptanceChecklistService {
      *
      * @param domain CLINICAL, ENVIRONMENTAL, or VECTOR (case-insensitive)
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     String getEnforcement(String domain);
 
     // ---- admin (write) side -------------------------------------------------
@@ -67,6 +71,7 @@ public interface SampleAcceptanceChecklistService {
      * @param domain {@link #ALL_DOMAINS}, CLINICAL, ENVIRONMENTAL, or VECTOR
      *               (case-insensitive)
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     AdminChecklistView getAdminView(String domain);
 
     /**
@@ -76,15 +81,18 @@ public interface SampleAcceptanceChecklistService {
      *
      * @return the created item
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     Dictionary createItem(String domain, String label, String sysUserId);
 
     /** Rename and/or activate-deactivate an existing item. */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     Dictionary updateItem(String id, String label, boolean active, String sysUserId);
 
     /**
      * Persist the {@code sortOrder} of the target's items to match the given id
      * order (1..N).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     void reorder(String domain, List<String> orderedIds, String sysUserId);
 
     /**
@@ -93,5 +101,6 @@ public interface SampleAcceptanceChecklistService {
      * @param domain CLINICAL, ENVIRONMENTAL, or VECTOR (case-insensitive)
      * @param mode   MANDATORY, OPTIONAL, or OFF
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     void setEnforcement(String domain, String mode, String sysUserId);
 }

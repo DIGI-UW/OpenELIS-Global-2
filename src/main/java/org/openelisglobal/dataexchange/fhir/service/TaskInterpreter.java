@@ -4,6 +4,7 @@ import java.util.List;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.Task;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.InterpreterResults;
 import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.OrderType;
 import org.openelisglobal.dataexchange.order.action.MessagePatient;
@@ -11,6 +12,7 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.test.valueholder.Test;
 
+@CrossDomainService(callers = "FHIR task interpretation pipeline — internal infrastructure")
 public interface TaskInterpreter {
 
     public List<String> getUnsupportedTests();

@@ -33,10 +33,10 @@ public class UserRoleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getRoleIdsForUser_shouldReturnAllRolesForUser() {
-        List<String> roleIds = userRoleService.getRoleIdsForUser("1");
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser("1");
         assertEquals(2, roleIds.size());
-        assertTrue(roleIds.contains("1"));
-        assertTrue(roleIds.contains("4"));
+        assertTrue(roleIds.contains(1));
+        assertTrue(roleIds.contains(4));
     }
 
     @Test

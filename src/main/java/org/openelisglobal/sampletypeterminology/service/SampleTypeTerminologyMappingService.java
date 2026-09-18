@@ -3,10 +3,12 @@ package org.openelisglobal.sampletypeterminology.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SampleTypeTerminologyMappingService extends BaseObjectService<SampleTypeTerminologyMapping, String> {
 
     /** Active terminology mappings for a sample type. */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
     List<SampleTypeTerminologyMapping> getActiveBySampleTypeId(String sampleTypeId);
 
     /**
@@ -18,6 +20,7 @@ public interface SampleTypeTerminologyMappingService extends BaseObjectService<S
      * unique constraint. Existing active mappings absent from {@code desired} are
      * soft-deleted ({@code is_active = 'N'}).
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_MANAGE')")
     void saveMappingsForSampleType(String sampleTypeId, List<SampleTypeTerminologyMapping> desired, String sysUserId);
 
     /**
@@ -35,5 +38,6 @@ public interface SampleTypeTerminologyMappingService extends BaseObjectService<S
      * everything alone: an import that omits the column is saying nothing about
      * LOINC, not asking for it to be cleared.
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_MANAGE')")
     void syncConfiguredLoinc(String sampleTypeId, String loinc, String sysUserId);
 }

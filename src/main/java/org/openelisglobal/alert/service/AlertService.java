@@ -7,6 +7,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface AlertService extends BaseObjectService<Alert, Long> {
 
@@ -30,6 +31,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param contextDataJson JSON string with type-specific data
      * @return Created or updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert createAlert(AlertType alertType, String entityType, Long entityId, AlertSeverity severity, String message,
             String contextDataJson);
 
@@ -41,6 +43,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * and event-publishing behavior, keyed by (alertType, entityType, entityRef)
      * instead of (alertType, entityType, entityId).
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert createAlert(AlertType alertType, String entityType, String entityRef, AlertSeverity severity, String message,
             String contextDataJson);
 
@@ -57,6 +60,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param userId  User ID who acknowledged the alert
      * @return Updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert acknowledgeAlert(Long alertId, Integer userId);
 
     /**
@@ -68,6 +72,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      *                            already recorded
      * @return Updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert acknowledgeAlert(Long alertId, Integer userId, String acknowledgmentNotes);
 
     /**
@@ -81,6 +86,11 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param resolutionNotes Notes describing how the alert was resolved
      * @return Updated alert
      */
+    // Resolving an alert is a state-changing write (status -> RESOLVED, plus
+    // resolution notes), same class of operation as createAlert/acknowledgeAlert
+    // above — so it takes ALERT_MANAGE, not the read privilege. It was gated on
+    // ALERT_VIEW, which let anyone who could merely see an alert close it.
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert resolveAlert(Long alertId, Integer userId, String resolutionNotes);
 
     /**
@@ -90,6 +100,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityId   Entity ID
      * @return List of alerts for the entity
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getAlertsByEntity(String entityType, Long entityId);
 
     /**
@@ -102,6 +113,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityRef  Entity reference (e.g. a UUID string)
      * @return List of alerts for the entity
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
     /**
@@ -111,6 +123,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityId   Entity ID
      * @return Count of active alerts
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     Long countActiveAlertsForEntity(String entityType, Long entityId);
 
     /**
@@ -119,6 +132,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * the rows that need action — fetching all alerts of a type and filtering in
      * memory OOMs as the alert table grows.
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
             OffsetDateTime cutoff);
 }

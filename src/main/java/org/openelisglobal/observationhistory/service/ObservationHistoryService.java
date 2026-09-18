@@ -6,7 +6,9 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryServiceIm
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
 public interface ObservationHistoryService extends BaseObjectService<ObservationHistory, String> {
     ObservationHistory getById(ObservationHistory observation);
 

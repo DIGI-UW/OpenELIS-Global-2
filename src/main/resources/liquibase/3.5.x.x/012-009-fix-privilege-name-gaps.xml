@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Four @PreAuthorize gates referenced authorities with no matching row in
+      system_privilege, so they denied EVERYONE — including Global Administrator,
+      whose sentinel expands to the privileges actually present in the table:
+
+        PRIV_SITE_INFO_VIEW  - seeded as "siteinfo:view", which normalizes to
+                               PRIV_SITEINFO_VIEW and matches nothing (rename)
+        PRIV_PATIENT_MANAGE  - never seeded; gates PatientService.persistPatientData,
+                               the patient write inside every order entry (add)
+        PRIV_SHIPMENT_MANAGE - never seeded; gates shipment box management (add)
+        PRIV_ESIG_USE        - never seeded; gates e-signature credential
+                               verification during sign-off (add)
+
+      Role mappings mirror each privilege's closest sibling: patient:manage ->
+      holders of patient:edit (Reception); shipment:manage -> holders of
+      shipment:create (Reception); esig:use -> the sign-off/validation roles.
+    -->
+
+    <changeSet author="openelis" id="012-009-rename-siteinfo-view">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_privilege WHERE name = 'siteinfo:view'
+            </sqlCheck>
+        </preConditions>
+        <comment>Align seeded name with Privileges.SITE_INFO_VIEW / PRIV_SITE_INFO_VIEW gates</comment>
+        <update tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="site_info:view"/>
+            <where>name = 'siteinfo:view'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-009-add-patient-manage">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_privilege WHERE name = 'patient:manage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Privilege behind PRIV_PATIENT_MANAGE (order-entry patient persistence, patient merge)</comment>
+        <sql>
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            VALUES ('patient:manage', 'Persist patient demographics (order entry, merge)', 'patient');
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT rp.system_role_id, (SELECT id FROM clinlims.system_privilege WHERE name = 'patient:manage')
+            FROM clinlims.system_role_privilege rp
+            JOIN clinlims.system_privilege p ON p.id = rp.privilege_id
+            WHERE p.name = 'patient:edit';
+        </sql>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-009-add-shipment-manage">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_privilege WHERE name = 'shipment:manage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Privilege behind PRIV_SHIPMENT_MANAGE (box management: assign/lost/cancel)</comment>
+        <sql>
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            VALUES ('shipment:manage', 'Manage shipment boxes and referral samples', 'shipment');
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT rp.system_role_id, (SELECT id FROM clinlims.system_privilege WHERE name = 'shipment:manage')
+            FROM clinlims.system_role_privilege rp
+            JOIN clinlims.system_privilege p ON p.id = rp.privilege_id
+            WHERE p.name = 'shipment:create';
+        </sql>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-009-add-esig-use">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_privilege WHERE name = 'esig:use'
+            </sqlCheck>
+        </preConditions>
+        <comment>Privilege behind PRIV_ESIG_USE (e-signature credential verification at sign-off)</comment>
+        <sql>
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            VALUES ('esig:use', 'Verify credentials for electronic signature', 'esig');
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, (SELECT id FROM clinlims.system_privilege WHERE name = 'esig:use')
+            FROM clinlims.system_role r
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist', 'Validation');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

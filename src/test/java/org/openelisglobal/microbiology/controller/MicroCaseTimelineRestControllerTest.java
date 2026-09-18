@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.controller;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
@@ -18,7 +19,8 @@ public class MicroCaseTimelineRestControllerTest {
 
     @Test
     public void addNoteUsesAuthenticatedActor() {
-        MicroCaseTimelineService service = org.mockito.Mockito.mock(MicroCaseTimelineService.class);
+        MicroCaseTimelineService service = org.mockito.Mockito.mock(MicroCaseTimelineService.class,
+                withSettings().withoutAnnotations());
         MicroCaseNoteRequestForm request = new MicroCaseNoteRequestForm();
         request.text = "Plate reading remains negative";
         MicroCaseActivityForm form = new MicroCaseActivityForm();
