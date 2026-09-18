@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Critical Callback Compliance (OGC-714/715) captures a callback from the
+    legacy Results Entry page: the needs-callback banner and the Log-callback
+    modal live in SearchResultForm, and the unified worklist has neither. With
+    the unified route on, Results Entry offers no way to document a critical
+    callback and the compliance indicator measures an act the UI cannot record.
+
+    So this keeps the legacy route in force until the banner and modal are
+    ported. Reverse this changeset as part of that port, not before, and drop
+    it once the unified page can capture a callback. A site that has already
+    chosen the unified route can still turn it back on under
+    Admin -> Result configuration.
+    -->
+    <changeSet id="qa-035-keep-legacy-results-route" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">select count(*) from clinlims.site_information where name = 'resultsEntryUnifiedRoute';</sqlCheck>
+        </preConditions>
+        <comment>Keep Results Entry on the legacy route until it can capture a critical callback</comment>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="value" value="false" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'resultsEntryUnifiedRoute'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="value" value="true" />
+                <where>name = 'resultsEntryUnifiedRoute'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

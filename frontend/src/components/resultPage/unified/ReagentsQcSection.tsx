@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Tag, TextInput } from "@carbon/react";
+import { Button, Select, SelectItem, Tag, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import {
@@ -14,11 +14,13 @@ import {
  * /rest/inventory/management/consume (FEFO across lots, analysis-linked).
  * Analyzer-loaded rows are read-only (capture mode: analyzer-reported).
  *
- * OGC-1025 (R6) — manual control-result capture stays a documented gray
- * state: qc_result.result_value is NOT NULL NUMERIC(15,5) and the only write
- * path is the analyzer ingest, so qualitative (RDT Valid/Invalid) and bench
- * QC entry need a backend story first. Analyzer rows link to the QC
- * dashboard; manual rows show the blocker note.
+ * OGC-1025 — manual control-result capture, polymorphic by
+ * test type: RDT rows record a control-line outcome (Valid/Invalid) with a
+ * free-text kit lot; manual quantitative rows record measured/expected/
+ * uncertainty + Pass/Fail against a bench control lot. POSTs to the OGC-1147
+ * endpoint /rest/qc/results; a failing control auto-opens an NCE and holds
+ * covered results at Validation server-side. Analyzer rows stay read-only
+ * and link to the QC dashboard.
  */
 interface ReagentLink {
   reagentId?: number;
@@ -53,11 +55,34 @@ interface ReagentsQcSectionProps {
   /** analyzerId as loaded — analyzer-reported rows are read-only (FR-B2). */
   fromAnalyzerId?: string;
   analyzerName?: string;
+  /** "N" = manual quantitative capture; anything else = RDT capture. */
+  resultType?: string;
+  /** Lab unit of the worklist — scopes the QC-fail signal. */
+  testSectionId?: string;
+  unitOfMeasure?: string;
   open: boolean;
   onToggle: (open: boolean) => void;
-  /** the dilution inputs, relocated here from the work zone per the mockup */
+  /** the dilution inputs, relocated here from the work zone */
   dilution?: React.ReactNode;
 }
+
+interface QcCaptureDraft {
+  outcome: string;
+  kitLot: string;
+  measured: string;
+  expected: string;
+  uncertainty: string;
+  lotId: string;
+}
+
+const EMPTY_QC_DRAFT: QcCaptureDraft = {
+  outcome: "",
+  kitLot: "",
+  measured: "",
+  expected: "",
+  uncertainty: "",
+  lotId: "",
+};
 
 const lotExpiry = (value?: string | number): string => {
   if (value === undefined || value === null || value === "") {
@@ -75,6 +100,9 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   editable,
   fromAnalyzerId,
   analyzerName,
+  resultType,
+  testSectionId,
+  unitOfMeasure,
   open,
   onToggle,
   dilution,
@@ -90,6 +118,21 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+  // ---- OGC-1025 control capture ----
+  const quantitative = resultType === "N";
+  // Deliberately NOT gated on `editable`: a control run is a QC record, not an
+  // edit of this patient result, and the hold it raises covers results already
+  // sitting at Technical Acceptance (±24 h). Gating on `editable` would mean a
+  // tech who saves the result first can never record the control for that row.
+  // Write authority is enforced server-side (RESULTS role on POST /rest/qc/results).
+  const canCaptureControl =
+    !fromAnalyzer && Boolean(testId) && Boolean(testSectionId);
+  const [qcDraft, setQcDraft] = useState<QcCaptureDraft>(EMPTY_QC_DRAFT);
+  const [qcBusy, setQcBusy] = useState(false);
+  const [qcMessage, setQcMessage] = useState<{
+    kind: "ok" | "error" | "blocked";
     text: string;
   } | null>(null);
 
@@ -126,14 +169,21 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   }, [links, fromAnalyzer, editable, loadLots]);
 
   useEffect(() => {
-    if (!testId || !fromAnalyzerId) {
+    if (!testId || (!fromAnalyzerId && !quantitative)) {
       return;
     }
+    // with an instrumentId: the analyzer's lots (read-only display); without:
+    // active bench lots only — the manual capture's lot picker (the API
+    // refuses analyzer lots on capture anyway). RDT capture needs no lot
+    // record, so plain RDT rows skip the fetch.
+    const query = fromAnalyzerId
+      ? `testId=${testId}&instrumentId=${fromAnalyzerId}`
+      : `testId=${testId}`;
     getFromOpenElisServer(
-      `/rest/qc/controlLots?testId=${testId}&instrumentId=${fromAnalyzerId}`,
+      `/rest/qc/controlLots?${query}`,
       (body: ControlLot[]) => setControlLots(Array.isArray(body) ? body : []),
     );
-  }, [testId, fromAnalyzerId]);
+  }, [testId, fromAnalyzerId, quantitative]);
 
   const recordUse = (link: ReagentLink) => {
     if (!link.reagentId) {
@@ -182,6 +232,114 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           ),
         });
         loadLots(link.reagentId as number);
+      },
+    );
+  };
+
+  // React 17 pools synthetic events — read the value before the updater runs
+  const setQcField = (field: keyof QcCaptureDraft) => {
+    return (
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    ): void => {
+      const value = e.target.value;
+      setQcDraft((prev) => ({ ...prev, [field]: value }));
+    };
+  };
+
+  const recordControl = () => {
+    const failing = qcDraft.outcome === "INVALID" || qcDraft.outcome === "FAIL";
+    let body: Record<string, unknown>;
+    if (quantitative) {
+      const measured = Number(qcDraft.measured);
+      const expected = Number(qcDraft.expected);
+      const uncertainty = Number(qcDraft.uncertainty);
+      if (
+        !qcDraft.outcome ||
+        !qcDraft.lotId ||
+        qcDraft.measured.trim() === "" ||
+        qcDraft.expected.trim() === "" ||
+        qcDraft.uncertainty.trim() === "" ||
+        !Number.isFinite(measured) ||
+        !Number.isFinite(expected) ||
+        !Number.isFinite(uncertainty) ||
+        uncertainty < 0
+      ) {
+        setQcMessage({
+          kind: "error",
+          text: intl.formatMessage({
+            id: "label.results.control.capture.incomplete",
+          }),
+        });
+        return;
+      }
+      body = {
+        source: "MANUAL",
+        qualitativeOutcome: qcDraft.outcome,
+        resultValue: qcDraft.measured,
+        // always tech-entered — prefill from a configured QC target is
+        // OGC-1148; when that ships, seed these two fields from the target
+        expectedValue: qcDraft.expected,
+        uncertainty: qcDraft.uncertainty,
+        controlLotId: qcDraft.lotId,
+        testId,
+        testSectionId,
+        unitOfMeasure: unitOfMeasure || null,
+      };
+    } else {
+      if (!qcDraft.outcome || qcDraft.kitLot.trim() === "") {
+        setQcMessage({
+          kind: "error",
+          text: intl.formatMessage({
+            id: "label.results.control.capture.incomplete",
+          }),
+        });
+        return;
+      }
+      body = {
+        source: "RDT",
+        qualitativeOutcome: qcDraft.outcome,
+        controlLabel: qcDraft.kitLot.trim(),
+        testId,
+        testSectionId,
+      };
+    }
+    setQcBusy(true);
+    setQcMessage(null);
+    postToOpenElisServerJsonResponse(
+      "/rest/qc/results",
+      JSON.stringify(body),
+      (response?: {
+        id?: string;
+        message?: string;
+        error?: string;
+        status?: number;
+      }) => {
+        setQcBusy(false);
+        // A transport failure reaches this callback as {error, status: 0} — a
+        // falsy status, so testing the status alone would report a control that
+        // never reached the server as recorded. Only a body carrying the saved
+        // row's id counts as success.
+        if (!response || !response.id) {
+          setQcMessage({
+            kind: "error",
+            text:
+              response?.message ||
+              response?.error ||
+              intl.formatMessage({
+                id: "label.results.control.capture.failed",
+              }),
+          });
+          return;
+        }
+        setQcDraft(EMPTY_QC_DRAFT);
+        setQcMessage({
+          kind: failing ? "blocked" : "ok",
+          text: intl.formatMessage({
+            id: failing
+              ? "label.results.control.capture.recordedBlocked"
+              : "label.results.control.capture.recorded",
+          }),
+        });
       },
     );
   };
@@ -339,9 +497,11 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
         </div>
       )}
 
-      <div className="cds--label unifiedFieldSpacer">
-        <FormattedMessage id="label.results.control.title" />
-      </div>
+      {(fromAnalyzer || canCaptureControl) && (
+        <div className="cds--label unifiedFieldSpacer">
+          <FormattedMessage id="label.results.control.title" />
+        </div>
+      )}
       {fromAnalyzer ? (
         <>
           {controlLots.length > 0 ? (
@@ -379,11 +539,168 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
             <FormattedMessage id="label.results.control.viewResults" />
           </Button>
         </>
-      ) : (
-        <div className="unifiedHistoryFootnote" data-testid="control-blocked">
-          <FormattedMessage id="label.results.control.manualBlocked" />
+      ) : canCaptureControl ? (
+        <div className="unifiedQcCapture" data-testid="qc-capture">
+          <Select
+            id={`qc-outcome-${testId}`}
+            labelText={intl.formatMessage({
+              id: quantitative
+                ? "label.results.control.capture.outcome"
+                : "label.results.control.capture.controlLine",
+            })}
+            size="sm"
+            value={qcDraft.outcome}
+            onChange={setQcField("outcome")}
+            data-testid="qc-outcome"
+          >
+            <SelectItem value="" text="" />
+            {quantitative ? (
+              <>
+                <SelectItem
+                  value="PASS"
+                  text={intl.formatMessage({
+                    id: "label.results.control.capture.pass",
+                  })}
+                />
+                <SelectItem
+                  value="FAIL"
+                  text={intl.formatMessage({
+                    id: "label.results.control.capture.fail",
+                  })}
+                />
+              </>
+            ) : (
+              <>
+                <SelectItem
+                  value="VALID"
+                  text={intl.formatMessage({
+                    id: "label.results.control.capture.valid",
+                  })}
+                />
+                <SelectItem
+                  value="INVALID"
+                  text={intl.formatMessage({
+                    id: "label.results.control.capture.invalid",
+                  })}
+                />
+              </>
+            )}
+          </Select>
+          {quantitative ? (
+            <>
+              <Select
+                id={`qc-lot-${testId}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.control.capture.lot",
+                })}
+                size="sm"
+                value={qcDraft.lotId}
+                onChange={setQcField("lotId")}
+                data-testid="qc-lot"
+              >
+                <SelectItem value="" text="" />
+                {controlLots.map((lot) => (
+                  <SelectItem
+                    key={lot.id}
+                    value={lot.id}
+                    text={[lot.productName, lot.lotNumber, lot.controlLevel]
+                      .filter(Boolean)
+                      .join(" — ")}
+                  />
+                ))}
+              </Select>
+              {controlLots.length === 0 && (
+                <div
+                  className="unifiedHistoryFootnote"
+                  data-testid="qc-no-bench-lots"
+                >
+                  <FormattedMessage id="label.results.control.capture.noBenchLots" />
+                </div>
+              )}
+              <div className="unifiedSampleStatusLine">
+                <TextInput
+                  id={`qc-measured-${testId}`}
+                  labelText={intl.formatMessage({
+                    id: "label.results.control.capture.measured",
+                  })}
+                  size="sm"
+                  className="unifiedMiniNumber"
+                  value={qcDraft.measured}
+                  onChange={setQcField("measured")}
+                />
+                <TextInput
+                  id={`qc-expected-${testId}`}
+                  labelText={intl.formatMessage({
+                    id: "label.results.control.capture.expected",
+                  })}
+                  size="sm"
+                  className="unifiedMiniNumber"
+                  value={qcDraft.expected}
+                  onChange={setQcField("expected")}
+                />
+                <TextInput
+                  id={`qc-uncertainty-${testId}`}
+                  labelText={intl.formatMessage({
+                    id: "label.results.control.capture.uncertainty",
+                  })}
+                  size="sm"
+                  className="unifiedMiniNumber"
+                  value={qcDraft.uncertainty}
+                  onChange={setQcField("uncertainty")}
+                />
+                {unitOfMeasure && (
+                  <span className="unifiedHistoryFootnote">
+                    {unitOfMeasure}
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <TextInput
+              id={`qc-kit-lot-${testId}`}
+              labelText={intl.formatMessage({
+                id: "label.results.control.capture.kitLot",
+              })}
+              size="sm"
+              maxLength={120}
+              value={qcDraft.kitLot}
+              onChange={setQcField("kitLot")}
+              data-testid="qc-kit-lot"
+            />
+          )}
+          {(qcDraft.outcome === "INVALID" || qcDraft.outcome === "FAIL") && (
+            <div
+              className="unifiedSampleStatusError"
+              data-testid="qc-blocked-hint"
+            >
+              <FormattedMessage id="label.results.control.capture.blockedHint" />
+            </div>
+          )}
+          <Button
+            kind="secondary"
+            size="sm"
+            disabled={qcBusy}
+            onClick={recordControl}
+            data-testid="qc-record"
+          >
+            <FormattedMessage id="label.results.control.capture.record" />
+          </Button>
+          {qcMessage && (
+            <div
+              className={
+                qcMessage.kind === "ok"
+                  ? "unifiedReagentOk"
+                  : qcMessage.kind === "blocked"
+                    ? "unifiedQcCaptureWarning"
+                    : "unifiedSampleStatusError"
+              }
+              data-testid="qc-capture-message"
+            >
+              {qcMessage.text}
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
 
       {dilution && (
         <>

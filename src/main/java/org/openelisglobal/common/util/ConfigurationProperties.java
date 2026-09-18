@@ -327,7 +327,9 @@ public abstract class ConfigurationProperties {
         // bulk release; per-row release in the review panel is always available.
         ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text"),
         // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
-        RETEST_NOTE_REQUIRED("retestNoteRequired", "text");
+        RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
+        // OGC-1147: does an open QC failure block release, or only warn
+        QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text");
 
         // visible on
         // the ui

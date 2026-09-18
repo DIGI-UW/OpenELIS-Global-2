@@ -1,0 +1,28 @@
+/**
+ * ESignatureLog Styles
+ * Uses Carbon Design System tokens
+ */
+
+.esig-log__subtitle {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 1.5rem;
+}
+
+.esig-log__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.esig-log__filter-dropdown {
+  min-width: 12rem;
+}
+
+.esig-log__message {
+  padding: 1.5rem 0;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}

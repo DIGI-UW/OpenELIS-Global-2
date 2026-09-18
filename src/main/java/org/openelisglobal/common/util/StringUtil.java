@@ -78,6 +78,27 @@ public class StringUtil {
         return string == null || string.equals("") || string.equals("null");
     }
 
+    /**
+     * Escape a value for one CSV cell: guards formula injection (CWE-1236) by
+     * prefixing dangerous leading characters, then quotes when the value contains a
+     * comma, quote, or newline.
+     */
+    public static String csvEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (!value.isEmpty()) {
+            char first = value.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@') {
+                value = "'" + value;
+            }
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
     public static String replaceCharAtIndex(String string, char character, int index) {
         if (index < 0 || string == null || index >= string.length()) {
             return string;

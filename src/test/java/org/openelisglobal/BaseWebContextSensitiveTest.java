@@ -108,7 +108,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
             { "patient", "patient_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
-            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
+            { "image", "image_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -284,6 +285,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 // tests fail order-dependently. Restore the seed invariant after
                 // every load so no dataset can drop it.
                 ensureAuditSystemUser();
+                ensureReferenceSeedRows();
 
                 // Refresh StatusService cache to pick up any status_of_sample changes
                 // from the loaded test data
@@ -474,6 +476,41 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     + ")::bigint, false)");
         } catch (SQLException e) {
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
+        }
+    }
+
+    /**
+     * Reference vocabularies the production Liquibase seed guarantees but a fixture
+     * load can silently gut: {@code executeDataSetWithStateManagement} truncates
+     * every table a dataset names and re-inserts only the dataset's own rows, so a
+     * dataset declaring a partial {@code type_of_test_result} or
+     * {@code requester_type} leaves later suites without rows their inserts FK to
+     * (test_result_type_fk) or look up by name (getRequesterTypeByName). Restore
+     * the seed after every load, like {@link #ensureAuditSystemUser}: by id for
+     * type_of_test_result (fixture extras untouched), by name for requester_type
+     * (fixtures legitimately repurpose ids 1-2 for their own vocabularies).
+     */
+    private void ensureReferenceSeedRows() throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
+            st.execute("INSERT INTO clinlims.type_of_test_result (id, test_result_type, description, lastupdated,"
+                    + " hl7_value) VALUES" + " (1, 'R', 'Remark', now(), 'TX'), (2, 'D', 'Dictionary', now(), 'TX'),"
+                    + " (3, 'T', 'Titer', now(), 'TX'), (4, 'N', 'Numeric', now(), 'NM'),"
+                    + " (5, 'A', 'Alpha,no range check', now(), 'TX'), (6, 'M', 'Multiselect', now(), 'TX'),"
+                    + " (7, 'C', 'Cascading Multiselect', now(), 'TX')" + " ON CONFLICT (id) DO NOTHING");
+            // The record-status pair every sample/patient status write FKs to.
+            // ObservationHistoryService caches the name->id mapping at first use, so
+            // after a fixture guts this table the cached ids (15/16) FK-fail on
+            // insert — restoring by exact id is the only repair that honours the
+            // cache. Fixtures only ever declare ids 1-5, so no conflict.
+            st.execute("INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
+                    + " VALUES (15, 'SampleRecordStatus', 'Sample Record Status', now()),"
+                    + " (16, 'PatientRecordStatus', 'Patient Record Status', now())" + " ON CONFLICT (id) DO NOTHING");
+            for (String requesterType : new String[] { "organization", "provider" }) {
+                st.execute("INSERT INTO clinlims.requester_type (id, requester_type)"
+                        + " SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.requester_type), '" + requesterType
+                        + "' WHERE NOT EXISTS (SELECT 1 FROM clinlims.requester_type WHERE requester_type = '"
+                        + requesterType + "')");
+            }
         }
     }
 

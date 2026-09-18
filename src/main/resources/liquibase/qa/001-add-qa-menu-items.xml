@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QA Menu v0.5 (IA Rehome) — OGC-688/689/690/691/692.
+         Adds a top-level Quality Assurance menu with four pillars and rehomes
+         the existing QC, EQA, NCE, and Audit Trail entries under it. -->
+
+    <!-- Top-level Quality Assurance group -->
+    <changeSet author="openelisglobal" id="qa-001-add-menu-qa">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds top-level Quality Assurance menu group</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="30" />
+            <column name="element_id" value="menu_qa" />
+            <column name="action_url" value="" />
+            <column name="display_key" value="sideNav.label.qa" />
+            <column name="tool_tip_key" value="sideNav.label.qa" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- QA Overview leaf (placeholder until v1 MVP) -->
+    <changeSet author="openelisglobal" id="qa-002-add-menu-qa-overview">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_overview'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QA Overview leaf under Quality Assurance</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa')" />
+            <column name="presentation_order" value="10" />
+            <column name="element_id" value="menu_qa_overview" />
+            <column name="action_url" value="/qa/overview" />
+            <column name="display_key" value="sideNav.label.qa.overview" />
+            <column name="tool_tip_key" value="sideNav.label.qa.overview" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Statistical QC pillar -->
+    <changeSet author="openelisglobal" id="qa-003-add-menu-qa-qc">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Statistical QC pillar under Quality Assurance</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa')" />
+            <column name="presentation_order" value="20" />
+            <column name="element_id" value="menu_qa_qc" />
+            <column name="action_url" value="" />
+            <column name="display_key" value="sideNav.label.qa.qc" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-004-add-menu-qa-qc-dashboard">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QC Dashboard leaf (rehomed from Analyzers)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="10" />
+            <column name="element_id" value="menu_qa_qc_dashboard" />
+            <column name="action_url" value="/qa/qc/dashboard" />
+            <column name="display_key" value="sideNav.label.qa.qc.dashboard" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.dashboard" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-005-add-menu-qa-qc-alerts">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_alerts'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QC Alerts leaf (rehomed from QC Dashboard sub-tab)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="20" />
+            <column name="element_id" value="menu_qa_qc_alerts" />
+            <column name="action_url" value="/qa/qc/alerts" />
+            <column name="display_key" value="sideNav.label.qa.qc.alerts" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.alerts" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-006-add-menu-qa-qc-control-lots">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_control_lots'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QC Lot Management leaf (rehomed from Analyzers)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="30" />
+            <column name="element_id" value="menu_qa_qc_control_lots" />
+            <column name="action_url" value="/qa/qc/control-lots" />
+            <column name="display_key" value="sideNav.label.qa.qc.controlLots" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.controlLots" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-007-add-menu-qa-qc-rule-config">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_rule_config'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Rule Configuration leaf (rehomed from Analyzers)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="40" />
+            <column name="element_id" value="menu_qa_qc_rule_config" />
+            <column name="action_url" value="/qa/qc/rule-config" />
+            <column name="display_key" value="sideNav.label.qa.qc.ruleConfig" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.ruleConfig" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-008-add-menu-qa-qc-reagent-qc">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_reagent_qc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Reagent QC FUTURE-feature placeholder leaf</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="50" />
+            <column name="element_id" value="menu_qa_qc_reagent_qc" />
+            <column name="action_url" value="/qa/qc/reagent-qc" />
+            <column name="display_key" value="sideNav.label.qa.qc.reagentQc" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.reagentQc" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-009-add-menu-qa-qc-manual-qc">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qc_manual_qc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Analyzer Manual QC FUTURE-feature placeholder leaf</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qc')" />
+            <column name="presentation_order" value="60" />
+            <column name="element_id" value="menu_qa_qc_manual_qc" />
+            <column name="action_url" value="/qa/qc/manual-qc" />
+            <column name="display_key" value="sideNav.label.qa.qc.manualQc" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qc.manualQc" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Rehome existing EQA menu group under Quality Assurance -->
+    <changeSet author="openelisglobal" id="qa-010-rehome-menu-eqa">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Moves the existing EQA menu group under Quality Assurance</comment>
+        <sql>
+            UPDATE clinlims.menu
+            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa'),
+                presentation_order = 30
+            WHERE element_id = 'menu_eqa';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET parent_id = NULL WHERE element_id = 'menu_eqa';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Quality Indicators pillar (placeholder until v1 MVP) -->
+    <changeSet author="openelisglobal" id="qa-011-add-menu-qa-qi">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qi'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Quality Indicators pillar under Quality Assurance</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa')" />
+            <column name="presentation_order" value="40" />
+            <column name="element_id" value="menu_qa_qi" />
+            <column name="action_url" value="/qa/qi" />
+            <column name="display_key" value="sideNav.label.qa.qi" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qi" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- QMS & Improvement pillar -->
+    <changeSet author="openelisglobal" id="qa-012-add-menu-qa-qms">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qms'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QMS &amp; Improvement pillar under Quality Assurance</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa')" />
+            <column name="presentation_order" value="50" />
+            <column name="element_id" value="menu_qa_qms" />
+            <column name="action_url" value="" />
+            <column name="display_key" value="sideNav.label.qa.qms" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qms" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Rehome existing Non-Conformity menu group under QMS pillar -->
+    <changeSet author="openelisglobal" id="qa-013-rehome-menu-nonconformity">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_nonconformity'
+            </sqlCheck>
+        </preConditions>
+        <comment>Moves the existing Non-Conformity menu group under QMS &amp; Improvement</comment>
+        <sql>
+            UPDATE clinlims.menu
+            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qms'),
+                presentation_order = 10
+            WHERE element_id = 'menu_nonconformity';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET parent_id = NULL WHERE element_id = 'menu_nonconformity';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Rehome existing Audit Trail menu group from Reports to QMS pillar -->
+    <changeSet author="openelisglobal" id="qa-014-rehome-menu-audit-trail">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail'
+            </sqlCheck>
+        </preConditions>
+        <comment>Moves the existing Audit Trail menu group from Reports to QMS &amp; Improvement</comment>
+        <sql>
+            UPDATE clinlims.menu
+            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qms'),
+                presentation_order = 20
+            WHERE element_id = 'menu_reports_audittrail';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu
+                SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports')
+                WHERE element_id = 'menu_reports_audittrail';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Rehome the active EQA menu groups (eqa-010 restructure deactivated menu_eqa
+         and made menu_eqa_tests / menu_eqa_mgmt top-level) -->
+    <changeSet author="openelisglobal" id="qa-017-rehome-menu-eqa-groups">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_tests'
+            </sqlCheck>
+        </preConditions>
+        <comment>Reactivates the EQA pillar folder under Quality Assurance and nests EQA Tests
+            and EQA Management under it (eqa-010 had deactivated menu_eqa and made both
+            groups top-level)</comment>
+        <sql>
+            UPDATE clinlims.menu
+            SET is_active = true,
+                action_url = '',
+                parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa'),
+                presentation_order = 30
+            WHERE element_id = 'menu_eqa';
+
+            UPDATE clinlims.menu
+            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa'),
+                presentation_order = 10
+            WHERE element_id = 'menu_eqa_tests';
+
+            UPDATE clinlims.menu
+            SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa'),
+                presentation_order = 20
+            WHERE element_id = 'menu_eqa_mgmt';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET is_active = false, action_url = ''
+                WHERE element_id = 'menu_eqa';
+                UPDATE clinlims.menu SET parent_id = NULL
+                WHERE element_id IN ('menu_eqa_tests', 'menu_eqa_mgmt');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Point EQA child menu entries at their new /qa/eqa/* URLs -->
+    <changeSet author="openelisglobal" id="qa-016-update-eqa-menu-urls">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Updates EQA child menu action_urls from legacy paths to /qa/eqa/*</comment>
+        <sql>
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/orders' WHERE element_id = 'menu_eqa_orders';
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/my-programs' WHERE element_id = 'menu_eqa_my_programs';
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/management' WHERE element_id IN ('menu_eqa_mgmt_programs', 'menu_eqa_management');
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/participants' WHERE element_id = 'menu_eqa_mgmt_participants';
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/distribution' WHERE element_id IN ('menu_eqa_mgmt_distributions', 'menu_eqa_distribution');
+            UPDATE clinlims.menu SET action_url = '/qa/eqa/results' WHERE element_id = 'menu_eqa_mgmt_results';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET action_url = '/EQAOrders' WHERE element_id = 'menu_eqa_orders';
+                UPDATE clinlims.menu SET action_url = '/EQAMyPrograms' WHERE element_id = 'menu_eqa_my_programs';
+                UPDATE clinlims.menu SET action_url = '/EQAManagement' WHERE element_id IN ('menu_eqa_mgmt_programs', 'menu_eqa_management');
+                UPDATE clinlims.menu SET action_url = '/EQAParticipants' WHERE element_id = 'menu_eqa_mgmt_participants';
+                UPDATE clinlims.menu SET action_url = '/EQADistribution' WHERE element_id IN ('menu_eqa_mgmt_distributions', 'menu_eqa_distribution');
+                UPDATE clinlims.menu SET action_url = '/EQAResults' WHERE element_id = 'menu_eqa_mgmt_results';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Hide legacy QC entries under Analyzers (pages remain reachable via redirects) -->
+    <changeSet author="openelisglobal" id="qa-015-hide-legacy-analyzers-qc-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Deactivates the legacy Quality Control group under Analyzers</comment>
+        <sql>
+            UPDATE clinlims.menu SET is_active = false
+            WHERE element_id = 'menu_analyzers_qc'
+               OR parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc');
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.menu SET is_active = true
+                WHERE element_id = 'menu_analyzers_qc'
+                   OR parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

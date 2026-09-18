@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.qaevent.service.QcViolationNceService;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.form.QCViolationForm;
 import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
@@ -41,6 +42,9 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
 
     @Autowired
     private QCAlertService alertService;
+
+    @Autowired
+    private QcViolationNceService qcViolationNceService;
 
     @Autowired
     private AnalyzerService analyzerService;
@@ -101,6 +105,25 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
                     "Error creating alert for violation " + violation.getId() + ": " + e.getMessage());
         }
 
+        // OGC-701: rejection-severity violations auto-create
+        // an NCE. Runs in its own transaction and is idempotent, so a single retry
+        // covers an NCE-number collision; failure never blocks violation creation.
+        if ("REJECTION".equals(violation.getSeverity())) {
+            try {
+                qcViolationNceService.createNceForViolation(violation);
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "createViolation",
+                        "Retrying NCE auto-creation for violation " + violation.getId() + ": " + e.getMessage());
+                try {
+                    qcViolationNceService.createNceForViolation(violation);
+                } catch (Exception retryFailure) {
+                    LogEvent.logError(this.getClass().getName(), "createViolation",
+                            "Error auto-creating NCE for violation " + violation.getId() + ": "
+                                    + retryFailure.getMessage());
+                }
+            }
+        }
+
         return violation;
     }
 
@@ -138,6 +161,12 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
     @Transactional(readOnly = true)
     public List<QCRuleViolation> findBySeverity(String severity) {
         return violationDAO.findBySeverity(severity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCRuleViolation> findByDateRange(Timestamp startDate, Timestamp endDate) {
+        return violationDAO.findByDateRange(startDate, endDate);
     }
 
     @Override

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-686: Test Accreditation.
+         Adds the accreditation page under the QMS & Improvement pillar. The page
+         reads on the existing qa.view.qms authority and writes on
+         qa.manage.accreditation (both registered in liquibase/qa/004); the tables
+         it drives live in liquibase/qa/013. No new system_module rows are needed.
+         The menu row, the sideNav.label.qa.qms.accreditation key in en.json and the
+         App.jsx route must ship together — /rest/menu is not permission-filtered,
+         so a row without the other two renders a raw i18n key that 404s. -->
+
+    <changeSet author="openelisglobal" id="qa-034-add-menu-qa-qms-accreditation">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qms_accreditation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Accreditation under QMS &amp; Improvement</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qms')" />
+            <column name="presentation_order" value="50" />
+            <column name="element_id" value="menu_qa_qms_accreditation" />
+            <column name="action_url" value="/qa/qms/accreditation" />
+            <column name="display_key" value="sideNav.label.qa.qms.accreditation" />
+            <column name="tool_tip_key" value="sideNav.label.qa.qms.accreditation" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

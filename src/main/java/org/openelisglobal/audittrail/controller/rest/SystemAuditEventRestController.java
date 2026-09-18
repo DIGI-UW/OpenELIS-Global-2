@@ -21,7 +21,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,6 +30,7 @@ import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
 import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
@@ -53,10 +53,7 @@ public class SystemAuditEventRestController {
 
     private static final int MAX_EXPORT_ROWS = 10000;
 
-    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = Arrays.asList("TEST", "PANEL", "METHOD",
-            "TEST_SECTION", "TYPE_OF_SAMPLE", "RESULT_LIMITS", "SYSTEM_USER", "SYSTEM_ROLE", "SYSTEM_USER_ROLE",
-            "DICTIONARY", "DICTIONARY_CATEGORY", "analyzer", "site_information", "QA_EVENT", "ANALYSIS_QAEVENT",
-            "ANALYSIS_QAEVENT_ACTION", "QA_OBSERVATION", "PATIENT", "PERSON");
+    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = HistoryService.SYSTEM_AUDIT_ENTITY_TABLES;
 
     private static final String PATIENT_ENTITY_NAME = "PATIENT";
     private static final String PERSON_ENTITY_NAME = "PERSON";
@@ -345,10 +342,13 @@ public class SystemAuditEventRestController {
             @SuppressWarnings("unchecked")
             Map<String, Map<String, String>> changes = (Map<String, Map<String, String>>) item.get("changes");
             Timestamp ts = (Timestamp) item.get("timestamp");
-            writer.printf("%s,%s,%s,%s,%s,%s,%s%n", csvEscape(ts != null ? sdf.format(ts) : ""),
-                    csvEscape((String) item.get("user")), csvEscape((String) item.get("entityType")),
-                    csvEscape((String) item.get("entityId")), csvEscape((String) item.get("action")),
-                    csvEscape(formatChangesColumn(changes, "old")), csvEscape(formatChangesColumn(changes, "new")));
+            writer.printf("%s,%s,%s,%s,%s,%s,%s%n", StringUtil.csvEscape(ts != null ? sdf.format(ts) : ""),
+                    StringUtil.csvEscape((String) item.get("user")),
+                    StringUtil.csvEscape((String) item.get("entityType")),
+                    StringUtil.csvEscape((String) item.get("entityId")),
+                    StringUtil.csvEscape((String) item.get("action")),
+                    StringUtil.csvEscape(formatChangesColumn(changes, "old")),
+                    StringUtil.csvEscape(formatChangesColumn(changes, "new")));
         }
         writer.flush();
     }
@@ -534,23 +534,6 @@ public class SystemAuditEventRestController {
         if ("D".equals(activity))
             return MessageUtil.getMessage("auditTrail.activity.delete");
         return activity;
-    }
-
-    private String csvEscape(String value) {
-        if (value == null) {
-            return "";
-        }
-        // Prevent CSV formula injection (CWE-1236): prefix dangerous leading chars
-        if (!value.isEmpty()) {
-            char first = value.charAt(0);
-            if (first == '=' || first == '+' || first == '-' || first == '@') {
-                value = "'" + value;
-            }
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 
     private Timestamp parseStartDate(String dateStr) {

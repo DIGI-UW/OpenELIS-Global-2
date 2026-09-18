@@ -9,7 +9,6 @@
 
 import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
-  Button,
   Tag,
   Tile,
   Tabs,
@@ -266,14 +265,6 @@ const InstrumentDetailPage = () => {
           </TabPanels>
         </Tabs>
       </div>
-
-      <Button
-        className="instrument-detail-back-button"
-        kind="secondary"
-        onClick={() => history.push("/analyzers/qc/db")}
-      >
-        {intl.formatMessage({ id: "qc.dashboard.title" })}
-      </Button>
     </div>
   );
 };

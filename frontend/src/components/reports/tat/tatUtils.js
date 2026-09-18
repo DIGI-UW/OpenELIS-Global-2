@@ -11,3 +11,19 @@ export function formatTat(hours) {
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
+
+/**
+ * Delta of a window's mean TAT vs the equal-length prior window. Under a
+ * minute of difference reads as flat. Null when either window has no runs.
+ * Shared by the QI Dashboard TAT tile and the QA Overview QI rollup.
+ */
+export function tatDelta(current, prior) {
+  if (!(current?.totalCount > 0) || !(prior?.totalCount > 0)) return null;
+  const diff = current.mean - prior.mean;
+  const flat = Math.abs(diff) < 1 / 60;
+  return {
+    tone: flat ? "flat" : diff < 0 ? "good" : "bad",
+    arrow: flat ? "—" : diff < 0 ? "↓" : "↑",
+    text: flat ? "" : formatTat(Math.abs(diff)),
+  };
+}
