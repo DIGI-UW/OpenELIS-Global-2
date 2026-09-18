@@ -11,7 +11,6 @@ import {
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryItemsBoard from "./InventoryItemsBoard";
-import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
 import "./InventoryList.css";
 
@@ -46,22 +45,15 @@ const InventoryManagement = () => {
                   <FormattedMessage id="inventory.board.title" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="inventory.tab.catalog" />
-                </Tab>
-                <Tab>
                   <FormattedMessage id="inventory.tab.reports" />
                 </Tab>
               </TabList>
 
               <TabPanels>
-                {/* Items Tab - the board: what you have and what to reorder */}
+                {/* Items Tab - the board, which is the catalog too: defining
+                    an item and watching one are the same screen now. */}
                 <TabPanel>
                   <InventoryItemsBoard />
-                </TabPanel>
-
-                {/* Catalog Tab - Manage Inventory Items */}
-                <TabPanel>
-                  <InventoryCatalog />
                 </TabPanel>
 
                 {/* Reports Tab - Generate Reports */}

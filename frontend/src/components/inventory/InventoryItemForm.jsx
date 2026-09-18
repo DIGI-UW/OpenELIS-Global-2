@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   NumberInput,
+  Checkbox,
   TextArea,
   Stack,
   Button,
@@ -26,6 +27,26 @@ const toCode = (value) =>
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+
+// One definition of an empty form, used both to seed it and to reset it. Two
+// copies of this object drifted apart the moment a field was added to one.
+const EMPTY_FORM = {
+  code: "",
+  name: "",
+  tags: [],
+  category: "",
+  manufacturer: "",
+  catalogNumber: "",
+  units: "",
+  lowStockThreshold: 0,
+  expirationAlertDays: "",
+  trackLots: false,
+  stabilityAfterOpening: "",
+  storageRequirements: "",
+  compatibleAnalyzers: "",
+  testsPerKit: "",
+  leadTimeDays: "",
+};
 
 const InventoryItemForm = ({
   open,
@@ -51,20 +72,7 @@ const InventoryItemForm = ({
   const isEdit = !!item;
 
   // Form state
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    tags: [],
-    category: "",
-    manufacturer: "",
-    units: "",
-    lowStockThreshold: 0,
-    stabilityAfterOpening: "",
-    storageRequirements: "",
-    compatibleAnalyzers: "",
-    testsPerKit: "",
-    leadTimeDays: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
   const [saving, setSaving] = useState(false);
   const normalizedCode = toCode(formData.code);
@@ -107,8 +115,11 @@ const InventoryItemForm = ({
         tags: item.tags || [],
         category: item.category || "",
         manufacturer: item.manufacturer || "",
+        catalogNumber: item.catalogNumber || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
+        expirationAlertDays: item.expirationAlertDays ?? "",
+        trackLots: item.trackLots === "Y",
         stabilityAfterOpening: item.stabilityAfterOpening ?? "",
         storageRequirements: item.storageRequirements || "",
         compatibleAnalyzers: item.compatibleAnalyzers || "",
@@ -116,21 +127,7 @@ const InventoryItemForm = ({
         leadTimeDays: item.leadTimeDays ?? "",
       });
     } else {
-      // Reset to initial state when adding new item
-      setFormData({
-        code: "",
-        name: "",
-        tags: [],
-        category: "",
-        manufacturer: "",
-        units: "",
-        lowStockThreshold: 0,
-        stabilityAfterOpening: 0,
-        storageRequirements: "",
-        compatibleAnalyzers: "",
-        testsPerKit: 0,
-        leadTimeDays: "",
-      });
+      setFormData(EMPTY_FORM);
     }
   }, [item, open]);
 
@@ -244,6 +241,12 @@ const InventoryItemForm = ({
       sanitizedData.storageRequirements = formData.storageRequirements;
       sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
       sanitizedData.testsPerKit = optionalNumber(formData.testsPerKit);
+      sanitizedData.catalogNumber = formData.catalogNumber;
+      sanitizedData.expirationAlertDays = optionalNumber(
+        formData.expirationAlertDays,
+      );
+      // The column is the module's Y/N convention, not a boolean.
+      sanitizedData.trackLots = formData.trackLots ? "Y" : "N";
 
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
@@ -279,15 +282,23 @@ const InventoryItemForm = ({
       onRequestClose={onClose}
       onRequestSubmit={handleSave}
       modalHeading={intl.formatMessage({
+        // Not "catalog item": the catalog is gone, and the old wording read as
+        // though this were where stock is added.
         id: isEdit
-          ? "catalog.item.form.title.edit"
-          : "catalog.item.form.title.add",
+          ? "inventory.item.form.title.edit"
+          : "inventory.item.form.title.add",
       })}
       primaryButtonText={intl.formatMessage({ id: "button.save" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
       primaryButtonDisabled={saving}
-      size="md"
+      size="lg"
     >
+      {/* Said plainly and first: this screen defines a kind of thing. Adding
+          more of one that already exists is Receive stock, and the two have
+          been confused often enough to be worth one sentence. */}
+      <p className="inventory-item-derived">
+        <FormattedMessage id="catalog.item.form.help" />
+      </p>
       <Stack gap={5}>
         {error && (
           <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
@@ -391,26 +402,43 @@ const InventoryItemForm = ({
           )}
         </div>
 
-        <TextInput
-          id="category"
-          labelText={<FormattedMessage id="catalog.item.category" />}
-          value={formData.category}
-          onChange={(e) => handleChange("category", e.target.value)}
-        />
+        <div className="inventory-item-pair">
+          <TextInput
+            id="category"
+            labelText={<FormattedMessage id="catalog.item.category" />}
+            value={formData.category}
+            onChange={(e) => handleChange("category", e.target.value)}
+          />
+          <TextInput
+            id="manufacturer"
+            labelText={<FormattedMessage id="catalog.item.manufacturer" />}
+            value={formData.manufacturer}
+            onChange={(e) => handleChange("manufacturer", e.target.value)}
+          />
+        </div>
 
-        <TextInput
-          id="manufacturer"
-          labelText={<FormattedMessage id="catalog.item.manufacturer" />}
-          value={formData.manufacturer}
-          onChange={(e) => handleChange("manufacturer", e.target.value)}
-        />
+        <div className="inventory-item-pair">
+          <TextInput
+            id="catalogNumber"
+            labelText={<FormattedMessage id="catalog.item.catalogNumber" />}
+            value={formData.catalogNumber}
+            onChange={(e) => handleChange("catalogNumber", e.target.value)}
+          />
+          <TextInput
+            id="units"
+            labelText={<FormattedMessage id="catalog.item.units" />}
+            value={formData.units}
+            onChange={(e) => handleChange("units", e.target.value)}
+            placeholder="e.g., mL, tests, kits"
+          />
+        </div>
 
-        <TextInput
-          id="units"
-          labelText={<FormattedMessage id="catalog.item.units" />}
-          value={formData.units}
-          onChange={(e) => handleChange("units", e.target.value)}
-          placeholder="e.g., mL, tests, kits"
+        <Checkbox
+          id="trackLots"
+          labelText={intl.formatMessage({ id: "catalog.item.trackLots" })}
+          helperText={intl.formatMessage({ id: "catalog.item.trackLots.help" })}
+          checked={formData.trackLots}
+          onChange={(_, { checked }) => handleChange("trackLots", checked)}
         />
 
         <NumberInput
@@ -455,6 +483,18 @@ const InventoryItemForm = ({
               </Button>
             </div>
           )}
+
+        <NumberInput
+          id="expirationAlertDays"
+          label={<FormattedMessage id="catalog.item.expirationAlertDays" />}
+          value={formData.expirationAlertDays}
+          onChange={(e, { value }) =>
+            handleChange("expirationAlertDays", value)
+          }
+          min={0}
+          max={365}
+          allowEmpty
+        />
 
         <NumberInput
           id="stabilityAfterOpening"

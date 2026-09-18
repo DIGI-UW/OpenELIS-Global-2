@@ -10,4 +10,11 @@ public interface InventoryProjectionService {
      * top.
      */
     List<InventoryProjection> getBoard();
+
+    /**
+     * The board, optionally including items that have been deactivated. A
+     * deactivated item is hidden rather than deleted, so there has to be somewhere
+     * to see one — otherwise deactivating is indistinguishable from losing it.
+     */
+    List<InventoryProjection> getBoard(boolean includeInactive);
 }

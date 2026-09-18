@@ -212,6 +212,14 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
             existingItem.setTestsPerKit(item.getTestsPerKit());
 
+            // The editor gained these when it became the only place an item is
+            // defined. Create binds the whole entity, so a field left out of this
+            // list persists on POST and silently does nothing on PUT — which is
+            // exactly how editing a lead time returned 200 and changed nothing.
+            existingItem.setCatalogNumber(item.getCatalogNumber());
+            existingItem.setExpirationAlertDays(item.getExpirationAlertDays());
+            existingItem.setTrackLots(item.getTrackLots());
+
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             existingItem.setSysUserId(sysUserId);

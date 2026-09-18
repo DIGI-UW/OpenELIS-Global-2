@@ -155,3 +155,17 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* Two short fields per row in the item editor. The editor defines everything
+   about an item now, and a single column of fourteen controls is a scroll
+   rather than a form. Falls back to one column where there is no room. */
+.inventory-item-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inventory-item-pair > .cds--form-item {
+  flex: 1 1 14rem;
+  min-width: 0;
+}

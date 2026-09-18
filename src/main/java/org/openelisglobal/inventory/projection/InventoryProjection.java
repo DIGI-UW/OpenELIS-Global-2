@@ -68,6 +68,12 @@ public class InventoryProjection {
     private String units;
 
     /**
+     * False for an item that has been deactivated. Such a row only appears when it
+     * was asked for, and the board marks it rather than letting it look ordinary.
+     */
+    private boolean active = true;
+
+    /**
      * Quantity across lots that may actually be used, so this agrees with what
      * consumption sees.
      */

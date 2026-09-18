@@ -27,8 +27,10 @@ import {
   OverflowMenuItem,
   ActionableNotification,
   FilterableMultiSelect,
+  Checkbox,
+  Modal,
 } from "@carbon/react";
-import { ArrowUp, ArrowDown, Subtract } from "@carbon/icons-react";
+import { ArrowUp, ArrowDown, Subtract, Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryBoardAPI,
@@ -138,6 +140,7 @@ const InventoryItemsBoard = () => {
   const [tagFilter, setTagFilter] = useState([]);
   const [activeTags, setActiveTags] = useState([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [showDeactivated, setShowDeactivated] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
   const [detailLot, setDetailLot] = useState(null);
@@ -165,7 +168,7 @@ const InventoryItemsBoard = () => {
   const refresh = useCallback(
     () =>
       Promise.all([
-        InventoryBoardAPI.get(),
+        InventoryBoardAPI.get(showDeactivated),
         InventoryLotAPI.getAll(),
         // Which tags may still be offered as a filter. A failure here costs the
         // filter its list, never the board its rows, so it is caught separately.
@@ -178,7 +181,7 @@ const InventoryItemsBoard = () => {
           setError(null);
         })
         .catch((err) => setError(err.message)),
-    [],
+    [showDeactivated],
   );
 
   useEffect(() => {
@@ -195,6 +198,41 @@ const InventoryItemsBoard = () => {
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: messageId }),
     });
+  };
+
+  const restoreItem = async (row) => {
+    try {
+      await InventoryItemAPI.activate(row.itemId);
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.item.reactivated" },
+          { item: row.name },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const retireItem = async (row) => {
+    try {
+      await InventoryItemAPI.deactivate(row.itemId);
+      setAction(null);
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.item.deactivated.success" },
+          { item: row.name },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   // The item editor takes a whole item, and a board row is a projection: it
@@ -745,6 +783,15 @@ const InventoryItemsBoard = () => {
           />
         </div>
         <Button
+          kind="primary"
+          size="lg"
+          className="board-new-item"
+          renderIcon={Add}
+          onClick={() => setAction({ kind: "newItem" })}
+        >
+          <FormattedMessage id="inventory.item.new" />
+        </Button>
+        <Button
           kind="tertiary"
           size="lg"
           className="board-manage-tags"
@@ -769,6 +816,15 @@ const InventoryItemsBoard = () => {
           <FormattedMessage id="inventory.reorder.suggestions" />
           {suggestionCount > 0 ? ` (${suggestionCount})` : ""}
         </Button>
+        <Checkbox
+          id="board-show-deactivated"
+          className="board-show-deactivated"
+          labelText={intl.formatMessage({
+            id: "inventory.item.showDeactivated",
+          })}
+          checked={showDeactivated}
+          onChange={(_, { checked }) => setShowDeactivated(checked)}
+        />
       </div>
 
       {/* Outside the toolbar on purpose: as a flex child the chips would wrap
@@ -877,6 +933,11 @@ const InventoryItemsBoard = () => {
                             ` · ${formatDay(row.orderExpectedDate)}`}
                         </Tag>
                       )}
+                      {row.active === false && (
+                        <Tag type="gray">
+                          <FormattedMessage id="inventory.item.deactivated" />
+                        </Tag>
+                      )}
                     </TableCell>
                     <TableCell className="board-actions-cell">
                       <OverflowMenu
@@ -904,6 +965,20 @@ const InventoryItemsBoard = () => {
                             id: "inventory.actions.editItem",
                           })}
                           onClick={() => openItemEditor(row)}
+                        />
+                        <OverflowMenuItem
+                          isDelete={row.active !== false}
+                          itemText={intl.formatMessage({
+                            id:
+                              row.active === false
+                                ? "inventory.item.reactivate"
+                                : "inventory.item.deactivate",
+                          })}
+                          onClick={() =>
+                            row.active === false
+                              ? restoreItem(row)
+                              : setAction({ kind: "deactivateItem", row })
+                          }
                         />
                       </OverflowMenu>
                     </TableCell>
@@ -994,6 +1069,51 @@ const InventoryItemsBoard = () => {
           onClose={closeAction}
           onSave={() => onActionSaved("usage.record.success")}
         />
+      )}
+
+      {action?.kind === "newItem" && (
+        <InventoryItemForm
+          open
+          item={null}
+          onClose={closeAction}
+          onSave={() => onActionSaved("inventory.item.created")}
+        />
+      )}
+
+      {action?.kind === "deactivateItem" && (
+        <Modal
+          open
+          danger
+          modalHeading={intl.formatMessage({
+            id: "inventory.item.deactivate.confirm.title",
+          })}
+          primaryButtonText={intl.formatMessage({
+            id: "inventory.item.deactivate",
+          })}
+          secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+          onRequestClose={closeAction}
+          onSecondarySubmit={closeAction}
+          onRequestSubmit={() => retireItem(action.row)}
+          size="sm"
+        >
+          <p>
+            <FormattedMessage
+              id="inventory.item.deactivate.confirm"
+              values={{ item: action.row.name }}
+            />
+          </p>
+          <ul className="board-deactivate-implications">
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.hidden" />
+            </li>
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.stock" />
+            </li>
+            <li>
+              <FormattedMessage id="inventory.item.deactivate.implication.reversible" />
+            </li>
+          </ul>
+        </Modal>
       )}
 
       {manageTagsOpen && (
