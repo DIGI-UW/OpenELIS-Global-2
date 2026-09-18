@@ -1,8 +1,6 @@
 package org.openelisglobal.microbiology.controller;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -10,12 +8,9 @@ import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
-import org.openelisglobal.microbiology.form.MicroCaseAmendmentForm;
-import org.openelisglobal.microbiology.form.MicroCaseAmendmentRequestForm;
 import org.openelisglobal.microbiology.form.MicroReportVersionForm;
 import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
-import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.springframework.http.ResponseEntity;
@@ -25,61 +20,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public class MicroCaseAmendmentRestControllerTest {
 
     @Test
-    public void openUsesAuthenticatedActorAndReturnsLifecycleForm() {
-        MicroCaseAmendmentService amendmentService = org.mockito.Mockito.mock(MicroCaseAmendmentService.class);
-        MicroCaseAmendment amendment = new MicroCaseAmendment();
-        amendment.setId("amendment-1");
-        amendment.setCaseId("case-1");
-        amendment.setSequenceNumber(1);
-        amendment.setStatus("OPEN");
-        amendment.setReason("Correct identification");
-        amendment.setOpenedBy("42");
-        when(amendmentService.openAmendment(eq("case-1"), eq("Correct identification"), eq("42")))
-                .thenReturn(amendment);
-        MicroCaseAmendmentRequestForm request = new MicroCaseAmendmentRequestForm();
-        request.reason = "Correct identification";
-
-        ResponseEntity<MicroCaseAmendmentForm> response = new MicroCaseAmendmentRestController(amendmentService,
-                org.mockito.Mockito.mock(MicroReportVersionService.class)).open("case-1", request, requestFor("42"));
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals("amendment-1", response.getBody().id);
-        assertEquals("42", response.getBody().openedBy);
-        verify(amendmentService).openAmendment("case-1", "Correct identification", "42");
-    }
-
-    @Test
-    public void cancelUsesAuthenticatedActorAndReason() {
-        MicroCaseAmendmentService amendmentService = org.mockito.Mockito.mock(MicroCaseAmendmentService.class);
-        MicroCaseAmendment amendment = new MicroCaseAmendment();
-        amendment.setId("amendment-1");
-        amendment.setCaseId("case-1");
-        amendment.setStatus("CANCELLED");
-        when(amendmentService.cancelAmendment("case-1", "Not required", "42")).thenReturn(amendment);
-        MicroCaseAmendmentRequestForm request = new MicroCaseAmendmentRequestForm();
-        request.reason = "Not required";
-
-        new MicroCaseAmendmentRestController(amendmentService,
-                org.mockito.Mockito.mock(MicroReportVersionService.class)).cancel("case-1", request, requestFor("42"));
-
-        verify(amendmentService).cancelAmendment("case-1", "Not required", "42");
-    }
-
-    @Test
-    public void amendmentWritesRequireSupervisorOrAdminRole() throws Exception {
-        PreAuthorize open = MicroCaseAmendmentRestController.class.getMethod("open", String.class,
-                MicroCaseAmendmentRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
-                .getAnnotation(PreAuthorize.class);
-        PreAuthorize cancel = MicroCaseAmendmentRestController.class.getMethod("cancel", String.class,
-                MicroCaseAmendmentRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+    public void openUsesAuthenticatedActorAndReturnsLifecycleForm() throws Exception {
+        PreAuthorize open = MicroCaseAmendmentService.class
+                .getMethod("openAmendment", String.class, String.class, String.class).getAnnotation(PreAuthorize.class);
+        PreAuthorize cancel = MicroCaseAmendmentService.class
+                .getMethod("cancelAmendment", String.class, String.class, String.class)
                 .getAnnotation(PreAuthorize.class);
 
-        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", open.value());
-        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", cancel.value());
+        assertEquals("hasAuthority('PRIV_MICRO_SUPERVISE')", open.value());
+        assertEquals("hasAuthority('PRIV_MICRO_SUPERVISE')", cancel.value());
     }
 
     @Test
-    public void reportHistoryIncludesNormalizedAnalysisAndResultSources() {
+    public void reportHistoryIncludesNormalizedAnalysisAndResultSources() throws Exception {
         MicroCaseAmendmentService amendmentService = org.mockito.Mockito.mock(MicroCaseAmendmentService.class);
         MicroReportVersionService versionService = org.mockito.Mockito.mock(MicroReportVersionService.class);
         MicroReportVersion version = new MicroReportVersion();

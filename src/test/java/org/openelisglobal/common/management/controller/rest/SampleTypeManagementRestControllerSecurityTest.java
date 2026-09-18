@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -255,12 +256,12 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
         @Bean
         TypeOfSampleService typeOfSampleService() {
-            return nullStub(TypeOfSampleService.class);
+            return mock(TypeOfSampleService.class, withSettings().withoutAnnotations());
         }
 
         @Bean
         SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService() {
-            return nullStub(SampleTypeTerminologyMappingService.class);
+            return mock(SampleTypeTerminologyMappingService.class, withSettings().withoutAnnotations());
         }
 
         @Bean

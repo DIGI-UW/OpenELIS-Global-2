@@ -12,22 +12,29 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.Test;
-import org.openelisglobal.microbiology.controller.rest.MicroAstAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
-import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
-import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
-import org.openelisglobal.microbiology.controller.rest.MicroCultureAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWhonetReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWorklistRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyReferenceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyUatScenarioRestController;
+import org.openelisglobal.microbiology.service.MicroAstAnalyzerEventService;
+import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
+import org.openelisglobal.microbiology.service.MicroCaseInoculationService;
+import org.openelisglobal.microbiology.service.MicroCaseNonconformanceService;
+import org.openelisglobal.microbiology.service.MicroCaseService;
+import org.openelisglobal.microbiology.service.MicroCaseTimelineService;
+import org.openelisglobal.microbiology.service.MicroCriticalCommunicationService;
+import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventService;
+import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.springframework.transaction.annotation.Transactional;
 
 public class MicrobiologyArchitectureTest {
@@ -49,41 +56,46 @@ public class MicrobiologyArchitectureTest {
     }
 
     @Test
-    public void userFacingMicrobiologyWriteControllersRequireBenchRoleBundles() {
-        Class<?>[] controllers = { MicroCaseRestController.class, MicroCaseInoculationRestController.class,
-                MicroCaseTimelineRestController.class, MicroCaseNonconformanceRestController.class,
-                MicroIsolateRestController.class, MicroAstRestController.class,
-                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
-                MicroCaseAmendmentRestController.class };
-        for (Class<?> controller : controllers) {
-            var authorization = controller
-                    .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
-            assertNotNull(controller.getName() + " must declare a role-bundle boundary", authorization);
-            assertFalse(controller.getName() + " must not authorize every authenticated account",
-                    authorization.value().contains("isAuthenticated"));
-            for (Method method : controller.getDeclaredMethods()) {
-                var methodAuthorization = method
+    public void userFacingMicrobiologyServicesRequireBenchOrSupervisorPrivileges() {
+        // The bench/supervisor boundary moved off the controllers onto the services
+        // (S011c): BENCH_ACCESS (ADMIN/RESULTS/VALIDATION) became micro:view +
+        // micro:bench, SUPERVISOR_ACCESS (ADMIN/VALIDATION) became micro:supervise,
+        // granted to those same roles in Liquibase 012-004d. Asserting on the
+        // services keeps the invariant this test was written for — every
+        // microbiology write is privilege-gated, and none of them degrades to
+        // "any authenticated account".
+        Class<?>[] services = { MicroCaseService.class, MicroCaseInoculationService.class,
+                MicroCaseTimelineService.class, MicroCaseNonconformanceService.class, MicroIsolateService.class,
+                MicroAstService.class, MicroCriticalCommunicationService.class, MicroReportReleaseService.class,
+                MicroCaseAmendmentService.class };
+        for (Class<?> service : services) {
+            for (Method method : service.getDeclaredMethods()) {
+                var authorization = method
                         .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
-                if (methodAuthorization != null) {
-                    assertFalse(
-                            controller.getName() + "." + method.getName()
-                                    + " must not weaken the class role-bundle boundary",
-                            methodAuthorization.value().contains("isAuthenticated"));
-                }
+                assertNotNull(service.getName() + "." + method.getName() + " must declare a privilege boundary",
+                        authorization);
+                assertFalse(
+                        service.getName() + "." + method.getName() + " must not authorize every authenticated account",
+                        authorization.value().contains("isAuthenticated"));
             }
         }
     }
 
     @Test
-    public void analyzerEventControllersRequireTheAnalyzerImportRole() {
-        Class<?>[] controllers = { MicroAstAnalyzerEventRestController.class,
-                MicroCultureAnalyzerEventRestController.class };
-        for (Class<?> controller : controllers) {
-            Method receive = Stream.of(controller.getDeclaredMethods())
+    public void analyzerEventIngestionKeepsItsMachineBoundary() {
+        // The boundary moved from hasRole('ANALYSER_IMPORT') on the controllers to
+        // analyzer:import on the services (S011c). Asserted on the services because
+        // that is now the only thing enforcing it: both are @Service CLASSES with no
+        // interface, so ServicePrivilegeCoverageTest — which scans interfaces — does
+        // not cover them, and removing the controller guard briefly left analyzer
+        // result ingestion open to any authenticated user.
+        Class<?>[] services = { MicroAstAnalyzerEventService.class, MicroCultureAnalyzerEventService.class };
+        for (Class<?> service : services) {
+            Method receive = Stream.of(service.getDeclaredMethods())
                     .filter(method -> method.getName().equals("receive")).findFirst().orElseThrow();
             var authorization = receive.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
-            assertNotNull(controller.getName() + ".receive must declare its machine-role boundary", authorization);
-            assertEquals("hasRole('ANALYSER_IMPORT')", authorization.value());
+            assertNotNull(service.getName() + ".receive must declare its machine-role boundary", authorization);
+            assertEquals("hasAuthority('PRIV_ANALYZER_IMPORT')", authorization.value());
         }
     }
 
