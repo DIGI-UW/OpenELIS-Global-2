@@ -1,14 +1,13 @@
 package org.openelisglobal.inventory.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -28,11 +27,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
 @Getter
 @Setter
 @Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
 public class InventoryItem extends BaseObject<Long> {
@@ -59,11 +58,6 @@ public class InventoryItem extends BaseObject<Long> {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    /** Superseded by tags; still NOT NULL, so insert fills it in. */
-    @Column(name = "item_type", nullable = false, length = 50)
-    @Enumerated(EnumType.STRING)
-    private ItemType itemType;
 
     /** Eager: items go straight to the browser from several endpoints. */
     @ElementCollection(fetch = FetchType.EAGER)
@@ -162,31 +156,6 @@ public class InventoryItem extends BaseObject<Long> {
     private String isActive = "Y";
 
     // Business logic helper methods
-    @JsonIgnore
-    public boolean isReagent() {
-        return itemType == ItemType.REAGENT;
-    }
-
-    @JsonIgnore
-    public boolean isCartridge() {
-        return itemType == ItemType.CARTRIDGE;
-    }
-
-    @JsonIgnore
-    public boolean isRDT() {
-        return itemType == ItemType.RDT;
-    }
-
-    @JsonIgnore
-    public boolean isHIVKit() {
-        return itemType == ItemType.HIV_KIT;
-    }
-
-    @JsonIgnore
-    public boolean isSyphilisKit() {
-        return itemType == ItemType.SYPHILIS_KIT;
-    }
-
     @JsonIgnore
     public boolean isActive() {
         return "Y".equals(isActive);

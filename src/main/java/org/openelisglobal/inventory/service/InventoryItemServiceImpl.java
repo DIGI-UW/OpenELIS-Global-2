@@ -16,7 +16,6 @@ import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryItemCodeSequenceDAO;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,10 +57,6 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Transactional
     public Long insert(InventoryItem item) {
         item.setCode(resolveCode(item));
-        if (item.getItemType() == null) {
-            // item_type is still NOT NULL behind a CHECK; nothing sends one any more.
-            item.setItemType(ItemType.REAGENT);
-        }
         item.setTags(canonicalizeTags(item.getTags()));
         return super.insert(item);
     }
@@ -169,20 +164,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional(readOnly = true)
-    public List<ItemType> getAllItemTypes() {
-        return inventoryItemDAO.getAllItemTypes();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryItem> getAllActive() {
         return inventoryItemDAO.getAllActive();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItem> getByItemType(ItemType itemType) {
-        return inventoryItemDAO.getByItemType(itemType);
     }
 
     @Override
