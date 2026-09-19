@@ -98,15 +98,20 @@ export default function StorageResourcePage({
     listUrl,
     searchUrl,
     searchTerm,
-    page,
-    pageSize,
     refreshKey,
   });
 
+  // The level listings return every row and take no page or size parameter, so
+  // the page is cut here. Passing them to the fetch would only refire it.
+  const paginated = useMemo(
+    () => (items || []).slice((page - 1) * pageSize, page * pageSize),
+    [items, page, pageSize],
+  );
+
   const rows = useMemo(() => {
-    const mapped = (items || []).map(mapRow);
+    const mapped = paginated.map(mapRow);
     return mapped.map((row, idx) => {
-      const rawItem = items[idx];
+      const rawItem = paginated[idx];
       if (!isGlobalAdmin) return row;
       return {
         ...row,
@@ -134,7 +139,7 @@ export default function StorageResourcePage({
         ),
       };
     });
-  }, [items, mapRow, isGlobalAdmin]);
+  }, [paginated, mapRow, isGlobalAdmin]);
 
   // Edit and Delete both open admin-only modals; without either the column
   // would be an empty cell on every row.

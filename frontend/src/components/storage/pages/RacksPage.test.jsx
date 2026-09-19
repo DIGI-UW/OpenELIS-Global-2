@@ -50,6 +50,31 @@ beforeEach(() => {
 });
 
 describe("RacksPage — table search", () => {
+  // The level listings return every row and take no page or size parameter, so
+  // the page has to be cut client-side or the table renders the whole set.
+  it("renders one page of racks, not the whole listing", async () => {
+    const racks = Array.from({ length: 12 }, (_, n) => ({
+      id: 900 + n,
+      label: `Rack ${n}`,
+      code: `RK-${n}`,
+      active: true,
+    }));
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => cb(racks));
+    renderPage();
+
+    expect(await screen.findByText("Rack 0")).toBeInTheDocument();
+    expect(document.querySelectorAll("table tbody tr")).toHaveLength(5);
+    expect(screen.queryByText("Rack 5")).not.toBeInTheDocument();
+    expect(screen.getByText(/of 12 items/i)).toBeInTheDocument();
+
+    const before = Utils.getFromOpenElisServer.mock.calls.length;
+    fireEvent.click(screen.getByLabelText("Next page"));
+
+    expect(await screen.findByText("Rack 5")).toBeInTheDocument();
+    expect(screen.queryByText("Rack 0")).not.toBeInTheDocument();
+    expect(Utils.getFromOpenElisServer.mock.calls.length).toBe(before);
+  });
+
   it("lists racks from the list endpoint by default", async () => {
     Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([{ id: 1, label: "Rack R1", code: "RKR1", active: true }]),
