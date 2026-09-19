@@ -68,6 +68,43 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void testAcknowledgeAlert_CapturesPreviousStatusBeforeTransition() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+
+        assertEquals("Newly created alert should start OPEN", AlertStatus.OPEN, alert.getStatus());
+
+        Alert result = alertService.acknowledgeAlert(alert.getId(), 1);
+
+        assertEquals("Alert status should transition to ACKNOWLEDGED", AlertStatus.ACKNOWLEDGED, result.getStatus());
+        assertNotEquals("Status should have changed from the original OPEN state", AlertStatus.OPEN,
+                result.getStatus());
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithNonExistentAlert_ThrowsIllegalArgumentException() {
+        try {
+            alertService.acknowledgeAlert(999999L, 1);
+            fail("Expected IllegalArgumentException for non-existent alert ID");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Exception message should reference the alert ID", e.getMessage().contains("999999"));
+        }
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithNonExistentUser_ThrowsIllegalArgumentException() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+
+        try {
+            alertService.acknowledgeAlert(alert.getId(), 999999);
+            fail("Expected IllegalArgumentException for non-existent user ID");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Exception message should reference the user ID", e.getMessage().contains("999999"));
+        }
+    }
+
+    @Test
     public void testResolveAlert_WithAcknowledgedAlert_TransitionsToResolved() {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{\"temperature\": -15.5}");
