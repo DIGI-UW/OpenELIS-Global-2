@@ -3,7 +3,7 @@ import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
 /** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
-export default function ShelvesPage({ embedded = false }) {
+export default function ShelvesPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -22,27 +22,6 @@ export default function ShelvesPage({ embedded = false }) {
   return (
     <StorageResourcePage
       level="shelf"
-      embedded={embedded}
-      crumbs={[
-        {
-          label: intl.formatMessage({
-            id: "storage.breadcrumb.storage",
-            defaultMessage: "Storage",
-          }),
-          href: "/Storage",
-        },
-        {
-          label: intl.formatMessage({
-            id: "storage.nav.shelves",
-            defaultMessage: "Shelves",
-          }),
-          href: "/Storage/shelves",
-        },
-      ]}
-      heading={intl.formatMessage({
-        id: "storage.nav.shelves",
-        defaultMessage: "Shelves",
-      })}
       listUrl="/rest/storage/shelves"
       searchUrl="/rest/storage/shelves/search"
       searchPlaceholderId="storage.search.shelves.placeholder"

@@ -12,8 +12,7 @@ import {
   Search,
   Tag,
 } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
-import BreadcrumbNav from "../components/BreadcrumbNav";
+import { useIntl } from "react-intl";
 import useStorageTableData from "../hooks/useStorageTableData";
 
 /**
@@ -24,7 +23,7 @@ import useStorageTableData from "../hooks/useStorageTableData";
  * even though both share sample_storage_assignment and both count toward
  * occupancy.
  */
-export default function InventoryLotsPage({ embedded = false }) {
+export default function InventoryLotsPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -35,23 +34,6 @@ export default function InventoryLotsPage({ embedded = false }) {
   const { items, loading } = useStorageTableData({
     listUrl: "/rest/storage/inventory-lots",
   });
-
-  const crumbs = [
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.storage",
-        defaultMessage: "Storage",
-      }),
-      href: "/Storage",
-    },
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.inventorylots",
-        defaultMessage: "Inventory Lots",
-      }),
-      href: "/Storage/inventory-lots",
-    },
-  ];
 
   const headers = [
     {
@@ -141,25 +123,7 @@ export default function InventoryLotsPage({ embedded = false }) {
   );
 
   return (
-    <div
-      className={
-        embedded
-          ? "storage-inventory-lots-page"
-          : "storage-inventory-lots-page pageContent"
-      }
-    >
-      {!embedded && (
-        <>
-          <BreadcrumbNav crumbs={crumbs} />
-          <h1>
-            <FormattedMessage
-              id="storage.tab.inventoryLots"
-              defaultMessage="Inventory Lots"
-            />
-          </h1>
-        </>
-      )}
-
+    <div className="storage-inventory-lots-page">
       <div
         className="storage-inventory-lots-page-toolbar"
         style={{ margin: "1rem 0" }}

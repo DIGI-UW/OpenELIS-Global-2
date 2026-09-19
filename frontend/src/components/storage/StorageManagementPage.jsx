@@ -214,18 +214,14 @@ export default function StorageManagementPage() {
                         activeLevel={activeLevel.key}
                         onSelect={(key) => history.push(`/Storage/${key}`)}
                       />
-                      <LevelTable embedded />
+                      <LevelTable />
                     </>
                   )}
                 </TabPanel>
 
-                <TabPanel>
-                  {tabIndex === 1 && <SampleItemsPage embedded />}
-                </TabPanel>
+                <TabPanel>{tabIndex === 1 && <SampleItemsPage />}</TabPanel>
 
-                <TabPanel>
-                  {tabIndex === 2 && <InventoryLotsPage embedded />}
-                </TabPanel>
+                <TabPanel>{tabIndex === 2 && <InventoryLotsPage />}</TabPanel>
               </TabPanels>
             </Tabs>
           </div>

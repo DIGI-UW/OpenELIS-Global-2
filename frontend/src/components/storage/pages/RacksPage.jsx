@@ -3,7 +3,7 @@ import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
 /** RacksPage — /Storage/racks. List of racks with per-row Edit. */
-export default function RacksPage({ embedded = false }) {
+export default function RacksPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -22,27 +22,6 @@ export default function RacksPage({ embedded = false }) {
   return (
     <StorageResourcePage
       level="rack"
-      embedded={embedded}
-      crumbs={[
-        {
-          label: intl.formatMessage({
-            id: "storage.breadcrumb.storage",
-            defaultMessage: "Storage",
-          }),
-          href: "/Storage",
-        },
-        {
-          label: intl.formatMessage({
-            id: "storage.nav.racks",
-            defaultMessage: "Racks",
-          }),
-          href: "/Storage/racks",
-        },
-      ]}
-      heading={intl.formatMessage({
-        id: "storage.nav.racks",
-        defaultMessage: "Racks",
-      })}
       listUrl="/rest/storage/racks"
       searchUrl="/rest/storage/racks/search"
       searchPlaceholderId="storage.search.racks.placeholder"

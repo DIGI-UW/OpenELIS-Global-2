@@ -14,7 +14,6 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import BreadcrumbNav from "../components/BreadcrumbNav";
 import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
 import DisposeSampleModal from "../SampleStorage/DisposeSampleModal";
 import ViewAuditModal from "../SampleStorage/ViewAuditModal";
@@ -24,11 +23,11 @@ import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 /**
  * SampleItemsPage — /Storage/sample-items.
  *
- * Breadcrumb + h1 + search + paginated DataTable of sample items.
+ * Search + paginated DataTable of sample items.
  * Per-row overflow menu navigates to
  * /Storage/sample-items/:id/manage-location.
  */
-export default function SampleItemsPage({ embedded = false }) {
+export default function SampleItemsPage() {
   const history = useHistory();
   const location = useLocation();
   const intl = useIntl();
@@ -53,23 +52,6 @@ export default function SampleItemsPage({ embedded = false }) {
     searchTerm,
     refreshKey,
   });
-
-  const crumbs = [
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.storage",
-        defaultMessage: "Storage",
-      }),
-      href: "/Storage",
-    },
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.sampleitems",
-        defaultMessage: "Sample Items",
-      }),
-      href: "/Storage/sample-items",
-    },
-  ];
 
   const headers = [
     {
@@ -213,25 +195,7 @@ export default function SampleItemsPage({ embedded = false }) {
   }, [items]);
 
   return (
-    <div
-      className={
-        embedded
-          ? "storage-sample-items-page"
-          : "storage-sample-items-page pageContent"
-      }
-    >
-      {!embedded && (
-        <>
-          <BreadcrumbNav crumbs={crumbs} />
-          <h1>
-            <FormattedMessage
-              id="storage.tab.samples"
-              defaultMessage="Sample Items"
-            />
-          </h1>
-        </>
-      )}
-
+    <div className="storage-sample-items-page">
       <div
         className="storage-sample-items-page-toolbar"
         style={{ margin: "1rem 0" }}

@@ -3,7 +3,7 @@ import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
 /** BoxesPage — /Storage/boxes. List of boxes with per-row Edit. */
-export default function BoxesPage({ embedded = false }) {
+export default function BoxesPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -23,27 +23,6 @@ export default function BoxesPage({ embedded = false }) {
   return (
     <StorageResourcePage
       level="box"
-      embedded={embedded}
-      crumbs={[
-        {
-          label: intl.formatMessage({
-            id: "storage.breadcrumb.storage",
-            defaultMessage: "Storage",
-          }),
-          href: "/Storage",
-        },
-        {
-          label: intl.formatMessage({
-            id: "storage.nav.boxes",
-            defaultMessage: "Boxes",
-          }),
-          href: "/Storage/boxes",
-        },
-      ]}
-      heading={intl.formatMessage({
-        id: "storage.nav.boxes",
-        defaultMessage: "Boxes",
-      })}
       listUrl="/rest/storage/boxes"
       searchUrl="/rest/storage/boxes/search"
       searchPlaceholderId="storage.search.boxes.placeholder"

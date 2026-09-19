@@ -27,11 +27,31 @@ const RECORDS = {
     parentShelfId: 3,
     active: true,
   },
+  "/rest/storage/devices/8": {
+    id: 8,
+    name: "Freezer 1",
+    code: "DV-1",
+    type: "FREEZER",
+    temperatureSetting: -20,
+    capacityLimit: 40,
+    parentRoomId: 3,
+    active: true,
+  },
+  "/rest/storage/shelves/5": {
+    id: 5,
+    label: "Shelf S",
+    code: "SH-1",
+    deviceId: 9,
+    capacityLimit: 60,
+    active: true,
+  },
   "/rest/storage/boxes/4": {
     id: 4,
     label: "Box Alpha",
     code: "BX-1",
     parentRackId: 7,
+    type: "96-well",
+    positionSchemaHint: "letter-number",
     rows: 8,
     columns: 12,
     active: false,
@@ -219,5 +239,114 @@ describe("EditLocationModal", () => {
       await screen.findByText("Rack label must be unique within shelf"),
     ).toBeInTheDocument();
     expect(onUpdated).not.toHaveBeenCalled();
+  });
+
+  // The modal reuses one <IntlProvider> tree across rows so that closing on one
+  // row and reopening on another exercises the same mounted component the
+  // browser does.
+  it("drops a load that arrives after the row was closed and another opened", async () => {
+    const pending = [];
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/storage/rooms/")) pending.push([url, cb]);
+      else cb(PARENTS);
+    });
+
+    const props = (over) => (
+      <IntlProvider locale="en" messages={messages}>
+        <EditLocationModal
+          level="room"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+          {...over}
+        />
+      </IntlProvider>
+    );
+
+    const { rerender } = render(props({ id: 12, open: true }));
+    rerender(props({ id: 12, open: false }));
+    rerender(props({ id: 99, open: true }));
+
+    const resolve = (url) => {
+      const entry = pending.find(([u]) => u === url);
+      entry[1](RECORDS[url] || { id: 99, name: "Room B", code: "BBB" });
+    };
+    resolve("/rest/storage/rooms/99");
+    resolve("/rest/storage/rooms/12");
+
+    expect(await screen.findByLabelText(/^name$/i)).toHaveValue("Room B");
+    save();
+
+    await waitFor(() =>
+      expect(Utils.putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(Utils.putToOpenElisServerFullResponse.mock.calls[0][0]).toBe(
+      "/rest/storage/rooms/99",
+    );
+    expect(savedPayload().name).toBe("Room B");
+  });
+
+  it("shows a shelf the device it already sits in", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (RECORDS[url]) cb(RECORDS[url]);
+      else cb([{ id: 9, name: "Freezer 1" }]);
+    });
+    renderModal({ level: "shelf", id: 5 });
+
+    await screen.findByLabelText(/^label$/i);
+    await waitFor(() =>
+      expect(
+        document.querySelector("#storage-edit-modal-parent"),
+      ).toHaveTextContent("Freezer 1"),
+    );
+  });
+
+  it("reports the field message behind a bean-validation rejection", async () => {
+    Utils.putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 400,
+        json: () =>
+          Promise.resolve({
+            timestamp: "2026-01-01T00:00:00Z",
+            status: 400,
+            errors: { label: "Rack label is required" },
+          }),
+      }),
+    );
+    renderModal({ level: "rack", id: 7 });
+
+    await screen.findByLabelText(/^label$/i);
+    save();
+
+    expect(
+      await screen.findByText("Rack label is required"),
+    ).toBeInTheDocument();
+  });
+
+  // A column the modal leaves out of the payload is written back as null, so
+  // it has to round-trip the fields it never shows.
+  it("carries back the fields it does not show", async () => {
+    const payloadFor = async (level, id, expected) => {
+      Utils.putToOpenElisServerFullResponse.mockClear();
+      const { unmount } = renderModal({ level, id });
+      await screen.findByLabelText(/^(name|label)$/i);
+      save();
+      await waitFor(() =>
+        expect(Utils.putToOpenElisServerFullResponse).toHaveBeenCalled(),
+      );
+      expect(savedPayload()).toMatchObject(expected);
+      unmount();
+    };
+
+    await payloadFor("device", 8, {
+      type: "FREEZER",
+      temperatureSetting: -20,
+      capacityLimit: 40,
+    });
+    await payloadFor("shelf", 5, { capacityLimit: 60 });
+    await payloadFor("box", 4, {
+      type: "96-well",
+      positionSchemaHint: "letter-number",
+    });
   });
 });

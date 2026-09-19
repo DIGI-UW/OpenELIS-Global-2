@@ -3,7 +3,7 @@ import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
 /** RoomsPage — /Storage/rooms. List of rooms with per-row Edit. */
-export default function RoomsPage({ embedded = false }) {
+export default function RoomsPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -21,27 +21,6 @@ export default function RoomsPage({ embedded = false }) {
   return (
     <StorageResourcePage
       level="room"
-      embedded={embedded}
-      crumbs={[
-        {
-          label: intl.formatMessage({
-            id: "storage.breadcrumb.storage",
-            defaultMessage: "Storage",
-          }),
-          href: "/Storage",
-        },
-        {
-          label: intl.formatMessage({
-            id: "storage.nav.rooms",
-            defaultMessage: "Rooms",
-          }),
-          href: "/Storage/rooms",
-        },
-      ]}
-      heading={intl.formatMessage({
-        id: "storage.nav.rooms",
-        defaultMessage: "Rooms",
-      })}
       listUrl="/rest/storage/rooms"
       searchUrl="/rest/storage/rooms/search"
       searchPlaceholderId="storage.search.rooms.placeholder"

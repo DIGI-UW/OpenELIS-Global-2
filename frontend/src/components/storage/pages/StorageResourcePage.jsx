@@ -19,7 +19,6 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import BreadcrumbNav from "../components/BreadcrumbNav";
 import AddLocationModal from "../components/AddLocationModal";
 import EditLocationModal from "../components/EditLocationModal";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
@@ -40,8 +39,6 @@ import { hasRole, Roles } from "../../utils/Utils";
  */
 export default function StorageResourcePage({
   level,
-  crumbs,
-  heading,
   listUrl,
   searchUrl,
   headers,
@@ -51,9 +48,6 @@ export default function StorageResourcePage({
   pageSize,
   setPageSize,
   searchPlaceholderId,
-  // Rendered inside the Storage Management dashboard tab, where the container
-  // already supplies the breadcrumb and heading.
-  embedded = false,
 }) {
   const intl = useIntl();
   const history = useHistory();
@@ -152,18 +146,7 @@ export default function StorageResourcePage({
   );
 
   return (
-    <div
-      className={
-        embedded ? "storage-resource-page" : "storage-resource-page pageContent"
-      }
-    >
-      {!embedded && (
-        <>
-          <BreadcrumbNav crumbs={crumbs} />
-          <h1>{heading}</h1>
-        </>
-      )}
-
+    <div className="storage-resource-page">
       {searchUrl && (
         <div
           className="storage-resource-page-toolbar"

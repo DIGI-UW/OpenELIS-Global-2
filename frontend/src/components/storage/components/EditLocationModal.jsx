@@ -52,19 +52,32 @@ export default function EditLocationModal({
 
   useEffect(() => {
     if (!open || !meta || id == null) return;
+    const controller = new AbortController();
     getFromOpenElisServer(
       `/rest/storage/${meta.endpoint}/${encodeURIComponent(String(id))}`,
       (response) => {
+        // Closing and reopening on another row leaves this request in flight.
+        // Its values belong to the row that is gone, and Save would write them
+        // back under the id now open.
+        if (controller.signal.aborted) return;
         if (response && !response.error) {
           setForm({
             name:
               response[meta.nameField] || response.name || response.label || "",
             code: response.code || "",
             description: response.description || "",
+            // A shelf's GET names its device deviceId; the other levels spell
+            // the parent out as parentRoomId, parentShelfId, parentRackId.
             parentId: meta.parentField
-              ? String(response[meta.parentField] || "")
+              ? String(response[meta.parentField] || response.deviceId || "")
               : "",
-            deviceType: response.type || "",
+            type: response.type || "",
+            // Fields this modal does not show. A column left out of the
+            // payload is written back as null, so it has to be carried
+            // back untouched.
+            temperatureSetting: response.temperatureSetting ?? null,
+            capacityLimit: response.capacityLimit ?? null,
+            positionSchemaHint: response.positionSchemaHint ?? null,
             rows: response.rows != null ? String(response.rows) : "",
             columns: response.columns != null ? String(response.columns) : "",
             active: response.active !== false,
@@ -81,7 +94,9 @@ export default function EditLocationModal({
         }
         setLoading(false);
       },
+      controller.signal,
     );
+    return () => controller.abort();
   }, [open, id, meta?.endpoint, meta?.nameField, meta?.parentField]);
 
   useEffect(() => {
@@ -112,8 +127,15 @@ export default function EditLocationModal({
     };
     if (meta.parentField) payload[meta.parentField] = form.parentId || null;
     if (level === "room") payload.description = form.description || null;
-    if (level === "device") payload.type = form.deviceType || null;
+    if (level === "device") {
+      payload.type = form.type || null;
+      payload.temperatureSetting = form.temperatureSetting;
+      payload.capacityLimit = form.capacityLimit;
+    }
+    if (level === "shelf") payload.capacityLimit = form.capacityLimit;
     if (level === "box") {
+      payload.type = form.type || null;
+      payload.positionSchemaHint = form.positionSchemaHint;
       payload.rows = form.rows ? parseInt(form.rows, 10) : null;
       payload.columns = form.columns ? parseInt(form.columns, 10) : null;
     }
@@ -139,6 +161,9 @@ export default function EditLocationModal({
         throw new Error(
           body.error ||
             body.message ||
+            // Bean-validation failures arrive as {errors: {field: message}},
+            // which carries neither an `error` nor a `message` key.
+            (body.errors && Object.values(body.errors).join(", ")) ||
             intl.formatMessage(
               {
                 id: "storage.edit.error.saveHttp",
@@ -191,7 +216,7 @@ export default function EditLocationModal({
         defaultMessage: "Cancel",
       })}
       primaryButtonDisabled={
-        !form || saving || (level === "device" && !form.deviceType)
+        !form || saving || (level === "device" && !form.type)
       }
       onRequestSubmit={handleSubmit}
       onRequestClose={onClose}
@@ -252,9 +277,9 @@ export default function EditLocationModal({
               />
             )}
 
-            {/* Boxes render their rack read-only: updateBox reads the parent off
-                the stored row and never calls setParentRack, so an editable
-                picker here would report success and move nothing. */}
+            {/* Boxes render their rack read-only: updateBox writes back the
+                rack the stored row already has, so an editable picker here
+                would report success and move nothing. */}
             {meta.parentEndpoint && (
               <Dropdown
                 disabled={level === "box"}
@@ -305,9 +330,9 @@ export default function EditLocationModal({
                 })}
                 items={deviceTypes}
                 itemToString={(item) => item || ""}
-                selectedItem={form.deviceType || null}
+                selectedItem={form.type || null}
                 onChange={({ selectedItem }) =>
-                  update("deviceType", selectedItem || "")
+                  update("type", selectedItem || "")
                 }
               />
             )}
