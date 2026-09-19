@@ -625,6 +625,49 @@ describe("InventoryDashboard filters and the current page", () => {
     await waitFor(() => expect(lotNumbersShown()).toContain("LOT-99"));
   };
 
+  // The tiles reset the page too, and this is the only one of the resets that
+  // nothing pinned: removing it from toggleMetricFilter failed no test.
+  it("returns to page one when a metric tile narrows the table", async () => {
+    const expiredOn = new Date();
+    expiredOn.setDate(expiredOn.getDate() - 10);
+    InventoryItemAPI.getAll.mockResolvedValue([
+      {
+        id: "MALARIA_RDT",
+        name: "Malaria RDT",
+        itemType: "RDT",
+        units: "kits",
+        lowStockThreshold: 20,
+      },
+      reagent,
+    ]);
+    InventoryLotAPI.getAll.mockResolvedValue([
+      ...Array.from({ length: 24 }, (_, n) => ({
+        ...lotWithLocation,
+        id: 100 + n,
+        lotNumber: `LOT-${100 + n}`,
+      })),
+      {
+        ...lotWithLocation,
+        id: 99,
+        lotNumber: "LOT-EXPIRED",
+        expirationDate: expiredOn.toISOString(),
+      },
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-123");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-EXPIRED"));
+
+    fireEvent.click(
+      within(document.querySelector(".inventory-metrics-grid"))
+        .getByText("Expired")
+        .closest(".inventory-metric-tile"),
+    );
+
+    // One match, so a page index left at 2 slices past the end and shows nothing.
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-EXPIRED"]));
+  });
+
   it("returns to page one when the search box narrows the table", async () => {
     await renderOnPageTwo();
 
