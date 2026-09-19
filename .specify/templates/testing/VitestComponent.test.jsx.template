@@ -13,7 +13,7 @@
  * - REFACTOR: Improve code quality while keeping tests green
  *
  * SDD Checkpoint: After Phase 4 (Frontend), all unit tests MUST pass
- * Test Coverage Goal: >70% (measured via Vitest + @vitest/coverage-v8)
+ * Test Coverage Goal: >70%; configure a Vitest coverage provider before collecting coverage
  *
  * Test Naming: test{Scenario}_{ExpectedResult}
  * Example: testSubmitForm_WithValidData_ShowsSuccessMessage
@@ -33,10 +33,10 @@ vi.mock("../utils/Utils", () => ({
 }));
 
 // Mock react-router-dom if component uses routing
-const mockHistory = {
+const mockHistory = vi.hoisted(() => ({
   replace: vi.fn(),
   push: vi.fn(),
-};
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -57,10 +57,10 @@ import {
   render,
   screen,
   fireEvent,
-  waitFor,
   within,
   act,
 } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
@@ -166,7 +166,7 @@ describe("{ComponentName}", () => {
    *
    * Testing async operations:
    * - Use waitFor for async element queries
-   * - Use queryBy* inside waitFor (not getBy*)
+   * - Use queryBy* for absence; getBy* is valid for presence inside waitFor
    * - Use act() for state updates
    */
   it("testAsyncOperation_{ExpectedResult}", async () => {
@@ -369,7 +369,7 @@ describe("{ComponentName}", () => {
    * Task Reference: T{###}
    *
    * Testing async operations:
-   * - Use waitFor with queryBy* (NOT getBy*)
+   * - Use waitFor with assertions; getBy* errors are retried
    * - OR use findBy* for async elements
    * - DON'T use setTimeout (no retry logic)
    */
@@ -410,7 +410,7 @@ describe("{ComponentName}", () => {
    *   expect(element).toBeInTheDocument();
    * });
    *
-   * ❌ WRONG: Using getBy* in waitFor (throws during retries)
+   * ✅ CORRECT: getBy* in waitFor retries until the expected element appears
    * await waitFor(() => {
    *   expect(screen.getByText("Loaded Data")).toBeInTheDocument();
    * });

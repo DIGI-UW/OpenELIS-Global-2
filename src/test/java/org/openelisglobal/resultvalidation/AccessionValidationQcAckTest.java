@@ -6,6 +6,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,6 +30,7 @@ import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
 import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for the S-08 FR-04 validation QC acknowledgment flow: the
@@ -39,7 +42,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * client analysis (id=100) in TechnicalAcceptance and a BLANK QC analysis
  * (id=101) whose Result is pre-stamped {@code qc_evaluation=FAIL}.
  */
+@Transactional
 public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String ACCESSION = "VAL-QC-ACK-001";
     private static final String CLIENT_ANALYSIS_ID = "100";
@@ -66,19 +73,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         // The fixture CLEAN_INSERTs system_user with only testUser, wiping the
         // baseline admin row the base-class principal resolves to.
         authenticateAs("testUser");
-        // QAService has a static initializer that resolves SAMPLE_QAEVENT in
-        // reference_tables. The Postgres seed SQL ships this row, but CI's fresh
-        // Testcontainers DB doesn't always have it visible by the time our test
-        // first touches QAService. Seed it defensively if absent.
-        Integer existing = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(TRIM(name)) = 'sample_qaevent'",
-                Integer.class);
-        if (existing == null || existing == 0) {
-            jdbcTemplate.update(
-                    "INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)"
-                            + " VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),"
-                            + " 'SAMPLE_QAEVENT', 'Y', 'N', CURRENT_TIMESTAMP)");
-        }
+        assertNotNull("SAMPLE_QAEVENT must be provided by the database migrations",
+                referenceTablesService.getReferenceTableByName("SAMPLE_QAEVENT"));
     }
 
     @Test
@@ -116,6 +112,7 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     @Test
     public void persistdata_withoutAck_throwsQcAcknowledgmentRequiredException() {
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         assertNotNull(clientAnalysis);
 
         // Simulate the validation controller's transition to Finalized for the
@@ -149,6 +146,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("Reviewed — repeat passed");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
         // Confirm round-trip.
         List<ValidationQcAcknowledgment> persisted = qcAckDAO.findByAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
@@ -157,13 +156,12 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
 
         // Now the gate should let the release through.
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         clientAnalysis.setStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
         List<Analysis> analysisUpdateList = new ArrayList<>();
         analysisUpdateList.add(clientAnalysis);
 
-        // Should not throw — the gate is satisfied. Any other downstream errors
-        // (notification, sample finishing) would mask the gate result, so the
-        // assertion is just "no QcAcknowledgmentRequiredException".
+        // The acknowledged release must persist the client's status.
         try {
             resultValidationService.persistdata(Collections.emptyList(), analysisUpdateList, new ArrayList<Result>(),
                     new ArrayList<AnalysisItem>(), new ArrayList<Sample>(), new ArrayList<Note>(), null,
@@ -171,6 +169,10 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         } catch (QcAcknowledgmentRequiredException unexpected) {
             fail("Gate should pass once an ack row exists for the failed analysis");
         }
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized),
+                analysisService.get(CLIENT_ANALYSIS_ID).getStatusId());
     }
 
     @Test
@@ -182,9 +184,12 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("ack");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
         String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
         Analysis clientAnalysis = analysisService.get(CLIENT_ANALYSIS_ID);
+        entityManager.detach(clientAnalysis);
         clientAnalysis.setStatusId(finalizedId);
         clientAnalysis.setReleasedDate(new Timestamp(System.currentTimeMillis()));
         List<Analysis> analysisUpdateList = new ArrayList<>();
@@ -193,6 +198,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         resultValidationService.persistdata(Collections.emptyList(), analysisUpdateList, new ArrayList<Result>(),
                 new ArrayList<AnalysisItem>(), new ArrayList<Sample>(), new ArrayList<Note>(), null,
                 Collections.emptyList(), "1");
+        entityManager.flush();
+        entityManager.clear();
 
         // QC analysis must have flipped to Finalized with released_date NULL.
         Analysis qcAfter = analysisService.get(QC_ANALYSIS_ID);
@@ -205,35 +212,31 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         assertNotNull("Client analysis released_date must persist", clientAfter.getReleasedDate());
     }
 
-    /**
-     * The actual {@code clinlims.history} INSERT cannot be asserted here because
-     * {@code AuditTrailService} is mocked in the Spring test profile
-     * ({@code AppTestConfig.auditTrailService}). What we can — and should — verify
-     * is that our service correctly delegates to it with the right parameters when
-     * persisting an ack. The real DB write is exercised in dev.
-     */
     @Test
-    public void persistQcAcknowledgment_delegatesToAuditTrailService() {
-        org.openelisglobal.audittrail.dao.AuditTrailService auditMock = org.springframework.test.util.AopTestUtils
-                .getTargetObject(auditTrailServiceMock);
-        org.mockito.Mockito.reset(auditMock);
-
+    public void persistQcAcknowledgment_recordsTheSavedAcknowledgmentAndActorInHistory() {
         ValidationQcAcknowledgment ack = new ValidationQcAcknowledgment();
         ack.setAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
-        ack.setAcknowledgedBy(1);
+        ack.setAcknowledgedBy(Integer.valueOf(TEST_SYS_USER_ID));
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
         ack.setJustification("auditable note");
         resultValidationService.persistQcAcknowledgment(ack);
+        entityManager.flush();
+        entityManager.clear();
 
-        org.mockito.ArgumentCaptor<org.openelisglobal.common.valueholder.BaseObject> objectCaptor = org.mockito.ArgumentCaptor
-                .forClass(org.openelisglobal.common.valueholder.BaseObject.class);
-        org.mockito.Mockito.verify(auditMock).saveNewHistory(objectCaptor.capture(), org.mockito.Mockito.eq("1"),
-                org.mockito.Mockito.eq("validation_qc_acknowledgment"));
-        // Auto-generated id should be assigned by the time saveNewHistory is invoked.
-        assertNotNull(objectCaptor.getValue().getStringId());
+        assertNotNull(ack.getId());
+        var rows = historyService.getHistoryByRefIdAndRefTableId(ack.getId().toString(),
+                referenceTablesService.getReferenceTableByName("validation_qc_acknowledgment").getId());
+        assertEquals(1, rows.size());
+        var history = rows.get(0);
+        assertEquals(ack.getId().toString(), history.getReferenceId());
+        assertEquals(TEST_SYS_USER_ID, history.getSysUserId());
+        assertEquals("I", history.getActivity());
+        assertNotNull(history.getTimestamp());
+        assertEquals("auditable note", qcAckDAO.get(ack.getId()).orElseThrow().getJustification());
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
-    @org.springframework.beans.factory.annotation.Qualifier("auditTrailService")
-    private org.openelisglobal.audittrail.dao.AuditTrailService auditTrailServiceMock;
+    @Autowired
+    private org.openelisglobal.history.service.HistoryService historyService;
+    @Autowired
+    private org.openelisglobal.referencetables.service.ReferenceTablesService referenceTablesService;
 }

@@ -32,7 +32,8 @@ import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExte
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType;
 import org.openelisglobal.dataexchange.service.aggregatereporting.ReportExternalExportService;
 import org.openelisglobal.dataexchange.service.aggregatereporting.ReportQueueTypeService;
-import org.openelisglobal.test.service.TestServiceImpl;
+import org.openelisglobal.test.service.TestDisplayNameService;
+import org.openelisglobal.test.service.TestDisplayNameService.NameMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,8 @@ public class TestUsageBacklog {
     private AnalysisService analysisService;
     @Autowired
     private ReportQueueTypeService reportQueueTypeService;
+    @Autowired
+    private TestDisplayNameService testDisplayNameService;
 
     private static String TEST_UTALIZATION_ID;
 
@@ -104,7 +107,8 @@ public class TestUsageBacklog {
         List<Analysis> analysisList = analysisService.getAnalysisCompleteInRange(dayOne, dayTwo);
 
         Map<String, Integer> testBucket = new HashMap<>();
-        for (String key : TestServiceImpl.getMap(TestServiceImpl.Entity.TEST_AUGMENTED_NAME).keySet()) {
+        Map<String, String> augmentedNames = testDisplayNameService.getNameMap(NameMap.TEST_AUGMENTED_NAME);
+        for (String key : augmentedNames.keySet()) {
             testBucket.put(key, 0);
         }
 
@@ -118,8 +122,7 @@ public class TestUsageBacklog {
         JSONObject json = new JSONObject();
         for (String id : testBucket.keySet()) {
             if (testBucket.get(id).intValue() > 0) {
-                json.put(TestServiceImpl.getMap(TestServiceImpl.Entity.TEST_AUGMENTED_NAME).get(id),
-                        testBucket.get(id));
+                json.put(augmentedNames.get(id), testBucket.get(id));
             }
         }
 

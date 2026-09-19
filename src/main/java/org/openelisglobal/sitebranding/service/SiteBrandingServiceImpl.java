@@ -57,8 +57,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     }
 
     @Override
-    @Transactional(readOnly = true)
     public SiteBranding getBranding() {
+        // First access can insert defaults, so this uses the writable service
+        // transaction.
         try {
             SiteBranding branding = siteBrandingDAO.getBranding();
             if (branding == null) {

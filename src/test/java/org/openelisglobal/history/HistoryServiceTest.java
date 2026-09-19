@@ -213,16 +213,37 @@ public class HistoryServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test(expected = NumberFormatException.class)
-    public void getHistoryByRefIdAndRefTableId_noRecordsFound() {
+    public void getHistoryByRefIdAndRefTableId_nonNumericTableId_isRejected() {
         historyService.getHistoryByRefIdAndRefTableId("nonexistent", "nonexistent");
     }
 
-    @Test(expected = NumberFormatException.class)
-    public void getHistoryByRefIdAndRefTableId_withHistoryObject_nonNumericIds_shouldThrowException() {
-        History searchHistory = new History();
-        searchHistory.setReferenceId("notanumber");
-        searchHistory.setReferenceTable("1");
+    @Test
+    public void uuidReferencePersistsAndIsQueryableThroughEntityAndSystemHistory() {
+        String referenceId = java.util.UUID.randomUUID().toString();
+        History history = new History();
+        history.setReferenceId(referenceId);
+        history.setReferenceTable("5");
+        history.setSysUserId(TEST_SYS_USER_ID);
+        history.setTimestamp(Timestamp.from(Instant.now()));
+        history.setActivity("I");
+        history.setChanges("UUID history".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String id = historyService.insert(history);
 
-        historyService.getHistoryByRefIdAndRefTableId(searchHistory);
+        History lookup = new History();
+        lookup.setReferenceId(referenceId);
+        lookup.setReferenceTable("5");
+        List<History> entityHistory = historyService.getHistoryByRefIdAndRefTableId(lookup);
+        Assert.assertEquals(1, entityHistory.size());
+        Assert.assertEquals(id, entityHistory.get(0).getId());
+        Assert.assertEquals(referenceId, entityHistory.get(0).getReferenceId());
+        Assert.assertTrue(historyService.getHistoryByRefIdAndRefTableId(referenceId, "1").isEmpty());
+
+        List<History> systemHistory = historyService.getSystemEventHistory(null, null, TEST_SYS_USER_ID, List.of("5"),
+                "I", null, referenceId, 1, 10);
+        Assert.assertEquals(List.of(id), systemHistory.stream().map(History::getId).toList());
+        Assert.assertEquals(1L, historyService.getSystemEventHistoryCount(null, null, TEST_SYS_USER_ID, List.of("5"),
+                "I", null, referenceId));
+        Assert.assertEquals(0L, historyService.getSystemEventHistoryCount(null, null, TEST_SYS_USER_ID, List.of("1"),
+                "I", null, referenceId));
     }
 }

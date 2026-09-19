@@ -821,7 +821,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("_lastUpdated", "gt2025-02-15T12:00:00Z");
+        // DBUnit's timestamp has no timezone; compare with the loaded instant,
+        // rather than assuming the test JVM interprets that fixture as UTC.
+        request.addParameter("_lastUpdated", "gt" + providerService.get("1").getLastupdated().toInstant());
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -843,7 +845,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("_lastUpdated", "le2025-02-15T12:00:00Z");
+        request.addParameter("_lastUpdated", "le" + providerService.get("1").getLastupdated().toInstant());
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 

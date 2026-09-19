@@ -27,6 +27,11 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
     @Autowired
     private QCStatisticsService statisticsService;
 
+    @Autowired
+    private org.openelisglobal.history.service.HistoryService historyService;
+    @Autowired
+    private org.openelisglobal.referencetables.service.ReferenceTablesService referenceTablesService;
+
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -126,6 +131,7 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         created.setManufacturerMean(55.5);
         created.setManufacturerStdDev(3.2);
         controlLotService.update(created);
+        assertUpdateHistory(created.getId());
 
         // Assert: statistics should be re-seeded with new values
         QCStatistics updatedStats = statisticsService.getLatestStatistics(created.getId());
@@ -166,6 +172,7 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         created.setManufacturerMean(42.0);
         created.setManufacturerStdDev(2.5);
         controlLotService.update(created);
+        assertUpdateHistory(created.getId());
 
         // Assert: statistics row should now be created
         QCStatistics stats = statisticsService.getLatestStatistics(created.getId());
@@ -173,6 +180,19 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         assertEquals(0, new BigDecimal("42.00000").compareTo(stats.getMean()));
         assertEquals(0, new BigDecimal("2.50000").compareTo(stats.getStandardDeviation()));
         assertEquals("MANUFACTURER_FIXED", stats.getCalculationMethod());
+    }
+
+    private void assertUpdateHistory(String controlLotId) {
+        var entries = historyService.getHistoryByRefIdAndRefTableId(controlLotId,
+                referenceTablesService.getReferenceTableByName("qc_control_lot").getId());
+        assertEquals("The UUID control lot must have a persisted update audit", 1, entries.size());
+        var entry = entries.get(0);
+        assertEquals(controlLotId, entry.getReferenceId());
+        assertEquals(TEST_SYS_USER_ID, entry.getSysUserId());
+        assertEquals("U", entry.getActivity());
+        assertNotNull(entry.getTimestamp());
+        assertTrue(
+                new String(entry.getChanges(), java.nio.charset.StandardCharsets.UTF_8).contains("manufacturerMean"));
     }
 
     // ===================== Validation: creation-time prerequisites
@@ -309,5 +329,6 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         // Act: set status to ACTIVE via update() — should throw
         created.setStatus("ACTIVE");
         controlLotService.update(created);
+        assertUpdateHistory(created.getId());
     }
 }

@@ -94,7 +94,7 @@ If tests fail → stop and report. Don't proceed to audit with failing tests.
 **Frontend (if frontend files changed):**
 
 ```bash
-cd frontend && npm test -- --watchAll=false --coverage=false && cd ..
+cd frontend && npm test && cd ..
 ```
 
 If tests fail → stop and report.

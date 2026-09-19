@@ -1,369 +1,99 @@
 # Backend Testing Best Practices Quick Reference
 
-**Quick Reference Guide** for common backend Java testing patterns in OpenELIS
-Global 2.
-
-**For Comprehensive Guidance**: See
-[Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
-examples.
-
-**For TDD Workflow & SDD Checkpoints**: See
-[Testing Roadmap - TDD Workflow Integration](.specify/guides/testing-roadmap.md#tdd-workflow-integration).
-
----
-
-## Test Slicing Decision Tree
-
-**CRITICAL**: Use focused test slices when possible for faster execution.
-
-**Repository reality**: OpenELIS Global 2 uses **Traditional Spring MVC** (not
-Spring Boot). Spring Boot test slices (`@WebMvcTest`, `@DataJpaTest`,
-`@SpringBootTest`) are **not** the standard for this repo. Use
-`BaseWebContextSensitiveTest` for Spring-context tests.
-
-1. **Testing REST controller HTTP layer only?** → Use
-   `BaseWebContextSensitiveTest` + MockMvc ✅
-2. **Testing DAO/persistence layer only?** → Use `BaseWebContextSensitiveTest` +
-   real DAO beans ✅
-3. **Testing complete workflow (service → DAO → DB)?** → Use
-   `BaseWebContextSensitiveTest` ✅
-
-**When to Use Each**:
-
-| Test Type   | Base Class/Pattern            | Use Case                         | Speed  | Context      |
-| ----------- | ----------------------------- | -------------------------------- | ------ | ------------ |
-| Controller  | `BaseWebContextSensitiveTest` | HTTP mapping/validation          | Medium | Full context |
-| DAO         | `BaseWebContextSensitiveTest` | HQL queries, CRUD, relationships | Medium | Full context |
-| Integration | `BaseWebContextSensitiveTest` | Full workflow (service→DAO→DB)   | Medium | Full context |
-
----
-
-## Annotation Cheat Sheet
-
-### Controller Tests (HTTP layer)
-
-**Use for**: REST controller request/response mapping (with real Spring
-context).
-
-```java
-public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
-  @Autowired
-  private MockMvc mockMvc;
-
-  @MockBean // ✅ Mock service for HTTP-only tests
-  private StorageLocationService storageLocationService;
-}
-```
-
-**Key Points**:
-
-- Use `@MockBean` for Spring context mocking
-- Focus on routing/validation/status codes/JSON shape
-- This test does NOT prove persistence (service is mocked)
-
-### DAO Tests (Persistence layer)
-
-**Use for**: Real HQL query behavior and persistence layer correctness.
-
-```java
-public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
-  @Autowired
-  private StorageLocationDAO storageLocationDAO;
-}
-```
-
-**Key Points**:
-
-- Use DBUnit datasets for complex setup:
-  `executeDataSetWithStateManagement("testdata/<file>.xml")`
-- Use `EntityManager`/`JdbcTemplate` only when necessary and clean up properly
-
-### Integration Tests (Full workflow)
-
-**Use for**: Service → DAO → DB workflows with real persistence.
-
-```java
-public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
-  @Autowired
-  private StorageLocationService storageLocationService;
-}
-```
-
-**Key Points**:
-
-- Must include at least one “real-effect assertion” (read-after-write / DB state
-  change)
-- Prefer DBUnit-managed datasets for setup/cleanup; otherwise do targeted
-  cleanup
-
-### @MockBean vs @Mock
-
-**@MockBean**: Use in Spring context tests (extends
-`BaseWebContextSensitiveTest`)
-
-```java
-@MockBean  // ✅ Spring context test
-private StorageLocationService storageLocationService;
-```
-
-**@Mock**: Use in isolated unit tests (`@RunWith(MockitoJUnitRunner.class)`)
-
-```java
-@Mock  // ✅ Isolated unit test
-private StorageLocationDAO storageLocationDAO;
-
-@InjectMocks
-private StorageLocationServiceImpl storageLocationService;
-```
-
-**Decision Tree**:
-
-1. Spring context test? → Use `@MockBean` ✅
-2. Isolated unit test? → Use `@Mock` ✅
-
----
-
-## MockMvc Quick Patterns
-
-### Request Building
-
-**GET**:
-
-```java
-mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
-        .contentType(MediaType.APPLICATION_JSON))
-    .andExpect(status().isOk());
-```
-
-**POST**:
-
-```java
-String requestBody = objectMapper.writeValueAsString(form);
-mockMvc.perform(post("/rest/storage/rooms")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(requestBody))
-    .andExpect(status().isCreated());
-```
-
-**PUT**:
-
-```java
-String requestBody = objectMapper.writeValueAsString(form);
-mockMvc.perform(put("/rest/storage/rooms/ROOM-001")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(requestBody))
-    .andExpect(status().isOk());
-```
-
-**DELETE**:
-
-```java
-mockMvc.perform(delete("/rest/storage/rooms/ROOM-001")
-        .contentType(MediaType.APPLICATION_JSON))
-    .andExpect(status().isNoContent());
-```
-
-### Response Assertions (JSONPath)
-
-**Single Field**:
-
-```java
-.andExpect(jsonPath("$.id").value("ROOM-001"))
-.andExpect(jsonPath("$.name").value("Main Laboratory"));
-```
-
-**Array Elements**:
-
-```java
-.andExpect(jsonPath("$").isArray())
-.andExpect(jsonPath("$[0].id").value("ROOM-001"));
-```
-
-**Nested Objects**:
-
-```java
-.andExpect(jsonPath("$.parentRoom.id").value("ROOM-001"));
-```
-
-**Array Size**:
-
-```java
-.andExpect(jsonPath("$.length()").value(2));
-```
-
-### Error Responses
-
-**400 Bad Request**:
-
-```java
-.andExpect(status().isBadRequest())
-.andExpect(jsonPath("$.error").exists());
-```
-
-**404 Not Found**:
-
-```java
-.andExpect(status().isNotFound());
-```
-
-**409 Conflict**:
-
-```java
-.andExpect(status().isConflict());
-```
-
-**500 Internal Server Error**:
-
-```java
-.andExpect(status().isInternalServerError());
-```
-
----
-
-## Test Data Management
-
-### Builders/Factories (PREFERRED)
-
-**DO**: Use builder pattern for test data.
-
-```java
-StorageRoom room = StorageRoomBuilder.create()
-    .withId("ROOM-001")
-    .withName("Main Laboratory")
-    .withCode("MAIN")
-    .withActive(true)
-    .build();
-```
-
-**DON'T**: Use hardcoded values or direct entity construction.
-
-```java
-// ❌ BAD
-StorageRoom room = new StorageRoom();
-room.setId("ROOM-001");
-room.setName("Main Laboratory");
-```
-
-### DBUnit (Legacy Pattern)
-
-**Use when**: Complex test data requiring multiple related entities.
-
-```java
-@Before
-public void setUp() throws Exception {
-    super.setUp();
-    executeDataSetWithStateManagement("test-data/storage-hierarchy.xml");
-}
-```
-
-### JdbcTemplate (Direct Database Operations)
-
-**Use when**: Direct database operations needed (rare).
-
-```java
-jdbcTemplate.update(
-    "INSERT INTO storage_room (id, name, code, active) VALUES (?, ?, ?, ?)",
-    "ROOM-001", "Main Lab", "MAIN", true
-);
-```
-
----
-
-## Transaction Management
-
-### Manual Cleanup (BaseWebContextSensitiveTest)
-
-**Use when**: You create rows outside DBUnit-managed datasets.
-
-```java
-@Before
-public void setUp() throws Exception {
-    super.setUp();
-    cleanStorageTestData(); // Clean before test
-}
-
-@After
-public void tearDown() throws Exception {
-    cleanStorageTestData(); // Clean after test
-}
-```
-
----
-
-## Test Organization
-
-### File Naming
-
-- Service tests: `{ServiceName}Test.java`
-- Controller tests: `{ControllerName}Test.java`
-- DAO tests: `{DAO}Test.java`
-- Integration tests: `{ServiceName}IntegrationTest.java`
-
-### Test Naming Convention
-
-**Format**: `test{MethodName}_{Scenario}_{ExpectedResult}`
-
-**Example**: `testGetLocationById_WithValidId_ReturnsLocation`
-
-### Package Structure
-
-- Mirror main package structure: `src/test/java/org/openelisglobal/{module}/`
-- Service tests: `src/test/java/org/openelisglobal/{module}/service/`
-- Controller tests: `src/test/java/org/openelisglobal/{module}/controller/`
-- DAO tests: `src/test/java/org/openelisglobal/{module}/dao/`
-
----
-
-## TDD Workflow Quick Reference
-
-**Red-Green-Refactor Cycle**:
-
-1. **Red**: Write failing test first
-2. **Green**: Write minimal code to make test pass
-3. **Refactor**: Improve code quality while keeping tests green
-
-**Test-First Development**:
-
-- Write test BEFORE implementation
-- Test defines the contract/interface
-- Implementation satisfies the test
-
-**SDD Checkpoint Requirements**:
-
-- **After Phase 1 (Entities)**: ORM validation tests MUST pass
-- **After Phase 2 (Services)**: Unit tests MUST pass
-- **After Phase 3 (Controllers)**: Integration tests MUST pass
-- **Coverage Goal**: >80% (measured via JaCoCo)
-
----
-
-## Anti-Patterns Checklist
-
-- [ ] ❌ Using `@Mock` in Spring context tests (use `@MockBean`)
-- [ ] ❌ Using `@MockBean` in isolated unit tests (use `@Mock`)
-- [ ] ❌ Introducing Spring Boot test slices (`@WebMvcTest`, `@DataJpaTest`,
-      `@SpringBootTest`) in this repo
-- [ ] ❌ Hardcoded test data instead of builders/factories
-- [ ] ❌ Testing implementation details instead of behavior
-- [ ] ❌ Inconsistent test naming (use
-      `test{MethodName}_{Scenario}_{ExpectedResult}`)
-- [ ] ❌ Not using builders/factories for test data
-
----
-
-## Quick Decision Trees
-
-### Which Test Base to Use?
-
-1. **Need Spring context?** → `BaseWebContextSensitiveTest` ✅
-2. **Isolated unit logic only?** → `@RunWith(MockitoJUnitRunner.class)` ✅
-
-### Which Mock Annotation to Use?
-
-1. **Spring context test?** (`BaseWebContextSensitiveTest`) → `@MockBean` ✅
-2. **Isolated unit test?** (`@RunWith(MockitoJUnitRunner.class)`) → `@Mock` ✅
-
----
-
-**For Detailed Examples**: See
-[Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing).
+Use this guide to choose a test's scope and data ownership. Detailed rules and
+examples belong in the [testing roadmap](testing-roadmap.md#backend-testing).
+OpenELIS uses Java 21, JUnit 4, and traditional Spring MVC. Do not introduce Spring
+Boot test slices.
+
+## Choose the test level
+
+| Level       | What it proves                                                                     | Typical setup                                                                 |
+| ----------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Unit        | One business rule or transformation                                                | JUnit 4 and Mockito; no Spring or database                                    |
+| Component   | A controller's HTTP behavior or a UI component's interaction                       | Standalone MockMvc or React Testing Library; controlled boundary              |
+| Integration | Actual service wiring, database behavior, history, filters, or transport contracts | Real relevant internal services; PostgreSQL for persistence claims            |
+| End-to-end  | An assembled workflow across the browser and running components                    | Identified component revisions, real transport, and inspected stored outcomes |
+
+Permissions, concurrency, history, and migration checks describe the behavior
+under test; they do not create additional levels. Human acceptance is separate.
+Retain the required fast ORM mapping validation without a database.
+
+## Controller component tests
+
+Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` collaborators, `@InjectMocks`,
+and `MockMvcBuilders.standaloneSetup(controller)`. Register real advice or
+converters when the endpoint behavior requires them. Assert actual status,
+response values, and invalid-input behavior.
+
+A standalone controller check does not prove deployed permissions, persistence,
+or application wiring. Cover those requirements with integration or end-to-end
+tests. Do not start a database merely to check JSON shape.
+
+The [controller template](../templates/testing/WebMvcTestController.java.template)
+retains its historical filename but uses standalone MockMvc, not a Boot slice.
+
+## Database integration tests
+
+Use real DAO/service beans from the existing traditional Spring test
+configuration. `BaseWebContextSensitiveTest` is the existing database-backed base;
+it is not required for unit or component tests.
+
+- Create only the data the scenario needs, with clear ownership.
+- Call real application services for the business transition being asserted.
+- Flush and clear the persistence context before asserting a reload.
+- For queries, create matching and nonmatching rows and assert exact membership
+  and ordering. A non-null list or maximum-size check also accepts an empty query.
+- Assert persisted history where the behavior requires it. Do not install a
+  no-op recorder or repair a service dependency in each test.
+- Control remote dependencies at the transport boundary. Identify which external
+  behavior the test does not establish.
+
+The [DAO template](../templates/testing/DataJpaTestDao.java.template) uses the
+existing Spring base and a real `EntityManager`; its filename is historical.
+
+## Test data management
+
+Use builders when they reduce repeated setup; direct construction is also
+appropriate for small, clear fixtures. Neither technique establishes isolation
+without explicit transaction ownership.
+
+Existing DBUnit XML datasets live in `src/test/resources/testdata/`. Load them via
+`executeDataSetWithStateManagement("testdata/example.xml")`. This helper uses
+cascading truncation: dependent tables not named in the XML can be affected.
+Do not use fixture SQL to stand in for mapping save, confirmation, adoption, or
+another application transition under test.
+
+## Transaction management
+
+For synchronous query and persistence checks, put `@Transactional` on the concrete
+class. The fixture loader and cleanup helper share that transaction, and Spring
+rolls it back after the test. Flush/reload proves a database write without needing
+`@Rollback(false)`.
+
+For concurrent workers, commit-time actions, rollback boundaries, or independent
+requests, use explicitly committed setup and read outcomes in a fresh transaction.
+Record the exact created IDs and clean up only those records, including after
+failure. An outer test transaction can hide the behavior these tests need to prove.
+
+The base class retains `Propagation.NOT_SUPPORTED` for legacy callers. Without a
+test transaction, each fixture load or cleanup call commits its own atomic
+transaction. It does not restore those records after the test. Do not infer safe
+cleanup from DBUnit usage, guessed ID ranges, or a `TEST-` prefix alone.
+
+See the [transaction rules](testing-roadmap.md#transaction-management) for the
+shared helper's cache lifecycle and the distinction between rollback and commit.
+
+## Iteration and validation
+
+1. Reproduce a meaningful failure or demonstrate that an assertion accepts broken
+   behavior.
+2. Correct the cause and remove the superseded workaround.
+3. Run the focused tests and inspect stored outcomes.
+4. If shared setup changed, run all affected callers together and in a different
+   class order. Verify the executed class list rather than relying on a wildcard.
+5. Run the applicable build and CI checks on the final committed revision.
+
+Name tests for their behavior and mirror the feature package under
+`src/test/java/org/openelisglobal/`. Record test level and evidence limits in the
+feature catalogue. Keep coverage and milestone requirements from the constitution
+and testing roadmap; a passing test count is not a substitute for acceptance.

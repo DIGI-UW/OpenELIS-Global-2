@@ -1,22 +1,15 @@
 package org.openelisglobal.audittrail;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Smoke coverage for an audited non-patient service: NcEvent insert and update
@@ -24,9 +17,9 @@ import org.springframework.test.util.ReflectionTestUtils;
  * separately by {@link PatientAuditTrailIntegrationTest}; NcEvent stands in
  * here for the wider set of audited services so a future regression that
  * affects audit emit in general — rather than the specific patient path — still
- * trips a fast unit test.
+ * trips a database integration test.
  */
-public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
+public class P0AuditEmitSmokeTest extends AuditTrailIntegrationTestSupport {
 
     @Autowired
     private NCEventService nceEventService;
@@ -34,42 +27,11 @@ public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
     @Autowired
     private HistoryService historyService;
 
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-
-    @Autowired
-    private javax.sql.DataSource dataSource;
-
     private String ncEventRefTableId;
 
     @Before
     public void setUp() throws Exception {
-        AuditTrailServiceImpl realAuditTrailService = new AuditTrailServiceImpl();
-        ReflectionTestUtils.setField(realAuditTrailService, "referenceTablesService", referenceTablesService);
-        ReflectionTestUtils.setField(realAuditTrailService, "historyService", historyService);
-        Object target = AopTestUtils.getUltimateTargetObject(nceEventService);
-        ReflectionTestUtils.setField(target, "auditTrailService", realAuditTrailService);
-
-        cleanRowsInCurrentConnection(new String[] { "nc_event", "history" });
-        ncEventRefTableId = refTableId("nc_event");
-    }
-
-    private String refTableId(String name) {
-        ReferenceTables rt = referenceTablesService.getReferenceTableByName(name);
-        if (rt == null) {
-            try (java.sql.Connection conn = dataSource.getConnection();
-                    java.sql.PreparedStatement ps = conn
-                            .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
-                                    + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
-                ps.setString(1, name);
-                ps.executeUpdate();
-            } catch (java.sql.SQLException e) {
-                throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
-            }
-            rt = referenceTablesService.getReferenceTableByName(name);
-            assertNotNull("Re-seed failed for " + name, rt);
-        }
-        return rt.getId();
+        ncEventRefTableId = requiredReferenceTable("nc_event");
     }
 
     @Test
@@ -103,6 +65,7 @@ public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
         Integer id = event.getId();
 
         NcEvent reloaded = nceEventService.get(id);
+        detachSavedRecords();
         reloaded.setName("updated-name");
         reloaded.setDescription("updated description");
         reloaded.setSysUserId("1");

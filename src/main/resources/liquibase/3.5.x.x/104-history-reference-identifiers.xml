@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="history.schema" value="clinlims"/>
+
+    <changeSet id="104-history-reference-identifiers" author="OGC-1220">
+        <comment>
+            History references are polymorphic identifiers. Preserve existing numeric
+            references and allow UUIDs used by QC control lots and other entities.
+            Rollback restores the old type only while all references remain numeric;
+            PostgreSQL rejects rollback after UUID history is recorded, preserving
+            that history rather than deleting or rewriting its identifiers.
+        </comment>
+        <sql>
+            ALTER TABLE ${history.schema}.history
+            ALTER COLUMN reference_id TYPE VARCHAR(255) USING reference_id::VARCHAR(255);
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE ${history.schema}.history
+                ALTER COLUMN reference_id TYPE NUMERIC(22,0) USING reference_id::NUMERIC(22,0);
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

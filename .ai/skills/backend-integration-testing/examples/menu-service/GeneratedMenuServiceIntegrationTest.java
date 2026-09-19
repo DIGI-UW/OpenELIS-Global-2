@@ -10,7 +10,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.valueholder.Menu;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class GeneratedMenuServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -28,13 +30,7 @@ public class GeneratedMenuServiceIntegrationTest extends BaseWebContextSensitive
 
         Assert.assertEquals(6, activeMenus.size());
         Assert.assertEquals(
-                Set.of(
-                        "testElement1",
-                        "testElement3",
-                        "testElement4",
-                        "testElement5",
-                        "testElement7",
-                        "testElement8"),
+                Set.of("testElement1", "testElement3", "testElement4", "testElement5", "testElement7", "testElement8"),
                 activeElementIds);
         Assert.assertTrue(activeMenus.stream().allMatch(Menu::getIsActive));
     }

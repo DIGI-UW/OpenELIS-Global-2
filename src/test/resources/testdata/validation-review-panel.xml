@@ -6,6 +6,10 @@
         never rolls up to "finished" during a test. No QC analyses, so the S-08 QC
         release gate is not in play here — that gate has its own fixture (validation-qc-ack.xml). -->
 
+    <!-- Required validation permissions belong to this rollback-owned fixture. -->
+    <system_role id="9400" name="Validation"
+        description="Validate results" display_key="role.validator"
+        active="true" editable="false" />
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y"
         lastupdated="2025-01-01 12:00:00" />
