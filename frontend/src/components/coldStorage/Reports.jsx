@@ -48,8 +48,8 @@ const EXPORT_FORMATS = ["PDF"]; // CSV, XML, and Excel to be implemented in Phas
 
 const REPORT_TYPE_MAP = {
   "Daily Log": "freezerDailyLogReport",
-  "Weekly Log": "freezerDailyLogReport",
-  "Monthly Log": "freezerDailyLogReport",
+  "Weekly Log": "weeklylog",
+  "Monthly Log": "monthlylog",
 };
 
 const getExcursionHeaders = (intl) => [
