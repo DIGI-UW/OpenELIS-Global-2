@@ -210,7 +210,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         try {
             return Long.parseLong(String.valueOf(id));
         } catch (NumberFormatException e) {
-            return Long.MAX_VALUE;
+            return Long.MIN_VALUE;
         }
     }
 

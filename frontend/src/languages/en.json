@@ -8533,6 +8533,7 @@
   "storage.disposal.reason": "Disposal Reason",
   "storage.disposal.reason.placeholder": "Select reason...",
   "storage.dispose.confirmation": "I confirm that I want to permanently dispose of this sample. This action cannot be undone.",
+  "storage.dispose.error": "Disposal failed",
   "storage.dispose.instructions.subtitle": "Please ensure proper disposal procedures are followed according to laboratory safety protocols.",
   "storage.dispose.instructions.title": "Disposal Instructions",
   "storage.dispose.location.note": "Sample will be removed from this location upon disposal",

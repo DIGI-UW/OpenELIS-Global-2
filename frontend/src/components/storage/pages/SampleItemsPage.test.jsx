@@ -34,6 +34,15 @@ vi.mock("../LocationPicker/LocationPickerModal", () => ({
   },
 }));
 
+let capturedDisposeProps = null;
+
+vi.mock("../SampleStorage/DisposeSampleModal", () => ({
+  default: (props) => {
+    capturedDisposeProps = props;
+    return props.open ? <div data-testid="dispose-sample-modal" /> : null;
+  },
+}));
+
 vi.mock("../hooks/useSampleStorage", () => ({
   default: () => ({
     assignSampleItem: mockAssignSampleItem,
@@ -97,6 +106,7 @@ beforeEach(() => {
   mockAssignSampleItem.mockReset().mockResolvedValue({});
   mockMoveSampleItem.mockReset().mockResolvedValue({});
   capturedModalProps = null;
+  capturedDisposeProps = null;
   currentLocation = null;
 });
 
@@ -260,5 +270,37 @@ describe("SampleItemsPage — Manage Location", () => {
       expect.objectContaining({ message: "Location is full" }),
     );
     expect(screen.getByTestId("location-picker-modal")).toBeInTheDocument();
+  });
+});
+
+describe("SampleItemsPage — dispose", () => {
+  // Dispose is offered on a row that is already disposed, and the service
+  // refuses it: without a notification Confirm reads as a dead button.
+  it("reports the server's error when a disposal is refused", async () => {
+    renderPage(unassignedItem);
+    fireEvent.click(screen.getByTestId("sample-actions-overflow-menu"));
+    fireEvent.click(screen.getByTestId("dispose-menu-item"));
+    Utils.postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        error: "Bad Request",
+        message: "Sample is already disposed",
+        status: 400,
+        statusCode: 400,
+      }),
+    );
+
+    await act(async () => {
+      capturedDisposeProps.onConfirm({
+        sample: { sampleItemId: "123" },
+        reason: "expired",
+        method: "autoclave",
+        notes: "",
+      });
+    });
+
+    expect(notifyCtx.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Sample is already disposed" }),
+    );
+    expect(screen.getByTestId("dispose-sample-modal")).toBeInTheDocument();
   });
 });

@@ -276,7 +276,10 @@ const InventoryDashboard = ({ active = true }) => {
       );
       if (!isMountedRef.current) return;
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(lotsResponse) ? [...lotsResponse] : [];
+      // Newest lot first, the order the Storage Inventory Lots table uses: a
+      // lot just added then lands on page one instead of on the last page.
+      validLots.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       setLots(validLots);
 
       const itemsMap = Object.fromEntries(

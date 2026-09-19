@@ -582,12 +582,12 @@ describe("InventoryDashboard filters and the current page", () => {
     lowStockThreshold: 1,
   };
 
-  // One page of 20 plus five: the odd lot out sits on page 2 and is the only
-  // row every one of these filters keeps.
+  // One page of 20 plus five: the oldest lot sits on page 2 under the
+  // newest-first order, and is the only row every one of these filters keeps.
   const oddLotOut = {
     ...lotWithLocation,
-    id: 124,
-    lotNumber: "LOT-124",
+    id: 99,
+    lotNumber: "LOT-99",
     status: "DISPOSED",
     inventoryItem: { id: "BUFFER" },
   };
@@ -619,20 +619,20 @@ describe("InventoryDashboard filters and the current page", () => {
       oddLotOut,
     ]);
     renderDashboard();
-    await screen.findByText("LOT-100");
+    await screen.findByText("LOT-123");
 
     fireEvent.click(screen.getByLabelText("Next page"));
-    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-124"));
+    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-99"));
   };
 
   it("returns to page one when the search box narrows the table", async () => {
     await renderOnPageTwo();
 
     fireEvent.change(document.querySelector("input[type='search']"), {
-      target: { value: "LOT-124" },
+      target: { value: "LOT-99" },
     });
 
-    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
   });
 
   it("returns to page one when the type dropdown narrows the table", async () => {
@@ -643,7 +643,7 @@ describe("InventoryDashboard filters and the current page", () => {
     );
     fireEvent.click(await screen.findByRole("option", { name: "Reagent" }));
 
-    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
   });
 
   it("returns to page one when the status dropdown narrows the table", async () => {
@@ -654,7 +654,7 @@ describe("InventoryDashboard filters and the current page", () => {
     );
     fireEvent.click(await screen.findByRole("option", { name: "Disposed" }));
 
-    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
   });
 });
 
@@ -794,7 +794,7 @@ describe("InventoryDashboard metric tile filters", () => {
     // One item below threshold, two of its lots: the tile counts items and the
     // table lists lots, so the mismatch is the design and not a drift.
     await waitFor(() =>
-      expect(lotNumbersShown()).toEqual(["LOT-LOW-A", "LOT-LOW-B"]),
+      expect(lotNumbersShown()).toEqual(["LOT-LOW-B", "LOT-LOW-A"]),
     );
     expect(tileCount("Low Stock")).toBe(1);
   });
@@ -851,5 +851,25 @@ describe("InventoryDashboard metric tile filters", () => {
     await waitFor(() =>
       expect(tile("Expired")).toHaveAttribute("aria-pressed", "false"),
     );
+  });
+});
+
+describe("InventoryDashboard lot order", () => {
+  // The Storage Inventory Lots table lists the same lots newest first. The
+  // endpoint answers oldest first, which put a lot just added on the last page.
+  it("lists the newest lot first, whatever order the endpoint answers in", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, id: 5, lotNumber: "LOT-OLDEST" },
+      { ...lotWithLocation, id: 40, lotNumber: "LOT-NEWEST" },
+      { ...lotWithLocation, id: 12, lotNumber: "LOT-MIDDLE" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-NEWEST");
+    expect(
+      Array.from(document.querySelectorAll("table tbody tr")).map(
+        (row) => row.cells[1].textContent,
+      ),
+    ).toEqual(["LOT-NEWEST", "LOT-MIDDLE", "LOT-OLDEST"]);
   });
 });

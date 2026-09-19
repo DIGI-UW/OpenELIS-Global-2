@@ -132,3 +132,31 @@ describe("InventoryCatalog — row actions", () => {
     expect(within(row).queryByText("-")).not.toBeInTheDocument();
   });
 });
+
+describe("InventoryCatalog — paging against a narrowed list", () => {
+  // The pager is hidden once the page is empty, so a search made from page two
+  // that leaves fewer rows than one page strands the user with no way back.
+  it("shows the match when a search is made from the second page", async () => {
+    const many = Array.from({ length: 25 }, (_, n) => ({
+      id: 2000 + n,
+      code: `CODE_${n}`,
+      name: `Catalog Item ${n}`,
+      itemType: "REAGENT",
+      units: "mL",
+      lowStockThreshold: 1,
+      isActive: "Y",
+    }));
+    InventoryItemAPI.getAll.mockResolvedValue(many);
+    renderCatalog();
+
+    await screen.findByText("Catalog Item 0");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await screen.findByText("Catalog Item 24");
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CODE_3" },
+    });
+
+    expect(await screen.findByText("Catalog Item 3")).toBeInTheDocument();
+  });
+});

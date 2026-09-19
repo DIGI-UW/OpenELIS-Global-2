@@ -316,7 +316,10 @@ const InventoryCatalog = () => {
                   placeholder={intl.formatMessage({
                     id: "catalog.search.placeholder",
                   })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   value={searchTerm}
                 />
 
@@ -329,9 +332,10 @@ const InventoryCatalog = () => {
                   selectedItem={
                     itemTypes.find((t) => t.id === typeFilter) ?? null
                   }
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
+                  onChange={({ selectedItem }) => {
+                    setTypeFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
@@ -344,9 +348,10 @@ const InventoryCatalog = () => {
                   selectedItem={
                     statusOptions.find((s) => s.id === statusFilter) ?? null
                   }
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
+                  onChange={({ selectedItem }) => {
+                    setStatusFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 

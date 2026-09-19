@@ -233,7 +233,18 @@ export default function SampleItemsPage() {
         if (response && !response.error && !response.statusCode) {
           setDisposeTarget(null);
           refreshList();
+          return;
         }
+        // Without this the modal stays open and silent, so Confirm reads as a
+        // click that did nothing rather than as a disposal that was refused.
+        notifyError(
+          response?.message ||
+            response?.error ||
+            intl.formatMessage({
+              id: "storage.dispose.error",
+              defaultMessage: "Disposal failed",
+            }),
+        );
       },
     );
   };

@@ -281,6 +281,9 @@ export default function StorageResourcePage({
         onDeleted={() => {
           setDeleteTarget(null);
           notify("storage.location.deleted", "{level} deleted");
+          // The deleted row can be the only one on the last page, which would
+          // leave the user on a page the shortened listing no longer reaches.
+          setPage(1);
           refreshAfterWrite();
         }}
       />

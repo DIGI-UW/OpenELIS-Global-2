@@ -314,6 +314,25 @@ public class SampleStorageServiceImplTest {
         assertEquals("A Room", result.get(0).get("location"));
     }
 
+    /**
+     * The fallback sorts a malformed id to the end. Returning the maximum instead
+     * put it on page one under the reversed comparator, ahead of the newest row.
+     */
+    @Test
+    public void testGetAllSamplesWithAssignments_NonNumericIdSortsLast() {
+        SampleItem numeric = buildSampleItem("1", null);
+        SampleItem malformed = buildSampleItem("ABC", null);
+        SampleItem highest = buildSampleItem("10", null);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(numeric, malformed, highest));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals("a non-numeric id must not outrank the newest real row", List.of("10", "1", "ABC"),
+                result.stream().map(row -> row.get("id")).collect(Collectors.toList()));
+    }
+
     // Helper method to create test assignments
     private List<SampleStorageAssignment> createTestAssignments(int count) {
         List<SampleStorageAssignment> assignments = new ArrayList<>();

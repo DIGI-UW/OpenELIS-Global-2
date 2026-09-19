@@ -17,6 +17,7 @@ vi.mock("../../utils/Utils", async () => {
     getFromOpenElisServer: vi.fn(),
     postToOpenElisServerJsonResponse: vi.fn(),
     putToOpenElisServerFullResponse: vi.fn(),
+    deleteFromOpenElisServerFullResponse: vi.fn(),
   };
 });
 
@@ -45,6 +46,7 @@ beforeEach(() => {
   Utils.getFromOpenElisServer.mockReset();
   Utils.postToOpenElisServerJsonResponse.mockReset();
   Utils.putToOpenElisServerFullResponse.mockReset();
+  Utils.deleteFromOpenElisServerFullResponse.mockReset();
   notifyCtx.setNotificationVisible.mockReset();
   notifyCtx.addNotification.mockReset();
 });
@@ -320,6 +322,58 @@ describe("RacksPage — feedback on edit", () => {
     );
     expect(notifyCtx.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Rack updated" }),
+    );
+  });
+});
+
+describe("RacksPage — feedback on delete", () => {
+  // The last page can hold a single row, and deleting it leaves the slice
+  // empty: the table then renders nothing while the other racks still exist.
+  it("keeps the surviving racks on screen after the last page's only row goes", async () => {
+    const racks = Array.from({ length: 6 }, (_, n) => ({
+      id: 900 + n,
+      label: `Rack ${n}`,
+      code: `RK-${n}`,
+      active: true,
+    }));
+    let listed = racks;
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("cascade-delete-summary")) {
+        cb({ childLocationCount: 0, childLocationType: "box", sampleCount: 0 });
+      } else {
+        cb(listed);
+      }
+    });
+    Utils.deleteFromOpenElisServerFullResponse.mockImplementation((url, cb) => {
+      listed = racks.filter((rack) => rack.id !== 900);
+      cb({ status: 204 });
+    });
+    renderPage();
+
+    await screen.findByText("Rack 5");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await screen.findByText("Rack 0");
+
+    fireEvent.click(
+      document.querySelector('[data-testid="storage-row-actions-900"]'),
+    );
+    const deleteItem = await waitFor(() => {
+      const item = [
+        ...document.querySelectorAll(".cds--overflow-menu-options button"),
+      ].find((button) => button.textContent === "Delete");
+      expect(item).toBeDefined();
+      return item;
+    });
+    fireEvent.click(deleteItem);
+    fireEvent.click(await screen.findByLabelText(/^I confirm that I want/i));
+    fireEvent.click(document.querySelector(".cds--modal .cds--btn--danger"));
+
+    await waitFor(() =>
+      expect(document.querySelectorAll("table tbody tr")).toHaveLength(5),
+    );
+    expect(screen.getByText("Rack 5")).toBeInTheDocument();
+    expect(notifyCtx.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Rack deleted" }),
     );
   });
 });
