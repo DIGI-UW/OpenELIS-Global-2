@@ -50,9 +50,14 @@ const rangeSignature = (ranges) =>
         highNormal: r.highNormal ?? null,
         lowCritical: r.lowCritical ?? null,
         highCritical: r.highCritical ?? null,
+        lowValid: r.lowValid ?? null,
+        highValid: r.highValid ?? null,
       }))
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   );
+
+const bounds = (low, high) =>
+  low == null && high == null ? "—" : `${low ?? "—"} / ${high ?? "—"}`;
 
 const CombinedTestEditor = () => {
   const intl = useIntl();
@@ -168,7 +173,8 @@ const CombinedTestEditor = () => {
 
   const handleSaveAll = () => {
     setSaving(true);
-    // Strip ids: the shared set is written fresh into each test's own rows.
+    // Strip ids: the shared set is written fresh into each test's own rows. The
+    // server maps componentId onto each test's own component (FR-11/FR-19).
     const payload = {
       testIds,
       ranges: ranges.map((r) => ({
@@ -180,6 +186,8 @@ const CombinedTestEditor = () => {
         highNormal: r.highNormal,
         lowCritical: r.lowCritical,
         highCritical: r.highCritical,
+        lowValid: r.lowValid,
+        highValid: r.highValid,
       })),
     };
     putToOpenElisServer(
@@ -416,6 +424,12 @@ const CombinedTestEditor = () => {
                       <FormattedMessage id="label.testCatalog.ranges.table.normal" />
                     </TableHeader>
                     <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.col.critical" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.col.valid" />
+                    </TableHeader>
+                    <TableHeader>
                       <FormattedMessage id="label.testCatalog.sampleResults.actions" />
                     </TableHeader>
                   </TableRow>
@@ -429,8 +443,12 @@ const CombinedTestEditor = () => {
                           " – " +
                           (r.maxAge == null ? "∞" : r.maxAge)}
                       </TableCell>
-                      <TableCell>
-                        {(r.lowNormal ?? "—") + " / " + (r.highNormal ?? "—")}
+                      <TableCell>{bounds(r.lowNormal, r.highNormal)}</TableCell>
+                      <TableCell data-testid={`group-range-critical-${i}`}>
+                        {bounds(r.lowCritical, r.highCritical)}
+                      </TableCell>
+                      <TableCell data-testid={`group-range-valid-${i}`}>
+                        {bounds(r.lowValid, r.highValid)}
                       </TableCell>
                       <TableCell>
                         <Button

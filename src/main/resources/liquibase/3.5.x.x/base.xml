@@ -273,6 +273,21 @@
   <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
   <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
 
+  <!-- OGC-658: inventory_item.code; anchored here, not at the end of the file where every branch collides -->
+  <include relativeToChangelogFile="true" file="070-inventory-item-code.xml"/>
+
+  <!-- OGC-657: sample_storage_assignment/movement gain an occupant discriminator so a
+       row can describe an inventory lot as well as a sample item. Anchored next to the
+       inventory PK include, away from the end-of-file append point. -->
+  <include relativeToChangelogFile="true" file="071-generalize-storage-assignment-occupant.xml"/>
+
+  <!-- OGC-657: blank lot barcodes become NULL so the UNIQUE index stops treating
+       every barcode-less lot as a duplicate of the others. -->
+  <include relativeToChangelogFile="true" file="072-null-blank-lot-barcodes.xml"/>
+
+  <!-- OGC-658: per-prefix counter behind generated inventory item codes (PAR-500MG-001). -->
+  <include relativeToChangelogFile="true" file="073-inventory-item-code-sequence.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 
@@ -529,5 +544,17 @@
   <!-- OGC-1188: referrals written by Results Entry with the deprecated SENT status
        were invisible to the Reference Lab Results page and to shipment dispatch. -->
   <include relativeToChangelogFile="true" file="101-referral-sent-status-backfill.xml"/>
+
+  <!-- A referral dispatched by a shipment box had no sent date, so it never aged
+       into the days-outstanding buckets or the stuck view. -->
+  <include relativeToChangelogFile="true" file="102-referral-sent-date-backfill.xml"/>
+
+  <!-- QC targets per control level and lot, plus LOD/LOQ on result components
+       (Test Catalog, OGC-1148). -->
+  <include relativeToChangelogFile="true" file="102-test-qc-targets.xml"/>
+
+  <!-- Catalog import runs, the "Needs your decision" queue and remembered aliases
+       (Test catalog import v2, OGC-1194). -->
+  <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
 
 </databaseChangeLog>

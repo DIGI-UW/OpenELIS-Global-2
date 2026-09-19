@@ -133,8 +133,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         when(microbiologyReferenceService.getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(setup);
 
-        SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = controller.processRequest(request,
-                null);
+        SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = (SampleEntryTestsForTypeProviderRestController.SampleEntryTests) controller
+                .processRequest(request, null).getBody();
 
         assertEquals("5", result.getSampleTypeId());
         assertEquals("BACTERIOLOGY", result.getTests().get(0).getCultureWorkflowType());

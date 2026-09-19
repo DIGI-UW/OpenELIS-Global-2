@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   TextInput,
@@ -10,19 +10,34 @@ import {
   Stack,
   Button,
 } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryItemAPI,
   InventoryLotAPI,
   InventoryManagementAPI,
-  StorageLocationAPI,
+  InventoryLotStorageAPI,
 } from "./InventoryService";
-import StorageLocationModal from "./StorageLocationModal";
+import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
+import {
+  selectionToHierarchicalPath,
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
+
+  // Guards setState after awaits — fetches and saves can resolve after the
+  // parent has unmounted this modal (e.g. onSave() closes it before the
+  // finally block runs).
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     inventoryItem: null,
@@ -30,19 +45,28 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     currentQuantity: 0,
     expirationDate: null,
     receiptDate: new Date(),
-    storageLocation: null,
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
   });
 
   const [items, setItems] = useState([]);
-  const [locations, setLocations] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
-  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  // Edit mode: the lot's currently-assigned location, shaped for
+  // LocationPickerModal's currentLocation prop; null when unassigned.
+  const [currentLocation, setCurrentLocation] = useState(null);
+  // Create mode: a location picked before the lot exists in the DB,
+  // applied right after the lot is saved (see handleSave).
+  const [pendingAssignment, setPendingAssignment] = useState(null);
+  // Create mode: id of the lot this modal already committed. Receive and
+  // assign are two independent server writes; holding the id makes a retry
+  // after a failed assign skip the receive, so the stock is not counted twice.
+  const [createdLotId, setCreatedLotId] = useState(null);
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -59,7 +83,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   useEffect(() => {
     fetchItems();
-    fetchLocations();
   }, []);
 
   useEffect(() => {
@@ -72,17 +95,18 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           ? new Date(lot.expirationDate)
           : null,
         receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
-        storageLocation: lot.storageLocation,
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
       });
+      fetchCurrentLocation(lot.id);
     }
   }, [lot]);
 
   const fetchItems = async () => {
     try {
       const allItems = await InventoryItemAPI.getAll({ isActive: true });
+      if (!isMountedRef.current) return;
       const validItems = Array.isArray(allItems) ? allItems : [];
       setItems(
         validItems.map((item) => ({
@@ -93,31 +117,29 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       );
     } catch (err) {
       console.error("Error fetching items:", err);
-      setItems([]);
+      if (isMountedRef.current) setItems([]);
     }
   };
 
-  const fetchLocations = async () => {
+  const fetchCurrentLocation = async (lotId) => {
     try {
-      const allLocations = await StorageLocationAPI.getAll();
-      const validLocations = Array.isArray(allLocations) ? allLocations : [];
-      setLocations(
-        validLocations.map((loc) => ({
-          id: loc.id,
-          text: loc.name,
-          location: loc,
-        })),
-      );
+      const location = await InventoryLotStorageAPI.getLocation(lotId);
+      if (!isMountedRef.current) return;
+      if (location && location.hierarchicalPath) {
+        setCurrentLocation({
+          selection: {},
+          hierarchicalPath: location.hierarchicalPath,
+          position: location.positionCoordinate
+            ? { mode: "text", value: location.positionCoordinate }
+            : null,
+        });
+      } else {
+        setCurrentLocation(null);
+      }
     } catch (err) {
-      console.error("Error fetching locations:", err);
-      setLocations([]);
+      console.error("Error fetching lot location:", err);
+      if (isMountedRef.current) setCurrentLocation(null);
     }
-  };
-
-  const handleLocationCreated = (newLocation) => {
-    setLocationModalOpen(false);
-    fetchLocations();
-    handleChange("storageLocation", newLocation);
   };
 
   const handleChange = (field, value) => {
@@ -136,7 +158,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.lotNumber?.trim()) {
+    if (isEdit && !formData.lotNumber?.trim()) {
       setError("Lot number is required");
       return false;
     }
@@ -146,12 +168,27 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.storageLocation) {
-      setError("Please select a storage location");
+    if (!isEdit && !pendingAssignment) {
+      setError("Please assign a storage location");
       return false;
     }
 
     return true;
+  };
+
+  const buildLocationPayload = (inventoryLotId, assignment) => {
+    const deepest = getDeepestLocationSelection(assignment.selection, {
+      requireAssignable: true,
+    });
+    return {
+      inventoryLotId: String(inventoryLotId),
+      locationId: deepest ? String(deepest.value.id) : null,
+      locationType: deepest ? deepest.type : null,
+      positionCoordinate: positionToCoordinate(assignment.position, {
+        emptyValue: null,
+      }),
+      notes: assignment.notes || "",
+    };
   };
 
   const handleSave = async () => {
@@ -165,40 +202,149 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         await InventoryLotAPI.update(lot.id, {
           ...formData,
           inventoryItem: formData.inventoryItem,
-          storageLocation: formData.storageLocation,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
+          // barcode is UNIQUE: blank has to be null, or a second blank collides
+          barcode: formData.barcode?.trim() || null,
         });
-      } else {
-        await InventoryManagementAPI.receive({
+        onSave();
+        return;
+      }
+
+      let lotId = createdLotId;
+      if (lotId === null) {
+        const savedLot = await InventoryManagementAPI.receive({
           inventoryItem: { id: formData.inventoryItem.id },
-          lotNumber: formData.lotNumber,
+          // Leave blank to let the server auto-generate one from the item
+          // code + today's date.
+          lotNumber: formData.lotNumber?.trim() || null,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
           expirationDate: formData.expirationDate
             ? formData.expirationDate.toISOString()
             : null,
           receiptDate: formData.receiptDate.toISOString(),
-          storageLocation: { id: formData.storageLocation.id },
           qcStatus: formData.qcStatus,
           status: formData.status,
-          barcode: formData.barcode || null,
+          barcode: formData.barcode?.trim() || null,
         });
+        lotId = savedLot?.id ?? null;
+        setCreatedLotId(lotId);
+        // The field locks here, so show the barcode the server minted, not a blank.
+        if (savedLot?.barcode) {
+          setFormData((prev) => ({ ...prev, barcode: savedLot.barcode }));
+        }
+      }
+
+      if (pendingAssignment && lotId !== null) {
+        try {
+          await InventoryLotStorageAPI.assignLocation(
+            buildLocationPayload(lotId, pendingAssignment),
+          );
+        } catch (assignErr) {
+          console.error("Error assigning location to new lot:", assignErr);
+          setError(
+            intl.formatMessage(
+              { id: "lot.save.error.locationAfterCreate" },
+              { reason: assignErr.message || "" },
+            ),
+          );
+          return;
+        }
       }
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      setError(err.message || "Error saving lot");
+      if (!isMountedRef.current) return;
+      // errorCode is an en.json id; message is the raw backend string.
+      setError(
+        err.errorCode
+          ? intl.formatMessage({ id: err.errorCode }, err.params)
+          : err.message || intl.formatMessage({ id: "lot.save.error" }),
+      );
     } finally {
-      setSaving(false);
+      // onSave() above may have unmounted this modal already.
+      if (isMountedRef.current) setSaving(false);
     }
   };
+
+  // A lot committed by a save whose location assignment then failed is
+  // already in the database, so refresh the caller's list on the way out
+  // rather than letting the operator re-enter it by hand.
+  const handleClose = () => {
+    if (createdLotId !== null) {
+      onSave();
+      return;
+    }
+    onClose();
+  };
+
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
+    // The assign/move endpoints reject a blank locationId with a 400, and
+    // in create mode that rejection would land after the lot is committed.
+    if (!getDeepestLocationSelection(selection, { requireAssignable: true })) {
+      setLocationError(
+        intl.formatMessage({ id: "storage.manageLocation.error.selectTarget" }),
+      );
+      setLocationPickerOpen(false);
+      return;
+    }
+
+    if (!isEdit) {
+      // Lot doesn't exist yet — defer the assignment call until handleSave.
+      setPendingAssignment({ selection, position, notes });
+      setLocationPickerOpen(false);
+      return;
+    }
+
+    setLocationError(null);
+    try {
+      const payload = buildLocationPayload(lot.id, {
+        selection,
+        position,
+        notes,
+      });
+      if (currentLocation) {
+        await InventoryLotStorageAPI.moveLocation({
+          ...payload,
+          reason: reason || "",
+        });
+      } else {
+        await InventoryLotStorageAPI.assignLocation(payload);
+      }
+      await fetchCurrentLocation(lot.id);
+      if (isMountedRef.current) setLocationPickerOpen(false);
+    } catch (err) {
+      console.error("Error assigning lot location:", err);
+      if (isMountedRef.current)
+        setLocationError(err.message || "Error assigning storage location");
+    }
+  };
+
+  // After a partial create (lot committed, assignment rejected) only the
+  // assignment is retried, so edits to the lot fields would not be sent.
+  const lotFieldsLocked = createdLotId !== null;
+
+  // The server only protects a barcode it already stored, so a lot without
+  // one stays editable.
+  const barcodeLocked = (isEdit && !!lot.barcode) || lotFieldsLocked;
+
+  const locationSummary = isEdit
+    ? currentLocation?.hierarchicalPath || ""
+    : pendingAssignment
+      ? selectionToHierarchicalPath(pendingAssignment.selection)
+      : "";
 
   return (
     <>
       <Modal
-        open={open && !locationModalOpen}
-        onRequestClose={onClose}
+        open={open && !locationPickerOpen}
+        onRequestClose={handleClose}
         onRequestSubmit={handleSave}
         modalHeading={intl.formatMessage({
           id: isEdit ? "lot.form.title.edit" : "lot.form.title.add",
@@ -221,14 +367,15 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
               formData.inventoryItem
-                ? items.find((i) => i.id === formData.inventoryItem.id)
+                ? (items.find((i) => i.id === formData.inventoryItem.id) ??
+                  null)
                 : null
             }
             onChange={({ selectedItem }) =>
               handleChange("inventoryItem", selectedItem.item)
             }
             required
-            disabled={isEdit}
+            disabled={isEdit || lotFieldsLocked}
           />
 
           <TextInput
@@ -236,7 +383,25 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             labelText={<FormattedMessage id="lot.number" />}
             value={formData.lotNumber}
             onChange={(e) => handleChange("lotNumber", e.target.value)}
-            required
+            required={isEdit}
+            disabled={lotFieldsLocked}
+            placeholder={
+              isEdit
+                ? undefined
+                : intl.formatMessage({
+                    id: "lot.number.placeholder",
+                    defaultMessage: "Leave blank to auto-generate",
+                  })
+            }
+            helperText={
+              isEdit
+                ? undefined
+                : intl.formatMessage({
+                    id: "lot.number.hint",
+                    defaultMessage:
+                      "Stable identifier for this lot. Leave blank and we'll generate one from the item code and today's date.",
+                  })
+            }
           />
 
           <NumberInput
@@ -248,6 +413,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             max={999999999}
             step={1}
             required
+            disabled={lotFieldsLocked}
           />
 
           <DatePicker
@@ -259,6 +425,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               id="expirationDate"
               labelText={<FormattedMessage id="lot.expirationDate" />}
               placeholder="mm/dd/yyyy"
+              disabled={lotFieldsLocked}
             />
           </DatePicker>
 
@@ -271,6 +438,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
               placeholder="mm/dd/yyyy"
+              disabled={lotFieldsLocked}
             />
           </DatePicker>
 
@@ -290,27 +458,36 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               <Button
                 kind="ghost"
                 size="sm"
-                renderIcon={Add}
-                onClick={() => setLocationModalOpen(true)}
+                onClick={() => {
+                  setLocationError(null);
+                  setLocationPickerOpen(true);
+                }}
               >
-                <FormattedMessage id="storage.location.add.button" />
+                <FormattedMessage
+                  id={
+                    locationSummary
+                      ? "storage.location.move"
+                      : "storage.location.assign"
+                  }
+                  defaultMessage={
+                    locationSummary
+                      ? "Move storage location"
+                      : "Assign storage location"
+                  }
+                />
               </Button>
             </div>
-            <Dropdown
-              id="storageLocation"
-              label="Select storage location"
-              items={locations}
-              itemToString={(item) => (item ? item.text : "")}
-              selectedItem={
-                formData.storageLocation
-                  ? locations.find((l) => l.id === formData.storageLocation.id)
-                  : null
-              }
-              onChange={({ selectedItem }) =>
-                handleChange("storageLocation", selectedItem.location)
-              }
-              required
-            />
+            <div>
+              {locationSummary || (
+                <FormattedMessage
+                  id="storage.location.notAssigned"
+                  defaultMessage="Not assigned"
+                />
+              )}
+            </div>
+            {locationError && (
+              <div style={{ color: "red" }}>{locationError}</div>
+            )}
           </div>
 
           <Dropdown
@@ -319,12 +496,14 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select QC status"
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={qcStatusOptions.find(
-              (s) => s.id === formData.qcStatus,
-            )}
+            selectedItem={
+              qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("qcStatus", selectedItem.id)
             }
+            disabled={lotFieldsLocked}
+            helperText={intl.formatMessage({ id: "lot.qcStatus.hint" })}
           />
 
           <Dropdown
@@ -333,27 +512,52 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select status"
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={statusOptions.find((s) => s.id === formData.status)}
+            selectedItem={
+              statusOptions.find((s) => s.id === formData.status) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("status", selectedItem.id)
             }
+            disabled={lotFieldsLocked}
           />
 
           <TextInput
             id="barcode"
             labelText={<FormattedMessage id="lot.barcode" />}
             value={formData.barcode}
+            disabled={barcodeLocked}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
+            placeholder={
+              barcodeLocked
+                ? ""
+                : intl.formatMessage({
+                    id: isEdit
+                      ? "lot.barcode.placeholder.assign"
+                      : "lot.barcode.placeholder",
+                  })
+            }
+            helperText={intl.formatMessage({
+              id: barcodeLocked
+                ? "lot.barcode.locked"
+                : isEdit
+                  ? "lot.barcode.assign"
+                  : "lot.barcode.hint",
+            })}
           />
         </Stack>
       </Modal>
 
-      {/* Storage Location Creation Modal */}
-      <StorageLocationModal
-        open={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
-        onSave={handleLocationCreated}
+      <LocationPickerModal
+        isOpen={locationPickerOpen}
+        occupantType="INVENTORY_LOT"
+        occupant={{
+          label: formData.lotNumber,
+          type: formData.inventoryItem?.name || "",
+          status: formData.status,
+        }}
+        currentLocation={isEdit ? currentLocation : null}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => setLocationPickerOpen(false)}
       />
     </>
   );

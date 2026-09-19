@@ -50,7 +50,7 @@ async function openManageLocationFromRow(page: Page, rowIndex = 0) {
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: /(assign storage location|move sample)/i,
+      name: /(assign storage location|move item)/i,
     }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
 }
@@ -118,12 +118,7 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   }) => {
     await openManageLocationFromRow(page, 1);
 
-    await test.step("open cascade view", async () => {
-      await page
-        .getByRole("button", { name: /create new location/i })
-        .click({ timeout: UI_TIMEOUT });
-    });
-
+    // The level cascade renders alongside search; there is no toggle to open.
     await test.step("choose room → device", async () => {
       const roomScope = page.locator("#location-picker-room");
       await roomScope.locator("button.cds--list-box__field").click();

@@ -11,6 +11,10 @@ import org.springframework.data.domain.Pageable;
 public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignment, Integer> {
     SampleStorageAssignment findBySampleItemId(String sampleItemId);
 
+    SampleStorageAssignment findByInventoryLotId(Long inventoryLotId);
+
+    List<SampleStorageAssignment> findByInventoryLotIds(List<Long> inventoryLotIds);
+
     SampleStorageAssignment findByStorageBox(StorageBox box);
 
     boolean isBoxOccupied(StorageBox box);
@@ -19,7 +23,11 @@ public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignm
 
     List<String> getOccupiedCoordinatesByBoxId(Integer boxId);
 
-    Map<String, Map<String, String>> getOccupiedCoordinatesWithSampleInfo(Integer boxId);
+    /**
+     * Occupied box coordinates to occupant info: occupantType, sampleItemId or
+     * inventoryLotId, and externalId (sample item external id or lot number).
+     */
+    Map<String, Map<String, String>> getOccupiedCoordinatesWithOccupantInfo(Integer boxId);
 
     int countByLocationTypeAndId(String locationType, Integer locationId);
 

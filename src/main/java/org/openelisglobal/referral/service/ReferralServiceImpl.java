@@ -713,6 +713,11 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         if (target == ReferralStatus.REQUESTED) {
             subcontract.setHandoffDatetime(handoffDatetime);
             subcontract.setSysUserId(actorUserId);
+            // The referral's own sent date is what the Reference Lab Results page shows and
+            // counts days outstanding from. Stamping it here rather than only where a send
+            // date is typed on a form means a referral dispatched by a shipment box, which
+            // is the point of leaving one in DRAFT, ages like any other.
+            referral.setSentDate(handoffDatetime);
         }
         referral.setStatus(target);
         referral.setSysUserId(actorUserId);

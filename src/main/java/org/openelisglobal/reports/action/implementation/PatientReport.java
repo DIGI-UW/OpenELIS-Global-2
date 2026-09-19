@@ -674,6 +674,10 @@ public abstract class PatientReport extends Report {
                         flag = "E";
                     }
                 }
+                String critical = criticalAlertFlag(result);
+                if (!GenericValidator.isBlankOrNull(critical)) {
+                    flag = critical;
+                }
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
                 boolean isAbnormal;
 
@@ -708,6 +712,27 @@ public abstract class PatientReport extends Report {
         }
 
         return "";
+    }
+
+    /**
+     * OGC-1121 — BB / EE mark a value beyond the authored critical bound of the
+     * result's own range, the tier the B / E letters cannot express. The result row
+     * carries no critical snapshot, so the bound is read from the range the catalog
+     * resolves for this analysis and patient today.
+     */
+    protected String criticalAlertFlag(Result result) {
+        if (currentAnalysis == null || result == null) {
+            return "";
+        }
+        try {
+            ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
+                    result, currentPatient);
+            return ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+        } catch (RuntimeException e) {
+            LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
+                    + result.getId() + ": the report prints the value without it", e);
+            return "";
+        }
     }
 
     protected String getRange(Result result) {

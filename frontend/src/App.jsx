@@ -413,6 +413,11 @@ export default function App() {
     messageKey: "errorBoundary.route.samplePatientEntry.message",
   };
 
+  const routeErrorOrderEntry = {
+    titleKey: "errorBoundary.route.orderEntry.title",
+    messageKey: "errorBoundary.route.orderEntry.message",
+  };
+
   const routeErrorAnalyzers = {
     titleKey: "errorBoundary.route.analyzers.title",
     messageKey: "errorBoundary.route.analyzers.message",
@@ -686,7 +691,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <ClinicalOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <ClinicalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -726,7 +735,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <EnvironmentalOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <EnvironmentalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -760,7 +773,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <VectorOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <VectorOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
