@@ -1,14 +1,19 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
+import { StorageManagement } from "../../../fixtures/storage-management";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Sample Items page + dedicated Manage Location page.
+ * Sample Items tab + dedicated Manage Location page.
  *
  * User story: admin navigates to /Storage/sample-items, clicks Manage
  * Location on a row → LocationPickerPage at
  * /Storage/sample-items/{id}/manage-location. They pick or create a
  * location, click Save, and are navigated back.
+ *
+ * Sample Items is a tab of the Storage Management container now, so the
+ * container owns the breadcrumb and heading and the tab's own <h1> is gone.
+ * Manage Location remains a standalone route with its own heading.
  *
  * Fixture precondition: the environment must contain at least one
  * sample item, and a device named "Freezer Unit 1" under a room
@@ -23,10 +28,10 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  */
 
 async function openManageLocationFromRow(page: Page, rowIndex = 0) {
+  const storage = new StorageManagement(page);
   await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
-  await expect(
-    page.getByRole("heading", { level: 1, name: /sample items/i }),
-  ).toBeVisible({ timeout: LONG_TIMEOUT });
+  await storage.expectContainer();
+  await storage.expectTabSelected("Sample Items");
 
   // Auto-retrying wait: `toBeVisible` polls until the table-row XHR
   // completes and at least one row hydrates. `locator.count()` is a
@@ -56,25 +61,21 @@ async function openManageLocationFromRow(page: Page, rowIndex = 0) {
 }
 
 test.describe("Sample Items page — Manage Location (dedicated page)", () => {
-  test("lists sample items with header and table rendered", async ({
+  test("lists sample items on its tab with the container chrome", async ({
     page,
   }) => {
+    const storage = new StorageManagement(page);
     await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/Storage\/sample-items/, {
       timeout: LONG_TIMEOUT,
     });
-    await expect(
-      page.getByRole("heading", { level: 1, name: /sample items/i }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+    // Breadcrumb + heading now come from the container, not the tab.
+    await storage.expectContainer();
+    await storage.expectTabSelected("Sample Items");
 
     const rows = page.locator("table tbody tr");
     await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
-
-    const breadcrumb = page.getByRole("navigation", { name: /breadcrumb/i });
-    await expect(breadcrumb).toBeVisible();
-    await expect(
-      breadcrumb.getByRole("link", { name: /^storage$/i }),
-    ).toBeVisible();
   });
 
   test("assigns a device-level location via search on the dedicated page", async ({
@@ -107,9 +108,9 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
       await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
         timeout: LONG_TIMEOUT,
       });
-      await expect(
-        page.getByRole("heading", { level: 1, name: /sample items/i }),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
+      const storage = new StorageManagement(page);
+      await storage.expectContainer();
+      await storage.expectTabSelected("Sample Items");
     });
   });
 
