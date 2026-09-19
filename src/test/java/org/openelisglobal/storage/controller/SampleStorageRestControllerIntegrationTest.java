@@ -44,21 +44,19 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         assertTrue("Response should be an array", itemsArray.isArray());
         assertTrue("Response should contain at least one sample", itemsArray.size() > 0);
 
-        // Found by its location rather than by position: this test is about the
-        // hierarchy being loaded eagerly, and the listing is ordered by id, so
-        // which row carries a location is not this test's to know.
-        JsonNode firstSample = null;
+        // The listing is ordered by id, so the assigned row is not the first one.
+        JsonNode assignedSample = null;
         for (JsonNode sample : itemsArray) {
             if (sample.has("location") && !sample.get("location").asText().trim().isEmpty()) {
-                firstSample = sample;
+                assignedSample = sample;
                 break;
             }
         }
-        assertNotNull("The listing should contain a sample with a location", firstSample);
-        assertTrue("Sample should have 'id' field", firstSample.has("id"));
-        assertTrue("SampleItem should have 'sampleItemId' field", firstSample.has("sampleItemId"));
+        assertNotNull("The listing should contain a sample with a location", assignedSample);
+        assertTrue("Sample should have 'id' field", assignedSample.has("id"));
+        assertTrue("SampleItem should have 'sampleItemId' field", assignedSample.has("sampleItemId"));
 
-        String location = firstSample.get("location").asText();
+        String location = assignedSample.get("location").asText();
         assertTrue("Location should contain hierarchical separator '>'", location.contains(">"));
 
         assertTrue("Location should contain room name", location.contains("Test Integration Room"));
