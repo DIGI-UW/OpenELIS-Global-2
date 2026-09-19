@@ -176,4 +176,31 @@ describe("AddLocationModal", () => {
     expect(await screen.findByText("Code already exists")).toBeInTheDocument();
     expect(onCreated).not.toHaveBeenCalled();
   });
+
+  it("shows the field message when bean validation rejects the post", async () => {
+    Utils.postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        timestamp: "2026-01-01T00:00:00Z",
+        status: 400,
+        statusCode: 400,
+        errors: { code: "Box code must not exceed 10 characters" },
+      }),
+    );
+    const onCreated = vi.fn();
+    renderModal({ level: "box", onCreated });
+
+    fireEvent.change(screen.getByLabelText(/^label$/i), {
+      target: { value: "Box Alpha" },
+    });
+    fireEvent.change(screen.getByLabelText(/^code$/i), {
+      target: { value: "BX-0000001" },
+    });
+    await chooseParent("Main Lab");
+    fireEvent.click(screen.getByText("Create").closest("button"));
+
+    expect(
+      await screen.findByText("Box code must not exceed 10 characters"),
+    ).toBeInTheDocument();
+    expect(onCreated).not.toHaveBeenCalled();
+  });
 });

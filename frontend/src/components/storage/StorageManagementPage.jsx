@@ -36,11 +36,9 @@ const breadcrumbs = [
 /**
  * StorageManagementPage — /Storage.
  *
- * Storage used to spend six sidenav rows on one module and five near-identical
- * listing pages on Rooms/Devices/Shelves/Racks/Boxes — levels of a single
- * hierarchy presented as peers. The Dashboard tab now carries counted tiles
- * over one table, and picking a tile swaps which level that table shows, the
- * same shape as Inventory Management's metrics-over-lots dashboard.
+ * Three tabs: Dashboard, Sample Items, Inventory Lots. The Dashboard tab
+ * carries one counted tile per hierarchy level over a single table, and
+ * picking a tile swaps which level that table shows.
  */
 
 // Hierarchy order, not alphabetical.

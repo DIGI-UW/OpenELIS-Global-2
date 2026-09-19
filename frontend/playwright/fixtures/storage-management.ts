@@ -4,12 +4,11 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 /**
  * Storage Management Page Object — /Storage.
  *
- * Storage used to be six sidenav rows and six standalone pages. It is now a
- * single container at /Storage with three tabs (Dashboard, Sample Items,
+ * A single container at /Storage with three tabs (Dashboard, Sample Items,
  * Inventory Lots). The five hierarchy levels are tiles on the Dashboard tab,
  * each swapping the table below it; /Storage/{level} deep-links to that
  * level. The container owns the breadcrumb and the heading, so the embedded
- * level/sample/lot pages no longer render their own.
+ * level/sample/lot pages do not render their own.
  *
  * Selector strategy follows .specify/guides/playwright-best-practices.md.
  * The tiles are Carbon ClickableTiles rendered as <a> without href, so they

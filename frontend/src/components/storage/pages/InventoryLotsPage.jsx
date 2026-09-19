@@ -18,10 +18,8 @@ import useStorageTableData from "../hooks/useStorageTableData";
 /**
  * InventoryLotsPage — /Storage/inventory-lots.
  *
- * The lot counterpart of SampleItemsPage. Storage Management could show
- * which samples occupied a location but never which inventory lots did,
- * even though both share sample_storage_assignment and both count toward
- * occupancy.
+ * Lists the lots that have been assigned storage. Lots and samples share
+ * sample_storage_assignment, so both count toward a location's occupancy.
  */
 export default function InventoryLotsPage() {
   const intl = useIntl();

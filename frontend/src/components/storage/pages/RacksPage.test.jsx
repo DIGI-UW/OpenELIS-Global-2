@@ -132,10 +132,10 @@ describe("RacksPage — feedback", () => {
   });
 });
 
-// The storage PUT and DELETE endpoints carry no role check of their own, so
-// this gate is the only thing standing between a non-admin and a working edit
-// path. A suite that only asserts admins DO see the menu lets it be deleted.
-describe("RacksPage — who gets Edit and Delete", () => {
+// The storage POST, PUT and DELETE endpoints carry no role check of their own,
+// so this gate is the only role barrier on the create and edit paths. A suite
+// that only asserts admins DO see the controls lets the gate be deleted.
+describe("RacksPage — who gets Add, Edit and Delete", () => {
   const listOneRack = () =>
     Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([{ id: 1, label: "Rack R1", code: "RKR1", active: true }]),
@@ -152,6 +152,7 @@ describe("RacksPage — who gets Edit and Delete", () => {
       document.querySelector('[data-testid="storage-row-actions-1"]'),
     ).toBeInTheDocument();
     expect(headerCount()).toBe(5);
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
   it("offers a Reception user no row menu and no column for one", async () => {
@@ -163,6 +164,7 @@ describe("RacksPage — who gets Edit and Delete", () => {
       document.querySelector('[data-testid^="storage-row-actions-"]'),
     ).toBeNull();
     expect(headerCount()).toBe(4);
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
   });
 });
 
