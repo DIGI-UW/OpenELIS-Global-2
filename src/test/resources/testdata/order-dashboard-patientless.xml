@@ -32,10 +32,6 @@
         is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
         test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
         guid="test-lead-001" name_localization_id="1" />
-    <observation_history_type id="9001"
-        type_name="envWorkflowType" description="Environmental workflow type" />
-    <observation_history_type id="9002"
-        type_name="vecCollectionSiteName" description="Collection site name" />
     <sample id="9101" accession_number="DASH-0001" domain="H"
         status_id="1" received_date="2025-06-02 00:00:00.0"
         entered_date="2025-06-02 00:00:00.0"
@@ -168,10 +164,4 @@
         test_sect_id="1" revision="0" status_id="4"
         lastupdated="2025-06-26 12:00:00" analysis_type="MANUAL"
         is_reportable="Y" />
-    <observation_history id="9125" sample_id="9125"
-        observation_history_type_id="9001" value_type="L"
-        value="environmental" lastupdated="2025-06-26 12:00:00" />
-    <observation_history id="9126" sample_id="9125"
-        observation_history_type_id="9002" value_type="L" value="CPHL"
-        lastupdated="2025-06-26 12:00:00" />
 </dataset>

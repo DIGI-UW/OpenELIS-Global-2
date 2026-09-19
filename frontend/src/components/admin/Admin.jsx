@@ -19,6 +19,7 @@ import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
+import ProviderTitleMenu from "./providerTitle/ProviderTitleMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
@@ -28,6 +29,7 @@ import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
 import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
+import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
@@ -82,12 +84,17 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route
+        path={`${path}/MicrobiologyReference/:section/:detailId?`}
+        component={MicrobiologyReferenceAdmin}
+      />
       <Route
         path={`${path}/calendarManagement`}
         component={CalendarManagement}
@@ -96,6 +103,7 @@ function Admin() {
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}
@@ -115,6 +123,7 @@ function Admin() {
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
+      <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
       <Redirect

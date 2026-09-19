@@ -56,7 +56,9 @@ import org.openelisglobal.program.valueholder.immunohistochemistry.Immunohistoch
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySampleReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.provider.service.ProviderDisplayName;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qaevent.service.QaEventService;
 import org.openelisglobal.qaevent.valueholder.QaEvent;
@@ -146,6 +148,8 @@ public class DisplayListService implements LocaleChangeListener {
     private LocaleResolver localeResolver;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired(required = false)
+    private ProviderTitleService providerTitleService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
 
@@ -158,6 +162,19 @@ public class DisplayListService implements LocaleChangeListener {
             ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
         }
 
+    }
+
+    /**
+     * A provider's title as it prints, resolved from the dictionary entry the code
+     * names. Returns the raw code if the entry has gone, so a name never loses its
+     * rank silently (OGC-1223).
+     */
+    private String providerTitleAbbreviation(String titleCode) {
+        if (titleCode == null || titleCode.isBlank() || providerTitleService == null) {
+            return titleCode;
+        }
+        Dictionary title = providerTitleService.getByCode(titleCode);
+        return title == null ? titleCode : title.getLocalAbbreviation();
     }
 
     public static DisplayListService getInstance() {
@@ -722,8 +739,9 @@ public class DisplayListService implements LocaleChangeListener {
         });
 
         for (Provider provider : providerList) {
-            providerDisplayList.add(new IdValuePair(provider.getPerson().getId(),
-                    provider.getPerson().getLastName() + ", " + provider.getPerson().getFirstName()));
+            String abbreviation = providerTitleAbbreviation(provider.getPerson().getTitleCode());
+            providerDisplayList.add(new IdValuePair(provider.getPerson().getId(), ProviderDisplayName.titledFamilyFirst(
+                    abbreviation, provider.getPerson().getFirstName(), provider.getPerson().getLastName())));
         }
 
         return providerDisplayList;
@@ -1096,7 +1114,7 @@ public class DisplayListService implements LocaleChangeListener {
         List<Method> methods = methodService.getAll();
 
         for (Method method : methods) {
-            methodPairs.add(new IdValuePair(method.getId(), method.getLocalization().getLocalizedValue()));
+            methodPairs.add(new IdValuePair(method.getId(), method.getLocalizedValue()));
         }
 
         return methodPairs;

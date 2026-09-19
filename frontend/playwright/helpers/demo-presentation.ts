@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Page, TestInfo } from "@playwright/test";
+import { Locator, Page, TestInfo } from "@playwright/test";
 import { showSceneLabel, showStepCard, showTitleCard } from "./title-card";
 import { isVideoProject, videoPause } from "./video-pause";
 
@@ -9,6 +9,13 @@ const EVIDENCE_DIR = new URL("../../e2e-evidence", import.meta.url).pathname;
 
 export type DemoPresentation = {
   readonly isVideo: boolean;
+  chapter: (options: {
+    eyebrow: string;
+    title: string;
+    subtitle?: string;
+    accent?: string;
+    durationMs?: number;
+  }) => Promise<void>;
   title: (
     title: string,
     subtitle?: string,
@@ -21,7 +28,10 @@ export type DemoPresentation = {
   ) => Promise<void>;
   scene: (label: string) => Promise<void>;
   pause: (ms: number) => Promise<void>;
-  evidence: (name: string) => Promise<void>;
+  evidence: (
+    name: string,
+    options?: { fullPage?: boolean; locator?: Locator },
+  ) => Promise<void>;
 };
 
 export function createDemoPresentation(
@@ -32,15 +42,31 @@ export function createDemoPresentation(
 
   return {
     isVideo,
-    title: (title, subtitle, durationMs = 3000) =>
+    chapter: ({
+      eyebrow,
+      title,
+      subtitle,
+      accent = "#0f62fe",
+      durationMs = 3500,
+    }) =>
+      showTitleCard(page, title, subtitle, durationMs, testInfo, {
+        eyebrow,
+        accent,
+      }),
+    title: (title, subtitle, durationMs = 4500) =>
       showTitleCard(page, title, subtitle, durationMs, testInfo),
-    step: (stepNumber, description, durationMs = 2000) =>
+    step: (stepNumber, description, durationMs = 3000) =>
       showStepCard(page, stepNumber, description, durationMs, testInfo),
     scene: (label) => showSceneLabel(page, label, testInfo),
     pause: (ms) => videoPause(page, ms, testInfo),
-    evidence: async (name: string) => {
+    evidence: async (
+      name: string,
+      options: { fullPage?: boolean; locator?: Locator } = {},
+    ) => {
       if (!isVideo) return;
-      const screenshot = await page.screenshot({ fullPage: true });
+      const screenshot = options.locator
+        ? await options.locator.screenshot()
+        : await page.screenshot({ fullPage: options.fullPage ?? false });
       // Attach to HTML report
       await testInfo.attach(name, {
         body: screenshot,

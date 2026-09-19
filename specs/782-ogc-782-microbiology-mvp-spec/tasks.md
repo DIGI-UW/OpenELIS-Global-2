@@ -1,0 +1,506 @@
+# OGC-782 Microbiology Execution Roadmap
+
+This is the single execution roadmap and the only delivery-status document for
+OGC-782. It is intentionally concise. Detailed implementation history belongs
+in Git and pull requests, not in a second roadmap.
+
+## Authority Chain
+
+1. Repository-owned feature and engineering specifications:
+   - [Feature specification](./spec.md)
+   - [Engineering plan](./plan.md)
+   - [Research](./research.md)
+   - [Data model](./data-model.md)
+   - [API contract](./contracts/microbiology-openapi.yaml)
+   - [Clinical completeness specification](../782-ogc-782-microbiology-m8-clinical-completeness/spec.md)
+   - [Reference administration specification](../782-ogc-782-microbiology-m9-reference-mapping-admin/spec.md)
+   - [WHONET export specification](../782-ogc-782-microbiology-m10-whonet-export/spec.md)
+2. This roadmap, derived from those specifications.
+3. [OpenELIS Work microbiology artifacts](https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology)
+   for functional requirements, workflows, mocks, and visual intent only.
+
+OpenELIS Work does not dictate schema, APIs, routes, component structure, or
+service ownership. When its functional intent differs from repository specs,
+record the ambiguity here and obtain a product ruling before implementation.
+
+Grist is the live source of truth for UAT. Do not copy changing story totals,
+step totals, titles, or checklist revisions into repository specifications.
+An exported review report may retain its exact revision as immutable acceptance
+evidence.
+
+Dated evidence reports, older gap analyses, slice-status notes, code-qa output,
+and subordinate milestone task ledgers are review artifacts. Do not commit or
+maintain them as parallel status documents.
+
+## Roadmap Principles
+
+These principles govern every future OGC-782 iteration and change only through
+an explicit product or engineering ruling:
+
+1. **Repository specifications are authoritative.** Product behavior belongs
+   in `spec.md`; technical design belongs in `plan.md` and its supporting
+   repository specifications.
+2. **This roadmap is the single execution control.** Maintain current scope,
+   order, blockers, and coarse delivery state here. Do not create or revive a
+   second status ledger.
+3. **OpenELIS Work is functional and visual input only.** Use it to understand
+   actors, workflows, interactions, and visual intent. Do not inherit its table,
+   API, route, class, ownership, or storage suggestions as requirements.
+4. **Resolve drift into the repository spec.** When OpenELIS Work changes or
+   conflicts with implemented behavior, identify the product implication and
+   reconcile `spec.md` before changing code. Ask Piotr when the intended
+   behavior is genuinely ambiguous.
+5. **Do not mirror transient metadata.** Commit identifiers, deployment
+   identifiers, test totals, Grist revisions, and checklist inventories belong
+   in their native systems or immutable acceptance reports, not in living specs,
+   the roadmap, or PR prose.
+6. **Grist owns live UAT.** Repository tests prove Review integration and
+   application behavior; they do not duplicate the current Grist catalog.
+7. **PR descriptions are snapshots derived from this roadmap.** Keep them
+   concise and update them when scope, blockers, deployment state, or human
+   acceptance materially changes, not after every commit or test run.
+8. **Evidence is immutable, not operational.** Prior gap analyses, visual
+   comparisons, code-qa reports, videos, and exported UAT reports remain useful
+   evidence but never compete with this roadmap for current status.
+9. **Validation must be proportional.** Use focused TDD, relevant integration
+   and Playwright coverage, and one meaningful slice-level code-qa pass. Avoid
+   repetitive validation and bookkeeping that do not reduce implementation or
+   acceptance risk.
+10. **Only runtime value justifies deployment.** Develop and validate locally;
+    deploy a coherent user-visible slice for review, never documentation-only or
+    test-only changes.
+
+## Iteration Status
+
+This roadmap uses four simple iteration markers:
+
+- `[ ]` means a future iteration that has not started.
+- `[*]` means the single iteration currently being worked.
+- `[x]` means implementation and focused automated validation are complete,
+  required pull-request checks are green, any user-visible runtime behavior is
+  deployed to the review host, and the iteration is ready for user validation.
+- `[✓]` means the iteration has been explicitly validated by the user.
+
+Keep only these durable markers in the roadmap. Detailed PR and CI state stays
+in GitHub, deployment state stays on the review host, and UAT results stay in
+Grist.
+
+### Finished Iterations
+
+- [x] **MVP foundations and routing (#3789)** - Test configuration, reference
+  foundations, case identity, and automatic order routing.
+- [x] **MVP workbench and AST (#4134)** - Case workflow, isolates, manual AST,
+  and interpretation review.
+- [x] **MVP worklist and critical communication (#4135)** - Shared worklist,
+  canonical navigation state, and synchronized critical communication.
+- [x] **MVP release and reporting (#4136)** - Preliminary/final propagation,
+  final-case lock, patient reporting, and WHONET readiness.
+- [x] **Clinical completeness (#3972)** - Amendment and re-identification
+  history, repeat/retest AST, reagent/card-lot traceability, and initial NFR
+  qualification.
+- [x] **Reference administration (#3981)** - Organism and antibiotic
+  vocabularies, AST panel versions, culture defaults, breakpoint lifecycle, and
+  guarded import.
+- [x] **WHONET export (#3984)** - Readiness, mapping repair, preview, and audited
+  manual CSV export.
+- [x] **Functional alignment (#4004)** - Supported order flow, complete bench
+  workflow, AST provenance and review, shared Culture/AST worklist, reagent
+  selection, and accessibility/security corrections.
+
+### Completed Baseline
+
+- [x] **R2 baseline reconciliation (#4051)** - Establish one authoritative
+  roadmap, align the durable specifications, and add the approved no-growth
+  review/release behavior to functional artifacts and live UAT without
+  changing application behavior.
+
+This iteration is complete because:
+
+- The authority chain, repository spec, engineering plan, OpenELIS Work
+  functional intent, and roadmap agree.
+- Repository tracing confirms that recording no growth is audited and
+  review-ready without publishing, while supervisor release projects the final
+  negative and locks the case.
+- One dedicated, reviewer-executable Grist story uses its own service-created
+  fixture and is available in the live AMR Review overlay.
+
+This baseline does not change application behavior, deploy, or watch CI.
+
+Macro Library is a separate OGC-788 product stack, not another OGC-782
+iteration. Microbiology consumes approved clinical macros after that shared
+capability is available; it does not own macro authoring or administration.
+
+### Approved No-Growth Behavior
+
+1. On an incubating case, **Record no growth** records the authenticated actor,
+   time, and bench outcome in the case history.
+2. Recording no growth moves the case to a review-ready state and creates no
+   patient result or final report.
+3. The case clearly presents the separate next action to review and release the
+   final negative report.
+4. A user without final-release authority cannot release the report, and a
+   submitted actor identifier cannot replace the authenticated actor.
+5. An authorized reviewer can release the final negative report through the
+   standard patient-report path.
+6. Final release records the reviewer and time, publishes the negative result,
+   and locks culture, isolate, AST, and protocol mutation.
+7. The case route and active section remain bookmarkable and refresh-stable;
+   keyboard focus and status announcements follow existing Carbon patterns.
+
+### Target Clinical Order-Entry Behavior
+
+This is the target behavior the clinical order-entry remediation delivers,
+across the iterations below. It does not change `spec.md`; the decisions that
+shaped it are recorded under Order-Entry Rulings.
+
+1. Order entry appears as one action per domain directly under the main menu:
+   Add Clinical Order, Add Environmental Order, Add Vector Order, each opening
+   its own workflow with its own submenus and none of them nested under a
+   generic parent. A deployment shows only the domains it uses, so AMR shows
+   Add Clinical Order alone. The legacy Add Order screen stays reachable only
+   through existing direct links and is not extended.
+2. Every new order starts clean, whichever entry point starts it and whichever
+   domain it belongs to. No requester, program, sample, test, or microbiology
+   value from a previous order persists into the next one.
+3. One rule decides microbiology eligibility everywhere: a selected
+   culture-workflow test first, an explicitly selected Microbiology program
+   only as fallback. The same rule drives the microbiology details tile,
+   Program derivation, readiness, and what the order sends to the server.
+4. A normal order never carries or stores microbiology details, even when a
+   client sends them.
+5. Removing the last culture test asks for confirmation before discarding
+   entered microbiology details, and Program becomes editable again.
+6. The requested stage saves the order and its requested specimens together. A
+   failure leaves no order behind, and saving again creates no duplicate
+   requested specimens.
+7. Collection turns requested specimens into received specimens and analyses,
+   and only then is a microbiology case created. Microbiology details entered
+   before collection are kept for the case and discarded only if the order
+   stops qualifying before a case exists. An established case never loses its
+   details.
+8. A successful requested-stage save presents one unambiguous completed or
+   next-action state and cannot create a second order by repetition, in the
+   shared save path used by all three domains.
+9. Number of sets means culture collection groups and appears on every
+   microbiology order, bounded one to ten with the specimen-derived default.
+   Specimen quantity means count or volume and stays separate.
+
+### Order-Entry Rulings
+
+Decided 2026-09-06. These close the open questions and set the scope of the
+remediation iterations below.
+
+1. **Navigation is corrected for every deployment, not only AMR.** Order entry
+   becomes one direct action per domain under the main menu, with the generic
+   parent retired, because the authoritative order-entry design requires it and
+   the current nesting is drift. Which domains a deployment shows is
+   deployment configuration through the existing menu allowlist; the review
+   host shows all three, since hiding domains a build contains would
+   misrepresent it to reviewers (an earlier draft said "AMR shows Add Clinical
+   Order alone"; that clause came from the Codex analysis, not a decision, and
+   was struck on 2026-09-06). The repository
+   specification's "supported Add Order workflow" wording is reconciled through
+   `/speckit.clarify` before the change lands. The authoritative design's
+   longer-term mechanism is per-user visibility driven by the domain of a
+   user's assigned lab units, which depends on lab-unit domain assignment and
+   the department/role scoping work; deployment configuration is the interim
+   mechanism and does not preclude it.
+2. **Number of sets appears on every microbiology order.** The field keeps its
+   one-to-ten bound and its specimen-derived default. A protocol-conditional
+   display would need per-method catalog metadata that does not exist, and
+   would degrade to always-visible until it did.
+3. **Completion state is fixed in the shared workflow.** A successful
+   requested-stage save must present one unambiguous completed or next-action
+   state and must not allow the same order to be submitted twice. This is the
+   shared save path, so clinical, environmental, and vector all receive the
+   behavior and all three journeys are re-verified. No microbiology-only
+   redirect is introduced.
+4. **No stale-draft cleanup is required.** Verified on 2026-09-06: the
+   microbiology order-detail service, its table, and its migration are absent
+   from the trunk, so no merged or released database can hold these rows. Only
+   the review host and ephemeral development and continuous-integration
+   databases are affected, and the review host is demo data. The server-side
+   eligibility check alone is the fix; no counting task and no destructive
+   cleanup are carried.
+
+## Roadmap Status
+
+### Phase 1A Closure
+
+- [x] **No-growth deterministic acceptance proof** - Add focused service,
+  Carbon, and registered `core-app` Playwright coverage for the approved
+  no-growth path without arbitrary waits or forced actions. Change runtime code
+  only if this evidence exposes a real defect; do not deploy test-only changes.
+- [ ] **Accept the current stack** - Complete human UAT in Grist, remediate real
+   findings in manageable slices, and merge the stack bottom-up.
+- [x] **Supported order-save integration proof** - Add the missing direct
+   integration test around the complete supported save path without SQL,
+   fixed primary keys, or DAO bypass.
+- [x] **Initial clinical and NFR qualification evidence** - Establish
+   statistically meaningful representative-volume measurements and complete
+   the automated keyboard/screen-reader review, fixing defects exposed by that
+   evidence.
+- [ ] **Shared offline/conflict behavior** - Adopt an application-wide offline
+  pattern when its ownership is agreed; do not build a microbiology-only queue.
+- [x] **Analyzer ingress security** - Replace general authenticated-user access
+   to culture and AST analyzer-event writes with the existing machine-to-machine
+   authentication pattern if one exists. An approved Bridge identity must be
+   able to submit and audit an event; ordinary browser users must be denied;
+   missing or invalid machine credentials must fail closed; and the existing
+   stuck-event reconciliation path must continue to work. If the repository has
+   no reusable machine-identity boundary, stop with the smallest viable options
+   instead of inventing an AMR-only role.
+- [ ] **Configurable worklist refresh** - Preserve the current thirty-second
+   default while allowing each deployment to configure a value from ten to one
+   hundred twenty seconds. Refresh must preserve canonical URL state, focus,
+   scroll position, and current row context, and polling must pause while the
+   application knows it is offline.
+- [ ] **Shared-specimen loss behavior** - Obtain the product ruling for a lost
+   physical specimen when sibling workflows share it, including whether a
+   released or amended sibling blocks the action. Then align service behavior,
+   case guidance, focused tests, and UAT; do not silently change the current
+   behavior before that ruling.
+- [ ] **Reagent policy dependency** - Enforce required, optional, and substitute
+   reagent behavior only after Test Catalog provides an authoritative shared
+   policy model; do not infer it from legacy role names.
+- [x] **Reviewed AST worklist behavior** - Remove reviewed attempts from the
+  default action queue, retain them in a bookmarkable Reviewed view with a
+  read-only View action, and keep reasoned repeat/retest setup inside the case.
+
+The active iteration is R13 below. The clinical order-entry remediation follows
+as R14, a small stacked PR on top of R13, and becomes active when R13 is green
+and deployed. Human acceptance and the shared offline and reagent-policy
+dependencies remain independent work and do not reorder that product sequence.
+
+### Phase 1B Clinical Depth
+
+- [ ] Implement expert rules and macro-driven bench workflows after the shared
+   Macro Library consumer contract is available.
+- [x] Complete analyzer-result review and QC with representative instrument
+  traffic and reconciliation through the configured Admin -> Stuck analyzer
+  events path.
+- [x] Complete WHONET specimen-code validation, export projection, and exact
+  repair navigation through the owning sample-type administration workflow.
+- [x] Complete M-09 export population filters already supported by authoritative
+  case data: specimen, organism, patient origin, and significance. Apply the
+  same selection to server-side preview and generation, preserve canonical URL
+  state, place the single export navigation entry under Reports, and compact the
+  touched page toward the M-09 operational layout.
+- [x] Capture Culture purpose on microbiology orders as Clinical
+  diagnosis/treatment or Active screening/carriage, show it with the case, audit
+  pre-release corrections, and complete the M-09 screening filter. New orders
+  default visibly to clinical purpose; historical missing values remain
+  Unspecified; screening and unspecified records require explicit inclusion.
+- [x] Complete M-09 reporting periods and the AST-worklist export handoff. Use
+  specimen collection date as the reporting-period basis while exporting only
+  finalized bacteriology cases. Provide full-calendar This Month, Last Month,
+  This Quarter, and Custom presets. A direct Reports entry defaults to Last
+  Month; an AST-worklist entry without an active period defaults to This Month.
+  Add canonical, URL-backed AST-worklist filters for reporting period, specimen
+  type, patient origin, organism, and isolate significance, and carry only those
+  structured surveillance filters into the existing Reports-owned WHONET
+  generator. Status, workflow, stage, urgency, due action, free-text search,
+  sort, and paging remain operational worklist state and must never change the
+  export population. The generator identifies worklist-provided scope, permits
+  every transferred value to be edited, and provides one clear action that
+  removes the source marker and transferred scope and restores the direct-entry
+  defaults. Reporting-period membership is independent of the later configurable
+  first-isolate window basis; until that control exists, the current seven-day
+  option also orders isolates by specimen collection date.
+- [*] **R13: M-09 advanced first-isolate behavior.** Implemented and validated
+  locally: window length and basis, source scope, contaminant handling, and
+  susceptibility-profile sensitivity behind a progressive disclosure, preserving
+  drop-repeat behavior for this slice.
+
+  **R13 ruling:** Implement the defined 7/14/30-day windows, date basis, source
+  scope, contaminant-first handling, and profile sensitivity. Episode-based
+  behavior waits for a functional episode boundary. Retained repeats and their
+  `FIRST_OR_REPEAT = R` marker move with the qualified output contract instead
+  of changing the legacy 15-column CSV in isolation.
+
+  **Reaches `[x]` when:**
+
+  - A released no-growth result stays visible from its persisted
+    patient-report projection; the finalized case shows no report-content,
+    isolate-required, or release blocker that contradicts the release; WHONET
+    ineligibility without an isolate is explained accurately and separately.
+  - Required checks are green at the exact head, including the E2E checkpoint,
+    and that exact head is deployed to the review host.
+  - The first-isolate and no-growth human-review stories are rerun on that
+    deployment. The order-entry findings stay open and are answered by R14.
+- [x] **R14: microbiology data only on qualifying orders.** The order-entry
+  invariant. Starts when R13 reaches `[x]`; its branch may start earlier.
+
+  1. **Reproduce first, as failing tests.** A culture order followed by a new
+     normal order; a normal-order requested-stage save on a service-created
+     catalog; a failed requested-specimen save after the order saved. Each
+     scenario gets one focused test at its natural level. A scenario that does
+     not reproduce is recorded as disproved with rerun evidence and changes no
+     order behavior.
+  2. **One eligibility rule.** Proof: unit coverage for culture-test-first,
+     program fallback, and neither; the details tile, Program derivation and
+     lock, readiness, and the outgoing payload all change together when the
+     rule changes; the legacy screen consults the same rule and is not
+     extended; confirmation before discard and Program returning editable are
+     covered.
+  3. **Microbiology data only when eligible.** Proof: a normal order's
+     requested-stage and collected-stage payloads carry no microbiology detail
+     and a culture order's do; the order defaults no longer carry it.
+  4. **Server-side eligibility and draft lifecycle.** Proof, with inversion
+     checks: a normal order save stores no microbiology draft even when the
+     request includes microbiology detail; a culture order save stores one;
+     removing eligibility before collection discards the pre-case draft; an
+     established case's details are never deleted; reloading a normal order
+     returns no microbiology detail.
+  5. **Number of sets.** Present on every microbiology order with its bound and
+     specimen-derived default, described so it cannot be read as specimen
+     quantity, in the workflow and in the review instructions alike.
+  6. **Regression coverage.** Unit coverage for the rule; component coverage
+     for tile visibility, Program lock, and discard; service integration
+     coverage for draft absence, presence, and discard; and one registered
+     end-to-end journey: culture order, start a new order, normal order, with
+     no microbiology fields, no worklist row, and no microbiology detail on
+     reload.
+
+  **Reaches `[x]` when:** every proof above passes plus one code-qa pass;
+  required checks are green at the exact head, including the end-to-end
+  checkpoint; that head is deployed to the review host; and the affected
+  order-entry review stories are rerun.
+
+- [x] **R15: clean state, atomic save, and unambiguous completion.** Shared
+  order-workflow correctness for all three domains, not microbiology-only. The
+  authoritative order-entry design already records clean state and
+  non-fatal, recoverable validation as defects to fix.
+
+  1. **Every new order starts clean.** No requester, program, sample, or test
+     value from a previous order persists into the next one, from any entry
+     point that starts a new order, in any domain. Proof: the sequence test
+     from R14 plus per-domain coverage.
+  2. **One submission implementation with requested and collected modes.**
+     Proof: clinical, environmental, and vector keep their current behavior
+     under existing component coverage and registered journeys.
+  3. **The order and its requested specimens save together.** Proof, with an
+     inversion check: a failure persisting a requested specimen leaves no
+     order behind; saving the requested stage again creates no duplicate
+     requested specimens.
+  4. **Validation stays recoverable.** A blocked save surfaces correctable
+     inline errors rather than an unrecoverable failure.
+  5. **Completion is unambiguous.** A successful requested-stage save presents
+     one clear completed or next-action state and cannot submit the same order
+     twice. Proof: per-domain journeys, and the review instruction updated to
+     match the shipped behavior.
+
+  **Reaches `[x]` when:** the proofs pass plus one code-qa pass; required
+  checks are green at the exact head; that head is deployed; and the
+  order-entry review stories for all three domains are rerun.
+
+- [x] **R16: canonical order-entry navigation.** Corrects the navigation drift
+  for every deployment.
+
+  1. **Reconcile the specification first.** Run `/speckit.clarify` so the
+     specification names the domain-scoped order-entry actions instead of "the
+     supported Add Order workflow", and land that before the navigation change.
+  2. **One action per domain, directly under the main menu.** Add Clinical
+     Order, Add Environmental Order, and Add Vector Order each open their own
+     workflow and keep their own submenus; the generic parent is retired. This
+     is a shipped navigation change, so existing deployments are considered
+     and the change is reversible.
+  3. **Each deployment can restrict the domains it shows.** The existing menu
+     allowlist (`volume/menu/menu_config.json` `includes`, enabled by
+     `org.openelisglobal.menu.configuration.autocreate`) lists all three
+     actions so a site can keep the ones it uses; nothing new is invented for
+     this. The review host shows all three. Proof: the sample configuration
+     offers the three actions and cannot select the retired parent; on the
+     review host, a signed-in user sees the three actions directly under
+     Order with their submenus and no generic parent.
+  4. **Do not fabricate per-user visibility.** The authoritative design scopes
+     order-entry actions by the domain of a user's assigned lab units. That
+     depends on lab-unit domain assignment and the department and role scoping
+     work; until those exist, deployment configuration is the mechanism and no
+     parallel scoping model is invented.
+
+  **Reached `[x]` on 2026-09-06.** Deployed to amr.openelis-global.org at
+  `39dccac646` (health and smoke passed); a signed-in user sees the three domain
+  actions directly under Order with their submenus; UAT story AMR-S01 reads the
+  new path. Required checks green at that head across #4192-#4196. This roadmap
+  commit is the only delta between that deployed head and the branch tip.
+
+  **Reaches `[x]` when:** the specification is reconciled; the navigation
+  change and its reversal are proven; required checks are green at the exact
+  head; that head is deployed; and the navigation review stories are rerun.
+
+  **Outside these iterations:** Retiring the legacy Add Order route is
+  develop-level work outside OGC-782: move its remaining capabilities, repoint
+  links and navigation, keep a parameter-preserving redirect, then remove the
+  screen. Stale microbiology draft rows need no cleanup; see the rulings above.
+- [ ] Complete M-09 readiness and repair for patient origins, patient types,
+  departments, breakpoint standards, and phenotype flags, reusing each owning
+  catalog and avoiding parallel mapping stores.
+- [ ] Define and implement episode-based first-isolate selection after the
+  functional episode boundary is approved.
+- [ ] Complete WHONET-compatible output qualification: current import
+  validation, CSV/TXT choices, isolate-wide antibiotic columns, method suffixes,
+  phenotype options, demographics policy, retained-repeat markers, and
+  first-destination lab-profile packaging.
+- [ ] Complete export history and configure-once delivery with saved filters,
+  monthly scheduling, failure/unmapped-item notification, and the approved
+  deployment transport; resolve SFTP-primary/email-fallback behavior before
+  implementation.
+- [ ] Complete any remaining reference-data administration required by those
+   workflows.
+
+### Full Module
+
+- [ ] Operational mycobacteriology/TB workflow (M-14).
+- [ ] Antibiogram reporting (M-13).
+- [ ] Publish finalized AMR and TB laboratory results through the shared FHIR
+   pathway after routine bacteriology, WHONET, and TB outputs are stable.
+- [ ] Produce validated, reproducible GLASS submission files and run history for
+   an authorized person to review and upload; do not imply that OpenELIS submits
+   directly to WHO.
+- [ ] Supply the AMR indicator and data-quality inputs required by the shared
+   analytics platform; do not create a separate OpenELIS dashboard unless a
+   later product ruling requires one.
+- [ ] Catalog subscription or cross-site distribution capabilities as separate
+   platform work, consumed by microbiology rather than owned by it.
+
+## Iteration Contract
+
+For every implementation slice:
+
+1. Read the relevant repository specification and this roadmap.
+2. Compare only the affected workflow and mock in OpenELIS Work.
+3. If behavior is ambiguous or contradictory, record one concise clarification
+   here and ask Piotr before coding. Do not guess from Jira or implementation
+   language in a mock.
+4. Write focused failing tests at the service/controller/component/E2E levels
+   appropriate to the behavior.
+5. Implement the smallest coherent change using existing OpenELIS patterns.
+6. Use migrations only for data-model changes. Build test fixtures through
+   services; never seed feature tests with SQL, fixed IDs, or DAO bypasses.
+7. Use Carbon-accessible interactions in frontend tests and Playwright. Wait on
+   observable readiness, never arbitrary timeouts.
+8. Validate locally before deployment: focused tests, formatting, migration/ORM
+   checks when relevant, registered Playwright, and visual comparison for UI.
+9. Run `tools/code-qa` once at the completed slice boundary, not as repetitive
+   bookkeeping during development.
+10. Update Grist for human UAT without copying its changing catalog into the
+    repository. Review-tooling behavior changes belong in the review-tooling
+    repository.
+11. Update one roadmap row and the PR snapshot. Do not create another status
+    ledger or rewrite historical evidence.
+12. Deploy only when the slice contains reviewable runtime behavior. Do not
+    deploy documentation-only or test-only commits.
+
+## PR Snapshot Contract
+
+PR descriptions should contain only:
+
+- the user-visible slice and its place in the stack;
+- implemented behavior and explicit exclusions;
+- validation categories completed and any real blocker;
+- deployment and human-UAT state in plain language;
+- links to `spec.md`, `plan.md`, and this roadmap.
+
+Do not copy commit identifiers, deployment identifiers, Grist revisions,
+checklist inventories, or continuously changing test totals into PR prose.

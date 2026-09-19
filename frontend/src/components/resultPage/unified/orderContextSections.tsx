@@ -366,10 +366,10 @@ export const StorageSection: React.FC<
       {pickerOpen && (
         <LocationPickerModal
           isOpen={pickerOpen}
-          sample={{
-            id: sampleItemId,
-            sampleAccessionNumber: accessionNumber || "",
-            sampleType: sampleType || "",
+          occupantType="SAMPLE_ITEM"
+          occupant={{
+            label: accessionNumber || "",
+            type: sampleType || "",
             status: "Active",
           }}
           currentLocation={

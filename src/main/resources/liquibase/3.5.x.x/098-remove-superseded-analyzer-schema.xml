@@ -11,11 +11,33 @@
             <columnExists tableName="analyzer" columnName="site_binding_revision_id"/>
             <sqlCheck expectedResult="0"><![CDATA[
                 SELECT COUNT(*)
-                FROM analyzer
+                FROM analyzer a
                 WHERE (is_active IS TRUE OR COALESCE(status, 'SETUP') <> 'INACTIVE')
                   AND (
                     NULLIF(TRIM(bridge_connection_id), '') IS NULL
                     OR site_binding_revision_id IS NULL
+                  )
+                  AND NOT (
+                    COALESCE(status, '') = 'SETUP'
+                    AND NULLIF(TRIM(bridge_connection_id), '') IS NULL
+                    AND site_binding_revision_id IS NULL
+                    AND last_activated_date IS NULL
+                    AND latest_activation_record_id IS NULL
+                    AND NULLIF(TRIM(test_unit_ids), '') IS NULL
+                    AND scrip_id IS NULL
+                    AND NULLIF(TRIM(machine_id), '') IS NULL
+                    AND analyzer_type_id IS NULL
+                    AND NULLIF(TRIM(identifier_pattern), '') IS NULL
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_field WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_field_mapping WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_test_map WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_plugin_config WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_experiment WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_file_upload WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_pending_code WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_activation_record WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analyzer_results WHERE analyzer_id = a.id)
+                    AND NOT EXISTS (SELECT 1 FROM analysis WHERE analyzer_id = a.id)
                   )
             ]]></sqlCheck>
         </preConditions>
@@ -25,6 +47,10 @@
             communication, profile/runtime configuration, parsing, and portable
             mappings remain Bridge-owned; inactive intentionally excluded records
             retain only their non-runtime OpenELIS history.
+            Empty SETUP drafts have no runtime configuration to migrate and retain
+            their identity and lifecycle unchanged. SETUP alone is not evidence of
+            an empty draft: configuration, partial references, and usage history
+            still require a verified cutover.
         </comment>
 
         <sql splitStatements="false"><![CDATA[

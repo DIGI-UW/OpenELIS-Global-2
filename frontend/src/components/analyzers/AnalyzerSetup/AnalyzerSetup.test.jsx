@@ -245,6 +245,65 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
+  it("completes an upgraded empty draft without creating a duplicate analyzer", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        id: "42",
+        name: "Retained draft",
+        profileId: "",
+        profileRevision: 0,
+        profileFingerprint: "",
+        bridgeConnectionId: null,
+        testUnitIds: [],
+        status: "SETUP",
+      }),
+    );
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback(connectedCandidate(payload)),
+    );
+    const history = renderSetupWithHistory(
+      "/analyzers?setup=instrument&analyzerId=42",
+    );
+
+    expect(
+      await screen.findByRole("textbox", { name: "Analyzer name" }),
+    ).toHaveValue("Retained draft");
+    const typePicker = screen.getByRole("combobox", { name: "Analyzer type" });
+    await userEvent.click(typePicker);
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "GeneXpert MTB/RIF · Cepheid · ASTM · revision 3",
+      }),
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: /^Lab units/ }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Molecular Biology" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Verify" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        {
+          name: "Retained draft",
+          profileId: activeType.profileId,
+          profileRevision: activeType.revision,
+          testUnitIds: ["7"],
+        },
+        expect.any(Function),
+      ),
+    );
+    expect(createAnalyzer).not.toHaveBeenCalled();
+    expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
+      "42",
+    );
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "verify",
+    );
+  });
+
   it("selects an active Analyzer Type through a searchable, URL-backed lab form", async () => {
     renderSetup();
 

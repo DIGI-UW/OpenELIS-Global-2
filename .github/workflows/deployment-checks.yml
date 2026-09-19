@@ -1,0 +1,30 @@
+name: Validate publication and deployment
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/**"
+  push:
+    branches: [develop]
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install PyYAML==6.0.2
+      - run: node --test .github/scripts/publish-checkpoints.test.cjs
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v

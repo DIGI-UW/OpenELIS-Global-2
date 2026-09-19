@@ -54,7 +54,7 @@ describe("LocationPickerPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders 'Move Sample' heading when currentLocation is present", () => {
+  it("renders 'Move Item' heading when currentLocation is present", () => {
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
@@ -67,7 +67,7 @@ describe("LocationPickerPage", () => {
       />,
     );
     expect(
-      screen.getByRole("heading", { level: 1, name: /move sample/i }),
+      screen.getByRole("heading", { level: 1, name: /move item/i }),
     ).toBeInTheDocument();
   });
 
@@ -109,10 +109,6 @@ describe("LocationPickerPage", () => {
         onSave={onSave}
         onCancel={vi.fn()}
       />,
-    );
-    // Pick a room via create-mode cascade
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
     );
     const roomTrigger = document
       .querySelector("#location-picker-room")

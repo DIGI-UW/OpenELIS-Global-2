@@ -487,9 +487,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
               <FormattedMessage id="label.results.reject.result" />
             </Button>
           )}
+          {/* A referred test cannot be referred again: the save has no way to
+              amend an existing referral, so a second click would raise a rival
+              one. The referral is edited or cancelled from Referred Out. */}
           <Button
             kind="ghost"
             size="sm"
+            disabled={row.referredOut}
             onClick={() =>
               onReferralDraftChange(
                 referralDraft ? null : emptyReferralDraft(todayForReferral()),
@@ -497,7 +501,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             }
             data-testid={`referral-toggle-${rowKey}`}
           >
-            {row.referredOut || referralDraft ? (
+            {row.referredOut ? (
+              <FormattedMessage id="label.results.referredOut" />
+            ) : referralDraft ? (
               <FormattedMessage id="label.results.referral.editing" />
             ) : (
               <FormattedMessage id="label.results.referral.refer" />

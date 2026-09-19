@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { SampleOrderFormValues } from "../innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../innitialValues/OrderEntryFormValues";
 import { createOrderEntryValidationSchema } from "./OrderEntryValidationSchema";
 
 const minimalOrderValues = {
-  ...SampleOrderFormValues,
+  ...createSampleOrderFormValues(),
   sampleXML: "<sample/>",
   patientProperties: {
-    ...SampleOrderFormValues.patientProperties,
+    ...createSampleOrderFormValues().patientProperties,
     firstName: "Test",
     lastName: "Patient",
     nationalId: "",
@@ -15,7 +15,7 @@ const minimalOrderValues = {
     email: "",
   },
   sampleOrderItems: {
-    ...SampleOrderFormValues.sampleOrderItems,
+    ...createSampleOrderFormValues().sampleOrderItems,
     labNo: "TEST-ORDER-1",
     referringSiteName: "Central Lab",
     providerFirstName: "Provider",

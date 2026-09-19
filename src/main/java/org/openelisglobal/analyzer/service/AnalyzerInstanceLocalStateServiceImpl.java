@@ -86,13 +86,23 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
         String requestedProfileId = requireText(request.getProfileId(), "Profile ID");
         int requestedRevision = request.getProfileRevision() == null ? 0 : request.getProfileRevision();
-        if (profile == null || !requestedProfileId.equals(profile.getProfileId())
+        String exactActor = requireText(actor, "actor");
+        String name = requireText(request.getName(), "Analyzer name");
+        List<String> labUnitIds = normalizeLabUnits(request.getTestUnitIds());
+        if (requestedRevision < 1) {
+            throw new IllegalArgumentException("Profile revision must be at least 1");
+        }
+        if (profile == null && isUnconfiguredDraft(analyzer)) {
+            profileBindingService.assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor);
+            analyzer.setBridgeConnectionId(null);
+            analyzer.setActive(false);
+        } else if (profile == null || !requestedProfileId.equals(profile.getProfileId())
                 || requestedRevision != profile.getProfileRevision()) {
             throw new IllegalArgumentException("A configured analyzer cannot be moved to another profile revision");
         }
-        analyzer.setName(requireText(request.getName(), "Analyzer name"));
-        analyzer.setTestUnitIds(normalizeLabUnits(request.getTestUnitIds()));
-        analyzer.setSysUserId(requireText(actor, "actor"));
+        analyzer.setName(name);
+        analyzer.setTestUnitIds(labUnitIds);
+        analyzer.setSysUserId(exactActor);
         analyzerService.update(analyzer);
         return state(analyzer);
     }
@@ -157,11 +167,23 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     private static AnalyzerInstanceState state(Analyzer analyzer, long heldResultCount) {
         AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
         if (profile == null) {
+            if (isUnconfiguredDraft(analyzer) || (analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE
+                    && analyzer.getBridgeConnectionId() == null)) {
+                return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(), "", 0,
+                        "", null, analyzer.getStatus(), heldResultCount);
+            }
             throw new IllegalStateException("Analyzer profile binding is missing");
         }
         return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(),
                 profile.getProfileId(), profile.getProfileRevision(), profile.getProfileFingerprint(),
                 analyzer.getBridgeConnectionId(), analyzer.getStatus(), heldResultCount);
+    }
+
+    private static boolean isUnconfiguredDraft(Analyzer analyzer) {
+        return analyzer.getStatus() == Analyzer.AnalyzerStatus.SETUP
+                && (analyzer.getBridgeConnectionId() == null || analyzer.getBridgeConnectionId().isBlank())
+                && analyzer.getSiteBindingRevision() == null && analyzer.getLastActivatedDate() == null
+                && analyzer.getLatestActivationRecord() == null;
     }
 
     private static List<String> normalizeLabUnits(List<String> ids) {

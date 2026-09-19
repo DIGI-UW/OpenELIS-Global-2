@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
@@ -22,6 +23,7 @@ import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.program.service.ProgramService;
+import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
@@ -235,8 +237,7 @@ public class UserServiceImpl implements UserService {
 
                     });
                 }
-                List<IdValuePair> allTestSections = DisplayListService.getInstance()
-                        .getList(ListType.TEST_SECTION_ACTIVE);
+                List<IdValuePair> allTestSections = activeTestSections();
                 if (isadmin || userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
                     return allTestSections;
                 } else {
@@ -253,8 +254,7 @@ public class UserServiceImpl implements UserService {
                     String[] authorityExplode = authority.getAuthority().split("-");
                     if (authorityExplode.length == 3) {
                         if (roleId == null || roleService.get(roleId).getName().trim().equals(authorityExplode[1])) {
-                            List<IdValuePair> allTestSections = DisplayListService.getInstance()
-                                    .getList(ListType.TEST_SECTION_ACTIVE);
+                            List<IdValuePair> allTestSections = activeTestSections();
                             if (UnifiedSystemUserController.ALL_LAB_UNITS.equals(authorityExplode[2])) {
                                 return allTestSections;
                             } else {
@@ -272,6 +272,15 @@ public class UserServiceImpl implements UserService {
         }
 
         return new ArrayList<>();
+    }
+
+    private List<IdValuePair> activeTestSections() {
+        List<IdValuePair> cached = DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
+        if (cached != null && !cached.isEmpty()) {
+            return cached;
+        }
+        return testSectionService.getAllActiveTestSections().stream()
+                .map(section -> new IdValuePair(section.getId(), section.getLocalizedName())).toList();
     }
 
     @Override
@@ -446,10 +455,18 @@ public class UserServiceImpl implements UserService {
         }
 
         List<IdValuePair> allPrograms = DisplayListService.getInstance().getList(ListType.PROGRAM);
-        return allPrograms.stream()
-                .filter(p -> programService.get(p.getId()).getTestSection() == null
-                        || testUnitIds.contains(programService.get(p.getId()).getTestSection().getId()))
-                .collect(Collectors.toList());
+        List<IdValuePair> userPrograms = new ArrayList<>();
+        for (IdValuePair pair : allPrograms) {
+            Optional<Program> program = programService.getMatch("id", pair.getId());
+            if (program.isEmpty()) {
+                continue;
+            }
+            TestSection section = program.get().getTestSection();
+            if (section == null || testUnitIds.contains(section.getId())) {
+                userPrograms.add(pair);
+            }
+        }
+        return userPrograms;
     }
 
 }

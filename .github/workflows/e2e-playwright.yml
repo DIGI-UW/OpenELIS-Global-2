@@ -9,6 +9,8 @@ on:
       - develop
       - fix/madagascar-accession-results-file-e2e
       - codex/ogc-1054-*
+      - spec/782-*
+      - feat/782-*
   push:
     branches: [develop]
   release:
@@ -208,7 +210,7 @@ jobs:
         id: push-images
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
         run: |
-          TAG="sha-${GITHUB_SHA}"
+          TAG="sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           export TAG OWNER_LOWER
 
@@ -231,7 +233,12 @@ jobs:
             attempt=1
             while [ $attempt -le 3 ]; do
               if push_err=$(docker push "$ghcr_image" 2>&1); then
-                printf "%s|%s\n" "$image" "$ghcr_image"
+                digest="$(printf "%s\n" "$push_err" | sed -nE "s/.*digest: (sha256:[a-f0-9]{64}).*/\\1/p" | tail -1)"
+                if [ -z "$digest" ]; then
+                  echo "PUSH did not report an immutable digest for $image" >&2
+                  exit 1
+                fi
+                printf "%s|%s@%s\n" "$image" "${ghcr_image%:*}" "$digest"
                 exit 0
               fi
               echo "PUSH attempt $attempt failed ($image): $push_err" >&2

@@ -22,6 +22,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -172,14 +173,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             Analysis analysis = result.getAnalysis();
             Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
             ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
-            if (limit == null) {
-                return false;
-            }
-            boolean criticalLow = limit.getLowCritical() != Double.POSITIVE_INFINITY
-                    && numeric < limit.getLowCritical();
-            boolean criticalHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY
-                    && numeric > limit.getHighCritical();
-            return criticalLow || criticalHigh;
+            return ValidationSignals.isCritical(limit, numeric);
         } catch (NumberFormatException e) {
             return false;
         } catch (RuntimeException e) {

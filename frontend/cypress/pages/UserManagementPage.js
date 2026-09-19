@@ -87,8 +87,11 @@ class UserManagementPage {
   }
 
   typeLoginName(value) {
-    cy.wait(1500);
-    cy.get(this.selectors.loginName).clear().type(value);
+    cy.get(this.selectors.loginName)
+      .should("be.visible")
+      .and("not.be.disabled")
+      .clear()
+      .type(value);
   }
 
   typeLoginPassword(value) {
@@ -108,13 +111,13 @@ class UserManagementPage {
   }
 
   passwordExpiryDate(value) {
-    // Find the actual input inside the CustomDatePicker component
     cy.get(this.selectors.passwordExpirationDate)
-      .find("input")
-      .clear({ force: true })
-      .type(value, { force: true });
-    // Close datepicker if open
-    cy.get("body").type("{esc}"); // close datepicker without clicking (0,0) — that pixel is the logo link on desktop
+      .should("be.visible")
+      .and("not.be.disabled")
+      .clear()
+      .type(value)
+      .should("have.value", value)
+      .type("{esc}");
   }
 
   enterUserTimeout(value) {
@@ -255,26 +258,76 @@ class UserManagementPage {
     cy.contains(this.selectors.span, "User Account Administrator").click();
   }
 
+  watchUserListRequest(alias, matchesRequest) {
+    cy.intercept("GET", "**/rest/SearchUnifiedSystemUserMenu*", (request) => {
+      const searchParams = new URL(request.url).searchParams;
+      if (matchesRequest(searchParams)) {
+        request.alias = alias;
+      }
+    });
+  }
+
+  waitForUserListRequest(alias) {
+    cy.wait(`@${alias}`).its("response.statusCode").should("equal", 200);
+  }
+
   searchUser(value) {
-    // Require the search bar to be stable/actionable before typing so cy.type()
-    // can't race a concurrent re-render (Cypress "Cannot read properties of
-    // undefined (reading 'KeyboardEvent')" flake when a filter refetch re-renders
-    // the page mid-keystroke). The input is also briefly DISABLED while a filter
-    // refetch is in flight ("cy.type() failed because it targeted a disabled
-    // element"), so require enabled too.
+    this.clearSearchBar();
+    this.watchUserListRequest(
+      "searchedUsers",
+      (searchParams) =>
+        searchParams.get("search") === "Y" &&
+        searchParams.get("searchString") === value,
+    );
     cy.get(this.selectors.searchBar)
       .should("be.visible")
       .and("be.enabled")
-      .clear()
       .type(value);
+    this.waitForUserListRequest("searchedUsers");
   }
 
   clearSearchBar() {
-    cy.get(this.selectors.searchBar).clear();
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
+      .invoke("val")
+      .then((currentValue) => {
+        if (!currentValue) {
+          return;
+        }
+
+        this.watchUserListRequest(
+          "clearedUserSearch",
+          (searchParams) =>
+            searchParams.get("search") === "N" &&
+            !searchParams.get("searchString"),
+        );
+        cy.get(this.selectors.searchBar)
+          .should("be.visible")
+          .and("be.enabled")
+          .clear();
+        this.waitForUserListRequest("clearedUserSearch");
+      });
   }
 
   searchByFilters(value) {
-    cy.get(this.selectors.filters).select(value);
+    cy.get(this.selectors.filters)
+      .should("be.visible")
+      .and("be.enabled")
+      .find("option")
+      .filter((_, option) => option.text.trim() === value)
+      .should("have.length", 1)
+      .then(($option) => {
+        const roleFilter = $option.val();
+        this.watchUserListRequest(
+          "filteredUsersByRole",
+          (searchParams) =>
+            searchParams.get("search") === "N" &&
+            searchParams.get("roleFilter") === roleFilter,
+        );
+        cy.get(this.selectors.filters).select(roleFilter);
+        this.waitForUserListRequest("filteredUsersByRole");
+      });
   }
 
   validateColumnContent(columnNum, value) {
@@ -289,16 +342,35 @@ class UserManagementPage {
     cy.get(this.selectors.tableData).should("not.contain", value);
   }
 
+  /**
+   * Carbon hides the input and wraps its text in a div inside the label. The
+   * label is the activation surface; clicking the inner text does not reliably
+   * toggle the control.
+   */
+  toggleCheckbox(inputSelector) {
+    cy.get(`label[for="${inputSelector.replace("#", "")}"]`).click();
+  }
+
   activeUser() {
-    cy.contains(this.selectors.span, "Only Active").click();
-    // Let the filter's async table re-render settle before any subsequent typing,
-    // so a following searchUser() cy.type() does not race the re-render.
-    cy.get(this.selectors.tableData).should("be.visible");
+    this.watchUserListRequest("activeUsers", (searchParams) =>
+      (searchParams.get("filter") || "").split(",").includes("isActive"),
+    );
+    this.toggleCheckbox(this.selectors.uncheckActiveUser);
+    // The filtered reload is the behaviour worth waiting on. Whether the box
+    // renders its own state is asserted in
+    // playwright/tests/foundational/core/admin-user-filters.spec.ts, which
+    // covers it on a fresh load and after navigating in.
+    this.waitForUserListRequest("activeUsers");
   }
 
   uncheckActiveUser() {
-    cy.wait(900);
-    cy.get(this.selectors.uncheckActiveUser).uncheck({ force: true });
+    this.watchUserListRequest(
+      "allUsersAfterActiveFilter",
+      (searchParams) =>
+        !(searchParams.get("filter") || "").split(",").includes("isActive"),
+    );
+    this.toggleCheckbox(this.selectors.uncheckActiveUser);
+    this.waitForUserListRequest("allUsersAfterActiveFilter");
   }
 
   checkUser(columnNum, value) {
@@ -311,12 +383,25 @@ class UserManagementPage {
   }
 
   adminUser() {
-    cy.contains(this.selectors.span, "Only Administrator").click();
+    this.watchUserListRequest("administratorUsers", (searchParams) =>
+      (searchParams.get("filter") || "").split(",").includes("isAdmin"),
+    );
+    cy.get(this.selectors.uncheckAdminUser).should("not.be.checked");
+    this.toggleCheckbox(this.selectors.uncheckAdminUser);
+    cy.get(this.selectors.uncheckAdminUser).should("be.checked");
+    this.waitForUserListRequest("administratorUsers");
   }
 
   uncheckAdminUser() {
-    cy.wait(900);
-    cy.get(this.selectors.uncheckAdminUser).uncheck({ force: true });
+    this.watchUserListRequest(
+      "allUsersAfterAdministratorFilter",
+      (searchParams) =>
+        !(searchParams.get("filter") || "").split(",").includes("isAdmin"),
+    );
+    cy.get(this.selectors.uncheckAdminUser).should("be.checked");
+    this.toggleCheckbox(this.selectors.uncheckAdminUser);
+    cy.get(this.selectors.uncheckAdminUser).should("not.be.checked");
+    this.waitForUserListRequest("allUsersAfterAdministratorFilter");
   }
 }
 

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -10,11 +16,20 @@ import {
   TableBody,
   TableCell,
   Tag,
+  OperationalTag,
   InlineNotification,
 } from "@carbon/react";
 import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
+
+export const getAssignableSamplesOfType = (samples = [], sampleTypeId) =>
+  samples
+    .map((sample, index) => ({ ...sample, index }))
+    .filter(
+      (sample) =>
+        sample.sampleTypeId === sampleTypeId && !sample.sampleRejected,
+    );
 
 /**
  * RequestedTestsSection - Shows ordered tests/panels with sample type assignment
@@ -29,9 +44,9 @@ import TestAssignmentModal from "./TestAssignmentModal";
 const RequestedTestsSection = ({
   samples,
   setSamples,
-  testSampleAssignments,
+  testSampleAssignments: _testSampleAssignments,
   assignTestToSample,
-  removeTestFromSample,
+  removeTestFromSample: _removeTestFromSample,
   sampleTypes,
   isReadOnly,
 }) => {
@@ -45,50 +60,52 @@ const RequestedTestsSection = ({
 
   // Test-to-sample-type compatibility cache
   const [testSampleTypeMap, setTestSampleTypeMap] = useState({});
-  const [isLoadingCompatibility, setIsLoadingCompatibility] = useState(false);
+  const [loadedCompatibilityIds, setLoadedCompatibilityIds] = useState("");
 
-  // Collect all unique tests from all samples
-  const allTests = [];
-  const allPanels = [];
-  const seenTestIds = new Set();
-  const seenPanelIds = new Set();
+  const requestedItems = useMemo(() => {
+    const tests = [];
+    const panels = [];
+    const seenTestIds = new Set();
+    const seenPanelIds = new Set();
 
-  samples.forEach((sample) => {
-    // Skip rejected/resampled specimens — their tests belong to the replacement
-    // order, not this order's requested-tests list.
-    if (sample.sampleRejected) return;
-    if (sample.tests) {
-      sample.tests.forEach((test) => {
+    samples.forEach((sample) => {
+      if (sample.sampleRejected) return;
+      (sample.tests || []).forEach((test) => {
         if (!seenTestIds.has(test.id)) {
           seenTestIds.add(test.id);
-          allTests.push(test);
+          tests.push(test);
         }
       });
-    }
-    if (sample.panels) {
-      sample.panels.forEach((panel) => {
+      (sample.panels || []).forEach((panel) => {
         if (!seenPanelIds.has(panel.id)) {
           seenPanelIds.add(panel.id);
-          allPanels.push(panel);
+          panels.push(panel);
         }
       });
-    }
-  });
+    });
 
-  // Combine panels and tests for display
-  const requestedItems = [
-    ...allPanels.map((p) => ({ ...p, isPanel: true })),
-    ...allTests.map((t) => ({ ...t, isPanel: false })),
-  ];
+    return [
+      ...panels.map((panel) => ({ ...panel, isPanel: true })),
+      ...tests.map((test) => ({ ...test, isPanel: false })),
+    ];
+  }, [samples]);
+  const testIds = useMemo(
+    () =>
+      requestedItems
+        .filter((item) => !item.isPanel)
+        .map((test) => test.id)
+        .join(","),
+    [requestedItems],
+  );
+  const isLoadingCompatibility =
+    Boolean(testIds) && loadedCompatibilityIds !== testIds;
 
   // Fetch test-sample-type compatibility when tests change
   useEffect(() => {
     componentMounted.current = true;
 
-    const testIds = allTests.map((t) => t.id).join(",");
     if (!testIds) return;
 
-    setIsLoadingCompatibility(true);
     getFromOpenElisServer(
       `/rest/test-sample-types?testIds=${testIds}`,
       (response) => {
@@ -98,7 +115,7 @@ const RequestedTestsSection = ({
             map[t.testId] = t.compatibleSampleTypes || [];
           });
           setTestSampleTypeMap(map);
-          setIsLoadingCompatibility(false);
+          setLoadedCompatibilityIds(testIds);
         }
       },
     );
@@ -106,43 +123,47 @@ const RequestedTestsSection = ({
     return () => {
       componentMounted.current = false;
     };
-  }, [allTests.length]);
+  }, [testIds]);
 
   // Get compatible sample types for a test
-  const getCompatibleSampleTypes = (testId) => {
-    return testSampleTypeMap[testId] || [];
-  };
+  const getCompatibleSampleTypes = useCallback(
+    (testId) => testSampleTypeMap[testId] || [],
+    [testSampleTypeMap],
+  );
 
   // Get sample assignments for a test
-  const getSampleAssignments = (testId, isPanel) => {
-    // Check which samples have this test
-    const assignments = [];
-    samples.forEach((sample, index) => {
-      if (sample.sampleRejected) return;
-      const hasTest = isPanel
-        ? sample.panels?.some((p) => p.id === testId)
-        : sample.tests?.some((t) => t.id === testId);
-      if (hasTest) {
-        const sampleTypeName =
-          sample.sampleTypeName ||
-          sampleTypes.find((st) => st.id === sample.sampleTypeId)?.value ||
-          `Sample ${index + 1}`;
-        assignments.push({
-          sampleIndex: index,
-          sampleTypeName,
-        });
-      }
-    });
-    return assignments;
-  };
+  const getSampleAssignments = useCallback(
+    (testId, isPanel) => {
+      const assignments = [];
+      samples.forEach((sample, index) => {
+        if (sample.sampleRejected) return;
+        const hasTest = isPanel
+          ? sample.panels?.some((panel) => panel.id === testId)
+          : sample.tests?.some((test) => test.id === testId);
+        if (hasTest) {
+          const sampleTypeName =
+            sample.sampleTypeName ||
+            sampleTypes.find((type) => type.id === sample.sampleTypeId)
+              ?.value ||
+            `Sample ${index + 1}`;
+          assignments.push({ sampleIndex: index, sampleTypeName });
+        }
+      });
+      return assignments;
+    },
+    [sampleTypes, samples],
+  );
 
   // Handle clicking a sample type tag
-  const handleSampleTypeClick = (test, sampleType) => {
-    if (isReadOnly) return;
-    setSelectedTest(test);
-    setSelectedSampleType(sampleType);
-    setIsModalOpen(true);
-  };
+  const handleSampleTypeClick = useCallback(
+    (test, sampleType) => {
+      if (isReadOnly) return;
+      setSelectedTest(test);
+      setSelectedSampleType(sampleType);
+      setIsModalOpen(true);
+    },
+    [isReadOnly],
+  );
 
   // Handle modal assignment
   const handleAssign = (sampleIndex, createNew) => {
@@ -161,6 +182,7 @@ const RequestedTestsSection = ({
         tests: selectedTest.isPanel
           ? []
           : [{ id: selectedTest.id, name: selectedTest.name }],
+        requestReferralEnabled: false,
         referralItems: [],
         quantity: "",
         quantityUnit: "mL",
@@ -191,119 +213,134 @@ const RequestedTestsSection = ({
 
   // Get existing samples of a specific sample type
   const getSamplesOfType = (sampleTypeId) => {
-    return samples
-      .map((sample, index) => ({ ...sample, index }))
-      .filter(
-        (sample) =>
-          sample.sampleTypeId === sampleTypeId && !sample.sampleRejected,
-      );
+    return getAssignableSamplesOfType(samples, sampleTypeId);
   };
 
   // Table headers
-  const headers = [
-    {
-      key: "testPanel",
-      header: intl.formatMessage({
-        id: "collect.table.testPanel",
-        defaultMessage: "Test / Panel",
-      }),
-    },
-    {
-      key: "compatibleTypes",
-      header: intl.formatMessage({
-        id: "collect.table.compatibleTypes",
-        defaultMessage: "Compatible Sample Types",
-      }),
-    },
-    {
-      key: "sampleAssignments",
-      header: intl.formatMessage({
-        id: "collect.table.sampleAssignments",
-        defaultMessage: "Sample Assignment(s)",
-      }),
-    },
-  ];
+  const headers = useMemo(
+    () => [
+      {
+        key: "testPanel",
+        header: intl.formatMessage({
+          id: "collect.table.testPanel",
+          defaultMessage: "Test / Panel",
+        }),
+      },
+      {
+        key: "compatibleTypes",
+        header: intl.formatMessage({
+          id: "collect.table.compatibleTypes",
+          defaultMessage: "Compatible Sample Types",
+        }),
+      },
+      {
+        key: "sampleAssignments",
+        header: intl.formatMessage({
+          id: "collect.table.sampleAssignments",
+          defaultMessage: "Sample Assignment(s)",
+        }),
+      },
+    ],
+    [intl],
+  );
 
   // Build table rows
-  const rows = requestedItems.map((item) => {
-    const compatibleTypes = getCompatibleSampleTypes(item.id);
-    const assignments = getSampleAssignments(item.id, item.isPanel);
+  const rows = useMemo(
+    () =>
+      requestedItems.map((item) => {
+        const compatibleTypes = getCompatibleSampleTypes(item.id);
+        const assignments = getSampleAssignments(item.id, item.isPanel);
 
-    return {
-      id: `${item.isPanel ? "panel" : "test"}-${item.id}`,
-      testPanel: (
-        <div className="test-panel-cell">
-          {item.isPanel && (
-            <Tag type="blue" size="sm" className="panel-indicator">
-              <FormattedMessage id="label.panel" defaultMessage="Panel" />
-            </Tag>
-          )}
-          <span className={item.isPanel ? "panel-name" : "test-name"}>
-            {item.name}
-          </span>
-          {item.isPanel && item.testIds && (
-            <span className="panel-test-count">
-              ({item.testIds.split(",").length}{" "}
-              <FormattedMessage id="label.tests" defaultMessage="tests" />)
-            </span>
-          )}
-        </div>
-      ),
-      compatibleTypes: (
-        <div className="compatible-types-cell">
-          {isLoadingCompatibility ? (
-            <span className="loading-text">Loading...</span>
-          ) : compatibleTypes.length > 0 ? (
-            compatibleTypes.map((st) => (
-              <Tag
-                key={st.id}
-                type="green"
-                size="sm"
-                className="sample-type-tag clickable"
-                onClick={() => handleSampleTypeClick(item, st)}
-              >
-                + {st.name} {st.code ? `(${st.code})` : ""}
-              </Tag>
-            ))
-          ) : (
-            // If no compatibility data, show all sample types as options
-            sampleTypes.slice(0, 5).map((st) => (
-              <Tag
-                key={st.id}
-                type="green"
-                size="sm"
-                className="sample-type-tag clickable"
-                onClick={() =>
-                  handleSampleTypeClick(item, { id: st.id, name: st.value })
-                }
-              >
-                + {st.value}
-              </Tag>
-            ))
-          )}
-        </div>
-      ),
-      sampleAssignments: (
-        <div className="sample-assignments-cell">
-          {assignments.length > 0 ? (
-            assignments.map((a, i) => (
-              <Tag key={i} type="purple" size="sm" className="assignment-tag">
-                <Checkmark size={12} className="checkmark-icon" />
-                {a.sampleTypeName} (Sample {a.sampleIndex + 1})
-              </Tag>
-            ))
-          ) : (
-            <span className="no-assignment">
-              <FormattedMessage
-                id="collect.noSampleYet"
-                defaultMessage="— No sample yet"
-              />
-            </span>
-          )}
-        </div>
-      ),
-    };
-  });
+        return {
+          id: `${item.isPanel ? "panel" : "test"}-${item.id}`,
+          testPanel: (
+            <div className="test-panel-cell">
+              {item.isPanel && (
+                <Tag type="blue" size="sm" className="panel-indicator">
+                  <FormattedMessage id="label.panel" defaultMessage="Panel" />
+                </Tag>
+              )}
+              <span className={item.isPanel ? "panel-name" : "test-name"}>
+                {item.name}
+              </span>
+              {item.isPanel && item.testIds && (
+                <span className="panel-test-count">
+                  ({item.testIds.split(",").length}{" "}
+                  <FormattedMessage id="label.tests" defaultMessage="tests" />)
+                </span>
+              )}
+            </div>
+          ),
+          compatibleTypes: (
+            <div className="compatible-types-cell">
+              {isLoadingCompatibility ? (
+                <span className="loading-text">Loading...</span>
+              ) : compatibleTypes.length > 0 ? (
+                compatibleTypes.map((st) => (
+                  <OperationalTag
+                    key={st.id}
+                    type="green"
+                    size="sm"
+                    className="sample-type-tag clickable"
+                    text={`+ ${st.name}${st.code ? ` (${st.code})` : ""}`}
+                    onClick={() => handleSampleTypeClick(item, st)}
+                  />
+                ))
+              ) : (
+                // If no compatibility data, show all sample types as options
+                sampleTypes.slice(0, 5).map((st) => (
+                  <OperationalTag
+                    key={st.id}
+                    type="green"
+                    size="sm"
+                    className="sample-type-tag clickable"
+                    text={`+ ${st.value}`}
+                    onClick={() =>
+                      handleSampleTypeClick(item, {
+                        id: st.id,
+                        name: st.value,
+                      })
+                    }
+                  />
+                ))
+              )}
+            </div>
+          ),
+          sampleAssignments: (
+            <div className="sample-assignments-cell">
+              {assignments.length > 0 ? (
+                assignments.map((a, i) => (
+                  <Tag
+                    key={i}
+                    type="purple"
+                    size="sm"
+                    className="assignment-tag"
+                  >
+                    <Checkmark size={12} className="checkmark-icon" />
+                    {a.sampleTypeName} (Sample {a.sampleIndex + 1})
+                  </Tag>
+                ))
+              ) : (
+                <span className="no-assignment">
+                  <FormattedMessage
+                    id="collect.noSampleYet"
+                    defaultMessage="— No sample yet"
+                  />
+                </span>
+              )}
+            </div>
+          ),
+        };
+      }),
+    [
+      getCompatibleSampleTypes,
+      getSampleAssignments,
+      handleSampleTypeClick,
+      isLoadingCompatibility,
+      requestedItems,
+      sampleTypes,
+    ],
+  );
 
   if (requestedItems.length === 0) {
     return (

@@ -41,13 +41,15 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
@@ -188,6 +190,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     @Autowired
     private SampleService sampleService;
 
+    @Autowired
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -285,9 +290,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-356: For environmental workflow, only check for non-patient validation
         // errors
         // Environmental samples don't require patient data (gender, nationalId, etc.)
+        // OGC-1201 AL/W: an order that declares it has no patient is in the same
+        // position as an environmental or vector order — there is no patient to
+        // validate. Declaring it is what replaces the sentinel patient the EQA
+        // path used to fabricate to get past this gate.
+        boolean ordersWithoutPatient = sampleOrder != null
+                && (sampleOrder.isNoPatientOverride() || sampleOrder.getIsEQASample());
         if (result.hasErrors()) {
             boolean hasNonPatientErrors = true;
-            if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
+            if (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType)) {
                 // OGC-744 follow-up: the new @NotNull on patientProperties (added in this
                 // PR) produces a FieldError whose field name is exactly "patientProperties"
                 // — the previous startsWith("patientProperties.") filter required a dot
@@ -325,18 +336,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
 
-        if (sampleOrder.getIsEQASample()) {
-            Patient existingEqaPatient = patientService.getPatientByNationalId("NULL");
-            if (existingEqaPatient != null) {
-                patientInfo.setPatientPK(existingEqaPatient.getId());
-                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
-            }
-        }
-
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
-        // OGC-356: For environmental/vector workflow, don't save patient data
-        if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
+        // OGC-356: For environmental/vector workflow, don't save patient data.
+        // OGC-1201: and likewise for an order that has declared it has no
+        // patient. EQA used to reach this point holding a shared sentinel
+        // patient — "NULL NULL", male, born 1900 — purely to satisfy the gate,
+        // which meant every EQA result was evaluated against a 126-year-old
+        // man's reference range. A declared no-patient order attaches nobody.
+        if (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType)) {
             updateData.setSavePatient(false);
             updateData.setPatientErrors(new BaseErrors());
         }
@@ -383,7 +391,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-356: For environmental/vector workflow, ignore patient-related validation
         // errors
         boolean hasNonPatientErrors = result.hasErrors();
-        if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
+        if (hasNonPatientErrors
+                && (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
                     .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
@@ -522,6 +531,16 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
             }
             return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
+        }
+
+        // OGC-1201 AL/AB: record the decision alongside the order it belongs
+        // to, in the same request that created it. Downstream consumers —
+        // results entry, validation, the report — read this to tell a
+        // deliberate patient-less order from one whose patient was forgotten,
+        // and an EQA proficiency sample from a clinical order that went
+        // without.
+        if (ordersWithoutPatient) {
+            recordNoPatientOverride(sampleOrder, request);
         }
 
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards
@@ -698,6 +717,30 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     // top-level error or any "patientProperties.*" field). Environmental/vector
     // orders carry no patient, so these are filtered from both the pass/fail
     // decision and the error body surfaced to the client.
+    private void recordNoPatientOverride(SampleOrderItem sampleOrder, HttpServletRequest request) {
+        try {
+            Sample saved = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+            if (saved == null || saved.getId() == null) {
+                return;
+            }
+            OverrideReasonCode reasonCode = sampleOrder.getIsEQASample() ? OverrideReasonCode.EQA
+                    : OverrideReasonCode.MANUAL;
+            String reason = StringUtils.isNotBlank(sampleOrder.getNoPatientReason()) ? sampleOrder.getNoPatientReason()
+                    : reasonCode.name();
+            Long userId = null;
+            String sysUserId = getSysUserId(request);
+            if (StringUtils.isNotBlank(sysUserId)) {
+                userId = Long.valueOf(sysUserId);
+            }
+            sampleOrderOverrideService.record(Long.valueOf(saved.getId()), OverrideType.NO_PATIENT, reasonCode, reason,
+                    userId);
+        } catch (RuntimeException e) {
+            // The order itself is saved; failing to annotate it must not undo
+            // that, but it must be visible.
+            LogEvent.logError(this.getClass().getName(), "recordNoPatientOverride", e.toString());
+        }
+    }
+
     private static boolean isPatientFieldError(org.springframework.validation.FieldError fe) {
         return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
     }

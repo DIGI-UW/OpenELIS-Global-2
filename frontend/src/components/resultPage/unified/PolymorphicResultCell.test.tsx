@@ -1,5 +1,6 @@
 import React from "react";
-import { render as rtlRender, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import PolymorphicResultCell, {
@@ -102,6 +103,77 @@ describe("PolymorphicResultCell", () => {
 });
 
 /**
+ * OGC-1185 — a test configured as Titer (T) could be ordered but never
+ * resulted: the cell had no case for it and fell through to a bare span, so
+ * the row offered no control and no Save.
+ */
+describe("titer rows", () => {
+  it("render a text input holding the dilution ratio as stored", () => {
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:10" }}
+        editable
+        onValueChange={() => {}}
+      />,
+    );
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("1:10");
+    expect(input).toHaveAttribute("placeholder", "e.g. 1:10");
+    expect(container.querySelector('input[type="number"]')).toBeNull();
+  });
+
+  it("report what was typed as the result value", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    fireEvent.change(container.querySelector("input") as HTMLInputElement, {
+      target: { value: "1:20" },
+    });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1:20");
+  });
+
+  it("show the stored ratio as plain text once saved", () => {
+    render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:40" }}
+        editable={false}
+        onValueChange={() => {}}
+      />,
+    );
+    expect(screen.getByText("1:40")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Every result type the platform declares (TypeOfTestResultServiceImpl
+ * .ResultType, and the set the Test Catalogue Editor offers) has to reach a
+ * control here. A type that falls through to the fallback span is a test that
+ * can be ordered but never resulted — the OGC-1185 shape, for any future type.
+ */
+describe("result type coverage", () => {
+  it.each(["R", "D", "T", "N", "A", "M", "C"])(
+    "renders an entry control for result type %s",
+    (resultType) => {
+      const { container } = render(
+        <PolymorphicResultCell
+          row={{ ...baseRow, resultType, dictionaryResults: [] }}
+          editable
+          onValueChange={() => {}}
+        />,
+      );
+      expect(container.innerHTML).not.toBe("<span></span>");
+      expect(container.firstElementChild).not.toBeNull();
+    },
+  );
+});
+
+/**
  * OGC-1179 #7 — the result cell is the worklist's primary control and carries
  * no visible label; the column header names it for a sighted reader, but a
  * screen-reader user tabbing the page landed on an unnamed combobox.
@@ -121,7 +193,7 @@ describe("PolymorphicResultCell accessible names", () => {
     />
   );
 
-  it.each(["N", "D", "A", "R"])("names the %s control", (resultType) => {
+  it.each(["N", "D", "A", "R", "T"])("names the %s control", (resultType) => {
     render(named(resultType));
     expect(
       screen.getByLabelText("Result for COVID-19 PCR — N2 (Ct)"),

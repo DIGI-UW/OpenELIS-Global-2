@@ -36,13 +36,13 @@ public class SampleEntryTestsForTypeProviderPanelFilterTest extends BaseWebConte
     @Autowired
     private TestService testService;
 
+    @Autowired
     private SampleEntryTestsForTypeProviderRestController controller;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/sample-entry-panel-filter.xml");
-        controller = new SampleEntryTestsForTypeProviderRestController();
     }
 
     @Test

@@ -329,9 +329,8 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             reflex.setTestResult(results.get(0));
             if (resultType.equals("N")) {
                 Double value = Double.parseDouble(condition.getValue());
-                Double value2 = Double.parseDouble(condition.getValue2());
                 if (condition.getRelation().equals(NumericRelationOptions.BETWEEN)) {
-                    reflex.setNonDictionaryValue(value.toString() + "-" + value2.toString());
+                    reflex.setNonDictionaryValue(value.toString() + "-" + Double.parseDouble(condition.getValue2()));
                 } else {
                     reflex.setNonDictionaryValue(value.toString());
                 }

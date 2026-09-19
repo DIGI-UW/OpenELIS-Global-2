@@ -332,6 +332,18 @@ public class ConfigurationInitializationServiceTest {
     }
 
     @Test
+    public void reload_shouldForceOnlyTheNamedFiles() throws Exception {
+        createTestFile("tests/uploaded.csv", "uploaded content");
+        createTestFile("tests/shipped.csv", "shipped content");
+
+        service.reload(ConfigurationReloadOptions.all());
+        service.reload(ConfigurationReloadOptions.forFiles(Set.of("tests"), Set.of("uploaded.csv")));
+
+        verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("uploaded.csv"));
+        verify(mockHandler, times(1)).processConfiguration(any(InputStream.class), eq("shipped.csv"));
+    }
+
+    @Test
     public void reload_shouldFilterDomains() throws Exception {
         DomainConfigurationHandler rolesHandler = mock(DomainConfigurationHandler.class);
         when(rolesHandler.getDomainName()).thenReturn("roles");

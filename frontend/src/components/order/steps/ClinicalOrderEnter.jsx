@@ -1,26 +1,29 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
   Column,
   Stack,
-  TextInput,
   Button,
   Tile,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext } from "../../layout/Layout";
+import { useNewOrderReset } from "../useNewOrderReset";
+import { describeUnmetRequirements } from "../saveRequirements";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import LabNumberField from "./sections/LabNumberField";
+import EqaAndNoPatientSection from "./sections/EqaAndNoPatientSection";
+import OrderAttachmentsSection from "./sections/OrderAttachmentsSection";
 import PatientSearchSection from "./sections/PatientSearchSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
@@ -29,12 +32,12 @@ import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
 
 const WORKFLOW_TYPE = "clinical";
+const WORKFLOW_PREFIX = "/order/clinical";
 
 const ClinicalOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const componentMounted = useRef(true);
   const {
     orderData,
     setOrderData,
@@ -42,18 +45,28 @@ const ClinicalOrderEnter = () => {
     setSamples,
     labNumber,
     saveOrderEntry,
+    isSubmitting,
+    fieldErrors,
     markStepComplete,
     isReadOnly,
     isEditMode,
-    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const patientRequired = configurationProperties.PatientRequired !== "false";
+  const siteRequired =
+    configurationProperties.SampleEntryReferralSiteNameRequired === "true";
+  const providerRequired =
+    configurationProperties.REQUESTER_REQUIRED === "true";
+
+  const isNewOrder = useNewOrderReset(WORKFLOW_PREFIX);
+
   // Initialise empty — populated by the sync effect below after the mount
-  // reset guard runs, preventing stale cross-domain lab numbers from bleeding in.
+  // reset runs, preventing stale cross-domain lab numbers from bleeding in.
   const [localLabNumber, setLocalLabNumber] = useState("");
-  const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [phoneValidation, setPhoneValidation] = useState({
@@ -61,15 +74,25 @@ const ClinicalOrderEnter = () => {
     contactPhone: { body: "", status: true },
   });
 
-  // Reset on mount for new orders. Only skip reset when ?order= is present
-  // AND the URL path belongs to this workflow — prevents a stale ?order= from
-  // a different domain blocking the reset when switching between workflows.
+  // A caller can pre-set the EQA control, which is what makes the override a
+  // recorded decision rather than something only a human click can produce:
+  // the EQA worklist links straight in here with it already on.
   useEffect(() => {
-    const orderParam = new URLSearchParams(location.search).get("order");
-    const pathMatchesWorkflow = location.pathname.startsWith("/order/clinical");
-    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
-      resetOrder();
+    if (!isNewOrder) {
+      return;
     }
+    if (new URLSearchParams(location.search).get("eqa") !== "true") {
+      return;
+    }
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        isEQASample: true,
+        noPatientOverride: true,
+        noPatientReasonCode: "EQA",
+      },
+    }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType into orderData on mount (or when editing an existing order
@@ -98,7 +121,7 @@ const ClinicalOrderEnter = () => {
   // Sync local lab number when context changes (e.g., order loaded from dashboard)
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
-    const pathMatchesWorkflow = location.pathname.startsWith("/order/clinical");
+    const pathMatchesWorkflow = location.pathname.startsWith(WORKFLOW_PREFIX);
     if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
@@ -107,54 +130,56 @@ const ClinicalOrderEnter = () => {
     }
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
-  useEffect(() => {
-    componentMounted.current = true;
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+  const handleLabNumberChange = useCallback(
+    (newLabNo) => {
+      setLocalLabNumber(newLabNo);
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          labNo: newLabNo,
+        },
+      }));
+    },
+    [setOrderData],
+  );
 
-  const handleGenerateLabNumber = () => {
-    setIsGeneratingLabNo(true);
-    getFromOpenElisServer(
-      "/rest/SampleEntryGenerateScanProvider",
-      (response) => {
-        if (componentMounted.current) {
-          setIsGeneratingLabNo(false);
-          if (response?.body) {
-            const newLabNo = response.body;
-            setLocalLabNumber(newLabNo);
-            setOrderData({
-              ...orderData,
-              sampleOrderItems: {
-                ...orderData.sampleOrderItems,
-                labNo: newLabNo,
-              },
-            });
-          }
-        }
-      },
-    );
-  };
-
-  const handleLabNumberChange = (e) => {
-    const newLabNo = e.target.value;
-    setLocalLabNumber(newLabNo);
-    setOrderData({
-      ...orderData,
-      sampleOrderItems: {
-        ...orderData.sampleOrderItems,
-        labNo: newLabNo,
-      },
-    });
-  };
-
-  const hasPatientOrSite = !!(
+  const hasPatient = !!(
     orderData?.patientProperties?.lastName ||
     orderData?.patientProperties?.nationalId
   );
+  // A recorded decision, not a silent fallthrough: an order may go without a
+  // patient when the user (or EQA) has said so and why.
+  const noPatientOverride = Boolean(
+    orderData?.sampleOrderItems?.noPatientOverride,
+  );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+  const hasProvider = Boolean(
+    orderData?.sampleOrderItems?.providerPersonId ||
+    orderData?.sampleOrderItems?.providerId,
+  );
+  // These settings have always existed; the lanes just never read them.
+  // SampleEntryReferralSiteNameRequired marks the field — that is all it has
+  // ever done, in the legacy screen it was written for — so it drives the
+  // asterisk that regressed, not a save gate. REQUESTER_REQUIRED is a real
+  // validation gate in the legacy flow, and PatientRequired is honoured with
+  // the recorded no-patient override as its escape hatch.
+  const saveRequirements = [
+    {
+      met: Boolean(localLabNumber),
+      labelId: "order.save.requirement.labNumber",
+    },
+    {
+      met: hasPatient || noPatientOverride || !patientRequired,
+      labelId: "order.save.requirement.patient",
+    },
+    {
+      met: hasProvider || !providerRequired,
+      labelId: "order.save.requirement.provider",
+    },
+    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
+  ];
+  const canSave = saveRequirements.every((requirement) => requirement.met);
 
   const canProceed =
     canSave &&
@@ -165,17 +190,13 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a patient and at least one sample type before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
     }
     try {
-      await saveOrderEntry(false);
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -195,7 +216,7 @@ const ClinicalOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry(false);
+      await saveOrderEntry();
       markStepComplete("enter");
       history.push(
         labNumber
@@ -217,17 +238,13 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.save.incomplete",
-          defaultMessage:
-            "Please add a patient and at least one sample type before saving.",
-        }),
+        message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
       return;
     }
     try {
-      await saveOrderEntry(true);
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -258,7 +275,7 @@ const ClinicalOrderEnter = () => {
           kind="tertiary"
           onClick={handleSaveAsDraft}
           size="md"
-          disabled={!canSave}
+          disabled={isSubmitting || !canSave}
         >
           <FormattedMessage
             id="button.save.draft"
@@ -268,6 +285,7 @@ const ClinicalOrderEnter = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
         {/* Lab Number */}
@@ -281,50 +299,14 @@ const ClinicalOrderEnter = () => {
 
           <Grid>
             <Column lg={12} md={6} sm={4}>
-              <div className="lab-number-field">
-                <TextInput
-                  id="labNumber"
-                  labelText={
-                    <span>
-                      <FormattedMessage
-                        id="order.labNumber"
-                        defaultMessage="Lab Number"
-                      />
-                      <span className="required-indicator"> *</span>
-                    </span>
-                  }
-                  value={localLabNumber}
-                  onChange={handleLabNumberChange}
-                  placeholder={intl.formatMessage({
-                    id: "order.labNumber.placeholder",
-                    defaultMessage: "Enter or generate lab number",
-                  })}
-                  disabled={isReadOnly && !isEditMode}
-                />
-                <Link
-                  className="generate-link"
-                  onClick={handleGenerateLabNumber}
-                  disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
-                >
-                  {isGeneratingLabNo ? (
-                    <FormattedMessage
-                      id="generating"
-                      defaultMessage="Generating..."
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="order.labNumber.generate"
-                      defaultMessage="Generate"
-                    />
-                  )}
-                </Link>
-              </div>
-              <p className="helper-text">
-                <FormattedMessage
-                  id="order.labNumber.helper"
-                  defaultMessage="Auto-generated per existing lab number rules. Assigned here to enable tracking across all steps."
-                />
-              </p>
+              <LabNumberField
+                value={localLabNumber}
+                onLabNumberChange={handleLabNumberChange}
+                disabled={isReadOnly && !isEditMode}
+                autoGenerate={isNewOrder}
+                invalid={Boolean(fieldErrors?.["sampleOrderItems.labNo"])}
+                invalidText={fieldErrors?.["sampleOrderItems.labNo"]}
+              />
             </Column>
           </Grid>
 
@@ -388,6 +370,14 @@ const ClinicalOrderEnter = () => {
           </Accordion>
         </Tile>
 
+        {/* AL and W: the two adjacent decisions — EQA, and no patient. */}
+        <EqaAndNoPatientSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+          patientRequired={patientRequired}
+        />
+
         {/* Patient Search */}
         <PatientSearchSection
           orderData={orderData}
@@ -400,6 +390,7 @@ const ClinicalOrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
+          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
         />
 
@@ -416,6 +407,8 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+          siteRequired={siteRequired}
+          providerRequired={providerRequired}
         />
 
         {/* Sample & Test Selection */}
@@ -426,6 +419,12 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+        />
+        {/* T: order attachments existed on the legacy screen with an
+            unchanged REST API; only the new lanes had no way in. */}
+        <OrderAttachmentsSection
+          labNumber={localLabNumber}
+          isReadOnly={isReadOnly && !isEditMode}
         />
       </Stack>
     </OrderWorkflowLayout>
