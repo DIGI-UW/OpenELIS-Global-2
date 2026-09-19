@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,7 @@ import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +35,9 @@ public class SampleStorageServiceImplTest {
 
     @Mock
     private SampleItemDAO sampleItemDAO;
+
+    @Mock
+    private StorageLocationService storageLocationService;
 
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
@@ -269,6 +274,39 @@ public class SampleStorageServiceImplTest {
         assertEquals(1, result.size());
         assertEquals("5", result.get(0).get("id"));
         assertEquals("ACC-REAL", result.get(0).get("sampleAccessionNumber"));
+    }
+
+    // ── listing order ──────────────────────────────────────────────────────────
+
+    /**
+     * The listing is paged by the REST layer, so its order has to survive a
+     * disposal: disposal clears the assignment's location, and an order built on
+     * location moved the row to a different page instead of leaving it in place.
+     */
+    @Test
+    public void testGetAllSamplesWithAssignments_OrdersByIdRatherThanLocation() {
+        SampleItem first = buildSampleItem("1", null);
+        SampleItem second = buildSampleItem("2", null);
+        SampleItem third = buildSampleItem("10", null);
+
+        StorageRoom room = new StorageRoom();
+        room.setId(7);
+        room.setName("A Room");
+
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setSampleItemId(10);
+        assignment.setLocationId(7);
+        assignment.setLocationType("room");
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(first, second, third));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(List.of(assignment));
+        when(storageLocationService.get(7, StorageRoom.class)).thenReturn(room);
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals("assigned row must not jump ahead of the others", List.of("1", "2", "10"),
+                result.stream().map(row -> row.get("id")).collect(Collectors.toList()));
+        assertEquals("A Room", result.get(2).get("location"));
     }
 
     // Helper method to create test assignments

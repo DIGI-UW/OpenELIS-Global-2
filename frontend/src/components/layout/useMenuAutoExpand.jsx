@@ -46,6 +46,10 @@ export function useMenuAutoExpand(initialMenus) {
       let isActiveBranch = false;
 
       items.forEach((item) => {
+        // A deactivated row is never rendered, so its URL must not expand
+        // anything onto it.
+        if (item.menu?.isActive === false) return;
+
         // Recursively check children first (depth-first)
         if (item.childMenus && item.childMenus.length > 0) {
           if (markActiveExpanded(item.childMenus)) {

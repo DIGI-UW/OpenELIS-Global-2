@@ -25,6 +25,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.AdjustQuantityRequest;
+import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.DisposeRequest;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -95,13 +96,26 @@ public class InventoryLotRestControllerTest {
     @Test
     public void disposeLot_answers400WithBody_whenAlreadyDisposed() {
         stubSession();
-        when(inventoryLotService.disposeLot(5L, null, null, "7"))
+        when(sampleStorageService.disposeInventoryLot(5L, null, null, "7"))
                 .thenThrow(new IllegalStateException("Lot already disposed: LOT-5"));
 
         ResponseEntity<?> response = controller.disposeLot("5", null, request);
 
         assertEquals(400, response.getStatusCode().value());
         assertEquals("Lot already disposed: LOT-5", body(response).get("error"));
+    }
+
+    @Test
+    public void disposeLot_goesThroughTheOneTransactionalDisposal() {
+        stubSession();
+        when(sampleStorageService.disposeInventoryLot(5L, "expired", "bin 3", "7")).thenReturn(lot(5L));
+
+        ResponseEntity<?> response = controller.disposeLot("5", dispose("expired", "bin 3"), request);
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(sampleStorageService).disposeInventoryLot(5L, "expired", "bin 3", "7");
+        verify(inventoryLotService, never()).disposeLot(any(), anyString(), anyString(), anyString());
+        verify(sampleStorageService, never()).releaseInventoryLotLocation(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -177,6 +191,13 @@ public class InventoryLotRestControllerTest {
         adjust.setNewQuantity(newQuantity);
         adjust.setReason(reason);
         return adjust;
+    }
+
+    private DisposeRequest dispose(String reason, String notes) {
+        DisposeRequest disposeRequest = new DisposeRequest();
+        disposeRequest.setReason(reason);
+        disposeRequest.setNotes(notes);
+        return disposeRequest;
     }
 
     @SuppressWarnings("unchecked")
