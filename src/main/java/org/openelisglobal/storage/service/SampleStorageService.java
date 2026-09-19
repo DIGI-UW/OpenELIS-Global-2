@@ -212,8 +212,10 @@ public interface SampleStorageService {
             String notes);
 
     /**
-     * List every InventoryLot ever assigned storage with its location resolved, the
-     * lot equivalent of {@link #getAllSamplesWithAssignments}.
+     * List every InventoryLot that has ever been assigned storage, with its current
+     * location or none. Unlike {@link #getAllSamplesWithAssignments}, which starts
+     * from all SampleItems, this starts from the assignment rows, so a lot never
+     * assigned storage is absent.
      *
      * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
      *         location, assignedBy and date

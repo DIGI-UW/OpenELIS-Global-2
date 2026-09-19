@@ -1811,8 +1811,7 @@ public class StorageLocationRestController extends BaseRestController {
 
     /**
      * Get location counts by type for active locations only (FR-057, FR-057a). GET
-     * /rest/storage/dashboard/location-counts Returns counts for Room, Device,
-     * Shelf, and Rack levels (Position excluded). Only counts active
+     * /rest/storage/dashboard/location-counts Only counts active
      * (non-decommissioned) locations.
      * 
      * @return JSON map with keys: "rooms", "devices", "shelves", "racks", "boxes"

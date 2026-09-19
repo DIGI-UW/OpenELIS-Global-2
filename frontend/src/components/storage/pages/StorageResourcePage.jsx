@@ -73,16 +73,11 @@ export default function StorageResourcePage({
 
   // Name the level being acted on — "Rack created", not a generic
   // "Storage location created" that reads identically for all five.
-  const notify = (kind, messageId, defaultMessage) => {
+  const notify = (messageId, defaultMessage) => {
     setNotificationVisible(true);
     addNotification({
-      kind,
-      title: intl.formatMessage({
-        id:
-          kind === NotificationKinds.success
-            ? "notification.title"
-            : "notification.error",
-      }),
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage(
         { id: messageId, defaultMessage },
         {
@@ -278,11 +273,7 @@ export default function StorageResourcePage({
         onClose={() => setAddOpen(false)}
         onCreated={() => {
           setAddOpen(false);
-          notify(
-            NotificationKinds.success,
-            "storage.location.created",
-            "{level} created",
-          );
+          notify("storage.location.created", "{level} created");
           refreshAfterWrite();
         }}
       />
@@ -293,11 +284,7 @@ export default function StorageResourcePage({
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => {
           setDeleteTarget(null);
-          notify(
-            NotificationKinds.success,
-            "storage.location.deleted",
-            "{level} deleted",
-          );
+          notify("storage.location.deleted", "{level} deleted");
           refreshAfterWrite();
         }}
       />

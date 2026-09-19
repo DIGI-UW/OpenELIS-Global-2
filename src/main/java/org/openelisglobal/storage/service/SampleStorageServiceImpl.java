@@ -1932,7 +1932,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         movement.setNewPositionCoordinate(null);
         movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
         movement.setReason(reason);
-        movement.setMovedByUserId(sysUserId != null ? Integer.valueOf(sysUserId) : null);
+        movement.setMovedByUserId(resolveActingUserId(sysUserId));
         movement.setSysUserId(sysUserId);
         Integer movementId = sampleStorageMovementDAO.insert(movement);
 
