@@ -250,6 +250,38 @@ describe("RacksPage — who gets Add, Edit and Delete", () => {
     expect(headerCount()).toBe(4);
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
   });
+
+  // These two pin the shape of the condition rather than another role. A gate
+  // written as an exclusion has to let Reception through to pass the case
+  // above, and then it denies an administrator who also holds Reception —
+  // which leaves a blocklist nowhere to stand, however many roles it names.
+  it("offers no controls to a user holding every non-admin role at once", async () => {
+    listOneRack();
+    renderPage(
+      Object.values(Utils.Roles).filter(
+        (role) => role !== Utils.Roles.GLOBAL_ADMIN,
+      ),
+    );
+
+    expect(await screen.findByText("Rack R1")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-testid^="storage-row-actions-"]'),
+    ).toBeNull();
+    expect(headerCount()).toBe(4);
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+  });
+
+  it("offers an administrator the controls even when they also hold Reception", async () => {
+    listOneRack();
+    renderPage([Utils.Roles.GLOBAL_ADMIN, Utils.Roles.RECEPTION]);
+
+    expect(await screen.findByText("Rack R1")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-testid="storage-row-actions-1"]'),
+    ).toBeInTheDocument();
+    expect(headerCount()).toBe(5);
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
 });
 
 describe("RacksPage — feedback on edit", () => {

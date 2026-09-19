@@ -571,6 +571,93 @@ describe("InventoryDashboard print label", () => {
   });
 });
 
+// Narrowing the set while on a later page used to leave the table empty: the
+// page index survived the filter and pointed past the end of the shorter list.
+describe("InventoryDashboard filters and the current page", () => {
+  const reagent = {
+    id: "BUFFER",
+    name: "Wash Buffer",
+    itemType: "REAGENT",
+    units: "mL",
+    lowStockThreshold: 1,
+  };
+
+  // One page of 20 plus five: the odd lot out sits on page 2 and is the only
+  // row every one of these filters keeps.
+  const oddLotOut = {
+    ...lotWithLocation,
+    id: 124,
+    lotNumber: "LOT-124",
+    status: "DISPOSED",
+    inventoryItem: { id: "BUFFER" },
+  };
+
+  // The empty state is a single-cell row, so fall back to it and let a blank
+  // table read as its own message rather than a TypeError.
+  const lotNumbersShown = () =>
+    Array.from(document.querySelectorAll("table tbody tr")).map(
+      (row) => row.cells[1]?.textContent ?? row.cells[0].textContent,
+    );
+
+  const renderOnPageTwo = async () => {
+    InventoryItemAPI.getAll.mockResolvedValue([
+      {
+        id: "MALARIA_RDT",
+        name: "Malaria RDT",
+        itemType: "RDT",
+        units: "kits",
+        lowStockThreshold: 20,
+      },
+      reagent,
+    ]);
+    InventoryLotAPI.getAll.mockResolvedValue([
+      ...Array.from({ length: 24 }, (_, n) => ({
+        ...lotWithLocation,
+        id: 100 + n,
+        lotNumber: `LOT-${100 + n}`,
+      })),
+      oddLotOut,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-124"));
+  };
+
+  it("returns to page one when the search box narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.change(document.querySelector("input[type='search']"), {
+      target: { value: "LOT-124" },
+    });
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+  });
+
+  it("returns to page one when the type dropdown narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-type-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Reagent" }));
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+  });
+
+  it("returns to page one when the status dropdown narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-status-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Disposed" }));
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-124"]));
+  });
+});
+
 describe("InventoryDashboard metric tile filters", () => {
   const inDays = (days) =>
     new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();

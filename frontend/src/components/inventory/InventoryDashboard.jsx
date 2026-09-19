@@ -670,7 +670,10 @@ const InventoryDashboard = ({ active = true }) => {
                   placeholder={intl.formatMessage({
                     id: "inventory.lot.search.placeholder",
                   })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   value={searchTerm}
                 />
 
@@ -685,9 +688,10 @@ const InventoryDashboard = ({ active = true }) => {
                   selectedItem={
                     itemTypes.find((t) => t.id === typeFilter) ?? null
                   }
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
+                  onChange={({ selectedItem }) => {
+                    setTypeFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
@@ -702,9 +706,10 @@ const InventoryDashboard = ({ active = true }) => {
                   selectedItem={
                     statusOptions.find((s) => s.id === statusFilter) ?? null
                   }
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
+                  onChange={({ selectedItem }) => {
+                    setStatusFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 

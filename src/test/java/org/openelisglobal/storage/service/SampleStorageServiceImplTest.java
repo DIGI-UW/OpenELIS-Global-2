@@ -234,7 +234,6 @@ public class SampleStorageServiceImplTest {
         notSkipped.setAccessionNumber("ACC-NOSKIP");
         notSkipped.setStorageSkipped(false);
 
-        // IDs "1" < "2" so skipped item sorts first (unassigned sort is by id)
         SampleItem itemA = buildSampleItem("1", skipped);
         SampleItem itemB = buildSampleItem("2", notSkipped);
 
@@ -245,15 +244,20 @@ public class SampleStorageServiceImplTest {
 
         assertEquals(2, result.size());
 
-        Map<String, Object> first = result.get(0);
-        assertEquals("1", first.get("id"));
-        assertEquals("ACC-SKIP", first.get("sampleAccessionNumber"));
-        assertTrue("item 1 must be storage-skipped", (Boolean) first.get("storageSkipped"));
+        // Look the rows up by id: which of them comes first is the listing
+        // order's business, covered by its own test.
+        Map<String, Object> skippedRow = rowWithId(result, "1");
+        assertEquals("ACC-SKIP", skippedRow.get("sampleAccessionNumber"));
+        assertTrue("item 1 must be storage-skipped", (Boolean) skippedRow.get("storageSkipped"));
 
-        Map<String, Object> second = result.get(1);
-        assertEquals("2", second.get("id"));
-        assertEquals("ACC-NOSKIP", second.get("sampleAccessionNumber"));
-        assertFalse("item 2 must not be storage-skipped", (Boolean) second.get("storageSkipped"));
+        Map<String, Object> notSkippedRow = rowWithId(result, "2");
+        assertEquals("ACC-NOSKIP", notSkippedRow.get("sampleAccessionNumber"));
+        assertFalse("item 2 must not be storage-skipped", (Boolean) notSkippedRow.get("storageSkipped"));
+    }
+
+    private static Map<String, Object> rowWithId(List<Map<String, Object>> rows, String id) {
+        return rows.stream().filter(row -> id.equals(row.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a row for sample item " + id));
     }
 
     @Test
@@ -280,8 +284,9 @@ public class SampleStorageServiceImplTest {
 
     /**
      * The listing is paged by the REST layer, so its order has to survive a
-     * disposal: disposal clears the assignment's location, and an order built on
-     * location moved the row to a different page instead of leaving it in place.
+     * disposal and put the newest items on page one: disposal clears the
+     * assignment's location, and an order built on location moved the row to a
+     * different page instead of leaving it in place.
      */
     @Test
     public void testGetAllSamplesWithAssignments_OrdersByIdRatherThanLocation() {
@@ -304,9 +309,9 @@ public class SampleStorageServiceImplTest {
 
         List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
 
-        assertEquals("assigned row must not jump ahead of the others", List.of("1", "2", "10"),
+        assertEquals("assigned row must not jump ahead of the others", List.of("10", "2", "1"),
                 result.stream().map(row -> row.get("id")).collect(Collectors.toList()));
-        assertEquals("A Room", result.get(2).get("location"));
+        assertEquals("A Room", result.get(0).get("location"));
     }
 
     // Helper method to create test assignments

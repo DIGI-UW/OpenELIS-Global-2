@@ -105,7 +105,11 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
             return new java.util.ArrayList<>();
         }
         try {
-            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.occupantType = :occupantType";
+            // Highest lot id first: the caller pages this listing, and an unordered
+            // scan returns an updated row wherever PostgreSQL rewrote it, moving the
+            // row the user just edited to another page.
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.occupantType = :occupantType"
+                    + " ORDER BY ssa.inventoryLotId DESC";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
             query.setParameter("occupantType", occupantType);

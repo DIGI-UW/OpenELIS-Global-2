@@ -15,6 +15,7 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -495,6 +496,20 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
         assertNotNull(row.get("lotNumber"));
         assertEquals("A1", row.get("positionCoordinate"));
         assertFalse("Location should resolve to a path", row.get("location").toString().isEmpty());
+    }
+
+    // The listing is paged, so its order must not depend on where PostgreSQL
+    // happened to rewrite a row that was updated.
+    @Test
+    public void getAllInventoryLotsWithAssignments_listsTheHighestLotIdFirstAfterAnUpdate() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_2, BOX, "box", "B2", "second lot", "1");
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "first lot", "1");
+        sampleStorageService.updateInventoryLotAssignmentMetadata(LOT_2, "B3", null);
+
+        List<Object> ids = sampleStorageService.getAllInventoryLotsWithAssignments().stream().map(row -> row.get("id"))
+                .collect(Collectors.toList());
+
+        assertEquals("Highest lot id first, whatever the insert and update order", Arrays.asList(7001L, 7000L), ids);
     }
 
     @Test

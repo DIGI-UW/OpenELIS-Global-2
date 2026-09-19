@@ -150,11 +150,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                             : "");
             // Internal map carries the raw DB status ID so
             // StorageDashboardServiceImpl.filterSamples can call
-            // statusService.matches without another lookup. The REST controller
+            // statusService.matches without another lookup. The REST layer
             // translates this to the spec-compliant "active"|"disposed" enum
             // (specs/001-sample-storage/contracts/storage-api.json:862,885)
-            // before serializing to the client — see SampleStorageRestController
-            // .normalizeStatusForResponse.
+            // before serializing to the client — see SampleStatusResponse.
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
@@ -190,10 +189,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             response.add(map);
         }
 
-        // Ordered by sample item id: the caller serves this list a page at a time,
-        // and ordering on location moved a row to a different page the moment a
-        // disposal cleared that location.
-        response.sort(Comparator.comparingLong(row -> sampleItemIdOrder(row.get("id"))));
+        // Highest sample item id first: the caller serves this list a page at a
+        // time, so page one is what the lab received most recently rather than
+        // its oldest, long-disposed items. Ordering on location instead moved a
+        // row to a different page the moment a disposal cleared that location.
+        response.sort(
+                Comparator.comparingLong((Map<String, Object> row) -> sampleItemIdOrder(row.get("id"))).reversed());
 
         logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
                 response.size());

@@ -8,11 +8,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MvcResult;
@@ -21,6 +27,12 @@ import org.springframework.test.web.servlet.MvcResult;
 public class StorageSearchRestControllerTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Before
     @Override
@@ -332,5 +344,38 @@ public class StorageSearchRestControllerTest extends BaseWebContextSensitiveTest
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         assertTrue("A query matching nothing should return no boxes", boxes.isEmpty());
+    }
+
+    /**
+     * The client reads this field to draw the disposed badge, so the search
+     * endpoint owes the same enum the listing returns rather than the raw database
+     * status id.
+     */
+    @Test
+    public void searchSampleItems_ReportsTheStatusEnum_NotTheRawStatusId() throws Exception {
+        assertEquals("An undisposed item reads as active", "active", searchedStatus());
+
+        setSampleItemStatus("1000", statusService.getStatusID(SampleStatus.Disposed));
+
+        assertEquals("A disposed item reads as disposed", "disposed", searchedStatus());
+    }
+
+    private String searchedStatus() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/storage/sample-items/search").param("q", "INT001"))
+                .andExpect(status().isOk()).andReturn();
+        List<Map<String, Object>> hits = objectMapper.readValue(result.getResponse().getContentAsString(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+        assertEquals("Expected the one seeded sample item", 1, hits.size());
+        return (String) hits.get(0).get("status");
+    }
+
+    private void setSampleItemStatus(String sampleItemId, String statusId) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection
+                        .prepareStatement("UPDATE clinlims.sample_item SET status_id = ? WHERE id = ?")) {
+            statement.setInt(1, Integer.parseInt(statusId));
+            statement.setInt(2, Integer.parseInt(sampleItemId));
+            statement.executeUpdate();
+        }
     }
 }

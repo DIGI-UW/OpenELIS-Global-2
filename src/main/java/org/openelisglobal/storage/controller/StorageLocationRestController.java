@@ -12,6 +12,7 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
@@ -53,6 +54,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private StorageSearchService storageSearchService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private StorageRoomService storageRoomService;
@@ -1719,6 +1723,9 @@ public class StorageLocationRestController extends BaseRestController {
     public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageSearchService.searchSamples(q);
+            // Same translation the listing applies: without it a disposed hit
+            // carries its raw status id and the client draws an Active tag.
+            results.forEach(result -> SampleStatusResponse.normalize(result, statusService));
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching sample items with query: " + q, e);
