@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
@@ -22,6 +23,7 @@ import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.program.service.ProgramService;
+import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
@@ -453,10 +455,18 @@ public class UserServiceImpl implements UserService {
         }
 
         List<IdValuePair> allPrograms = DisplayListService.getInstance().getList(ListType.PROGRAM);
-        return allPrograms.stream()
-                .filter(p -> programService.get(p.getId()).getTestSection() == null
-                        || testUnitIds.contains(programService.get(p.getId()).getTestSection().getId()))
-                .collect(Collectors.toList());
+        List<IdValuePair> userPrograms = new ArrayList<>();
+        for (IdValuePair pair : allPrograms) {
+            Optional<Program> program = programService.getMatch("id", pair.getId());
+            if (program.isEmpty()) {
+                continue;
+            }
+            TestSection section = program.get().getTestSection();
+            if (section == null || testUnitIds.contains(section.getId())) {
+                userPrograms.add(pair);
+            }
+        }
+        return userPrograms;
     }
 
 }

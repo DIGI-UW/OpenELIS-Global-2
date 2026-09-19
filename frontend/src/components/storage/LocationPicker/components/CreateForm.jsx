@@ -92,7 +92,12 @@ const LEVELS = [
   },
 ];
 
-export default function CreateForm({ selection, onLevelChange }) {
+// allowCreate=false (OrderLabel) turns the cascade into a pick-only browser.
+export default function CreateForm({
+  selection,
+  onLevelChange,
+  allowCreate = true,
+}) {
   const intl = useIntl();
   const createLocation = useCreateLocation();
   const [options, setOptions] = useState({
@@ -345,7 +350,7 @@ export default function CreateForm({ selection, onLevelChange }) {
               defaultMessage: "Device type",
             })}
             label={intl.formatMessage({
-              id: "storage.picker.select",
+              id: "storage.picker.selectDeviceType",
               defaultMessage: "Select device type",
             })}
             items={deviceTypes}
@@ -469,23 +474,25 @@ export default function CreateForm({ selection, onLevelChange }) {
                   );
                 }}
               />
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Add}
-                disabled={!enabled}
-                onClick={() => openInlineCreate(key)}
-              >
-                {intl.formatMessage(
-                  {
-                    id: "storage.picker.addNewLevel",
-                    defaultMessage: "Add new {level}",
-                  },
-                  { level: levelLabel },
-                )}
-              </Button>
+              {allowCreate && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Add}
+                  disabled={!enabled}
+                  onClick={() => openInlineCreate(key)}
+                >
+                  {intl.formatMessage(
+                    {
+                      id: "storage.picker.addNewLevel",
+                      defaultMessage: "Add new {level}",
+                    },
+                    { level: levelLabel },
+                  )}
+                </Button>
+              )}
             </div>
-            {inlineCreate?.level === key && renderInlineCreate()}
+            {allowCreate && inlineCreate?.level === key && renderInlineCreate()}
           </React.Fragment>
         );
       })}

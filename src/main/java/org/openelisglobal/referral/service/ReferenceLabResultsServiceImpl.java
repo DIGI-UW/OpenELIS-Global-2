@@ -15,6 +15,7 @@ import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -271,6 +272,9 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             List<ReferenceLabReferralDTO.ResultCard> cards = new ArrayList<>();
             for (ReferralResultsImportObjects imp : fhirApiWorkflowService
                     .fetchReturnedResults(referral.getFhirUuid())) {
+                if (dto.getPeerReason() == null) {
+                    dto.setPeerReason(peerReasonText(imp));
+                }
                 if (imp.observations == null) {
                     continue;
                 }
@@ -286,6 +290,26 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             LogEvent.logWarn(this.getClass().getSimpleName(), "enrichReturnedResults",
                     "could not live-read results for referral " + referral.getId() + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * The reason the peer laboratory recorded on its Task. Already in hand from the
+     * same fetch that builds the result cards, so reading it costs no extra
+     * round-trip. Prefers coded text, falls back to the first coding's display.
+     */
+    private String peerReasonText(ReferralResultsImportObjects imp) {
+        if (imp.originalReferralObjects == null || imp.originalReferralObjects.task == null) {
+            return null;
+        }
+        Task task = imp.originalReferralObjects.task;
+        if (!task.hasStatusReason()) {
+            return null;
+        }
+        CodeableConcept reason = task.getStatusReason();
+        if (reason.hasText()) {
+            return reason.getText();
+        }
+        return reason.hasCoding() ? reason.getCodingFirstRep().getDisplay() : null;
     }
 
     private ReferenceLabReferralDTO.ResultCard toResultCard(Observation obs) {
@@ -316,7 +340,12 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         return card;
     }
 
-    private String referenceRangeText(Observation.ObservationReferenceRangeComponent rr) {
+    /**
+     * Static so the critical-result alert can render a range the same way this card
+     * does. Injecting this service there would be circular, since this one already
+     * depends on FhirReferralService.
+     */
+    public static String referenceRangeText(Observation.ObservationReferenceRangeComponent rr) {
         if (rr.hasText()) {
             return rr.getText();
         }
