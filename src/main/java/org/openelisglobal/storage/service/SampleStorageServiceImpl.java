@@ -1913,8 +1913,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     previousPositionCoordinate);
         }
 
-        // Occupancy filters on locationType/locationId, so clearing them frees
-        // the slot; the row itself stays for audit.
+        // The row stays for audit; nulling the location is what frees the slot.
         assignment.setLocationId(null);
         assignment.setLocationType(null);
         assignment.setPositionCoordinate(null);
@@ -1944,8 +1943,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional
     public InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId) {
-        // Both halves in one transaction: a failed release must undo the status
-        // change rather than leave a DISPOSED lot holding its slot.
+        // One transaction, so a failed release undoes the DISPOSED status too.
         InventoryLot lot = inventoryLotService.disposeLot(inventoryLotId, reason, notes, sysUserId);
         String movementReason = "Disposal: " + (reason != null ? reason : "")
                 + (notes != null ? " | Notes: " + notes : "");
@@ -2009,12 +2007,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllInventoryLotsWithAssignments() {
-        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO
+                .findByOccupantType(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
         List<Map<String, Object>> response = new java.util.ArrayList<>();
 
         for (SampleStorageAssignment assignment : assignments) {
-            if (!SampleStorageAssignment.OCCUPANT_INVENTORY_LOT.equals(assignment.getOccupantType())
-                    || assignment.getInventoryLotId() == null) {
+            if (assignment.getInventoryLotId() == null) {
                 continue;
             }
             InventoryLot lot = inventoryLotService.get(assignment.getInventoryLotId());

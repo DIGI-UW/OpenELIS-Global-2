@@ -176,8 +176,8 @@ public interface SampleStorageService {
             java.util.List<Long> inventoryLotIds);
 
     /**
-     * Clear an InventoryLot's location so the slot stops counting toward occupancy,
-     * keeping the assignment row for audit. A lot with no assignment is a no-op.
+     * Free an InventoryLot's slot by clearing its location, keeping the assignment
+     * row for audit. A lot with no assignment is a no-op.
      *
      * @param inventoryLotId InventoryLot ID
      * @param reason         Why the lot left storage, recorded on the movement
@@ -212,10 +212,8 @@ public interface SampleStorageService {
             String notes);
 
     /**
-     * List every InventoryLot that has ever been assigned storage, with its current
-     * location or none. Unlike {@link #getAllSamplesWithAssignments}, which starts
-     * from all SampleItems, this starts from the assignment rows, so a lot never
-     * assigned storage is absent.
+     * List every InventoryLot that has an assignment row, with its current location
+     * or none; a lot never assigned storage is absent.
      *
      * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
      *         location, assignedBy and date

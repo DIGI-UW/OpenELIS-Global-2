@@ -100,6 +100,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
+    public List<SampleStorageAssignment> findByOccupantType(String occupantType) {
+        if (occupantType == null) {
+            return new java.util.ArrayList<>();
+        }
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.occupantType = :occupantType";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("occupantType", occupantType);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignments by occupant type: {}", occupantType, e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignments by occupant type: " + occupantType,
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SampleStorageAssignment findByStorageBox(StorageBox box) {
         try {
             if (box == null) {

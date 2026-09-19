@@ -285,6 +285,41 @@ describe("EditLocationModal", () => {
     expect(savedPayload().name).toBe("Room B");
   });
 
+  // The reset is what stops row A's values saving under row B's id.
+  it("shows nothing to save for a newly opened row until that row loads", async () => {
+    const pending = [];
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/storage/rooms/")) pending.push([url, cb]);
+      else cb(PARENTS);
+    });
+
+    const tree = (over) => (
+      <IntlProvider locale="en" messages={messages}>
+        <EditLocationModal
+          level="room"
+          onClose={vi.fn()}
+          onUpdated={vi.fn()}
+          {...over}
+        />
+      </IntlProvider>
+    );
+
+    const { rerender } = render(tree({ id: 12, open: true }));
+    pending.find(([u]) => u === "/rest/storage/rooms/12")[1](
+      RECORDS["/rest/storage/rooms/12"],
+    );
+    expect(await screen.findByLabelText(/^name$/i)).toHaveValue("Main Lab");
+
+    rerender(tree({ id: 12, open: false }));
+    rerender(tree({ id: 99, open: true }));
+
+    expect(screen.queryByLabelText(/^name$/i)).toBeNull();
+    expect(screen.getByText("Save").closest("button")).toBeDisabled();
+
+    save();
+    expect(Utils.putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
   it("shows a shelf the device it already sits in", async () => {
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
       if (RECORDS[url]) cb(RECORDS[url]);

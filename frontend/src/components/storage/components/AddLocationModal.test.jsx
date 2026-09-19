@@ -161,6 +161,49 @@ describe("AddLocationModal", () => {
     );
   });
 
+  // The saving flag is the only thing disabling the button mid-submit.
+  it("blocks a second Create while the first POST is still in flight", async () => {
+    Utils.postToOpenElisServerJsonResponse.mockImplementation(() => {});
+    const createButton = () => screen.getByText("Create").closest("button");
+    renderModal({ level: "room" });
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Main Lab" },
+    });
+    fireEvent.click(createButton());
+
+    await waitFor(() => expect(createButton()).toBeDisabled());
+    fireEvent.click(createButton());
+    expect(Utils.postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the form when the modal is closed and opened again", () => {
+    const tree = (over) => (
+      <IntlProvider locale="en" messages={messages}>
+        <AddLocationModal
+          level="room"
+          onClose={vi.fn()}
+          onCreated={vi.fn()}
+          {...over}
+        />
+      </IntlProvider>
+    );
+
+    const { rerender } = render(tree({ open: true }));
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Main Lab" },
+    });
+    fireEvent.change(screen.getByLabelText(/^code$/i), {
+      target: { value: "RM-1" },
+    });
+
+    rerender(tree({ open: false }));
+    rerender(tree({ open: true }));
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^code$/i)).toHaveValue("");
+  });
+
   it("keeps the dialog open and shows why when the server rejects it", async () => {
     Utils.postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
       cb({ error: "Code already exists" }),

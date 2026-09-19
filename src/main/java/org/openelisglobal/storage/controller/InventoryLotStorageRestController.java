@@ -38,9 +38,8 @@ public class InventoryLotStorageRestController extends BaseRestController {
     private SampleStorageService sampleStorageService;
 
     /**
-     * List every InventoryLot that has ever been assigned storage. Backs the
-     * Storage Management lots view; unlike GET /rest/storage/sample-items, a lot
-     * never assigned storage is absent.
+     * List every InventoryLot that has an assignment row; a lot never assigned
+     * storage is absent.
      */
     @GetMapping("")
     public ResponseEntity<List<Map<String, Object>>> getInventoryLots() {

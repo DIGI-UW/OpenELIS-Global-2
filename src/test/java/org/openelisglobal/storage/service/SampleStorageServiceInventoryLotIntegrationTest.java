@@ -460,6 +460,30 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
         }
     }
 
+    // The lots listing asks the DAO for lot rows, so its cost tracks lots not
+    // samples.
+    @Test
+    public void findByOccupantType_returnsTheLotAssignmentsAndNotTheSampleOnes() throws Exception {
+        executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
+        try {
+            sampleStorageService.assignSampleItemWithLocation("1002", "1000", "room", null, "sample occupant");
+            sampleStorageService.assignInventoryLotWithLocation(LOT_1, "1000", "room", null, "lot occupant", "1");
+
+            List<SampleStorageAssignment> sampleAssignments = sampleStorageAssignmentDAO
+                    .findByOccupantType(SampleStorageAssignment.OCCUPANT_SAMPLE_ITEM);
+            List<SampleStorageAssignment> lotAssignments = sampleStorageAssignmentDAO
+                    .findByOccupantType(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+
+            assertFalse("There must be sample assignments for the filter to exclude", sampleAssignments.isEmpty());
+            assertTrue("The lot assignment should be returned",
+                    lotAssignments.stream().anyMatch(a -> Long.valueOf(7000L).equals(a.getInventoryLotId())));
+            assertTrue("No sample assignment should be returned",
+                    lotAssignments.stream().allMatch(a -> a.getSampleItemId() == null));
+        } finally {
+            executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
+        }
+    }
+
     @Test
     public void getAllInventoryLotsWithAssignments_listsLotsWithTheirResolvedLocation() {
         sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
