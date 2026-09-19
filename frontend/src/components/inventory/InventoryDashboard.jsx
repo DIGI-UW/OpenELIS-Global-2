@@ -25,7 +25,7 @@ import {
   Pagination,
   Grid,
   Column,
-  Tile,
+  ClickableTile,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -70,6 +70,50 @@ const PENDING_QC_STOCK_STATUS = {
   kind: "cyan",
 };
 
+const daysToExpiry = (lot) =>
+  Math.floor(
+    (new Date(lot.expirationDate) - new Date()) / (1000 * 60 * 60 * 24),
+  );
+
+// A tile's count and the filter it applies to the table below both read the
+// rule named here, so the two cannot drift apart. lowStock is the exception,
+// noted where the counts are built.
+const METRIC_RULES = {
+  totalLots: () => true,
+  lowStock: (lot, { lowStockItemIds }) =>
+    lowStockItemIds.has(lot.inventoryItem?.id),
+  expiringSoon: (lot, { items }) => {
+    const item = items[lot.inventoryItem?.id];
+    if (!item || !lot.expirationDate) return false;
+    const days = daysToExpiry(lot);
+    return days >= 0 && days <= (item.expirationAlertDays || 30);
+  },
+  expired: (lot, { items }) => {
+    const item = items[lot.inventoryItem?.id];
+    if (!item || !lot.expirationDate) return false;
+    return daysToExpiry(lot) < 0;
+  },
+};
+
+const METRIC_TILES = [
+  { key: "totalLots", labelId: "inventory.metrics.totalLots" },
+  {
+    key: "lowStock",
+    labelId: "inventory.metrics.lowStock",
+    modifier: "metric-warning",
+  },
+  {
+    key: "expiringSoon",
+    labelId: "inventory.metrics.expiringSoon",
+    modifier: "metric-expiring",
+  },
+  {
+    key: "expired",
+    labelId: "inventory.metrics.expired",
+    modifier: "metric-expired",
+  },
+];
+
 // `active` is the parent's tab state: Carbon keeps unselected TabPanels
 // mounted, so without it a Catalog edit stays stale here until a reload.
 const InventoryDashboard = ({ active = true }) => {
@@ -103,12 +147,7 @@ const InventoryDashboard = ({ active = true }) => {
     };
   }, []);
 
-  const [metrics, setMetrics] = useState({
-    totalLots: 0,
-    lowStock: 0,
-    expiringSoon: 0,
-    expired: 0,
-  });
+  const [activeMetric, setActiveMetric] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -253,8 +292,6 @@ const InventoryDashboard = ({ active = true }) => {
         ),
       );
       setLowStockItemIds(lowStockIds);
-
-      calculateMetrics(validLots, itemsMap, lowStockIds);
     } catch (error) {
       console.error("Error fetching inventory:", error);
       if (!isMountedRef.current) return;
@@ -269,40 +306,6 @@ const InventoryDashboard = ({ active = true }) => {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  };
-
-  const calculateMetrics = (lotsData, itemsData, lowStockIds) => {
-    let expiringSoonCount = 0;
-    let expiredCount = 0;
-
-    lotsData.forEach((lot) => {
-      const item = itemsData[lot.inventoryItem?.id];
-      if (!item || !lot.expirationDate) return;
-
-      const expiryDate = new Date(lot.expirationDate);
-      const today = new Date();
-      const daysUntilExpiry = Math.floor(
-        (expiryDate - today) / (1000 * 60 * 60 * 24),
-      );
-
-      if (daysUntilExpiry < 0) {
-        expiredCount++;
-        return;
-      }
-
-      const alertDays = item.expirationAlertDays || 30;
-      if (daysUntilExpiry <= alertDays) {
-        expiringSoonCount++;
-      }
-    });
-
-    setMetrics({
-      totalLots: lotsData.length,
-      // Items below threshold, not lots.
-      lowStock: lowStockIds.size,
-      expiringSoon: expiringSoonCount,
-      expired: expiredCount,
-    });
   };
 
   const getStockStatus = (lot) => {
@@ -381,8 +384,34 @@ const InventoryDashboard = ({ active = true }) => {
     };
   };
 
+  const metricContext = { items, lowStockItemIds };
+
+  const metrics = {
+    totalLots: lots.length,
+    // The backend reports low stock per item and the table lists those items'
+    // lots, so this tile is the one whose number and filtered row count are
+    // meant to differ.
+    lowStock: lowStockItemIds.size,
+    expiringSoon: lots.filter((lot) =>
+      METRIC_RULES.expiringSoon(lot, metricContext),
+    ).length,
+    expired: lots.filter((lot) => METRIC_RULES.expired(lot, metricContext))
+      .length,
+  };
+
+  const toggleMetricFilter = (key) => {
+    setActiveMetric((current) => (current === key ? null : key));
+    setPage(1);
+  };
+
   const getFilteredLots = () => {
     let filtered = lots;
+
+    if (activeMetric) {
+      filtered = filtered.filter((lot) =>
+        METRIC_RULES[activeMetric](lot, metricContext),
+      );
+    }
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -605,38 +634,32 @@ const InventoryDashboard = ({ active = true }) => {
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <Grid className="inventory-metrics-grid" fullWidth={false}>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile">
-            <div className="metric-value">{metrics.totalLots}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.totalLots" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-warning">
-            <div className="metric-value">{metrics.lowStock}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.lowStock" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expiring">
-            <div className="metric-value">{metrics.expiringSoon}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expiringSoon" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expired">
-            <div className="metric-value">{metrics.expired}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expired" />
-            </div>
-          </Tile>
-        </Column>
+        {METRIC_TILES.map((tile) => (
+          <Column
+            key={tile.key}
+            lg={4}
+            md={2}
+            sm={4}
+            className="inventory-metric-column"
+          >
+            <ClickableTile
+              className={[
+                "inventory-metric-tile",
+                tile.modifier,
+                activeMetric === tile.key && "inventory-metric-tile--selected",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={activeMetric === tile.key}
+              onClick={() => toggleMetricFilter(tile.key)}
+            >
+              <div className="metric-value">{metrics[tile.key]}</div>
+              <div className="metric-label">
+                <FormattedMessage id={tile.labelId} />
+              </div>
+            </ClickableTile>
+          </Column>
+        ))}
       </Grid>
 
       <DataTable rows={rows} headers={headers} isSortable>
