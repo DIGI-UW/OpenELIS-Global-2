@@ -41,7 +41,7 @@ export default function SampleItemsPage() {
   const location = useLocation();
   const intl = useIntl();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(5);
   const [searchTerm, setSearchTerm] = useState("");
   const [disposeTarget, setDisposeTarget] = useState(null);
   const [auditTarget, setAuditTarget] = useState(null);
@@ -352,7 +352,7 @@ export default function SampleItemsPage() {
           data-testid="sample-items-pagination"
           page={page}
           pageSize={pageSize}
-          pageSizes={[25, 50, 100]}
+          pageSizes={[5, 25, 50, 100]}
           totalItems={totalItems}
           onChange={({ page: p, pageSize: s }) => {
             setPage(p);

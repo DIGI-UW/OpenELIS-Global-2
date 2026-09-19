@@ -135,7 +135,7 @@ describe("InventoryLotsPage", () => {
     const before = Utils.getFromOpenElisServer.mock.calls.length;
 
     fireEvent.click(screen.getByLabelText("Next page"));
-    expect(await screen.findByText("LOT-25")).toBeInTheDocument();
+    expect(await screen.findByText("LOT-5")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/items per page/i), {
       target: { value: "50" },

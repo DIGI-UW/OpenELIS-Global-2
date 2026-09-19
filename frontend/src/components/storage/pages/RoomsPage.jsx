@@ -6,7 +6,7 @@ import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 export default function RoomsPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(5);
 
   const mapRow = useCallback(
     (r) => ({

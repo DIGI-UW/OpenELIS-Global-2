@@ -227,7 +227,7 @@ export default function StorageResourcePage({
         <Pagination
           page={page}
           pageSize={pageSize}
-          pageSizes={[25, 50, 100]}
+          pageSizes={[5, 25, 50, 100]}
           totalItems={totalItems}
           onChange={({ page: p, pageSize: s }) => {
             setPage(p);

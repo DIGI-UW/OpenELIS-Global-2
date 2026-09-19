@@ -24,7 +24,7 @@ import useStorageTableData from "../hooks/useStorageTableData";
 export default function InventoryLotsPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(5);
   const [searchTerm, setSearchTerm] = useState("");
 
   // The lots endpoint neither searches nor pages, so the search term and the
@@ -186,7 +186,7 @@ export default function InventoryLotsPage() {
           data-testid="inventory-lots-pagination"
           page={page}
           pageSize={pageSize}
-          pageSizes={[10, 25, 50, 100]}
+          pageSizes={[5, 25, 50, 100]}
           totalItems={filtered.length}
           onChange={({ page: nextPage, pageSize: nextSize }) => {
             setPage(nextPage);
