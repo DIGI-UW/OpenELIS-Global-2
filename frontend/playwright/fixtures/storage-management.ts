@@ -119,7 +119,7 @@ export class StorageManagement {
    *
    * Reads the Carbon header label span rather than the <th>: a sortable
    * <th> also contains a visually-hidden "Click to sort rows by ..."
-   * description, and the two action columns are unnamed.
+   * description, and the row-actions column is unnamed.
    */
   get columnHeaders(): Locator {
     return this.page
@@ -146,6 +146,18 @@ export class StorageManagement {
   async openAddModal(heading: string): Promise<Locator> {
     await expect(this.addButton).toBeVisible({ timeout: LONG_TIMEOUT });
     await this.addButton.click();
+    const dialog = this.page.getByRole("dialog", { name: heading });
+    await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT });
+    return dialog;
+  }
+
+  /**
+   * Editing is a modal now, not a /Storage/{level}/{id}/edit page.
+   * `heading` is the modal heading, which Carbon also uses as its aria-label.
+   */
+  async openEditModal(rowText: string, heading: string): Promise<Locator> {
+    await this.openRowActions(rowText);
+    await this.page.getByRole("menuitem", { name: "Edit" }).click();
     const dialog = this.page.getByRole("dialog", { name: heading });
     await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT });
     return dialog;

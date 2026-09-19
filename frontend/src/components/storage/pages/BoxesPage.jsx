@@ -2,11 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
-/**
- * BoxesPage — /Storage/boxes. List of boxes with per-row Edit.
- * Edit uses a dedicated EditBoxPage (boxes have grid-layout fields
- * that don't fit the generic EditLocationPage shell).
- */
+/** BoxesPage — /Storage/boxes. List of boxes with per-row Edit. */
 export default function BoxesPage({ embedded = false }) {
   const intl = useIntl();
   const [page, setPage] = useState(1);
@@ -93,7 +89,6 @@ export default function BoxesPage({ embedded = false }) {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
-      editHref={(box) => `/Storage/boxes/${box.id}/edit`}
     />
   );
 }

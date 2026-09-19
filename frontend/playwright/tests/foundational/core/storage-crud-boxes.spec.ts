@@ -13,9 +13,11 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * fails loudly on the picker assertion with an actionable message — it does
  * NOT skip.
  *
- * Creating a box is a modal on the Storage Management dashboard now; the
- * /Storage/boxes/new page is gone. The grid presets and the custom
- * rows/columns escape hatch moved into that modal unchanged.
+ * Creating and editing a box are both modals on the Storage Management
+ * dashboard now; the /Storage/boxes/new and /Storage/boxes/{id}/edit pages
+ * are gone. The grid presets and the custom rows/columns escape hatch moved
+ * into the Add modal unchanged; Edit offers the dimensions without presets,
+ * exactly as the old edit page did.
  *
  * Selector strategy follows .specify/guides/playwright-best-practices.md:
  *   - getByRole / getByLabel first
@@ -145,16 +147,35 @@ test.describe("Storage CRUD — Boxes", () => {
     const suffix = `${Date.now().toString(36)}-edit`;
     const { storage, boxLabel } = await createBox(page, suffix);
 
-    await test.step("open edit page from overflow menu", async () => {
+    await test.step("edit modal opens preloaded with the box's grid", async () => {
       await storage.gotoLevel("boxes");
-      await storage.openRowActions(boxLabel);
-      await page.getByRole("menuitem", { name: "Edit" }).click();
+      const dialog = await storage.openEditModal(boxLabel, "Edit Box");
+      const rows = dialog.getByLabel("Rows", { exact: true });
+      await expect(rows).toHaveValue("8");
+      await expect(dialog.getByLabel("Columns", { exact: true })).toHaveValue(
+        "12",
+      );
+      // Presets are an Add-time convenience; Edit hands over the dimensions.
+      await expect(dialog.locator("#storage-edit-modal-grid")).toHaveCount(0);
+
+      await rows.fill("4");
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
     });
 
-    await test.step("verify edit page rendered", async () => {
-      await expect(page).toHaveURL(/\/Storage\/boxes\/\d+\/edit/);
+    await test.step("the resized grid shows in the table as a new capacity", async () => {
+      // The container refreshes the table in place rather than navigating.
+      await expect(page).toHaveURL(/\/Storage\/boxes\?t=\d+/);
+      // Capacity is rows x columns, so the row proves the resize was applied.
       await expect(
-        page.getByRole("heading", { level: 1, name: /edit\s+box/i }),
+        storage.row(boxLabel).getByRole("cell", { name: "48", exact: true }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+    });
+
+    await test.step("the resize survives a reload, so it really persisted", async () => {
+      await storage.gotoLevel("boxes");
+      await expect(
+        storage.row(boxLabel).getByRole("cell", { name: "48", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
   });

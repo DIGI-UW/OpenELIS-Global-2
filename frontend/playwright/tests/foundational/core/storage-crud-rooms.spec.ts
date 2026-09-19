@@ -10,9 +10,9 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * self-seeding: each test creates its own room through the UI, then
  * operates on that row. No fixture preconditions required.
  *
- * Creating a location is a modal on the Storage Management dashboard now;
- * the /Storage/rooms/new page is gone. Editing still leaves the container
- * for a dedicated /Storage/rooms/{id}/edit page.
+ * Creating and editing a location are both modals on the Storage Management
+ * dashboard now; the /Storage/rooms/new and /Storage/rooms/{id}/edit pages
+ * are gone.
  *
  * Selector strategy follows .specify/guides/playwright-best-practices.md:
  *   - getByRole / getByLabel first
@@ -66,18 +66,32 @@ test.describe("Storage CRUD — Rooms", () => {
   test("edit room flow via overflow menu", async ({ page }) => {
     const suffix = `${Date.now().toString(36)}-edit`;
     const { storage, roomName } = await createRoom(page, suffix);
+    const renamedRoom = `${roomName} Renamed`;
 
-    await test.step("open edit page from overflow menu", async () => {
+    await test.step("edit modal opens preloaded with the row's values", async () => {
       await storage.gotoLevel("rooms");
-      await storage.openRowActions(roomName);
-      await page.getByRole("menuitem", { name: "Edit" }).click();
+      const dialog = await storage.openEditModal(roomName, "Edit Room");
+      const nameField = dialog.getByLabel("Name", { exact: true });
+      await expect(nameField).toHaveValue(roomName);
+
+      await nameField.fill(renamedRoom);
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
     });
 
-    await test.step("verify edit page rendered", async () => {
-      await expect(page).toHaveURL(/\/Storage\/rooms\/\d+\/edit/);
-      await expect(
-        page.getByRole("heading", { level: 1, name: /edit\s+room/i }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await test.step("the new name replaces the old one in the table", async () => {
+      // The container refreshes the table in place rather than navigating.
+      await expect(page).toHaveURL(/\/Storage\/rooms\?t=\d+/);
+      await expect(storage.row(renamedRoom)).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+    });
+
+    await test.step("the rename survives a reload, so it really persisted", async () => {
+      await storage.gotoLevel("rooms");
+      await expect(storage.row(renamedRoom)).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
     });
   });
 

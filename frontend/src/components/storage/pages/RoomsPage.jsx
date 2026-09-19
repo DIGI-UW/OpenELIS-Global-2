@@ -73,7 +73,6 @@ export default function RoomsPage({ embedded = false }) {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
-      editHref={(room) => `/Storage/rooms/${room.id}/edit`}
     />
   );
 }

@@ -9,9 +9,8 @@ import { Breadcrumb, BreadcrumbItem } from "@carbon/react";
  *     navigation stays SPA, no full-page reload)
  *   - The last crumb is marked aria-current="page" and is non-clickable
  *
- * The page shells (LocationPickerPage, EditLocationPage, EditBoxPage,
- * SampleItemsPage, etc.) pass this in as a prop so each route owns
- * its own crumb chain.
+ * The page shells (LocationPickerPage, SampleItemsPage, etc.) pass this
+ * in as a prop so each route owns its own crumb chain.
  */
 export default function BreadcrumbNav({ crumbs }) {
   if (!crumbs || crumbs.length === 0) return null;

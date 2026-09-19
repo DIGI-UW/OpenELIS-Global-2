@@ -8559,6 +8559,7 @@
   "storage.location.type.racks": "racks",
   "storage.location.type.rooms": "rooms",
   "storage.location.type.shelves": "shelves",
+  "storage.location.updated": "{level} updated",
   "storage.manage.location": "Manage Location",
   "storage.nav.rack": "Rack",
   "storage.sample.actions": "Sample actions",

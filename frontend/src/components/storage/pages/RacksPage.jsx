@@ -81,7 +81,6 @@ export default function RacksPage({ embedded = false }) {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
-      editHref={(rack) => `/Storage/racks/${rack.id}/edit`}
     />
   );
 }

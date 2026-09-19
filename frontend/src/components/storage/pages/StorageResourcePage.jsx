@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
-import { Link, useHistory, useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   Button,
   DataTable,
@@ -21,6 +21,7 @@ import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import AddLocationModal from "../components/AddLocationModal";
+import EditLocationModal from "../components/EditLocationModal";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
 import useStorageTableData from "../hooks/useStorageTableData";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
@@ -34,10 +35,8 @@ import { hasRole, Roles } from "../../utils/Utils";
  * pages (Rooms, Devices, Shelves, Racks, Boxes).
  *
  * Each concrete page is a thin wrapper that passes the right config:
- *   - level: storageLevels key, which drives the Add and Delete modals
+ *   - level: storageLevels key, which drives the Add, Edit and Delete modals
  *   - listUrl: backend endpoint (e.g. /rest/storage/rooms)
- *   - editHref?: builder `(row) => "/Storage/.../edit"` to render a
- *     per-row Edit link
  */
 export default function StorageResourcePage({
   level,
@@ -51,7 +50,6 @@ export default function StorageResourcePage({
   setPage,
   pageSize,
   setPageSize,
-  editHref,
   searchPlaceholderId,
   // Rendered inside the Storage Management dashboard tab, where the container
   // already supplies the breadcrumb and heading.
@@ -67,6 +65,7 @@ export default function StorageResourcePage({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const levelMeta = storageLevel(level);
@@ -114,57 +113,43 @@ export default function StorageResourcePage({
     const mapped = (items || []).map(mapRow);
     return mapped.map((row, idx) => {
       const rawItem = items[idx];
-      const nextRow = { ...row };
-      if (editHref) {
-        nextRow.actions = (
-          <Link to={editHref(rawItem)}>
-            <FormattedMessage id="label.edit" defaultMessage="Edit" />
-          </Link>
-        );
-      }
-      if (editHref || isGlobalAdmin) {
-        nextRow.menuActions = (
+      if (!isGlobalAdmin) return row;
+      return {
+        ...row,
+        menuActions: (
           <OverflowMenu
             size="sm"
             ariaLabel="Row actions"
             data-testid={`storage-row-actions-${rawItem?.id}`}
           >
-            {editHref && (
-              <OverflowMenuItem
-                itemText={
-                  <FormattedMessage id="label.edit" defaultMessage="Edit" />
-                }
-                onClick={() => history.push(editHref(rawItem))}
-              />
-            )}
-            {isGlobalAdmin && (
-              <OverflowMenuItem
-                isDelete
-                itemText={
-                  <FormattedMessage id="label.delete" defaultMessage="Delete" />
-                }
-                onClick={() => setDeleteTarget(rawItem)}
-              />
-            )}
+            <OverflowMenuItem
+              itemText={
+                <FormattedMessage id="label.edit" defaultMessage="Edit" />
+              }
+              onClick={() => setEditTarget(rawItem)}
+            />
+            <OverflowMenuItem
+              isDelete
+              itemText={
+                <FormattedMessage id="label.delete" defaultMessage="Delete" />
+              }
+              onClick={() => setDeleteTarget(rawItem)}
+            />
           </OverflowMenu>
-        );
-      }
-      return {
-        ...nextRow,
+        ),
       };
     });
-  }, [items, mapRow, editHref, history, isGlobalAdmin]);
+  }, [items, mapRow, isGlobalAdmin]);
 
-  const effectiveHeaders = useMemo(() => {
-    const nextHeaders = [...headers];
-    if (editHref) {
-      nextHeaders.push({ key: "actions", header: "" });
-    }
-    if (editHref || isGlobalAdmin) {
-      nextHeaders.push({ key: "menuActions", header: "" });
-    }
-    return nextHeaders;
-  }, [headers, editHref, isGlobalAdmin]);
+  // Edit and Delete both open admin-only modals; without either the column
+  // would be an empty cell on every row.
+  const effectiveHeaders = useMemo(
+    () =>
+      isGlobalAdmin
+        ? [...headers, { key: "menuActions", header: "" }]
+        : headers,
+    [headers, isGlobalAdmin],
+  );
 
   return (
     <div
@@ -274,6 +259,17 @@ export default function StorageResourcePage({
         onCreated={() => {
           setAddOpen(false);
           notify("storage.location.created", "{level} created");
+          refreshAfterWrite();
+        }}
+      />
+      <EditLocationModal
+        level={level}
+        id={editTarget?.id}
+        open={Boolean(editTarget)}
+        onClose={() => setEditTarget(null)}
+        onUpdated={() => {
+          setEditTarget(null);
+          notify("storage.location.updated", "{level} updated");
           refreshAfterWrite();
         }}
       />

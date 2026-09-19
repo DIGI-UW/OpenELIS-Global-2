@@ -81,7 +81,6 @@ export default function DevicesPage({ embedded = false }) {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
-      editHref={(device) => `/Storage/devices/${device.id}/edit`}
     />
   );
 }
