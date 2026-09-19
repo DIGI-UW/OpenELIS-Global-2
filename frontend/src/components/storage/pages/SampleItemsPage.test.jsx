@@ -67,9 +67,8 @@ const assignedItem = {
   positionCoordinate: "A1",
 };
 
-const renderPage = (item) => {
-  Utils.getFromOpenElisServer.mockImplementation((url, cb) => cb([item]));
-  return render(
+const renderTable = () =>
+  render(
     <IntlProvider locale="en" messages={messages}>
       <NotificationContext.Provider value={notifyCtx}>
         <MemoryRouter initialEntries={["/Storage/sample-items"]}>
@@ -79,6 +78,10 @@ const renderPage = (item) => {
       </NotificationContext.Provider>
     </IntlProvider>,
   );
+
+const renderPage = (item) => {
+  Utils.getFromOpenElisServer.mockImplementation((url, cb) => cb([item]));
+  return renderTable();
 };
 
 const openManageLocation = () => {
@@ -95,6 +98,40 @@ beforeEach(() => {
   mockMoveSampleItem.mockReset().mockResolvedValue({});
   capturedModalProps = null;
   currentLocation = null;
+});
+
+describe("SampleItemsPage — search results", () => {
+  // The search endpoint answers with every match and takes no page or size,
+  // so without a cut of its own the table shows all of them under a
+  // Pagination that claims five a page.
+  it("cuts search matches to the page size", async () => {
+    const matches = Array.from({ length: 8 }, (_, n) => ({
+      sampleItemId: `90${n}`,
+      sampleAccessionNumber: `ACC-90${n}`,
+      type: "Whole Blood",
+      status: "Active",
+    }));
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/search")) cb(matches);
+      else cb([unassignedItem]);
+    });
+    renderTable();
+
+    await screen.findByText("ACC-123");
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "ACC-90" },
+    });
+
+    expect(await screen.findByText("ACC-900")).toBeInTheDocument();
+    expect(document.querySelectorAll("table tbody tr")).toHaveLength(5);
+    expect(screen.queryByText("ACC-905")).not.toBeInTheDocument();
+    expect(screen.getByText(/of 8 items/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Next page"));
+
+    expect(await screen.findByText("ACC-905")).toBeInTheDocument();
+    expect(document.querySelectorAll("table tbody tr")).toHaveLength(3);
+  });
 });
 
 describe("SampleItemsPage — Manage Location", () => {

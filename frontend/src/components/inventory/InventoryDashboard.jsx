@@ -75,9 +75,10 @@ const daysToExpiry = (lot) =>
     (new Date(lot.expirationDate) - new Date()) / (1000 * 60 * 60 * 24),
   );
 
-// A tile's count and the filter it applies to the table below both read the
-// rule named here, so the two cannot drift apart. lowStock is the exception,
-// noted where the counts are built.
+// A tile's count, the filter it applies to the table below and the stock-status
+// tag on each row all read the rule named here, so an edit to a rule reaches
+// the three of them together. lowStock counts items rather than lots, as noted
+// where the counts are built.
 const METRIC_RULES = {
   totalLots: () => true,
   lowStock: (lot, { lowStockItemIds }) =>
@@ -316,32 +317,23 @@ const InventoryDashboard = ({ active = true }) => {
 
     const currentQty = lot.currentQuantity || 0;
 
-    if (lot.expirationDate) {
-      const expiryDate = new Date(lot.expirationDate);
-      const today = new Date();
-      const daysUntilExpiry = Math.floor(
-        (expiryDate - today) / (1000 * 60 * 60 * 24),
-      );
+    if (METRIC_RULES.expired(lot, { items })) {
+      return {
+        type: "expired",
+        label: intl.formatMessage({ id: "stock.status.expired" }),
+        kind: "red",
+      };
+    }
 
-      if (daysUntilExpiry < 0) {
-        return {
-          type: "expired",
-          label: intl.formatMessage({ id: "stock.status.expired" }),
-          kind: "red",
-        };
-      }
-
-      const alertDays = item.expirationAlertDays || 30;
-      if (daysUntilExpiry <= alertDays) {
-        return {
-          type: "expiring",
-          label: intl.formatMessage(
-            { id: "stock.status.expiringIn" },
-            { days: daysUntilExpiry },
-          ),
-          kind: "warm-gray",
-        };
-      }
+    if (METRIC_RULES.expiringSoon(lot, { items })) {
+      return {
+        type: "expiring",
+        label: intl.formatMessage(
+          { id: "stock.status.expiringIn" },
+          { days: daysToExpiry(lot) },
+        ),
+        kind: "warm-gray",
+      };
     }
 
     if (currentQty === 0) {
@@ -369,7 +361,7 @@ const InventoryDashboard = ({ active = true }) => {
       };
     }
 
-    if (lowStockItemIds.has(lot.inventoryItem.id)) {
+    if (METRIC_RULES.lowStock(lot, { lowStockItemIds })) {
       return {
         type: "lowStock",
         label: intl.formatMessage({ id: "stock.status.lowStock" }),

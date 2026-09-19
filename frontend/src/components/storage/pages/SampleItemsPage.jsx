@@ -66,6 +66,14 @@ export default function SampleItemsPage() {
     refreshKey,
   });
 
+  // The list endpoint is paged by the server, but the search endpoint returns
+  // every match and takes no page or size, so a search is cut to a page here.
+  const searching = (searchTerm || "").trim().length > 0;
+  const visibleItems = useMemo(() => {
+    if (!searching) return items || [];
+    return (items || []).slice((page - 1) * pageSize, page * pageSize);
+  }, [items, searching, page, pageSize]);
+
   const headers = [
     {
       key: "sampleItemId",
@@ -231,8 +239,7 @@ export default function SampleItemsPage() {
   };
 
   const rows = useMemo(() => {
-    if (!items) return [];
-    return items.map((it) => {
+    return visibleItems.map((it) => {
       const sampleItemId = String(it.sampleItemId || it.id || "");
       const externalId = it.sampleItemExternalId || null;
       const displayId = externalId || sampleItemId;
@@ -284,7 +291,7 @@ export default function SampleItemsPage() {
         ),
       };
     });
-  }, [items]);
+  }, [visibleItems]);
 
   return (
     <div className="storage-sample-items-page">

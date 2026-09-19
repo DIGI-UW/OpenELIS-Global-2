@@ -103,9 +103,18 @@ export default function StorageResourcePage({
 
   // The level listings return every row and take no page or size parameter, so
   // the page is cut here. Passing them to the fetch would only refire it.
+  // Highest id first: a row just added lands at the top of the first page
+  // rather than at the end of the last one, and the order stops depending on
+  // the order the endpoint happened to return, which an update can change.
+  const ordered = useMemo(() => {
+    const newestFirst = [...(items || [])];
+    newestFirst.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    return newestFirst;
+  }, [items]);
+
   const paginated = useMemo(
-    () => (items || []).slice((page - 1) * pageSize, page * pageSize),
-    [items, page, pageSize],
+    () => ordered.slice((page - 1) * pageSize, page * pageSize),
+    [ordered, page, pageSize],
   );
 
   const rows = useMemo(() => {
@@ -248,6 +257,8 @@ export default function StorageResourcePage({
         onCreated={() => {
           setAddOpen(false);
           notify("storage.location.created", "{level} created");
+          // The new row sorts to the top, so the first page is where it shows.
+          setPage(1);
           refreshAfterWrite();
         }}
       />

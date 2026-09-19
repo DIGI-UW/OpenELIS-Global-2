@@ -593,6 +593,14 @@ describe("InventoryDashboard metric tile filters", () => {
     lotNumber: "LOT-FRESH",
     expirationDate: inDays(400),
   };
+  // Outside the 30-day alert window the tiles use, so a widened rule pulls it
+  // into the Expiring Soon tile and the row tag has to follow.
+  const laterLot = {
+    ...lotWithLocation,
+    id: 15,
+    lotNumber: "LOT-LATER",
+    expirationDate: inDays(40),
+  };
 
   // "Expired" is also a stock-status tag in the table, so a tile lookup has to
   // be scoped to the tile grid or it matches a row.
@@ -645,6 +653,31 @@ describe("InventoryDashboard metric tile filters", () => {
       fireEvent.click(tile(label));
       await waitFor(() => expect(rowCount()).toBe(4));
     }
+  });
+
+  it("tags every row an expiry tile filters to with that tile's own status", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      expiredLot,
+      expiringLot,
+      freshLot,
+      laterLot,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    const rowTexts = () =>
+      Array.from(document.querySelectorAll("table tbody tr")).map(
+        (row) => row.textContent,
+      );
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() => expect(rowCount()).toBe(1));
+    rowTexts().forEach((text) => expect(text).toMatch(/Expired/));
+
+    fireEvent.click(tile("Expired"));
+    fireEvent.click(tile("Expiring Soon"));
+    await waitFor(() => expect(rowCount()).toBeGreaterThan(0));
+    rowTexts().forEach((text) => expect(text).toMatch(/Expiring \(\d+d\)/));
   });
 
   it("filters Low Stock to the lots of low-stock items, which outnumber the items counted", async () => {

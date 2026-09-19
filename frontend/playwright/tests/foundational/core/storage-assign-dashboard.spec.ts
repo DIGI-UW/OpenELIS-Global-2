@@ -41,7 +41,10 @@ function rowById(page: Page, id: string): Locator {
 
 /**
  * Opens Manage Location on a listing row and returns that row's id so
- * the same row can be found again after the post-save refetch.
+ * the same row can be found again after the post-save refetch. Disposed
+ * rows are skipped: assigning one is refused with a 400, which is a
+ * precondition failure rather than the behaviour under test. `rowIndex`
+ * counts the assignable rows, not the rendered ones.
  */
 async function openPickerFromRow(page: Page, rowIndex = 0): Promise<string> {
   const storage = new StorageManagement(page);
@@ -62,7 +65,19 @@ async function openPickerFromRow(page: Page, rowIndex = 0): Promise<string> {
   ).toBeVisible({ timeout: LONG_TIMEOUT });
   const rowCount = await rows.count();
 
-  const row = rows.nth(Math.min(rowIndex, rowCount - 1));
+  const assignable: number[] = [];
+  for (let i = 0; i < rowCount; i += 1) {
+    const rowText = (await rows.nth(i).textContent()) ?? "";
+    if (!/Disposed/i.test(rowText)) assignable.push(i);
+  }
+  if (assignable.length === 0) {
+    throw new Error(
+      "No assignable sample row on the listing — every row is disposed. " +
+        "Reset or extend fixtures to include an active sample item.",
+    );
+  }
+
+  const row = rows.nth(assignable[Math.min(rowIndex, assignable.length - 1)]);
   const rowId = (
     (await row.getByRole("cell").first().textContent()) ?? ""
   ).trim();

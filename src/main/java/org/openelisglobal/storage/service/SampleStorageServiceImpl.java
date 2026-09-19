@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.sql.Timestamp;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -189,31 +190,27 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             response.add(map);
         }
 
-        // Sort by location: assigned samples first (alphabetically by location), then
-        // unassigned
-        response.sort((a, b) -> {
-            String locA = (String) a.get("location");
-            String locB = (String) b.get("location");
-            boolean aEmpty = locA == null || locA.isEmpty();
-            boolean bEmpty = locB == null || locB.isEmpty();
-
-            // Both empty - sort by sample ID
-            if (aEmpty && bEmpty) {
-                return String.valueOf(a.get("id")).compareTo(String.valueOf(b.get("id")));
-            }
-            // Empty locations go to the end
-            if (aEmpty)
-                return 1;
-            if (bEmpty)
-                return -1;
-            // Both have locations - sort alphabetically
-            return locA.compareTo(locB);
-        });
+        // Ordered by sample item id: the caller serves this list a page at a time,
+        // and ordering on location moved a row to a different page the moment a
+        // disposal cleared that location.
+        response.sort(Comparator.comparingLong(row -> sampleItemIdOrder(row.get("id"))));
 
         logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
                 response.size());
 
         return response;
+    }
+
+    /**
+     * Sort key for the sample-items listing. A non-numeric id sorts last rather
+     * than aborting the listing.
+     */
+    private static long sampleItemIdOrder(Object id) {
+        try {
+            return Long.parseLong(String.valueOf(id));
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     @Override

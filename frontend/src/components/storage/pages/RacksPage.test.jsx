@@ -50,29 +50,73 @@ beforeEach(() => {
 });
 
 describe("RacksPage — table search", () => {
-  // The level listings return every row and take no page or size parameter, so
-  // the page has to be cut client-side or the table renders the whole set.
-  it("renders one page of racks, not the whole listing", async () => {
-    const racks = Array.from({ length: 12 }, (_, n) => ({
+  const twelveRacks = () =>
+    Array.from({ length: 12 }, (_, n) => ({
       id: 900 + n,
       label: `Rack ${n}`,
       code: `RK-${n}`,
       active: true,
     }));
-    Utils.getFromOpenElisServer.mockImplementation((url, cb) => cb(racks));
+
+  // The level listings return every row and take no page or size parameter, so
+  // the page has to be cut client-side or the table renders the whole set.
+  it("renders one page of racks, highest id first, not the whole listing", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(twelveRacks()),
+    );
     renderPage();
 
-    expect(await screen.findByText("Rack 0")).toBeInTheDocument();
+    expect(await screen.findByText("Rack 11")).toBeInTheDocument();
     expect(document.querySelectorAll("table tbody tr")).toHaveLength(5);
-    expect(screen.queryByText("Rack 5")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rack 6")).not.toBeInTheDocument();
     expect(screen.getByText(/of 12 items/i)).toBeInTheDocument();
 
     const before = Utils.getFromOpenElisServer.mock.calls.length;
     fireEvent.click(screen.getByLabelText("Next page"));
 
-    expect(await screen.findByText("Rack 5")).toBeInTheDocument();
-    expect(screen.queryByText("Rack 0")).not.toBeInTheDocument();
+    expect(await screen.findByText("Rack 6")).toBeInTheDocument();
+    expect(screen.queryByText("Rack 11")).not.toBeInTheDocument();
     expect(Utils.getFromOpenElisServer.mock.calls.length).toBe(before);
+  });
+
+  // Five rows a page is the requested page size, so on any real site the
+  // listing runs past one page and a new rack has to be findable anyway.
+  it("shows the rack just created, from whichever page the user was on", async () => {
+    const racks = twelveRacks();
+    const created = {
+      id: 999,
+      label: "Rack New",
+      code: "RK-NEW",
+      active: true,
+    };
+    let listed = racks;
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/shelves")) cb([{ id: 1, label: "Shelf A" }]);
+      else cb(listed);
+    });
+    Utils.postToOpenElisServerJsonResponse.mockImplementation(
+      (url, body, cb) => {
+        listed = [...racks, created];
+        cb({ id: created.id });
+      },
+    );
+    renderPage();
+
+    await screen.findByText("Rack 11");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await screen.findByText("Rack 6");
+
+    fireEvent.click(screen.getByText("Add"));
+    fireEvent.change(await screen.findByLabelText(/^label$/i), {
+      target: { value: "Rack New" },
+    });
+    fireEvent.click(
+      document.querySelector('#storage-add-modal-parent [role="combobox"]'),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Shelf A" }));
+    fireEvent.click(screen.getByText("Create").closest("button"));
+
+    expect(await screen.findByText("Rack New")).toBeInTheDocument();
   });
 
   it("lists racks from the list endpoint by default", async () => {
@@ -183,6 +227,21 @@ describe("RacksPage — who gets Add, Edit and Delete", () => {
   it("offers a Reception user no row menu and no column for one", async () => {
     listOneRack();
     renderPage(["Reception"]);
+
+    expect(await screen.findByText("Rack R1")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-testid^="storage-row-actions-"]'),
+    ).toBeNull();
+    expect(headerCount()).toBe(4);
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+  });
+
+  // Reception alone pins one point on the boundary: a gate rewritten to
+  // exclude Reception rather than admit admins passes that case and hands
+  // Add, Edit and Delete to every other role. Results is one of those.
+  it("offers a Results user no row menu and no column for one", async () => {
+    listOneRack();
+    renderPage(["Results"]);
 
     expect(await screen.findByText("Rack R1")).toBeInTheDocument();
     expect(
