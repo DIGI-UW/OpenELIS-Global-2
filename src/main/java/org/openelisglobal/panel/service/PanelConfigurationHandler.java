@@ -15,8 +15,11 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.configuration.service.ImportRunContext;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
+import org.openelisglobal.configuration.service.UnresolvedReferenceService;
+import org.openelisglobal.configuration.valueholder.UnresolvedReference;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -43,11 +46,19 @@ import org.springframework.transaction.PlatformTransactionManager;
  * {@code Name(SampleType)} variants an earlier loader wrote for the panel's
  * sample types. Every row runs in its own transaction and each file ends with a
  * {@code SUMMARY file=... domain=panels created= updated= skipped=} line.
+ * <p>
+ * A panel's {@code domain} is set by the file, never derived from the specimens
+ * its members use: which testing domain a panel belongs to is an editorial
+ * choice, and a panel may legitimately reach a specimen from another domain.
+ * Omitting the column leaves the panel's stored domain alone, which for a new
+ * panel is the {@code CLINICAL} default.
  */
 @Component
 public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
+
+    private static final Set<String> DOMAINS = Set.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     @Autowired
     private PanelService panelService;
@@ -60,6 +71,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private LegacyTestVariantFinder legacyVariantFinder;
+
+    @Autowired(required = false)
+    private UnresolvedReferenceService unresolvedReferenceService;
 
     @Autowired
     private LocalizationService localizationService;
@@ -102,7 +116,17 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    public boolean supportsDryRun() {
+        return true;
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
+        processConfiguration(inputStream, fileName, false);
+    }
+
+    @Override
+    public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         String headerLine = reader.readLine();
@@ -118,6 +142,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int loincIndex = findColumnIndex(headers, "loinc");
+        int domainIndex = findColumnIndex(headers, "domain");
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         if (panelNameIndex < 0) {
@@ -126,7 +151,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         }
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
-        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager);
+        RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
         String line;
         int lineNumber = 1;
 
@@ -139,12 +164,14 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             int rowLine = lineNumber;
             LoadedRow<Panel> result;
             try {
-                result = rowTransaction.run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex,
-                        isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, rowLine, fileName));
+                result = rowTransaction
+                        .run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex,
+                                sortOrderIndex, loincIndex, domainIndex, localizationColumns, rowLine, fileName));
             } catch (Exception e) {
                 result = LoadedRow.skipped(CsvLoadSummary.reason(e));
             }
             summary.record(result, getClass().getSimpleName(), rowLine);
+            recordUnresolved(fileName, rowLine);
         }
 
         DisplayListService.getInstance().refreshLists();
@@ -152,9 +179,20 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         lastSummary = summary;
     }
 
+    /**
+     * Writes the names this row could not resolve into the decision queue, once the
+     * row's own transaction has ended. Without a Spring context, as in plain unit
+     * tests, there is no queue to write to.
+     */
+    private void recordUnresolved(String fileName, int lineNumber) {
+        if (unresolvedReferenceService != null) {
+            unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
+        }
+    }
+
     private LoadedRow<Panel> processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
-            int isActiveIndex, int sortOrderIndex, int loincIndex, Map<String, Integer> localizationColumns,
-            int lineNumber, String fileName) {
+            int isActiveIndex, int sortOrderIndex, int loincIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName) {
 
         String panelName = getValueOrEmpty(values, panelNameIndex);
         if (panelName.isEmpty()) {
@@ -165,6 +203,10 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         String sortOrderStr = getValueOrEmpty(values, sortOrderIndex);
         boolean hasLoincColumn = loincIndex >= 0;
         String loinc = getValueOrEmpty(values, loincIndex);
+        String domain = getValueOrEmpty(values, domainIndex);
+        if (!domain.isEmpty() && !DOMAINS.contains(domain.toUpperCase())) {
+            return LoadedRow.skipped("domain '" + domain + "' must be one of " + DOMAINS);
+        }
 
         Panel panel = panelService.getPanelByName(panelName);
         boolean created = panel == null;
@@ -173,6 +215,11 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                     localizationColumns);
         } else {
             updatePanel(panel, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values, localizationColumns);
+        }
+        if (!domain.isEmpty()) {
+            panel.setDomain(domain.toUpperCase());
+            panel.setSysUserId("1");
+            panelService.update(panel);
         }
 
         if (hasLoincColumn) {
@@ -349,6 +396,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         for (String testName : desiredTestNames) {
             List<Test> tests = findTests(testName, panelSampleTypeIds);
             if (tests.isEmpty()) {
+                ImportRunContext.addPending(UnresolvedReference.TYPE_TEST, testName,
+                        fileName + " line " + lineNumber + " (panel " + panel.getPanelName() + ")");
                 LogEvent.logWarn(this.getClass().getSimpleName(), "reconcilePanelItems",
                         "Test '" + testName + "' not found (line " + lineNumber + " of " + fileName + "). Skipping.");
                 continue;

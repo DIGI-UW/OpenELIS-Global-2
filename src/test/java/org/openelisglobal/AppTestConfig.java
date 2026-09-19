@@ -25,6 +25,8 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
+import org.openelisglobal.configuration.service.CatalogImportServiceImpl;
+import org.openelisglobal.configuration.service.ConfigurationInitializationService;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -90,6 +92,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.testmethod.service", "org.openelisglobal.testmethod.daoimpl",
+        "org.openelisglobal.configuration.service", "org.openelisglobal.configuration.dao",
         "org.openelisglobal.testresultcomponent.service", "org.openelisglobal.testresultcomponent.daoimpl",
         "org.openelisglobal.testresultinterpretation.service", "org.openelisglobal.testresultinterpretation.daoimpl",
         "org.openelisglobal.testactivation.service", "org.openelisglobal.testactivation.daoimpl",
@@ -133,7 +136,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.login.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.program.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.siteinformation.controller.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
+                // Anchored on the package: as "org.openelisglobal.config.*" this also
+                // swallowed org.openelisglobal.configuration.* (regex, not a package
+                // prefix), so the catalog import services had no beans in tests.
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org\\.openelisglobal\\.config\\..*"),
+                // Loads the whole configuration tree on context refresh; tests drive
+                // the handlers themselves.
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
+                        ConfigurationInitializationService.class, CatalogImportServiceImpl.class }),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.odoo.config.OdooConnectionConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.scheduler.SchedulerConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.SecurityConfig"),

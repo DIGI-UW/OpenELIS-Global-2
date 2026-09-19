@@ -1848,6 +1848,11 @@ public class TestCatalogEditorRestController {
         public int testCount;
         /** Derived from the member tests — panels store no sample types. */
         public List<String> sampleTypes = new ArrayList<>();
+        /**
+         * The derived sample types whose own domain is not this panel's, so the list
+         * can say so on the row. Empty when the panel is consistent.
+         */
+        public List<String> sampleTypesOutsideDomain = new ArrayList<>();
     }
 
     /** A panel this test belongs to, and its position within that panel. */
@@ -1907,6 +1912,7 @@ public class TestCatalogEditorRestController {
         // stores none; SAMPLETYPE_PANEL is a backend-synced junction, never the
         // display source.
         Set<String> derivedTypes = new LinkedHashSet<>();
+        Set<String> outsideDomain = new LinkedHashSet<>();
         List<PanelItem> items = panelItemService.getPanelItemsForPanel(p.getId());
         o.testCount = items.size();
         for (PanelItem item : items) {
@@ -1921,9 +1927,13 @@ public class TestCatalogEditorRestController {
             }
             for (TypeOfSample type : types) {
                 derivedTypes.add(type.getLocalizedName());
+                if (!sampleTypeDomainCompatible(o.domain, type)) {
+                    outsideDomain.add(type.getLocalizedName());
+                }
             }
         }
         o.sampleTypes.addAll(derivedTypes);
+        o.sampleTypesOutsideDomain.addAll(outsideDomain);
         return o;
     }
 
