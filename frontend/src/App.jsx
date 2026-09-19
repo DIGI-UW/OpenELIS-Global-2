@@ -14,7 +14,6 @@ import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
-import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
@@ -948,16 +947,6 @@ export default function App() {
                   render={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
                       <StorageManagementPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/sample-items/:id/manage-location"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <ManageLocationPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}

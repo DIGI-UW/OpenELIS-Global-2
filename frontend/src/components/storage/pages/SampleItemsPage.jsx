@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   DataTable,
@@ -17,15 +17,24 @@ import { FormattedMessage, useIntl } from "react-intl";
 import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
 import DisposeSampleModal from "../SampleStorage/DisposeSampleModal";
 import ViewAuditModal from "../SampleStorage/ViewAuditModal";
+import LocationPickerModal from "../LocationPicker/LocationPickerModal";
+import { LEVEL_ORDER } from "../LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../LocationPicker/locationSelectionMapper";
+import useSampleStorage from "../hooks/useSampleStorage";
 import useStorageTableData from "../hooks/useStorageTableData";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
 /**
  * SampleItemsPage — /Storage/sample-items.
  *
  * Search + paginated DataTable of sample items.
- * Per-row overflow menu navigates to
- * /Storage/sample-items/:id/manage-location.
+ * Per-row overflow menu opens the shared LocationPickerModal, the same
+ * picker the results and inventory surfaces use.
  */
 export default function SampleItemsPage() {
   const history = useHistory();
@@ -36,9 +45,13 @@ export default function SampleItemsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [disposeTarget, setDisposeTarget] = useState(null);
   const [auditTarget, setAuditTarget] = useState(null);
+  const [locationTarget, setLocationTarget] = useState(null);
+  const { assignSampleItem, moveSampleItem } = useSampleStorage();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
-  // URL-driven refresh: when the Manage Location page navigates back with
-  // a `?t=<timestamp>` query, this changes and triggers a refetch.
+  // URL-driven refresh: `refreshList` stamps a `?t=<timestamp>` query,
+  // which changes this and triggers a refetch.
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",
     [location.search],
@@ -93,13 +106,7 @@ export default function SampleItemsPage() {
   ];
 
   const handleManageLocation = (sample) => {
-    const id = sample.sampleItemId || sample.id;
-    // Pass the full sample row via router state so ManageLocationPage
-    // doesn't need a separate GET — the list already has everything.
-    history.push({
-      pathname: `/Storage/sample-items/${id}/manage-location`,
-      state: { sample },
-    });
+    setLocationTarget(sample);
   };
 
   const refreshList = () => {
@@ -115,6 +122,91 @@ export default function SampleItemsPage() {
 
   const handleViewAudit = (sample) => {
     setAuditTarget(sample);
+  };
+
+  const notifyError = (message) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.error" }),
+      message,
+    });
+  };
+
+  // A sample that already sits somewhere is a move: the modal then shows
+  // the current location and asks for a reason, and the save posts to
+  // /move rather than /assign.
+  const locationTargetCurrent = useMemo(() => {
+    if (!locationTarget) return null;
+    const hasAnyLevel = LEVEL_ORDER.some((lvl) => locationTarget[`${lvl}Id`]);
+    const locationPath =
+      locationTarget.location || locationTarget.hierarchicalPath || "";
+    if (!hasAnyLevel && !locationPath) return null;
+    const selection = {};
+    LEVEL_ORDER.forEach((lvl) => {
+      if (locationTarget[`${lvl}Id`]) {
+        selection[lvl] = {
+          id: locationTarget[`${lvl}Id`],
+          name: locationTarget[`${lvl}Name`] || "",
+        };
+      }
+    });
+    return {
+      selection,
+      hierarchicalPath: locationPath,
+      position: locationTarget.positionCoordinate
+        ? { mode: "text", value: locationTarget.positionCoordinate }
+        : null,
+    };
+  }, [locationTarget]);
+
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
+    if (!locationTarget) return;
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
+    if (!deepest) {
+      notifyError(
+        intl.formatMessage({
+          id: "storage.manageLocation.error.selectTarget",
+          defaultMessage: "Select a storage location before saving",
+        }),
+      );
+      return;
+    }
+
+    const payload = {
+      sampleItemId: locationTarget.sampleItemId || locationTarget.id,
+      locationId: String(deepest.value.id),
+      locationType: deepest.type,
+      positionCoordinate: positionToCoordinate(position, {
+        emptyValue: null,
+      }),
+      notes: notes || null,
+    };
+
+    try {
+      if (locationTargetCurrent) {
+        await moveSampleItem({ ...payload, reason: reason || null });
+      } else {
+        await assignSampleItem(payload);
+      }
+      setLocationTarget(null);
+      refreshList();
+    } catch (e) {
+      notifyError(
+        e.message ||
+          intl.formatMessage({
+            id: "storage.manageLocation.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+      );
+    }
   };
 
   const handleConfirmDispose = ({ sample, reason, method, notes }) => {
@@ -292,6 +384,22 @@ export default function SampleItemsPage() {
         open={Boolean(auditTarget)}
         sample={auditTarget}
         onClose={() => setAuditTarget(null)}
+      />
+
+      <LocationPickerModal
+        isOpen={Boolean(locationTarget)}
+        occupantType="SAMPLE_ITEM"
+        occupant={{
+          label:
+            locationTarget?.sampleAccessionNumber ||
+            locationTarget?.sampleItemId ||
+            "",
+          type: locationTarget?.type || "",
+          status: locationTarget?.status || "Active",
+        }}
+        currentLocation={locationTargetCurrent}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => setLocationTarget(null)}
       />
     </div>
   );
