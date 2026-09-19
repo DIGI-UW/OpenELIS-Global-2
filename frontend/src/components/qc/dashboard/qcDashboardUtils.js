@@ -48,10 +48,16 @@ export const getSeverityTagType = (severity) => {
 };
 
 /**
- * Returns a Carbon Tag type based on a z-score (sigma value).
- * < 2σ   -> green (in control)
- * 2-3σ   -> warm-gray (warning)
- * >= 3σ  -> red (rejection)
+ * Returns a Carbon Tag type based on a Westgard SD-index z-score.
+ *
+ * The z-score here is (result − mean) / SD — a deviation index where a
+ * LARGER absolute value means WORSE control, not better.  Thresholds align
+ * with the backend Westgard evaluators and the Levey-Jennings chart lines:
+ *
+ *   |z| ≥ 3  → "red"       (1₃ₛ rejection)
+ *   |z| ≥ 2  → "warm-gray" (1₂ₛ warning)
+ *   |z| < 2  → "green"     (in-control)
+ *   null/NaN → "gray"      (no data)
  */
 export const getZScoreBadgeType = (zScore) => {
   if (zScore == null) return "gray";
