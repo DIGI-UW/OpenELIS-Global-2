@@ -151,8 +151,10 @@ public class FreezerAuditTrailController extends BaseRestController {
                     if (alert.getAcknowledgedAt() != null) {
                         OffsetDateTime ackTime = alert.getAcknowledgedAt();
                         // Apply date filter only if dates are provided
-                        boolean includeAck = (startDateTime == null && endDateTime == null)
-                                || (!ackTime.isBefore(startDateTime) && !ackTime.isAfter(endDateTime));
+                        boolean includeAck = true;
+                        if (startDateTime != null && endDateTime != null) {
+                            includeAck = !ackTime.isBefore(startDateTime) && !ackTime.isAfter(endDateTime);
+                        }
 
                         if (includeAck) {
                             Map<String, Object> ackEvent = new HashMap<>();
@@ -162,7 +164,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                             ackEvent.put("actionType", "ALERT_ACKNOWLEDGED");
                             ackEvent.put("performedAt", ackTime.toString());
                             ackEvent.put("performedBy", getUserName(alert.getAcknowledgedBy()));
-                            ackEvent.put("comment", "Temperature excursion alert for " + freezerName + " acknowledged");
+                            ackEvent.put("comment", "Alert for " + freezerName + " acknowledged");
                             ackEvent.put("details", alert.getMessage());
                             auditEvents.add(ackEvent);
                         }
@@ -172,8 +174,10 @@ public class FreezerAuditTrailController extends BaseRestController {
                     if (alert.getResolvedAt() != null) {
                         OffsetDateTime resolveTime = alert.getResolvedAt();
                         // Apply date filter only if dates are provided
-                        boolean includeResolve = (startDateTime == null && endDateTime == null)
-                                || (!resolveTime.isBefore(startDateTime) && !resolveTime.isAfter(endDateTime));
+                        boolean includeResolve = true;
+                        if (startDateTime != null && endDateTime != null) {
+                            includeResolve = !resolveTime.isBefore(startDateTime) && !resolveTime.isAfter(endDateTime);
+                        }
 
                         if (includeResolve) {
                             Map<String, Object> resolveEvent = new HashMap<>();
@@ -183,7 +187,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                             resolveEvent.put("actionType", "CRITICAL_ALERT_RESOLVED");
                             resolveEvent.put("performedAt", resolveTime.toString());
                             resolveEvent.put("performedBy", getUserName(alert.getResolvedBy()));
-                            resolveEvent.put("comment", "Temperature excursion for " + freezerName + " resolved");
+                            resolveEvent.put("comment", "Alert for " + freezerName + " resolved");
                             resolveEvent.put("details", alert.getResolutionNotes());
                             auditEvents.add(resolveEvent);
                         }
