@@ -100,4 +100,48 @@ describe("Reports", () => {
       (new Date(end.value) - new Date(start.value)) / (1000 * 60 * 60 * 24);
     expect(days).toBe(7);
   });
+  it("sends weeklylog when Weekly Log is selected", async () => {
+    fetchReportExcursions.mockResolvedValue([]);
+
+    const { downloadReportDirect } = await import("./api");
+
+    renderReports();
+
+    // Wait for the component to finish loading
+    await screen.findByLabelText("Start date");
+
+    // Open Report Type dropdown and select Weekly Log
+    const dropdown = screen.getByText("Daily Log");
+    dropdown.click();
+    const weeklyOption = await screen.findByText("Weekly Log");
+    weeklyOption.click();
+
+    // Click Generate Report
+    screen.getByText("Generate Report").click();
+
+    expect(downloadReportDirect).toHaveBeenCalledWith(
+      expect.objectContaining({ reportName: "weeklylog" }),
+    );
+  });
+
+  it("sends monthlylog when Monthly Log is selected", async () => {
+    fetchReportExcursions.mockResolvedValue([]);
+
+    const { downloadReportDirect } = await import("./api");
+
+    renderReports();
+
+    await screen.findByLabelText("Start date");
+
+    const dropdown = screen.getByText("Daily Log");
+    dropdown.click();
+    const monthlyOption = await screen.findByText("Monthly Log");
+    monthlyOption.click();
+
+    screen.getByText("Generate Report").click();
+
+    expect(downloadReportDirect).toHaveBeenCalledWith(
+      expect.objectContaining({ reportName: "monthlylog" }),
+    );
+  });
 });

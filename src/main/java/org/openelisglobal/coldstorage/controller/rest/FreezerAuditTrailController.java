@@ -130,10 +130,10 @@ public class FreezerAuditTrailController extends BaseRestController {
                                     ZoneId.systemDefault().getRules().getOffset(history.getTimestamp().toInstant()));
 
                             // Apply date filter only if dates are provided
-                            if (startDateTime != null && endDateTime != null) {
-                                if (historyTime.isBefore(startDateTime) || historyTime.isAfter(endDateTime)) {
-                                    continue;
-                                }
+                            boolean includeHistory = (startDateTime == null || !historyTime.isBefore(startDateTime))
+                                    && (endDateTime == null || !historyTime.isAfter(endDateTime));
+                            if (!includeHistory) {
+                                continue;
                             }
 
                             Map<String, Object> event = createConfigurationChangeEvent(history, freezer, freezerName);
@@ -151,10 +151,8 @@ public class FreezerAuditTrailController extends BaseRestController {
                     if (alert.getAcknowledgedAt() != null) {
                         OffsetDateTime ackTime = alert.getAcknowledgedAt();
                         // Apply date filter only if dates are provided
-                        boolean includeAck = true;
-                        if (startDateTime != null && endDateTime != null) {
-                            includeAck = !ackTime.isBefore(startDateTime) && !ackTime.isAfter(endDateTime);
-                        }
+                        boolean includeAck = (startDateTime == null || !ackTime.isBefore(startDateTime))
+                                && (endDateTime == null || !ackTime.isAfter(endDateTime));
 
                         if (includeAck) {
                             Map<String, Object> ackEvent = new HashMap<>();
@@ -164,7 +162,8 @@ public class FreezerAuditTrailController extends BaseRestController {
                             ackEvent.put("actionType", "ALERT_ACKNOWLEDGED");
                             ackEvent.put("performedAt", ackTime.toString());
                             ackEvent.put("performedBy", getUserName(alert.getAcknowledgedBy()));
-                            ackEvent.put("comment", "Alert for " + freezerName + " acknowledged");
+                            ackEvent.put("comment",
+                                    alert.getAlertType() + " alert for " + freezerName + " acknowledged");
                             ackEvent.put("details", alert.getMessage());
                             auditEvents.add(ackEvent);
                         }
@@ -174,20 +173,19 @@ public class FreezerAuditTrailController extends BaseRestController {
                     if (alert.getResolvedAt() != null) {
                         OffsetDateTime resolveTime = alert.getResolvedAt();
                         // Apply date filter only if dates are provided
-                        boolean includeResolve = true;
-                        if (startDateTime != null && endDateTime != null) {
-                            includeResolve = !resolveTime.isBefore(startDateTime) && !resolveTime.isAfter(endDateTime);
-                        }
+                        boolean includeResolve = (startDateTime == null || !resolveTime.isBefore(startDateTime))
+                                && (endDateTime == null || !resolveTime.isAfter(endDateTime));
 
                         if (includeResolve) {
                             Map<String, Object> resolveEvent = new HashMap<>();
                             resolveEvent.put("id", "RESOLVE-" + alert.getId());
                             resolveEvent.put("freezerId", String.valueOf(fId));
                             resolveEvent.put("freezerName", freezerName);
-                            resolveEvent.put("actionType", "CRITICAL_ALERT_RESOLVED");
+                            resolveEvent.put("actionType", alert.getAlertType() + "_RESOLVED");
                             resolveEvent.put("performedAt", resolveTime.toString());
                             resolveEvent.put("performedBy", getUserName(alert.getResolvedBy()));
-                            resolveEvent.put("comment", "Alert for " + freezerName + " resolved");
+                            resolveEvent.put("comment",
+                                    alert.getAlertType() + " alert for " + freezerName + " resolved");
                             resolveEvent.put("details", alert.getResolutionNotes());
                             auditEvents.add(resolveEvent);
                         }
@@ -202,10 +200,10 @@ public class FreezerAuditTrailController extends BaseRestController {
                         if (action.getCreatedAt() != null) {
                             OffsetDateTime actionTime = action.getCreatedAt();
                             // Apply date filter only if dates are provided
-                            if (startDateTime != null && endDateTime != null) {
-                                if (actionTime.isBefore(startDateTime) || actionTime.isAfter(endDateTime)) {
-                                    continue;
-                                }
+                            boolean includeAction = (startDateTime == null || !actionTime.isBefore(startDateTime))
+                                    && (endDateTime == null || !actionTime.isAfter(endDateTime));
+                            if (!includeAction) {
+                                continue;
                             }
 
                             Map<String, Object> actionEvent = new HashMap<>();
