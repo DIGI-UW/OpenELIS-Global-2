@@ -132,6 +132,7 @@ function LocationTiles({ activeLevel, onSelect }) {
 }
 
 export default function StorageManagementPage() {
+  const intl = useIntl();
   const history = useHistory();
   const { notificationVisible } = useContext(NotificationContext);
   // The URL is the source of truth for the active tab, so a deep link and a
@@ -176,7 +177,13 @@ export default function StorageManagementPage() {
                 );
               }}
             >
-              <TabList aria-label="Storage management tabs" contained>
+              <TabList
+                aria-label={intl.formatMessage({
+                  id: "storage.tab.ariaLabel",
+                  defaultMessage: "Storage management tabs",
+                })}
+                contained
+              >
                 <Tab>
                   <FormattedMessage
                     id="storage.tab.dashboard"

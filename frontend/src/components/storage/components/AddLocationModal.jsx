@@ -13,7 +13,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import useCreateLocation from "../pages/hooks/useCreateLocation";
 import { storageLevel } from "../storageLevels";
 
-// Same presets AddBoxPage offered; "custom" leaves rows/columns editable.
+// Grid presets; "custom" leaves rows/columns editable.
 const GRID_PRESETS = [
   { id: "9x9", label: "9x9", rows: 9, columns: 9 },
   { id: "10x10", label: "10x10", rows: 10, columns: 10 },

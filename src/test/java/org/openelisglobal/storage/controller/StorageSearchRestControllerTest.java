@@ -299,4 +299,38 @@ public class StorageSearchRestControllerTest extends BaseWebContextSensitiveTest
             assertTrue("Label should contain query (case-insensitive)", label.toLowerCase().contains("rack r1"));
         }
     }
+
+    @Test
+    public void searchBoxes_ReturnsMatching_WhenByLabel() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/storage/boxes/search").param("q", "Box B1"))
+                .andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        List<Map<String, Object>> boxes = objectMapper.readValue(responseBody,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        assertNotNull("Response should not be null", boxes);
+        assertTrue("Should return at least one matching box", boxes.size() >= 1);
+
+        for (Map<String, Object> box : boxes) {
+            String label = (String) box.get("label");
+            assertNotNull("Label should not be null", label);
+            assertTrue("Label should contain query (case-insensitive)", label.toLowerCase().contains("box b1"));
+        }
+    }
+
+    /**
+     * Without this the label test alone would pass on an endpoint that ignored q
+     * and returned every box.
+     */
+    @Test
+    public void searchBoxes_ReturnsEmpty_WhenNothingMatches() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/storage/boxes/search").param("q", "no-such-box"))
+                .andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
+
+        List<Map<String, Object>> boxes = objectMapper.readValue(result.getResponse().getContentAsString(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        assertTrue("A query matching nothing should return no boxes", boxes.isEmpty());
+    }
 }

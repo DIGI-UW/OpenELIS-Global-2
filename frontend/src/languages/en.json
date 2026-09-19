@@ -7061,6 +7061,7 @@
   "storage.status.disposed": "Disposed",
   "storage.success.assigned": "Sample assigned to storage location successfully",
   "storage.success.moved": "Sample moved to new location successfully",
+  "storage.tab.ariaLabel": "Storage management tabs",
   "storage.tab.dashboard": "Dashboard",
   "storage.tab.inventoryLots": "Inventory Lots",
   "storage.tab.samples": "Sample Items",
