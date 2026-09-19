@@ -113,7 +113,8 @@ export default function StorageResourcePage({
         menuActions: (
           <OverflowMenu
             size="sm"
-            ariaLabel="Row actions"
+            flipped
+            aria-label="Row actions"
             data-testid={`storage-row-actions-${rawItem?.id}`}
           >
             <OverflowMenuItem
