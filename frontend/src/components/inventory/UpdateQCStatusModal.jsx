@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   Dropdown,
@@ -13,12 +13,13 @@ import { InventoryLotAPI } from "./InventoryService";
 const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
-  const qcStatusOptions = [
-    { id: "PENDING", text: "Pending QC" },
-    { id: "PASSED", text: "Passed" },
-    { id: "FAILED", text: "Failed" },
-    { id: "NOT_REQUIRED", text: "Not Required" },
-  ];
+  // The values inventory_lot.qc_status's check constraint accepts.
+  const qcStatusOptions = ["PENDING", "PASSED", "FAILED", "QUARANTINED"].map(
+    (status) => ({
+      id: status,
+      text: intl.formatMessage({ id: `lot.qcStatus.${status}` }),
+    }),
+  );
 
   const [formData, setFormData] = useState({
     qcStatus: lot?.qcStatus || "PENDING",
@@ -27,6 +28,15 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // onSave() unmounts this modal before the finally block runs.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -68,9 +78,10 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error updating QC status:", err);
-      setError(err.message || "Error updating QC status");
+      if (isMountedRef.current)
+        setError(err.message || "Error updating QC status");
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) setSaving(false);
     }
   };
 
@@ -135,7 +146,9 @@ const UpdateQCStatusModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "qc.status.select" })}
           items={qcStatusOptions}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={qcStatusOptions.find((s) => s.id === formData.qcStatus)}
+          selectedItem={
+            qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("qcStatus", selectedItem.id)
           }

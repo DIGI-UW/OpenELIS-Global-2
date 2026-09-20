@@ -54,6 +54,9 @@ import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAss
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import { classifyNumericResult, numericResultStyle } from "./numericResultFlag";
+import { FlagChip } from "./unified/flags";
+import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { Warning } from "@carbon/icons-react";
 import ESignatureButton, {
@@ -1217,16 +1220,7 @@ export function SearchResults(props) {
           row.resultValue = validation.newValue;
           validation.style = {
             ...validation?.style,
-            borderColor: validation.isCritical
-              ? "orange"
-              : validation.isInvalid
-                ? "red"
-                : "",
-            background: validation.outsideValid
-              ? "#ffa0a0"
-              : validation.outsideNormal
-                ? "#ffffa0"
-                : "var(--cds-field)",
+            ...numericResultStyle(validation),
           };
         }
       });
@@ -1836,55 +1830,62 @@ export function SearchResults(props) {
 
           case "N":
             return (
-              <TextInput
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                labelText=""
-                type="number"
-                value={row.resultValue}
-                style={{ ...validationState[row.id]?.style, ...holdingStyle }}
-                onBlur={(e) => {
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-                onChange={(e) => {
-                  handleChange(e, row.id);
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-              />
+              <>
+                <TextInput
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  labelText=""
+                  type="number"
+                  value={row.resultValue}
+                  style={{ ...validationState[row.id]?.style, ...holdingStyle }}
+                  onBlur={(e) => {
+                    if (
+                      validationState[row.id]?.isInvalid &&
+                      configurationProperties.ALERT_FOR_INVALID_RESULTS
+                    ) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message:
+                          intl.formatMessage({
+                            id: "result.outOfValidRange.msg",
+                          }) +
+                          " " +
+                          row.testName +
+                          " : " +
+                          row.resultValue,
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                  onChange={(e) => {
+                    handleChange(e, row.id);
+                    if (
+                      validationState[row.id]?.isInvalid &&
+                      configurationProperties.ALERT_FOR_INVALID_RESULTS
+                    ) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message:
+                          intl.formatMessage({
+                            id: "result.outOfValidRange.msg",
+                          }) +
+                          " " +
+                          row.testName +
+                          " : " +
+                          row.resultValue,
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                />
+                {validationState[row.id]?.flag === "CRITICAL" && (
+                  <div data-testid={`critical-flag-${row.id}`}>
+                    <FlagChip flag="CRITICAL" />
+                  </div>
+                )}
+              </>
             );
 
           case "R":
@@ -2397,10 +2398,10 @@ export function SearchResults(props) {
               </Button>
               <LocationPickerModal
                 isOpen={storageModalRow === data.id}
-                sample={{
-                  id: sampleItemId || data.accessionNumber,
-                  sampleAccessionNumber: data.accessionNumber,
-                  sampleType: data.sampleType || "",
+                occupantType="SAMPLE_ITEM"
+                occupant={{
+                  label: data.accessionNumber,
+                  type: data.sampleType || "",
                   status: data.sampleStatus || "Active",
                 }}
                 onConfirm={({ selection, position, reason, notes }) => {
@@ -2511,38 +2512,8 @@ export function SearchResults(props) {
     // }
     if (validation.isNaN) {
       return { ...validation };
-    } else if (
-      row.lowCritical != row.highCritical &&
-      actualValue > row.lowCritical &&
-      actualValue < row.highCritical
-    ) {
-      return { ...validation, isCritical: true };
-    } else if (
-      row.lowerAbnormalRange != row.upperAbnormalRange &&
-      (actualValue < row.lowerAbnormalRange ||
-        actualValue > row.upperAbnormalRange)
-    ) {
-      return { ...validation, isInvalid: true, outsideValid: true };
-      // resultBox.style.background = "#ffa0a0";
-      // resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = false;
-      // if( outOfValidRangeMsg ){
-      //   alert( outOfValidRangeMsg);
-      // }
-    } else if (
-      row.lowerNormalRange != row.upperNormalRange &&
-      (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
-    ) {
-      return { ...validation, outsideNormal: true };
-      // resultBox.style.background = "#ffffa0";
-      // resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = true;
-    } else {
-      return { ...validation, outsideNormal: false };
-      // resultBox.style.background = "#ffffff";
-      // resultBox.title = "";
-      // $("valid_" + row).value = true;
     }
+    return { ...validation, ...classifyNumericResult(actualValue, row) };
   };
 
   const validateNumberFormat = (value, row) => {

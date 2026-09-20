@@ -18,6 +18,13 @@ import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI } from "./InventoryService";
 
+// Local calendar fields, not toISOString(): the UTC shift can move the picked day.
+export const toIsoDate = (date) => {
+  if (!date) return null;
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 const InventoryReports = () => {
   const intl = useIntl();
 
@@ -133,8 +140,8 @@ const InventoryReports = () => {
       const reportParams = {
         reportType: formData.reportType.id,
         exportFormat: formData.exportFormat.id,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        startDate: toIsoDate(formData.startDate),
+        endDate: toIsoDate(formData.endDate),
         includeInactive: formData.includeInactive,
         includeExpired: formData.includeExpired,
         groupByType: formData.groupByType,
@@ -161,10 +168,7 @@ const InventoryReports = () => {
       setSuccess(intl.formatMessage({ id: "reports.generation.success" }));
     } catch (err) {
       console.error("Error generating report:", err);
-      setError(
-        err.message ||
-          intl.formatMessage({ id: "reports.error.generationFailed" }),
-      );
+      setError(intl.formatMessage({ id: "reports.error.generationFailed" }));
     } finally {
       setGenerating(false);
     }
@@ -174,6 +178,11 @@ const InventoryReports = () => {
   const isDateRangeRequired = ["USAGE_TRENDS", "TRANSACTION_HISTORY"].includes(
     formData.reportType.id,
   );
+  const readsDateRange = [
+    "USAGE_TRENDS",
+    "TRANSACTION_HISTORY",
+    "EXPIRATION_FORECAST",
+  ].includes(formData.reportType.id);
 
   return (
     <div style={{ marginTop: "2rem" }}>
@@ -212,6 +221,7 @@ const InventoryReports = () => {
                   titleText={intl.formatMessage({ id: "reports.format" })}
                   label={intl.formatMessage({ id: "reports.format.select" })}
                   items={exportFormats}
+                  itemToString={(item) => (item ? item.text : "")}
                   selectedItem={formData.exportFormat}
                   onChange={({ selectedItem }) =>
                     handleChange("exportFormat", selectedItem)
@@ -219,63 +229,75 @@ const InventoryReports = () => {
                 />
 
                 {/* Date Range */}
-                <div>
-                  <FormLabel>
-                    <FormattedMessage id="reports.dateRange" />
-                    {isDateRangeRequired && (
-                      <span style={{ color: "#da1e28" }}> *</span>
-                    )}
-                  </FormLabel>
-                  <DatePicker
-                    datePickerType="range"
-                    value={[formData.startDate, formData.endDate]}
-                    onChange={(dates) => {
-                      handleChange("startDate", dates[0] || null);
-                      handleChange("endDate", dates[1] || null);
-                    }}
-                  >
-                    <DatePickerInput
-                      id="startDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "reports.startDate",
-                      })}
-                      size="md"
-                    />
-                    <DatePickerInput
-                      id="endDate"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({ id: "reports.endDate" })}
-                      size="md"
-                    />
-                  </DatePicker>
-                </div>
+                {readsDateRange && (
+                  <div>
+                    <FormLabel>
+                      <FormattedMessage id="reports.dateRange" />
+                      {isDateRangeRequired && (
+                        <span style={{ color: "#da1e28" }}> *</span>
+                      )}
+                    </FormLabel>
+                    <DatePicker
+                      datePickerType="range"
+                      value={[formData.startDate, formData.endDate]}
+                      onChange={(dates) => {
+                        handleChange("startDate", dates[0] || null);
+                        handleChange("endDate", dates[1] || null);
+                      }}
+                    >
+                      <DatePickerInput
+                        id="startDate"
+                        placeholder="mm/dd/yyyy"
+                        labelText={intl.formatMessage({
+                          id: "reports.startDate",
+                        })}
+                        size="md"
+                      />
+                      <DatePickerInput
+                        id="endDate"
+                        placeholder="mm/dd/yyyy"
+                        labelText={intl.formatMessage({
+                          id: "reports.endDate",
+                        })}
+                        size="md"
+                      />
+                    </DatePicker>
+                  </div>
+                )}
 
-                {/* Filter Options */}
-                <FormGroup
-                  legendText={intl.formatMessage({ id: "reports.options" })}
-                >
-                  <Checkbox
-                    id="includeInactive"
-                    labelText={intl.formatMessage({
-                      id: "reports.includeInactive",
-                    })}
-                    checked={formData.includeInactive}
-                    onChange={(e) =>
-                      handleChange("includeInactive", e.target.checked)
-                    }
-                  />
-                  <Checkbox
-                    id="includeExpired"
-                    labelText={intl.formatMessage({
-                      id: "reports.includeExpired",
-                    })}
-                    checked={formData.includeExpired}
-                    onChange={(e) =>
-                      handleChange("includeExpired", e.target.checked)
-                    }
-                  />
-                </FormGroup>
+                {/* Filter Options — only where the report actually honors them */}
+                {[
+                  "STOCK_LEVELS",
+                  "EXPIRATION_FORECAST",
+                  "LOT_TRACEABILITY",
+                ].includes(formData.reportType.id) && (
+                  <FormGroup
+                    legendText={intl.formatMessage({ id: "reports.options" })}
+                  >
+                    <Checkbox
+                      id="includeInactive"
+                      labelText={intl.formatMessage({
+                        id: "reports.includeInactive",
+                      })}
+                      checked={formData.includeInactive}
+                      onChange={(e) =>
+                        handleChange("includeInactive", e.target.checked)
+                      }
+                    />
+                    {formData.reportType.id === "EXPIRATION_FORECAST" && (
+                      <Checkbox
+                        id="includeExpired"
+                        labelText={intl.formatMessage({
+                          id: "reports.includeExpired",
+                        })}
+                        checked={formData.includeExpired}
+                        onChange={(e) =>
+                          handleChange("includeExpired", e.target.checked)
+                        }
+                      />
+                    )}
+                  </FormGroup>
+                )}
 
                 {/* Grouping Options */}
                 {["STOCK_LEVELS", "LOW_STOCK", "EXPIRATION_FORECAST"].includes(

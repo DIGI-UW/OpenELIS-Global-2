@@ -581,6 +581,8 @@ public class ResultsValidationUtility {
         } else {
             testItem.setResultType(getTestResultType(testResults));
         }
+        testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
+                result == null ? null : result.getValue()));
         testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
                 testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
         testItem.setTestSortNumber(test.getSortOrder());
@@ -598,10 +600,8 @@ public class ResultsValidationUtility {
             List<TestResult> testResults) {
         if (resultLimit != null) {
             testItem.setResultLimitId(resultLimit.getId());
-            testItem.setLowerCritical(
-                    resultLimit.getLowCritical() == Double.NEGATIVE_INFINITY ? 0 : resultLimit.getLowCritical());
-            testItem.setHigherCritical(
-                    resultLimit.getHighCritical() == Double.POSITIVE_INFINITY ? 0 : resultLimit.getHighCritical());
+            testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
+            testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
@@ -960,10 +960,9 @@ public class ResultsValidationUtility {
         testUnits = augmentUOMWithRange(testUnits, testResultItem.getResult());
 
         analysisResultItem.setAccessionNumber(testResultItem.getAccessionNumber());
-        analysisResultItem.setLowerCritical(
-                testResultItem.getLowerCritical() == Double.NEGATIVE_INFINITY ? 0 : testResultItem.getLowerCritical());
-        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical() == Double.POSITIVE_INFINITY ? 0
-                : testResultItem.getHigherCritical());
+        analysisResultItem.setLowerCritical(testResultItem.getLowerCritical());
+        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical());
+        analysisResultItem.setResultFlag(testResultItem.getResultFlag());
         analysisResultItem.setNormalRange(testResultItem.getNormalRange());
         analysisResultItem.setPatientName(testResultItem.getPatientName());
         analysisResultItem.setTestName(testName);
