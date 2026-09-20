@@ -158,7 +158,9 @@ export async function outboxPayload(
     `/admin/outbox/${encodeURIComponent(id)}/payload?part=${part}`,
   );
   if (!response.ok()) {
-    throw new Error(`Payload ${part} for ${id} failed with ${response.status()}`);
+    throw new Error(
+      `Payload ${part} for ${id} failed with ${response.status()}`,
+    );
   }
   return response.text();
 }
@@ -183,7 +185,9 @@ export async function waitForOutboxEntry(
     }
     await sleep(1_000);
   }
-  throw new Error(`The bridge never recorded a result for accession ${accession}`);
+  throw new Error(
+    `The bridge never recorded a result for accession ${accession}`,
+  );
 }
 
 /** Wait for an entry to reach a state, reporting what it was doing if it does not. */
@@ -293,7 +297,9 @@ export function countOpenElisAcceptances(
   deliveryId: string,
 ): number {
   if (!/^[A-Za-z0-9:.-]+$/.test(deliveryId)) {
-    throw new Error(`Refusing to query with an unexpected delivery id: ${deliveryId}`);
+    throw new Error(
+      `Refusing to query with an unexpected delivery id: ${deliveryId}`,
+    );
   }
   const output = docker(
     "exec",

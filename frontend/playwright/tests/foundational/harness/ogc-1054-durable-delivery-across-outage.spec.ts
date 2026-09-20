@@ -86,7 +86,9 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
       // incident failed to keep.
       const raw = await outboxPayload(api, held.id, "raw");
       expect(raw).toContain(accession);
-      expect(raw, "the received ASTM message must be stored whole").toMatch(/^H\|/m);
+      expect(raw, "the received ASTM message must be stored whole").toMatch(
+        /^H\|/m,
+      );
 
       const bundle = await outboxPayload(api, held.id, "fhir");
       expect(
@@ -100,7 +102,10 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
       await waitForBridge(api, HELD_TIMEOUT);
 
       const afterRestart = await getOutboxEntry(api, held.id);
-      expect(afterRestart, "the held result must survive a bridge restart").not.toBeNull();
+      expect(
+        afterRestart,
+        "the held result must survive a bridge restart",
+      ).not.toBeNull();
       expect(
         ["RECEIVED", "PENDING", "RETRYING"],
         "the result must still be undelivered while OpenELIS is down",
