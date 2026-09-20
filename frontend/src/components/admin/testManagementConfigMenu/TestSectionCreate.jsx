@@ -1,8 +1,7 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
@@ -10,10 +9,11 @@ import {
   RadioButtonGroup,
   RadioButton,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -23,6 +23,8 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+
+const TEST_SECTION_CREATE_ENDPOINT = "/rest/TestSectionCreate";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -46,25 +48,17 @@ function TestSectionCreate() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(true);
   const [bothFilled, setBothFilled] = useState(false);
-  const [testSectionCreateList, setTestSectionCreateList] = useState({});
 
-  const componentMounted = useRef(false);
+  const { data: testSectionCreateList } = useServerData(
+    TEST_SECTION_CREATE_ENDPOINT,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
-  const handleTestSectionCreateList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestSectionCreateList(res);
-    }
-  };
-
-  const handleTestSectionCreateListCall = ({
-    englishLangPost,
-    frenchLangPost,
-    domain,
-  }) => {
+  const handleTestSectionCreateListCall = (
+    actions,
+    { englishLangPost, frenchLangPost, domain },
+  ) => {
     postToOpenElisServerJsonResponse(
       "/rest/TestSectionCreate",
       JSON.stringify({
@@ -73,15 +67,14 @@ function TestSectionCreate() {
         domain: domain,
       }),
       (res) => {
-        handlePostTestSectionCreateListCallBack(res);
+        handlePostTestSectionCreateListCallBack(res, actions);
       },
     );
   };
 
-  const handlePostTestSectionCreateListCallBack = (res) => {
+  const handlePostTestSectionCreateListCallBack = (res, actions) => {
     if (res) {
       if (res) {
-        setIsLoading(false);
         addNotification({
           title: intl.formatMessage({
             id: "notification.title",
@@ -91,12 +84,13 @@ function TestSectionCreate() {
           }),
           kind: NotificationKinds.success,
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
+        actions.resetForm();
+        setBothFilled(false);
+        invalidateServerData();
         setNotificationVisible(true);
       }
     } else {
+      actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -120,19 +114,6 @@ function TestSectionCreate() {
     return allSampleTypeValues.includes(name.trim().toLowerCase());
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(
-      `/rest/TestSectionCreate`,
-      handleTestSectionCreateList,
-    );
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
   const validationSchema = Yup.object({
     englishLangPost: Yup.string()
       .required("fill this field")
@@ -154,14 +135,6 @@ function TestSectionCreate() {
       .required("fill this field")
       .oneOf(["CLINICAL", "ENVIRONMENTAL", "VECTOR"]),
   });
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
 
   return (
     <>
@@ -218,7 +191,7 @@ function TestSectionCreate() {
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
               if (bothFilled) {
-                handleTestSectionCreateListCall(values);
+                handleTestSectionCreateListCall(actions, values);
               } else {
                 setBothFilled(true);
                 actions.setSubmitting(false);
@@ -233,6 +206,7 @@ function TestSectionCreate() {
               handleBlur,
               handleSubmit,
               isSubmitting,
+              resetForm,
             }) => (
               <Form onSubmit={handleSubmit}>
                 <Grid fullWidth={true}>
@@ -369,7 +343,8 @@ function TestSectionCreate() {
                       type="button"
                       kind="tertiary"
                       onClick={() => {
-                        window.location.reload();
+                        resetForm();
+                        setBothFilled(false);
                       }}
                     >
                       {bothFilled ? (

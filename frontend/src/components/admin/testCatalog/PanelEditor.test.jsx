@@ -3,8 +3,8 @@
  *
  * - the editor shell shows the PANEL badge, name, domain tag and LOINC;
  * - create mode ("new") titles "New panel" and skips the envelope fetch;
- * - Basic Info: only Clinical is enabled (Env/Vector disabled, later-phase
- *   note), sample types render read-only (derived), the Active toggle is
+ * - Basic Info: every domain is selectable (a panel's domain is set on the
+ *   panel, OGC-1209), sample types render read-only (derived), the Active toggle is
  *   disabled with helper text while the panel has zero tests (activation
  *   rule), and Save PUTs the basic-info payload;
  * - create flow: POST {name, active:false} then basic-info PUT.
@@ -131,13 +131,12 @@ describe("PanelEditor shell (OGC-224 C2)", () => {
 });
 
 describe("PanelBasicInfoSection (FRS rules)", () => {
-  it("only Clinical is enabled; Environmental and Vector are disabled with the later-phase note", async () => {
+  it("every domain can be chosen, because a panel's domain is set on the panel (OGC-1209)", async () => {
     wrap();
     await screen.findByTestId("panel-editor-title");
     expect(screen.getByLabelText("Clinical")).toBeEnabled();
-    expect(screen.getByLabelText("Environmental")).toBeDisabled();
-    expect(screen.getByLabelText("Vector")).toBeDisabled();
-    expect(screen.getByText(/enabled in a later phase/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Environmental")).toBeEnabled();
+    expect(screen.getByLabelText("Vector")).toBeEnabled();
   });
 
   it("derived sample types render read-only", async () => {

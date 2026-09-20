@@ -1,7 +1,6 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Heading,
-  Loading,
   Grid,
   Column,
   Section,
@@ -17,10 +16,11 @@ import {
   Pagination,
   Search,
 } from "@carbon/react";
+import { postToOpenElisServer } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -45,13 +45,11 @@ function ExternalConnectionMenu() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
@@ -59,34 +57,32 @@ function ExternalConnectionMenu() {
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
-  const [connectionList, setConnectionList] = useState();
   const [connectionListShow, setConnectionListShow] = useState([]);
 
   function deactivateConnection(event) {
     event.preventDefault();
-    setLoading(true);
-    postToOpenElisServerJsonResponse(
+    postToOpenElisServer(
       `/rest/DeactivateExternalConnection?ID=${selectedRowIds.join(",")}`,
       JSON.stringify({ selectedIDs: selectedRowIds }),
-      () => {
-        deactivateCallback();
-      },
+      deactivateCallback,
     );
   }
 
-  const deactivateCallback = () => {
-    setLoading(false);
+  const deactivateCallback = (status) => {
+    const succeeded = status >= 200 && status < 300;
     setNotificationVisible(true);
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage({
-        id: "externalconnections.deactivate.success",
+        id: succeeded
+          ? "externalconnections.deactivate.success"
+          : "server.error.msg",
       }),
-      kind: NotificationKinds.success,
+      kind: succeeded ? NotificationKinds.success : NotificationKinds.error,
     });
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
+    if (!succeeded) return;
+    setSelectedRowIds([]);
+    invalidateServerData();
   };
 
   const handleNextPage = () => {
@@ -116,35 +112,14 @@ function ExternalConnectionMenu() {
     setSelectedRowIds([]);
   };
 
-  const handleMenuItems = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setConnectionList(res);
-    }
-  };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/ExternalConnectionMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      handleMenuItems,
-    );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [paging, startingRecNo]);
-
-  useEffect(() => {
-    if (searchTerm) {
-      getFromOpenElisServer(
-        `/rest/SearchExternalConnectionMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${searchTerm}`,
-        handleMenuItems,
-      );
-    }
-  }, [searchTerm]);
+  // Browsing and searching are the same list from two endpoints, so which one
+  // is read follows the search box.
+  const { data: connectionList } = useServerData(
+    searchTerm
+      ? `/rest/SearchExternalConnectionMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${searchTerm}`
+      : `/rest/ExternalConnectionMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
   useEffect(() => {
     if (connectionList) {
@@ -211,14 +186,6 @@ function ExternalConnectionMenu() {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
   };
-
-  if (!loading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
 
   return (
     <>

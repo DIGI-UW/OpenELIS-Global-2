@@ -32,8 +32,7 @@ services:
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
     networks:
-      default:
-        ipv4_address: 172.20.1.121
+      - default
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       timeout: 10s
@@ -62,9 +61,6 @@ services:
 networks:
   default:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.1.0/24
 
 volumes:
   db-data:

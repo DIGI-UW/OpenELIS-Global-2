@@ -1,0 +1,52 @@
+.oe-coldStorage-alertModalActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-alertModalBody {
+  padding: 1rem 0;
+}
+
+.oe-coldStorage-alertModalSection {
+  margin-bottom: 1.5rem;
+}
+
+.oe-coldStorage-alertModalSectionTitle {
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-alertModalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.oe-coldStorage-alertModalFieldLabel {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.oe-coldStorage-alertModalField {
+  margin-top: 1rem;
+}
+
+.oe-coldStorage-inlineCorrectiveAction {
+  margin-top: 1.5rem;
+}
+
+.oe-coldStorage-inlineCorrectiveActionForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--cds-layer-02);
+  border-radius: 0.25rem;
+}
+
+.oe-coldStorage-inlineCorrectiveActionButtons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

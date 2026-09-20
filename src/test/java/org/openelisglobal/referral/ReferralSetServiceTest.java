@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +40,8 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -48,6 +52,8 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
     private ReferralSetService referralSetService;
     @Autowired
     private ReferralItemService referralItemService;
+    @Autowired
+    private SystemUserService systemUserService;
     @Autowired
     private AnalysisService analysisService;
     @Autowired
@@ -329,6 +335,37 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(ReferralStatus.DRAFT, initial.getToStatus());
         assertEquals("3901", initial.getChangedByUserId());
         assertNotNull(initial.getChangedAt());
+    }
+
+    /**
+     * Order Entry sends no referrer, so this column was empty on every referral it
+     * raised and the reference lab had nobody to go back to. The user placing the
+     * order is who raised it.
+     */
+    @Test
+    public void createDraftReferralSetsForOrderEntry_recordsTheUserWhoRaisedTheReferral() {
+        SampleAddService.SampleTestCollection sampleTestCollection = getSampleTestCollection();
+        sampleTestCollection.analysises = analysisService.getAll();
+        List<ReferralItem> referralItems = referralItemService.getReferralItems();
+        referralItems.forEach(item -> {
+            item.setReferralId(null);
+            item.setReferrer(null);
+        });
+
+        SystemUser orderingUser = systemUserService.getAll().get(0);
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData(orderingUser.getId());
+        updateData.setSampleItemsTests(new ArrayList<>(List.of(sampleTestCollection)));
+        Set<String> existingIds = referralService.getAll().stream().map(Referral::getId).collect(Collectors.toSet());
+
+        referralSetService.createDraftReferralSetsForOrderEntry(referralItems, updateData);
+
+        // Picked out by id: getAll has no guaranteed order, so counting from the end
+        // asserts against whichever rows the database happened to return last.
+        List<Referral> raised = referralService.getAll().stream().filter(r -> !existingIds.contains(r.getId()))
+                .collect(Collectors.toList());
+        assertEquals(referralItems.size(), raised.size());
+        raised.forEach(referral -> assertEquals("the user who placed the order is on the referral",
+                orderingUser.getNameForDisplay(), referral.getRequesterName()));
     }
 
     @Test

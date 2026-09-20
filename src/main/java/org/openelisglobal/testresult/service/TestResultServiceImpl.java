@@ -194,6 +194,12 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
     @Override
     @Transactional(readOnly = true)
+    public TestResult getTestResultsByTestAndDictonaryResult(String id, String value, String componentId) {
+        return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value, componentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getData(TestResult testResult) {
         getBaseObjectDAO().getData(testResult);
     }

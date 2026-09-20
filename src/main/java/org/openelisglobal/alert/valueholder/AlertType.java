@@ -7,6 +7,17 @@ public enum AlertType {
     FREEZER_TEMPERATURE,
 
     /**
+     * Relative humidity outside the profile's humidity band. A separate type from
+     * FREEZER_TEMPERATURE because alerts deduplicate on type, so sharing one would
+     * collapse a humidity breach and a temperature breach on the same unit into a
+     * single row.
+     */
+    FREEZER_HUMIDITY,
+
+    /** Fires on failed polls, not threshold evaluation; do not re-route it. */
+    FREEZER_OFFLINE,
+
+    /**
      * Equipment malfunction or failure alerts
      */
     EQUIPMENT_FAILURE,
@@ -71,5 +82,12 @@ public enum AlertType {
      * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
      * the ANALYSIS carrying the value
      */
-    CRITICAL_RESULT
+    CRITICAL_RESULT,
+
+    /**
+     * Microbiology critical communication requiring acknowledgment. The clinical
+     * communication remains authoritative; this type projects it into the shared
+     * alert workflow.
+     */
+    MICROBIOLOGY_CRITICAL
 }

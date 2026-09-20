@@ -1,5 +1,5 @@
 # Thin orchestrator for E2E test execution. Calls the unified Playwright
-# reusable workflow twice (core + harness) and the deprecated Cypress workflow.
+# reusable workflow for core, setup, and traffic, plus the Cypress workflow.
 # All Playwright suites follow the same pattern: test-shards → merge → gate.
 name: E2E / Authoritative Executor (Reusable)
 
@@ -31,11 +31,6 @@ on:
         required: false
         type: string
         default: "base"
-      include_plugin_jars:
-        description: "Whether harness should consume plugin jars"
-        required: false
-        type: string
-        default: "true"
       is_fork:
         description: "Whether execution context is fork-native"
         required: false
@@ -85,10 +80,9 @@ jobs:
       test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
   # ─── Playwright Harness ─────────────────────────────────────────────────────
-  # Runs harness-foundational and harness-demo projects on the analyzer harness.
+  # Runs the current catalog, shared mapping, and guided setup UI stories.
   playwright-harness:
     name: Playwright Harness
-    if: inputs.include_plugin_jars == 'true'
     uses: ./.github/workflows/e2e-playwright-reusable.yml
     permissions:
       contents: read
@@ -134,7 +128,7 @@ jobs:
             echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
             exit 1
           fi
-          if [[ "${{ needs.playwright-harness.result }}" != "success" && "${{ needs.playwright-harness.result }}" != "skipped" ]]; then
+          if [[ "${{ needs.playwright-harness.result }}" != "success" ]]; then
             echo "Playwright Harness failed: ${{ needs.playwright-harness.result }}"
             exit 1
           fi

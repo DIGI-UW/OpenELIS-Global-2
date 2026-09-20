@@ -9,7 +9,7 @@ import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
 
 // Mock Utils
 vi.mock("../utils/Utils", async () => {
@@ -324,7 +324,9 @@ const renderHeader = (options = {}) => {
               <Route
                 path="*"
                 render={({ location }) => (
-                  <span data-testid="current-path">{location.pathname}</span>
+                  <span data-testid="current-path">
+                    {location.pathname + location.search}
+                  </span>
                 )}
               />
             </NotificationContext.Provider>
@@ -337,9 +339,41 @@ const renderHeader = (options = {}) => {
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
+  });
+
+  test("renders Carbon sidenav lists with direct list-item children", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+    });
+
+    const sideNavLists = container.querySelectorAll(
+      ".cds--side-nav__items, .cds--side-nav__menu",
+    );
+    expect(sideNavLists.length).toBeGreaterThan(0);
+    sideNavLists.forEach((list) => {
+      Array.from(list.children).forEach((child) => {
+        expect(child.tagName).toBe("LI");
+      });
+    });
   });
 
   describe("Home item active state", () => {
@@ -743,6 +777,60 @@ describe("Header Component - M2b Enhancement Tests", () => {
       );
     });
 
+    test("configured Admin group preserves the dashboard and exposes stuck analyzer events", async () => {
+      const configuredAdminMenu = [
+        MENU_DATA[0],
+        {
+          ...MENU_DATA[1],
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_administration_dashboard",
+                displayKey: "admin.dashboard.title",
+                actionURL: "/MasterListsPage",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_administration_stuck_analyzer_events",
+                displayKey: "analyzer.importIssues.events.title",
+                actionURL: "/AnalyzerResults?view=import-issues",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ];
+      renderHeader({ menuData: configuredAdminMenu });
+
+      const adminMenu = await screen.findByRole("button", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("id", "menu_administration");
+      fireEvent.click(adminMenu);
+      const adminDashboard = screen.getByRole("link", {
+        name: "Admin dashboard",
+      });
+      expect(adminDashboard).toHaveAttribute(
+        "id",
+        "menu_administration_dashboard_nav",
+      );
+      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
+
+      const stuckEvents = screen.getByRole("link", {
+        name: "Stuck analyzer events",
+      });
+      expect(stuckEvents).toHaveAttribute(
+        "href",
+        "/AnalyzerResults?view=import-issues",
+      );
+      fireEvent.click(stuckEvents);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/AnalyzerResults?view=import-issues",
+      );
+    });
+
     test("admin context renders Admin nav contents instead of main menu contents", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
@@ -795,6 +883,53 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("User panel actions", () => {
+    test.each([{ authenticated: false }, {}])(
+      "unauthenticated or unresolved shell does not request protected header resources",
+      async (sessionDetails) => {
+        renderHeader({
+          sessionDetails,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+        });
+
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/properties",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      },
+    );
+
+    test("subscription state loads only when Notifications is opened", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+      });
+      expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+        "/rest/notification/pnconfig",
+      );
+
+      fireEvent.click(container.querySelector("#notification-Icon"));
+
+      await waitFor(() => {
+        expect(getFromOpenElisServerV2).toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      });
+    });
+
     test("authenticated panel orders locale, change password, then logout", async () => {
       const { container } = renderHeader();
 
@@ -888,5 +1023,139 @@ describe("Header Component - M2b Enhancement Tests", () => {
         expect(container.querySelector(".cds--side-nav")).toBeTruthy();
       });
     });
+  });
+});
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
   });
 });

@@ -6,6 +6,15 @@
     <localization id="2" description="Test Name"
         lastupdated="2025-03-08 12:00:00" />
 
+    <localization id="3" description="Test 1 name"
+        lastupdated="2025-03-08 12:00:00" />
+    <localization_value id="9301" localization_id="3"
+        locale="en" value="Complete Blood Count"
+        last_updated="2025-03-08 12:00:00" />
+    <localization_value id="9302" localization_id="3"
+        locale="fr" value="Complete Blood Count"
+        last_updated="2025-03-08 12:00:00" />
+
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
         is_employee="Y" lastupdated="2025-03-08 12:00:00" />
@@ -132,7 +141,7 @@
         lastupdated="2025-03-20 12:00:00" label_id="1" test_trailer_id="1"
         test_section_id="1" scriptlet_id="1" test_format_id="1"
         local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
-        orderable="true" guid="abc-123" name_localization_id="1"
+        orderable="true" guid="abc-123" name_localization_id="3"
         reporting_name_localization_id="2" is_active="Y"
         antimicrobial_resistance="true" />
     <test id="2" method_id="2" uom_id="2" description="Urine Test"
@@ -173,10 +182,13 @@
 
     <sampletype_test id="1" test_id="1" sample_type_id="3" />
 
+    <!-- Panel is version-mapped on lastupdated; a null version reads as transient
+        on merge -->
     <panel id="1" name="Test Panel"
-        description="This is a test panel." name_localization_id="1" />
+        description="This is a test panel." name_localization_id="1"
+        lastupdated="2025-03-08 12:00:00" />
     <panel id="2" name="DCPIP Panel" description="Vitamins test"
-        name_localization_id="2" />
+        name_localization_id="2" lastupdated="2025-03-08 12:00:00" />
 
     <panel_item id="1" panel_id="1" sort_order="1"
         test_local_abbrev="TLA1" method_name="therapy"
@@ -247,9 +259,8 @@
     <sample_human id="1" provider_id="1" samp_id="1"
         patient_id="1" lastupdated="2023-11-01 12:00:00" />
 
-    <sample_human id="2" provider_id="1" samp_id="2"
-        patient_id="2" lastupdated="2023-11-01 12:00:00" />
-
+    <!-- sample 2 deliberately has no ordering provider: Observation.performer
+        must be omitted, not Practitioner/null -->
     <sample_human id="2" samp_id="2" patient_id="2"
         lastupdated="2023-11-01 12:00:00" />
 
@@ -260,11 +271,8 @@
     <reference_tables id="3" name="SAMPLE_QAEVENT"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
 
-    <observation_history_type id="5"
-        type_name="program" description="Program type" />
-
     <observation_history id="1" patient_id="1"
-        sample_id="1" observation_history_type_id="5" value_type="L"
+        sample_id="1" observation_history_type_id="10" value_type="L"
         value="Histopathology" />
 
     <dictionary_category id="1"

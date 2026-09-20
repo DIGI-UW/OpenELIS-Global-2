@@ -16,8 +16,6 @@ import {
   StructuredListBody,
   StructuredListRow,
   StructuredListCell,
-  Checkbox,
-  InlineNotification,
   Tag,
   Loading,
   Button,
@@ -26,24 +24,23 @@ import { Checkmark, Warning } from "@carbon/icons-react";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import SampleAcceptanceReview from "./sections/SampleAcceptanceReview";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { getAcceptanceGate, getEnforcement } from "../api/sampleAcceptanceApi";
 
 /**
  * OrderQA - Step 4: QA Review
  *
- * Final quality assurance review before order submission.
- * Shows complete order summary and QA checklist.
- * Checklist items are configured via Dictionary (category: QAChecklistItem).
+ * Final quality assurance review before order submission. Shows the complete
+ * order summary and the per-specimen Sample Acceptance Checklist, which is
+ * the single acceptance review for the order; submission is gated by that
+ * checklist's per-domain enforcement.
  */
 
 const OrderQA = () => {
@@ -109,13 +106,8 @@ const OrderQA = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  // Checklist items from Dictionary
-  const [checklistItems, setChecklistItems] = useState([]);
-  // Map of itemKey -> boolean for verification status
-  const [verifiedItems, setVerifiedItems] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showNceForm, setShowNceForm] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   // S-09 FR-08: true while any live specimen's intake acceptance is unsatisfied
   // under MANDATORY enforcement — gates the QA submit (server /gate is the backstop).
@@ -142,71 +134,11 @@ const OrderQA = () => {
   const displayLabNumber =
     labNumber || orderData?.sampleOrderItems?.labNo || "";
 
-  // Load QA checklist config and status from backend on mount
-  const loadChecklist = useCallback(() => {
-    if (!displayLabNumber) {
-      // If no lab number, just load the config
-      getFromOpenElisServer("/rest/qa-checklist/config", (response) => {
-        if (response && Array.isArray(response)) {
-          setChecklistItems(response);
-          // Initialize all items as unchecked
-          const initialState = {};
-          response.forEach((item) => {
-            initialState[item.itemKey] = false;
-          });
-          setVerifiedItems(initialState);
-        }
-        setIsLoading(false);
-      });
-      return;
-    }
-
-    getFromOpenElisServer(
-      `/rest/qa-checklist/by-lab-number/${displayLabNumber}`,
-      (response) => {
-        if (response && !response.error) {
-          // Set checklist items from config
-          if (
-            response.checklistItems &&
-            Array.isArray(response.checklistItems)
-          ) {
-            setChecklistItems(response.checklistItems);
-          }
-          // Set verified items state
-          if (response.verifiedItems) {
-            setVerifiedItems(response.verifiedItems);
-          } else {
-            // Initialize all items as unchecked
-            const initialState = {};
-            (response.checklistItems || []).forEach((item) => {
-              initialState[item.itemKey] = false;
-            });
-            setVerifiedItems(initialState);
-          }
-        }
-        setIsLoading(false);
-      },
-    );
-  }, [displayLabNumber]);
-
-  useEffect(() => {
-    loadChecklist();
-  }, [loadChecklist]);
-
-  const handleChecklistChange = (itemKey) => {
-    setVerifiedItems((prev) => ({
-      ...prev,
-      [itemKey]: !prev[itemKey],
-    }));
-  };
-
-  // Check if all items are verified
-  const allItemsComplete = checklistItems.every(
-    (item) => verifiedItems[item.itemKey] === true,
-  );
-
-  // Save checklist to backend
-  const saveChecklist = async () => {
+  // Records that the order reached and passed QA review. The dashboard reads
+  // the presence of this record to mark the order complete, so it is written
+  // even though intake acceptance — not a second checklist — is what is
+  // actually reviewed on this step.
+  const recordQaReview = useCallback(async () => {
     if (!displayLabNumber) {
       return Promise.resolve();
     }
@@ -214,25 +146,22 @@ const OrderQA = () => {
     return new Promise((resolve, reject) => {
       postToOpenElisServerJsonResponse(
         "/rest/qa-checklist",
-        JSON.stringify({
-          labNumber: displayLabNumber,
-          verifiedItems: verifiedItems,
-        }),
+        JSON.stringify({ labNumber: displayLabNumber }),
         (response) => {
           if (response && response.success) {
             resolve(response);
           } else {
-            reject(new Error(response?.error || "Failed to save checklist"));
+            reject(new Error(response?.error || "Failed to record QA review"));
           }
         },
       );
     });
-  };
+  }, [displayLabNumber]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveChecklist();
+      await recordQaReview();
       markStepComplete("qa");
       addNotification({
         kind: NotificationKinds.success,
@@ -241,7 +170,7 @@ const OrderQA = () => {
       });
       setNotificationVisible(true);
     } catch (error) {
-      console.error("Error saving QA checklist:", error);
+      console.error("Error recording QA review:", error);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -295,7 +224,7 @@ const OrderQA = () => {
       }
     }
     try {
-      await saveChecklist();
+      await recordQaReview();
       markStepComplete("qa");
       setIsSubmitted(true);
       addNotification({
@@ -337,25 +266,6 @@ const OrderQA = () => {
 
   const isEnvOrVector =
     workflowType === "environmental" || workflowType === "vector";
-
-  // Get label for checklist item - use localizedName or label from dictionary
-  const getItemLabel = (item) => {
-    if (isEnvOrVector && item.itemKey === "patientInfoVerified") {
-      return intl.formatMessage({
-        id: "qa.checklist.samplingSiteCorrect",
-        defaultMessage: "Sampling site information is correct",
-      });
-    }
-    return item.localizedName || item.label || item.itemKey;
-  };
-
-  if (isLoading) {
-    return (
-      <OrderWorkflowLayout title="order.step.qa" showSaveButtons={false}>
-        <Loading withOverlay={false} description="Loading checklist..." />
-      </OrderWorkflowLayout>
-    );
-  }
 
   if (isSubmitted) {
     return (
@@ -414,13 +324,17 @@ const OrderQA = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice />
       {isSaving && <Loading withOverlay description="Saving..." />}
 
       <div className="qa-review-container">
         {/* S-09 (OGC-580) Intake Acceptance — per-specimen master/detail table.
             Acceptance is recorded per sample_item; shared across Clinical /
             Environmental / Vector via the domain-resolved checklist. Hidden
-            entirely when this order's domain enforcement is OFF (FR-08). */}
+            entirely when this order's domain enforcement is OFF (FR-08).
+            This is the order's only acceptance checklist: the separate
+            built-in QA checklist that used to render below it was an
+            unguarded duplicate with its own state, config load and POST. */}
         {!acceptanceOff && (
           <SampleAcceptanceReview
             orderId={orderId}
@@ -429,48 +343,6 @@ const OrderQA = () => {
             onBlockedChange={setAcceptanceBlocked}
           />
         )}
-
-        {/* QA Checklist */}
-        <Tile className="qa-checklist-tile">
-          <h4>
-            <FormattedMessage
-              id="qa.checklist.title"
-              defaultMessage="QA Checklist"
-            />
-          </h4>
-          <p className="qa-checklist-instructions">
-            <FormattedMessage
-              id="qa.checklist.instructions"
-              defaultMessage="Verify all items before submitting the order"
-            />
-          </p>
-
-          <div className="qa-checklist-items">
-            {checklistItems.map((item) => (
-              <Checkbox
-                key={item.itemKey}
-                id={`qa-${item.itemKey}`}
-                labelText={getItemLabel(item)}
-                checked={verifiedItems[item.itemKey] || false}
-                onChange={() => handleChecklistChange(item.itemKey)}
-                disabled={isSaving}
-              />
-            ))}
-          </div>
-
-          {!allItemsComplete && (
-            <InlineNotification
-              kind="info"
-              title={intl.formatMessage({
-                id: "qa.checklist.incomplete",
-                defaultMessage:
-                  "QA checklist incomplete — you may still proceed",
-              })}
-              hideCloseButton
-              lowContrast
-            />
-          )}
-        </Tile>
 
         {/* Order Summary */}
         <Accordion>
