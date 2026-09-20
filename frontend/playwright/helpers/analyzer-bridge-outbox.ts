@@ -97,6 +97,98 @@ export function isContainerRunning(name: string): boolean {
 }
 
 /**
+ * The compose network the bridge reaches OpenELIS over, resolved from the
+ * webapp container rather than hardcoded, because compose prefixes it with the
+ * project name and the project name differs between CI and worktree stacks.
+ */
+export function resolveAnalyzerNetwork(webappContainer: string): string {
+  const names = docker(
+    "inspect",
+    "-f",
+    "{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}\n{{end}}",
+    webappContainer,
+  )
+    .split("\n")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  const analyzerNet = names.find((name) => name.endsWith("analyzer-net"));
+  if (!analyzerNet) {
+    throw new Error(
+      `${webappContainer} is not on an analyzer network; found ${names.join(", ") || "none"}`,
+    );
+  }
+  return analyzerNet;
+}
+
+/** Whether a container is currently attached to a network. */
+export function isOnNetwork(container: string, network: string): boolean {
+  try {
+    return docker(
+      "inspect",
+      "-f",
+      `{{if index .NetworkSettings.Networks "${network}"}}yes{{end}}`,
+      container,
+    )
+      .trim()
+      .startsWith("yes");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cut the bridge's path to OpenELIS without touching OpenELIS itself.
+ *
+ * The webapp sits on two networks: the default one, which the proxy and the
+ * browser reach it over, and the analyzer network, which is the only path the
+ * bridge uses. Detaching it from the analyzer network reproduces the incident
+ * exactly, a bridge holding a result it cannot deliver, while leaving the UI
+ * every other spec in this shard depends on completely untouched.
+ *
+ * Stopping the container instead would work for this spec and break the ones
+ * after it: a restarted webapp comes back on a new address that the proxy has
+ * already cached, so later specs get error pages from a healthy-looking stack.
+ */
+export function severBridgePathToOpenElis(
+  webappContainer: string,
+  network: string,
+): void {
+  docker("network", "disconnect", network, webappContainer);
+}
+
+/**
+ * Restore the path, including the DNS alias the bridge delivers to.
+ *
+ * Compose gives the webapp an alias equal to its service name. `docker network
+ * connect` does not restore it, so it has to be passed back explicitly or the
+ * bridge is left unable to resolve its delivery target.
+ */
+export function restoreBridgePathToOpenElis(
+  webappContainer: string,
+  network: string,
+  alias = resolveOpenElisAlias(),
+): void {
+  docker("network", "connect", "--alias", alias, network, webappContainer);
+}
+
+/**
+ * The hostname the bridge delivers to, taken from the forward URI the bridge
+ * was configured with so the alias restored above cannot drift from it.
+ */
+export function resolveOpenElisAlias(): string {
+  const configured = firstNonEmptyEnv(
+    ["HARNESS_OE_NETWORK_ALIAS", "ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI"],
+    "oe.openelis.org",
+  );
+  const host = configured.includes("://")
+    ? new URL(configured).hostname
+    : configured;
+  assertValidContainerName(host);
+  return host;
+}
+
+/**
  * A client for the bridge admin API. Self-signed certificate, HTTP Basic with
  * the same credentials the bridge forwards to OpenELIS with.
  */

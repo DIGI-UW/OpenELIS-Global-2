@@ -12,11 +12,18 @@
  * OpenELIS, rather than against a stubbed OpenELIS as the bridge's own
  * acceptance suite does.
  *
- * This is the first spec in the repo to interrupt infrastructure. It is safe to
- * do so here: each Playwright shard is its own matrix job with its own compose
- * stack, and the harness runs `--workers=1`, so no other spec is in flight while
- * OpenELIS is down. The outage is still restored in a `finally`, because a
- * leaked stopped webapp would poison every later test in the shard.
+ * This is the first spec in the repo to interrupt infrastructure, so it is
+ * deliberately the narrowest interruption that still reproduces the incident.
+ * OpenELIS keeps running and the browser keeps reaching it. Only the bridge's
+ * path to it is cut, by detaching the webapp from the analyzer network, which
+ * the bridge alone uses.
+ *
+ * An earlier version stopped the webapp container outright. That proved the
+ * guarantee and broke the two UI specs that ran after it in the same shard: a
+ * restarted webapp comes back on a new address the proxy has already cached, so
+ * later specs get error pages from a stack that looks healthy. The path is
+ * restored in a `finally`, and the restore is asserted, because a leaked
+ * disconnect would be just as damaging.
  */
 
 import { expect, test } from "../../../helpers/test-base";
@@ -27,11 +34,14 @@ import {
   docker,
   getOutboxEntry,
   hasOutbox,
-  isContainerRunning,
+  isOnNetwork,
   outboxPayload,
   pushAstmResult,
+  resolveAnalyzerNetwork,
   resolveBridgeContainer,
   resolveWebappContainer,
+  restoreBridgePathToOpenElis,
+  severBridgePathToOpenElis,
   uniqueLane10Accession,
   waitForBridge,
   waitForOutboxEntry,
@@ -39,17 +49,22 @@ import {
 } from "../../../helpers/analyzer-bridge-outbox";
 import type { APIRequestContext } from "@playwright/test";
 
-/** Tomcat declares a two-minute start period, so recovery is measured in minutes. */
+/**
+ * Recovery is a retry cycle now, not a Tomcat boot, but the budget stays
+ * generous: the bridge only notices the path is back on its next attempt, and
+ * the JVM may be holding a cached address for the old one.
+ */
 const OUTAGE_TEST_TIMEOUT = 600_000;
-const DELIVERY_TIMEOUT = 300_000;
+const DELIVERY_TIMEOUT = 240_000;
 const HELD_TIMEOUT = 60_000;
 
 test.describe("Analyzer results survive an OpenELIS outage", () => {
-  // These tests take OpenELIS down. Running them one at a time keeps that window
-  // as short as possible and makes a failure easy to attribute.
+  // One at a time, so the window in which the bridge cannot reach OpenELIS is as
+  // short as it can be and a failure is easy to attribute.
   test.describe.configure({ mode: "serial" });
 
   let api: APIRequestContext;
+  let analyzerNetwork: string;
   const webapp = resolveWebappContainer();
   const bridge = resolveBridgeContainer();
 
@@ -62,6 +77,9 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
       await hasOutbox(api),
       "the pinned bridge build must expose the delivery outbox",
     ).toBe(true);
+    // Resolved here rather than in the describe body: that body is evaluated
+    // while Playwright is collecting tests, when no stack need be running yet.
+    analyzerNetwork = resolveAnalyzerNetwork(webapp);
   });
 
   test.afterAll(async () => {
@@ -71,11 +89,11 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
   test("a result received during an outage is kept whole, survives a bridge restart, and is delivered once", async () => {
     test.setTimeout(OUTAGE_TEST_TIMEOUT);
     const accession = uniqueLane10Accession();
-    let openElisStopped = false;
+    let pathSevered = false;
 
     try {
-      docker("stop", webapp);
-      openElisStopped = true;
+      severBridgePathToOpenElis(webapp, analyzerNetwork);
+      pathSevered = true;
 
       await pushAstmResult({ accession });
 
@@ -111,11 +129,11 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
       ).not.toBeNull();
       expect(
         ["RECEIVED", "PENDING", "RETRYING"],
-        "the result must still be undelivered while OpenELIS is down",
+        "the result must still be undelivered while the bridge cannot reach OpenELIS",
       ).toContain(afterRestart!.state);
 
-      docker("start", webapp);
-      openElisStopped = false;
+      restoreBridgePathToOpenElis(webapp, analyzerNetwork);
+      pathSevered = false;
 
       const delivered = await waitForOutboxState(
         api,
@@ -133,9 +151,23 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
         "retrying must not make OpenELIS accept the same result twice",
       ).toBe(1);
     } finally {
-      if (openElisStopped && !isContainerRunning(webapp)) {
-        docker("start", webapp);
+      if (pathSevered && !isOnNetwork(webapp, analyzerNetwork)) {
+        try {
+          restoreBridgePathToOpenElis(webapp, analyzerNetwork);
+        } catch {
+          // Reported by the assertion below, which says what actually matters.
+        }
       }
+      // Checked, not merely attempted: a leaked disconnect leaves OpenELIS
+      // unable to reach the bridge for every spec that follows in this shard.
+      // Soft, so that when the body failed first it is the body's error that
+      // gets reported rather than this one.
+      expect
+        .soft(
+          isOnNetwork(webapp, analyzerNetwork),
+          "the bridge's path to OpenELIS must be restored before any later spec runs",
+        )
+        .toBe(true);
     }
   });
 
