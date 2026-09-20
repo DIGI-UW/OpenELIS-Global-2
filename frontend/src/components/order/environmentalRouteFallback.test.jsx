@@ -34,15 +34,18 @@ const renderAppAt = (path) => {
   });
 
   window.history.pushState({}, "", path);
-  return render(<App />);
+  const pushAfterMount = vi.spyOn(window.history, "pushState");
+  return { ...render(<App />), pushAfterMount };
 };
 
 const expectLandsOnDashboard = async (path) => {
-  const { unmount } = renderAppAt(path);
+  const { unmount, pushAfterMount } = renderAppAt(path);
 
   await waitFor(() =>
     expect(window.location.pathname).toBe("/order/environmental"),
   );
+  // Replacing rather than pushing keeps Back from returning to the orphan path.
+  expect(pushAfterMount).not.toHaveBeenCalled();
   // A non-empty check would pass on SecureRoute's idle-timeout modal text alone.
   await waitFor(
     () =>
