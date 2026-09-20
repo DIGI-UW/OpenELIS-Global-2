@@ -140,6 +140,47 @@ public class PanelConfigurationHandlerTest {
     }
 
     @Test
+    public void domainColumn_setsPanelDomainExplicitly() throws Exception {
+        String csv = "panelName,domain\n" + "Vector Mosquito Panel,VECTOR\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        ArgumentCaptor<Panel> panelCaptor = ArgumentCaptor.forClass(Panel.class);
+        verify(panelService).update(panelCaptor.capture());
+        assertEquals("panel.domain must carry the CSV domain", "VECTOR", panelCaptor.getValue().getDomain());
+    }
+
+    @Test
+    public void domainColumn_isCaseInsensitive() throws Exception {
+        String csv = "panelName,domain\n" + "Groundwater Panel,environmental\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        ArgumentCaptor<Panel> panelCaptor = ArgumentCaptor.forClass(Panel.class);
+        verify(panelService).update(panelCaptor.capture());
+        assertEquals("ENVIRONMENTAL", panelCaptor.getValue().getDomain());
+    }
+
+    @Test
+    public void noDomainColumn_leavesTheStoredDomainAlone() throws Exception {
+        String csv = "panelName,isActive\n" + "Lipid Panel,Y\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        verify(panelService, never()).update(any(Panel.class));
+    }
+
+    @Test
+    public void unknownDomain_skipsTheRowWithItsReason() throws Exception {
+        String csv = "panelName,domain\n" + "Lipid Panel,MARINE\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        verify(panelService, never()).insert(any(Panel.class));
+        verify(panelService, never()).update(any(Panel.class));
+    }
+
+    @Test
     public void getDomainName_isPanels() {
         assertEquals("panels", handler.getDomainName());
     }

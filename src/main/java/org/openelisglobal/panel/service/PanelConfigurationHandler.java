@@ -46,11 +46,19 @@ import org.springframework.transaction.PlatformTransactionManager;
  * {@code Name(SampleType)} variants an earlier loader wrote for the panel's
  * sample types. Every row runs in its own transaction and each file ends with a
  * {@code SUMMARY file=... domain=panels created= updated= skipped=} line.
+ * <p>
+ * A panel's {@code domain} is set by the file, never derived from the specimens
+ * its members use: which testing domain a panel belongs to is an editorial
+ * choice, and a panel may legitimately reach a specimen from another domain.
+ * Omitting the column leaves the panel's stored domain alone, which for a new
+ * panel is the {@code CLINICAL} default.
  */
 @Component
 public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
+
+    private static final Set<String> DOMAINS = Set.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
     @Autowired
     private PanelService panelService;
@@ -134,6 +142,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int loincIndex = findColumnIndex(headers, "loinc");
+        int domainIndex = findColumnIndex(headers, "domain");
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         if (panelNameIndex < 0) {
@@ -155,8 +164,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             int rowLine = lineNumber;
             LoadedRow<Panel> result;
             try {
-                result = rowTransaction.run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex,
-                        isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, rowLine, fileName));
+                result = rowTransaction
+                        .run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex,
+                                sortOrderIndex, loincIndex, domainIndex, localizationColumns, rowLine, fileName));
             } catch (Exception e) {
                 result = LoadedRow.skipped(CsvLoadSummary.reason(e));
             }
@@ -181,8 +191,8 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private LoadedRow<Panel> processRow(String[] values, int panelNameIndex, int sampleTypesIndex, int testsIndex,
-            int isActiveIndex, int sortOrderIndex, int loincIndex, Map<String, Integer> localizationColumns,
-            int lineNumber, String fileName) {
+            int isActiveIndex, int sortOrderIndex, int loincIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName) {
 
         String panelName = getValueOrEmpty(values, panelNameIndex);
         if (panelName.isEmpty()) {
@@ -193,6 +203,10 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         String sortOrderStr = getValueOrEmpty(values, sortOrderIndex);
         boolean hasLoincColumn = loincIndex >= 0;
         String loinc = getValueOrEmpty(values, loincIndex);
+        String domain = getValueOrEmpty(values, domainIndex);
+        if (!domain.isEmpty() && !DOMAINS.contains(domain.toUpperCase())) {
+            return LoadedRow.skipped("domain '" + domain + "' must be one of " + DOMAINS);
+        }
 
         Panel panel = panelService.getPanelByName(panelName);
         boolean created = panel == null;
@@ -201,6 +215,11 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                     localizationColumns);
         } else {
             updatePanel(panel, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values, localizationColumns);
+        }
+        if (!domain.isEmpty()) {
+            panel.setDomain(domain.toUpperCase());
+            panel.setSysUserId("1");
+            panelService.update(panel);
         }
 
         if (hasLoincColumn) {

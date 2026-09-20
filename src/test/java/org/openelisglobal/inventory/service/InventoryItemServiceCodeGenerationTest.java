@@ -1,14 +1,16 @@
 package org.openelisglobal.inventory.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.util.UserContextHolder;
+import org.openelisglobal.inventory.dao.InventoryItemCodeSequenceDAO;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -30,6 +33,9 @@ public class InventoryItemServiceCodeGenerationTest {
     private InventoryItemDAO inventoryItemDAO;
 
     @Mock
+    private InventoryItemCodeSequenceDAO codeSequenceDAO;
+
+    @Mock
     private InventoryLotDAO inventoryLotDAO;
 
     @Mock
@@ -39,6 +45,10 @@ public class InventoryItemServiceCodeGenerationTest {
     private InventoryItemServiceImpl inventoryItemService;
 
     private final Set<String> existingCodes = new HashSet<>();
+
+    // Stands in for the per-prefix counter row: every call hands out the next
+    // value.
+    private final AtomicLong counter = new AtomicLong(1);
 
     @Before
     public void setup() {
@@ -66,33 +76,65 @@ public class InventoryItemServiceCodeGenerationTest {
     }
 
     @Test
-    public void insert_generatesCodeFromName_whenCodeBlank() {
-        InventoryItem item = newItem("Blood Culture Bottle");
+    public void insert_generatesPrefixAndPaddedCounter_whenCodeBlank() {
+        when(codeSequenceDAO.nextValue("PAR-500MG")).thenAnswer(invocation -> counter.getAndIncrement());
 
-        inventoryItemService.insert(item);
+        InventoryItem first = newItem("Paracetamol 500mg Tablets");
+        InventoryItem second = newItem("Paracetamol 500mg Tablets");
+        inventoryItemService.insert(first);
+        inventoryItemService.insert(second);
 
-        assertEquals("BLOOD_CULTURE_BOTTLE", item.getCode());
+        assertEquals("PAR-500MG-001", first.getCode());
+        assertEquals("PAR-500MG-002", second.getCode());
     }
 
     @Test
-    public void insert_generatesCollisionSuffixedCode_whenBaseCodeTaken() {
-        existingCodes.add("REAGENT_X");
-        existingCodes.add("REAGENT_X_2");
+    public void insert_padsToThreeDigits_butLetsTheCounterGrowPastThem() {
+        when(codeSequenceDAO.nextValue("HIV-12")).thenReturn(7L, 1000L);
 
-        InventoryItem item = newItem("Reagent X");
-        inventoryItemService.insert(item);
+        InventoryItem seventh = newItem("HIV 1/2 Rapid Test Kit");
+        InventoryItem thousandth = newItem("HIV 1/2 Rapid Test Kit");
+        inventoryItemService.insert(seventh);
+        inventoryItemService.insert(thousandth);
 
-        assertEquals("REAGENT_X_3", item.getCode());
+        assertEquals("HIV-12-007", seventh.getCode());
+        assertEquals("HIV-12-1000", thousandth.getCode());
     }
 
     @Test
-    public void insert_normalizesExplicitCode() {
+    public void insert_takesTheNextCounterValue_whenAStoredCodeHoldsTheSlot() {
+        existingCodes.add("SOD-09-500ML-001");
+        when(codeSequenceDAO.nextValue("SOD-09-500ML")).thenAnswer(invocation -> counter.getAndIncrement());
+
+        InventoryItem item = newItem("Sodium Chloride 0.9% 500mL");
+        inventoryItemService.insert(item);
+
+        assertEquals("SOD-09-500ML-002", item.getCode());
+    }
+
+    @Test
+    public void insert_givesUp_whenEveryCounterValueIsTaken() {
+        when(codeSequenceDAO.nextValue("ITEM")).thenReturn(1L);
+        existingCodes.add("ITEM-001");
+
+        try {
+            inventoryItemService.insert(newItem("   "));
+            fail("Expected a LocalizedValidationException");
+        } catch (LocalizedValidationException e) {
+            assertEquals("inventory.item.error.codeGenerationExhausted", e.getErrorCode());
+        }
+        verify(inventoryItemDAO, never()).insert(any(InventoryItem.class));
+    }
+
+    @Test
+    public void insert_normalizesExplicitCode_withoutTouchingTheCounter() {
         InventoryItem item = newItem("Reagent Y");
         item.setCode(" my-code! ");
 
         inventoryItemService.insert(item);
 
-        assertEquals("MY_CODE", item.getCode());
+        assertEquals("MY-CODE", item.getCode());
+        verify(codeSequenceDAO, never()).nextValue(anyString());
     }
 
     @Test
@@ -111,31 +153,20 @@ public class InventoryItemServiceCodeGenerationTest {
 
     @Test(expected = LocalizedValidationException.class)
     public void insert_throws_whenExplicitCodeAlreadyExists() {
-        existingCodes.add("REAGENT_Z");
+        existingCodes.add("REAGENT-Z");
         InventoryItem item = newItem("Reagent Z");
-        item.setCode("REAGENT_Z");
+        item.setCode("REAGENT-Z");
 
         inventoryItemService.insert(item);
     }
 
     @Test
-    public void insert_truncatesGeneratedCode_toFitColumnLength() {
-        InventoryItem item = newItem("A".repeat(100));
+    public void insert_truncatesExplicitCode_toFitColumnLength() {
+        InventoryItem item = newItem("Reagent V");
+        item.setCode("A".repeat(100));
 
         inventoryItemService.insert(item);
 
-        assertEquals(64, item.getCode().length());
-        assertTrue(item.getCode().chars().allMatch(c -> c == 'A'));
-    }
-
-    @Test
-    public void insert_truncatesAndSuffixes_whenLongNameCollides() {
-        existingCodes.add("A".repeat(64));
-
-        InventoryItem item = newItem("A".repeat(100));
-        inventoryItemService.insert(item);
-
-        assertEquals(64, item.getCode().length());
-        assertTrue("Should end with a collision suffix", item.getCode().endsWith("_2"));
+        assertEquals("A".repeat(64), item.getCode());
     }
 }

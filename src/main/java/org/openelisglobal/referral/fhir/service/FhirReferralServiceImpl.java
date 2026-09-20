@@ -59,6 +59,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referral.service.ReferenceLabResultsServiceImpl;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -642,13 +643,23 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         try {
             String testCode = analysis.getTest() != null ? analysis.getTest().getId() : "";
             String value = result.getValue() == null ? "" : result.getValue();
-            String range = observation.hasReferenceRange() && observation.getReferenceRangeFirstRep().hasText()
-                    ? observation.getReferenceRangeFirstRep().getText()
-                    : "";
+            // A range is usually sent as structured low/high with no text, so reading
+            // text alone reported the value as critical without saying critical
+            // against what. Same rendering as the result card on the dashboard.
+            String range = "";
+            if (observation.hasReferenceRange()) {
+                String rendered = ReferenceLabResultsServiceImpl
+                        .referenceRangeText(observation.getReferenceRangeFirstRep());
+                range = rendered == null ? "" : rendered;
+            }
+            // Without the patient, acting on a critical result needs a second lookup.
+            org.openelisglobal.patient.valueholder.Patient patient = analysis.getSampleItem() == null ? null
+                    : sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            String patientId = patient == null ? "" : patient.getId();
             String deepLink = "/result?analysisId=" + analysis.getId();
-            String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"testCode\":" + jsonStr(testCode)
-                    + ",\"value\":" + jsonStr(value) + ",\"range\":" + jsonStr(range) + ",\"deepLink\":"
-                    + jsonStr(deepLink) + "}";
+            String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"patientId\":" + jsonStr(patientId)
+                    + ",\"testCode\":" + jsonStr(testCode) + ",\"value\":" + jsonStr(value) + ",\"range\":"
+                    + jsonStr(range) + ",\"deepLink\":" + jsonStr(deepLink) + "}";
             Long entityId = result.getId() != null ? Long.valueOf(result.getId()) : Long.valueOf(analysis.getId());
             alertService.createAlert(AlertType.REFERRAL_CRITICAL_RESULT, "Result", entityId, AlertSeverity.CRITICAL,
                     "Critical/abnormal reference lab result for analysis " + analysis.getId(), json);

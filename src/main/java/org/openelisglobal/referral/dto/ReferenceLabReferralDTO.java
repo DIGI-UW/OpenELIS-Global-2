@@ -32,6 +32,10 @@ public class ReferenceLabReferralDTO {
     // OGC-802: result cards read live from DiagnosticReport.Observation for the
     // Returned view. Null/empty for Outstanding and History.
     private List<ResultCard> results;
+    // The reason the peer laboratory gave on its Task, so the Reject modal can
+    // open on what they actually said instead of the first item in the list.
+    // Free text from another system: a hint for the operator, never a decision.
+    private String peerReason;
 
     public String getId() {
         return id;
@@ -204,6 +208,14 @@ public class ReferenceLabReferralDTO {
 
     public void setClosedDate(String closedDate) {
         this.closedDate = closedDate;
+    }
+
+    public String getPeerReason() {
+        return peerReason;
+    }
+
+    public void setPeerReason(String peerReason) {
+        this.peerReason = peerReason;
     }
 
     public String getOutcome() {

@@ -54,6 +54,7 @@
     <inventory_lot id="7000"
         fhir_uuid="7f000000-0000-0000-0000-000000000011"
         inventory_item_id="7000" lot_number="OGC657-LOT-001"
+        barcode="OGC657-TEST-REAGENT-OGC657-LOT-001"
         expiration_date="2026-12-31 00:00:00"
         receipt_date="2026-01-01 00:00:00" initial_quantity="10.00"
         current_quantity="10.00" qc_status="PASSED" status="ACTIVE"

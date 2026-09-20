@@ -190,6 +190,56 @@ describe("ProgramSection microbiology derivation", () => {
     );
   });
 
+  it("survives a failed program fetch instead of crashing the order page (OGC-1222)", async () => {
+    // A 500 on /rest/user-programs used to arrive here as the error object and
+    // the next render called .find() on it, unmounting the whole order tree.
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-programs") {
+        callback(undefined);
+      } else {
+        callback({});
+      }
+    });
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={orderData}
+          setOrderData={vi.fn()}
+          samples={[]}
+          isReadOnly={false}
+        />
+      </IntlProvider>,
+    );
+
+    // Rendering at all is the point: the old code threw here and React
+    // unmounted the entire order workflow, leaving a blank page.
+    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+  });
+
+  it("ignores a non-list program payload (OGC-1222)", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-programs") {
+        callback({ status: 500, error: "Internal Server Error" });
+      } else {
+        callback({});
+      }
+    });
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={orderData}
+          setOrderData={vi.fn()}
+          samples={[]}
+          isReadOnly={false}
+        />
+      </IntlProvider>,
+    );
+
+    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+  });
+
   it("shows a named configuration error when the Program is unavailable", async () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/user-programs") {

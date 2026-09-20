@@ -56,7 +56,7 @@ const InventoryManagement = () => {
               <TabPanels>
                 {/* Dashboard Tab - Metrics + Lots Table */}
                 <TabPanel>
-                  <InventoryDashboard />
+                  <InventoryDashboard active={selectedTab === 0} />
                 </TabPanel>
 
                 {/* Catalog Tab - Manage Inventory Items */}

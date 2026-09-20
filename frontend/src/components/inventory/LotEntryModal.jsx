@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   TextInput,
@@ -27,6 +27,17 @@ import {
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
+
+  // Guards setState after awaits — fetches and saves can resolve after the
+  // parent has unmounted this modal (e.g. onSave() closes it before the
+  // finally block runs).
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     inventoryItem: null,
@@ -95,6 +106,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const fetchItems = async () => {
     try {
       const allItems = await InventoryItemAPI.getAll({ isActive: true });
+      if (!isMountedRef.current) return;
       const validItems = Array.isArray(allItems) ? allItems : [];
       setItems(
         validItems.map((item) => ({
@@ -105,13 +117,14 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       );
     } catch (err) {
       console.error("Error fetching items:", err);
-      setItems([]);
+      if (isMountedRef.current) setItems([]);
     }
   };
 
   const fetchCurrentLocation = async (lotId) => {
     try {
       const location = await InventoryLotStorageAPI.getLocation(lotId);
+      if (!isMountedRef.current) return;
       if (location && location.hierarchicalPath) {
         setCurrentLocation({
           selection: {},
@@ -125,7 +138,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       }
     } catch (err) {
       console.error("Error fetching lot location:", err);
-      setCurrentLocation(null);
+      if (isMountedRef.current) setCurrentLocation(null);
     }
   };
 
@@ -191,6 +204,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           inventoryItem: formData.inventoryItem,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
+          // barcode is UNIQUE: blank has to be null, or a second blank collides
+          barcode: formData.barcode?.trim() || null,
         });
         onSave();
         return;
@@ -211,10 +226,14 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           receiptDate: formData.receiptDate.toISOString(),
           qcStatus: formData.qcStatus,
           status: formData.status,
-          barcode: formData.barcode || null,
+          barcode: formData.barcode?.trim() || null,
         });
         lotId = savedLot?.id ?? null;
         setCreatedLotId(lotId);
+        // The field locks here, so show the barcode the server minted, not a blank.
+        if (savedLot?.barcode) {
+          setFormData((prev) => ({ ...prev, barcode: savedLot.barcode }));
+        }
       }
 
       if (pendingAssignment && lotId !== null) {
@@ -236,9 +255,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      setError(err.message || "Error saving lot");
+      if (!isMountedRef.current) return;
+      // errorCode is an en.json id; message is the raw backend string.
+      setError(
+        err.errorCode
+          ? intl.formatMessage({ id: err.errorCode }, err.params)
+          : err.message || intl.formatMessage({ id: "lot.save.error" }),
+      );
     } finally {
-      setSaving(false);
+      // onSave() above may have unmounted this modal already.
+      if (isMountedRef.current) setSaving(false);
     }
   };
 
@@ -253,7 +279,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     onClose();
   };
 
-  const handleLocationConfirm = async ({ selection, position, notes }) => {
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
     // The assign/move endpoints reject a blank locationId with a 400, and
     // in create mode that rejection would land after the lot is committed.
     if (!getDeepestLocationSelection(selection, { requireAssignable: true })) {
@@ -281,22 +312,27 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       if (currentLocation) {
         await InventoryLotStorageAPI.moveLocation({
           ...payload,
-          reason: notes || "",
+          reason: reason || "",
         });
       } else {
         await InventoryLotStorageAPI.assignLocation(payload);
       }
       await fetchCurrentLocation(lot.id);
-      setLocationPickerOpen(false);
+      if (isMountedRef.current) setLocationPickerOpen(false);
     } catch (err) {
       console.error("Error assigning lot location:", err);
-      setLocationError(err.message || "Error assigning storage location");
+      if (isMountedRef.current)
+        setLocationError(err.message || "Error assigning storage location");
     }
   };
 
   // After a partial create (lot committed, assignment rejected) only the
   // assignment is retried, so edits to the lot fields would not be sent.
   const lotFieldsLocked = createdLotId !== null;
+
+  // The server only protects a barcode it already stored, so a lot without
+  // one stays editable.
+  const barcodeLocked = (isEdit && !!lot.barcode) || lotFieldsLocked;
 
   const locationSummary = isEdit
     ? currentLocation?.hierarchicalPath || ""
@@ -331,7 +367,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
               formData.inventoryItem
-                ? items.find((i) => i.id === formData.inventoryItem.id)
+                ? (items.find((i) => i.id === formData.inventoryItem.id) ??
+                  null)
                 : null
             }
             onChange={({ selectedItem }) =>
@@ -459,13 +496,14 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select QC status"
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={qcStatusOptions.find(
-              (s) => s.id === formData.qcStatus,
-            )}
+            selectedItem={
+              qcStatusOptions.find((s) => s.id === formData.qcStatus) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("qcStatus", selectedItem.id)
             }
             disabled={lotFieldsLocked}
+            helperText={intl.formatMessage({ id: "lot.qcStatus.hint" })}
           />
 
           <Dropdown
@@ -474,7 +512,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             label="Select status"
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={statusOptions.find((s) => s.id === formData.status)}
+            selectedItem={
+              statusOptions.find((s) => s.id === formData.status) ?? null
+            }
             onChange={({ selectedItem }) =>
               handleChange("status", selectedItem.id)
             }
@@ -485,9 +525,24 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             id="barcode"
             labelText={<FormattedMessage id="lot.barcode" />}
             value={formData.barcode}
+            disabled={barcodeLocked}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
-            disabled={lotFieldsLocked}
+            placeholder={
+              barcodeLocked
+                ? ""
+                : intl.formatMessage({
+                    id: isEdit
+                      ? "lot.barcode.placeholder.assign"
+                      : "lot.barcode.placeholder",
+                  })
+            }
+            helperText={intl.formatMessage({
+              id: barcodeLocked
+                ? "lot.barcode.locked"
+                : isEdit
+                  ? "lot.barcode.assign"
+                  : "lot.barcode.hint",
+            })}
           />
         </Stack>
       </Modal>

@@ -11,10 +11,10 @@ import {
 } from "./InventoryService";
 import messages from "../../languages/en.json";
 
-vi.mock("./InventoryService", () => ({
-  InventoryLotStorageAPI: { getMovements: vi.fn() },
-  TransactionAPI: { getByLot: vi.fn() },
-  UsageAPI: { getByLot: vi.fn() },
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerForBlob: vi.fn(),
 }));
 
 const renderWithIntl = (component) =>
@@ -24,11 +24,13 @@ const renderWithIntl = (component) =>
     </IntlProvider>,
   );
 
+// Spy on the real API objects: vi.spyOn throws when the method is missing,
+// so a wrapper the panel depends on cannot be mocked into existence.
 beforeEach(() => {
-  vi.clearAllMocks();
-  TransactionAPI.getByLot.mockResolvedValue([]);
-  UsageAPI.getByLot.mockResolvedValue([]);
-  InventoryLotStorageAPI.getMovements.mockResolvedValue([]);
+  vi.restoreAllMocks();
+  vi.spyOn(TransactionAPI, "getByLot").mockResolvedValue([]);
+  vi.spyOn(UsageAPI, "getByLot").mockResolvedValue([]);
+  vi.spyOn(InventoryLotStorageAPI, "getMovements").mockResolvedValue([]);
 });
 
 describe("LotDetailsPanel — storage location visibility (OGC-657)", () => {
@@ -107,5 +109,42 @@ describe("LotDetailsPanel — movement history (OGC-657)", () => {
     expect(
       await screen.findByText(/no movements recorded for this lot/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe("LotDetailsPanel — barcode visibility", () => {
+  const baseLot = {
+    id: 7001,
+    lotNumber: "LOT-2025-001",
+    barcode: "TEST-REAGENT-A-LOT-2025-001",
+    inventoryItem: { name: "Test Reagent A", itemType: "REAGENT", units: "mL" },
+    qcStatus: "PASSED",
+    initialQuantity: 10,
+    currentQuantity: 10,
+    receiptDate: "2026-01-01",
+    expirationDate: "2026-12-31",
+  };
+
+  it("shows the generated barcode so it can be matched against a printed label", async () => {
+    renderWithIntl(<LotDetailsPanel open lot={baseLot} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText("TEST-REAGENT-A-LOT-2025-001"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a dash rather than a blank row for a lot with no barcode", async () => {
+    const { container } = renderWithIntl(
+      <LotDetailsPanel
+        open
+        lot={{ ...baseLot, barcode: null }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await screen.findByText("LOT-2025-001");
+    expect(container.querySelector(".lot-details-barcode").textContent).toBe(
+      "-",
+    );
   });
 });
