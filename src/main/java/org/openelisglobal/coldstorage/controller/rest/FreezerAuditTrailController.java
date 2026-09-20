@@ -153,7 +153,6 @@ public class FreezerAuditTrailController extends BaseRestController {
                         // Apply date filter only if dates are provided
                         boolean includeAck = (startDateTime == null || !ackTime.isBefore(startDateTime))
                                 && (endDateTime == null || !ackTime.isAfter(endDateTime));
-
                         if (includeAck) {
                             Map<String, Object> ackEvent = new HashMap<>();
                             ackEvent.put("id", "ACK-" + alert.getId());
@@ -181,11 +180,12 @@ public class FreezerAuditTrailController extends BaseRestController {
                             resolveEvent.put("id", "RESOLVE-" + alert.getId());
                             resolveEvent.put("freezerId", String.valueOf(fId));
                             resolveEvent.put("freezerName", freezerName);
-                            resolveEvent.put("actionType", alert.getAlertType() + "_RESOLVED");
+                            resolveEvent.put("actionType", "ALERT_RESOLVED");
                             resolveEvent.put("performedAt", resolveTime.toString());
                             resolveEvent.put("performedBy", getUserName(alert.getResolvedBy()));
                             resolveEvent.put("comment",
                                     alert.getAlertType() + " alert for " + freezerName + " resolved");
+
                             resolveEvent.put("details", alert.getResolutionNotes());
                             auditEvents.add(resolveEvent);
                         }
