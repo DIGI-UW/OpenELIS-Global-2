@@ -1,14 +1,20 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryLotLabelService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -41,6 +47,9 @@ public class InventoryLotRestController extends BaseRestController {
 
     @Autowired
     private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private InventoryLotLabelService inventoryLotLabelService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAll() {
@@ -148,6 +157,62 @@ public class InventoryLotRestController extends BaseRestController {
         }
     }
 
+    @GetMapping(value = "/barcode/{barcode}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<InventoryLot> getByBarcode(@PathVariable String barcode) {
+        try {
+            InventoryLot lot = inventoryLotService.getByBarcode(barcode);
+            if (lot == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(lot);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Render the lot's barcode as a printable PDF label; POST like the storage
+     * location print-label endpoint, since printing is an action.
+     */
+    @PostMapping(value = "/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
+    public void printLabel(@PathVariable String id, HttpServletResponse response) throws IOException {
+        try {
+            InventoryLot lot = inventoryLotService.get(Long.valueOf(id));
+            if (lot == null) {
+                writeJsonError(response, HttpStatus.NOT_FOUND, "Lot not found");
+                return;
+            }
+
+            ByteArrayOutputStream pdfStream = inventoryLotLabelService.generateLabel(lot);
+            if (pdfStream == null || pdfStream.size() == 0) {
+                writeJsonError(response, HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate label PDF");
+                return;
+            }
+
+            byte[] pdfBytes = pdfStream.toByteArray();
+            response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+            response.setHeader("Content-Disposition", "attachment; filename=lot-" + lot.getBarcode() + ".pdf");
+            response.setContentLength(pdfBytes.length);
+            response.getOutputStream().write(pdfBytes);
+            response.getOutputStream().flush();
+        } catch (NumberFormatException e) {
+            writeJsonError(response, HttpStatus.BAD_REQUEST, "Invalid lot id");
+        } catch (IllegalArgumentException e) {
+            // A lot with no barcode cannot be labelled; say so rather than 500.
+            writeJsonError(response, HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            writeJsonError(response, HttpStatus.INTERNAL_SERVER_ERROR, "Error generating label");
+        }
+    }
+
+    private void writeJsonError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
+    }
+
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId) {
         try {
@@ -160,7 +225,7 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> create(@Valid @RequestBody InventoryLot lot, HttpServletRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody InventoryLot lot, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -183,14 +248,19 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot savedLot = inventoryLotService.save(lot);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> update(@PathVariable String id, @Valid @RequestBody InventoryLot lot,
+    public ResponseEntity<?> update(@PathVariable String id, @Valid @RequestBody InventoryLot lot,
             HttpServletRequest request) {
         try {
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
@@ -208,6 +278,11 @@ public class InventoryLotRestController extends BaseRestController {
                 lot.setFhirUuid(existingLot.getFhirUuid());
             }
 
+            // A body that omits barcode must not orphan the label already printed.
+            if (existingLot.getBarcode() != null) {
+                lot.setBarcode(existingLot.getBarcode());
+            }
+
             // Fetch managed InventoryItem entity to avoid transient instance error
             if (lot.getInventoryItem() != null && lot.getInventoryItem().getId() != null) {
                 Long itemId = lot.getInventoryItem().getId();
@@ -220,9 +295,14 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot updatedLot = inventoryLotService.update(lot);
             return ResponseEntity.ok(updatedLot);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
@@ -285,8 +365,8 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/{id}/adjust", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> adjustQuantity(@PathVariable String id,
-            @RequestBody AdjustQuantityRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> adjustQuantity(@PathVariable String id, @RequestBody AdjustQuantityRequest request,
+            HttpServletRequest httpRequest) {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -294,32 +374,38 @@ public class InventoryLotRestController extends BaseRestController {
             InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
                     request.getReason(), sysUserId);
             return ResponseEntity.ok(lot);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 
     @PostMapping(value = "/{id}/dispose", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> disposeLot(@PathVariable String id,
-            @RequestBody(required = false) DisposeRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> disposeLot(@PathVariable String id, @RequestBody(required = false) DisposeRequest request,
+            HttpServletRequest httpRequest) {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
             String reason = request != null ? request.getReason() : null;
             String notes = request != null ? request.getNotes() : null;
-            InventoryLot lot = inventoryLotService.disposeLot(Long.valueOf(id), reason, notes, sysUserId);
+            InventoryLot lot = sampleStorageService.disposeInventoryLot(Long.valueOf(id), reason, notes, sysUserId);
             return ResponseEntity.ok(lot);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InventoryErrorBody.error("Internal server error"));
         }
     }
 

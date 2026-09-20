@@ -208,23 +208,27 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         assertTrue("Response should contain devices count", counts.containsKey("devices"));
         assertTrue("Response should contain shelves count", counts.containsKey("shelves"));
         assertTrue("Response should contain racks count", counts.containsKey("racks"));
+        assertTrue("Response should contain boxes count", counts.containsKey("boxes"));
 
         assertNotNull("Rooms count should not be null", counts.get("rooms"));
         assertNotNull("Devices count should not be null", counts.get("devices"));
         assertNotNull("Shelves count should not be null", counts.get("shelves"));
         assertNotNull("Racks count should not be null", counts.get("racks"));
+        assertNotNull("Boxes count should not be null", counts.get("boxes"));
 
         Integer roomsCount = ((Number) counts.get("rooms")).intValue();
         Integer devicesCount = ((Number) counts.get("devices")).intValue();
         Integer shelvesCount = ((Number) counts.get("shelves")).intValue();
         Integer racksCount = ((Number) counts.get("racks")).intValue();
+        Integer boxesCount = ((Number) counts.get("boxes")).intValue();
 
         assertTrue("Rooms count should be non-negative", roomsCount >= 0);
         assertTrue("Devices count should be non-negative", devicesCount >= 0);
         assertTrue("Shelves count should be non-negative", shelvesCount >= 0);
         assertTrue("Racks count should be non-negative", racksCount >= 0);
+        assertTrue("The fixture's active box should be counted", boxesCount > 0);
 
-        int totalCount = roomsCount + devicesCount + shelvesCount + racksCount;
+        int totalCount = roomsCount + devicesCount + shelvesCount + racksCount + boxesCount;
         assertTrue("Should have at least some active locations", totalCount > 0);
     }
 
