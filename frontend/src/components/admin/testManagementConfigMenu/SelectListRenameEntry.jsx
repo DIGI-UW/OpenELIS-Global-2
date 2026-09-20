@@ -85,7 +85,7 @@ function SelectListRenameEntry() {
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "notification.resultSelectList.post.update.success",
         }),
         kind: NotificationKinds.success,
       });

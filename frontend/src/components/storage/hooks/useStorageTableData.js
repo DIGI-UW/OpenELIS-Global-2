@@ -21,7 +21,7 @@ export default function useStorageTableData({
   listUrl,
   searchUrl,
   page = 1,
-  pageSize = 25,
+  pageSize = 5,
   searchTerm = "",
   filterStatus,
   locationFilter,

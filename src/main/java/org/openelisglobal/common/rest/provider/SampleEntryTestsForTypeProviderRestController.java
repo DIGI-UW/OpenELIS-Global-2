@@ -31,12 +31,15 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -81,10 +84,16 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SampleEntryTests processRequest(HttpServletRequest request, HttpServletResponse response)
+    public ResponseEntity<Object> processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
         String sampleType = request.getParameter("sampleType");
+        if (GenericValidator.isBlankOrNull(sampleType)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
+        }
+        if (!StringUtil.isInteger(sampleType)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
+        }
 
         String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
@@ -93,7 +102,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             testSections.forEach(test -> testUnitIds.add(test.getId()));
         }
 
-        return createSearchResult(sampleType, testUnitIds);
+        return ResponseEntity.ok(createSearchResult(sampleType, testUnitIds));
     }
 
     /**
@@ -189,7 +198,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     }
 
     private ArrayList<TestMap> addTests(List<Test> tests) {
-        String userTestSectionId = testSectionService.getTestSectionByName("user").getId();
+        TestSection userTestSection = testSectionService.getTestSectionByName("user");
+        String userTestSectionId = userTestSection != null ? userTestSection.getId() : null;
         ArrayList<TestMap> testsMapList = new ArrayList<>();
         java.util.Set<Integer> testsWithQcThreshold;
         try {
@@ -207,9 +217,10 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             String resultType = testService.getResultType(test);
             List<OrderEntryMethod> methods = testMethodService.getLinkedMethodDtos(test.getId()).stream()
                     .map(method -> toOrderEntryMethod(method, test.getCultureWorkflowType())).toList();
-            testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
-                    userTestSectionId.equals(test.getTestSection().getId()), hasQc, resultType, test.getTimeHolding(),
-                    test.getCultureWorkflowType(), methods));
+            boolean userBenchChoice = userTestSectionId != null && test.getTestSection() != null
+                    && userTestSectionId.equals(test.getTestSection().getId());
+            testsMapList.add(new TestMap(test.getId(), localizedTestName(test), userBenchChoice, hasQc, resultType,
+                    test.getTimeHolding(), test.getCultureWorkflowType(), methods));
         }
         return testsMapList;
     }

@@ -87,8 +87,11 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String testResultComponentId;
 
-    private double lowerCritical;
-    private double higherCritical;
+    private Double lowerCritical;
+    private Double higherCritical;
+    // NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side against the
+    // patient-conditional limit; the same flag Results Entry shows (OGC-1121).
+    private String resultFlag;
     private String normalRange;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
@@ -1031,20 +1034,28 @@ public class AnalysisItem implements Serializable {
         this.nceNumber = nceNumber;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
     }
 
     public String getGenscreenResult() {

@@ -115,7 +115,8 @@ public class SampleStorageRestController extends BaseRestController {
                 // Return count metrics only
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
 
-                long totalSampleItems = allAssignments.size();
+                long totalSampleItems = allAssignments.stream()
+                        .filter(assignment -> assignment.getSampleItemId() != null).count();
                 long active = 0;
                 long disposed = 0;
 
@@ -204,26 +205,14 @@ public class SampleStorageRestController extends BaseRestController {
     }
 
     /**
-     * Translate the internal raw-statusId {@code status} field on a sample map to
-     * the spec-compliant enum string before serializing to the client. Spec
-     * contract: specs/001-sample-storage/contracts/storage-api.json:862,885 —
-     * {@code "status": { "enum": ["active", "disposed"] }}. Filter logic in
+     * Translate the raw-statusId {@code status} field to the spec-compliant enum
+     * string before serializing to the client. Filter logic in
      * StorageDashboardServiceImpl still consumes the raw ID via
      * {@code statusService.matches}; this translation happens only at the response
      * boundary.
      */
     private void normalizeStatusForResponse(Map<String, Object> sample) {
-        Object raw = sample.get("status");
-        if (!(raw instanceof String) || ((String) raw).isEmpty()) {
-            sample.put("status", "active");
-            return;
-        }
-        String statusId = (String) raw;
-        if (statusService.matches(statusId, SampleStatus.Disposed)) {
-            sample.put("status", "disposed");
-        } else {
-            sample.put("status", "active");
-        }
+        SampleStatusResponse.normalize(sample, statusService);
     }
 
     /**

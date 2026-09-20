@@ -34,6 +34,7 @@ import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -81,6 +82,9 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Before
     public void init() throws Exception {
@@ -176,6 +180,33 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
     }
 
     /**
+     * Someone raised this referral and the reference lab may need to ask them about
+     * it. The writer recorded the technician and then immediately overwrote it with
+     * a form field no client sends, so Original requestor was blank on every
+     * referral in the system.
+     */
+    @Test
+    public void referOutRecordsWhoRaisedIt() {
+        Referral referral = saveReferOut(today());
+
+        assertEquals("the bench who referred the test is on the referral", "bench", referral.getRequesterName());
+    }
+
+    /**
+     * The unified Results page shows the technician but never asks for one, so a
+     * referral raised there has no referrer and no technician to fall back on. The
+     * person saving is who raised it.
+     */
+    @Test
+    public void referOutWithNoNamedTechnicianRecordsTheUserSaving() {
+        Referral referral = saveReferOut(today(), null);
+
+        String expected = systemUserService.getUserById(ACTOR).getNameForDisplay();
+        assertEquals("with nobody named on the form, the user saving is the requester", expected,
+                referral.getRequesterName());
+    }
+
+    /**
      * A rival referral on the same test would carry its own subcontract row and its
      * own FHIR Task, and nothing downstream could say which one the reference lab
      * is working on.
@@ -206,7 +237,7 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
     private ResultsUpdateDataSet attemptReferOut(String sendDate) {
         Analysis analysis = analysisService.get(ANALYSIS_ID);
         ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(ACTOR);
-        TestResultItem item = referredTestResultItem(sendDate);
+        TestResultItem item = referredTestResultItem(sendDate, "bench");
         ResultUtil.handleReferrals(item, item.getReferralItem(), resultsFor(analysis), analysis, dataSet,
                 requestWithLoggedInUser());
         return dataSet;
@@ -226,11 +257,15 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
     }
 
     private Referral saveReferOut(String sendDate) {
+        return saveReferOut(sendDate, "bench");
+    }
+
+    private Referral saveReferOut(String sendDate, String technician) {
         Analysis analysis = analysisService.get(ANALYSIS_ID);
         assertNotNull("precondition: testdata/referral.xml seeds analysis " + ANALYSIS_ID, analysis);
 
         ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(ACTOR);
-        TestResultItem testResultItem = referredTestResultItem(sendDate);
+        TestResultItem testResultItem = referredTestResultItem(sendDate, technician);
 
         List<Result> results = resultsFor(analysis);
         // The bench saves the in-house result in the same request as the refer-out;
@@ -254,7 +289,7 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
         return referralDAO.get(saved.getId()).orElseThrow();
     }
 
-    private TestResultItem referredTestResultItem(String sendDate) {
+    private TestResultItem referredTestResultItem(String sendDate, String technician) {
         TestResultItem item = new TestResultItem();
         item.setAnalysisId(ANALYSIS_ID);
         item.setTestId(REFERRED_TEST_ID);
@@ -262,13 +297,14 @@ public class ResultsEntryReferOutLifecycleTest extends BaseWebContextSensitiveTe
         item.setResultValue("12");
         item.setRefer(true);
         item.setReferredOut(true);
-        item.setTechnician("bench");
+        item.setTechnician(technician);
 
         ReferralItem referralItem = new ReferralItem();
         referralItem.setReferredInstituteId(DESTINATION_ORG_ID);
         referralItem.setReferralReasonId(REFERRAL_REASON_ID);
         referralItem.setReferredTestId(REFERRED_TEST_ID);
-        referralItem.setReferrer("bench");
+        // No referrer: the Results Entry pages do not send one, which is exactly why
+        // the technician has to be what ends up on the referral.
         referralItem.setReferredSendDate(sendDate);
         item.setReferralItem(referralItem);
         return item;
