@@ -1025,3 +1025,137 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 });
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
+  });
+});

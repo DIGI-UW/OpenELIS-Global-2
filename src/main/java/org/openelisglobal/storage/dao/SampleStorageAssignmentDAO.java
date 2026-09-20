@@ -15,6 +15,9 @@ public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignm
 
     List<SampleStorageAssignment> findByInventoryLotIds(List<Long> inventoryLotIds);
 
+    /** Assignments whose occupant is of the given type, sample or inventory lot. */
+    List<SampleStorageAssignment> findByOccupantType(String occupantType);
+
     SampleStorageAssignment findByStorageBox(StorageBox box);
 
     boolean isBoxOccupied(StorageBox box);
