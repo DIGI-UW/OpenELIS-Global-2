@@ -570,3 +570,349 @@ describe("InventoryDashboard print label", () => {
     );
   });
 });
+
+// Narrowing the set while on a later page used to leave the table empty: the
+// page index survived the filter and pointed past the end of the shorter list.
+describe("InventoryDashboard filters and the current page", () => {
+  const reagent = {
+    id: "BUFFER",
+    name: "Wash Buffer",
+    itemType: "REAGENT",
+    units: "mL",
+    lowStockThreshold: 1,
+  };
+
+  // One page of 20 plus five: the oldest lot sits on page 2 under the
+  // newest-first order, and is the only row every one of these filters keeps.
+  const oddLotOut = {
+    ...lotWithLocation,
+    id: 99,
+    lotNumber: "LOT-99",
+    status: "DISPOSED",
+    inventoryItem: { id: "BUFFER" },
+  };
+
+  // The empty state is a single-cell row, so fall back to it and let a blank
+  // table read as its own message rather than a TypeError.
+  const lotNumbersShown = () =>
+    Array.from(document.querySelectorAll("table tbody tr")).map(
+      (row) => row.cells[1]?.textContent ?? row.cells[0].textContent,
+    );
+
+  const renderOnPageTwo = async () => {
+    InventoryItemAPI.getAll.mockResolvedValue([
+      {
+        id: "MALARIA_RDT",
+        name: "Malaria RDT",
+        itemType: "RDT",
+        units: "kits",
+        lowStockThreshold: 20,
+      },
+      reagent,
+    ]);
+    InventoryLotAPI.getAll.mockResolvedValue([
+      ...Array.from({ length: 24 }, (_, n) => ({
+        ...lotWithLocation,
+        id: 100 + n,
+        lotNumber: `LOT-${100 + n}`,
+      })),
+      oddLotOut,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-123");
+
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-99"));
+  };
+
+  // The tiles reset the page too, and this is the only one of the resets that
+  // nothing pinned: removing it from toggleMetricFilter failed no test.
+  it("returns to page one when a metric tile narrows the table", async () => {
+    const expiredOn = new Date();
+    expiredOn.setDate(expiredOn.getDate() - 10);
+    InventoryItemAPI.getAll.mockResolvedValue([
+      {
+        id: "MALARIA_RDT",
+        name: "Malaria RDT",
+        itemType: "RDT",
+        units: "kits",
+        lowStockThreshold: 20,
+      },
+      reagent,
+    ]);
+    InventoryLotAPI.getAll.mockResolvedValue([
+      ...Array.from({ length: 24 }, (_, n) => ({
+        ...lotWithLocation,
+        id: 100 + n,
+        lotNumber: `LOT-${100 + n}`,
+      })),
+      {
+        ...lotWithLocation,
+        id: 99,
+        lotNumber: "LOT-EXPIRED",
+        expirationDate: expiredOn.toISOString(),
+      },
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-123");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(lotNumbersShown()).toContain("LOT-EXPIRED"));
+
+    fireEvent.click(
+      within(document.querySelector(".inventory-metrics-grid"))
+        .getByText("Expired")
+        .closest(".inventory-metric-tile"),
+    );
+
+    // One match, so a page index left at 2 slices past the end and shows nothing.
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-EXPIRED"]));
+  });
+
+  it("returns to page one when the search box narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.change(document.querySelector("input[type='search']"), {
+      target: { value: "LOT-99" },
+    });
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
+  });
+
+  it("returns to page one when the type dropdown narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-type-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Reagent" }));
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
+  });
+
+  it("returns to page one when the status dropdown narrows the table", async () => {
+    await renderOnPageTwo();
+
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-status-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Disposed" }));
+
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-99"]));
+  });
+});
+
+describe("InventoryDashboard metric tile filters", () => {
+  const inDays = (days) =>
+    new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  const expiredLot = {
+    ...lotWithLocation,
+    id: 11,
+    lotNumber: "LOT-EXPIRED",
+    expirationDate: inDays(-10),
+  };
+  const expiringLot = {
+    ...lotWithLocation,
+    id: 12,
+    lotNumber: "LOT-SOON",
+    expirationDate: inDays(5),
+  };
+  const freshLot = {
+    ...lotWithLocation,
+    id: 13,
+    lotNumber: "LOT-FRESH",
+    expirationDate: inDays(400),
+  };
+  // Outside the 30-day alert window the tiles use, so a widened rule pulls it
+  // into the Expiring Soon tile and the row tag has to follow.
+  const laterLot = {
+    ...lotWithLocation,
+    id: 15,
+    lotNumber: "LOT-LATER",
+    expirationDate: inDays(40),
+  };
+
+  // "Expired" is also a stock-status tag in the table, so a tile lookup has to
+  // be scoped to the tile grid or it matches a row.
+  const tile = (label) =>
+    within(document.querySelector(".inventory-metrics-grid"))
+      .getByText(label)
+      .closest(".inventory-metric-tile");
+
+  const tileCount = (label) =>
+    Number(tile(label).querySelector(".metric-value").textContent);
+
+  const rowCount = () => document.querySelectorAll("table tbody tr").length;
+
+  const lotNumbersShown = () =>
+    Array.from(document.querySelectorAll("table tbody tr")).map(
+      (row) => row.cells[1].textContent,
+    );
+
+  it("filters the table to a tile's lots and restores the rest on a second click", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      expiredLot,
+      expiringLot,
+      freshLot,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-EXPIRED"]));
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() => expect(rowCount()).toBe(3));
+  });
+
+  it("shows exactly as many rows as the lot-based tile counted", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      expiredLot,
+      { ...expiredLot, id: 14, lotNumber: "LOT-EXPIRED-2" },
+      expiringLot,
+      freshLot,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    for (const label of ["Total Lots", "Expiring Soon", "Expired"]) {
+      const counted = tileCount(label);
+      expect(counted).toBeGreaterThan(0);
+      fireEvent.click(tile(label));
+      await waitFor(() => expect(rowCount()).toBe(counted));
+      fireEvent.click(tile(label));
+      await waitFor(() => expect(rowCount()).toBe(4));
+    }
+  });
+
+  it("tags every row an expiry tile filters to with that tile's own status", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      expiredLot,
+      expiringLot,
+      freshLot,
+      laterLot,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    const rowTexts = () =>
+      Array.from(document.querySelectorAll("table tbody tr")).map(
+        (row) => row.textContent,
+      );
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() => expect(rowCount()).toBe(1));
+    rowTexts().forEach((text) => expect(text).toMatch(/Expired/));
+
+    fireEvent.click(tile("Expired"));
+    fireEvent.click(tile("Expiring Soon"));
+    await waitFor(() => expect(rowCount()).toBeGreaterThan(0));
+    rowTexts().forEach((text) => expect(text).toMatch(/Expiring \(\d+d\)/));
+  });
+
+  it("filters Low Stock to the lots of low-stock items, which outnumber the items counted", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, id: 21, lotNumber: "LOT-LOW-A" },
+      { ...lotWithLocation, id: 22, lotNumber: "LOT-LOW-B" },
+      {
+        ...lotWithLocation,
+        id: 23,
+        lotNumber: "LOT-OK",
+        inventoryItem: { id: "OTHER" },
+      },
+    ]);
+    InventoryItemAPI.getAll.mockResolvedValue([
+      { id: "MALARIA_RDT", name: "Malaria RDT", itemType: "RDT" },
+      { id: "OTHER", name: "Other Kit", itemType: "RDT" },
+    ]);
+    InventoryItemAPI.getLowStock.mockResolvedValue([
+      { id: "MALARIA_RDT", name: "Malaria RDT" },
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-OK");
+    await waitFor(() => expect(tileCount("Low Stock")).toBe(1));
+
+    fireEvent.click(tile("Low Stock"));
+
+    // One item below threshold, two of its lots: the tile counts items and the
+    // table lists lots, so the mismatch is the design and not a drift.
+    await waitFor(() =>
+      expect(lotNumbersShown()).toEqual(["LOT-LOW-B", "LOT-LOW-A"]),
+    );
+    expect(tileCount("Low Stock")).toBe(1);
+  });
+
+  it("narrows together with the search box and the status dropdown", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      expiredLot,
+      { ...expiredLot, id: 15, lotNumber: "LOT-EXPIRED-2", status: "DISPOSED" },
+      { ...freshLot, status: "DISPOSED" },
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() => expect(rowCount()).toBe(2));
+
+    fireEvent.click(
+      document.querySelector("#inventory-dashboard-status-filter button"),
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "Disposed" }));
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-EXPIRED-2"]));
+
+    fireEvent.change(document.querySelector("input[type='search']"), {
+      target: { value: "LOT-EXPIRED-2" },
+    });
+    await waitFor(() => expect(lotNumbersShown()).toEqual(["LOT-EXPIRED-2"]));
+
+    fireEvent.change(document.querySelector("input[type='search']"), {
+      target: { value: "LOT-FRESH" },
+    });
+    // The empty state occupies a row of its own, so count the message.
+    await waitFor(() =>
+      expect(screen.getByText("No inventory items found")).toBeInTheDocument(),
+    );
+  });
+
+  it("marks the active tile with aria-pressed", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([expiredLot, freshLot]);
+    renderDashboard();
+    await screen.findByText("LOT-FRESH");
+
+    expect(tile("Expired")).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() =>
+      expect(tile("Expired")).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(tile("Total Lots")).toHaveAttribute("aria-pressed", "false");
+    expect(
+      document.querySelectorAll(".inventory-metric-tile--selected"),
+    ).toHaveLength(1);
+
+    fireEvent.click(tile("Expired"));
+    await waitFor(() =>
+      expect(tile("Expired")).toHaveAttribute("aria-pressed", "false"),
+    );
+  });
+});
+
+describe("InventoryDashboard lot order", () => {
+  // The Storage Inventory Lots table lists the same lots newest first. The
+  // endpoint answers oldest first, which put a lot just added on the last page.
+  it("lists the newest lot first, whatever order the endpoint answers in", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, id: 5, lotNumber: "LOT-OLDEST" },
+      { ...lotWithLocation, id: 40, lotNumber: "LOT-NEWEST" },
+      { ...lotWithLocation, id: 12, lotNumber: "LOT-MIDDLE" },
+    ]);
+    renderDashboard();
+
+    await screen.findByText("LOT-NEWEST");
+    expect(
+      Array.from(document.querySelectorAll("table tbody tr")).map(
+        (row) => row.cells[1].textContent,
+      ),
+    ).toEqual(["LOT-NEWEST", "LOT-MIDDLE", "LOT-OLDEST"]);
+  });
+});

@@ -22,6 +22,10 @@ export default function useCreateLocation() {
             new Error(
               response?.message ||
                 response?.error ||
+                // Bean-validation failures arrive as {errors: {field: message}},
+                // which carries neither an `error` nor a `message` key.
+                (response?.errors &&
+                  Object.values(response.errors).join(", ")) ||
                 "Failed to create storage location",
             ),
           );
