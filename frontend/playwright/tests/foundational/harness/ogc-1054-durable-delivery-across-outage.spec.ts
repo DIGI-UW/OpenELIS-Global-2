@@ -55,10 +55,13 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
 
   test.beforeAll(async () => {
     api = await bridgeApi();
-    test.skip(
-      !(await hasOutbox(api)),
-      "This bridge build has no delivery outbox; nothing to verify until it is pinned.",
-    );
+    // A hard failure, not a skip. Skipping here would turn a bridge pinned to a
+    // build without the outbox into a green run, which is exactly the regression
+    // this spec exists to block.
+    expect(
+      await hasOutbox(api),
+      "the pinned bridge build must expose the delivery outbox",
+    ).toBe(true);
   });
 
   test.afterAll(async () => {
@@ -136,7 +139,7 @@ test.describe("Analyzer results survive an OpenELIS outage", () => {
     }
   });
 
-  test("a result refused by OpenELIS is held for an operator with its payload intact", async () => {
+  test("a result delivered while OpenELIS is up is accepted once and keeps its received message", async () => {
     test.setTimeout(OUTAGE_TEST_TIMEOUT);
     const accession = uniqueLane10Accession();
 
