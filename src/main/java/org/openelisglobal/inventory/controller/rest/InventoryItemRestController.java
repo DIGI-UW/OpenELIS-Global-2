@@ -2,9 +2,7 @@ package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.exception.LocalizedValidationException;
@@ -152,11 +150,7 @@ public class InventoryItemRestController extends BaseRestController {
             InventoryItem savedItem = inventoryItemService.save(item);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
         } catch (LocalizedValidationException e) {
-            Map<String, Object> body = new HashMap<>();
-            body.put("message", e.getMessage());
-            body.put("errorCode", e.getErrorCode());
-            body.put("params", e.getParams());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.sql.Timestamp;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -148,11 +150,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                             : "");
             // Internal map carries the raw DB status ID so
             // StorageDashboardServiceImpl.filterSamples can call
-            // statusService.matches without another lookup. The REST controller
+            // statusService.matches without another lookup. The REST layer
             // translates this to the spec-compliant "active"|"disposed" enum
             // (specs/001-sample-storage/contracts/storage-api.json:862,885)
-            // before serializing to the client — see SampleStorageRestController
-            // .normalizeStatusForResponse.
+            // before serializing to the client — see SampleStatusResponse.
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
@@ -188,31 +189,29 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             response.add(map);
         }
 
-        // Sort by location: assigned samples first (alphabetically by location), then
-        // unassigned
-        response.sort((a, b) -> {
-            String locA = (String) a.get("location");
-            String locB = (String) b.get("location");
-            boolean aEmpty = locA == null || locA.isEmpty();
-            boolean bEmpty = locB == null || locB.isEmpty();
-
-            // Both empty - sort by sample ID
-            if (aEmpty && bEmpty) {
-                return String.valueOf(a.get("id")).compareTo(String.valueOf(b.get("id")));
-            }
-            // Empty locations go to the end
-            if (aEmpty)
-                return 1;
-            if (bEmpty)
-                return -1;
-            // Both have locations - sort alphabetically
-            return locA.compareTo(locB);
-        });
+        // Highest sample item id first: the caller serves this list a page at a
+        // time, so page one is what the lab received most recently rather than
+        // its oldest, long-disposed items. Ordering on location instead moved a
+        // row to a different page the moment a disposal cleared that location.
+        response.sort(
+                Comparator.comparingLong((Map<String, Object> row) -> sampleItemIdOrder(row.get("id"))).reversed());
 
         logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
                 response.size());
 
         return response;
+    }
+
+    /**
+     * Sort key for the sample-items listing. A non-numeric id sorts last rather
+     * than aborting the listing.
+     */
+    private static long sampleItemIdOrder(Object id) {
+        try {
+            return Long.parseLong(String.valueOf(id));
+        } catch (NumberFormatException e) {
+            return Long.MIN_VALUE;
+        }
     }
 
     @Override
@@ -1884,5 +1883,171 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
         }
         return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId) {
+        Map<String, Object> response = new HashMap<>();
+        if (inventoryLotId == null || inventoryLotId.trim().isEmpty()) {
+            return response;
+        }
+
+        Long lotId = Long.valueOf(inventoryLotId);
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(lotId);
+        if (assignment == null || assignment.getLocationId() == null) {
+            // Nothing occupying a slot, so nothing to free.
+            return response;
+        }
+
+        Integer previousLocationId = assignment.getLocationId();
+        String previousLocationType = assignment.getLocationType();
+        String previousPositionCoordinate = assignment.getPositionCoordinate();
+
+        String previousLocation = null;
+        Object locationEntity = resolveLocationEntity(previousLocationType, previousLocationId);
+        if (locationEntity != null) {
+            previousLocation = buildHierarchicalPathForEntity(locationEntity, previousLocationType,
+                    previousPositionCoordinate);
+        }
+
+        // The row stays for audit; nulling the location is what frees the slot.
+        assignment.setLocationId(null);
+        assignment.setLocationType(null);
+        assignment.setPositionCoordinate(null);
+        assignment.setSysUserId(sysUserId);
+        sampleStorageAssignmentDAO.update(assignment);
+
+        SampleStorageMovement movement = new SampleStorageMovement();
+        movement.setOccupantType(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+        movement.setInventoryLotId(lotId);
+        movement.setPreviousLocationId(previousLocationId);
+        movement.setPreviousLocationType(previousLocationType);
+        movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+        movement.setNewLocationId(null);
+        movement.setNewLocationType(null);
+        movement.setNewPositionCoordinate(null);
+        movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+        movement.setReason(reason);
+        movement.setMovedByUserId(resolveActingUserId(sysUserId));
+        movement.setSysUserId(sysUserId);
+        Integer movementId = sampleStorageMovementDAO.insert(movement);
+
+        response.put("previousLocation", previousLocation);
+        response.put("movementId", movementId != null ? movementId.toString() : null);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId) {
+        // One transaction, so a failed release undoes the DISPOSED status too.
+        InventoryLot lot = inventoryLotService.disposeLot(inventoryLotId, reason, notes, sysUserId);
+        String movementReason = "Disposal: " + (reason != null ? reason : "")
+                + (notes != null ? " | Notes: " + notes : "");
+        releaseInventoryLotLocation(String.valueOf(inventoryLotId), movementReason, sysUserId);
+        return lot;
+    }
+
+    /** Load the location entity for a (type, id) pair, or null when unknown. */
+    private Object resolveLocationEntity(String locationType, Integer locationId) {
+        if (locationType == null || locationId == null) {
+            return null;
+        }
+        switch (locationType) {
+        case "box":
+            return storageLocationService.get(locationId, StorageBox.class);
+        case "rack":
+            return storageLocationService.get(locationId, StorageRack.class);
+        case "shelf":
+            return storageLocationService.get(locationId, StorageShelf.class);
+        case "device":
+            return storageLocationService.get(locationId, StorageDevice.class);
+        case "room":
+            return storageLocationService.get(locationId, StorageRoom.class);
+        default:
+            return null;
+        }
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
+            String notes) {
+        if (inventoryLotId == null || inventoryLotId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("InventoryLot ID is required");
+        }
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO
+                .findByInventoryLotId(Long.valueOf(inventoryLotId));
+        if (assignment == null) {
+            throw new LIMSRuntimeException("No storage assignment found for InventoryLot: " + inventoryLotId);
+        }
+
+        // Blank clears the field, null leaves it, so a caller can patch just one.
+        if (positionCoordinate != null) {
+            assignment.setPositionCoordinate(positionCoordinate.trim().isEmpty() ? null : positionCoordinate.trim());
+        }
+        if (notes != null) {
+            assignment.setNotes(notes.trim().isEmpty() ? null : notes.trim());
+        }
+        sampleStorageAssignmentDAO.update(assignment);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("assignmentId", assignment.getId());
+        response.put("inventoryLotId", inventoryLotId);
+        response.put("positionCoordinate", assignment.getPositionCoordinate());
+        response.put("notes", assignment.getNotes());
+        response.put("updatedDate", new Timestamp(System.currentTimeMillis()).toString());
+        response.put("hierarchicalPath", buildHierarchicalPathForAssignment(assignment));
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllInventoryLotsWithAssignments() {
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO
+                .findByOccupantType(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+        List<Map<String, Object>> response = new java.util.ArrayList<>();
+
+        for (SampleStorageAssignment assignment : assignments) {
+            if (assignment.getInventoryLotId() == null) {
+                continue;
+            }
+            InventoryLot lot = inventoryLotService.get(assignment.getInventoryLotId());
+            if (lot == null) {
+                continue;
+            }
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", lot.getId());
+            map.put("inventoryLotId", lot.getId());
+            map.put("lotNumber", lot.getLotNumber() != null ? lot.getLotNumber() : "");
+            map.put("barcode", lot.getBarcode() != null ? lot.getBarcode() : "");
+            map.put("itemName",
+                    lot.getInventoryItem() != null && lot.getInventoryItem().getName() != null
+                            ? lot.getInventoryItem().getName()
+                            : "");
+            map.put("type",
+                    lot.getInventoryItem() != null && lot.getInventoryItem().getItemType() != null
+                            ? lot.getInventoryItem().getItemType().toString()
+                            : "");
+            map.put("quantity", lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0);
+            map.put("status", lot.getStatus() != null ? lot.getStatus().toString() : "");
+            map.put("qcStatus", lot.getQcStatus() != null ? lot.getQcStatus().toString() : "");
+            map.put("expirationDate", lot.getExpirationDate() != null ? lot.getExpirationDate().toString() : "");
+
+            // A released lot keeps its row with no location; report it unassigned.
+            String hierarchicalPath = assignment.getLocationId() != null
+                    ? buildHierarchicalPathForAssignment(assignment)
+                    : null;
+            map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
+            map.put("positionCoordinate",
+                    assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
+            map.put("assignedBy", assignment.getAssignedByUserId() != null ? assignment.getAssignedByUserId() : "");
+            map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+
+            response.add(map);
+        }
+        return response;
     }
 }

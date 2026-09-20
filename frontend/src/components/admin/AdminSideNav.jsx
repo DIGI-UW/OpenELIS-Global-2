@@ -627,13 +627,23 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="sidenav.label.admin.program" />
       </SideNavLink>
-      <SideNavLink
-        data-cy="providerMgmnt"
+      <SideNavMenu
         renderIcon={CicsSystemGroup}
-        {...navProps(`${path}/providerMenu`)}
+        title={intl.formatMessage({ id: "provider.browse.title" })}
       >
-        <FormattedMessage id="provider.browse.title" />
-      </SideNavLink>
+        <SideNavMenuItem
+          data-cy="providerMgmnt"
+          {...navProps(`${path}/providerMenu`)}
+        >
+          <FormattedMessage id="provider.browse.title" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="providerTitles"
+          {...navProps(`${path}/providerTitleMenu`)}
+        >
+          <FormattedMessage id="providerTitle.titles" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="labelPresets"
         renderIcon={QrCode}

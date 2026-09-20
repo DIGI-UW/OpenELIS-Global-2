@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -19,7 +25,7 @@ import {
   Pagination,
   Grid,
   Column,
-  Tile,
+  ClickableTile,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -43,7 +49,75 @@ import {
 } from "../storage/LocationPicker/locationSelectionMapper";
 import "./InventoryList.css";
 
-const InventoryDashboard = () => {
+const QC_TAG_KIND = {
+  PASSED: "green",
+  FAILED: "red",
+  PENDING: "gray",
+  QUARANTINED: "magenta",
+};
+
+const QC_GATE_STOCK_STATUS = {
+  FAILED: { type: "qcFailed", id: "stock.status.qcFailed", kind: "red" },
+  QUARANTINED: {
+    type: "quarantined",
+    id: "stock.status.quarantined",
+    kind: "magenta",
+  },
+};
+const PENDING_QC_STOCK_STATUS = {
+  type: "pendingQc",
+  id: "stock.status.pendingQc",
+  kind: "cyan",
+};
+
+const daysToExpiry = (lot) =>
+  Math.floor(
+    (new Date(lot.expirationDate) - new Date()) / (1000 * 60 * 60 * 24),
+  );
+
+// A tile's count, the filter it applies to the table below and the stock-status
+// tag on each row all read the rule named here, so an edit to a rule reaches
+// the three of them together. lowStock counts items rather than lots, as noted
+// where the counts are built.
+const METRIC_RULES = {
+  totalLots: () => true,
+  lowStock: (lot, { lowStockItemIds }) =>
+    lowStockItemIds.has(lot.inventoryItem?.id),
+  expiringSoon: (lot, { items }) => {
+    const item = items[lot.inventoryItem?.id];
+    if (!item || !lot.expirationDate) return false;
+    const days = daysToExpiry(lot);
+    return days >= 0 && days <= (item.expirationAlertDays || 30);
+  },
+  expired: (lot, { items }) => {
+    const item = items[lot.inventoryItem?.id];
+    if (!item || !lot.expirationDate) return false;
+    return daysToExpiry(lot) < 0;
+  },
+};
+
+const METRIC_TILES = [
+  { key: "totalLots", labelId: "inventory.metrics.totalLots" },
+  {
+    key: "lowStock",
+    labelId: "inventory.metrics.lowStock",
+    modifier: "metric-warning",
+  },
+  {
+    key: "expiringSoon",
+    labelId: "inventory.metrics.expiringSoon",
+    modifier: "metric-expiring",
+  },
+  {
+    key: "expired",
+    labelId: "inventory.metrics.expired",
+    modifier: "metric-expired",
+  },
+];
+
+// `active` is the parent's tab state: Carbon keeps unselected TabPanels
+// mounted, so without it a Catalog edit stays stale here until a reload.
+const InventoryDashboard = ({ active = true }) => {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -63,14 +137,18 @@ const InventoryDashboard = () => {
 
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
+  const [lowStockItemIds, setLowStockItemIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
-  const [metrics, setMetrics] = useState({
-    totalLots: 0,
-    lowStock: 0,
-    expiringSoon: 0,
-    expired: 0,
-  });
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const [activeMetric, setActiveMetric] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -95,11 +173,17 @@ const InventoryDashboard = () => {
 
   const statusOptions = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
-    { id: "ACTIVE", text: "Active" },
-    { id: "IN_USE", text: "In Use" },
-    { id: "EXPIRED", text: "Expired" },
-    { id: "CONSUMED", text: "Consumed" },
-    { id: "QUARANTINED", text: "Quarantined" },
+    ...[
+      "ACTIVE",
+      "IN_USE",
+      "EXPIRED",
+      "CONSUMED",
+      "QUARANTINED",
+      "DISPOSED",
+    ].map((status) => ({
+      id: status,
+      text: intl.formatMessage({ id: `lot.status.${status}` }),
+    })),
   ];
 
   const headers = [
@@ -130,6 +214,10 @@ const InventoryDashboard = () => {
     {
       key: "status",
       header: intl.formatMessage({ id: "lot.status" }),
+    },
+    {
+      key: "qcStatus",
+      header: intl.formatMessage({ id: "lot.qcStatus" }),
     },
     {
       key: "stockStatus",
@@ -171,95 +259,57 @@ const InventoryDashboard = () => {
     });
 
   useEffect(() => {
-    fetchLots();
-  }, [typeFilter, statusFilter]);
+    if (active) fetchLots();
+  }, [active]);
 
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-      });
+      // Low stock is the backend's call: it sums usable quantity across an
+      // item's lots, which a per-lot check here cannot reproduce.
+      const [lotsResponse, itemsResponse, lowStockResponse] = await Promise.all(
+        [
+          InventoryLotAPI.getAll(),
+          InventoryItemAPI.getAll(),
+          InventoryItemAPI.getLowStock(),
+        ],
+      );
+      if (!isMountedRef.current) return;
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(lotsResponse) ? [...lotsResponse] : [];
+      // Newest lot first, the order the Storage Inventory Lots table uses: a
+      // lot just added then lands on page one instead of on the last page.
+      validLots.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       setLots(validLots);
 
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
-
-      const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
+      const itemsMap = Object.fromEntries(
+        (Array.isArray(itemsResponse) ? itemsResponse : []).map((item) => [
+          item.id,
+          item,
+        ]),
       );
-
       setItems(itemsMap);
 
-      calculateMetrics(validLots, itemsMap);
+      const lowStockIds = new Set(
+        (Array.isArray(lowStockResponse) ? lowStockResponse : []).map(
+          (item) => item.id,
+        ),
+      );
+      setLowStockItemIds(lowStockIds);
     } catch (error) {
       console.error("Error fetching inventory:", error);
+      if (!isMountedRef.current) return;
       setLots([]);
       setItems({});
+      setLowStockItemIds(new Set());
       addNotification({
         kind: "error",
         title: intl.formatMessage({ id: "notification.error" }),
         message: "Error loading inventory data",
       });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
-  };
-
-  const calculateMetrics = (lotsData, itemsData) => {
-    let lowStockCount = 0;
-    let expiringSoonCount = 0;
-    let expiredCount = 0;
-
-    lotsData.forEach((lot) => {
-      const item = itemsData[lot.inventoryItem?.id];
-      if (!item) return;
-
-      const currentQty = lot.currentQuantity || 0;
-      const minStock = item.minimumStockLevel || 0;
-
-      if (lot.expirationDate) {
-        const expiryDate = new Date(lot.expirationDate);
-        const today = new Date();
-        const daysUntilExpiry = Math.floor(
-          (expiryDate - today) / (1000 * 60 * 60 * 24),
-        );
-
-        if (daysUntilExpiry < 0) {
-          expiredCount++;
-          return;
-        }
-
-        const alertDays = item.expirationAlertDays || 30;
-        if (daysUntilExpiry <= alertDays) {
-          expiringSoonCount++;
-        }
-      }
-
-      if (currentQty > 0 && currentQty <= minStock) {
-        lowStockCount++;
-      }
-    });
-
-    setMetrics({
-      totalLots: lotsData.length,
-      lowStock: lowStockCount,
-      expiringSoon: expiringSoonCount,
-      expired: expiredCount,
-    });
   };
 
   const getStockStatus = (lot) => {
@@ -269,42 +319,94 @@ const InventoryDashboard = () => {
     if (!item) return null;
 
     const currentQty = lot.currentQuantity || 0;
-    const minStock = item.minimumStockLevel || 0;
 
-    if (lot.expirationDate) {
-      const expiryDate = new Date(lot.expirationDate);
-      const today = new Date();
-      const daysUntilExpiry = Math.floor(
-        (expiryDate - today) / (1000 * 60 * 60 * 24),
-      );
+    if (METRIC_RULES.expired(lot, { items })) {
+      return {
+        type: "expired",
+        label: intl.formatMessage({ id: "stock.status.expired" }),
+        kind: "red",
+      };
+    }
 
-      if (daysUntilExpiry < 0) {
-        return { type: "expired", label: "Expired", kind: "red" };
-      }
-
-      const alertDays = item.expirationAlertDays || 30;
-      if (daysUntilExpiry <= alertDays) {
-        return {
-          type: "expiring",
-          label: `Expiring (${daysUntilExpiry}d)`,
-          kind: "warm-gray",
-        };
-      }
+    if (METRIC_RULES.expiringSoon(lot, { items })) {
+      return {
+        type: "expiring",
+        label: intl.formatMessage(
+          { id: "stock.status.expiringIn" },
+          { days: daysToExpiry(lot) },
+        ),
+        kind: "warm-gray",
+      };
     }
 
     if (currentQty === 0) {
-      return { type: "outOfStock", label: "Out of Stock", kind: "red" };
+      return {
+        type: "outOfStock",
+        label: intl.formatMessage({ id: "stock.status.outOfStock" }),
+        kind: "red",
+      };
     }
 
-    if (currentQty < minStock) {
-      return { type: "lowStock", label: "Low Stock", kind: "warm-gray" };
+    // Stock that exists but cannot be consumed: FEFO only picks QC-passed lots,
+    // so name the gate instead of a reassuring "In Stock". Checked before low
+    // stock: the gate is what blocks this lot, not the item total.
+    const quarantinedByStatus = lot.status === "QUARANTINED";
+    if (quarantinedByStatus || (lot.qcStatus && lot.qcStatus !== "PASSED")) {
+      // Quarantine outranks the QC value, as the consume refusal does: a lot
+      // received into quarantine keeps the default pending QC.
+      const gate = quarantinedByStatus
+        ? QC_GATE_STOCK_STATUS.QUARANTINED
+        : QC_GATE_STOCK_STATUS[lot.qcStatus] || PENDING_QC_STOCK_STATUS;
+      return {
+        type: gate.type,
+        label: intl.formatMessage({ id: gate.id }),
+        kind: gate.kind,
+      };
     }
 
-    return { type: "inStock", label: "In Stock", kind: "green" };
+    if (METRIC_RULES.lowStock(lot, { lowStockItemIds })) {
+      return {
+        type: "lowStock",
+        label: intl.formatMessage({ id: "stock.status.lowStock" }),
+        kind: "warm-gray",
+      };
+    }
+
+    return {
+      type: "inStock",
+      label: intl.formatMessage({ id: "stock.status.inStock" }),
+      kind: "green",
+    };
+  };
+
+  const metricContext = { items, lowStockItemIds };
+
+  const metrics = {
+    totalLots: lots.length,
+    // The backend reports low stock per item and the table lists those items'
+    // lots, so this tile is the one whose number and filtered row count are
+    // meant to differ.
+    lowStock: lowStockItemIds.size,
+    expiringSoon: lots.filter((lot) =>
+      METRIC_RULES.expiringSoon(lot, metricContext),
+    ).length,
+    expired: lots.filter((lot) => METRIC_RULES.expired(lot, metricContext))
+      .length,
+  };
+
+  const toggleMetricFilter = (key) => {
+    setActiveMetric((current) => (current === key ? null : key));
+    setPage(1);
   };
 
   const getFilteredLots = () => {
     let filtered = lots;
+
+    if (activeMetric) {
+      filtered = filtered.filter((lot) =>
+        METRIC_RULES[activeMetric](lot, metricContext),
+      );
+    }
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -312,6 +414,7 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return (
           lot.lotNumber?.toLowerCase().includes(searchLower) ||
+          lot.barcode?.toLowerCase().includes(searchLower) ||
           item?.name?.toLowerCase().includes(searchLower)
         );
       });
@@ -322,6 +425,10 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return item?.itemType === typeFilter;
       });
+    }
+
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter((lot) => lot.status === statusFilter);
     }
 
     return filtered;
@@ -354,6 +461,7 @@ const InventoryDashboard = () => {
         ? new Date(lot.expirationDate).toLocaleDateString()
         : "N/A",
       status: lot.status,
+      qcStatus: lot.qcStatus || "PENDING",
       stockStatus: stockStatus,
     };
   });
@@ -432,6 +540,27 @@ const InventoryDashboard = () => {
     setLocationPickerOpen(true);
   };
 
+  const handlePrintLabel = async (lot) => {
+    try {
+      const response = await InventoryLotAPI.printLabel(lot.id);
+      const blob = new Blob([response.data], { type: response.contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = response.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "lot.label.print.failed" }),
+      });
+    }
+  };
+
   const movingLotCurrentLocation = movingLot?.location?.hierarchicalPath
     ? {
         selection: {},
@@ -442,7 +571,12 @@ const InventoryDashboard = () => {
       }
     : null;
 
-  const handleLocationConfirm = async ({ selection, position, notes }) => {
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
     if (!movingLot) return;
     try {
       const deepest = getDeepestLocationSelection(selection, {
@@ -460,7 +594,7 @@ const InventoryDashboard = () => {
       if (movingLotCurrentLocation) {
         await InventoryLotStorageAPI.moveLocation({
           ...payload,
-          reason: notes || "",
+          reason: reason || "",
         });
       } else {
         await InventoryLotStorageAPI.assignLocation(payload);
@@ -495,38 +629,32 @@ const InventoryDashboard = () => {
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <Grid className="inventory-metrics-grid" fullWidth={false}>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile">
-            <div className="metric-value">{metrics.totalLots}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.totalLots" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-warning">
-            <div className="metric-value">{metrics.lowStock}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.lowStock" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expiring">
-            <div className="metric-value">{metrics.expiringSoon}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expiringSoon" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expired">
-            <div className="metric-value">{metrics.expired}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expired" />
-            </div>
-          </Tile>
-        </Column>
+        {METRIC_TILES.map((tile) => (
+          <Column
+            key={tile.key}
+            lg={4}
+            md={2}
+            sm={4}
+            className="inventory-metric-column"
+          >
+            <ClickableTile
+              className={[
+                "inventory-metric-tile",
+                tile.modifier,
+                activeMetric === tile.key && "inventory-metric-tile--selected",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={activeMetric === tile.key}
+              onClick={() => toggleMetricFilter(tile.key)}
+            >
+              <div className="metric-value">{metrics[tile.key]}</div>
+              <div className="metric-label">
+                <FormattedMessage id={tile.labelId} />
+              </div>
+            </ClickableTile>
+          </Column>
+        ))}
       </Grid>
 
       <DataTable rows={rows} headers={headers} isSortable>
@@ -543,41 +671,48 @@ const InventoryDashboard = () => {
               <TableToolbarContent>
                 <TableToolbarSearch
                   placeholder={intl.formatMessage({
-                    id: "inventory.search.placeholder",
+                    id: "inventory.lot.search.placeholder",
                   })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   value={searchTerm}
                 />
 
                 <Dropdown
-                  id="type-filter"
+                  id="inventory-dashboard-type-filter"
                   titleText=""
                   label={intl.formatMessage({
                     id: "inventory.filter.type",
                   })}
                   items={itemTypes}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
+                  selectedItem={
+                    itemTypes.find((t) => t.id === typeFilter) ?? null
                   }
+                  onChange={({ selectedItem }) => {
+                    setTypeFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
                 <Dropdown
-                  id="status-filter"
+                  id="inventory-dashboard-status-filter"
                   titleText=""
                   label={intl.formatMessage({
                     id: "inventory.filter.status",
                   })}
                   items={statusOptions}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
+                  selectedItem={
+                    statusOptions.find((s) => s.id === statusFilter) ?? null
                   }
+                  onChange={({ selectedItem }) => {
+                    setStatusFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
@@ -620,6 +755,9 @@ const InventoryDashboard = () => {
                 ) : (
                   rows.map((row) => {
                     const lot = lotsById.get(row.id);
+                    // DataTable syncs `rows` into its state in an effect, so
+                    // for one render it can still list a just-filtered row.
+                    if (!lot) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {
@@ -630,6 +768,19 @@ const InventoryDashboard = () => {
                                 {status && (
                                   <Tag type={status.kind}>{status.label}</Tag>
                                 )}
+                              </TableCell>
+                            );
+                          }
+
+                          if (cell.info.header === "qcStatus") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag type={QC_TAG_KIND[cell.value] || "gray"}>
+                                  {intl.formatMessage({
+                                    id: `lot.qcStatus.${cell.value}`,
+                                    defaultMessage: cell.value,
+                                  })}
+                                </Tag>
                               </TableCell>
                             );
                           }
@@ -710,6 +861,13 @@ const InventoryDashboard = () => {
                                         : "Assign storage location",
                                     })}
                                     onClick={() => handleMoveLocation(lot)}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "lot.label.print",
+                                    })}
+                                    disabled={!lot.barcode}
+                                    onClick={() => handlePrintLabel(lot)}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({

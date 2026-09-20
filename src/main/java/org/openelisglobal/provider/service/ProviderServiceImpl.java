@@ -97,8 +97,20 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
 
     @Override
     @Transactional(readOnly = true)
+    public List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode) {
+        return baseObjectDAO.getPagesOfSearchedProviders(startingRecNo, parameter, titleCode);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public int getTotalSearchedProviderCount(String parameter) {
         return baseObjectDAO.getTotalSearchedProviderCount(parameter);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedProviderCount(String parameter, String titleCode) {
+        return baseObjectDAO.getTotalSearchedProviderCount(parameter, titleCode);
     }
 
     @Override
@@ -143,6 +155,7 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
             dbProvider.getPerson().setWorkPhone(provider.getPerson().getWorkPhone());
             dbProvider.getPerson().setFax(provider.getPerson().getFax());
             dbProvider.getPerson().setCellPhone(provider.getPerson().getCellPhone());
+            dbProvider.getPerson().setTitleCode(provider.getPerson().getTitleCode());
             dbProvider = save(dbProvider);
         } else {
             if (fhirUuid == null) {
