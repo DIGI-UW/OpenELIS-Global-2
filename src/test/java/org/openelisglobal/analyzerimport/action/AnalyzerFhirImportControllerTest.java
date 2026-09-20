@@ -59,11 +59,12 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
     @Test
     public void normalizedBundleDelegatesToTheOwningService() throws Exception {
         when(importService.importBundle(any(Bundle.class), eq("1")))
-                .thenReturn(new AnalyzerNormalizedResultImportSummary("42", 1, 0, 0));
+                .thenReturn(new AnalyzerNormalizedResultImportSummary("receipt-7", "42", 1, 0, 0));
 
         mockMvc.perform(post("/analyzer/fhir").contentType("application/fhir+json")
                 .content(Files.readString(FIXTURE))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.analyzerId").value("42"))
+                .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.receiptId").value("receipt-7"))
+                .andExpect(jsonPath("$.analyzerId").value("42"))
                 .andExpect(jsonPath("$.resultsStaged").value(1)).andExpect(jsonPath("$.resultsHeld").value(0));
 
         verify(importService).importBundle(any(Bundle.class), eq("1"));

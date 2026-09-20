@@ -44,6 +44,12 @@ public class AnalyzerFhirImportController extends BaseRestController {
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
+            // The sender's proof of delivery. Identical on a repeat of a delivery already
+            // accepted,
+            // so a sender that never saw the first answer can confirm against OpenELIS
+            // rather than
+            // guess whether its retry created a second result.
+            response.put("receiptId", summary.receiptId());
             response.put("analyzerId", summary.analyzerId());
             response.put("resultsStaged", summary.resultsStaged());
             response.put("resultsHeld", summary.resultsHeld());
