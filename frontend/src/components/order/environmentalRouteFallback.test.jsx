@@ -79,15 +79,13 @@ test(
   "an environmental path with a route of its own still reaches that route",
   { timeout: 20000 },
   async () => {
-    const { unmount } = renderAppAt("/order/environmental/enter");
+    const { unmount } = renderAppAt("/order/environmental/qa");
 
-    // Fails if the fallback Redirect moves above the wizard routes.
-    expect(window.location.pathname).toBe("/order/environmental/enter");
+    // /qa is the Switch's last child, so a Redirect anywhere above it shadows this route.
+    expect(window.location.pathname).toBe("/order/environmental/qa");
     await waitFor(
       () =>
-        expect(screen.getByRole("main")).toHaveTextContent(
-          /Generate Lab Number/i,
-        ),
+        expect(screen.getByRole("main")).toHaveTextContent(/Sample Summary/i),
       { timeout: 15000 },
     );
 
