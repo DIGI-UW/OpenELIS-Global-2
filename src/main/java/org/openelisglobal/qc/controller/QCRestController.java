@@ -29,6 +29,7 @@ import org.openelisglobal.qc.valueholder.WestgardRuleConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,6 +83,8 @@ public class QCRestController extends BaseRestController {
         try {
             List<QCControlLot> controlLots = controlLotService.getActiveControlLots(testId, instrumentId);
             return ResponseEntity.ok(controlLots);
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getActiveControlLots", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -96,6 +99,8 @@ public class QCRestController extends BaseRestController {
         try {
             List<QCControlLot> lots = controlLotService.getAllControlLots();
             return ResponseEntity.ok(lots);
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getAllControlLots", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -114,6 +119,8 @@ public class QCRestController extends BaseRestController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getControlLot", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -133,6 +140,8 @@ public class QCRestController extends BaseRestController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getControlLotByLotNumber", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -188,6 +197,8 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "saveControlLot", "Validation error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "saveControlLot", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -208,6 +219,8 @@ public class QCRestController extends BaseRestController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "activateControlLot", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -228,6 +241,8 @@ public class QCRestController extends BaseRestController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "deactivateControlLot", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -248,6 +263,8 @@ public class QCRestController extends BaseRestController {
             } else {
                 return ResponseEntity.notFound().build();
             }
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getLatestStatistics", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

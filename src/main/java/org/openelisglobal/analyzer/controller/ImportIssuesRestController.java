@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,6 +50,11 @@ public class ImportIssuesRestController extends BaseRestController {
             response.put("status", "success");
             response.put("data", data);
             return ResponseEntity.ok(response);
+        } catch (AccessDeniedException e) {
+            // The PRIV_ANALYZER_IMPORT gate on the service is this endpoint's only
+            // authorization now that the controller-level role check is gone; let a
+            // denial reach the 403 handler instead of becoming a 500 here.
+            throw e;
         } catch (Exception e) {
             logger.error("Error retrieving import issues", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

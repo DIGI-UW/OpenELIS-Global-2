@@ -135,4 +135,61 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
     @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
             OffsetDateTime cutoff);
+
+    // ---- Inherited from BaseObjectService. Method-level gates above cover only
+    // the
+    // ---- methods declared here; the CRUD inherited from BaseObjectService carried
+    // no
+    // ---- gate at all, so DELETE /rest/alerts/{id} was open to any authenticated
+    // ---- user once the controller-level ADMIN check moved to the service layer.
+    // ---- Redeclared solely to carry the gate: writes need alert:manage, the reads
+    // ---- the alerts bell uses need alert:view.
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
+    Alert get(Long id);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
+    List<Alert> getAll();
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    Long insert(Alert alert);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    Alert save(Alert alert);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    Alert update(Alert alert);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    void delete(Alert alert);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    void delete(Long id, String sysUserId);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    void deleteAll(List<Alert> alerts);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    List<Long> insertAll(List<Alert> alerts);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    List<Alert> saveAll(List<Alert> alerts);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    List<Alert> updateAll(List<Alert> alerts);
+
+    @Override
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+    void deleteAll(List<Long> ids, String sysUserId);
 }

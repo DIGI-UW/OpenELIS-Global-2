@@ -25,8 +25,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
  */
 public class ClassLevelPreAuthorizeSemanticsTest {
 
+    /**
+     * Stands in for BaseObjectService: declares CRUD, carries no gate of its own.
+     */
+    public interface UngatedBase {
+        String inherited();
+    }
+
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
-    public interface ClassGatedService {
+    public interface ClassGatedService extends UngatedBase {
         String ping();
     }
 
@@ -39,6 +46,11 @@ public class ClassLevelPreAuthorizeSemanticsTest {
         @Override
         public String ping() {
             return "pong";
+        }
+
+        @Override
+        public String inherited() {
+            return "inherited";
         }
     }
 
@@ -97,6 +109,30 @@ public class ClassLevelPreAuthorizeSemanticsTest {
             }
             authWith("PRIV_TEST_CONFIGURE");
             assertEquals("pong", svc.ping());
+        }
+    }
+
+    /**
+     * The RBAC migration's inherited-CRUD argument rests on this: a TYPE-level gate
+     * on a service interface also covers the methods that interface inherits from
+     * an ungated super-interface (BaseObjectService's
+     * get/getAll/insert/update/delete). A METHOD-level-only interface gets no such
+     * coverage — its inherited CRUD is open — which is how DELETE /rest/alerts/{id}
+     * became reachable by Reception.
+     */
+    @Test
+    public void typeLevelInterfaceAnnotation_alsoCoversMethodsInheritedFromAnUngatedSuperInterface() {
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Config.class)) {
+            ClassGatedService svc = ctx.getBean(ClassGatedService.class);
+            authWith("PRIV_OTHER");
+            try {
+                svc.inherited();
+                fail("type-level interface @PreAuthorize did NOT cover a super-interface method");
+            } catch (AccessDeniedException expected) {
+                // covered
+            }
+            authWith("PRIV_TEST_CONFIGURE");
+            assertEquals("inherited", svc.inherited());
         }
     }
 

@@ -18,6 +18,7 @@ import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -89,6 +90,8 @@ public class AlertRestController extends ControllerUtills {
             return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
@@ -103,6 +106,8 @@ public class AlertRestController extends ControllerUtills {
             return ResponseEntity.ok(convertToDTO(resolvedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
@@ -130,6 +135,8 @@ public class AlertRestController extends ControllerUtills {
             // alertService.get throws rather than returning null, so an id already
             // cleared by another admin lands here.
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
