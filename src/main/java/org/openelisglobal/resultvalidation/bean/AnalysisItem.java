@@ -171,6 +171,10 @@ public class AnalysisItem implements Serializable {
     private List<IdValuePair> methods;
     private List<IdValuePair> referralOrganizations;
     private List<IdValuePair> referralReasons;
+    /**
+     * The test was sent to a reference laboratory; this result came back from it.
+     */
+    private boolean referredOut = false;
 
     private List<IdValuePair> dictionaryResults;
 
@@ -679,6 +683,14 @@ public class AnalysisItem implements Serializable {
 
     public void setReferralReasons(List<IdValuePair> referralReasons) {
         this.referralReasons = referralReasons;
+    }
+
+    public boolean isReferredOut() {
+        return referredOut;
+    }
+
+    public void setReferredOut(boolean referredOut) {
+        this.referredOut = referredOut;
     }
 
     public void setAnalysisId(String analysisId) {

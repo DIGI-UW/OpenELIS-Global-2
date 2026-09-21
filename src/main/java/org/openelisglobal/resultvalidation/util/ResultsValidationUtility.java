@@ -993,6 +993,9 @@ public class ResultsValidationUtility {
         analysisResultItem.setTestName(testName);
         analysisResultItem.setUnits(testUnits);
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());
+        // Whoever releases this result has to know it came from a reference
+        // laboratory rather than from this laboratory's bench.
+        analysisResultItem.setReferredOut(testResultItem.getAnalysis().isReferredOut());
         analysisResultItem.setPastNotes(testResultItem.getPastNotes());
         analysisResultItem.setResultId(testResultItem.getResultId());
         if (result != null && result.getTestResult() != null) {

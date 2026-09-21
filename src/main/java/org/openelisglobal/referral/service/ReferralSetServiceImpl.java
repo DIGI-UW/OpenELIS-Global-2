@@ -279,6 +279,12 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                     if (referralItem.getReferredTestId().equals(analysis.getTest().getId())) {
                         referral.setAnalysis(analysis);
 
+                        // The Result Entry route flags the analysis when it raises a
+                        // referral. Order Entry did not, so the same referral left the
+                        // analysis looking like ordinary in-house work to every report
+                        // and to the Result Entry screen.
+                        markAnalysisReferredOut(analysis, updateData.getCurrentUserId());
+
                         String testResultType = testService.getResultType(analysis.getTest());
                         result.setResultType(testResultType);
                         result.setAnalysis(analysis);
@@ -467,6 +473,23 @@ public class ReferralSetServiceImpl implements ReferralSetService {
             return fallbackTestName == null ? "" : fallbackTestName;
         }
         return sb.toString();
+    }
+
+    /**
+     * Flag the analysis as referred out, the way the Result Entry route does. The
+     * analysis is already persisted by the time Order Entry raises its referrals,
+     * so the flag has to be written; when it is not yet persisted the caller's own
+     * insert carries it.
+     */
+    private void markAnalysisReferredOut(Analysis analysis, String currentUserId) {
+        if (analysis.isReferredOut()) {
+            return;
+        }
+        analysis.setReferredOut(true);
+        if (!GenericValidator.isBlankOrNull(analysis.getId())) {
+            analysis.setSysUserId(currentUserId);
+            analysisService.update(analysis);
+        }
     }
 
     /**

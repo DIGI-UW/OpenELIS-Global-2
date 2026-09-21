@@ -537,6 +537,13 @@ const Validation = (props) => {
           <div className="sampleInfo" data-testid="sampleInfo">
             <br></br>
             {testName}
+            {/* Releasing a reference laboratory's result is a different
+                decision from releasing this laboratory's own bench work. */}
+            {row.referredOut && (
+              <Tag type="cyan" size="sm">
+                <FormattedMessage id="label.results.referredOut" />
+              </Tag>
+            )}
             {unitsOnly && (
               <>
                 <br></br>

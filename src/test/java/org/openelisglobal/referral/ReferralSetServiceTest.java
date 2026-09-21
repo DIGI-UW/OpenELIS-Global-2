@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
@@ -433,6 +434,46 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("AGR-EDIT-ENV-UPDATED", refetched.getSubcontract().getAgreementReference());
         assertEquals("Edited Env Contact", refetched.getSubcontract().getCocContactName());
         assertEquals(originalSubcontractId, refetched.getSubcontract().getId());
+    }
+
+    /**
+     * Order Entry raised the referral but left {@code Analysis.referred_out} false,
+     * so the same test referred from Result Entry and from Order Entry ended up in
+     * two different states: every workload report counted the Order Entry one as
+     * this laboratory's own work, and Result Entry showed no referral marker on it.
+     */
+    @Test
+    public void createDraftReferralSetsForOrderEntry_flagsTheReferredAnalysisAsReferredOut() {
+        List<Analysis> allAnalyses = analysisService.getAll();
+        SampleAddService.SampleTestCollection sampleTestCollection = getSampleTestCollection();
+        sampleTestCollection.analysises = allAnalyses;
+        List<SampleAddService.SampleTestCollection> sampleItemsTests = new ArrayList<>(List.of(sampleTestCollection));
+
+        // Refer a test that is not already referred, so the flag this test is
+        // about is the one the save has to write.
+        Analysis target = allAnalyses.stream().filter(a -> !a.isReferredOut()).findFirst().orElseThrow();
+        String targetTestId = target.getTest().getId();
+        ReferralItem referralItem = referralItemService.getReferralItems().get(0);
+        referralItem.setReferralId(null);
+        referralItem.setReferredTestId(targetTestId);
+        List<ReferralItem> referralItems = new ArrayList<>(List.of(referralItem));
+
+        // Referring flags every analysis of that test; everything else keeps the
+        // flag it had.
+        Map<String, Boolean> expectedAfterSave = allAnalyses.stream().collect(
+                Collectors.toMap(Analysis::getId, a -> a.isReferredOut() || targetTestId.equals(a.getTest().getId())));
+        assertEquals(false, expectedAfterSave.get(target.getId()) == null);
+        assertEquals(true, expectedAfterSave.get(target.getId()));
+        // Something must stay unflagged, or "everything is flagged" would pass.
+        assertEquals(true, expectedAfterSave.containsValue(false));
+
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("3901");
+        updateData.setSampleItemsTests(sampleItemsTests);
+        referralSetService.createDraftReferralSetsForOrderEntry(referralItems, updateData);
+
+        Map<String, Boolean> flaggedAfterSave = analysisService.getAll().stream()
+                .collect(Collectors.toMap(Analysis::getId, Analysis::isReferredOut));
+        assertEquals(expectedAfterSave, flaggedAfterSave);
     }
 
     @Test

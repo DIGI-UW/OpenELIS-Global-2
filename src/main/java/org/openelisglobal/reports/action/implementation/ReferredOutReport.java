@@ -149,8 +149,17 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
         reportParameters.put("referralSiteName", reportLocation == null ? "" : reportLocation.getOrganizationName());
         reportParameters.put("directorName",
                 ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName));
-        reportParameters.put("labName1", MessageUtil.getContextualMessage("report.labName.one"));
-        reportParameters.put("labName2", MessageUtil.getContextualMessage("report.labName.two"));
+        // Only site-suffixed variants of report.labName.one/two exist in the
+        // message bundles, so looking the bare keys up printed the keys themselves
+        // in the header. Name the laboratory the way every other report does.
+        reportParameters.put("labName1", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
+        reportParameters.put("labName2", "");
+    }
+
+    /** ReferredOutBySite prints the Test column as plain text. */
+    @Override
+    protected boolean escapesTestNameAsHtml() {
+        return false;
     }
 
     @Override
