@@ -127,7 +127,22 @@ public class SelfIdentityMethodsUngatedTest {
             { "Results", "micro:bench", "culture setup, isolates and AST runs for bench staff" },
             { "Validation", "micro:view", "microbiology case/worklist reads for validators" },
             { "Validation", "micro:bench", "culture setup, isolates and AST runs for validators" },
-            { "Validation", "micro:supervise", "microbiology report release, amendment and critical communication" } };
+            { "Validation", "micro:supervise", "microbiology report release, amendment and critical communication" },
+            // The alerts bell (GET /rest/alerts, PRIV_ALERT_VIEW) is on every workbench
+            // screen. Before RBAC the endpoint was open to these roles; without the
+            // grant the bell 403s for everyone but Global Admin.
+            { "Reception", "alert:view", "GET /rest/alerts — alerts bell on reception screens" },
+            { "Results", "alert:view", "GET /rest/alerts — alerts bell on result entry" },
+            { "Validation", "alert:view", "GET /rest/alerts — alerts bell on validation" },
+            // The Analyser Import role's own screen: GET /rest/AnalyzerResults reads
+            // through these gates (measured by method-security debug + call map), and
+            // accepting results is result entry by another route.
+            { "Analyser Import", "result:view", "GET /rest/AnalyzerResults — analyses, results, test results" },
+            { "Analyser Import", "order:view", "GET /rest/AnalyzerResults — sample by accession" },
+            { "Analyser Import", "sample_type:view", "GET /rest/AnalyzerResults — ambiguous sample-type options" },
+            { "Analyser Import", "nce:view", "GET /rest/AnalyzerResults — non-conformity state per item" },
+            { "Analyser Import", "result:enter", "POST /rest/AnalyzerResults — accept analyzer results" },
+            { "Analyser Import", "result:modify", "POST /rest/AnalyzerResults — accept over existing results" } };
 
     @Test
     public void rolesHoldThePrivilegesTheirScreensRequire() throws IOException {

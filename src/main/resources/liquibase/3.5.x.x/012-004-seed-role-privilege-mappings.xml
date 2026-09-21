@@ -499,4 +499,72 @@
         </rollback>
     </changeSet>
 
+    <!--
+      012-004e: the alerts bell.
+      GET /rest/alerts is gated on alert:view at the service layer (AlertService).
+      Before privilege-based RBAC the endpoint was reachable by Reception, Results
+      and Validation (the controller allowed any authenticated user; only
+      acknowledge/delete were ADMIN). 012-004 granted alert:view to no base role,
+      which turns the bell into a 403 for everyone but Global Admin. Restore the
+      pre-existing reach for the three workbench roles; alert:manage stays
+      admin-only, matching the old acknowledge/delete restriction.
+    -->
+    <changeSet author="openelis" id="012-004e-grant-alert-view-to-workbench-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant alert:view to Reception, Results and Validation</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation')
+              AND p.name = 'alert:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id IN (SELECT id FROM clinlims.system_privilege WHERE name = 'alert:view')
+                  AND system_role_id IN (SELECT id FROM clinlims.system_role WHERE name IN ('Reception', 'Results', 'Validation'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      012-004f: the Analyser Import role's own screen.
+      /rest/AnalyzerResults (review and accept analyzer results) reads results,
+      analyses, orders by accession, sample types and NCE state, and accepting
+      writes results. Before privilege-based RBAC the controller allowed
+      ANALYSER_IMPORT and ADMIN; 012-004 granted the role only analyzer:import and
+      analyzer:configure, so the screen 403s on its first read. Restore the role's
+      pre-existing reach. result:enter/result:modify are the accept path
+      (AnalyzerResultsAcceptService) — accepting analyzer results IS result entry
+      by another route; without them the role's primary function is gone.
+    -->
+    <changeSet author="openelis" id="012-004f-grant-analyzer-results-screen-to-analyser-import">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the analyzer-results screen's read and accept privileges to Analyser Import</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import'
+              AND p.name IN ('result:view', 'result:enter', 'result:modify', 'order:view', 'sample_type:view', 'nce:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE system_role_id IN (SELECT id FROM clinlims.system_role WHERE name = 'Analyser Import')
+                  AND privilege_id IN (SELECT id FROM clinlims.system_privilege
+                                       WHERE name IN ('result:view', 'result:enter', 'result:modify', 'order:view', 'sample_type:view', 'nce:view'));
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
