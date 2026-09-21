@@ -1,10 +1,8 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -20,6 +18,7 @@ import org.openelisglobal.microbiology.service.MicroReportProjectionService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,7 +46,8 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
 
     @Test
     public void unrelatedAuthenticatedRoleCannotReadBenchCaseData() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/cases/case-1/timeline").with(user("reception").roles("RECEPTION")))
+        mockMvc.perform(get("/rest/microbiology/cases/case-1/timeline")
+                .with(user("reception").authorities(SeededRoleAuthorities.role("RECEPTION"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -55,18 +55,20 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
     public void noteUsesSessionActorAndIgnoresSubmittedActorField() throws Exception {
         MicroCaseActivityForm activity = new MicroCaseActivityForm();
         activity.id = "activity-1";
-        when(timelineService.addNote("case-1", "Bench note", "42")).thenReturn(activity);
+        when(mockBehind(timelineService).addNote("case-1", "Bench note", "42")).thenReturn(activity);
 
-        mockMvc.perform(post("/rest/microbiology/cases/case-1/notes").with(user("analyst").roles("RESULTS"))
+        mockMvc.perform(post("/rest/microbiology/cases/case-1/notes")
+                .with(user("analyst").authorities(SeededRoleAuthorities.role("RESULTS")))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"Bench note\",\"performedBy\":\"999\"}")).andExpect(status().isOk());
 
-        verify(timelineService).addNote("case-1", "Bench note", "42");
+        verify(mockBehind(timelineService)).addNote("case-1", "Bench note", "42");
     }
 
     @Test
     public void resultsRoleCannotReleaseFinalReport() throws Exception {
-        mockMvc.perform(post("/rest/microbiology/cases/case-1/release/final").with(user("analyst").roles("RESULTS"))
+        mockMvc.perform(post("/rest/microbiology/cases/case-1/release/final")
+                .with(user("analyst").authorities(SeededRoleAuthorities.role("RESULTS")))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42)).contentType(MediaType.APPLICATION_JSON)
                 .content("{}")).andExpect(status().isForbidden());
     }
@@ -75,15 +77,14 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
     public void validationRoleReleasesFinalWithSessionActor() throws Exception {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        when(releaseService.releaseFinal(eq("case-1"), eq("42"))).thenReturn(microCase);
+        when(mockBehind(releaseService).releaseFinal(eq("case-1"), eq("42"))).thenReturn(microCase);
 
-        mockMvc.perform(
-                post("/rest/microbiology/cases/case-1/release/final").with(user("validator").roles("VALIDATION"))
-                        .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"performedBy\":\"999\"}"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/rest/microbiology/cases/case-1/release/final")
+                .with(user("validator").authorities(SeededRoleAuthorities.role("VALIDATION")))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"performedBy\":\"999\"}")).andExpect(status().isOk());
 
-        verify(releaseService).releaseFinal("case-1", "42");
+        verify(mockBehind(releaseService)).releaseFinal("case-1", "42");
     }
 
     private UserSessionData sessionFor(int userId) {
@@ -107,17 +108,17 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
 
         @Bean
         MicroCaseTimelineService microCaseTimelineService() {
-            return mock(MicroCaseTimelineService.class, withSettings().withoutAnnotations());
+            return stubbableMock(MicroCaseTimelineService.class);
         }
 
         @Bean
         MicroReportReleaseService microReportReleaseService() {
-            return mock(MicroReportReleaseService.class, withSettings().withoutAnnotations());
+            return stubbableMock(MicroReportReleaseService.class);
         }
 
         @Bean
         MicroReportProjectionService microReportProjectionService() {
-            return mock(MicroReportProjectionService.class, withSettings().withoutAnnotations());
+            return stubbableMock(MicroReportProjectionService.class);
         }
 
         @Bean

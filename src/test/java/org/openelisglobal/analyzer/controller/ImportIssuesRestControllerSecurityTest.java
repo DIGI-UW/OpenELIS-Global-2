@@ -2,7 +2,6 @@ package org.openelisglobal.analyzer.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -38,19 +38,21 @@ public class ImportIssuesRestControllerSecurityTest extends SecuritySliceMockMvc
 
     @Test
     public void getImportIssues_withResultsRole_returns403() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/import-issues").with(user("results").roles("RESULTS")))
+        mockMvc.perform(get("/rest/analyzer/import-issues")
+                .with(user("results").authorities(SeededRoleAuthorities.role("RESULTS"))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void getImportIssues_withAdminRole_returns200() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/import-issues").with(user("admin").roles("ADMIN")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/analyzer/import-issues")
+                .with(user("admin").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isOk());
     }
 
     @Test
     public void getImportIssues_withAnalyserImportRole_returns200() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/import-issues").with(user("operator").roles("ANALYSER_IMPORT")))
+        mockMvc.perform(get("/rest/analyzer/import-issues")
+                .with(user("operator").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.count").value(1))
                 .andExpect(jsonPath("$.data.eventRows[0].externalEventId").value("unmatched-ast"))
                 .andExpect(jsonPath("$.data.eventRows[0].failureReason").value("AST_ANALYZER_RUN_NOT_MATCHED"))
@@ -71,14 +73,13 @@ public class ImportIssuesRestControllerSecurityTest extends SecuritySliceMockMvc
 
         @Bean
         AnalyzerEventPersistenceService analyzerEventPersistenceService() {
-            AnalyzerEventPersistenceService service = mock(AnalyzerEventPersistenceService.class,
-                    withSettings().withoutAnnotations());
+            AnalyzerEventPersistenceService service = mock(AnalyzerEventPersistenceService.class);
             AnalyzerEvent event = new AnalyzerEvent();
             event.setExternalEventId("unmatched-ast");
             event.setEventType("AST_RESULT_AVAILABLE");
             event.setFailureReason("AST_ANALYZER_RUN_NOT_MATCHED");
             when(service.getFailed(100)).thenReturn(List.of(event));
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean

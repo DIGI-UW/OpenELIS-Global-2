@@ -1,6 +1,5 @@
 package org.openelisglobal.testcatalog.controller;
 
-import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -84,8 +83,9 @@ public class TestCatalogActivationRestControllerSecurityTest extends SecuritySli
         TestCatalogActivationRestController testActivationRestController(TestService testService) {
             // Only the auth ordering is under test; the collaborators are unused here.
             return new TestCatalogActivationRestController(testService, nullStub(ResultLimitService.class),
-                    mock(RangeCoverageValidationService.class), nullStub(TestActivationAcknowledgmentService.class),
-                    nullStub(TestResultComponentService.class), nullStub(TestResultService.class));
+                    stubbableMock(RangeCoverageValidationService.class),
+                    nullStub(TestActivationAcknowledgmentService.class), nullStub(TestResultComponentService.class),
+                    nullStub(TestResultService.class));
         }
     }
 }

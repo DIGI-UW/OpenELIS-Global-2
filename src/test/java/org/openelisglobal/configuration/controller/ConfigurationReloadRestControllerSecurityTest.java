@@ -3,7 +3,6 @@ package org.openelisglobal.configuration.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,11 +80,10 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         ConfigurationReloadService configurationInitializationService() {
-            ConfigurationReloadService service = mock(ConfigurationReloadService.class,
-                    withSettings().withoutAnnotations());
+            ConfigurationReloadService service = mock(ConfigurationReloadService.class);
             when(service.reload(any(ConfigurationReloadOptions.class))).thenReturn(new ConfigurationReloadResult(
                     List.of(ConfigurationReloadFileResult.processed("roles", "roles.csv"))));
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean

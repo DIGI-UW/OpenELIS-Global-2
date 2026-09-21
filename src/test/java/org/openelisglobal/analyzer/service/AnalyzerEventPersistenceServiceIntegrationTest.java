@@ -16,6 +16,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.dao.AnalyzerEventDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.concurrent.DelegatingSecurityContextCallable;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -46,10 +49,16 @@ public class AnalyzerEventPersistenceServiceIntegrationTest extends BaseWebConte
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
+        // Each simulated delivery is its own request and must carry its own
+        // Authentication; a bare pool thread has none, and the service gates now
+        // deny it. Hand the test thread's context to each worker explicitly.
+        SecurityContext testContext = SecurityContextHolder.getContext();
         try {
             List<Future<AnalyzerEventRegistration>> futures = List.of(
-                    executor.submit(() -> registerAtStart(ready, start)),
-                    executor.submit(() -> registerAtStart(ready, start)));
+                    executor.submit(
+                            new DelegatingSecurityContextCallable<>(() -> registerAtStart(ready, start), testContext)),
+                    executor.submit(
+                            new DelegatingSecurityContextCallable<>(() -> registerAtStart(ready, start), testContext)));
 
             assertTrue("Both deliveries must be ready", ready.await(10, SECONDS));
             start.countDown();

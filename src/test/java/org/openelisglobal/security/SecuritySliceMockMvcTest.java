@@ -98,4 +98,23 @@ public abstract class SecuritySliceMockMvcTest {
             return null;
         });
     }
+
+    /**
+     * Shorthand for {@link GatedServiceMocks#stubbableMock(Class)}: a Mockito mock
+     * that is safe to publish as a context bean despite the interface's
+     * {@code @PreAuthorize}. Stub and verify via {@link #mockBehind(Object)}.
+     */
+    protected static <T> T stubbableMock(Class<T> iface) {
+        return GatedServiceMocks.stubbableMock(iface);
+    }
+
+    /** Shorthand for {@link GatedServiceMocks#asGatedBean(Object)}. */
+    protected static <T> T asGatedBean(T mock) {
+        return GatedServiceMocks.asGatedBean(mock);
+    }
+
+    /** Shorthand for {@link GatedServiceMocks#mockBehind(Object)}. */
+    protected static <T> T mockBehind(T bean) {
+        return GatedServiceMocks.mockBehind(bean);
+    }
 }

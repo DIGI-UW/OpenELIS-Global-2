@@ -26,13 +26,11 @@ import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.security.WithDaemonUser;
-import org.openelisglobal.security.login.CustomUserDetailsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,21 +195,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         authorities.add(new SimpleGrantedAuthority("ROLE_RESULTS"));
-        for (java.lang.reflect.Field field : Privileges.class.getDeclaredFields()) {
-            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers()) || field.getType() != String.class) {
-                continue;
-            }
-            try {
-                String value = (String) field.get(null);
-                // Skip the Global Admin sentinel ("*"): it is never a stored
-                // privilege name and never becomes a PRIV_ authority.
-                if (value == null || !value.contains(":")) {
-                    continue;
-                }
-                authorities.add(new SimpleGrantedAuthority(CustomUserDetailsService.toPrivAuthority(value)));
-            } catch (IllegalAccessException e) {
-                throw new IllegalStateException("Could not read privilege constant " + field.getName(), e);
-            }
+        for (String priv : org.openelisglobal.security.SeededRoleAuthorities.allPrivilegeAuthorityNames()) {
+            authorities.add(new SimpleGrantedAuthority(priv));
         }
         return authorities;
     }

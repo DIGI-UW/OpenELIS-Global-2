@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,8 +31,7 @@ public class MicroWhonetExportRestControllerTest {
 
     @Test
     public void previewDelegatesCanonicalQuery() {
-        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class,
-                withSettings().withoutAnnotations());
+        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         MicroWhonetExportQueryForm query = query();
         MicroWhonetPreviewForm preview = new MicroWhonetPreviewForm();
         preview.canGenerate = true;
@@ -48,8 +46,7 @@ public class MicroWhonetExportRestControllerTest {
 
     @Test
     public void filterOptionsDelegateOnlyTheReportingPeriod() {
-        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class,
-                withSettings().withoutAnnotations());
+        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         MicroWhonetExportQueryForm query = query();
         MicroWhonetFilterOptionsForm options = new MicroWhonetFilterOptionsForm();
         when(service.getMicrobiologyExportFilterOptions(query)).thenReturn(options);
@@ -64,8 +61,7 @@ public class MicroWhonetExportRestControllerTest {
 
     @Test
     public void generationUsesAuthenticatedActorAndReturnsAttachmentMetadata() {
-        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class,
-                withSettings().withoutAnnotations());
+        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         MicroWhonetExportQueryForm query = query();
         MicroWhonetExportResult result = new MicroWhonetExportResult("WHONET_period.csv",
                 "csv-content".getBytes(StandardCharsets.UTF_8));
@@ -83,8 +79,7 @@ public class MicroWhonetExportRestControllerTest {
 
     @Test
     public void previewBindsCanonicalQueryAndReturnsStructuredInvalidRequest() throws Exception {
-        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class,
-                withSettings().withoutAnnotations());
+        WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         when(service.previewMicrobiologyExport(any(MicroWhonetExportQueryForm.class)))
                 .thenThrow(new IllegalArgumentException("to must be on or after from"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new MicroWhonetExportRestController(service))

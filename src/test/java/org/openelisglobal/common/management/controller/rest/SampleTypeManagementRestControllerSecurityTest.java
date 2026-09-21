@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,7 +49,7 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
     @Before
     public void resetSharedServiceMocks() {
-        reset(typeOfSampleService, terminologyService);
+        reset(mockBehind(typeOfSampleService), mockBehind(terminologyService));
     }
 
     @Test
@@ -163,9 +162,11 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     public void terminology_AdminRole_RejectsWhonetAsAParallelSpecimenMapping() throws Exception {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("1");
-        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        when(mockBehind(typeOfSampleService).getTypeOfSampleById("1")).thenReturn(typeOfSample);
 
-        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/terminology")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\"}]}"))
                 .andExpect(status().isUnprocessableEntity());
@@ -175,10 +176,12 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     public void terminology_AdminRole_RejectsWhonetWhenActiveMappingsAreNull() throws Exception {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("1");
-        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
-        when(terminologyService.getActiveBySampleTypeId("1")).thenReturn(null);
+        when(mockBehind(typeOfSampleService).getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        when(mockBehind(terminologyService).getActiveBySampleTypeId("1")).thenReturn(null);
 
-        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/terminology")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\"}]}"))
                 .andExpect(status().isUnprocessableEntity());
@@ -188,24 +191,26 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     public void terminology_AdminRole_PreservesUnchangedLegacyWhonetMapping() throws Exception {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("1");
-        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        when(mockBehind(typeOfSampleService).getTypeOfSampleById("1")).thenReturn(typeOfSample);
         SampleTypeTerminologyMapping existingWhonet = new SampleTypeTerminologyMapping();
         existingWhonet.setSampleTypeId("1");
         existingWhonet.setSource("WHONET");
         existingWhonet.setCode("BLD");
         existingWhonet.setRelationship("SAME_AS");
         existingWhonet.setIsActive("Y");
-        when(terminologyService.getActiveBySampleTypeId("1")).thenReturn(List.of(existingWhonet));
+        when(mockBehind(terminologyService).getActiveBySampleTypeId("1")).thenReturn(List.of(existingWhonet));
         UserSessionData sessionData = new UserSessionData();
         sessionData.setSytemUserId(42);
 
-        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/sample-types/1/terminology")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("ROLE_ADMIN",
+                        "PRIV_SAMPLE_TYPE_VIEW", "PRIV_SAMPLE_TYPE_MANAGE", "PRIV_TEST_CONFIGURE", "PRIV_RESULT_VIEW")))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\",\"relationship\":\"SAME_AS\"},"
                         + "{\"source\":\"LOINC\",\"code\":\"600-7\",\"relationship\":\"SAME_AS\"}]}"))
                 .andExpect(status().isOk());
 
-        verify(terminologyService).saveMappingsForSampleType(eq("1"),
+        verify(mockBehind(terminologyService)).saveMappingsForSampleType(eq("1"),
                 argThat(mappings -> mappings.size() == 2 && mappings.stream()
                         .anyMatch(mapping -> "WHONET".equals(mapping.getSource()) && "BLD".equals(mapping.getCode()))),
                 anyString());
@@ -256,12 +261,12 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
         @Bean
         TypeOfSampleService typeOfSampleService() {
-            return mock(TypeOfSampleService.class, withSettings().withoutAnnotations());
+            return stubbableMock(TypeOfSampleService.class);
         }
 
         @Bean
         SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService() {
-            return mock(SampleTypeTerminologyMappingService.class, withSettings().withoutAnnotations());
+            return stubbableMock(SampleTypeTerminologyMappingService.class);
         }
 
         @Bean

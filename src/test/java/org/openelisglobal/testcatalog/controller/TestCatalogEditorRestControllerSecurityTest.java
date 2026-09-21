@@ -1,6 +1,5 @@
 package org.openelisglobal.testcatalog.controller;
 
-import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -42,9 +41,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * service layer (S011c) — the API returns 401 for the unauthenticated and 403
  * for authenticated users lacking the catalog privileges (PRIV_RESULT_VIEW /
  * PRIV_TEST_CONFIGURE / PRIV_SAMPLE_TYPE_VIEW / PRIV_PANEL_*). Service
- * collaborators are JDK-Proxy stubs (nullStub) not Mockito mocks, so
- * withoutAnnotations() so the interface's @PreAuthorize is the single
- * annotation source Spring Security evaluates.
+ * collaborators are JDK-Proxy stubs (nullStub) rather than Mockito mocks, so
+ * the interface's @PreAuthorize is the single annotation source Spring Security
+ * evaluates — see GatedServiceMocks for why a Mockito mock cannot be.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { TestCatalogEditorRestControllerSecurityTest.TestConfig.class })
@@ -252,7 +251,7 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             // Only the auth ordering is under test; the section services are unused here.
             return new TestCatalogEditorRestController(testService, nullStub(TestResultComponentService.class),
                     nullStub(TestResultInterpretationService.class), nullStub(TestResultService.class),
-                    nullStub(ResultLimitService.class), mock(RangeCoverageValidationService.class),
+                    nullStub(ResultLimitService.class), stubbableMock(RangeCoverageValidationService.class),
                     nullStub(TestSampleHandlingService.class), nullStub(AnalyzerService.class), typeOfSampleService,
                     nullStub(TypeOfSampleTestService.class), nullStub(TestTerminologyMappingService.class),
                     panelService, nullStub(PanelItemService.class));

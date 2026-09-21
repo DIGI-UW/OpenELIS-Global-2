@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -144,7 +143,7 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         ComplianceReportGenerationService reportGenerationService() {
-            return mock(ComplianceReportGenerationService.class, withSettings().withoutAnnotations());
+            return stubbableMock(ComplianceReportGenerationService.class);
         }
 
         @Bean
@@ -159,7 +158,7 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         VectorSamplingSiteService vectorSamplingSiteService() {
-            return mock(VectorSamplingSiteService.class, withSettings().withoutAnnotations());
+            return stubbableMock(VectorSamplingSiteService.class);
         }
 
         @Bean
@@ -174,16 +173,15 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         ComplianceReportArchiveService archiveService() {
-            return mock(ComplianceReportArchiveService.class, withSettings().withoutAnnotations());
+            return stubbableMock(ComplianceReportArchiveService.class);
         }
 
         @Bean
         LhuAmendmentService lhuAmendmentService() {
-            LhuAmendmentService lhuAmendmentService = mock(LhuAmendmentService.class,
-                    withSettings().withoutAnnotations());
+            LhuAmendmentService lhuAmendmentService = mock(LhuAmendmentService.class);
             when(lhuAmendmentService.hasBeenReleased(anyLong())).thenReturn(false);
             when(lhuAmendmentService.certificateNumberWithAmendmentSuffix(any(), any())).thenReturn("24-00001");
-            return lhuAmendmentService;
+            return asGatedBean(lhuAmendmentService);
         }
     }
 }

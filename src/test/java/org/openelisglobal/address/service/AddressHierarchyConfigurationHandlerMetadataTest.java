@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +36,7 @@ public class AddressHierarchyConfigurationHandlerMetadataTest {
         displayListService = mock(DisplayListService.class);
         ReflectionTestUtils.setField(DisplayListService.class, "instance", displayListService);
 
-        organizationTypeService = mock(OrganizationTypeService.class, withSettings().withoutAnnotations());
+        organizationTypeService = mock(OrganizationTypeService.class);
         siteInformationService = mock(SiteInformationService.class);
 
         handler = new AddressHierarchyConfigurationHandler();
