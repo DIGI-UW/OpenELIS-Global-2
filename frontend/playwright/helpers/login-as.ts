@@ -3,12 +3,20 @@ import { BrowserContext, APIRequestContext } from "@playwright/test";
 /**
  * Authenticate an arbitrary user into a browser context (spec 012 T029/T044).
  *
- * Mirrors auth.setup.ts: log in through the request API (avoids Spring's
- * session-fixation rejection of a UI form login that already has an anonymous
- * JSESSIONID), then inject the resulting JSESSIONID into the browser context
- * with path=/ so frontend routes see the authenticated session. Used to drive
- * the app as distinct RBAC personas (Reception, Validation) that the shared
- * admin storageState cannot represent.
+ * Mirrors auth.setup.ts: log in through the request API, then inject the
+ * resulting JSESSIONID into the browser context with path=/ so frontend routes
+ * see the authenticated session. Used to drive the app as distinct RBAC
+ * personas (Reception, Results, Validation) that the shared admin storageState
+ * cannot represent.
+ *
+ * The cookie jar is cleared BEFORE the login request, and that is load-bearing.
+ * Inside the test runner, `browser.newContext()` inherits the project's `use`
+ * options, including the admin `storageState`, so a "fresh" context already
+ * carries the admin's JSESSIONID. Posting the login with that cookie makes
+ * Spring's `sessionFixation().migrateSession()` rotate the ADMIN session's id:
+ * the persona logs in fine, but the id every later test's storageState carries
+ * is dead, and the rest of the shard redirects to /LoginPage (62 specs, E2E on
+ * 2026-09-21; the trace showed the persona login sent the admin's cookie).
  *
  * @returns true on success; false if the credentials were rejected (e.g. the
  *          seeded persona is missing) so callers can skip gracefully.
@@ -19,6 +27,8 @@ export async function loginAs(
   loginName: string,
   password: string,
 ): Promise<boolean> {
+  // See the note above: drop the inherited admin session before logging in.
+  await context.clearCookies();
   const loginResponse = await request.post(
     "/api/OpenELIS-Global/ValidateLogin?apiCall=true",
     { form: { loginName, password } },
