@@ -50,6 +50,7 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Get lot by its internal barcode, exact match first and then normalized. A lot
      * without one holds NULL, never '', so a blank query never matches.
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     InventoryLot getByBarcode(String barcode);
 
     /**

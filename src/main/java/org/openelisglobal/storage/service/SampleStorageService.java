@@ -201,6 +201,7 @@ public interface SampleStorageService {
      * @return Map with previousLocation and movementId, empty when there was
      *         nothing to release
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId);
 
     /**
@@ -213,6 +214,7 @@ public interface SampleStorageService {
      * @param sysUserId      Acting user
      * @return The disposed lot
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId);
 
     /**
@@ -224,6 +226,7 @@ public interface SampleStorageService {
      * @param notes              New notes; blank clears them, null leaves them
      * @return Map with assignmentId, positionCoordinate, notes and hierarchicalPath
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
             String notes);
 
@@ -234,5 +237,6 @@ public interface SampleStorageService {
      * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
      *         location, assignedBy and date
      */
+    @PreAuthorize("hasAuthority(\'PRIV_STORAGE_VIEW\')")
     java.util.List<java.util.Map<String, Object>> getAllInventoryLotsWithAssignments();
 }

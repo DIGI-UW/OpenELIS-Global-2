@@ -69,5 +69,6 @@ public interface StorageSearchService {
      * @param query Search term (case-insensitive partial match)
      * @return List of matching boxes as Maps with all data resolved (API format)
      */
+    @PreAuthorize("hasAuthority(\'PRIV_STORAGE_VIEW\')")
     List<Map<String, Object>> searchBoxes(String query);
 }
