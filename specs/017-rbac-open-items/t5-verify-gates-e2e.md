@@ -56,6 +56,34 @@ these were ours. Three distinct causes, all fixed locally:
 Plus: concurrency tests needed `DelegatingSecurityContext*` to carry the test
 Authentication onto worker threads, and the fixture change exposed **T6**.
 
+## 2026-09-21 (later) — E2E / Tests, three more causes
+
+"03 - E2E" on the PR sha is only the shared image build; Playwright and Cypress
+run in the `workflow_run`-triggered "E2E / Tests", which reports develop's sha. So
+every earlier "E2E green" on this branch meant the image built, not that specs
+passed. Once actually read, our run failed 62 of 106 specs in one Playwright shard
+while develop's own runs fail one flaky spec each. Causes, in order found:
+
+4. **Webapp did not boot.** Develop's new `CatalogImportServiceImpl` autowired
+   `ConfigurationInitializationService` by concrete class; on this branch that bean
+   is a JDK interface proxy (its interface is gated). `BeanNotOfRequiredTypeException`
+   at context start; every shard died at "Start containers". Fixed by injecting the
+   interface; `ProxiedBeanInjectionTest` scans for the pattern (one site existed).
+5. **Persona logins killed the admin session.** `browser.newContext()` inside the
+   runner inherits `use.storageState`, so the RBAC persona specs posted their login
+   with the admin's JSESSIONID; Spring's `migrateSession()` rotated the admin
+   session id and the next 60 admin-fixture specs redirected to /LoginPage. Proven
+   from the proxy log (302s from 11:02:09) and the persona trace (login request's
+   cookie header = admin's id). `loginAs` now clears cookies before the POST.
+6. **Results persona's screen 403'd on `/rest/displayList/METHODS`**: `method:view`
+   was seeded to no base role. 012-004g grants it to the operational roles;
+   `SelfIdentityMethodsUngatedTest` asserts Results/Validation hold it.
+
+How to read an E2E / Tests run for this branch: find the run whose "E2E Context"
+job log contains the PR sha; download the failing shard's job log; the
+`openelisglobal-proxy` group is the nginx access log (403/302 by path and minute);
+the `core-traces-*` artifact holds per-request cookies and response headers.
+
 ## Blockers
 
 - `Build + Test` has not completed on the current head (`f0dbe54fe`); only one
