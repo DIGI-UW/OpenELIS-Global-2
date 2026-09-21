@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.security.SystemContextTaskDecorator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -78,13 +77,13 @@ public class SchedulerConfig implements SchedulingConfigurer {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(10);
         scheduler.setThreadNamePrefix("oe-scheduled-");
-        // @Scheduled jobs are system-initiated: run them in system context so
-        // service-layer @PreAuthorize gates pass without a user Authentication.
-        // NOTE: preferred over develop's DelegatingSecurityContext + daemon token
-        // here because the DaemonAuthenticationToken carries only ROLE_SYSTEM, not
-        // the PRIV_* authorities the service gates check; SystemInitFlag is what
-        // SystemAwareSecurityExpressionRoot short-circuits on.
-        scheduler.setTaskDecorator(SystemContextTaskDecorator.systemContext());
+        // @Scheduled jobs are system-initiated and have no user to authenticate.
+        // Run them under the daemon IDENTITY rather than the SystemInitFlag blanket
+        // override: SystemAwareSecurityExpressionRoot now satisfies PRIV_* gates for
+        // a caller holding ROLE_SYSTEM, so the token is sufficient — and unlike the
+        // flag it is a real principal, so audited writes attribute to the daemon
+        // system user instead of to nobody.
+        scheduler.setTaskDecorator(runnable -> () -> daemonContextExecutor.executeAsDaemon(runnable));
         scheduler.initialize();
         return scheduler;
     }

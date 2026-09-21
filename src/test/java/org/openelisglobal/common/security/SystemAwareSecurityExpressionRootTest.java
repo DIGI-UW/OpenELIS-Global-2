@@ -78,4 +78,97 @@ public class SystemAwareSecurityExpressionRootTest {
         assertTrue(root.isAuthenticated());
         verify(delegate, never()).isAuthenticated();
     }
+
+    // --- ROLE_SYSTEM (daemon identity) ---
+    //
+    // These cover the route that replaces SystemInitFlag for system-initiated work:
+    // a caller holding DaemonAuthenticationToken satisfies PRIV_* gates by
+    // IDENTITY,
+    // with no thread-local override involved. See T2.
+
+    private static org.springframework.security.core.Authentication authWith(String... authorities) {
+        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("who", "creds",
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList(authorities));
+    }
+
+    @Test
+    public void hasAuthority_isSatisfied_byRoleSystem_withoutTheFlag() {
+        when(delegate.getAuthentication()).thenReturn(authWith("ROLE_SYSTEM"));
+
+        assertFalse("precondition: the thread-local override must NOT be active", SystemInitFlag.isSet());
+        assertTrue(root.hasAuthority("PRIV_ANYTHING"));
+        verify(delegate, never()).hasAuthority("PRIV_ANYTHING");
+    }
+
+    @Test
+    public void hasPrivilege_isSatisfied_byRoleSystem_withoutTheFlag() {
+        when(delegate.getAuthentication()).thenReturn(authWith("ROLE_SYSTEM"));
+
+        assertTrue(root.hasPrivilege("PRIV_ANYTHING"));
+        verify(delegate, never()).hasAuthority("PRIV_ANYTHING");
+    }
+
+    /**
+     * Inversion: an ordinary authenticated user must NOT be treated as system. If
+     * hasSystemRole() ever matched on something broader than the exact ROLE_SYSTEM
+     * authority, this is the test that fails.
+     */
+    @Test
+    public void ordinaryUser_isNotTreatedAsSystem() {
+        when(delegate.getAuthentication()).thenReturn(authWith("PRIV_RESULT_VIEW", "ROLE_RESULTS"));
+        when(delegate.hasAuthority("PRIV_PATIENT_DELETE")).thenReturn(false);
+
+        assertFalse(root.hasAuthority("PRIV_PATIENT_DELETE"));
+        verify(delegate).hasAuthority("PRIV_PATIENT_DELETE");
+    }
+
+    /**
+     * A near-miss authority must not be mistaken for the daemon identity — guards
+     * against a prefix/contains check creeping in.
+     */
+    @Test
+    public void similarlyNamedAuthority_isNotTreatedAsSystem() {
+        when(delegate.getAuthentication()).thenReturn(authWith("ROLE_SYSTEM_ADMIN", "PRIV_SYSTEM"));
+        when(delegate.hasAuthority("PRIV_PATIENT_DELETE")).thenReturn(false);
+
+        assertFalse(root.hasAuthority("PRIV_PATIENT_DELETE"));
+    }
+
+    @Test
+    public void unauthenticatedToken_carryingRoleSystem_isNotTreatedAsSystem() {
+        // The 3-arg UsernamePasswordAuthenticationToken constructor marks itself
+        // authenticated and refuses setAuthenticated(false), so build an
+        // unauthenticated token that still advertises ROLE_SYSTEM directly.
+        org.springframework.security.core.Authentication token = mock(
+                org.springframework.security.core.Authentication.class);
+        when(token.isAuthenticated()).thenReturn(false);
+        org.mockito.Mockito.<java.util.Collection<? extends org.springframework.security.core.GrantedAuthority>>when(
+                token.getAuthorities()).thenReturn(
+                        org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_SYSTEM"));
+        when(delegate.getAuthentication()).thenReturn(token);
+        when(delegate.hasAuthority("PRIV_ANYTHING")).thenReturn(false);
+
+        assertFalse(root.hasAuthority("PRIV_ANYTHING"));
+    }
+
+    @Test
+    public void noAuthentication_doesNotThrow_andDelegates() {
+        when(delegate.getAuthentication()).thenReturn(null);
+        when(delegate.hasAuthority("PRIV_ANYTHING")).thenReturn(false);
+
+        assertFalse(root.hasAuthority("PRIV_ANYTHING"));
+        verify(delegate).hasAuthority("PRIV_ANYTHING");
+    }
+
+    /**
+     * denyAll() must stay deny even for the daemon — it is the one expression whose
+     * whole purpose is to be unsatisfiable.
+     */
+    @Test
+    public void denyAll_staysDenied_forRoleSystem() {
+        when(delegate.getAuthentication()).thenReturn(authWith("ROLE_SYSTEM"));
+        when(delegate.denyAll()).thenReturn(false);
+
+        assertFalse(root.denyAll());
+    }
 }

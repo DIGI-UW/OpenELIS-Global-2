@@ -6,7 +6,7 @@ on that branch. Each file is standalone; nothing here blocks the others.
 | Task | Severity | Decision (2026-09-21) |
 | --- | --- | --- |
 | [T1 — ungated @Service classes](t1-ungated-service-classes.md) | HIGH | **DONE.** 16 gated, 25 exempted with justification; regression test added. |
-| [T2 — SystemInitFlag bypass](t2-systeminitflag-bypass.md) | HIGH | **Gates accept `ROLE_SYSTEM`.** Delete the flag; daemon identity satisfies gates at one central expression handler. |
+| [T2 — SystemInitFlag bypass](t2-systeminitflag-bypass.md) | HIGH | **Partly done.** Gates accept `ROLE_SYSTEM`; scheduler on daemon identity. Flag can't be deleted — 6 sites escalate a *live user*, not a daemon. |
 | [T3 — interceptor fails open](t3-interceptor-fails-open.md) | HIGH | **Re-scoped.** Accept fail-open + fix the PR text; deny-by-default is follow-on (838 endpoints vs 9 seeded rows). |
 | [T4 — Global Admin by mutable name](t4-global-admin-identity.md) | MEDIUM | Not yet decided — self-contained, can follow. |
 | [T5 — verify the 339 gates](t5-verify-gates-e2e.md) | HIGH | In progress: rebase → push → get `Build + Test` to complete. |
