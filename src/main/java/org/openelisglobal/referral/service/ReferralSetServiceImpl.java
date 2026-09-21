@@ -279,12 +279,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                     if (referralItem.getReferredTestId().equals(analysis.getTest().getId())) {
                         referral.setAnalysis(analysis);
 
-                        // The Result Entry route flags the analysis when it raises a
-                        // referral. Order Entry did not, so the same referral left the
-                        // analysis looking like ordinary in-house work to every report
-                        // and to the Result Entry screen.
-                        markAnalysisReferredOut(analysis, updateData.getCurrentUserId());
-
                         String testResultType = testService.getResultType(analysis.getTest());
                         result.setResultType(testResultType);
                         result.setAnalysis(analysis);
@@ -292,6 +286,13 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                 }
             }
             referral.setReferralReasonId(referralItem.getReferralReasonId());
+
+            // The Result Entry route flags the analysis when it raises a referral.
+            // Order Entry did not, so the same referral left the analysis looking
+            // like ordinary in-house work to every report and to the Result Entry
+            // screen. Flag the one analysis the referral is attached to: the same
+            // test can sit on two sample items, and only this one was referred.
+            markAnalysisReferredOut(referral.getAnalysis(), updateData.getCurrentUserId());
 
             referralService.insert(referral);
             insertInitialDraftHistory(referral.getId(), updateData.getCurrentUserId());
@@ -482,7 +483,7 @@ public class ReferralSetServiceImpl implements ReferralSetService {
      * insert carries it.
      */
     private void markAnalysisReferredOut(Analysis analysis, String currentUserId) {
-        if (analysis.isReferredOut()) {
+        if (analysis == null || analysis.isReferredOut()) {
             return;
         }
         analysis.setReferredOut(true);

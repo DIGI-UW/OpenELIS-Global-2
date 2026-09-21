@@ -956,6 +956,13 @@ const UnifiedResults: React.FC = () => {
               delete next[key];
               return next;
             });
+            // The referral now holds the date, so the row must not carry it
+            // into its next save the way a draft would.
+            setReferenceLabReportDates((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
             setRejectDrafts((current) => {
               const next = { ...current };
               delete next[key];

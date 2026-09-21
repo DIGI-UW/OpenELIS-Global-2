@@ -149,11 +149,19 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
         reportParameters.put("referralSiteName", reportLocation == null ? "" : reportLocation.getOrganizationName());
         reportParameters.put("directorName",
                 ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName));
-        // Only site-suffixed variants of report.labName.one/two exist in the
-        // message bundles, so looking the bare keys up printed the keys themselves
-        // in the header. Name the laboratory the way every other report does.
-        reportParameters.put("labName1", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
-        reportParameters.put("labName2", "");
+        reportParameters.put("labName1", configuredHeaderLine("report.labName.one",
+                ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName)));
+        reportParameters.put("labName2", configuredHeaderLine("report.labName.two", ""));
+    }
+
+    /**
+     * The header line this deployment configured, or {@code fallback} when it
+     * configured none. Only site-suffixed variants of these keys ship, so a site
+     * without one used to print the key itself across the top of the report.
+     */
+    private String configuredHeaderLine(String key, String fallback) {
+        String configured = MessageUtil.getContextualMessage(key);
+        return MessageUtil.messageNotFound(configured, key) ? fallback : configured;
     }
 
     /** ReferredOutBySite prints the Test column as plain text. */

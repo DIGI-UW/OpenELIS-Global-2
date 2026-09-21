@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -441,39 +442,83 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
      * so the same test referred from Result Entry and from Order Entry ended up in
      * two different states: every workload report counted the Order Entry one as
      * this laboratory's own work, and Result Entry showed no referral marker on it.
+     *
+     * <p>
+     * The flag belongs to the one analysis the referral is attached to. The same
+     * test can sit on two specimens of one sample, and referring one of them does
+     * not make the other the reference laboratory's work, so the two analyses here
+     * share a test and only one of them may come back flagged.
      */
     @Test
-    public void createDraftReferralSetsForOrderEntry_flagsTheReferredAnalysisAsReferredOut() {
-        List<Analysis> allAnalyses = analysisService.getAll();
+    public void createDraftReferralSetsForOrderEntry_flagsOnlyTheAnalysisCarryingTheReferral() {
+        // Refer a test that is not already flagged, so the flag this test is about
+        // is the one the save has to write.
+        Analysis target = analysisService.getAll().stream().filter(analysis -> !analysis.isReferredOut()).findFirst()
+                .orElseThrow();
+        String targetTestId = target.getTest().getId();
+        String siblingId = insertSecondAnalysisForSameTest(target);
+
+        List<Analysis> analysesForSave = analysisService.getAll();
         SampleAddService.SampleTestCollection sampleTestCollection = getSampleTestCollection();
-        sampleTestCollection.analysises = allAnalyses;
+        sampleTestCollection.analysises = analysesForSave;
         List<SampleAddService.SampleTestCollection> sampleItemsTests = new ArrayList<>(List.of(sampleTestCollection));
 
-        // Refer a test that is not already referred, so the flag this test is
-        // about is the one the save has to write.
-        Analysis target = allAnalyses.stream().filter(a -> !a.isReferredOut()).findFirst().orElseThrow();
-        String targetTestId = target.getTest().getId();
         ReferralItem referralItem = referralItemService.getReferralItems().get(0);
         referralItem.setReferralId(null);
         referralItem.setReferredTestId(targetTestId);
         List<ReferralItem> referralItems = new ArrayList<>(List.of(referralItem));
 
-        // Referring flags every analysis of that test; everything else keeps the
-        // flag it had.
-        Map<String, Boolean> expectedAfterSave = allAnalyses.stream().collect(
-                Collectors.toMap(Analysis::getId, a -> a.isReferredOut() || targetTestId.equals(a.getTest().getId())));
-        assertEquals(false, expectedAfterSave.get(target.getId()) == null);
-        assertEquals(true, expectedAfterSave.get(target.getId()));
-        // Something must stay unflagged, or "everything is flagged" would pass.
-        assertEquals(true, expectedAfterSave.containsValue(false));
+        // Two analyses carry the referred test, so "flag every analysis of that
+        // test" and "flag the analysis the referral names" cannot both pass.
+        assertEquals(2L,
+                analysesForSave.stream().filter(analysis -> targetTestId.equals(analysis.getTest().getId())).count());
+        Map<String, Boolean> flaggedBeforeSave = flaggedByAnalysisId();
+        assertEquals(false, flaggedBeforeSave.get(target.getId()));
+        assertEquals(false, flaggedBeforeSave.get(siblingId));
+        Set<String> referralIdsBeforeSave = referralService.getAll().stream().map(Referral::getId)
+                .collect(Collectors.toSet());
 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("3901");
         updateData.setSampleItemsTests(sampleItemsTests);
         referralSetService.createDraftReferralSetsForOrderEntry(referralItems, updateData);
 
-        Map<String, Boolean> flaggedAfterSave = analysisService.getAll().stream()
-                .collect(Collectors.toMap(Analysis::getId, Analysis::isReferredOut));
+        Map<String, Boolean> flaggedAfterSave = flaggedByAnalysisId();
+        List<String> newlyFlagged = flaggedAfterSave.entrySet().stream()
+                .filter(entry -> entry.getValue() && !flaggedBeforeSave.getOrDefault(entry.getKey(), false))
+                .map(Map.Entry::getKey).collect(Collectors.toList());
+
+        // Exactly the analysis the new referral was attached to, and nothing else.
+        List<Referral> created = referralService.getAll().stream()
+                .filter(referral -> !referralIdsBeforeSave.contains(referral.getId())).collect(Collectors.toList());
+        assertEquals(1, created.size());
+        String referredAnalysisId = created.get(0).getAnalysis().getId();
+        assertEquals(List.of(referredAnalysisId), newlyFlagged);
+
+        // Every other analysis keeps the flag it had, the untouched sibling included.
+        Map<String, Boolean> expectedAfterSave = new HashMap<>(flaggedBeforeSave);
+        expectedAfterSave.put(referredAnalysisId, true);
         assertEquals(expectedAfterSave, flaggedAfterSave);
+    }
+
+    private Map<String, Boolean> flaggedByAnalysisId() {
+        return analysisService.getAll().stream().collect(Collectors.toMap(Analysis::getId, Analysis::isReferredOut));
+    }
+
+    /**
+     * The same test on a second specimen of the sample, so the save has a choice to
+     * get wrong. Returns the new analysis id.
+     */
+    private String insertSecondAnalysisForSameTest(Analysis target) {
+        Analysis sibling = new Analysis();
+        sibling.setSampleItem(target.getSampleItem());
+        sibling.setTest(target.getTest());
+        sibling.setAnalysisType("ROUTINE");
+        sibling.setRevision("1");
+        sibling.setStartedDate(target.getStartedDate());
+        sibling.setStatusId(target.getStatusId());
+        sibling.setFhirUuid(UUID.randomUUID());
+        sibling.setSysUserId("1");
+        return analysisService.insert(sibling);
     }
 
     @Test

@@ -567,10 +567,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             date belongs to the referral, not to this laboratory's entry date,
             and the External Referrals report prints it. */}
         {row.referredOut && (
-          <div
-            className="unifiedReferralReportDate"
-            data-testid={`referral-report-date-row-${rowKey}`}
-          >
+          <div data-testid={`referral-report-date-row-${rowKey}`}>
             <TextInput
               id={`referral-report-date-${rowKey}`}
               labelText={intl.formatMessage({
