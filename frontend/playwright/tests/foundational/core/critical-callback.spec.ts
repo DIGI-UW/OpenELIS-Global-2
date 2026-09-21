@@ -9,6 +9,10 @@ import {
   CriticalBandSeed,
 } from "../../../helpers/seed-callback-data";
 import {
+  SettingsMenu,
+  SiteInformationPage,
+} from "../../../fixtures/esig-admin";
+import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
@@ -31,6 +35,27 @@ const API_PREFIX = "/api/OpenELIS-Global";
 const ORDERED_TEST_ID = 13;
 const CRITICAL_VALUE = "95"; // at/beyond the seeded high bound (10–90 band)
 const RECIPIENT = `E2E Dr. Callback ${Date.now().toString(36)}`;
+
+// The needs-callback banner, the Log-callback button and the modal live in the
+// legacy SearchResultForm; the unified worklist has no callback capture yet, so
+// this loop is only reachable with the unified route off. The route ships on by
+// default, so this spec turns it off for its own run and puts it back, the way
+// ogc-1121-critical-result-flag reaches the same screen. Drop this once the
+// banner and modal are ported to the unified page.
+const UNIFIED_ROUTE_SETTING = "resultsEntryUnifiedRoute";
+const RESULT_CONFIG_MENU: SettingsMenu = "ResultConfigurationMenu";
+
+async function isUnifiedRouteOn(page: Page): Promise<boolean> {
+  const menu = new SiteInformationPage(page, RESULT_CONFIG_MENU);
+  await menu.goto();
+  return /true/i.test(await menu.getSettingValue(UNIFIED_ROUTE_SETTING));
+}
+
+async function setUnifiedRoute(page: Page, on: boolean): Promise<void> {
+  const menu = new SiteInformationPage(page, RESULT_CONFIG_MENU);
+  await menu.goto();
+  await menu.setBooleanSetting(UNIFIED_ROUTE_SETTING, on);
+}
 
 /** Toggle the CALLBACK indicator via the OGC-709 manage endpoint. */
 async function putCallbackConfig(page: Page, enabled: boolean): Promise<void> {
@@ -63,9 +88,20 @@ async function putCallbackConfig(page: Page, enabled: boolean): Promise<void> {
 test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
   let band: CriticalBandSeed;
   let accessionNumber: string;
+  let unifiedWasOn = false;
 
-  test.beforeAll(() => {
+  test.beforeAll(async ({ browser }) => {
     band = seedCriticalBand(ORDERED_TEST_ID, 10, 90);
+    const ctx = await browser.newContext({
+      storageState: "playwright/.auth/user.json",
+    });
+    const page = await ctx.newPage();
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 });
+    unifiedWasOn = await isUnifiedRouteOn(page);
+    if (unifiedWasOn) {
+      await setUnifiedRoute(page, false);
+    }
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
@@ -77,6 +113,9 @@ test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
     const page = await ctx.newPage();
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 });
     await putCallbackConfig(page, false);
+    if (unifiedWasOn) {
+      await setUnifiedRoute(page, true);
+    }
     await ctx.close();
   });
 
