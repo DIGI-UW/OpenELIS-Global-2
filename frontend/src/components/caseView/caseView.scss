@@ -1,0 +1,60 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+// The shared skeleton for the anatomic-pathology case views. Only the three
+// things Carbon does not already give the shell live here: the section header
+// row, the sticky summary and the action bar. Carbon already dims a disabled
+// accordion heading and sets cursor: not-allowed on it, so none of that is
+// repeated.
+
+.case-view__section-title {
+  align-items: center;
+  display: flex;
+  gap: spacing.$spacing-03;
+  justify-content: space-between;
+  inline-size: 100%;
+}
+
+.case-view__locked-hint {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-secondary);
+}
+
+.case-view__summary {
+  background-color: var(--cds-layer);
+  padding: spacing.$spacing-05;
+  position: sticky;
+  inset-block-start: spacing.$spacing-05;
+}
+
+.case-view__summary-row {
+  display: flex;
+  gap: spacing.$spacing-03;
+  justify-content: space-between;
+  padding-block: spacing.$spacing-02;
+}
+
+.case-view__summary-label {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-secondary);
+}
+
+.case-view__action-bar {
+  align-items: center;
+  border-block-start: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  justify-content: space-between;
+  padding-block: spacing.$spacing-05;
+}
+
+.case-view__action-bar-status,
+.case-view__action-bar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}

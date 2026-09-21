@@ -7,6 +7,12 @@
     License for the specific language governing rights and limitations under
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<!-- testdata/pathology-sample.xml with the patient rows the display items
+    need: PathologyDisplayService reads the case's patient through sample_human
+    and renders the person's names, so a pathology case with no patient behind
+    it cannot be converted at all. Case 1 holds an open request (301), case 2
+    holds only a closed one (302), which is the pair the open-request flag is
+    read against. -->
 <dataset>
     <system_user id="1001" lastupdated="2024-06-08 14:00:00.0"
         external_id="EXT001" login_name="technician1" first_name="John"
@@ -20,6 +26,16 @@
     <system_user id="1004" lastupdated="2024-06-08 14:00:00.0"
         external_id="EXT004" login_name="technician2" first_name="Kunta"
         last_name="Kinte" initials="KK" is_active="Y" is_employee="Y" />
+
+    <person id="1" last_name="Okello" first_name="Grace"
+        lastupdated="2024-06-03 12:00:00" />
+    <person id="2" last_name="Abwot" first_name="Denis"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1988-04-11 00:00:00" lastupdated="2024-06-03 12:00:00" />
+    <patient id="2" person_id="2" gender="M"
+        birth_date="1975-09-02 00:00:00" lastupdated="2024-06-03 12:00:00" />
 
     <program id="1" lastupdated="2024-06-10 12:00:00.0"
         code="PROG001" name="Blood Test Program" manually_changed="false" />
@@ -36,6 +52,12 @@
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" samp_id="2" patient_id="2"
+        lastupdated="2023-11-01 12:00:00" />
+
     <program_sample id="1" program_id="1" sample_id="1"
         last_updated="2024-06-10 12:00:00.0" />
 
@@ -54,13 +76,16 @@
         block_number="11" location="Lab 1" />
     <pathology_slide id="201" pathology_sample_id="1"
         file_type="JPEG" location="Slide Storage 1" />
+
     <pathology_request id="301" pathology_sample_id="1"
-        status="OPENED" type="DICTIONARY" value="HISTOLOGY" />
+        status="OPENED" type="TEXT" value="Histology review" />
+    <pathology_request id="302" pathology_sample_id="2"
+        status="COMPLETED" type="TEXT" value="Histology review" />
 
     <pathology_technique id="401"
         pathology_sample_id="1" type="TEXT" value="Frozen Section" />
     <pathology_conclusion id="501"
-        pathology_sample_id="1" type="DICTIONARY" value="Benign Tumor" />
+        pathology_sample_id="1" type="TEXT" value="Benign Tumor" />
     <pathology_report id="601" pathology_sample_id="1"
         file_type="PDF" report_type="PATHOLOGY" />
 </dataset>
