@@ -12,6 +12,7 @@ import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 
 /**
  * Pure rules behind the Validation queue's "Check before release" signals
@@ -20,8 +21,10 @@ import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
  * <p>
  * Kept free of Spring and persistence so every rule is unit-testable in
  * isolation; {@link ResultsValidationUtility} loads the inputs and calls these.
- * The fail-safe posture of FR-B1 applies throughout: an indeterminate input is
- * read as risk present, never as clearance.
+ * The fail-safe posture of FR-B1 applies to every input a row genuinely has: an
+ * indeterminate input is read as risk present, never as clearance. An input the
+ * row does not have at all, such as a quality-control evaluation on a patient
+ * sample, is neither (OGC-1226).
  */
 public final class ValidationSignals {
 
@@ -29,7 +32,10 @@ public final class ValidationSignals {
     public static final String QC_PASS = "PASS";
     /** QC evaluated for the analysis and at least one check failed. */
     public static final String QC_FAIL = "FAIL";
-    /** No QC evaluation exists — never to be read as "QC passed". */
+    /**
+     * No QC evaluation exists. Never read as "QC passed", and since OGC-1226 not
+     * read as a risk either: it is the absence of a fact about the row.
+     */
     public static final String QC_UNKNOWN = "UNKNOWN";
 
     /**
@@ -176,20 +182,64 @@ public final class ValidationSignals {
     }
 
     /**
-     * The Clear lane rule (OGC-1029, FR-B1), evaluated server-side on the row the
-     * queue itself served so a bulk release never trusts the client's list: in
-     * range with a known reference range, QC evaluated and passed, no open
-     * non-conformity, not modified after first save, not critical, not
-     * nonconforming, no critical-value acknowledgment pending. Fail-safe: any
-     * missing or indeterminate input (no range, QC unknown) is not clear.
+     * The clearance rule, stated once for every consumer: the queue's lanes, the
+     * bulk release and automated validation at result entry (OGC-1029 FR-B1 as
+     * superseded by OGC-1226 FR-1 to FR-3). A row is clear when its reference range
+     * is known and the value sits inside it, nothing has been raised against it (no
+     * open non-conformity, not modified after first save, not critical, not
+     * nonconforming, no critical-value acknowledgment pending) and it carries no
+     * recorded quality-control failure. The fail-safe posture holds for every input
+     * the row genuinely has, so a missing or indeterminate range is not clear. A
+     * quality-control evaluation that does not exist is not an input at all: it
+     * neither clears nor blocks, which is what lets an ordinary patient result,
+     * which never carries one, clear at all.
+     */
+    public static boolean isClear(boolean rangeKnown, boolean inRange, String qcStatus, boolean nceOpen,
+            boolean modified, boolean critical, boolean nonconforming, boolean ackPending) {
+        return rangeKnown && inRange && !QC_FAIL.equals(qcStatus) && !nceOpen && !modified && !critical
+                && !nonconforming && !ackPending;
+    }
+
+    /**
+     * The rule on a queue row, evaluated server-side on the row the queue itself
+     * served so a bulk release never trusts the client's list and the page never
+     * derives a lane of its own (FR-5, FR-6).
      */
     public static boolean isClear(AnalysisItem row) {
         if (row == null) {
             return false;
         }
         boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange());
-        return rangeKnown && row.isNormal() && QC_PASS.equals(row.getQcStatus()) && !row.isNceOpen()
-                && !row.isModified() && !row.isCritical() && !row.isNonconforming() && !row.isAckPending();
+        return isClear(rangeKnown, row.isNormal(), row.getQcStatus(), row.isNceOpen(), row.isModified(),
+                row.isCritical(), row.isNonconforming(), row.isAckPending());
+    }
+
+    /**
+     * The same rule at result entry (OGC-1226 FR-7), where no queue row exists yet
+     * and the range verdict comes from the result's own limit: a numeric value is
+     * in range only inside an authored normal range, a select-list value only when
+     * it is the authored expected-normal choice, and any other type has no range to
+     * judge against. Automated validation may finalize a result unattended only
+     * when this says clear, so automation never releases what the Clear lane would
+     * hold.
+     */
+    public static boolean isClearAtEntry(ResultLimit limit, String resultType, String value, String qcStatus,
+            boolean nceOpen, boolean modified, boolean nonconforming) {
+        boolean rangeKnown = false;
+        boolean inRange = false;
+        boolean critical = false;
+        if (limit != null && !GenericValidator.isBlankOrNull(limit.getId())) {
+            if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(resultType)) {
+                rangeKnown = !GenericValidator.isBlankOrNull(limit.getDictionaryNormalId());
+                inRange = rangeKnown && limit.getDictionaryNormalId().equals(value);
+            } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
+                rangeKnown = Double.isFinite(limit.getLowNormal()) || Double.isFinite(limit.getHighNormal());
+                String flag = resultFlag(limit, resultType, value);
+                inRange = FLAG_NORMAL.equals(flag);
+                critical = FLAG_CRITICAL.equals(flag);
+            }
+        }
+        return isClear(rangeKnown, inRange, qcStatus, nceOpen, modified, critical, nonconforming, false);
     }
 
     /**

@@ -44,14 +44,17 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
  * re-derives the Clear lane from its own load of the queue and releases only
  * the requested analyses that are clear, under the "allow bulk release of clear
  * results" flag. Fixture: {@code testdata/validation-bulk-release.xml} —
- * accession VAL-BR-001; analysis 100 is clear (10.5 in 5.0 - 20.0, QC passed),
- * analysis 102 is abnormal (25.0).
+ * accession VAL-BR-001; analysis 100 is clear (10.5 in 5.0 - 20.0, no QC
+ * evaluation, as on any patient result), analysis 102 is abnormal (25.0),
+ * analysis 104 is in range but carries a recorded QC failure (OGC-1226).
  */
 public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveTest {
 
     private static final String ACCESSION = "VAL-BR-001";
     private static final String CLEAR_ID = "100";
     private static final String ABNORMAL_ID = "102";
+    private static final String QC_FAILED_ACCESSION = "VAL-BR-002";
+    private static final String QC_FAILED_ID = "104";
 
     @Autowired
     private AnalysisService analysisService;
@@ -141,23 +144,38 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    public void theQueueGetServesBothRowsToThisValidator() throws Exception {
+    public void theQueueGetServesEveryRowToThisValidatorWithItsLane() throws Exception {
         mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
-                .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.resultList.length()").value(2));
+                .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.resultList.length()").value(2))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].clear").value(true))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + ABNORMAL_ID + "')].clear").value(false));
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", QC_FAILED_ACCESSION)
+                .param("doRange", "false").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList.length()").value(1))
+                .andExpect(jsonPath("$.resultList[0].analysisId").value(QC_FAILED_ID))
+                .andExpect(jsonPath("$.resultList[0].qcStatus").value("FAIL"))
+                .andExpect(jsonPath("$.resultList[0].clear").value(false));
     }
 
     @Test
-    public void theQueueItselfPutsOnlyTheInRangeRowInTheClearLane() {
-        List<AnalysisItem> rows = validationUtility
-                .getValidationAnalysisBySample(sampleService.getSampleByAccessionNumber(ACCESSION));
-        assertEquals(2, rows.size());
+    public void theQueueItselfPutsOnlyTheInRangeRowWithoutAQcFailureInTheClearLane() {
+        List<AnalysisItem> rows = new java.util.ArrayList<>(
+                validationUtility.getValidationAnalysisBySample(sampleService.getSampleByAccessionNumber(ACCESSION)));
+        rows.addAll(validationUtility
+                .getValidationAnalysisBySample(sampleService.getSampleByAccessionNumber(QC_FAILED_ACCESSION)));
+        assertEquals(3, rows.size());
         for (AnalysisItem row : rows) {
             boolean clear = org.openelisglobal.resultvalidation.util.ValidationSignals.isClear(row);
+            assertEquals("the served verdict is the rule's verdict for " + row.getAnalysisId(), clear, row.isClear());
             if (CLEAR_ID.equals(row.getAnalysisId())) {
-                assertTrue("10.5 inside 5.0 - 20.0 with QC passed is clear: " + row.getNormalRange() + " / "
+                assertTrue("10.5 inside 5.0 - 20.0 with no QC evaluation is clear: " + row.getNormalRange() + " / "
                         + row.getQcStatus() + " / normal=" + row.isNormal(), clear);
-            } else {
+                assertEquals(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_UNKNOWN, row.getQcStatus());
+            } else if (ABNORMAL_ID.equals(row.getAnalysisId())) {
                 assertTrue("25.0 above the range is not clear", !clear);
+            } else {
+                assertEquals(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_FAIL, row.getQcStatus());
+                assertTrue("a recorded QC failure is not clear", !clear);
             }
         }
     }
@@ -215,6 +233,21 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 analysisService.get(ABNORMAL_ID).getStatusId());
         assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(CLEAR_ID).getStatusId());
+    }
+
+    @Test
+    public void bulkRelease_neverReleasesARowWithARecordedQcFailure() throws Exception {
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"accessionNumber\":\"" + QC_FAILED_ACCESSION + "\",\"doRange\":false,\"rows\":["
+                        + "{\"analysisId\":\"" + QC_FAILED_ID + "\",\"accessionNumber\":\"" + QC_FAILED_ACCESSION
+                        + "\",\"note\":\"\",\"noteVisibility\":\"\",\"noteContext\":\"VALIDATION\"}]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                .andExpect(jsonPath("$.skipped[0].analysisId").value(QC_FAILED_ID))
+                .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get(QC_FAILED_ID).getStatusId());
     }
 
     @Test

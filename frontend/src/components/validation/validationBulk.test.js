@@ -22,19 +22,20 @@ const row = (id, overrides = {}) => ({
   ackPending: false,
   nonconforming: false,
   critical: false,
+  clear: true,
   ...overrides,
 });
 
 describe("clearRows", () => {
-  it("returns only the Clear-lane rows, in queue order", () => {
+  it("returns only the rows the server holds clear, in queue order", () => {
     const triaged = triageRows([
       row(0),
-      row(1, { normal: false }),
+      row(1, { normal: false, clear: false }),
       row(2, { qcStatus: "UNKNOWN" }),
       row(3),
-      row(4, { modified: true }),
+      row(4, { modified: true, clear: false }),
     ]);
-    expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 3]);
+    expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 2, 3]);
     expect(clearRows(undefined)).toEqual([]);
   });
 });
