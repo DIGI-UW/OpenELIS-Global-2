@@ -67,10 +67,12 @@ describe("PatientHeader", () => {
     expect(screen.queryAllByTestId("case-assigned-staff")).toHaveLength(0);
   });
 
-  // This component is rendered by roughly thirty screens, so the two new props
-  // have to be inert for all of them: with neither prop the markup must be
-  // what it was before they existed, the details column still spanning the
-  // full width beside the avatar and no third column present at all.
+  // This component is rendered by six screens — the pathology, cytology and
+  // immunohistochemistry case views, Modify Order, the results viewer and the
+  // generic program case view — so the two new props have to be inert for all
+  // of them: with neither prop the markup must be what it was before they
+  // existed, the details column still spanning the full width beside the
+  // avatar and no third column present at all.
   it("leaves the layout untouched for the screens that pass neither new prop", () => {
     const { container } = renderHeader();
 
