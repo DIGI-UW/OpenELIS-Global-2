@@ -83,12 +83,22 @@ async function allocatedNceNumber(
     `${REST}/viewNonConformEvents?labNumber=${encodeURIComponent(labOrderNumber)}`,
   );
   expect(res.status()).toBe(200);
-  const body = await res.json();
-  const rows = Array.isArray(body) ? body : [body];
+  // The endpoint answers with a single NonConformingEventForm and carries the
+  // events under nceEventsSearchResults — the same shape ViewNonConforming.jsx
+  // reads. There is no top-level nceNumber on that form. A miss is not an empty
+  // list: the controller answers 200 with the bare string "No results found for
+  // search criteria.", so quote the body to tell a miss from a shape change.
+  const body = await res.text();
+  let rows: Array<{ nceNumber?: string }> = [];
+  try {
+    rows = JSON.parse(body)?.nceEventsSearchResults ?? [];
+  } catch {
+    // a miss is not JSON at all, so leave rows empty and let the message quote it
+  }
   const found = rows.find((r) => r?.nceNumber)?.nceNumber;
   expect(
     found,
-    `created NCE for ${labOrderNumber} must be findable`,
+    `created NCE for ${labOrderNumber} must be findable, got: ${body.slice(0, 200)}`,
   ).toBeTruthy();
   return String(found);
 }
