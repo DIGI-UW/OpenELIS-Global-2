@@ -3,6 +3,7 @@ package org.openelisglobal.compliance.service;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.compliance.controller.rest.ComplianceThresholdListItem;
 import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
@@ -16,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * DTO-returning variants so REST controllers stay thin (no lazy-association
  * traversal in the web layer).
  */
+@CrudPrivileges(write = "PRIV_TEST_CONFIGURE")
 public interface ComplianceThresholdService extends BaseObjectService<ComplianceThreshold, String> {
 
     /** All thresholds for a parameter group, ordered by sort order. */

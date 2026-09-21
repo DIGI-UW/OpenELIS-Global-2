@@ -3,6 +3,7 @@ package org.openelisglobal.compliance.service;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.compliance.valueholder.ParameterGroup;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 /**
  * ParameterGroupService — manages parameter groups within compliance standards.
  */
+@CrudPrivileges(write = "PRIV_SAMPLE_TYPE_MANAGE")
 public interface ParameterGroupService extends BaseObjectService<ParameterGroup, String> {
 
     /** All parameter groups for a standard, ordered. */

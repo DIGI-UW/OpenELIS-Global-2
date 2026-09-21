@@ -1,11 +1,13 @@
 package org.openelisglobal.test.service;
 
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_TEST_CONFIGURE")
 public interface TestSectionService extends BaseObjectService<TestSection, String> {
 
     /**

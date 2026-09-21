@@ -1,11 +1,13 @@
 package org.openelisglobal.inventory.service;
 
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_INVENTORY_MANAGE")
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
     @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")

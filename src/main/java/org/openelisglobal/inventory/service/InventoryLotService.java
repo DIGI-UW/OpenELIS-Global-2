@@ -2,12 +2,14 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_INVENTORY_MANAGE")
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
     /** Locks and returns a lot for an atomic eligibility check and consumption. */

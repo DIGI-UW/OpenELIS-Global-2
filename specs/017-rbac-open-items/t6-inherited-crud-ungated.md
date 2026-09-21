@@ -80,6 +80,60 @@ service a live test proves reachable. (b) is the cheapest but leaves the
 "missed write lands on *:view*" edge. Whichever is chosen, the ratchet's rule for
 "covered" (`InheritedCrudGateCoverageTest`) should be updated to match.
 
+## DECIDED 2026-09-21 — shape (c), scoped to controller-reachable services
+
+`BaseObjectService`'s 40 methods now carry one `@PreAuthorize` each, delegating to
+`CrudGate` (static, so it works in every method-security context including slice
+tests). `CrudGate` resolves, per call: the descendant interface's
+`@CrudPrivileges(read=…, write=…)` → else its type-level `@PreAuthorize` (so the 92
+already-covered services behave exactly as before; once `BaseObjectService` has a
+method-level annotation, Spring stops consulting the descendant's type-level one
+for inherited methods, and the fallback re-applies it) → else open.
+
+**A finding that changed the fix.** The "redeclare inherited CRUD with a gate"
+approach — what `AlertService` briefly had, and what `LocalizationService`,
+`MenuService` and `UnitOfMeasureService` had before this PR — is **not enforced in
+production**. Spring Security 6.2 resolves `@PreAuthorize` against the most specific
+method, which for an inherited implementation is declared in
+`BaseObjectServiceImpl`, whose type hierarchy does not include the descendant
+interface. It only appears to work in slice tests, where the bean is a JDK-proxy
+stub whose class does implement the interface. `BaseObjectServiceCrudGateTest`
+pins this in the production shape (abstract generic impl + descendant interface +
+real proxied bean). Those three dead redeclarations are removed and the interfaces
+carry `@CrudPrivileges(write=…)` instead; rule 1 of the ratchet forbids the shape.
+
+**Scope applied.** Of the 110 method-gated-only services, 41 have inherited CRUD
+reachable from a controller, 21 with an inherited write. Because the gate applies
+to *every* caller under the user's authentication, not just controllers, each write
+privilege was checked against the internal callers too:
+
+| declared `write=` | services |
+|---|---|
+| `PRIV_TEST_CONFIGURE` | TestService, TestSectionService, UnitOfMeasureService, ComplianceThresholdService |
+| `PRIV_SAMPLE_TYPE_MANAGE` | ComplianceStandardService, ParameterGroupService, VectorSamplingSiteService |
+| `PRIV_INVENTORY_MANAGE` | InventoryItemService, InventoryLotService |
+| `PRIV_LOCALIZATION_MANAGE` | LocalizationService, SupportedLocaleService |
+| `PRIV_DICTIONARY_MANAGE` | DictionaryService |
+| `PRIV_EXTCONNECTION_MANAGE` | ExternalConnectionService |
+| `PRIV_SYSTEM_CONFIGURE` | MenuService |
+| `PRIV_ORDER_EDIT` | ElectronicOrderService |
+| `PRIV_ALERT_MANAGE` (+ `read=PRIV_ALERT_VIEW`) | AlertService |
+
+Their callers are admin configuration screens, configuration import (system
+context) or the daemon, so the roles that reach them hold the privilege.
+
+**Left open on purpose (in BASELINE, with the reason):**
+`SampleItemService` and `AnalysisService` (inserted by `Accessioner` during order
+entry and by result-entry persistence: Reception lacks `result:enter`, Results lacks
+`order:edit`), `OrganizationService` (`SamplePatientEntryServiceImpl.insert` creates
+organisations during order entry), `ReferralService` (`LogbookPersistServiceImpl`
+during result entry; Results holds only `referral:view`), `NceSpecimenService`
+(sample rejection by Reception; only Validation holds `nce:edit`), `HistoryService`
+(`AuditTrailServiceImpl.insert` on every audited write), `SiteInformationService`
+(`ShippingBoxRestController` updates a site setting during shipment creation).
+Gating these needs either a workflow-scoped privilege or a seed change, not a
+one-line declaration. Reads on all 94 baseline services also stay open.
+
 ## Definition of done
 
 - [x] Pin the semantic the finding rests on (type-level covers inherited;
@@ -88,6 +142,9 @@ service a live test proves reachable. (b) is the cheapest but leaves the
       writes and the reads the alerts bell uses.
 - [x] Ratchet: `InheritedCrudGateCoverageTest` — no new offenders; baseline only
       shrinks.
-- [ ] Decide (a)/(b)/(c).
-- [ ] Controller-reachability scan of the 109 to order the work by exposure.
-- [ ] Work the baseline to zero; delete the ratchet or turn it into a hard rule.
+- [x] Decide (a)/(b)/(c) — (c).
+- [x] Controller-reachability scan — 41 reachable, 21 with writes.
+- [x] `@CrudPrivileges` on 16 interfaces; 3 dead redeclarations removed.
+- [ ] The 7 workflow-blocked services: choose scoped privileges or seed grants, then declare.
+- [ ] Inherited reads: declare `read=` per service (all 94 still open).
+- [ ] Work BASELINE to zero; then make rule 2 a hard rule and flip `CrudGate`'s undeclared default to deny.

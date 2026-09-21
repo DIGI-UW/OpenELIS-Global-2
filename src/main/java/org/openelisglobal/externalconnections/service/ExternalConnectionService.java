@@ -3,6 +3,7 @@ package org.openelisglobal.externalconnections.service;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
@@ -11,6 +12,7 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuth
 import org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_EXTCONNECTION_MANAGE")
 public interface ExternalConnectionService extends BaseObjectService<ExternalConnection, Integer> {
 
     @PreAuthorize("hasAuthority('PRIV_EXTCONNECTION_MANAGE')")

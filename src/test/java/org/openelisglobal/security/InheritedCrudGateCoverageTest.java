@@ -7,7 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -16,29 +18,35 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * Third structural blind spot in the RBAC coverage scans, after interfaces-only
- * (T1's {@code @Service} classes) and mock-annotation copying: a service
- * interface gated <em>per method</em> that extends {@code BaseObjectService}
- * inherits {@code get/getAll/insert/update/delete/save…} with <b>no gate at
- * all</b>. Only a TYPE-level {@code @PreAuthorize} covers inherited methods
- * ({@code ClassLevelPreAuthorizeSemanticsTest} pins that). With the
- * controller-level role checks removed by S011c, those inherited writes are
- * reachable by any authenticated user wherever a controller calls them. This is
- * how {@code DELETE /rest/alerts/{id}} returned 204 for a Reception user.
+ * Inherited CRUD (T6). Every service extending {@code BaseObjectService}
+ * inherits {@code get/getAll/insert/update/delete…}, gated once on
+ * {@code BaseObjectService} itself via {@code CrudGate}, which resolves the
+ * privilege from the descendant interface's {@code @CrudPrivileges}, else its
+ * type-level {@code @PreAuthorize}, else leaves the call OPEN. This test keeps
+ * that transitional "open" set from growing, and enforces the one shape that
+ * must never appear.
  *
  * <p>
- * This is a ratchet, not a fix. The baseline below is every offender at the
- * time it was written (see
- * specs/017-rbac-open-items/t6-inherited-crud-ungated.md). Two things may never
- * happen: a NEW method-gated-only {@code BaseObjectService} descendant appears
- * (gate it, do not extend the list), and a fixed one stays in the list (remove
- * it, so the list only shrinks).
+ * <b>Rule 1 (hard):</b> no descendant interface may redeclare a
+ * {@code BaseObjectService} method with its own {@code @PreAuthorize}. Such a
+ * gate is resolved against the most specific method — declared in
+ * {@code BaseObjectServiceImpl}, whose hierarchy does not include the
+ * descendant — and is therefore NOT enforced in production; a JDK-proxy stub in
+ * a slice test makes it look enforced. {@code BaseObjectServiceCrudGateTest}
+ * pins this. Declare {@code @CrudPrivileges} instead.
  *
  * <p>
- * "Covered" means: a type-level gate, or all eight inherited write methods
- * redeclared with a gate ({@code AlertService} is the worked example).
- * Inherited reads on the baseline services are also ungated; they are in scope
- * for T6 but not tracked by this ratchet.
+ * <b>Rule 2 (ratchet):</b> a method-gated-only descendant with no
+ * {@code @CrudPrivileges(write=…)} has open inherited writes. BASELINE is the
+ * set when this was written; it may only shrink. Seven of them are open on
+ * purpose for now because their inherited writes are called inside
+ * Reception/Results workflows (order entry, result entry, audit trail) whose
+ * roles do not hold the write privilege — see
+ * specs/017-rbac-open-items/t6-inherited-crud-ungated.md.
+ *
+ * <p>
+ * <b>Rule 3:</b> a declared {@code @CrudPrivileges} value must be a real
+ * {@code PRIV_*} authority, or the gate denies everyone silently.
  */
 public class InheritedCrudGateCoverageTest {
 
@@ -48,48 +56,71 @@ public class InheritedCrudGateCoverageTest {
             Pattern.DOTALL);
     private static final Pattern EXTENDS_BASE = Pattern
             .compile("public\\s+interface\\s+(\\w+)\\s+extends\\s+([^{]+)\\{");
-    private static final String[] WRITES = { "insert", "insertAll", "save", "saveAll", "update", "updateAll", "delete",
-            "deleteAll" };
-    private static final Pattern GATED_WRITE = Pattern
-            .compile("@PreAuthorize\\([^\\n]*\\)\\s*(?:@Override\\s*)?[\\w<>\\[\\], .]+\\s+(" + String.join("|", WRITES)
-                    + ")\\s*\\(");
+    private static final Pattern GENERICS = Pattern
+            .compile("BaseObjectService\\s*<\\s*([\\w.]+)\\s*,\\s*([\\w.]+)\\s*>");
+    private static final Pattern GATED_DECL = Pattern
+            .compile("@PreAuthorize\\([^\\n]*\\)\\s*(?:@Override\\s*)?[\\w<>\\[\\], .?]+\\s+(\\w+)\\s*\\(([^)]*)\\)");
+    private static final Pattern CRUD_PRIVILEGES = Pattern.compile("@CrudPrivileges\\(([^)]*)\\)");
+    private static final Pattern PRIV_VALUE = Pattern.compile("(read|write)\\s*=\\s*\"([^\"]*)\"");
+
+    /** BaseObjectService signatures with T/PK placeholders. */
+    private static final Map<String, String[]> CRUD = new LinkedHashMap<>();
+    static {
+        CRUD.put("get", new String[] { "PK" });
+        CRUD.put("getAll", new String[] {});
+        CRUD.put("insert", new String[] { "T" });
+        CRUD.put("insertAll", new String[] { "List<T>" });
+        CRUD.put("save", new String[] { "T" });
+        CRUD.put("saveAll", new String[] { "List<T>" });
+        CRUD.put("update", new String[] { "T" });
+        CRUD.put("updateAll", new String[] { "List<T>" });
+        CRUD.put("delete", new String[] { "T" });
+        CRUD.put("delete#2", new String[] { "PK", "String" });
+        CRUD.put("deleteAll", new String[] { "List<T>" });
+        CRUD.put("deleteAll#2", new String[] { "List<PK>", "String" });
+        CRUD.put("getCount", new String[] {});
+        CRUD.put("getPage", new String[] { "int" });
+        CRUD.put("getNext", new String[] { "String" });
+        CRUD.put("getPrevious", new String[] { "String" });
+        CRUD.put("hasNext", new String[] { "String" });
+        CRUD.put("hasPrevious", new String[] { "String" });
+    }
 
     /**
-     * Known offenders when this ratchet was written. Only ever remove from this
-     * list.
+     * Open-inherited-write services when this ratchet was (re)written. Only ever
+     * remove.
      */
-    static final Set<String> BASELINE = new TreeSet<>(Set.of("AnalysisService", "AnalyzerPluginConfigService",
-            "AnalyzerProfileBindingService", "AnalyzerService", "AnalyzerTypeService", "BarcodeLabelInfoService",
-            "CorrectiveActionService", "ComplianceStandardService", "ComplianceThresholdService",
-            "ParameterGroupService", "ConfigurationImportRunService", "ReferenceAliasService",
-            "UnresolvedReferenceService", "ElectronicOrderService", "DictionaryService", "DictionaryCategoryService",
-            "EQADistributionService", "EQALabProgramEnrollmentService", "EQAProgramEnrollmentService",
-            "EQAProgramService", "EQAResultService", "SampleEQAService", "ElectronicSignatureService",
-            "CertificateAuthenticationDataService", "ExternalConnectionService", "HistoryService", "ImageService",
-            "InventoryItemService", "InventoryLotService", "InventoryTransactionService", "InventoryUsageService",
-            "LocalizationService", "SupportedLocaleService", "MenuService", "MethodService", "NoteBookSampleService",
-            "NoteBookService", "AnalysisNotificationConfigService", "NotificationLogService",
-            "NotificationTriggerConfigService", "TestNotificationConfigService", "OrganizationService",
-            "OrganizationTypeService", "PanelItemService", "PanelTerminologyMappingService", "PatientIdDocumentService",
-            "PatientPhotoService", "PatientService", "ImmunohistochemistrySampleService", "PathologySampleService",
-            "ProgramSampleService", "CytologySampleService", "ProviderService", "SampleQaChecklistService",
+    static final Set<String> BASELINE = new TreeSet<>(Set.of("AnalysisNotificationConfigService", "AnalysisService",
+            "AnalyzerPluginConfigService", "AnalyzerProfileBindingService", "AnalyzerService", "AnalyzerTypeService",
+            "BarcodeLabelInfoService", "CertificateAuthenticationDataService", "ConfigurationImportRunService",
+            "CorrectiveActionService", "CytologySampleService", "DictionaryCategoryService", "EQADistributionService",
+            "EQALabProgramEnrollmentService", "EQAProgramEnrollmentService", "EQAProgramService", "EQAResultService",
+            "ElectronicSignatureService", "HistoryService", "ImageService", "ImmunohistochemistrySampleService",
+            "InventoryTransactionService", "InventoryUsageService", "ManualEntryFieldMapService", "MethodService",
             "NCEventService", "NceActionLogService", "NceAttachmentService", "NceCategoryService", "NceHistoryService",
-            "NceSpecimenService", "NceTypeService", "QCControlLotService", "QCResultService", "QCStatisticsService",
-            "WestgardRuleConfigService", "ReferenceTablesService", "ReferralService", "RenameMethodService",
-            "RenameTestSectionService", "ReportService", "ReportDefinitionService", "ManualEntryFieldMapService",
-            "RequesterTypeService", "ResultLimitService", "RoleService", "OrderAttachmentService",
-            "SampleOrderOverrideService", "SampleComplianceStandardService", "SampleAcceptanceRecordService",
-            "SampleHumanService", "SampleItemService", "SampleTypeRequestService",
+            "NceSpecimenService", "NceTypeService", "NoteBookSampleService", "NoteBookService",
+            "NotificationLogService", "NotificationTriggerConfigService", "OrderAttachmentService",
+            "OrganizationService", "OrganizationTypeService", "PanelItemService", "PanelTerminologyMappingService",
+            "PathologySampleService", "PatientIdDocumentService", "PatientPhotoService", "PatientService",
+            "ProgramSampleService", "ProviderService", "QCControlLotService", "QCResultService", "QCStatisticsService",
+            "ReferenceAliasService", "ReferenceTablesService", "ReferralService", "RenameMethodService",
+            "RenameTestSectionService", "ReportDefinitionService", "ReportService", "RequesterTypeService",
+            "ResultCalculationService", "ResultLimitService", "RoleService", "SampleAcceptanceRecordService",
+            "SampleComplianceStandardService", "SampleEQAService", "SampleHumanService", "SampleItemService",
+            "SampleOrderOverrideService", "SampleQaChecklistService", "SampleTypeRequestService",
             "SampleTypeTerminologyMappingService", "ScriptletService", "SiteBrandingService", "SiteInformationService",
             "StorageBoxService", "StorageDeviceService", "StorageRackService", "StorageRoomService",
-            "StorageShelfService", "SystemModuleService", "SystemUserService", "SystemUserSectionService",
-            "TestSectionService", "TestService", "TestAlertRuleService", "ResultCalculationService",
-            "TestQcTargetService", "TestCodeTypeService", "TestReflexService", "UnitOfMeasureService",
-            "UserRoleService", "VectorMolecularRecordService", "VectorSpecimenIdentificationService",
-            "VectorPoolService", "VectorSamplingSiteService", "VectorSpeciesService", "VectorTrapTypeService"));
+            "StorageShelfService", "SystemModuleService", "SystemUserSectionService", "SystemUserService",
+            "TestAlertRuleService", "TestCodeTypeService", "TestNotificationConfigService", "TestQcTargetService",
+            "TestReflexService", "UnresolvedReferenceService", "UserRoleService", "VectorMolecularRecordService",
+            "VectorPoolService", "VectorSpeciesService", "VectorSpecimenIdentificationService", "VectorTrapTypeService",
+            "WestgardRuleConfigService"));
 
-    static List<String> uncoveredNow() throws IOException {
-        List<String> out = new ArrayList<>();
+    record Scan(List<String> uncovered, List<String> deadGates, List<String> badPrivileges) {
+    }
+
+    static Scan scan(Set<String> knownPrivileges) throws IOException {
+        List<String> uncovered = new ArrayList<>(), dead = new ArrayList<>(), bad = new ArrayList<>();
         try (Stream<Path> files = Files.walk(MAIN)) {
             for (Path f : files.filter(p -> p.toString().endsWith("Service.java")).toList()) {
                 String src = Files.readString(f);
@@ -97,41 +128,87 @@ public class InheritedCrudGateCoverageTest {
                 if (!decl.find() || !decl.group(2).contains("BaseObjectService") || !src.contains("@PreAuthorize")) {
                     continue;
                 }
-                if (TYPE_LEVEL.matcher(src).find()) {
-                    continue; // type-level gate covers inherited methods
+                String name = decl.group(1);
+                Matcher g = GENERICS.matcher(decl.group(2));
+                String t = g.find() ? g.group(1) : "?", pk = g.find(0) ? g.group(2) : "?";
+                Matcher gd = GATED_DECL.matcher(src);
+                while (gd.find()) {
+                    List<String> params = new ArrayList<>();
+                    for (String raw : gd.group(2).split(",")) {
+                        if (!raw.isBlank()) {
+                            String[] parts = raw.trim().replaceAll("\\s+", " ").split(" ");
+                            params.add(String.join("", java.util.Arrays.copyOf(parts, parts.length - 1)));
+                        }
+                    }
+                    for (Map.Entry<String, String[]> e : CRUD.entrySet()) {
+                        if (!e.getKey().split("#")[0].equals(gd.group(1))) {
+                            continue;
+                        }
+                        List<String> expected = new ArrayList<>();
+                        for (String x : e.getValue()) {
+                            expected.add(x.replace("PK", pk).replace("T", t));
+                        }
+                        if (expected.equals(params)) {
+                            dead.add(name + "#" + gd.group(1) + params);
+                        }
+                    }
                 }
-                Set<String> gatedWrites = new TreeSet<>();
-                int gatedWriteDeclarations = 0;
-                Matcher w = GATED_WRITE.matcher(src);
-                while (w.find()) {
-                    gatedWrites.add(w.group(1));
-                    gatedWriteDeclarations++;
+                Matcher cp = CRUD_PRIVILEGES.matcher(src);
+                boolean writeDeclared = false;
+                if (cp.find()) {
+                    Matcher pv = PRIV_VALUE.matcher(cp.group(1));
+                    while (pv.find()) {
+                        if (!pv.group(2).isEmpty() && !knownPrivileges.contains(pv.group(2))) {
+                            bad.add(name + ": @CrudPrivileges " + pv.group(1) + "=\"" + pv.group(2)
+                                    + "\" is not a PRIV_* constant");
+                        }
+                        if (pv.group(1).equals("write") && pv.group(2).startsWith("PRIV_")) {
+                            writeDeclared = true;
+                        }
+                    }
                 }
-                if (gatedWrites.containsAll(Set.of(WRITES)) && gatedWriteDeclarations >= 10) {
-                    continue; // all inherited writes redeclared with a gate
+                if (TYPE_LEVEL.matcher(src).find() || writeDeclared) {
+                    continue;
                 }
-                out.add(decl.group(1));
+                uncovered.add(name);
             }
         }
-        return out;
+        return new Scan(uncovered, dead, bad);
+    }
+
+    private static Scan scanTree() throws IOException {
+        return scan(new TreeSet<>(SeededRoleAuthorities.allPrivilegeAuthorityNames()));
     }
 
     @Test
-    public void noNewMethodGatedOnlyBaseObjectServiceDescendants() throws IOException {
-        Set<String> now = new TreeSet<>(uncoveredNow());
+    public void rule1_noDescendantRedeclaresInheritedCrudWithItsOwnGate() throws IOException {
+        List<String> dead = scanTree().deadGates();
+        assertTrue("These @PreAuthorize gates sit on a redeclared BaseObjectService method and are NOT enforced in"
+                + " production (see BaseObjectServiceCrudGateTest). Remove the redeclaration and declare"
+                + " @CrudPrivileges on the interface instead: " + dead, dead.isEmpty());
+    }
+
+    @Test
+    public void rule3_declaredCrudPrivilegesAreRealAuthorities() throws IOException {
+        List<String> bad = scanTree().badPrivileges();
+        assertTrue(String.join("\n", bad), bad.isEmpty());
+    }
+
+    @Test
+    public void rule2_noNewOpenInheritedWrites() throws IOException {
+        Set<String> now = new TreeSet<>(scanTree().uncovered());
         assertTrue("Scan found nothing — the tree moved or the pattern broke; a silent pass is not a pass",
-                now.size() > 50);
+                now.size() > 40);
         Set<String> added = new TreeSet<>(now);
         added.removeAll(BASELINE);
-        assertTrue("New service interface(s) gated per method but extending BaseObjectService, so their"
-                + " inherited get/getAll/insert/update/delete are UNGATED. Add a type-level @PreAuthorize or"
-                + " redeclare the inherited writes with a gate (see AlertService). Do NOT add to BASELINE: " + added,
-                added.isEmpty());
+        assertTrue("New service interface(s) extending BaseObjectService with open inherited writes. Add"
+                + " @CrudPrivileges(write = \"PRIV_…\") (or a type-level @PreAuthorize). Do NOT add to BASELINE: "
+                + added, added.isEmpty());
     }
 
     @Test
-    public void baselineOnlyShrinks() throws IOException {
-        Set<String> now = new TreeSet<>(uncoveredNow());
+    public void rule2_baselineOnlyShrinks() throws IOException {
+        Set<String> now = new TreeSet<>(scanTree().uncovered());
         Set<String> fixed = new TreeSet<>(BASELINE);
         fixed.removeAll(now);
         assertTrue("These are now covered — remove them from BASELINE so the ratchet tightens: " + fixed,

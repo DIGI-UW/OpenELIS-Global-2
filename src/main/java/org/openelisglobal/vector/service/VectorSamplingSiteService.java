@@ -1,10 +1,12 @@
 package org.openelisglobal.vector.service;
 
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_SAMPLE_TYPE_MANAGE")
 public interface VectorSamplingSiteService extends BaseObjectService<VectorSamplingSite, Integer> {
 
     @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")

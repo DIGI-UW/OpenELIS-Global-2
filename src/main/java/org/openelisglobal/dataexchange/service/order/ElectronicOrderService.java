@@ -3,6 +3,7 @@ package org.openelisglobal.dataexchange.service.order;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
@@ -10,6 +11,7 @@ import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder.SortOrder;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_ORDER_EDIT")
 public interface ElectronicOrderService extends BaseObjectService<ElectronicOrder, String> {
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")

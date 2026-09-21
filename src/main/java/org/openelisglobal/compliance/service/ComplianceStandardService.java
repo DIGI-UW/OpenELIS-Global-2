@@ -2,6 +2,7 @@ package org.openelisglobal.compliance.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard.ComplianceStandardStatus;
@@ -14,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * operations, declares transaction boundaries at service level, and provides
  * domain-specific business logic for compliance standards management.
  */
+@CrudPrivileges(write = "PRIV_SAMPLE_TYPE_MANAGE")
 public interface ComplianceStandardService extends BaseObjectService<ComplianceStandard, String> {
 
     /**

@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -16,6 +17,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrudPrivileges(write = "PRIV_TEST_CONFIGURE")
 public interface TestService extends BaseObjectService<Test, String> {
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

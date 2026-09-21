@@ -10,7 +10,7 @@ on that branch. Each file is standalone; nothing here blocks the others.
 | [T3 — interceptor fails open](t3-interceptor-fails-open.md) | HIGH | **Re-scoped.** Accept fail-open + fix the PR text; deny-by-default is follow-on (838 endpoints vs 9 seeded rows). |
 | [T4 — Global Admin by mutable name](t4-global-admin-identity.md) | MEDIUM | Not yet decided — self-contained, can follow. |
 | [T5 — verify the 339 gates](t5-verify-gates-e2e.md) | HIGH | **CI failures root-caused and fixed locally** (Mockito copies `@PreAuthorize` onto mocks; fixtures predated RBAC; 4 controllers re-labelled denials). Pushing for a full run. |
-| [T6 — inherited CRUD ungated](t6-inherited-crud-ungated.md) | HIGH | **New, undecided.** 109 method-gated services extending `BaseObjectService` inherit ungated `insert/update/delete`. `AlertService` fixed; ratchet in place. Needs a fix-shape decision. |
+| [T6 — inherited CRUD ungated](t6-inherited-crud-ungated.md) | HIGH | **Decided (c), partly done.** `BaseObjectService` gated once via `CrudGate` + `@CrudPrivileges`; 16 services declare writes; 7 left open for workflow reasons; reads open. Ratchet baseline 94. |
 
 **Merge gate**: T1 is done and is now the *primary* control — T3's measurement
 showed the interceptor cannot be closed in this PR, so service gates are the only

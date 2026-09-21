@@ -1,12 +1,14 @@
 package org.openelisglobal.dictionary.service;
 
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrudPrivileges(write = "PRIV_DICTIONARY_MANAGE")
 public interface DictionaryService extends BaseObjectService<Dictionary, String> {
     @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     void getData(Dictionary dictionary);
