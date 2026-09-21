@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.formfields.FormFields;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
@@ -50,6 +51,7 @@ import org.springframework.stereotype.Service;
 
 /** */
 @Service
+@CrossDomainService(callers = "Order-form binding helper; persistence happens through gated sample/patient services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @DependsOn({ "springContext" })
 public class SampleOrderService {

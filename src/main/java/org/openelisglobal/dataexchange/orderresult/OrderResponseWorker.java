@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.resultreporting.beans.ResultReportXmit;
 import org.openelisglobal.dataexchange.resultreporting.beans.ResultXmit;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "HL7 order-response worker; message plumbing, not a user operation. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class OrderResponseWorker {
 

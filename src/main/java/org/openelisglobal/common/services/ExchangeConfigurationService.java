@@ -30,6 +30,7 @@ import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -49,6 +50,7 @@ public class ExchangeConfigurationService {
             domainName = siteDomain;
         }
 
+        @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
         public String getSiteDomain() {
             return domainName;
         }
@@ -71,18 +73,22 @@ public class ExchangeConfigurationService {
             this.urlTestToken = urlTestToken;
         }
 
+        @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
         public String getUrlTestToken() {
             return urlTestToken;
         }
 
+        @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
         public boolean isShowbacklog() {
             return showbacklog;
         }
 
+        @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
         public String getTitle() {
             return title;
         }
 
+        @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
         public String getBacklogId() {
             return backlogId;
         }
@@ -137,6 +143,7 @@ public class ExchangeConfigurationService {
         exchangeType = testTokenToExchangeTypeMap.get(urlTestToken);
     }
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public List<ReportingConfiguration> getConfigurations() {
 
         List<SiteInformation> informationList = siteInformationService.getPageOfSiteInformationByDomainName(1,
@@ -144,6 +151,7 @@ public class ExchangeConfigurationService {
 
         Collections.sort(informationList, new Comparator<SiteInformation>() {
             @Override
+            @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
             public int compare(SiteInformation o1, SiteInformation o2) {
                 return o1.getGroup() - o2.getGroup();
             }
@@ -207,6 +215,7 @@ public class ExchangeConfigurationService {
         return ("true".equals(value) || "enable".equals(value)) ? "enable" : "disable";
     }
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String testConnection(String url) {
         if (GenericValidator.isBlankOrNull(url)) {
             return MessageUtil.getMessage("connection.test.error.missingURL");

@@ -96,7 +96,7 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
 
         @Bean
         AnalyzerConnectionProbeService analyzerConnectionProbeService() {
-            return mock(AnalyzerConnectionProbeService.class);
+            return mock(AnalyzerConnectionProbeService.class, withSettings().withoutAnnotations());
         }
 
         @Bean

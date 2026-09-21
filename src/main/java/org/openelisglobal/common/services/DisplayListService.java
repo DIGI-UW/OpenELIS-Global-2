@@ -27,6 +27,7 @@ import org.openelisglobal.address.service.AddressHierarchyConfigurationHandler;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.security.SystemInitFlag;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
@@ -85,6 +86,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.LocaleResolver;
 
 @Service
+@CrossDomainService(callers = "Shared reference-list cache; already runs its builds in system context and is consumed by every screen. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class DisplayListService implements LocaleChangeListener {
 
     private static DisplayListService instance;

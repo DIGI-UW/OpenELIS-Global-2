@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 /**
@@ -62,6 +63,7 @@ public class RangeCoverageValidationService {
         public SexCoverage female;
 
         /** True if either sex has an uncovered age window — the activation gate. */
+        @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
         public boolean hasGaps() {
             return (male != null && !male.gaps.isEmpty()) || (female != null && !female.gaps.isEmpty());
         }
@@ -70,6 +72,7 @@ public class RangeCoverageValidationService {
     // Tolerance for floating-point age comparisons (well under one hour in years).
     private static final double EPSILON = 1e-9;
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     public CoverageReport validate(List<ResultLimit> limits) {
         // Ranges for different result components are independent: a Male 0-10 range on
         // component A and a Male 0-10 range on component B are NOT an overlap. The

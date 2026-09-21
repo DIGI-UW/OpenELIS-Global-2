@@ -89,6 +89,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -213,6 +214,7 @@ public class MicrobiologyUatScenarioService {
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
         Analyzer analyzer = ANALYZER_REVIEW_SCENARIO.equals(scenario)

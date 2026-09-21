@@ -24,6 +24,7 @@ import org.openelisglobal.reports.service.DocumentTypeService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +57,7 @@ public class ReportTrackingService implements IReportTrackingService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public void addReports(List<String> refIds, ReportType type, String name, String currentSystemUserId) {
 
         String refTableId = getReferenceTable(type);
@@ -120,24 +122,28 @@ public class ReportTrackingService implements IReportTrackingService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public List<DocumentTrack> getReportsForSample(Sample sample, ReportType type) {
         return documentTrackService.getByTypeRecordAndTable(getReportTypeId(type), getReferenceTable(type),
                 sample.getId());
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public List<DocumentTrack> getReportsForSampleAndReportName(Sample sample, ReportType type, String name) {
         return documentTrackService.getByTypeRecordAndTableAndName(getReportTypeId(type), getReferenceTable(type),
                 sample.getId(), name);
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public DocumentTrack getLastReportForSample(Sample sample, ReportType type) {
         List<DocumentTrack> reports = getReportsForSample(sample, type);
         return reports.isEmpty() ? null : reports.get(reports.size() - 1);
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public DocumentTrack getLastNamedReportForSample(Sample sample, ReportType type, String name) {
         if (sample == null || type == null || GenericValidator.isBlankOrNull(name)) {
             return null;
@@ -148,18 +154,21 @@ public class ReportTrackingService implements IReportTrackingService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public Timestamp getTimeOfLastReport(Sample sample, ReportType type) {
         DocumentTrack report = getLastReportForSample(sample, type);
         return report == null ? null : report.getReportTime();
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public Timestamp getTimeOfLastNamedReport(Sample sample, ReportType type, String name) {
         DocumentTrack report = getLastNamedReportForSample(sample, type, name);
         return report == null ? null : report.getReportTime();
     }
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     public DocumentTrack getDocumentForId(String id) {
         return documentTrackService.get(id);
     }

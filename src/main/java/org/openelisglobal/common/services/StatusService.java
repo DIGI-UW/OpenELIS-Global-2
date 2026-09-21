@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -43,6 +44,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@CrossDomainService(callers = "Status-code predicates and id lookups used across every domain. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @DependsOn("liquibase")
 public class StatusService implements IStatusService {
     public enum OrderStatus {

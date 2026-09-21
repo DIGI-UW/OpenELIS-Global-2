@@ -20,6 +20,19 @@ result ingestion open to any authenticated user. Both were fixed in `f0dbe54fe`
 — the 41 below were deliberately left alone rather than gated in bulk during a
 CI-debug cycle.
 
+## STATUS: DONE (2026-09-21)
+
+All 41 are resolved — 16 gated with an explicit privilege, 25 marked
+`@CrossDomainService` with a justification (form-binding helpers, accessioner
+steps, status/reflex predicates, shared reference-list cache). The
+controller-reachable ungated count is now **0**.
+
+`ServiceClassPrivilegeCoverageTest` was added so the category cannot regress: it
+asserts every controller-reachable `@Service` class carries `@PreAuthorize` or
+`@CrossDomainService`. Inversion-verified — removing one gate fails it by name.
+
+The list below is kept as the record of what was triaged.
+
 ## DECIDED — blocks PR #3443
 
 Chosen 2026-09-21. All 41 must be gated (or exempted with justification) before

@@ -74,6 +74,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -143,6 +144,7 @@ public class ResultsValidationRetroCIUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> getResultValidationList(String testSectionName, String testName,
             List<String> statusList) {
         accessionToValidMap = new HashMap<>();
@@ -163,6 +165,7 @@ public class ResultsValidationRetroCIUtility {
 
                 Collections.sort(testList, new Comparator<ResultValidationItem>() {
                     @Override
+                    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
                     public int compare(ResultValidationItem o1, ResultValidationItem o2) {
                         return o1.getAccessionNumber().compareTo(o2.getAccessionNumber());
                     }
@@ -295,6 +298,7 @@ public class ResultsValidationRetroCIUtility {
     private void sortByAccessionNumberAndOrder(List<AnalysisItem> resultItemList) {
         Collections.sort(resultItemList, new Comparator<AnalysisItem>() {
             @Override
+            @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
             public int compare(AnalysisItem a, AnalysisItem b) {
                 int accessionComp = a.getAccessionNumber().compareTo(b.getAccessionNumber());
                 return ((accessionComp == 0)
@@ -326,6 +330,7 @@ public class ResultsValidationRetroCIUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getUnValidatedElisaResultItemsInTestSection(String id) {
 
         List<Analysis> analysisList = new ArrayList<>();
@@ -342,6 +347,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getUnValidatedTestResultItemsInTestSection(String sectionId,
             List<String> statusList) {
 
@@ -352,6 +358,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getUnValidatedTestResultItemsByTest(String testName, List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAllAnalysisByTestAndStatus(getTestId(testName), statusList);
@@ -364,6 +371,7 @@ public class ResultsValidationRetroCIUtility {
      * quick and dirty fix for workplan and validation using the same code but
      * having different rules
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getGroupedTestsForAnalysisList(Collection<Analysis> filteredAnalysisList,
             boolean ignoreRecordStatus) throws LIMSRuntimeException {
 
@@ -422,6 +430,7 @@ public class ResultsValidationRetroCIUtility {
         return valid;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
 
@@ -584,6 +593,7 @@ public class ResultsValidationRetroCIUtility {
         return testResultType;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> testResultListToELISAAnalysisList(List<ResultValidationItem> testResultList,
             List<String> statusList) {
         List<AnalysisItem> analysisItemList = new ArrayList<>();
@@ -643,6 +653,7 @@ public class ResultsValidationRetroCIUtility {
         return analysisItemList;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public String checkIfFinalResult(String analysisId) {
         String finalResult = null;
         Analysis analysis = new Analysis();
@@ -669,6 +680,7 @@ public class ResultsValidationRetroCIUtility {
         return finalResult;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public AnalysisItem testResultItemToELISAAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem elisaResultItem = new AnalysisItem();
 
@@ -691,6 +703,7 @@ public class ResultsValidationRetroCIUtility {
         return elisaResultItem;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public AnalysisItem addTestResultToELISAAnalysisItem(ResultValidationItem testResultItem, AnalysisItem eItem) {
 
         eItem.setAnalysisId(testResultItem.getAnalysis().getId());
@@ -704,6 +717,7 @@ public class ResultsValidationRetroCIUtility {
         return eItem;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public AnalysisItem setElisaTestResult(String testName, AnalysisItem eItem) {
         String result = eItem.getResult();
         String analysisId = eItem.getAnalysisId();
@@ -753,6 +767,7 @@ public class ResultsValidationRetroCIUtility {
         return eItem;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> testResultListToAnalysisItemList(List<ResultValidationItem> testResultList) {
         List<AnalysisItem> analysisResultList = new ArrayList<>();
 
@@ -802,6 +817,7 @@ public class ResultsValidationRetroCIUtility {
         return SpringContext.getBean(IStatusService.class).getRecordStatusForID(ohList.get(0).getValue());
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = getUnitsByTestId(testResultItem.getTestId());
@@ -883,6 +899,7 @@ public class ResultsValidationRetroCIUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public String getUnitsByTestId(String testId) {
 
         String uomName = null;
@@ -905,6 +922,7 @@ public class ResultsValidationRetroCIUtility {
         return uomName;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public String getTestSectionId(String testSectionName) {
         TestSection testSection = new TestSection();
         testSection.setTestSectionName(testSectionName);
@@ -935,6 +953,7 @@ public class ResultsValidationRetroCIUtility {
         return false;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<SampleQaEvent> getSampleQaEvents(Sample sample) {
         return sampleQaEventService.getSampleQaEventsBySample(sample);
     }

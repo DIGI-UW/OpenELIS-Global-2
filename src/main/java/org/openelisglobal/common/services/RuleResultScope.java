@@ -3,6 +3,7 @@ package org.openelisglobal.common.services;
 import java.util.List;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  * untouched.
  */
 @Service
+@CrossDomainService(callers = "Reflex-rule matching predicates; pure computation over passed-in state. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class RuleResultScope {
 
     @Autowired

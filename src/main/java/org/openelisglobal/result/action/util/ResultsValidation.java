@@ -24,6 +24,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.Errors;
 
@@ -37,6 +38,7 @@ public class ResultsValidation {
     @Autowired
     private AnalysisService analysisService;
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public Errors validateItem(TestResultItem item) {
         Errors errors = new BaseErrors();
 
@@ -65,6 +67,7 @@ public class ResultsValidation {
         return errors;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public Errors validateModifiedItems(List<TestResultItem> modifiedItems) {
         Errors errors = new BaseErrors();
 

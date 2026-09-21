@@ -39,6 +39,7 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.security.SystemInitFlag;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
@@ -109,6 +110,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Assembles result view models; reads run through gated analysis/result services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class ResultsLoadUtility {
 

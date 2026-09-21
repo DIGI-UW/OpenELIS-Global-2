@@ -27,12 +27,14 @@ package org.openelisglobal.patient.saving;
 import static org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Accessioner step — canAccession predicate only. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class PatientEntryAfterSampleEntry extends PatientEntry implements IPatientEntryAfterSampleEntry {
 
