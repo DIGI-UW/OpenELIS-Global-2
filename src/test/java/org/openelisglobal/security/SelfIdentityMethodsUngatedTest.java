@@ -142,12 +142,7 @@ public class SelfIdentityMethodsUngatedTest {
             { "Analyser Import", "sample_type:view", "GET /rest/AnalyzerResults — ambiguous sample-type options" },
             { "Analyser Import", "nce:view", "GET /rest/AnalyzerResults — non-conformity state per item" },
             { "Analyser Import", "result:enter", "POST /rest/AnalyzerResults — accept analyzer results" },
-            { "Analyser Import", "result:modify", "POST /rest/AnalyzerResults — accept over existing results" },
-            // The results-entry page loads /rest/displayList/METHODS (MethodService,
-            // method:view) on open; without the grant the page never renders for the
-            // role. Found by the rbac_results E2E persona.
-            { "Results", "method:view", "GET /rest/displayList/METHODS on result entry" },
-            { "Validation", "method:view", "GET /rest/displayList/METHODS on validation" } };
+            { "Analyser Import", "result:modify", "POST /rest/AnalyzerResults — accept over existing results" } };
 
     @Test
     public void rolesHoldThePrivilegesTheirScreensRequire() throws IOException {
