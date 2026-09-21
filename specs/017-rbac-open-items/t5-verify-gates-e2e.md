@@ -27,6 +27,35 @@ Highest-risk area: **microbiology**, ~108 methods on `micro:view` / `micro:bench
 / `micro:supervise` — privileges invented for this PR, with read/write boundaries
 inferred from method names.
 
+## 2026-09-21 — what `Build + Test` found, root-caused
+
+The run finally completed and failed 54 tests in 11 classes. Develop is green, so
+these were ours. Three distinct causes, all fixed locally:
+
+1. **Mockito copies `@PreAuthorize` onto generated mocks** (type- and method-level
+   alike), so Spring Security's unique-annotation scan finds it twice and throws.
+   `withSettings().withoutAnnotations()` — used at ~45 sites as the fix — does
+   **not** strip it on Mockito 2.21.0 (verified by reflection: the annotation is
+   present on the generated type and its methods). Replaced by
+   `GatedServiceMocks` (JDK proxy for interfaces, annotation-free ByteBuddy
+   subclass for classes; `mockBehind()` for stubbing); `GatedServiceMocksTest`
+   pins both the defect and the fix by reflection and end-to-end.
+2. **Fixtures predated RBAC.** `.roles("RESULTS")` users carry no `PRIV_*`, so
+   every 200-expectation failed at the first real gate. `SeededRoleAuthorities`
+   derives a role's authorities from the Liquibase seed; a 403 after that is a
+   policy finding, not a fixture bug. Two such findings: no base role held
+   `alert:view` (seeded, 012-004e) and "report-capable" meant Reports, not Results.
+3. **Controllers re-labelled denials.** Broad `catch (Exception)` around service
+   calls turned `AccessDeniedException` into 500 or a 200 with an empty body —
+   reachable only because S011c removed the controller gate ahead of the catch.
+   Fixed in `AnalyzerResultsController`, `ImportIssuesRestController`,
+   `AlertRestController` (3 handlers), `QCRestController` (8 handlers). **97
+   controller files carry a broad catch**; the others were not audited. A
+   ratchet like T6's would be the systematic answer.
+
+Plus: concurrency tests needed `DelegatingSecurityContext*` to carry the test
+Authentication onto worker threads, and the fixture change exposed **T6**.
+
 ## Blockers
 
 - `Build + Test` has not completed on the current head (`f0dbe54fe`); only one

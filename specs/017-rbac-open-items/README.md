@@ -9,7 +9,8 @@ on that branch. Each file is standalone; nothing here blocks the others.
 | [T2 — SystemInitFlag bypass](t2-systeminitflag-bypass.md) | HIGH | **Partly done.** Gates accept `ROLE_SYSTEM`; scheduler on daemon identity. Flag can't be deleted — 6 sites escalate a *live user*, not a daemon. |
 | [T3 — interceptor fails open](t3-interceptor-fails-open.md) | HIGH | **Re-scoped.** Accept fail-open + fix the PR text; deny-by-default is follow-on (838 endpoints vs 9 seeded rows). |
 | [T4 — Global Admin by mutable name](t4-global-admin-identity.md) | MEDIUM | Not yet decided — self-contained, can follow. |
-| [T5 — verify the 339 gates](t5-verify-gates-e2e.md) | HIGH | In progress: rebase → push → get `Build + Test` to complete. |
+| [T5 — verify the 339 gates](t5-verify-gates-e2e.md) | HIGH | **CI failures root-caused and fixed locally** (Mockito copies `@PreAuthorize` onto mocks; fixtures predated RBAC; 4 controllers re-labelled denials). Pushing for a full run. |
+| [T6 — inherited CRUD ungated](t6-inherited-crud-ungated.md) | HIGH | **New, undecided.** 109 method-gated services extending `BaseObjectService` inherit ungated `insert/update/delete`. `AlertService` fixed; ratchet in place. Needs a fix-shape decision. |
 
 **Merge gate**: T1 is done and is now the *primary* control — T3's measurement
 showed the interceptor cannot be closed in this PR, so service gates are the only
@@ -31,4 +32,6 @@ Two consequences run through every task below:
   (T3); admins bypass the check entirely via `isUserAdmin()`, which is why the
   original deny-by-default flip passed admin testing and still broke non-admins.
 - `ServicePrivilegeCoverageTest` scans **interfaces only**. A `@Service` class
-  with no interface is invisible to it (T1).
+  with no interface is invisible to it (T1). It also checks that an annotation is
+  *present*, not what it *covers*: a method-gated interface extending
+  `BaseObjectService` inherits ungated CRUD (T6).

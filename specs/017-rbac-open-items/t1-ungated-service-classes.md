@@ -1,5 +1,11 @@
 # T1 — Gate the @Service classes the coverage scan cannot see
 
+> **2026-09-21 — scope note.** T1 is done for what it measured: `@Service` classes
+> without an interface. A third blind spot was found afterwards — a method-gated
+> interface extending `BaseObjectService` inherits **ungated** CRUD, 110 services —
+> and is tracked as [T6](t6-inherited-crud-ungated.md). The two guards here do not
+> and cannot see it.
+
 **Severity**: HIGH — unauthenticated-adjacent exposure on live endpoints
 **Effort**: large (41 services, each needs a privilege judgement)
 
