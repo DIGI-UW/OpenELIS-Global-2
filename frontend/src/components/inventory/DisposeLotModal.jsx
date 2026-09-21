@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   TextArea,
@@ -9,18 +9,12 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
-  // onSave() unmounts this modal before the finally block runs.
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMounted = useIsMounted();
 
   const disposalReasons = [
     { id: "EXPIRED", text: "Expired" },
@@ -77,9 +71,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error disposing lot:", err);
-      if (isMountedRef.current) setError(err.message || "Error disposing lot");
+      if (isMounted()) setError(err.message || "Error disposing lot");
     } finally {
-      if (isMountedRef.current) setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
