@@ -55,20 +55,8 @@ public final class PathologyStages {
     }
 
     /**
-     * The stages at which a case counts as work in progress (AC-4).
-     *
-     * <p>
-     * The Pathology Dashboard's "in progress" tile and the dashboard's own stage
-     * filter each spelled out their own list of statuses and the two lists were not
-     * the same, so a case could sit in the filter's results while no tile counted
-     * it. Both now read this one rule.
-     *
-     * <p>
-     * {@code READY_PATHOLOGIST} is excluded because a case there is queued for a
-     * pathologist and is counted on the "awaiting review" tile instead, and
-     * {@code COMPLETED} because the case is finished. {@code UNDER_REVIEW} is
-     * included: a pathologist has taken the case out of that queue and is working
-     * it.
+     * The stages at which a case counts as work in progress (AC-4): every stage but
+     * READY_PATHOLOGIST, which has its own tile, and COMPLETED.
      */
     public static List<PathologyStatus> inProgress() {
         return IN_PROGRESS;

@@ -2,7 +2,6 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import {
   PATHOLOGY_STAGES,
-  IN_PROGRESS_STAGES,
   stageDisplayKey,
   stageLabel,
   inProgressStageIds,
@@ -42,24 +41,6 @@ describe("PATHOLOGY_STAGES", () => {
   });
 });
 
-describe("IN_PROGRESS_STAGES", () => {
-  it("holds nine stages, in bench order, excluding the two with their own tile", () => {
-    expect(IN_PROGRESS_STAGES).toHaveLength(9);
-    expect(IN_PROGRESS_STAGES).not.toContain("READY_PATHOLOGIST");
-    expect(IN_PROGRESS_STAGES).not.toContain("COMPLETED");
-    expect(IN_PROGRESS_STAGES).toEqual(
-      PATHOLOGY_STAGES.filter(
-        (stage) => stage !== "READY_PATHOLOGIST" && stage !== "COMPLETED",
-      ),
-    );
-  });
-
-  it("still counts the stages a bare COMPLETED filter would wrongly include", () => {
-    expect(IN_PROGRESS_STAGES).toContain("UNDER_REVIEW");
-    expect(IN_PROGRESS_STAGES).toContain("ACCESSIONED");
-  });
-});
-
 describe("stageLabel", () => {
   it("resolves a known stage to its localized display text", () => {
     expect(stageLabel(intl, "MICROTOMY")).toBe(
@@ -73,13 +54,13 @@ describe("stageLabel", () => {
 });
 
 describe("inProgressStageIds", () => {
-  it("keeps only the served ids and preserves bench order", () => {
+  it("drops only the two stages that have their own tile, keeping the served order", () => {
     const served = [
-      "COMPLETED",
-      "STAINING",
       "ACCESSIONED",
-      "READY_PATHOLOGIST",
       "GROSSING",
+      "STAINING",
+      "READY_PATHOLOGIST",
+      "COMPLETED",
     ];
 
     expect(inProgressStageIds(served)).toEqual([
@@ -87,5 +68,24 @@ describe("inProgressStageIds", () => {
       "GROSSING",
       "STAINING",
     ]);
+  });
+
+  it("carries through a stage this build has never heard of", () => {
+    // The grouping is derived from what the server serves, not from a second
+    // copy of the stage names held here, so a stage added to PathologyStatus
+    // and served by DisplayListService stays in the in-progress grouping the
+    // backend tile is already counting it in, instead of silently vanishing
+    // from the dashboard.
+    expect(
+      inProgressStageIds(["GROSSING", "DEHYDRATION", "COMPLETED"]),
+    ).toEqual(["GROSSING", "DEHYDRATION"]);
+  });
+
+  it("covers every stage the eleven-stage list offers except those two", () => {
+    expect(inProgressStageIds(PATHOLOGY_STAGES)).toHaveLength(9);
+    expect(inProgressStageIds(PATHOLOGY_STAGES)).toContain("UNDER_REVIEW");
+    expect(inProgressStageIds(PATHOLOGY_STAGES)).not.toContain(
+      "READY_PATHOLOGIST",
+    );
   });
 });

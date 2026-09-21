@@ -20,14 +20,6 @@ export const PATHOLOGY_STAGES = Object.freeze([
   "COMPLETED",
 ]);
 
-// Matches the backend dashboard tile grouping: everything except the two
-// stages that already have their own tile (awaiting review and complete).
-export const IN_PROGRESS_STAGES = Object.freeze(
-  PATHOLOGY_STAGES.filter(
-    (stage) => stage !== "READY_PATHOLOGIST" && stage !== "COMPLETED",
-  ),
-);
-
 function toLowerCamel(stageId) {
   const [first, ...rest] = stageId.toLowerCase().split("_");
   return (
@@ -56,6 +48,14 @@ export function stageLabel(intl, stageId, fallback) {
   });
 }
 
+// Matches the backend dashboard tile grouping: everything except the two
+// stages that already have their own tile (awaiting review and complete).
+// Filtering the served list directly, rather than a second copy of the stage
+// names kept here, is what stops a stage the server has learned about from
+// silently dropping out of the grouping while the backend tile still counts
+// it.
 export function inProgressStageIds(servedIds) {
-  return IN_PROGRESS_STAGES.filter((stage) => servedIds.includes(stage));
+  return servedIds.filter(
+    (stage) => stage !== "READY_PATHOLOGIST" && stage !== "COMPLETED",
+  );
 }
