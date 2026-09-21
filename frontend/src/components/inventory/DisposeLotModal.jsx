@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   TextArea,
@@ -12,6 +12,15 @@ import { InventoryLotAPI } from "./InventoryService";
 
 const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
+
+  // onSave() unmounts this modal before the finally block runs.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const disposalReasons = [
     { id: "EXPIRED", text: "Expired" },
@@ -66,9 +75,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error disposing lot:", err);
-      setError(err.message || "Error disposing lot");
+      if (isMountedRef.current) setError(err.message || "Error disposing lot");
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) setSaving(false);
     }
   };
 
@@ -143,7 +152,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "disposal.reason.select" })}
           items={disposalReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={disposalReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            disposalReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }
