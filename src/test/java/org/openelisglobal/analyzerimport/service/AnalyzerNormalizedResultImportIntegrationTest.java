@@ -244,8 +244,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("DELETE FROM clinlims.analyzer_site_binding_test WHERE site_binding_revision_id = ?",
                 SITE_BINDING_REVISION_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_delivery_receipt WHERE analyzer_id = ?", ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_site_binding_revision WHERE id = ?", SITE_BINDING_REVISION_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_site_binding WHERE id = ?", SITE_BINDING_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_profile_binding WHERE id = ?", PROFILE_BINDING_ID);
