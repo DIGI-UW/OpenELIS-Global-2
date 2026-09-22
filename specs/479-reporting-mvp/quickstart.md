@@ -478,3 +478,55 @@ cancellation: the interface must refuse cancellation clearly. Prepare both
 reports in separate tabs before generating the large one when more setup time
 is needed. The next attempt should create new jobs, preserving the first run's
 history.
+
+## September 15 delivery checkpoint
+
+See the [revision-bound delivery receipt](execution.md#september-15-delivery-checkpoint) for passing backend, frontend and E2E CI, public deployment identity,
+recorded workflow evidence and the distinction between mock simulation controls
+and product features. The full requirement reconciliation is in [acceptance.md](acceptance.md).
+Human acceptance remains pending and separate from engineering validation.
+
+## Refreshing a stale synthetic recovery fixture
+
+A frozen failed job can correctly return `reporting.definition.changed` after
+its source definition changes. Preserve that job and its children as evidence;
+do not rewrite the frozen request or reset the whole fixture database.
+
+On a verified development/UAT database, after the usual deployment identity
+check and backup, the narrow seed accepts `failed_job_id` (a fresh UUID) and
+`failed_only=true`. Supply the current authoritative source definition through
+the existing `source_definition` variable. For a locally accessible UAT database:
+
+```bash
+psql -X -v ON_ERROR_STOP=1 \
+  -v source_definition="$(cat src/main/resources/reporting/sample-testing.json)" \
+  -v failed_job_id="$REPORTING_FAILED_JOB_ID" -v failed_only=true \
+  -f src/test/resources/fixtures/reporting-recovery.sql
+```
+
+Use the target's established database connection configuration. Verify the
+bundled source matches the deployed configuration before using the example.
+Existing records remain insert-only; default fixture IDs and the normal
+failed/expired pair are unchanged when overrides are omitted.
+
+From `frontend/`, with the normal test credentials supplied through the environment:
+
+```bash
+BASE_URL=https://reporting.catalyst.openelis-global.org \
+PLAYWRIGHT_VIDEO=on REPORTING_FAILED_JOB_ID="$REPORTING_FAILED_JOB_ID" \
+npm run pw:test -- playwright/tests/foundational/core/custom-data-export-recovery.spec.ts \
+  --project=core-app --grep 'a failed report'
+```
+
+This does not enable the separately gated cancellation workload. The test keeps
+its frozen-request equality, child identity, reload, navigation and exact CSV
+assertions. A retry does not consume its FAILED parent; fresh-fixture maintenance
+is for obsolete snapshots, not ordinary repeated execution.
+
+Public maintenance verification on September 15: fresh failed job
+`00b7277c-1092-41cd-88aa-62c020c5b8b9` uses definition version 4 on app
+`3de726b8d3`. Retry created child `27bd6ce7-2c1a-4e3c-bcb9-3937b86cfd21`.
+Authentication plus focused retry passed (2 checks, 29 seconds), including the
+unchanged exact CSV oracle. The old version-3 fixture remained byte-for-byte
+unchanged during seeding. Ready-state screenshot and browser log were inspected.
+No production build was repeated for this fixture/test maintenance.

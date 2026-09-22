@@ -314,3 +314,124 @@ intercepts **Generate CSV** at desktop width. The widget owner has this finding.
 Per the user's checkpoint direction, remaining work prioritizes that normal-use
 obstruction, one focused rerun and a manual-UAT handoff; broader field and
 Non-Conformance gaps remain visible rather than prompting more test expansion.
+
+## Non-Conformance initial mapping — September 14, 2026
+
+The user approved event-date precedence with a visibly labeled recorded-date
+fallback. The isolated `codex/reporting-nonconformance` follow-up now contains
+streamed native-event and legacy-rejection projections plus the common CSV
+source adapter. No report definition has been enabled and no deployment occurred.
+
+Focused validation: `NonConformanceSourceTest` passed one CSV check, preserving
+equal independent identities, original dates, fallback labels and a legacy
+timestamp converted to the instance timezone.
+`NonConformanceExportMappingIntegrationTest` passed two checks against disposable
+PostgreSQL: known event dates take precedence across different recorded periods;
+recorded-only occurrences remain eligible; both period boundaries are included;
+undated/out-of-period records are excluded and equal occurrences remain distinct.
+The application compiled and its test Spring context started. These checks do not
+qualify the complete Non-Conformance workflow or claim mock/public acceptance.
+
+The database checks first exposed a missing section fixture, then a mixed-type
+section parameter. Inspection of Hibernate mappings confirmed that the legacy
+String IDs are numeric-backed. Separate integer-unit and legacy-section query
+parameters corrected the issue; the reason join retains its actual numeric
+mapping. Expectations were not relaxed. Remaining work includes specimen/reason
+association fixtures, source configuration and date guidance, and a focused
+recorded browser/CSV workflow compared with the pinned mock before publication.
+
+### Connected Non-Conformance source checkpoint
+
+The new bundled source definition now connects Non-Conformance to the existing
+catalog/queue engine, with empty initial column selection matching the mock.
+The catalog retains the mock's five fields and exposes occurrence/specimen
+identity, original dates, Date Basis, source and available event status. The
+existing builder renders the new group and explains the approved date fallback;
+no alternate page or report-specific builder was introduced.
+
+Five focused backend checks pass (four disposable-PostgreSQL mapping/catalog
+checks plus one CSV check). The association fixture deliberately uses the same
+numeric ID for a rejection reason and an unrelated NCE type: the rejection
+label is correct, two linked events remain separate, and the legacy occurrence
+is retained independently. Three selected builder component checks pass,
+including Non-Conformance; the other 29 component tests were not run in this
+focused invocation. The initial association fixture needed required legacy
+QA-event flags before it could load; no application expectation was relaxed.
+
+This is local code/test evidence only. Browser comparison, synthetic runtime
+fixtures, recorded downloads and public deployment are the next increment.
+
+## Non-Conformance recorded local checkpoint — September 14, 2026
+
+The synthetic fixture loads twice without duplicating records. The registered
+`core-app` workflow plus authentication passes in 12.3 seconds, with zero failures,
+skips or retries. It starts from the normal overview, selects Non-Conformance,
+adds fields, uses May 10, 2026, reviews the date guidance and downloads a real CSV.
+The four independent rows include one event dated May 10 but recorded May 12,
+two recorded-date fallbacks and one separately identified legacy rejection.
+An event dated May 9 but recorded May 10 and a wholly undated event are excluded.
+The first browser attempt exposed a test-only header assumption; the CSV contract
+uses selected display labels. Correcting that expectation retained all row,
+identity, date and source assertions.
+
+Direct comparison used `openelis-work` mock revision
+`5b2df7e34ff5ad1f983f24c0e9e0ba4db5e8697f`, including its companion example script,
+in the Non-Conformance state at 1280 and 390 pixels. The shared implementation
+retains report cards, collapsed groups, Add selection, ordered columns and the
+narrow view switch. It exposes twelve fields rather than the mock's five to
+include original dates, date basis and occurrence identity. Existing Carbon shell
+colors, configured-report selector and omitted fictional preview controls differ
+from the mock; this is structural comparison, not pixel-identical certification.
+The local desktop/phone screenshots, ready state, actual CSV and representative
+recording frame were inspected. Full-page captures can show the fixed shell at
+the current scroll position; the recording is the interaction evidence.
+
+Both production builds and formatters passed. The separate five backend and
+three selected component tests are recorded above. Artifacts are retained locally
+at `/private/tmp/reporting-nc-local-evidence/`; execution output is
+`/private/tmp/reporting-nc-local.log`. Public deployment, publication of these
+artifacts and human acceptance are not yet credited. No broader suite is needed
+solely to repeat this local checkpoint.
+
+## Public Non-Conformance delivery — September 14, 2026
+
+Frontend and backend `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7` are deployed.
+The previous database, menu configuration, review integration mounts and older
+evidence were preserved. Startup completed in 461 seconds; its configured FHIR
+endpoint remains unavailable. No reporting failure was observed after startup.
+
+The focused public workflow and authentication passed in 35.3 seconds without
+retries. Actual CSV rows match the four-occurrence local oracle. Desktop/phone
+screens and representative video frames were inspected.
+[Published evidence](https://reporting.catalyst.openelis-global.org/reporting-evidence/20260914-non-conformance-3de726/)
+contains the video, actual CSV, screenshots, mock reference and revision/hash
+manifest. Nine public files matched their hashes; the video supports HTTP 206
+range delivery. Frontend/static CI pass; backend CI is still running.
+
+Non-blocking follow-up observed in the recording: while the report-type request
+is loading, the type cards briefly show “Not yet connected.”
+`ReportingView.jsx` derives connected types from possibly absent request data
+(lines 77–80). Once loaded, all three cards are available. This should distinguish
+loading from an unavailable source; it does not prevent the tested export.
+No additional feature changes or expanded test run were made for this finding.
+Grist's owner is updating RPT-101/RPT-202, preserving existing human results.
+Human acceptance and the remaining full-milestone audit remain open.
+
+The [consolidated evidence index](https://reporting.catalyst.openelis-global.org/reporting-evidence/) links all eight published bundles, separating local recordings from public runs and retaining revision-specific provenance.
+
+## Delivery-branch test reconciliation — September 14, 2026
+
+The existing Sample & Testing follow-up `e7e279a12b` was still only on its
+source PR branch. A normal merge brings its stronger CSV assertions into the
+assembled delivery branch without changing production source. The focused
+`SampleTestingMappingIntegrationTest` suite passes all ten checks in the assembled
+context (`/private/tmp/reporting-assembled-sample-check.log`, Maven 39.8 seconds).
+Its independent CSV parser verifies full-width text, quoting/line breaks, grouped
+multiselect labels, qualifiers and repeated values in both layouts. No broader
+suite or new public deployment was run for this test/documentation increment.
+
+The stopping-point page, execution header and specification checklist now
+acknowledge the approved Non-Conformance date rule and public delivery. Earlier
+revision receipts remain historical records; unresolved task boxes are not
+automatically interpreted as absent implementation. Full milestone completion
+continues to require the criterion-level evidence reconciliation and current CI.

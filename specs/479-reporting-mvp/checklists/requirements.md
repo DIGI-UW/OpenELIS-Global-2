@@ -39,9 +39,10 @@ explicit user selection of three independent workstreams.
 Implementation exposed three additional product questions. The pinned mock's
 sent-date rule and the user's repeat-preservation requirement resolve the two
 Referral questions; Referrals is connected and has passed public CSV checks.
-Only native rejection records without an event date remain unresolved. Their
-inclusion rule pauses Non-Conformance activation, not the other sources. See
-`execution.md` for the dated decision and validation evidence.
+The user resolved the remaining Non-Conformance date question on September 14:
+prefer event date, otherwise use recorded date with a visible Date Basis.
+Non-Conformance is now connected and publicly validated at `3de726b8d3`; see
+`../code-qa.md` and the evidence index for the dated result.
 
 The later turnaround clarification is also resolved: spreadsheet durations
 belong to each test/result, including repeats; collection-to-receipt stays
@@ -107,3 +108,10 @@ checkpoint all application tasks were unchecked; their current implementation
 status is tracked in `tasks.md`. Completing this document checklist means the package can guide
 implementation; it does not claim application tests, CI, deployment or user
 acceptance have passed.
+
+## September 15 delivery checkpoint
+
+See the [revision-bound delivery receipt](../execution.md#september-15-delivery-checkpoint) for passing backend, frontend and E2E CI, public deployment identity,
+recorded workflow evidence and the distinction between mock simulation controls
+and product features. The full requirement reconciliation is in [acceptance.md](../acceptance.md).
+Human acceptance remains pending and separate from engineering validation.

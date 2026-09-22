@@ -438,39 +438,52 @@ test.each(["SPREADSHEET", "RESULT_LIST"])(
 test.each([
   ["sentDate", "referral sent dates"],
   ["requestDate", "referral request dates"],
+  [
+    "eventOrRecordedDate",
+    "event dates when known, otherwise recorded dates (identified by Date Basis)",
+  ],
 ])(
   "another report starts with explicit Add choices and explains its %s period",
   async (dateAnchor, dateMeaning) => {
+    const nc = dateAnchor === "eventOrRecordedDate";
+    const typeLabel = nc ? "Non-Conformance" : "Referrals";
+    const groupLabel = nc ? "Non-Conformance / Rejections" : "Referrals";
+    const fieldId = nc ? "ncOccurrenceId" : "referralId";
+    const fieldLabel = nc ? "Occurrence ID" : "Referral ID";
     alternateCatalog = {
       ...catalog("TABLE"),
       definition: {
-        id: "REFERRALS",
-        label: "Referrals",
+        id: nc ? "NON_CONFORMANCE" : "REFERRALS",
+        label: typeLabel,
         layouts: ["TABLE"],
         dateAnchor,
         filters: [],
       },
       statuses: [],
-      variables: [field("referralId", "Referral ID", "referrals")],
-      defaultColumns: ["referralId"],
+      variables: [
+        field(fieldId, fieldLabel, nc ? "nonConformance" : "referrals"),
+      ],
+      defaultColumns: [fieldId],
     };
     open();
     fireEvent.click(
       await screen.findByRole("button", { name: "Start a new export" }),
     );
-    fireEvent.click(await screen.findByRole("radio", { name: /Referrals/ }));
+    fireEvent.click(
+      await screen.findByRole("radio", { name: new RegExp(typeLabel) }),
+    );
     expect(
       await screen.findByRole("heading", { name: "Your CSV columns (0)" }),
     ).toBeVisible();
     const available = screen.getByRole("region", { name: "Available fields" });
     const group = within(available).getByRole("button", {
-      name: "Referrals",
+      name: groupLabel,
       exact: true,
     });
     expect(group).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(group);
     fireEvent.click(
-      within(available).getByRole("button", { name: "Add Referral ID" }),
+      within(available).getByRole("button", { name: `Add ${fieldLabel}` }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Next: Set Filters" }));
     expect(
