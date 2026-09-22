@@ -22,8 +22,7 @@ const SUPERSCRIPT_TO_ASCII = {
   "⁻": "-",
 };
 
-const SUPERSCRIPT_RUN =
-  /([0-9.])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g;
+const SUPERSCRIPT_RUN = /([0-9.])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g;
 
 export function convertSuperscriptToScientific(value) {
   if (typeof value !== "string" || value.length === 0) {
