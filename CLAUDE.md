@@ -122,43 +122,13 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Worktree Location (MANDATORY)
+### Git Worktrees (MANDATORY)
 
-**Every git worktree goes in `.worktrees/<short-name>` at the repo root.**
-
-```bash
-git worktree add -b <branch> .worktrees/<short-name> <base>
-cd .worktrees/<short-name> && ./scripts/setup-workspace.sh
-```
-
-**Do not skip the second line.** `git worktree add` does not initialize
-submodules, so a new worktree has all 11 of them empty. Several are build
-inputs, not optional extras: `./Dockerfile` does
-`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
-out with `submodules: recursive`. Skip it and the Docker build fails roughly
-twenty minutes in with `there is no POM in this directory`, which reads like a
-broken Dockerfile rather than a missing checkout step. If you only need the
-submodules, `git submodule update --init --recursive` is the relevant part.
-
-**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
-directory** — including the session scratchpad, which is for temporary files
-only (intermediate results, scripts, throwaway logs). A worktree is not a
-temporary file.
-
-**Why:** macOS reaps `/private/tmp`. When it does, the worktree is destroyed but
-`git worktree list` keeps reporting it, so the failure surfaces later as a
-confusing "not a git repository" error. This has already cost work here:
-`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
-`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
-file pointed into the deleted parent.
-
-Several `/private/tmp/oe2-*` worktrees may still show up in `git worktree list`.
-**They are the legacy mistake, not the convention** — do not copy them. Relocate
-one with `git worktree move <old> .worktrees/<short-name>`, which preserves
-commits, and clear dead entries with `git worktree prune`.
-
-The same rule applies to anything else worth keeping (evidence, triage notes,
-reports): if losing the file would cost something, it does not go in temp.
+> Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
+> every new one needs `scripts/setup-workspace.sh` run inside it (`git worktree
+> add` does not initialize the 11 submodules, several of which are build
+> inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) § "Git
+> Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 

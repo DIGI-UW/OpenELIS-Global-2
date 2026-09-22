@@ -681,6 +681,40 @@ scripts/dev-stack up
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
+### Git Worktrees
+
+**Every worktree goes in `.worktrees/<short-name>` at the repo root, and every
+new worktree needs `setup-workspace.sh` run inside it.**
+
+```bash
+git worktree add -b <branch> .worktrees/<short-name> <base>
+cd .worktrees/<short-name> && bash scripts/setup-workspace.sh
+```
+
+**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
+directory.** macOS reaps those, which destroys the worktree while
+`git worktree list` keeps reporting it, so the failure surfaces later as a
+confusing `not a git repository` error. This has already cost work here:
+`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
+`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
+file pointed into the deleted parent. Some `/private/tmp/oe2-*` worktrees may
+still appear in `git worktree list`; they are the legacy mistake, not the
+convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
+which preserves commits, and clear dead entries with `git worktree prune`.
+
+**Do not skip the setup step.** `git worktree add` does not initialize
+submodules, so a fresh worktree has all 11 of them empty. Several are build
+inputs rather than optional extras: `./Dockerfile` does
+`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
+out with `submodules: recursive`. Skip it and a Docker build fails roughly
+twenty minutes in with `there is no POM in this directory`, which reads like a
+broken Dockerfile rather than a missing checkout step. If you only need the
+submodules, `git submodule update --init --recursive` is the relevant part.
+
+The same reasoning applies to anything else worth keeping (evidence, triage
+notes, reports, artifacts): if losing the file would cost something, it does not
+belong in a temp directory.
+
 ### Context Recovery After Session Resume
 
 When resuming work after a context reset (compaction, new session, or tool
