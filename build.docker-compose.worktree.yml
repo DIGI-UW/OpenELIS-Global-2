@@ -1,0 +1,87 @@
+# Worktree-local isolation overlay for build.docker-compose.yml.
+#
+# build.docker-compose.yml is the file CI's E2E lane uses
+# (.github/workflows/e2e-playwright-reusable.yml, the `compose-file` default),
+# so it is the only correct base for a local CI-parity run. What it is not is
+# safe to run next to anything else: every service pins a container_name, the
+# published ports are fixed, the built images take fixed tags, and the default
+# network pins subnet 172.20.1.0/24. Any one of those collides with a second
+# stack on the same machine, and `down -v` against fixed names destroys the
+# other stack's volumes rather than your own.
+#
+# This overlay removes each of those global claims WITHOUT touching a single
+# thing CI actually exercises: same Dockerfiles, same build contexts, same
+# service topology, same env, same volumes. Only identity and binding change.
+# Layer it second and pass a per-worktree `-p <project>`; scripts/run-e2e-like-ci.sh
+# does both.
+#
+# published: "0" asks the kernel for a free ephemeral port; read the real one
+# back with `docker compose port <service> <container-port>`.
+services:
+  certs:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-certgen
+
+  db.openelis.org:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-database
+    ports: !override
+      - name: postgres
+        target: 5432
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  oe.openelis.org:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-webapp
+    ports: !override
+      - name: http
+        target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: https
+        target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  fhir.openelis.org:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-fhir
+    ports: !override
+      - name: http
+        target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: https
+        target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  frontend.openelis.org:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-frontend
+
+  proxy:
+    container_name: !reset null
+    image: ${E2E_STACK_PROJECT:-oe2-e2e}-proxy
+    ports: !override
+      - name: http
+        target: 80
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: https
+        target: 443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+networks:
+  # The base file pins 172.20.1.0/24, which only one stack on the host can hold.
+  default:
+    ipam: !reset null
