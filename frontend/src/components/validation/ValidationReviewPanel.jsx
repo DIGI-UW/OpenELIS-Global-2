@@ -99,9 +99,11 @@ const ValidationReviewPanel = ({
     (triageByRowId && triageByRowId.get(row.id)) || triageRows([row])[0];
   const chips = triage.chips;
   const flag = flagFor(row, triage.signals);
+  // OGC-1226 (FR-10): a QC verdict is shown only when one exists; an ordinary
+  // patient result has none, and saying "not evaluated" on every row is noise.
   const qcStatus = ["PASS", "FAIL"].includes(row.qcStatus)
     ? row.qcStatus
-    : "UNKNOWN";
+    : null;
   const notRecorded = intl.formatMessage({
     id: "label.validation.review.notRecorded",
   });
@@ -305,16 +307,18 @@ const ValidationReviewPanel = ({
             value={row.enteredDate || row.resultDate || notRecorded}
             testId="review-entered-date"
           />
-          <div data-testid="review-qc">
-            <span className="cds--label" style={LABEL_STYLE}>
-              <FormattedMessage id="label.validation.review.qc" />
-            </span>
-            <Tag size="sm" type={QC_TAG_TYPE[qcStatus] || "gray"}>
-              {intl.formatMessage({
-                id: `label.validation.review.qc.${qcStatus}`,
-              })}
-            </Tag>
-          </div>
+          {qcStatus && (
+            <div data-testid="review-qc">
+              <span className="cds--label" style={LABEL_STYLE}>
+                <FormattedMessage id="label.validation.review.qc" />
+              </span>
+              <Tag size="sm" type={QC_TAG_TYPE[qcStatus]}>
+                {intl.formatMessage({
+                  id: `label.validation.review.qc.${qcStatus}`,
+                })}
+              </Tag>
+            </div>
+          )}
         </div>
 
         {chips.length > 0 && (
@@ -774,17 +778,23 @@ const ValidationReviewPanel = ({
         <ReferenceSection
           sectionId="qc"
           title={<FormattedMessage id="label.validation.review.qcSection" />}
-          summary={intl.formatMessage({
-            id: `label.validation.review.qc.${qcStatus}`,
-          })}
+          summary={
+            qcStatus
+              ? intl.formatMessage({
+                  id: `label.validation.review.qc.${qcStatus}`,
+                })
+              : ""
+          }
           open={sectionOpen("qc")}
           onToggle={toggleSection("qc")}
         >
-          <Tag size="sm" type={QC_TAG_TYPE[qcStatus] || "gray"}>
-            {intl.formatMessage({
-              id: `label.validation.review.qc.${qcStatus}`,
-            })}
-          </Tag>
+          {qcStatus && (
+            <Tag size="sm" type={QC_TAG_TYPE[qcStatus]}>
+              {intl.formatMessage({
+                id: `label.validation.review.qc.${qcStatus}`,
+              })}
+            </Tag>
+          )}
           <div className="unifiedFieldHint">
             <FormattedMessage id="label.validation.review.reagents.followUp" />
           </div>

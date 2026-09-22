@@ -78,7 +78,6 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
-import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
@@ -737,37 +736,12 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         }
     }
 
+    /**
+     * One status rule for every entry path (OGC-1226 FR-6): the legacy page defers
+     * to {@link ResultUtil#getStatusForTestResult(TestResultItem, boolean)}.
+     */
     private String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate) {
-        if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
-            return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);
-        } else if (testResult.isShadowRejected()) {
-            return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
-        } else if (alwaysValidate || !testResult.isValid() || ResultUtil.isForcedToAcceptance(testResult)) {
-            return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-        } else if (noResults(testResult.getShadowResultValue(), testResult.getMultiSelectResultValues(),
-                testResult.getResultType())) {
-            return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
-        } else {
-            if (!GenericValidator.isBlankOrNull(testResult.getResultLimitId())) {
-                ResultLimit resultLimit = resultLimitService.get(testResult.getResultLimitId());
-                if (resultLimit.isAlwaysValidate()) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
-                if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(testResult.getResultType())
-                        && !testResult.getResultValue().equals(resultLimit.getDictionaryNormalId())) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
-            }
-
-            return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-        }
-    }
-
-    private boolean noResults(String value, String multiSelectValue, String type) {
-
-        return (GenericValidator.isBlankOrNull(value) && GenericValidator.isBlankOrNull(multiSelectValue))
-                || (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(type) && "0".equals(value));
+        return ResultUtil.getStatusForTestResult(testResult, alwaysValidate);
     }
 
     private ResultInventory createTestKitLinkIfNeeded(TestResultItem testResult, String testKitName) {

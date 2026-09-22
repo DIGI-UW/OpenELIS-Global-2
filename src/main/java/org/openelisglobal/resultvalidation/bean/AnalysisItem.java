@@ -222,6 +222,13 @@ public class AnalysisItem implements Serializable {
 
     private String qcStatus;
 
+    /**
+     * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
+     * of its analysis satisfies {@code ValidationSignals.isClear}. The page reads
+     * it and never derives a lane of its own.
+     */
+    private boolean clear = false;
+
     private String criticalRange;
 
     private String enteredBy;
@@ -912,6 +919,14 @@ public class AnalysisItem implements Serializable {
 
     public void setQcStatus(String qcStatus) {
         this.qcStatus = qcStatus;
+    }
+
+    public boolean isClear() {
+        return clear;
+    }
+
+    public void setClear(boolean clear) {
+        this.clear = clear;
     }
 
     public String getCriticalRange() {
