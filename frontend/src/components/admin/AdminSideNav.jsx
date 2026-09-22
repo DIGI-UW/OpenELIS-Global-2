@@ -623,7 +623,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       <SideNavLink
         data-cy="programEntry"
         renderIcon={ChartBubble}
-        {...navProps(`${path}/program`)}
+        {...navProps(`${path}/programV2`)}
       >
         <FormattedMessage id="sidenav.label.admin.program" />
       </SideNavLink>

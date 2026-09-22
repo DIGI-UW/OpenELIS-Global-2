@@ -560,4 +560,12 @@
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
   <include relativeToChangelogFile="true" file="104-analyzer-delivery-receipt.xml"/>
 
+  <!-- Programs V2 (OGC-781): domain + is_active + program_lab_unit junction.
+       Existing programs backfill to CLINICAL/active; the many-to-many keeps
+       the legacy single test_section_id column populated during the
+       transition (dropped in a follow-up once every reader has migrated). -->
+  <include relativeToChangelogFile="true" file="105-program-domain.xml"/>
+  <include relativeToChangelogFile="true" file="106-program-active.xml"/>
+  <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
+
 </databaseChangeLog>

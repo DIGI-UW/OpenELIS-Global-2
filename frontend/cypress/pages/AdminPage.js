@@ -161,10 +161,11 @@ class AdminPage {
   }
 
   goToProgramEntry() {
-    cy.get(this.selectors.programEntry)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    // Sidebar's data-cy="programEntry" now points at the new Programs V2
+    // workflow; the legacy /program page is still registered as a route but
+    // no longer surfaced in the sidenav. This deprecated Cypress spec targets
+    // the legacy UI, so navigate directly.
+    cy.visit("/MasterListsPage/program");
     return new ProgramEntryPage();
   }
 
