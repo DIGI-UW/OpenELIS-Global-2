@@ -271,8 +271,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             return true;
         }
         double available = inventoryLotService.getByInventoryItemId(itemId).stream()
-                .filter(InventoryLot::isAvailableForUse)
-                .mapToDouble(InventoryLot::getCurrentQuantity).sum();
+                .filter(InventoryLot::isAvailableForUse).mapToDouble(InventoryLot::getCurrentQuantity).sum();
         return available >= quantityNeeded;
     }
 
