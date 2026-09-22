@@ -27,13 +27,14 @@ for revision-specific recordings, actual CSVs, mock comparisons and code QA.
 
 ## Packaging contract
 
-Use the official `gh stack` workflow. Each pull request starts with one clean
-snapshot commit and targets the preceding branch. Subsequent review repairs use
-ordinary commits on the relevant PR; do not rewrite submitted history merely to
-restore a single-commit count. Preserve the existing M1/M2
-branches as the development and deployment evidence; do not rewrite their
-history to manufacture the review stack. Start the new stack from refreshed
-`develop` and preserve intervening upstream changes.
+Use the official `gh stack` workflow. Each retained pull request contains one
+coherent commit and targets the preceding branch; the bottom targets `develop`.
+The approved stack repair folds #4305 into #4304 and #4313 into #4312, preserving
+the other PR identities and their order. Amend repairs in the owning PR and
+propagate descendants through `gh stack`, then validate their new heads before
+claiming readiness. Preserve the existing M1/M2 development and deployment
+evidence. Back up the existing stack before the approved history rewrite and
+preserve intervening upstream changes when rebasing onto `develop`.
 
 Use ten functional pull requests. The approximately 600-line guide applies to
 real business logic, not raw diff size. Report application behavior separately
@@ -42,19 +43,33 @@ fixtures, test/qualification helpers and documentation. Keep tests and evidence
 beside the behavior they validate; do not create test-only or styling-only PRs
 merely to reduce a line count.
 
-The decomposition is: contracts and CSV layouts; immutable job storage and audit;
-Sample & Testing mapping; configured catalog and shared definitions; queued
-delivery and recovery; Referrals; URL state and API bindings; the complete
-mock-based presentation; connected reporting workflows; and configurable
-application navigation. Navigation's model, editor, renderer, legacy-style
-removal and UAT instance configuration form one dedicated PR.
+The decomposition is: contracts, CSV layouts, immutable job storage and audit
+(#4304); Sample & Testing mapping (#4307); configured catalog and shared
+definitions (#4308); queued delivery and recovery (#4309); Referrals (#4310);
+mock-based presentation with URL state and API bindings (#4312); connected
+reporting workflows (#4314); configurable application navigation (#4315);
+Non-Conformance (#4318); and scoped native FHIR replay (#4323). Navigation's
+model, editor, renderer, legacy-style removal and UAT instance configuration
+form one dedicated PR.
 
 Preserve the existing component files. Do not extract helpers or split the
 supplied design merely to satisfy the raw line count. Intermediate foundations
 are reviewed as parts of this complete checkpoint, not represented as
 independently complete user workflows.
 
-## Review-ready versus merge-ready
+## Current stack acceptance
+
+The repair is complete only when all ten final PR heads have applicable backend,
+frontend and actual downstream E2E checks passing, have no integration conflicts,
+and descend from the verified `develop` checkpoint. A shared image build or a
+passing stack tip does not establish intermediate-PR E2E coverage. The handoff
+must identify every tested head and link recorded workflows, CSV proof and the
+code-QA findings. Human review, deployment and story-based UAT acceptance remain
+separate. The historical receipts below apply only to their named revisions.
+
+<a id="review-ready-versus-merge-ready"></a>
+
+## Historical review and deployment checkpoint (September 14, 2026)
 
 The public frontend/backend is `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7`,
 with review tooling `2048bc3cfd`. The original ten-PR stack remains separate by

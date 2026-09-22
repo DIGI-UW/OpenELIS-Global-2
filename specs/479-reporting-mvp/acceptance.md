@@ -1,6 +1,10 @@
 # Reporting milestone acceptance map
 
-September 15, 2026 (Pacific). Engineering acceptance reconciliation. Human acceptance is recorded separately.
+This document preserves the September 15, 2026 (Pacific) engineering acceptance
+reconciliation. Its revisions and check results are historical, not evidence that
+later PR heads pass. The approved ten-PR repair and its current acceptance gates
+are defined in [the review stopping point](review-stopping-point.md#current-stack-acceptance).
+Human acceptance is recorded separately.
 
 Deployed frontend/backend: `3de726b8d38ba102ac2fa564c95ac59a2a4e02b7`. Review candidate: `122dea228b01` after the validated test-only follow-up and ordinary stack merges; its production difference from the delivered feature is the upstream Transifex update. The official stack is #4306 and includes follow-up #4318. All eleven branches have been pushed in dependency order without rewritten history.
 

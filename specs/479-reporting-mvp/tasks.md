@@ -10,6 +10,14 @@ one-PR-per-milestone branch packaging is superseded. The full MVP scope remains.
 
 **Evidence index:** [All published recordings, CSVs and QA checkpoints](https://reporting.catalyst.openelis-global.org/reporting-evidence/).
 
+**September 15 merge preparation:** Existing replay PR #4323 is linked to the
+same official stack 4306, which now contains twelve existing PRs. Current
+`develop` was merged through those branches without rewriting submitted history.
+The dashboard reconciliation preserves upstream paging and metric retry/abort
+behavior. Local validation passes; refreshed required CI and code-owner approval
+remain merge gates. Public UAT and the shared local runtime were not changed.
+See the [reconciliation receipt](execution.md#existing-stack-reconciliation--september-15-2026).
+
 **Inputs**: [spec.md](spec.md), [plan.md](plan.md),
 [data-model.md](data-model.md), [contract](contracts/export-api.md),
 [acceptance plan](quickstart.md), [UAT contract](uat.md).
@@ -374,6 +382,49 @@ reporting scope while completing the navigation contract in `plan.md`.
       pass at harness `54b99f8d76ba`. RPT-504 authoring is now published and
       read back at checklist revision `8b87c62931a3`; see `execution.md`.
       Human acceptance remains separate.
+
+## Native FHIR integration follow-up — September 15, 2026
+
+This bounded repair supports the approved four-pathway Catalyst integration.
+Native OpenELIS owns its implementation; the integration task links this register
+and owns downstream Spark/Catalyst validation. It does not reopen the reporting
+builder's completed functional scope. See [the contract](fhir-replay.md).
+
+- [x] T042 Expose an administrator-authenticated, stateless POST for 1–100
+      explicit sample IDs, validate the whole selection before transformation,
+      and reuse the existing native sample transform. Preserve retained values,
+      dates and existing identities; do not invoke result entry or bulk backfill.
+- [x] T043 Validate rejected input without emission, selection-only processing,
+      and real asynchronous failure/completion. Format and build with the checks
+      recorded: 13 focused tests and the Java 21 WAR build pass, including a
+      regression for the circular referral/transform initialization found at
+      first local startup. After correcting that test's shared-context isolation,
+      all 13 replay checks and the 10 affected referral checks pass locally;
+      hosted CI remains a separate merge gate.
+- [x] T044 Publish [PR #4323](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4323)
+      and replace only the local reporting app, preserving the database/report
+      volumes, FHIR proxy connection and disabled startup imports. Native login
+      and authenticated FHIR metadata pass. The integration owner replayed only
+      samples 1154/1157: 15 resources persisted, all four intended Observations
+      matched, and full source rows were unchanged. See the
+      [verified native result](fhir-replay.md#verified-native-result).
+      Downstream Spark/Catalyst validation remains owned by the integration task.
+
+- [x] T045 Consolidate the existing reporting/replay delivery in official stack
+      4306. Append existing #4323, merge current `develop` through the existing
+      branches, and resolve the dashboard overlap in navigation #4315 while
+      preserving both server paging/request identity and metric abort/retry.
+      No replacement branches, replacement PRs, rebases or force pushes.
+- [x] T046 Validate the reconciled source locally with the available runtime:
+      84 focused frontend tests, 13 replay tests, frontend build and Java 21 WAR
+      build pass. Dependency pins are unchanged. These checks do not establish
+      database integration, recorded browser behavior or public deployment of
+      the new revision; those require their own evidence.
+- [ ] T047 Obtain the three required hosted checkpoints for the updated stack
+      heads and required code-owner review. Use the existing E2E workflow for
+      branch bases it does not trigger on automatically. Stop before merge
+      while approval is absent; do not bypass rules or change shared runtimes,
+      deployment or database roles as part of this preparation.
 
 ## Dependencies
 
