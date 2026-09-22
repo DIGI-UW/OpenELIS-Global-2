@@ -2526,10 +2526,9 @@ export function SearchResults(props) {
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
     }
-    var rawValue = ("" + value).replace(/[<>]/g, "");
-    // Allow scientific-notation exponents typed as Unicode superscripts (e.g. "3²" -> "3e2").
-    var actualValue = convertSuperscriptToScientific(rawValue);
-    var superscriptConverted = actualValue !== rawValue;
+    var actualValue = ("" + value).replace(/[<>]/g, "");
+    // Parse Unicode superscript exponents (e.g. "3²") as numbers without rewriting the visible input.
+    var parseableValue = convertSuperscriptToScientific(actualValue);
 
     let validation = { isInvalid: false };
     if (!actualValue) {
@@ -2547,20 +2546,13 @@ export function SearchResults(props) {
       };
     }
 
-    if (isNaN(actualValue)) {
+    if (isNaN(parseableValue)) {
       return { ...validation, isInvalid: true, isNaN: true };
       // $("valid_" + row).value = false;
       // return false;
     }
 
-    if (superscriptConverted) {
-      validation = {
-        ...validation,
-        newValue: greaterThanOrLessThan + actualValue,
-      };
-    }
-
-    if (!isNaN(row.significantDigits)) {
+    if (!isNaN(row.significantDigits) && actualValue === parseableValue) {
       const valueStr = actualValue.toString();
       if (valueStr.includes(".")) {
         const decimalPlaces = valueStr.split(".")[1].length;
