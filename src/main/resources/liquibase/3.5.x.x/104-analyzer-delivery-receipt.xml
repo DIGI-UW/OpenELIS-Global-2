@@ -2,7 +2,7 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
-    <changeSet id="099-analyzer-delivery-receipt" author="pmanko">
+    <changeSet id="104-analyzer-delivery-receipt" author="pmanko">
         <createTable schemaName="clinlims" tableName="analyzer_delivery_receipt">
             <column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column>
             <column name="connection_id" type="varchar(255)"><constraints nullable="false"/></column>
@@ -19,6 +19,10 @@
         </createTable>
         <addUniqueConstraint schemaName="clinlims" tableName="analyzer_delivery_receipt" columnNames="connection_id,message_id"
             constraintName="uq_analyzer_delivery_receipt"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_delivery_receipt_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_delivery_receipt"
+            baseColumnNames="analyzer_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer" referencedColumnNames="id"/>
         <rollback><dropTable schemaName="clinlims" tableName="analyzer_delivery_receipt"/></rollback>
     </changeSet>
 </databaseChangeLog>
