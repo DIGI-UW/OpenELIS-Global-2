@@ -128,7 +128,17 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 ```bash
 git worktree add -b <branch> .worktrees/<short-name> <base>
+cd .worktrees/<short-name> && ./scripts/setup-workspace.sh
 ```
+
+**Do not skip the second line.** `git worktree add` does not initialize
+submodules, so a new worktree has all 11 of them empty. Several are build
+inputs, not optional extras: `./Dockerfile` does
+`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
+out with `submodules: recursive`. Skip it and the Docker build fails roughly
+twenty minutes in with `there is no POM in this directory`, which reads like a
+broken Dockerfile rather than a missing checkout step. If you only need the
+submodules, `git submodule update --init --recursive` is the relevant part.
 
 **Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
 directory** — including the session scratchpad, which is for temporary files
