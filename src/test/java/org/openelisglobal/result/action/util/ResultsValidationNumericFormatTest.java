@@ -32,8 +32,7 @@ public class ResultsValidationNumericFormatTest extends BaseWebContextSensitiveT
 
     @Test
     public void validateItem_acceptsScientificNotationInEveryWrittenForm() {
-        for (String value : new String[] { "1.5e5", "1.5E+05", "1.5 x 10^5", "1.5×10⁵", "2×10⁻³", "10⁻³",
-                "<1.5e-7" }) {
+        for (String value : new String[] { "1.5e5", "1.5E+05", "1.5 x 10^5", "1.5×10⁵", "2×10⁻³", "10⁻³", "<1.5e-7" }) {
             assertFalse(value, hasNumberFormatError(resultsValidation.validateItem(numericItem(value))));
         }
     }

@@ -60,7 +60,10 @@ public class StringUtil {
     /** Computer scientific notation: 1.5e5, 1.5E+05, -2e-3 */
     private static final Pattern EXPONENT_NOTATION_REG_EX = Pattern
             .compile("^(" + DECIMAL_MANTISSA + ")[eE]([+-]?\\d+)$");
-    /** Written scientific notation: 1.5 x 10^5, 1.5×10⁵, 10⁻³ (the mantissa is optional) */
+    /**
+     * Written scientific notation: 1.5 x 10^5, 1.5×10⁵, 10⁻³ (the mantissa is
+     * optional)
+     */
     private static final Pattern TIMES_TEN_NOTATION_REG_EX = Pattern.compile("^(?:(" + DECIMAL_MANTISSA
             + ")\\s*[xX×*]\\s*)?([+-]?)10\\s*(?:\\^\\s*([+-]?\\d+)|([⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+))$");
 
@@ -700,10 +703,10 @@ public class StringUtil {
     /**
      * Rewrites a value written in scientific notation as canonical e-notation:
      * {@code 1.5E+05}, {@code 1.5 x 10^5} and {@code 1.5×10⁵} all become
-     * {@code 1.5e5}, and {@code 10⁻³} becomes {@code 1e-3}. Superscript
-     * digits are read only as the power of ten in that form: a bare {@code 3²}
-     * is ambiguous (nine, or three hundred?) and is returned unchanged so that it
-     * fails numeric validation, as is every other value.
+     * {@code 1.5e5}, and {@code 10⁻³} becomes {@code 1e-3}. Superscript digits are
+     * read only as the power of ten in that form: a bare {@code 3²} is ambiguous
+     * (nine, or three hundred?) and is returned unchanged so that it fails numeric
+     * validation, as is every other value.
      */
     public static String normalizeScientificNotation(String value) {
         if (value == null || value.trim().isEmpty()) {
@@ -757,8 +760,7 @@ public class StringUtil {
             return false;
         }
         String trimmed = value.trim();
-        return EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparatorPrefix(trimmed).length()).trim())
-                .matches();
+        return EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparatorPrefix(trimmed).length()).trim()).matches();
     }
 
     /**
