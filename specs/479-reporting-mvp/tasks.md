@@ -1,7 +1,8 @@
 # Tasks: Configurable Reporting MVP
 
 **Delivery update:** The [review stopping point](review-stopping-point.md)
-now governs PR packaging: an official GitHub stack, one clean commit per PR,
+now governs PR packaging: an official GitHub stack, one initial snapshot commit
+per PR with ordinary follow-up commits for review repairs,
 roughly 600 lines of real business logic (separate from markup, styles,
 declarations, tests, fixtures, helpers and documentation), and separate
 navigation changes. M1/M2 below retain functional traceability; their old

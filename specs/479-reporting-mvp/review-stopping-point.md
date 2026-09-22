@@ -14,16 +14,20 @@ until that follow-up is finished.
   returned results and pending referrals are preserved.
 - Delivery: immutable requests, duplicate submission protection, queued
   cancellation, retry lineage, worker recovery, expiry and file cleanup.
-- Navigation: one Carbon renderer, consistent typography, reports hierarchy and
-  routed drafts; database defaults plus instance configuration, sections/icons,
-  and an editor that preserves controlled values.
+- Navigation: a configured Carbon renderer for the main menu, shared typography
+  with the separate administration renderer, reports hierarchy and routed drafts;
+  database defaults plus instance configuration, sections/icons, and an editor
+  that preserves controlled values. Administration's hardcoded entry list is
+  still a separate legacy path; this checkpoint does not claim its replacement.
 - Public UAT: stable synthetic fixtures, actual CSV comparisons, desktop and
   narrow-screen workflows, and deployment provenance.
 
 ## Packaging contract
 
-Use the official `gh stack` workflow. Each pull request contains one clean
-snapshot commit and targets the preceding branch. Preserve the existing M1/M2
+Use the official `gh stack` workflow. Each pull request starts with one clean
+snapshot commit and targets the preceding branch. Subsequent review repairs use
+ordinary commits on the relevant PR; do not rewrite submitted history merely to
+restore a single-commit count. Preserve the existing M1/M2
 branches as the development and deployment evidence; do not rewrite their
 history to manufacture the review stack. Start the new stack from refreshed
 `develop` and preserve intervening upstream changes.
@@ -49,13 +53,25 @@ independently complete user workflows.
 
 ## Review-ready versus merge-ready
 
-The current public application is `d48cd790c49294ddb4a36c9333d3acc744ebb3c4`.
-Its public workflow evidence remains valid for that application. The subsequent
-recovery-test revision `a4f7160b1dcce0245eed97b1f3f26c16cb44203e` has passing
-backend, frontend and translation CI. Public cancellation also passed after its
-observation window was corrected; the final test and retained output are included
-in the new stack. These are prior integration evidence, not a claim that the
-newly packaged commits have already passed CI.
+The latest verified public application at this checkpoint is
+`8005e4cc0b2b05d054489730aef969027d773093`, deployment
+`20260914T234348Z-8005e4cc0b2b`. Its backend, frontend and full E2E GitHub gates
+pass. [Current public workflow evidence](https://reporting.catalyst.openelis-global.org/reporting-evidence/20260914-review-8005/)
+contains three inspected HD recordings, actual CSVs and matching queue downloads,
+plus desktop/narrow comparisons with the pinned mock. Five public workflows
+passed across seven checks including two authentication setups. Earlier recovery
+proof remains tied to `9baa356`; navigation/Dashboard repair recordings identify
+their original local builds. Human acceptance remains pending.
+
+Reporting UI follow-up `36eb98edda` adds a two-editor regression and corrects the
+old conflict warning persisting after a successful copy. Its component regression
+reproduced the defect before the one-line fix. All 31 reporting component checks,
+compiled desktop/phone recovery with actual CSVs, both builds, formatting and
+focused lint pass. Failed copying retains the entered name and selected fields.
+The original saved definition and its independent copy retain their own columns.
+This follow-up still needs assembled publication, public recording and fresh CI;
+it is not yet part of the public `8005e4cc0b` result. The [code-QA record](code-qa.md)
+separates current validation from full-MVP and human acceptance.
 
 Before calling this checkpoint merge-ready:
 
