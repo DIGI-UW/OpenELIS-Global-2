@@ -122,6 +122,34 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
+### Worktree Location (MANDATORY)
+
+**Every git worktree goes in `.worktrees/<short-name>` at the repo root.**
+
+```bash
+git worktree add -b <branch> .worktrees/<short-name> <base>
+```
+
+**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
+directory** — including the session scratchpad, which is for temporary files
+only (intermediate results, scripts, throwaway logs). A worktree is not a
+temporary file.
+
+**Why:** macOS reaps `/private/tmp`. When it does, the worktree is destroyed but
+`git worktree list` keeps reporting it, so the failure surfaces later as a
+confusing "not a git repository" error. This has already cost work here:
+`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
+`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
+file pointed into the deleted parent.
+
+Several `/private/tmp/oe2-*` worktrees may still show up in `git worktree list`.
+**They are the legacy mistake, not the convention** — do not copy them. Relocate
+one with `git worktree move <old> .worktrees/<short-name>`, which preserves
+commits, and clear dead entries with `git worktree prune`.
+
+The same rule applies to anything else worth keeping (evidence, triage notes,
+reports): if losing the file would cost something, it does not go in temp.
+
 ### Post-Compaction Context Recovery (MANDATORY)
 
 **After any context compaction or session resume**, run these commands FIRST —
