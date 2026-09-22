@@ -14,7 +14,10 @@ on:
     types: [completed]
 
 concurrency:
-  group: e2e-tests-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  # workflow_run reports the base branch and base SHA for pull_request builds,
+  # so those fields collapse unrelated PRs into one cancellation group. The
+  # triggering build run ID is unique per PR build and remains stable on rerun.
+  group: e2e-tests-build-${{ github.event.workflow_run.id }}
   cancel-in-progress: true
 
 jobs:

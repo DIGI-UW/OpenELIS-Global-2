@@ -14,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PublicationWorkflowTest(unittest.TestCase):
+    def test_each_source_build_gets_an_independent_e2e_executor(self):
+        workflow = yaml.load((ROOT / ".github/workflows/e2e-tests.yml").read_text(), Loader=yaml.BaseLoader)
+        group = workflow["concurrency"]["group"]
+        self.assertIn("github.event.workflow_run.id", group)
+        self.assertNotIn("github.event.workflow_run.head_branch", group)
+        self.assertNotIn("github.event.workflow_run.head_sha", group)
+
     def test_request_builder_passes_configured_namespace_and_rejects_invalid_input(self):
         workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
         step = next(step for step in workflow["jobs"]["deploy-testing"]["steps"]
