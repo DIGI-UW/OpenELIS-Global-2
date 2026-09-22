@@ -3,6 +3,7 @@ package org.openelisglobal.analysis.service;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -144,7 +145,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAllAnalysisByTestAndStatus(String testId, List<String> statusIdList);
 
-    List<Analysis> getAllAnalysisByStatus(List<String> statusIdList, int maxResults);
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults);
 
     List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds);
 
