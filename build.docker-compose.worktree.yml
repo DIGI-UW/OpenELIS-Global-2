@@ -46,6 +46,13 @@ services:
         published: "0"
         host_ip: 127.0.0.1
         protocol: tcp
+    # The base file pins this service to 172.20.1.121, an address inside the
+    # subnet removed below. Leaving it would fail container start with
+    # "no configured subnet contains IP address 172.20.1.121". Nothing reads the
+    # literal (only build.docker-compose.yml and the installer template mention
+    # it), and services address each other by Compose service name, so drop it.
+    networks: !override
+      default: {}
 
   fhir.openelis.org:
     container_name: !reset null
