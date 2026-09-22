@@ -55,6 +55,7 @@ import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
 import { classifyNumericResult, numericResultStyle } from "./numericResultFlag";
+import { convertSuperscriptToScientific } from "./superscriptNumeric";
 import { FlagChip } from "./unified/flags";
 import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
@@ -1835,7 +1836,8 @@ export function SearchResults(props) {
                   id={"ResultValue" + row.id}
                   name={"testResult[" + row.id + "].resultValue"}
                   labelText=""
-                  type="number"
+                  type="text"
+                  inputMode="text"
                   value={row.resultValue}
                   style={{ ...validationState[row.id]?.style, ...holdingStyle }}
                   onBlur={(e) => {
@@ -2486,7 +2488,9 @@ export function SearchResults(props) {
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
     }
-    var actualValue = ("" + value).replace(/[<>]/g, "");
+    var actualValue = convertSuperscriptToScientific(
+      ("" + value).replace(/[<>]/g, ""),
+    );
     let validation = {
       isInvalid: false,
       outsideNormal: false,
@@ -2522,7 +2526,10 @@ export function SearchResults(props) {
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
     }
-    var actualValue = ("" + value).replace(/[<>]/g, "");
+    var rawValue = ("" + value).replace(/[<>]/g, "");
+    // Allow scientific-notation exponents typed as Unicode superscripts (e.g. "3²" -> "3e2").
+    var actualValue = convertSuperscriptToScientific(rawValue);
+    var superscriptConverted = actualValue !== rawValue;
 
     let validation = { isInvalid: false };
     if (!actualValue) {
@@ -2544,6 +2551,13 @@ export function SearchResults(props) {
       return { ...validation, isInvalid: true, isNaN: true };
       // $("valid_" + row).value = false;
       // return false;
+    }
+
+    if (superscriptConverted) {
+      validation = {
+        ...validation,
+        newValue: greaterThanOrLessThan + actualValue,
+      };
     }
 
     if (!isNaN(row.significantDigits)) {

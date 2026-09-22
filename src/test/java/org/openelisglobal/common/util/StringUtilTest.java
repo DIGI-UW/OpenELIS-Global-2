@@ -57,6 +57,38 @@ public class StringUtilTest {
     }
 
     @Test
+    public void isNumeric_shouldAcceptUnicodeSuperscriptExponents() {
+        assertTrue(StringUtil.isNumeric("3²"));
+        assertTrue(StringUtil.isNumeric("3.5³"));
+        assertTrue(StringUtil.isNumeric("3¹⁰"));
+        assertTrue(StringUtil.isNumeric("3⁻²"));
+    }
+
+    @Test
+    public void convertSuperscriptToScientific_shouldRewriteAsExponent() {
+        assertEquals("3e2", StringUtil.convertSuperscriptToScientific("3²"));
+        assertEquals("3.5e3", StringUtil.convertSuperscriptToScientific("3.5³"));
+        assertEquals("3e10", StringUtil.convertSuperscriptToScientific("3¹⁰"));
+        assertEquals("3e-2", StringUtil.convertSuperscriptToScientific("3⁻²"));
+    }
+
+    @Test
+    public void convertSuperscriptToScientific_shouldLeavePlainInputUnchanged() {
+        assertEquals("3", StringUtil.convertSuperscriptToScientific("3"));
+        assertEquals("3.14", StringUtil.convertSuperscriptToScientific("3.14"));
+        assertEquals("3e2", StringUtil.convertSuperscriptToScientific("3e2"));
+        assertEquals("abc", StringUtil.convertSuperscriptToScientific("abc"));
+        assertEquals("", StringUtil.convertSuperscriptToScientific(""));
+    }
+
+    @Test
+    public void getActualNumericValue_shouldReturnConvertedFormForSuperscript() {
+        assertEquals("3e2", StringUtil.getActualNumericValue("3²"));
+        assertEquals("3e2", StringUtil.getActualNumericValue("<3²"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("abc"));
+    }
+
+    @Test
     public void blankIfNull_shouldReturnEmptyStringForNull() {
         assertEquals("", StringUtil.blankIfNull(null));
     }

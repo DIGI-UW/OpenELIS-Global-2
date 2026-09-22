@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,6 +55,8 @@ public class StringUtil {
     // private static String STRING_KEY_SUFFIX = null;
     private static Pattern INTEGER_REG_EX = Pattern.compile("^-?\\d+$");
     private static Pattern ALL_NUMERIC_REG_EX = Pattern.compile("^\\d+$");
+    private static final Pattern SUPERSCRIPT_RUN_REG_EX = Pattern.compile(
+            "([0-9.])([\\u2070\\u00B9\\u00B2\\u00B3\\u2074\\u2075\\u2076\\u2077\\u2078\\u2079\\u207A\\u207B]+)");
 
     public enum EncodeContext {
         JAVASCRIPT, HTML
@@ -674,11 +677,75 @@ public class StringUtil {
         if (actualValue.startsWith("<") || actualValue.startsWith(">")) {
             actualValue = actualValue.replaceAll("<|>", "");
         }
+        actualValue = convertSuperscriptToScientific(actualValue);
         if (isNumeric(actualValue)) {
             return actualValue;
         } else {
             return "NaN";
         }
+    }
+
+    /**
+     * Rewrites Unicode superscript digits that trail a numeric character as
+     * scientific 'e' notation so {@link Double#parseDouble(String)} accepts them
+     * (e.g. "3²" -> "3e2", "3⁻²" -> "3e-2"). Non-superscript input is returned
+     * unchanged.
+     */
+    public static String convertSuperscriptToScientific(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        Matcher matcher = SUPERSCRIPT_RUN_REG_EX.matcher(value);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String supers = matcher.group(2);
+            StringBuilder ascii = new StringBuilder(supers.length());
+            for (int i = 0; i < supers.length(); i++) {
+                switch (supers.charAt(i)) {
+                case '⁰':
+                    ascii.append('0');
+                    break;
+                case '¹':
+                    ascii.append('1');
+                    break;
+                case '²':
+                    ascii.append('2');
+                    break;
+                case '³':
+                    ascii.append('3');
+                    break;
+                case '⁴':
+                    ascii.append('4');
+                    break;
+                case '⁵':
+                    ascii.append('5');
+                    break;
+                case '⁶':
+                    ascii.append('6');
+                    break;
+                case '⁷':
+                    ascii.append('7');
+                    break;
+                case '⁸':
+                    ascii.append('8');
+                    break;
+                case '⁹':
+                    ascii.append('9');
+                    break;
+                case '⁺':
+                    ascii.append('+');
+                    break;
+                case '⁻':
+                    ascii.append('-');
+                    break;
+                default:
+                    ascii.append(supers.charAt(i));
+                }
+            }
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(1) + "e" + ascii.toString()));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     public static String repeat(String s, int times) {
@@ -693,7 +760,7 @@ public class StringUtil {
         if (str == null)
             return false;
         try {
-            Double.parseDouble(str);
+            Double.parseDouble(convertSuperscriptToScientific(str));
             return true;
         } catch (NumberFormatException e) {
             return false;
