@@ -80,6 +80,22 @@ echo -e "${GREEN}=============================================${NC}"
 echo -e "Compose project: ${YELLOW}${E2E_STACK_PROJECT}${NC}  (isolated to this worktree)"
 echo ""
 
+# Step 0: Submodules. CI checks out with `submodules: recursive`
+# (.github/workflows/e2e-playwright-reusable.yml), and several submodules are
+# build inputs rather than optional extras: ./Dockerfile does
+# `WORKDIR /build/dataexport/dataexport-core` and runs maven there. A fresh
+# worktree has none of them checked out, so without this the failure lands
+# roughly twenty minutes into the image build as "there is no POM in this
+# directory", which reads like a broken Dockerfile rather than a missing
+# checkout step.
+echo -e "${YELLOW}[0/4] Checking submodules (CI uses submodules: recursive)...${NC}"
+if git submodule status --recursive 2>/dev/null | grep -q '^-'; then
+  echo "  Uninitialized submodules found; initializing (this can take a while)..."
+  git submodule update --init --recursive
+fi
+echo -e "${GREEN}✓ Submodules ready${NC}"
+echo ""
+
 # Step 1: Fresh stack. CI builds a brand-new database for every run; a reused
 # db-data volume is the one environment CI can never reproduce. `down -v` is
 # safe here because -p scopes it to this worktree's project.
