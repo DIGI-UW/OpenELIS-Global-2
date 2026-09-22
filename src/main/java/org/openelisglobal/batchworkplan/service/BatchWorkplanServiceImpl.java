@@ -25,12 +25,14 @@ import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -49,32 +51,28 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     private final BatchWorkplanItemDAO batchWorkplanItemDAO;
     private final AnalysisService analysisService;
     private final IStatusService statusService;
+    private final UserService userService;
 
     public BatchWorkplanServiceImpl(BatchWorkplanDAO batchWorkplanDAO, BatchWorkplanItemDAO batchWorkplanItemDAO,
-            AnalysisService analysisService, IStatusService statusService) {
+            AnalysisService analysisService, IStatusService statusService, UserService userService) {
         this.batchWorkplanDAO = batchWorkplanDAO;
         this.batchWorkplanItemDAO = batchWorkplanItemDAO;
         this.analysisService = analysisService;
         this.statusService = statusService;
+        this.userService = userService;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PendingBatchTestResponse> getPendingTests(Integer limit) {
-        int boundedLimit = boundLimit(limit);
+    public List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId) {
         Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(openStatuses());
-        List<Analysis> analyses = analysisService.getAllAnalysisByStatus(workplanPendingStatusIds(), MAX_PENDING_LIMIT);
-        List<PendingBatchTestResponse> responses = new ArrayList<>();
-        for (Analysis analysis : analyses) {
-            if (assignedAnalysisIds.contains(analysis.getId())) {
-                continue;
-            }
-            responses.add(toPendingResponse(analysis));
-            if (responses.size() >= boundedLimit) {
-                break;
-            }
-        }
-        return responses;
+        List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
+        // Both exclusions are in the query, so the row cap is the last thing applied
+        // and a page full of already-batched or out-of-unit work cannot squeeze the
+        // eligible rows out of the result.
+        List<Analysis> analyses = analysisService.getPendingAnalysesForWorkplan(workplanPendingStatusIds(),
+                visibleTestIds, assignedAnalysisIds, boundLimit(limit));
+        return analyses.stream().map(this::toPendingResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -107,6 +105,12 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         List<Analysis> analyses = analysisService.getAnalysesByIdsWithDetails(analysisIds);
         if (analyses.size() != analysisIds.size()) {
             throw new IllegalArgumentException("One or more analyses were not found");
+        }
+        // Re-check the caller's lab units on the write path: the pending list is
+        // already scoped, but the request body is client-supplied and a crafted one
+        // would otherwise batch another unit's work.
+        if (inUserLabUnits(analyses, sysUserId).size() != analyses.size()) {
+            throw new IllegalArgumentException("One or more analyses are outside your lab units");
         }
         validatePending(analyses);
 
@@ -161,6 +165,18 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         BatchWorkplan updated = batchWorkplanDAO.update(batch);
         return toBatchResponse(updated, analysesById(
                 updated.getItems().stream().map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toList())));
+    }
+
+    /**
+     * The subset of these analyses whose test falls in a lab unit the user holds
+     * the Results role for. Same helper the Results worklist and the four legacy
+     * workplan screens use, so all five scope identically.
+     */
+    private List<Analysis> inUserLabUnits(List<Analysis> analyses, String sysUserId) {
+        if (analyses.isEmpty()) {
+            return analyses;
+        }
+        return userService.filterAnalysesByLabUnitRoles(sysUserId, analyses, Constants.ROLE_RESULTS);
     }
 
     private void validatePending(List<Analysis> analyses) {

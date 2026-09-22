@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -773,8 +774,9 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
-    public List<Analysis> getAllAnalysisByStatus(List<String> statusIdList, int maxResults) {
-        return baseObjectDAO.getAllAnalysisByStatus(statusIdList, maxResults);
+    public List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) {
+        return baseObjectDAO.getPendingAnalysesForWorkplan(statusIdList, testIdList, excludedAnalysisIds, maxResults);
     }
 
     @Override

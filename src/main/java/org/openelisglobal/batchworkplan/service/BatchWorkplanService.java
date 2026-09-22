@@ -8,7 +8,12 @@ import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 
 public interface BatchWorkplanService {
 
-    List<PendingBatchTestResponse> getPendingTests(Integer limit);
+    /**
+     * Pending tests the given user is allowed to work, scoped to the lab units
+     * their Results role covers. A user with no lab unit assignment sees nothing,
+     * which is how every other workplan screen behaves.
+     */
+    List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId);
 
     List<BatchWorkplanResponse> getBatches();
 

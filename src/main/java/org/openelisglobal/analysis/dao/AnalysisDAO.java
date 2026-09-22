@@ -18,6 +18,7 @@ package org.openelisglobal.analysis.dao;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -240,7 +241,16 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber, String upperRangeAccessionNumber, boolean doRange, boolean finished);
 
-    List<Analysis> getAllAnalysisByStatus(List<String> statusIdList, int maxResults) throws LIMSRuntimeException;
+    /**
+     * Pending analyses for the batch workplan, with every exclusion applied in the
+     * query so {@code maxResults} caps rows the caller will actually show. Capping
+     * first and filtering afterwards can return nothing while eligible rows exist.
+     *
+     * @param testIdList          tests the caller may see; empty means none
+     * @param excludedAnalysisIds analyses already held by an open batch
+     */
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) throws LIMSRuntimeException;
 
     List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException;
 

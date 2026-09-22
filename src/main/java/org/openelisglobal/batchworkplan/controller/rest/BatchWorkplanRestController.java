@@ -34,8 +34,9 @@ public class BatchWorkplanRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/pending-tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<PendingBatchTestResponse> pendingTests(@RequestParam(name = "limit", required = false) Integer limit) {
-        return batchWorkplanService.getPendingTests(limit);
+    public List<PendingBatchTestResponse> pendingTests(@RequestParam(name = "limit", required = false) Integer limit,
+            HttpServletRequest httpRequest) {
+        return batchWorkplanService.getPendingTests(limit, getSysUserId(httpRequest));
     }
 
     @GetMapping(value = "/batches", produces = MediaType.APPLICATION_JSON_VALUE)
