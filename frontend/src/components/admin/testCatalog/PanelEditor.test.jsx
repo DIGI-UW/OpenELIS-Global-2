@@ -181,6 +181,91 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
     );
   });
 
+  it("a refused domain change names the tests standing in the way (OGC-1232)", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            id: "1",
+            name: "Bilan Biochimique",
+            domain: "CLINICAL",
+            domainConflict: {
+              domain: "ENVIRONMENTAL",
+              tests: [
+                { testId: "5", name: "Glucose (Serum)", domain: "CLINICAL" },
+                { testId: "6", name: "Urea (Serum)", domain: "CLINICAL" },
+              ],
+            },
+          }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    const explanation = await screen.findByTestId("panel-domain-conflict");
+    expect(explanation).toHaveTextContent(
+      "This panel cannot be filed under Environmental: 2 of its tests belong to another domain (Glucose (Serum) (Clinical), Urea (Serum) (Clinical)).",
+    );
+    expect(explanation).toHaveTextContent(
+      messages["helper.panel.domainConflict.remedy"],
+    );
+    expect(notification.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("Glucose (Serum)"),
+      }),
+    );
+
+    // choosing a domain again starts over: the explanation belongs to the
+    // refused choice, not to the form
+    fireEvent.click(screen.getByLabelText("Clinical"));
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("a named refusal tells the operator which rule refused the save", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ ...PANEL, refusal: "name.tooLong" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.nameTooLong"],
+        }),
+      ),
+    );
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("a refusal without a domain conflict keeps the generic message", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({ ok: false, status: 422, json: () => Promise.reject(new Error()) }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.save"],
+        }),
+      ),
+    );
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
   it("create flow POSTs {name, active:false} first (never active with zero tests)", async () => {
     mockParams = { panelId: "new", section: "basic-info" };
     wrap();
