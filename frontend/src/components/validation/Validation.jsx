@@ -32,6 +32,7 @@ import {
   LANE_CLEAR,
   bulkOutcomeKey,
   bulkReleaseRequest,
+  bulkUnavailableReasons,
   clearRows,
   countByFilter,
   filterTriaged,
@@ -129,6 +130,48 @@ const Validation = (props) => {
   // OGC-1029 (FR-B4): the whole bulk capability is an admin switch.
   const bulkAllowed =
     configurationProperties?.ALLOW_BULK_RELEASE_CLEAR === "true";
+  // OGC-1226 (FR-13): a disabled bulk button always says why, next to itself.
+  const bulkReasons = bulkUnavailableReasons(triaged, { bulkAllowed });
+
+  const signalName = (key) =>
+    intl.formatMessage({
+      id:
+        key === "abnormal"
+          ? "label.validation.filter.abnormal"
+          : `label.validation.signal.${key}`,
+    });
+
+  const bulkReasonText = (reason) => {
+    switch (reason.key) {
+      case "bulkDisabled":
+        return intl.formatMessage({ id: "label.validation.bulk.disabled" });
+      case "queueEmpty":
+        return intl.formatMessage({
+          id: "label.validation.emptyState.queueEmpty",
+        });
+      case "noReference":
+        return `${intl.formatMessage(
+          { id: "label.validation.emptyState.noReference" },
+          { count: reason.count },
+        )} ${intl.formatMessage({
+          id: "label.validation.emptyState.noReferenceHint",
+        })}`;
+      case "signals":
+      default: {
+        const lead = intl.formatMessage(
+          { id: "label.validation.emptyState.signals" },
+          { count: reason.count },
+        );
+        if (!reason.dominant || reason.dominant.length === 0) {
+          return lead;
+        }
+        return `${lead} ${intl.formatMessage(
+          { id: "label.validation.emptyState.signalsDetail" },
+          { signals: reason.dominant.map(signalName).join(", ") },
+        )}`;
+      }
+    }
+  };
 
   useEffect(() => {
     componentMounted.current = true;
@@ -653,23 +696,32 @@ const Validation = (props) => {
     return row.result;
   };
 
+  const hasRows = props.results?.resultList?.length > 0;
+  // OGC-1226 (FR-13, FR-14c): after a search the bulk button stays on screen even
+  // over an empty queue, disabled, so its explanation has somewhere to attach.
+  const showBulkBar = hasRows || props.results?.searched === true;
+
   return (
     <>
-      {props.results?.resultList?.length > 0 && (
+      {showBulkBar && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
-            <picture>
-              <img
-                src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                alt="nonconforming"
-                width="25" // Set your desired width
-                height="20" // Set your desired height
-              />
-            </picture>
-            <b>
-              {" "}
-              <FormattedMessage id="validation.label.nonconform" />
-            </b>
+            {hasRows && (
+              <>
+                <picture>
+                  <img
+                    src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                    alt="nonconforming"
+                    width="25" // Set your desired width
+                    height="20" // Set your desired height
+                  />
+                </picture>
+                <b>
+                  {" "}
+                  <FormattedMessage id="validation.label.nonconform" />
+                </b>
+              </>
+            )}
           </Column>
           <Column
             lg={9}
@@ -677,30 +729,37 @@ const Validation = (props) => {
             sm={4}
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: "0.5rem",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "0.25rem",
             }}
           >
-            {bulkAllowed ? (
-              <Button
-                size="sm"
-                data-testid="release-all-clear"
-                disabled={clearLaneRows.length === 0 || bulkBusy}
-                onClick={() => setBulkOpen(true)}
-              >
-                {intl.formatMessage(
-                  { id: "label.validation.bulk.releaseAllClear" },
-                  { count: clearLaneRows.length },
-                )}
-              </Button>
-            ) : (
-              <span
+            <Button
+              size="sm"
+              data-testid="release-all-clear"
+              disabled={!bulkAllowed || clearLaneRows.length === 0 || bulkBusy}
+              onClick={() => setBulkOpen(true)}
+            >
+              {intl.formatMessage(
+                { id: "label.validation.bulk.releaseAllClear" },
+                { count: clearLaneRows.length },
+              )}
+            </Button>
+            {bulkReasons.length > 0 && (
+              <div
                 className="cds--label"
-                data-testid="release-all-clear-disabled"
+                data-testid="release-all-clear-why"
+                style={{ textAlign: "right", maxWidth: "40rem" }}
               >
-                {intl.formatMessage({ id: "label.validation.bulk.disabled" })}
-              </span>
+                {bulkReasons.map((reason) => (
+                  <div
+                    key={reason.key}
+                    data-testid={`release-all-clear-why-${reason.key}`}
+                  >
+                    {bulkReasonText(reason)}
+                  </div>
+                ))}
+              </div>
             )}
           </Column>
         </Grid>
@@ -721,6 +780,9 @@ const Validation = (props) => {
                 { id: "label.validation.bulk.body" },
                 { count: clearLaneRows.length },
               )}
+            </p>
+            <p data-testid="release-all-clear-scope">
+              {intl.formatMessage({ id: "label.validation.release.scope" })}
             </p>
             <table
               className="cds--data-table cds--data-table--sm"

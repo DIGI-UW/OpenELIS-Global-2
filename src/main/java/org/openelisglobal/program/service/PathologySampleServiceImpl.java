@@ -140,6 +140,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return baseObjectDAO.getCountWithStatus(statuses);
     }
 
+    @Override
+    public Long getCountWithOpenRequests() {
+        return baseObjectDAO.getCountWithOpenRequests();
+    }
+
     private PathologySample copyPathologySample(PathologySample oldPathologySample) {
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));
@@ -434,11 +439,20 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return conclusion;
     }
 
+    /**
+     * A request the case view raises carries no status of its own: the status is
+     * chosen later, when the request is answered or withdrawn.
+     * {@link PathologyRequest} declares {@link RequestStatus#OPENED} as its own
+     * default for exactly that reason, but passing the form's null through would
+     * overwrite it and leave a row that reads as neither open nor closed, which no
+     * query can see and no screen can act on. A request that has just been raised
+     * is open.
+     */
     private PathologyRequest createRequest(String text, RequestType type, RequestStatus status) {
         PathologyRequest request = new PathologyRequest();
         request.setValue(text);
         request.setType(type);
-        request.setStatus(status);
+        request.setStatus(status == null ? RequestStatus.OPENED : status);
         return request;
     }
 

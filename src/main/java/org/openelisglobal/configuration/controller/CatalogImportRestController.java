@@ -142,6 +142,12 @@ public class CatalogImportRestController {
         }
     }
 
+    /**
+     * A batch the service could not take (a file it cannot place in a domain) or
+     * could not keep (a configuration tree the webapp cannot write to) is a 422
+     * whose body carries the reason, so the page can show it instead of an empty
+     * result.
+     */
     private ResponseEntity<ImportPlan> respond(List<MultipartFile> files, List<String> domains,
             HttpServletRequest request, boolean apply) {
         if (files == null || files.isEmpty()) {
@@ -151,7 +157,7 @@ public class CatalogImportRestController {
         try {
             return ResponseEntity.ok(apply ? importService.apply(files, domains, sysUserId)
                     : importService.preview(files, domains, sysUserId));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.unprocessableEntity().body(new ImportPlan(null,
                     List.of(new CatalogImportService.FilePlan(null, null, 0, 0, 0, List.of(), message(e))), 0));
         }
