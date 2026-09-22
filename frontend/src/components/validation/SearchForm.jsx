@@ -69,12 +69,14 @@ const SearchForm = (props) => {
         setSearchResults((prevState) => ({
           ...prevState,
           resultList: newResultsList,
+          searched: true,
         }));
       } else {
         setIsLoading(false);
         setSearchResults((prevState) => ({
           ...prevState,
           resultList: [],
+          searched: true,
         }));
 
         addNotification({

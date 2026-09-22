@@ -11,6 +11,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
@@ -48,13 +49,10 @@ public class PathologyController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<PathologyDashBoardCount> getFilteredPathologyEntries() {
         PathologyDashBoardCount count = new PathologyDashBoardCount();
-        count.setInProgress(pathologySampleService.getCountWithStatus(
-                Arrays.asList(PathologyStatus.GROSSING, PathologyStatus.CUTTING, PathologyStatus.GROSSING,
-                        PathologyStatus.SLICING, PathologyStatus.STAINING, PathologyStatus.PROCESSING)));
+        count.setInProgress(pathologySampleService.getCountWithStatus(PathologyStages.inProgress()));
         count.setAwaitingReview(
                 pathologySampleService.getCountWithStatus(Arrays.asList(PathologyStatus.READY_PATHOLOGIST)));
-        count.setAdditionalRequests(
-                pathologySampleService.getCountWithStatus(Arrays.asList(PathologyStatus.ADDITIONAL_REQUEST)));
+        count.setAdditionalRequests(pathologySampleService.getCountWithOpenRequests());
 
         Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
         Instant weekAgoInstant = Instant.now().minus(7, ChronoUnit.DAYS);

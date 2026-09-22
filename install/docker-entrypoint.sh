@@ -27,13 +27,15 @@ OE_LOGS="/var/lib/openelis-global/logs"
 TOMCAT_LOGS="/usr/local/tomcat/logs"
 LUCENE="/var/lib/lucene_index"
 BRANDING="/var/lib/openelis-global/branding"
+CONFIGURATION="/var/lib/openelis-global/configuration"
 
 # Create dirs if missing (safe even if mounted)
 mkdir -p \
   "$OE_LOGS" \
   "$TOMCAT_LOGS" \
   "$LUCENE" \
-  "$BRANDING"
+  "$BRANDING" \
+  "$CONFIGURATION"
 
 # Fix ownership → UID 8443 (tomcat_admin)
 chown -R 8443:tomcat "$OE_LOGS" || true
@@ -46,6 +48,13 @@ chmod -R 770 "$OE_LOGS" || true
 chmod -R 770 "$TOMCAT_LOGS" || true
 chmod -R 770 "$LUCENE" || true
 chmod -R 770 "$BRANDING" || true
+
+# The configuration tree is usually a bind mount of the deployment's git
+# checkout, and the Import Catalog page writes into it. Grant the tomcat group
+# instead of taking ownership, so the deployer keeps its files and git's tracked
+# mode bits (chmod -R 770 would mark every CSV executable).
+chgrp -R tomcat "$CONFIGURATION" || true
+chmod -R g+rwX "$CONFIGURATION" || true
 
 echo "Volume permissions ready."
 
