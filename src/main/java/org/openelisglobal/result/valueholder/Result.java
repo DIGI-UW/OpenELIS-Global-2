@@ -148,6 +148,8 @@ public class Result extends EnumValueItemImpl {
             finalResult = 10000000;
         } else if (workingResult.toUpperCase().contains("LL") || workingResult.contains("<")) {
             finalResult = virralloadLowLimit;
+        } else if (StringUtil.isNumeric(workingResult)) {
+            finalResult = Math.round(Double.parseDouble(StringUtil.getActualNumericValue(workingResult)));
         } else {
             try {
                 finalResult = Long.parseLong(workingResult.replaceAll("[^0-9]", ""));

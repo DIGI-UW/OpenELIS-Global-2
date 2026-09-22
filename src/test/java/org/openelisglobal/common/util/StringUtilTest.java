@@ -57,35 +57,87 @@ public class StringUtilTest {
     }
 
     @Test
-    public void isNumeric_shouldAcceptUnicodeSuperscriptExponents() {
-        assertTrue(StringUtil.isNumeric("3²"));
-        assertTrue(StringUtil.isNumeric("3.5³"));
-        assertTrue(StringUtil.isNumeric("3¹⁰"));
-        assertTrue(StringUtil.isNumeric("3⁻²"));
+    public void isNumeric_shouldAcceptScientificNotationInEveryWrittenForm() {
+        assertTrue(StringUtil.isNumeric("1.5e5"));
+        assertTrue(StringUtil.isNumeric("1.5E+05"));
+        assertTrue(StringUtil.isNumeric("1.5 x 10^5"));
+        assertTrue(StringUtil.isNumeric("1.5×10⁵"));
+        assertTrue(StringUtil.isNumeric("2 X 10^-3"));
+        assertTrue(StringUtil.isNumeric("10⁻³"));
     }
 
     @Test
-    public void convertSuperscriptToScientific_shouldRewriteAsExponent() {
-        assertEquals("3e2", StringUtil.convertSuperscriptToScientific("3²"));
-        assertEquals("3.5e3", StringUtil.convertSuperscriptToScientific("3.5³"));
-        assertEquals("3e10", StringUtil.convertSuperscriptToScientific("3¹⁰"));
-        assertEquals("3e-2", StringUtil.convertSuperscriptToScientific("3⁻²"));
+    public void isNumeric_shouldRejectBareSuperscriptsAndNonFiniteValues() {
+        assertFalse(StringUtil.isNumeric("3²"));
+        assertFalse(StringUtil.isNumeric("3.5⁻³"));
+        assertFalse(StringUtil.isNumeric("NaN"));
+        assertFalse(StringUtil.isNumeric("Infinity"));
+        assertFalse(StringUtil.isNumeric("1e400"));
+        assertFalse(StringUtil.isNumeric("1.5e"));
     }
 
     @Test
-    public void convertSuperscriptToScientific_shouldLeavePlainInputUnchanged() {
-        assertEquals("3", StringUtil.convertSuperscriptToScientific("3"));
-        assertEquals("3.14", StringUtil.convertSuperscriptToScientific("3.14"));
-        assertEquals("3e2", StringUtil.convertSuperscriptToScientific("3e2"));
-        assertEquals("abc", StringUtil.convertSuperscriptToScientific("abc"));
-        assertEquals("", StringUtil.convertSuperscriptToScientific(""));
+    public void normalizeScientificNotation_shouldRewriteEveryFormAsCanonicalENotation() {
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5e5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5E+05"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5 x 10^5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation(" 1.5*10^5 "));
+        assertEquals("2e-3", StringUtil.normalizeScientificNotation("2×10⁻³"));
+        assertEquals("1e-3", StringUtil.normalizeScientificNotation("10⁻³"));
+        assertEquals("-1e3", StringUtil.normalizeScientificNotation("-10^3"));
+        assertEquals("-2.5e-7", StringUtil.normalizeScientificNotation("-2.5E-07"));
     }
 
     @Test
-    public void getActualNumericValue_shouldReturnConvertedFormForSuperscript() {
-        assertEquals("3e2", StringUtil.getActualNumericValue("3²"));
-        assertEquals("3e2", StringUtil.getActualNumericValue("<3²"));
+    public void normalizeScientificNotation_shouldLeaveEverythingElseUnchanged() {
+        assertEquals("3", StringUtil.normalizeScientificNotation("3"));
+        assertEquals("3.14", StringUtil.normalizeScientificNotation("3.14"));
+        assertEquals("3²", StringUtil.normalizeScientificNotation("3²"));
+        assertEquals("abc", StringUtil.normalizeScientificNotation("abc"));
+        assertEquals("", StringUtil.normalizeScientificNotation(""));
+        assertEquals(null, StringUtil.normalizeScientificNotation(null));
+    }
+
+    @Test
+    public void getActualNumericValue_shouldStripTheComparatorAndNormalize() {
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("<1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("1.5E5"));
+        assertEquals("12.5", StringUtil.getActualNumericValue(">12.5"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("3²"));
         assertEquals("NaN", StringUtil.getActualNumericValue("abc"));
+    }
+
+    @Test
+    public void normalizeNumericResultValue_shouldKeepTheComparatorAndPlainValues() {
+        assertEquals("1.5e5", StringUtil.normalizeNumericResultValue("1.5 x 10^5"));
+        assertEquals("<1.5e5", StringUtil.normalizeNumericResultValue("<1.5×10⁵"));
+        assertEquals(">2e-3", StringUtil.normalizeNumericResultValue("> 2E-03"));
+        assertEquals("12.50", StringUtil.normalizeNumericResultValue("12.50"));
+        assertEquals("<5", StringUtil.normalizeNumericResultValue("<5"));
+        assertEquals("3²", StringUtil.normalizeNumericResultValue("3²"));
+        assertEquals("", StringUtil.normalizeNumericResultValue(""));
+        assertEquals(null, StringUtil.normalizeNumericResultValue(null));
+    }
+
+    @Test
+    public void padExponentNotation_shouldPadOnlyTheMantissa() {
+        assertEquals("1.50e5", StringUtil.padExponentNotation("1.5e5", 2));
+        assertEquals("3.00e2", StringUtil.padExponentNotation("3e2", 2));
+        assertEquals("<2.50e-3", StringUtil.padExponentNotation("<2.5e-3", 2));
+        assertEquals("1.567e5", StringUtil.padExponentNotation("1.567e5", 2));
+        assertEquals("1.5e5", StringUtil.padExponentNotation("1.5e5", 0));
+        assertEquals("1.5e5", StringUtil.padExponentNotation("1.5e5", -1));
+        assertEquals("12.5", StringUtil.padExponentNotation("12.5", 2));
+    }
+
+    @Test
+    public void isExponentNotation_shouldRecogniseCanonicalValuesWithAComparator() {
+        assertTrue(StringUtil.isExponentNotation("1.5e5"));
+        assertTrue(StringUtil.isExponentNotation("<1.5E-3"));
+        assertFalse(StringUtil.isExponentNotation("1.5×10⁵"));
+        assertFalse(StringUtil.isExponentNotation("150000"));
+        assertFalse(StringUtil.isExponentNotation(null));
     }
 
     @Test

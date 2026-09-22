@@ -308,6 +308,9 @@ public class ResultSaveService {
     }
 
     private void setStandardResultValues(String value, Result result) {
+        if ("N".equals(result.getResultType())) {
+            value = StringUtil.normalizeNumericResultValue(value);
+        }
         if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getValue()))
                 && !StringUtil.blankIfNull(value).equals(result.getValue())) {
             updatedResult = true;

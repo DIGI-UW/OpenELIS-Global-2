@@ -126,11 +126,7 @@ public class ResultsValidation {
             if (resultValue.equals(SPECIAL_CASE)) {
                 return;
             }
-            try {
-                Double.parseDouble(StringUtil.getActualNumericValue(resultValue));
-            } catch (NumberFormatException e) {
-                // errors.add(new ActionError("errors.number.format", new
-                // StringBuilder("Result")));
+            if (!StringUtil.isNumeric(StringUtil.getActualNumericValue(resultValue))) {
                 errors.reject("errors.number.format");
             }
         }

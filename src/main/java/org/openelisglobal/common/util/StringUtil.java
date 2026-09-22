@@ -55,8 +55,14 @@ public class StringUtil {
     // private static String STRING_KEY_SUFFIX = null;
     private static Pattern INTEGER_REG_EX = Pattern.compile("^-?\\d+$");
     private static Pattern ALL_NUMERIC_REG_EX = Pattern.compile("^\\d+$");
-    private static final Pattern SUPERSCRIPT_RUN_REG_EX = Pattern.compile(
-            "([0-9.])([\\u2070\\u00B9\\u00B2\\u00B3\\u2074\\u2075\\u2076\\u2077\\u2078\\u2079\\u207A\\u207B]+)");
+    private static final String DECIMAL_MANTISSA = "[+-]?(?:\\d+\\.?\\d*|\\.\\d+)";
+    private static final String SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+    /** Computer scientific notation: 1.5e5, 1.5E+05, -2e-3 */
+    private static final Pattern EXPONENT_NOTATION_REG_EX = Pattern
+            .compile("^(" + DECIMAL_MANTISSA + ")[eE]([+-]?\\d+)$");
+    /** Written scientific notation: 1.5 x 10^5, 1.5×10⁵, 10⁻³ (the mantissa is optional) */
+    private static final Pattern TIMES_TEN_NOTATION_REG_EX = Pattern.compile("^(?:(" + DECIMAL_MANTISSA
+            + ")\\s*[xX×*]\\s*)?([+-]?)10\\s*(?:\\^\\s*([+-]?\\d+)|([⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+))$");
 
     public enum EncodeContext {
         JAVASCRIPT, HTML
@@ -671,13 +677,19 @@ public class StringUtil {
         return total;
     }
 
+    /**
+     * The numeric part of a result value as a string {@link Double#parseDouble}
+     * accepts: a leading {@code <} or {@code >} is dropped and written scientific
+     * notation is rewritten to e-notation. Returns the literal {@code "NaN"} when
+     * the value is not a number.
+     */
     public static String getActualNumericValue(String resultValue) {
         // ignore < or > from the analyser on validation
         String actualValue = resultValue;
         if (actualValue.startsWith("<") || actualValue.startsWith(">")) {
             actualValue = actualValue.replaceAll("<|>", "");
         }
-        actualValue = convertSuperscriptToScientific(actualValue);
+        actualValue = normalizeScientificNotation(actualValue);
         if (isNumeric(actualValue)) {
             return actualValue;
         } else {
@@ -686,66 +698,115 @@ public class StringUtil {
     }
 
     /**
-     * Rewrites Unicode superscript digits that trail a numeric character as
-     * scientific 'e' notation so {@link Double#parseDouble(String)} accepts them
-     * (e.g. "3²" -> "3e2", "3⁻²" -> "3e-2"). Non-superscript input is returned
-     * unchanged.
+     * Rewrites a value written in scientific notation as canonical e-notation:
+     * {@code 1.5E+05}, {@code 1.5 x 10^5} and {@code 1.5×10⁵} all become
+     * {@code 1.5e5}, and {@code 10⁻³} becomes {@code 1e-3}. Superscript
+     * digits are read only as the power of ten in that form: a bare {@code 3²}
+     * is ambiguous (nine, or three hundred?) and is returned unchanged so that it
+     * fails numeric validation, as is every other value.
      */
-    public static String convertSuperscriptToScientific(String value) {
-        if (value == null || value.isEmpty()) {
+    public static String normalizeScientificNotation(String value) {
+        if (value == null || value.trim().isEmpty()) {
             return value;
         }
-        Matcher matcher = SUPERSCRIPT_RUN_REG_EX.matcher(value);
-        StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
-            String supers = matcher.group(2);
-            StringBuilder ascii = new StringBuilder(supers.length());
-            for (int i = 0; i < supers.length(); i++) {
-                switch (supers.charAt(i)) {
-                case '⁰':
-                    ascii.append('0');
-                    break;
-                case '¹':
-                    ascii.append('1');
-                    break;
-                case '²':
-                    ascii.append('2');
-                    break;
-                case '³':
-                    ascii.append('3');
-                    break;
-                case '⁴':
-                    ascii.append('4');
-                    break;
-                case '⁵':
-                    ascii.append('5');
-                    break;
-                case '⁶':
-                    ascii.append('6');
-                    break;
-                case '⁷':
-                    ascii.append('7');
-                    break;
-                case '⁸':
-                    ascii.append('8');
-                    break;
-                case '⁹':
-                    ascii.append('9');
-                    break;
-                case '⁺':
-                    ascii.append('+');
-                    break;
-                case '⁻':
-                    ascii.append('-');
-                    break;
-                default:
-                    ascii.append(supers.charAt(i));
-                }
-            }
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(1) + "e" + ascii.toString()));
+        String candidate = value.trim();
+        Matcher exponent = EXPONENT_NOTATION_REG_EX.matcher(candidate);
+        if (exponent.matches()) {
+            return canonicalExponentNotation(exponent.group(1), exponent.group(2), value);
         }
-        matcher.appendTail(sb);
-        return sb.toString();
+        Matcher timesTen = TIMES_TEN_NOTATION_REG_EX.matcher(candidate);
+        if (timesTen.matches()) {
+            String mantissa = timesTen.group(1) != null ? timesTen.group(1) : timesTen.group(2) + "1";
+            String power = timesTen.group(3) != null ? timesTen.group(3) : superscriptToAscii(timesTen.group(4));
+            return canonicalExponentNotation(mantissa, power, value);
+        }
+        return value;
+    }
+
+    private static String canonicalExponentNotation(String mantissa, String power, String original) {
+        try {
+            int exponent = Integer.parseInt(power.startsWith("+") ? power.substring(1) : power);
+            return (mantissa.startsWith("+") ? mantissa.substring(1) : mantissa) + "e" + exponent;
+        } catch (NumberFormatException e) {
+            return original;
+        }
+    }
+
+    private static String superscriptToAscii(String superscripts) {
+        StringBuilder ascii = new StringBuilder(superscripts.length());
+        for (int i = 0; i < superscripts.length(); i++) {
+            char c = superscripts.charAt(i);
+            int digit = SUPERSCRIPT_DIGITS.indexOf(c);
+            if (digit >= 0) {
+                ascii.append(digit);
+            } else if (c == '⁺') {
+                ascii.append('+');
+            } else if (c == '⁻') {
+                ascii.append('-');
+            }
+        }
+        return ascii.toString();
+    }
+
+    /**
+     * Whether the value, after an optional leading {@code <} or {@code >}, is
+     * written in e-notation such as {@code 1.5e5}.
+     */
+    public static boolean isExponentNotation(String value) {
+        if (value == null) {
+            return false;
+        }
+        String trimmed = value.trim();
+        return EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparatorPrefix(trimmed).length()).trim())
+                .matches();
+    }
+
+    /**
+     * A numeric result value as it is stored: written scientific notation becomes
+     * canonical e-notation and a leading {@code <} or {@code >} is kept. Anything
+     * else, plain decimals included, is returned exactly as given.
+     */
+    public static String normalizeNumericResultValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return value;
+        }
+        String trimmed = value.trim();
+        String comparator = comparatorPrefix(trimmed);
+        String number = trimmed.substring(comparator.length()).trim();
+        String normalized = normalizeScientificNotation(number);
+        return normalized.equals(number) ? value : comparator + normalized;
+    }
+
+    /**
+     * Pads the mantissa of an e-notation value with zeros up to the configured
+     * decimal places, so {@code 1.5e5} reported to two places prints as
+     * {@code 1.50e5}. A mantissa already carrying that many places, and any value
+     * not in e-notation, is returned unchanged.
+     */
+    public static String padExponentNotation(String value, int decimalPlaces) {
+        if (value == null || decimalPlaces <= 0) {
+            return value;
+        }
+        String trimmed = value.trim();
+        String comparator = comparatorPrefix(trimmed);
+        Matcher exponent = EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparator.length()).trim());
+        if (!exponent.matches()) {
+            return value;
+        }
+        StringBuilder mantissa = new StringBuilder(exponent.group(1));
+        int dot = mantissa.indexOf(".");
+        if (dot < 0) {
+            mantissa.append('.');
+            dot = mantissa.length() - 1;
+        }
+        for (int places = mantissa.length() - dot - 1; places < decimalPlaces; places++) {
+            mantissa.append('0');
+        }
+        return comparator + mantissa + "e" + exponent.group(2);
+    }
+
+    private static String comparatorPrefix(String value) {
+        return value.startsWith("<") || value.startsWith(">") ? value.substring(0, 1) : "";
     }
 
     public static String repeat(String s, int times) {
@@ -756,12 +817,17 @@ public class StringUtil {
         return s.substring(0, 1).toUpperCase() + s.substring(1); // J + avatpoint
     }
 
+    /**
+     * Whether the value is a finite number, written plainly or in any scientific
+     * notation {@link #normalizeScientificNotation} understands. The literal
+     * {@code NaN} and infinities are not numbers here.
+     */
     public static boolean isNumeric(String str) {
         if (str == null)
             return false;
         try {
-            Double.parseDouble(convertSuperscriptToScientific(str));
-            return true;
+            double parsed = Double.parseDouble(normalizeScientificNotation(str));
+            return !Double.isNaN(parsed) && !Double.isInfinite(parsed);
         } catch (NumberFormatException e) {
             return false;
         }

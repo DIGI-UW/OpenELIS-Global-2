@@ -664,7 +664,7 @@ public abstract class PatientReport extends Report {
         if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
             try {
                 resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(resultValue))) + ")log ";
-            } catch (IllegalFormatException e) {
+            } catch (IllegalFormatException | NumberFormatException e) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
                 // no-op
             }
