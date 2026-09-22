@@ -173,6 +173,30 @@ public class BatchWorkplanServiceImplTest {
     }
 
     @Test
+    public void getBatches_asksOnlyForTheCallersOwnUnarchivedBatches() {
+        BatchWorkplan mine = new BatchWorkplan();
+        mine.setId(5L);
+        mine.setName("Mine");
+        mine.setStatus(BatchWorkplanStatus.DRAFT);
+        mine.setCreatedByUserId(42);
+        when(batchWorkplanDAO.getForUserInStatuses(any(), anyList())).thenReturn(Collections.singletonList(mine));
+
+        List<BatchWorkplanResponse> batches = service.getBatches("42");
+
+        ArgumentCaptor<Integer> owner = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<List<BatchWorkplanStatus>> statuses = ArgumentCaptor.forClass(List.class);
+        verify(batchWorkplanDAO).getForUserInStatuses(owner.capture(), statuses.capture());
+
+        assertEquals(Integer.valueOf(42), owner.getValue());
+        // Archived batches are kept for audit but must not reach the working view.
+        assertEquals(
+                Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE, BatchWorkplanStatus.COMPLETED),
+                statuses.getValue());
+        assertEquals(1, batches.size());
+        assertEquals(Long.valueOf(5L), batches.get(0).getId());
+    }
+
+    @Test
     public void createBatch_rejectsAnalysisOutsideTheUsersLabUnits() {
         BatchWorkplanRequest request = new BatchWorkplanRequest();
         request.setAnalysisIds(Arrays.asList("11", "12"));
