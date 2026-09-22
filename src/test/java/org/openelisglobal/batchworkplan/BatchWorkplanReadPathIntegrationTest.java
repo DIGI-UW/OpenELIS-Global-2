@@ -91,11 +91,17 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
     private final List<Long> createdBatchIds = new ArrayList<>();
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        // Seed the catalog this class needs rather than assuming it survives. In a
+        // full-suite run an earlier class can leave no lab unit owning a test, and
+        // discovery against whatever happens to be there then fails. This fixture
+        // declares test and test_section but not status_of_sample, sample or
+        // analysis, so it settles the catalog without disturbing anything else.
+        executeDataSetWithStateManagement("testdata/panel-item.xml");
         pendingStatusId = statusService.getStatusID(AnalysisStatus.NotStarted);
 
-        // Two tests from two different lab units, discovered rather than hardcoded:
-        // FK ids differ between a fresh container and an upgraded one.
+        // Two tests from two different lab units, resolved from the fixture rather
+        // than hardcoded: FK ids differ between a fresh container and an upgraded one.
         List<TestSection> sections = testSectionService.getAllActiveTestSections();
         String unitA = null;
         String unitB = null;
