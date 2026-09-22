@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -122,6 +122,16 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.getByTestId("flag-NORMAL")).toBeInTheDocument();
     expect(screen.getByTestId("review-qc")).toHaveTextContent("QC passed");
     expect(screen.queryByTestId("review-before-release")).toBeNull();
+  });
+
+  it("shows a QC verdict only when one exists; a patient result has no QC line at all (OGC-1226 FR-10)", () => {
+    renderPanel(row({ qcStatus: "UNKNOWN" }));
+    expect(screen.queryByTestId("review-qc")).toBeNull();
+    expect(screen.queryByText(/QC not evaluated/)).toBeNull();
+
+    cleanup();
+    renderPanel(row({ qcStatus: "FAIL" }));
+    expect(screen.getByTestId("review-qc")).toHaveTextContent("QC failed");
   });
 
   it("a missing method or analyzer reads 'Not recorded' instead of blank", () => {

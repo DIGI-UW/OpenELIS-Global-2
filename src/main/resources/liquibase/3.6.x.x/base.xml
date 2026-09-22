@@ -7,5 +7,6 @@
   <include relativeToChangelogFile="true" file="001-questionnaire.xml"/>
   <include relativeToChangelogFile="true" file="002-questionnaire-local-storage.xml"/>
   <include relativeToChangelogFile="true" file="003-provider-title.xml"/>
+  <include relativeToChangelogFile="true" file="004-backfill-referred-out.xml"/>
 
 </databaseChangeLog>

@@ -1,5 +1,6 @@
 package org.openelisglobal.result.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -7,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -14,6 +16,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
@@ -28,6 +31,7 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
@@ -190,12 +194,42 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 if (referral != null && referral.getId() != null
                         && !referralsRaisedInThisSave.contains(referral.getId())) {
                     referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
+                    recordReferenceLabReportDate(referral.getId(), reportDateFor(actionDataSet, analysisId), sysUserId);
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "advanceReferralsForManualEntry",
                         "failed to advance referral for analysis " + analysisId);
                 LogEvent.logError(e);
             }
+        }
+    }
+
+    /**
+     * The date the reference laboratory itself reported the result, as typed on the
+     * row being saved. Only the electronic path used to set it, so a manually
+     * entered result left the External Referrals report's report-date column blank.
+     */
+    private String reportDateFor(ResultsUpdateDataSet actionDataSet, String analysisId) {
+        for (TestResultItem item : actionDataSet.getModifiedItems()) {
+            if (analysisId.equals(item.getAnalysisId()) && item.getReferralItem() != null) {
+                return item.getReferralItem().getReferredReportDate();
+            }
+        }
+        return null;
+    }
+
+    private void recordReferenceLabReportDate(String referralId, String reportDate, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(reportDate)) {
+            return;
+        }
+        Timestamp reported = DateUtil.convertStringDateToTruncatedTimestamp(reportDate);
+        if (reported == null) {
+            return;
+        }
+        for (ReferralResult referralResult : referralResultService.getReferralResultsForReferral(referralId)) {
+            referralResult.setReferralReportDate(reported);
+            referralResult.setSysUserId(sysUserId);
+            referralResultService.update(referralResult);
         }
     }
 

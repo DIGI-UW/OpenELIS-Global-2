@@ -28,10 +28,24 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 @Table(name = "pathology_sample")
 public class PathologySample extends ProgramSample {
 
+    /**
+     * These are the histopathology bench stages a case passes through, in the order
+     * they happen (FR-2.1 of the pathology case view FRS).
+     *
+     * Declaration order is the bench order and is the single source for the
+     * Pathology Dashboard stage filter and the PATHOLOGY_STATUS display list
+     * (FR-2.6), so constants must stay in bench order.
+     *
+     * Hibernate stores the constant name, so a name must never be removed without a
+     * changeset that maps stored rows onto its replacement: CUTTING was absorbed
+     * into GROSSING, SLICING became MICROTOMY, and ADDITIONAL_REQUEST was retired
+     * because an outstanding request is a fact about pathology_request rows, not a
+     * stage.
+     */
     public enum PathologyStatus {
-        GROSSING("Grossing"), CUTTING("Cutting"), PROCESSING("Processing"), SLICING("Slicing for Slides"),
-        STAINING("Staining"), READY_PATHOLOGIST("Ready for Pathologist"),
-        ADDITIONAL_REQUEST("Additional Pathologist Request"), COMPLETED("Completed");
+        ACCESSIONED("Accessioned"), GROSSING("Grossing"), DECALCIFICATION("Decalcification"), PROCESSING("Processing"),
+        EMBEDDING("Embedding"), MICROTOMY("Microtomy"), STAINING("Staining"), COVERSLIPPING("Coverslipping & QC"),
+        READY_PATHOLOGIST("Ready for Pathologist"), UNDER_REVIEW("Under Pathologist Review"), COMPLETED("Completed");
 
         private String display;
 
@@ -56,7 +70,7 @@ public class PathologySample extends ProgramSample {
 
     @Enumerated(EnumType.STRING)
     @NotNull
-    private PathologyStatus status = PathologyStatus.GROSSING;
+    private PathologyStatus status = PathologyStatus.ACCESSIONED;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")

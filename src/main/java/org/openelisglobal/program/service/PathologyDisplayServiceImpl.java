@@ -1,6 +1,7 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +17,8 @@ import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplay
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
@@ -45,6 +48,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyDisplayItem displayItem = new PathologyDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
+        displayItem.setHasOpenRequests(hasOpenRequests(pathologySample.getRequests()));
         displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
@@ -66,6 +70,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyCaseViewDisplayItem displayItem = new PathologyCaseViewDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
+        displayItem.setHasOpenRequests(hasOpenRequests(pathologySample.getRequests()));
         displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
@@ -132,6 +137,16 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setAge(DateUtil.getCurrentAgeForDate(patient.getBirthDate(), DateUtil.getNowAsTimestamp()));
         displayItem.setSex(patient.getGender());
         return displayItem;
+    }
+
+    /**
+     * A case carries an outstanding pathologist request while any of its own
+     * requests is still open (AC-6). Reading it from the rows rather than storing
+     * it on the case is what keeps the two from ever disagreeing, and is why the
+     * retired ADDITIONAL_REQUEST status is not needed to say so.
+     */
+    private static boolean hasOpenRequests(List<PathologyRequest> requests) {
+        return requests != null && requests.stream().anyMatch(e -> e.getStatus() == RequestStatus.OPENED);
     }
 
     @Override

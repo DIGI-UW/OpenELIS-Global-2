@@ -227,6 +227,11 @@ const UnifiedResults: React.FC = () => {
   const [rejectDrafts, setRejectDrafts] = useState<Record<string, RejectDraft>>(
     {},
   );
+  // The date the reference laboratory reported a result that is being typed in
+  // here, per referred row.
+  const [referenceLabReportDates, setReferenceLabReportDates] = useState<
+    Record<string, string>
+  >({});
   const [interpretationDrafts, setInterpretationDrafts] = useState<
     Record<string, string>
   >({});
@@ -594,6 +599,25 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
+  /**
+   * The reference laboratory's own report date belongs to the referral, so
+   * recording it makes an already-saved row savable without unlocking the
+   * result or counting the save as a revision of it.
+   */
+  const handleReferenceLabReportDateChange = useCallback(
+    (target: WorklistRow, value: string) => {
+      const key = worklistRowKey(target);
+      setReferenceLabReportDates((current) => ({ ...current, [key]: value }));
+      setRowStates((current) => ({
+        ...current,
+        [key]: nextRowState(current[key] || "EMPTY", {
+          type: value.trim() ? "DISPOSITION_CHANGED" : "DISPOSITION_CLEARED",
+        }),
+      }));
+    },
+    [],
+  );
+
   const handleRejectDraftChange = useCallback(
     (target: WorklistRow, draft: RejectDraft | null) => {
       const key = worklistRowKey(target);
@@ -889,6 +913,15 @@ const UnifiedResults: React.FC = () => {
           referredTestId: row.testId,
         };
       }
+      // A result typed in for a test already at a reference laboratory: carry
+      // that laboratory's own report date so the referral records it.
+      const reportedOn = referenceLabReportDates[key];
+      if (row.referredOut && reportedOn && reportedOn.trim()) {
+        item.referralItem = {
+          ...(item.referralItem || {}),
+          referredReportDate: reportedOn.trim(),
+        };
+      }
       // R4 (FR-E3): reject disposition — legacy shadowRejected mechanics
       // (clears the value, writes the rejection-reason note, TechnicalRejected)
       const reject = rejectDrafts[key];
@@ -923,6 +956,13 @@ const UnifiedResults: React.FC = () => {
               delete next[key];
               return next;
             });
+            // The referral now holds the date, so the row must not carry it
+            // into its next save the way a draft would.
+            setReferenceLabReportDates((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
             setRejectDrafts((current) => {
               const next = { ...current };
               delete next[key];
@@ -942,6 +982,7 @@ const UnifiedResults: React.FC = () => {
       noteDrafts,
       dilutionDrafts,
       referralDrafts,
+      referenceLabReportDates,
       rejectDrafts,
       interpretationDrafts,
       rowStates,
@@ -1301,6 +1342,14 @@ const UnifiedResults: React.FC = () => {
                         </TableCell>
                         <TableCell className="unifiedTestCell">
                           {row.testName}
+                          {/* Whoever types in a value phoned through by the
+                              reference laboratory reads this row, not the
+                              expanded panel, so the tag belongs here too. */}
+                          {row.referredOut && (
+                            <Tag type="cyan" size="sm">
+                              <FormattedMessage id="label.results.referredOut" />
+                            </Tag>
+                          )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
@@ -1450,6 +1499,12 @@ const UnifiedResults: React.FC = () => {
                               referralDraft={referralDrafts[key] || null}
                               onReferralDraftChange={(draft) =>
                                 handleReferralDraftChange(row, draft)
+                              }
+                              referenceLabReportDate={
+                                referenceLabReportDates[key] || ""
+                              }
+                              onReferenceLabReportDateChange={(value) =>
+                                handleReferenceLabReportDateChange(row, value)
                               }
                               rejectReasons={rejectReasons}
                               rejectDraft={rejectDrafts[key] || null}
