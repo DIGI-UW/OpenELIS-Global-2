@@ -2,6 +2,7 @@ package org.openelisglobal.reports.dataexport.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.OptimisticLockException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
@@ -110,7 +111,7 @@ public class ReportingSavedConfigService {
         stored.setDefinitionJson(write(normalized));
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
-        stored = updateDetectingConflict(stored);
+        stored = updateDefinition(stored);
         ReportingAudit.definition(ReportingAudit.Action.DEFINITION_UPDATED, actor, stored.getId());
         return view(stored, normalized);
     }
@@ -123,8 +124,28 @@ public class ReportingSavedConfigService {
         stored.setIsActive(false);
         stored.setUpdatedBy(actor);
         stored.setSysUserId(actor);
-        updateDetectingConflict(stored);
+        updateDefinition(stored);
         ReportingAudit.definition(ReportingAudit.Action.DEFINITION_DELETED, actor, stored.getId());
+    }
+
+    private ReportDefinition updateDefinition(ReportDefinition stored) {
+        try {
+            ReportDefinition saved = definitions.update(stored);
+            if (entityManager != null) {
+                // Force the optimistic-lock check here. Without it the failure
+                // surfaces when the transaction commits, which is after this method
+                // and outside any reporting handler, so a genuine simultaneous edit
+                // would reach the client as a 500 rather than this 409. Null when the
+                // service is constructed directly, as the unit tests do.
+                entityManager.flush();
+            }
+            return saved;
+        } catch (OptimisticLockException | OptimisticLockingFailureException error) {
+            // Both requests may pass the version check before either writes.
+            ReportingException conflict = new ReportingException(409, "reporting.saved.changed");
+            conflict.initCause(error);
+            throw conflict;
+        }
     }
 
     private ReportDefinition saved(String id) {
@@ -138,34 +159,6 @@ public class ReportingSavedConfigService {
                 || !Boolean.TRUE.equals(stored.getIsPublic()))
             throw new ReportingException(404, "reporting.saved.notFound");
         return stored;
-    }
-
-    /**
-     * Persist and surface a concurrent edit as the same 409 the client already
-     * handles.
-     *
-     * <p>
-     * {@link #requireVersion} only compares the version the caller read, so two
-     * updates submitted against the same current version both pass it. Because
-     * {@code BaseObject} maps {@code lastupdated} as the JPA {@code @Version}, the
-     * loser then fails an optimistic-lock check. Without the explicit flush that
-     * happens at commit, outside this method and outside any reporting handler, so
-     * a genuine simultaneous edit would reach the client as a 500 rather than the
-     * recoverable conflict.
-     */
-    private ReportDefinition updateDetectingConflict(ReportDefinition stored) {
-        try {
-            ReportDefinition saved = definitions.update(stored);
-            if (entityManager != null) {
-                // Null when the service is constructed directly, as the unit tests
-                // do; those exercise the version check rather than the database's
-                // optimistic lock, so there is nothing to flush.
-                entityManager.flush();
-            }
-            return saved;
-        } catch (OptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
-            throw new ReportingException(409, "reporting.saved.changed");
-        }
     }
 
     private void requireVersion(ReportDefinition stored, String expected) {
