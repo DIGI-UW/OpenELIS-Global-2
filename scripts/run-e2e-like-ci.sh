@@ -141,16 +141,24 @@ echo -e "${GREEN}✓ Fixtures loaded${NC}"
 echo ""
 
 # Step 3: Frontend dependencies (lockfile-faithful, like CI).
+#
+# CI runs `npm ci --legacy-peer-deps` on every job
+# (.github/workflows/e2e-playwright-reusable.yml), so it can never be out of
+# date with the lockfile. Installing only when node_modules is absent is not
+# equivalent: switching to a branch that adds a dependency leaves a stale tree
+# and Playwright dies at collection time with "Cannot find package X imported
+# from <spec>", which looks like a broken spec rather than a stale install.
+# Reinstall whenever the lockfile is newer than the last install, and keep CI's
+# --legacy-peer-deps so the resolved tree matches.
 echo -e "${YELLOW}[3/4] Checking frontend dependencies...${NC}"
 cd frontend
-if [ ! -d "node_modules" ]; then
-  if [ -f "package-lock.json" ]; then
-    echo "  Installing with npm ci..."
-    npm ci > /dev/null 2>&1
-  else
-    echo -e "${RED}ERROR: package-lock.json not found in ./frontend${NC}"
-    exit 1
-  fi
+if [ ! -f "package-lock.json" ]; then
+  echo -e "${RED}ERROR: package-lock.json not found in ./frontend${NC}"
+  exit 1
+fi
+if [ ! -d "node_modules" ] || [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
+  echo "  Installing with npm ci --legacy-peer-deps (CI command)..."
+  npm ci --legacy-peer-deps > /dev/null 2>&1
 fi
 echo -e "${GREEN}✓ Dependencies ready${NC}"
 echo ""
