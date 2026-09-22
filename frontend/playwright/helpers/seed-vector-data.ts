@@ -113,7 +113,8 @@ export async function seedVectorPositivity(
 
   // 1. Order a Mosquito collection with both pathogen tests (creates analyses).
   await page.goto("/order/vector/enter");
-  await page.locator(".generate-link").click();
+  // New orders generate their number automatically. Do not request a second
+  // number while capturing the accession that the saved order will use.
   await expect(page.locator("#labNumber")).not.toHaveValue("", {
     timeout: 15_000,
   });
