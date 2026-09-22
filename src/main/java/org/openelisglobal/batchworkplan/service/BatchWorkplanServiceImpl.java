@@ -77,8 +77,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<BatchWorkplanResponse> getBatches() {
-        List<BatchWorkplan> batches = batchWorkplanDAO.getAllWithItems();
+    public List<BatchWorkplanResponse> getBatches(String sysUserId) {
+        List<BatchWorkplan> batches = batchWorkplanDAO.getForUserInStatuses(toUserId(sysUserId), openStatuses());
         Set<String> analysisIds = batches.stream().flatMap(batch -> batch.getItems().stream())
                 .map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toCollection(LinkedHashSet::new));
         Map<String, Analysis> analysesById = analysesById(new ArrayList<>(analysisIds));

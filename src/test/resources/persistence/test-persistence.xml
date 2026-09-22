@@ -40,6 +40,9 @@
         <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
+        <!-- Batch Workplan foundation (OGC-427) -->
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>

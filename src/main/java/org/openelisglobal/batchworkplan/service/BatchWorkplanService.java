@@ -15,7 +15,12 @@ public interface BatchWorkplanService {
      */
     List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId);
 
-    List<BatchWorkplanResponse> getBatches();
+    /**
+     * The caller's own batches that are still work in hand. Archived batches are
+     * kept for audit but drop out of the working view, and their analyses return to
+     * the pending pool.
+     */
+    List<BatchWorkplanResponse> getBatches(String sysUserId);
 
     BatchWorkplanResponse createBatch(BatchWorkplanRequest request, String sysUserId);
 

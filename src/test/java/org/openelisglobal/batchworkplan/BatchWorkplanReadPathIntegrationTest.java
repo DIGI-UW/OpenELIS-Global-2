@@ -14,6 +14,9 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.batchworkplan.dao.BatchWorkplanDAO;
+import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
+import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
@@ -27,7 +30,8 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * The Batch Workplan pending-tests query, against a real database.
+ * The Batch Workplan read paths, against a real database: the pending-tests
+ * query and the batch list.
  *
  * <p>
  * The defect this guards: the query used to take a fixed 500-row window and
@@ -37,12 +41,17 @@ import org.springframework.beans.factory.annotation.Autowired;
  * exclusions now live in the query and the row cap is applied last.
  *
  * <p>
- * The service-level scoping is not exercised here on purpose. It resolves the
- * caller's lab units through the HTTP session, which no integration test has;
- * outside a request the resolver legitimately answers "no units". That path is
- * covered by the service unit tests and by live verification.
+ * The batch list had the mirror problem: it returned every batch in the
+ * database regardless of owner or status, so one technician saw another's work
+ * and an archived batch stayed on screen with no actions left on it.
+ *
+ * <p>
+ * The service-level lab-unit scoping is not exercised here on purpose. It
+ * resolves the caller's units through the HTTP session, which no integration
+ * test has; outside a request the resolver legitimately answers "no units".
+ * That path is covered by the service unit tests and by live verification.
  */
-public class BatchWorkplanPendingQueryIntegrationTest extends BaseWebContextSensitiveTest {
+public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String ACTOR = "1";
 
@@ -64,6 +73,9 @@ public class BatchWorkplanPendingQueryIntegrationTest extends BaseWebContextSens
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private BatchWorkplanDAO batchWorkplanDAO;
+
     private String pendingStatusId;
     /**
      * Pending analyses that already exist for the chosen test before this class
@@ -76,6 +88,7 @@ public class BatchWorkplanPendingQueryIntegrationTest extends BaseWebContextSens
     private final List<String> createdAnalysisIds = new ArrayList<>();
     private final List<String> createdSampleItemIds = new ArrayList<>();
     private final List<String> createdSampleIds = new ArrayList<>();
+    private final List<Long> createdBatchIds = new ArrayList<>();
 
     @Before
     public void setUp() {
@@ -120,7 +133,13 @@ public class BatchWorkplanPendingQueryIntegrationTest extends BaseWebContextSens
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
+        // Truncate rather than delete each entity: the DAO hands back detached
+        // instances outside the service transaction, which remove() refuses.
+        if (!createdBatchIds.isEmpty()) {
+            cleanRowsInCurrentConnection(new String[] { "batch_workplan_item", "batch_workplan" });
+            createdBatchIds.clear();
+        }
         for (String id : createdAnalysisIds) {
             Analysis analysis = analysisService.get(id);
             if (analysis != null) {
@@ -196,6 +215,54 @@ public class BatchWorkplanPendingQueryIntegrationTest extends BaseWebContextSens
                 Collections.emptyList(), Collections.emptyList(), 50);
 
         assertEquals(Collections.emptyList(), page);
+    }
+
+    @Test
+    public void theBatchListShowsOnlyTheCallersOwnBatches() {
+        Long mine = createBatch("Mine", 1, BatchWorkplanStatus.DRAFT);
+        createBatch("Theirs", 109, BatchWorkplanStatus.DRAFT);
+
+        List<Long> visible = batchWorkplanDAO.getForUserInStatuses(1, openStatuses()).stream().map(BatchWorkplan::getId)
+                .filter(createdBatchIds::contains).collect(Collectors.toList());
+
+        assertEquals(Collections.singletonList(mine), visible);
+    }
+
+    @Test
+    public void archivedBatchesLeaveTheWorkingView() {
+        Long open = createBatch("Still working", 1, BatchWorkplanStatus.DRAFT);
+        Long archived = createBatch("Done with", 1, BatchWorkplanStatus.ARCHIVED);
+
+        List<Long> visible = batchWorkplanDAO.getForUserInStatuses(1, openStatuses()).stream().map(BatchWorkplan::getId)
+                .filter(createdBatchIds::contains).collect(Collectors.toList());
+
+        assertEquals(Collections.singletonList(open), visible);
+        // The archived batch is retained for audit, just not shown as work in hand.
+        assertTrue("archived batch must still exist", batchWorkplanDAO.getWithItems(archived).isPresent());
+    }
+
+    @Test
+    public void anUnresolvableCallerSeesNoBatchesRatherThanEveryBatch() {
+        createBatch("Mine", 1, BatchWorkplanStatus.DRAFT);
+
+        assertEquals(Collections.emptyList(), batchWorkplanDAO.getForUserInStatuses(null, openStatuses()));
+    }
+
+    private List<BatchWorkplanStatus> openStatuses() {
+        return Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE, BatchWorkplanStatus.COMPLETED);
+    }
+
+    private Long createBatch(String name, Integer ownerId, BatchWorkplanStatus status) {
+        BatchWorkplan batch = new BatchWorkplan();
+        batch.setName(name);
+        batch.setStatus(status);
+        batch.setCreatedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+        batch.setCreatedByUserId(ownerId);
+        batch.setUpdatedByUserId(ownerId);
+        batch.setSysUserId(String.valueOf(ownerId));
+        Long id = batchWorkplanDAO.insert(batch);
+        createdBatchIds.add(id);
+        return id;
     }
 
     private String createPendingAnalysis(String accessionNumber, String testId) {

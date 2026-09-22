@@ -8,9 +8,12 @@ import org.openelisglobal.common.dao.BaseDAO;
 
 public interface BatchWorkplanDAO extends BaseDAO<BatchWorkplan, Long> {
 
-    List<BatchWorkplan> getAllWithItems();
+    /**
+     * One user's batches in the given statuses, newest first. Both predicates
+     * matter to the working view: a batch belongs to the technician who built it,
+     * and an archived batch is kept for audit but is no longer work in hand.
+     */
+    List<BatchWorkplan> getForUserInStatuses(Integer createdByUserId, List<BatchWorkplanStatus> statuses);
 
     Optional<BatchWorkplan> getWithItems(Long id);
-
-    List<BatchWorkplan> getByStatuses(List<BatchWorkplanStatus> statuses);
 }

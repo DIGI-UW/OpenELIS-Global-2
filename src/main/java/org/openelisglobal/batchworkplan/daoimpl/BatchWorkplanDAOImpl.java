@@ -22,10 +22,20 @@ public class BatchWorkplanDAOImpl extends BaseDAOImpl<BatchWorkplan, Long> imple
 
     @Override
     @Transactional(readOnly = true)
-    public List<BatchWorkplan> getAllWithItems() {
+    public List<BatchWorkplan> getForUserInStatuses(Integer createdByUserId, List<BatchWorkplanStatus> statuses) {
+        // An unresolvable caller owns nothing. Answering "every batch" here would
+        // undo the point of the predicate.
+        if (createdByUserId == null || statuses == null || statuses.isEmpty()) {
+            return List.of();
+        }
         try {
-            String hql = "SELECT DISTINCT b FROM BatchWorkplan b LEFT JOIN FETCH b.items ORDER BY b.createdAt DESC";
-            return entityManager.unwrap(Session.class).createQuery(hql, BatchWorkplan.class).list();
+            String hql = "SELECT DISTINCT b FROM BatchWorkplan b LEFT JOIN FETCH b.items"
+                    + " WHERE b.createdByUserId = :createdByUserId AND b.status IN (:statuses)"
+                    + " ORDER BY b.createdAt DESC";
+            Query<BatchWorkplan> query = entityManager.unwrap(Session.class).createQuery(hql, BatchWorkplan.class);
+            query.setParameter("createdByUserId", createdByUserId);
+            query.setParameterList("statuses", statuses);
+            return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting batch workplans", e);
         }
@@ -42,20 +52,6 @@ public class BatchWorkplanDAOImpl extends BaseDAOImpl<BatchWorkplan, Long> imple
             return query.uniqueResultOptional();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting batch workplan", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<BatchWorkplan> getByStatuses(List<BatchWorkplanStatus> statuses) {
-        try {
-            String hql = "SELECT DISTINCT b FROM BatchWorkplan b LEFT JOIN FETCH b.items WHERE b.status IN (:statuses)"
-                    + " ORDER BY b.createdAt DESC";
-            Query<BatchWorkplan> query = entityManager.unwrap(Session.class).createQuery(hql, BatchWorkplan.class);
-            query.setParameterList("statuses", statuses);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting batch workplans by status", e);
         }
     }
 }

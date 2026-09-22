@@ -40,8 +40,8 @@ public class BatchWorkplanRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/batches", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<BatchWorkplanResponse> batches() {
-        return batchWorkplanService.getBatches();
+    public List<BatchWorkplanResponse> batches(HttpServletRequest httpRequest) {
+        return batchWorkplanService.getBatches(getSysUserId(httpRequest));
     }
 
     @PostMapping(value = "/batches", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
