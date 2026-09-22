@@ -167,7 +167,6 @@ public class FhirSearchRegressionTest extends BaseWebContextSensitiveTest {
     @Test
     public void device_idIsStableAcrossRequests() throws Exception {
         executeDataSetWithStateManagement("testdata/facade-device.xml");
-        resyncSequence("clinlims.analyzer_seq", "clinlims.analyzer");
 
         List<String> first = matchedIds(search("/Device"), "Device");
         List<String> second = matchedIds(search("/Device"), "Device");

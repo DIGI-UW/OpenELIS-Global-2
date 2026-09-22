@@ -196,7 +196,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (candidates.size() <= 1) {
             return false;
         }
-        if (IS_RETROCI && item.getAccessionNumber() != null && item.getAccessionNumber().startsWith("LDBS")
+        if (isRetroCi && item.getAccessionNumber() != null && item.getAccessionNumber().startsWith("LDBS")
                 && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
             return false;
         }
@@ -921,7 +921,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber, String chosenTypeOfSampleId) {
-        if (IS_RETROCI && accessionNumber.startsWith("LDBS")) {
+        if (isRetroCi && accessionNumber.startsWith("LDBS")) {
             List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
                     .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
 
@@ -997,17 +997,18 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Configuration constants (copied from controller)
     // ---------------------------------------------------------------
 
-    private static final boolean IS_RETROCI = org.openelisglobal.common.util.ConfigurationProperties.getInstance()
-            .isPropertyValueEqual(org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName,
-                    "CI_GENERAL");
+    private final boolean isRetroCi;
 
     private final String DBS_SAMPLE_TYPE_ID;
 
     /**
      * Constructor — resolves the DBS sample type ID when running in RetroCI mode.
      */
-    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        if (IS_RETROCI) {
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService,
+            org.openelisglobal.common.util.ConfigurationProperties configurationProperties) {
+        isRetroCi = configurationProperties.isPropertyValueEqual(
+                org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName, "CI_GENERAL");
+        if (isRetroCi) {
             TypeOfSample typeOfSample = new TypeOfSample();
             typeOfSample.setDescription("DBS");
             typeOfSample.setDomain(Domain.CLINICAL.name());

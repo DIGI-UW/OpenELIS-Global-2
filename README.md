@@ -203,7 +203,7 @@ accessing any of these links, simply follow these steps:
 
 1.  To run Individual Integration Test
 
-         mvn verify -Dit.test=<packageName>.<TestClassName>
+         mvn test -Dtest=<packageName>.<TestClassName>
 
     **DBUnit test data note:** DB-backed integration tests typically load DBUnit
     Flat XML datasets from `src/test/resources/testdata/` via
@@ -290,25 +290,21 @@ For comprehensive testing guidance, see:
 
 ### Test Data Setup
 
-For E2E testing, integration testing, and manual testing, load test fixtures:
+For local browser and manual testing, use the worktree-isolated development
+stack. It initializes application scenarios after the application is ready:
 
 ```bash
-# Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness fixture lane (includes HARN-* lane data)
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
+scripts/dev-stack up
+scripts/dev-stack status
+eval "$(scripts/dev-stack env)"
 ```
 
-**Note**: The unified loader script provides dependency checks, verification,
-and reset capabilities. See
-[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
+Database-backed Java tests own their data through their test setup and
+transaction boundaries; do not load browser fixtures into their database. SQL
+fixture loaders remain in explicitly configured legacy CI paths and are not the
+local feature setup interface. See the
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for ownership
+and cleanup requirements.
 
 ### Pull request guidelines
 

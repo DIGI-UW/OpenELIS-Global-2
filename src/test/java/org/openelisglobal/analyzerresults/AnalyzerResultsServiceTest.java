@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,7 +24,6 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.services.StatusSet;
-import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -32,7 +33,13 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Database query and persistence checks; fixture replacement rolls back with
+ * each test.
+ */
+@Transactional
 public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -46,7 +53,6 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     private List<AnalyzerResults> analyzerResultsList;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
-    private static int NUMBER_OF_PAGES = 0;
 
     @Before
     public void setUp() throws Exception {
@@ -90,9 +96,14 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         analyzerResults.setIsControl(false);
         List<AnalyzerResults> insertAnalyzerResults = new ArrayList<>();
         insertAnalyzerResults.add(analyzerResults);
-        analyzerResultsService.insertAnalyzerResults(insertAnalyzerResults, "1006");
-        assertFalse(insertAnalyzerResults.isEmpty());
-        assertEquals(1, insertAnalyzerResults.size());
+        analyzerResultsService.insertAnalyzerResults(insertAnalyzerResults, TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        List<AnalyzerResults> persisted = analyzerResultsService.getAll();
+        assertEquals(1, persisted.size());
+        assertEquals("QAN23L", persisted.get(0).getAccessionNumber());
+        assertEquals("278", persisted.get(0).getResult());
+        assertTrue("Insertion must record the real audit actor", historyCount(persisted.get(0).getId(), "I") > 0);
     }
 
     @Test
@@ -127,7 +138,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         List<Note> notes = noteService.getAll();
         noteService.deleteAll(notes);
         Note note = new Note();
-        note.setSysUserId("2001");
+        note.setSysUserId(TEST_SYS_USER_ID);
         note.setReferenceId("3001");
         note.setReferenceTableId("1");
         note.setNoteType("G");
@@ -166,7 +177,11 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         sampleGrouping.addSampleItem = true;
 
         sampleGroupingList.add(sampleGrouping);
-        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupingList, "2001");
+        int priorDeleteHistory = historyCount(analyzerResult.getId(), "D");
+        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupingList, TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals(priorDeleteHistory + 1, historyCount(analyzerResult.getId(), "D"));
         List<AnalyzerResults> analyzerResults = analyzerResultsService.getAll();
         assertFalse(analyzerResults.contains(analyzerResult));
 
@@ -254,76 +269,58 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPage_ShouldReturnAPageOfAnalyzerResults_UsingAPageNumber() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getPage(1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultMembership("1001", "1002", "1003", "1004");
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfAnalyzerResults_UsingAPropertyNameAndValue() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analyzerResultsList = analyzerResultsService.getMatchingPage("analyzerId", "1001", 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        analyzerResultsList = analyzerResultsService.getMatchingPage("analyzerId", "2001", 1);
+        assertResultMembership("1001", "1004");
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfAnalyzerResults_UsingAMap() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getMatchingPage(propertyValues, 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultMembership("1002", "1003");
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfAnalyzerResults_UsingAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getOrderedPage("lastupdated", true, 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultOrder("1004", "1003", "1002", "1001");
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfAnalyzerResults_UsingAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getOrderedPage(orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultOrder("1001", "1003", "1004", "1002");
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfAnalyzerResults_UsingAPropertyNameAndValueAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analyzerResultsList = analyzerResultsService.getMatchingOrderedPage("analyzerId", "1002", "lastupdated", true,
+        analyzerResultsList = analyzerResultsService.getMatchingOrderedPage("analyzerId", "2002", "lastupdated", true,
                 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultOrder("1003", "1002");
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfAnalyzerResults_UsingAPropertyNameAndValueAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        analyzerResultsList = analyzerResultsService.getMatchingOrderedPage("analyzerId", "1002", orderProperties, true,
+        analyzerResultsList = analyzerResultsService.getMatchingOrderedPage("analyzerId", "2002", orderProperties, true,
                 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultOrder("1002", "1003");
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfAnalyzerResults_UsingAMapAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getMatchingOrderedPage(propertyValues, "analyzerId", false, 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultMembership("1002", "1003");
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfAnalyzerResults_UsingAMapAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         analyzerResultsList = analyzerResultsService.getMatchingOrderedPage(propertyValues, orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= analyzerResultsList.size());
+        assertResultOrder("1003", "1002");
     }
 
     @Test
@@ -344,4 +341,38 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         List<AnalyzerResults> updatedAnalyzerResultsList = analyzerResultsService.getAll();
         assertTrue(updatedAnalyzerResultsList.isEmpty());
     }
+
+    @Test
+    public void orderedPageStartsAtTheRequestedRecordAndEndsBeyondTheLastRecord() {
+        analyzerResultsList = analyzerResultsService.getOrderedPage("accessionNumber", false, 3);
+        assertResultOrder("1004", "1002");
+        assertTrue(analyzerResultsService.getOrderedPage("accessionNumber", false, 5).isEmpty());
+    }
+
+    @Test
+    public void matchingPageExcludesOtherAnalyzers() {
+        assertTrue(analyzerResultsService.getMatchingPage("analyzerId", "999999", 1).isEmpty());
+        analyzerResultsList = analyzerResultsService.getMatchingOrderedPage("analyzerId", "2001", "accessionNumber",
+                false, 2);
+        assertResultOrder("1004");
+    }
+
+    private void assertResultMembership(String... expectedIds) {
+        assertEquals(expectedIds.length, analyzerResultsList.size());
+        assertEquals(Set.of(expectedIds),
+                analyzerResultsList.stream().map(AnalyzerResults::getId).collect(Collectors.toSet()));
+    }
+
+    private void assertResultOrder(String... expectedIds) {
+        assertEquals(List.of(expectedIds),
+                analyzerResultsList.stream().map(AnalyzerResults::getId).collect(Collectors.toList()));
+    }
+
+    private int historyCount(String resultId, String activity) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.history h"
+                + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
+                + " WHERE LOWER(r.name) = 'analyzer_results' AND h.reference_id = ? AND h.activity = ? AND h.sys_user_id = ?",
+                Integer.class, resultId, activity, Integer.valueOf(TEST_SYS_USER_ID));
+    }
+
 }

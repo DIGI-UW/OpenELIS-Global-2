@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.service.PatientService;
@@ -22,10 +20,7 @@ import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * UAT Round 2 (LO-01-02 / LO-01-05): "The audit trail only shows updated date
@@ -42,7 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * one PERSON history row whose XML contains the OLD value of each changed field
  * — not just one of them.
  */
-public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSensitiveTest {
+public class PatientMultiFieldAuditTrailIntegrationTest extends AuditTrailIntegrationTestSupport {
 
     @Autowired
     private PersonService personService;
@@ -59,30 +54,15 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
     @Autowired
     private HistoryService historyService;
 
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-
     private String personRefTableId;
     private String patientRefTableId;
     private String patientIdentityRefTableId;
 
     @Before
-    public void setUp() throws Exception {
-        AuditTrailServiceImpl realAuditTrailService = new AuditTrailServiceImpl();
-        ReflectionTestUtils.setField(realAuditTrailService, "referenceTablesService", referenceTablesService);
-        ReflectionTestUtils.setField(realAuditTrailService, "historyService", historyService);
-
-        for (Object service : new Object[] { personService, patientService, patientIdentityService }) {
-            Object target = AopTestUtils.getUltimateTargetObject(service);
-            ReflectionTestUtils.setField(target, "auditTrailService", realAuditTrailService);
-        }
-
-        executeDataSetWithStateManagement("testdata/patient.xml");
-        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person", "history" });
-
-        personRefTableId = ensureReferenceTable("PERSON");
-        patientRefTableId = ensureReferenceTable("PATIENT");
-        patientIdentityRefTableId = ensureReferenceTable("PATIENT_IDENTITY");
+    public void setUp() {
+        personRefTableId = requiredReferenceTable("PERSON");
+        patientRefTableId = requiredReferenceTable("PATIENT");
+        patientIdentityRefTableId = requiredReferenceTable("PATIENT_IDENTITY");
     }
 
     private List<String> changesXmlForUpdateRows(String referenceTableId, String referenceId) {
@@ -116,6 +96,7 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
         String personId = person.getId();
 
         Person reloaded = personService.get(personId);
+        detachSavedRecords();
         reloaded.setFirstName("UpdatedFirst");
         reloaded.setLastName("UpdatedLast");
         reloaded.setPrimaryPhone("+261 38 22 222 22");
@@ -164,6 +145,7 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
         String patientId = patient.getId();
 
         Patient reloaded = patientService.get(patientId);
+        detachSavedRecords();
         reloaded.setGender("F");
         reloaded.setBirthDate(Timestamp.valueOf(LocalDate.of(1985, 6, 20).atStartOfDay()));
         reloaded.setNationalId("NID-UPDATED");
@@ -218,6 +200,7 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
         // Update each.
         for (int i = 0; i < 3; i++) {
             PatientIdentity reloaded = patientIdentityService.get(ids[i]);
+            detachSavedRecords();
             reloaded.setIdentityData("UPDATED_" + i);
             reloaded.setSysUserId("1");
             patientIdentityService.update(reloaded);

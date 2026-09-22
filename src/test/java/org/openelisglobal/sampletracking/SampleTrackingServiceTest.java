@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
-import lombok.NonNull;
 import org.dbunit.DatabaseUnitException;
 import org.junit.After;
 import org.junit.Before;
@@ -20,23 +18,16 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.sampletracking.service.SampleTrackingService;
 import org.openelisglobal.sampletracking.valueholder.SampleTracking;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 public class SampleTrackingServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleTrackingService sampleTrackingService;
 
-    private JdbcTemplate jdbcTemplate;
     private List<SampleTracking> sampleTrackingList;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
     private static int PAGE_SIZE = 0;
-
-    @Autowired
-    public void setDataSource(@NonNull DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
 
     @Before
     public void setUp() throws Exception {

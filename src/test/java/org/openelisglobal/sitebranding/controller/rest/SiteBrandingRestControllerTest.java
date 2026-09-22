@@ -111,6 +111,10 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
                 .andExpect(jsonPath("$.primaryColor").value("#0f62fe"))
                 .andExpect(jsonPath("$.secondaryColor").value("#393939"))
                 .andExpect(jsonPath("$.headerColor").value("#295785"));
+
+        assertEquals("The request must commit its default branding", Integer.valueOf(1),
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM site_branding", Integer.class));
+        assertEquals("#0f62fe", jdbcTemplate.queryForObject("SELECT primary_color FROM site_branding", String.class));
     }
 
     /**

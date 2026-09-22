@@ -13,7 +13,9 @@ import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class QCChartDataServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -23,8 +25,6 @@ public class QCChartDataServiceIntegrationTest extends BaseWebContextSensitiveTe
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
-        ensureReferenceTables("analyzer", "analyzer_type", "qc_control_lot", "qc_result", "qc_rule_violation",
-                "qc_statistics");
     }
 
     @Test

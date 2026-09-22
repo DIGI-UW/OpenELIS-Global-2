@@ -253,9 +253,6 @@ test.describe("OGC-1121 critical results look critical", () => {
         await expect(input).toHaveValue(
           expectation === "critical" ? "200" : "120",
         );
-        const background = await input.evaluate(
-          (el) => getComputedStyle(el).backgroundColor,
-        );
         if (expectation === "critical") {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
@@ -263,12 +260,18 @@ test.describe("OGC-1121 critical results look critical", () => {
             timeout: UI_TIMEOUT,
           });
           await expect(row).toContainText("Critical");
-          expect(background).toBe("rgb(255, 215, 217)");
+          await expect(input).toHaveCSS(
+            "background-color",
+            "rgb(255, 215, 217)",
+          );
         } else {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
           ).toHaveCount(0);
-          expect(background).toBe("rgb(255, 255, 160)");
+          await expect(input).toHaveCSS(
+            "background-color",
+            "rgb(255, 255, 160)",
+          );
         }
       }
     });
