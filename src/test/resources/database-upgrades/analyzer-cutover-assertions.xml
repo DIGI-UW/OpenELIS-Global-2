@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-analyzer-cutover-preserves-data"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer
+                WHERE id = 900001 AND name = 'Empty draft' AND is_active IS TRUE AND
+                status = 'SETUP'
+                AND bridge_connection_id IS NULL AND site_binding_revision_id IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer
+                WHERE id = 900002 AND is_active IS FALSE AND status = 'INACTIVE'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer a
+                JOIN analyzer_site_binding_revision r ON r.id =
+                a.site_binding_revision_id
+                JOIN analyzer_site_binding b ON b.id = r.site_binding_id
+                JOIN analyzer_profile_binding p ON p.id = b.profile_binding_id
+                JOIN analyzer_site_binding_test t ON t.site_binding_revision_id = r.id
+                WHERE a.id = 900003 AND a.name = 'Migrated fixture' AND a.is_active
+                IS TRUE AND a.status = 'ACTIVE'
+                AND a.bridge_connection_id = 'bridge-upgrade-fixture'
+                AND p.profile_id = 'upgrade-fixture' AND p.profile_revision = 1
+                AND t.source_row_key = 'upgrade-test' AND t.mapping_state = 'BOUND'
+                AND t.test_id = (SELECT MIN(id) FROM test)
+            </sqlCheck>
+            <not>
+                <tableExists tableName="analyzer_test_map" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_plugin_config" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="machine_id" />
+            </not>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

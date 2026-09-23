@@ -1175,7 +1175,7 @@
 					<font size="7"/>
 					<paragraph lineSpacing="Single"/>
 				</textElement>
-				<textFieldExpression><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal}  +  "  R = " + $R{report.extLabReference} + "  C = " + $R{report.confirmTest}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal} + "  BB = " + $R{report.criticalBelowNormal} + "  EE = " + $R{report.criticalAboveNormal}  +  "  R = " + $R{report.extLabReference} + "  C = " + $R{report.confirmTest}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="0" y="2" width="28" height="14"/>

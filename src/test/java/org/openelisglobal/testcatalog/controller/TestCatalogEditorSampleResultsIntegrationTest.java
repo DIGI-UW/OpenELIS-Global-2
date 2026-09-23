@@ -102,9 +102,6 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
 
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -129,8 +126,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         // dictionaryService is field-injected in production; set it here so the
         // option-labeling path can be exercised under direct construction.
         java.lang.reflect.Field f = TestCatalogEditorRestController.class.getDeclaredField("dictionaryService");

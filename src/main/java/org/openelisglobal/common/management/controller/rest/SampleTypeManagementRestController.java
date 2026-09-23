@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
@@ -47,8 +48,8 @@ public class SampleTypeManagementRestController extends BaseRestController {
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
     // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
-    private static final Set<String> TERM_SOURCES = new HashSet<>(
-            Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL", "WHONET"));
+    private static final Set<String> TERM_SOURCES = new HashSet<>(Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL"));
+    private static final String LEGACY_WHONET_SOURCE = "WHONET";
     private static final Set<String> TERM_RELATIONSHIPS = new HashSet<>(
             Arrays.asList("SAME_AS", "BROADER_THAN", "NARROWER_THAN"));
 
@@ -462,13 +463,15 @@ public class SampleTypeManagementRestController extends BaseRestController {
         }
         // (source, code) unique within the request — the DB enforces it per sample
         // type, but reject early + cleanly rather than surfacing a raw 500.
+        List<SampleTypeTerminologyMapping> activeMappings = terminologyService.getActiveBySampleTypeId(sampleTypeId);
         Set<String> seen = new HashSet<>();
         List<SampleTypeTerminologyMapping> desired = new ArrayList<>();
         for (TerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            if (isBlank(m.source) || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+            boolean unchangedLegacyWhonet = isUnchangedLegacyWhonetMapping(m, activeMappings);
+            if ((!TERM_SOURCES.contains(m.source) || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!seen.add(m.source + " " + m.code)) {
@@ -491,6 +494,29 @@ public class SampleTypeManagementRestController extends BaseRestController {
             resp.mappings.add(new TerminologyMappingDto(m));
         }
         return resp;
+    }
+
+    private static boolean isValidRelationship(String relationship) {
+        return isBlank(relationship) || TERM_RELATIONSHIPS.contains(relationship);
+    }
+
+    private static boolean isUnchangedLegacyWhonetMapping(TerminologyMappingDto requested,
+            List<SampleTypeTerminologyMapping> activeMappings) {
+        if (!LEGACY_WHONET_SOURCE.equals(requested.source) || activeMappings == null) {
+            return false;
+        }
+        for (SampleTypeTerminologyMapping existing : activeMappings) {
+            if (LEGACY_WHONET_SOURCE.equals(existing.getSource()) && Objects.equals(requested.code, existing.getCode())
+                    && Objects.equals(normalizeRelationship(requested.relationship),
+                            normalizeRelationship(existing.getRelationship()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeRelationship(String relationship) {
+        return isBlank(relationship) ? null : relationship;
     }
 
     private static boolean isBlank(String s) {

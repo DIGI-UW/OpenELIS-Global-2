@@ -20,12 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -39,6 +37,7 @@ import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -56,7 +55,6 @@ import org.springframework.stereotype.Service;
 public class SampleOrderService {
 
     private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
-    private FhirUtil fhirUtil = SpringContext.getBean(FhirUtil.class);
     private static SampleService sampleService = SpringContext.getBean(SampleService.class);
     private static OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ObservationHistoryService observationHistoryService = SpringContext
@@ -171,11 +169,8 @@ public class SampleOrderService {
                     .getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName);
             if (programSample != null) {
                 sampleOrder.setProgramId(programSample.getProgram().getId());
-                if (programSample.getQuestionnaireResponseUuid() != null) {
-                    sampleOrder.setAdditionalQuestions(
-                            fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                                    .withId(programSample.getQuestionnaireResponseUuid().toString()).execute());
-                }
+                sampleOrder.setAdditionalQuestions(SpringContext.getBean(QuestionnaireStorageService.class)
+                        .getQuestionnaireResponse(programSample.getQuestionnaireResponseUuid()).orElse(null));
             }
 
             RequesterService requesterService = new RequesterService(sample.getId());

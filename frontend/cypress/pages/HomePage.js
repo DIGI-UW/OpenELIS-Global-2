@@ -20,22 +20,22 @@ class HomePage {
     this.selectors = {
       menuButton: "[data-cy='menuButton']",
       sampleAddNav: "#menu_sample_add_nav",
-      sampleMenu: "span#menu_sample",
+      sampleMenu: "#menu_sample",
       batchEntry: "#menu_sample_batch_entry",
-      patientMenu: "span#menu_patient",
+      patientMenu: "#menu_patient",
       patientAddEdit: "#menu_patient_add_or_edit_nav",
       patientMerge: "#menu_patient_merge",
       sampleEditNav: "#menu_sample_edit_nav",
-      workplanMenu: "span#menu_workplan",
+      workplanMenu: "#menu_workplan",
       workplanTestNav: "#menu_workplan_test_nav",
       workplanPanelNav: "#menu_workplan_panel_nav",
       workplanBenchNav: "#menu_workplan_bench_nav",
       workplanPriorityNav: "#menu_workplan_priority_nav",
-      nonConformityDropdown: "span#menu_nonconformity_dropdown",
-      nonConformingReport: "span#menu_non_conforming_report",
-      nonConformingView: "span#menu_non_conforming_view",
-      nonConformingActions: "span#menu_non_conforming_corrective_actions",
-      resultsMenu: "span#menu_results",
+      nonConformityDropdown: "#menu_nonconformity_dropdown",
+      nonConformingReport: "#menu_non_conforming_report",
+      nonConformingView: "#menu_non_conforming_view",
+      nonConformingActions: "#menu_non_conforming_corrective_actions",
+      resultsMenu: "#menu_results",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
       resultsPatient: "#menu_results_patient",
@@ -52,8 +52,8 @@ class HomePage {
       pathologyNav: "#menu_pathology_nav",
       immunochemMenu: "#menu_immunochem",
       cytologyMenu: "#menu_cytology",
-      administrationMenu: "span#menu_administration",
-      administrationNav: "#menu_administration_nav",
+      administrationMenu: "#menu_administration",
+      administrationDashboard: "#menu_administration_dashboard_nav",
       helpMenu: "#menu_help",
       minimizeIcon: "#minimizeIcon",
       searchIcon: "#search-Icon",
@@ -304,15 +304,20 @@ class HomePage {
 
   // Admin related functions
   goToAdminPageProgram() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.administrationMenu).click();
-    this.closeNavigationMenu();
-    return new AdminPage();
+    return this.goToAdminPage();
   }
 
   goToAdminPage() {
     this.openNavigationMenu();
-    cy.get(this.selectors.administrationNav).click();
+    cy.get(this.selectors.administrationMenu)
+      .should("be.visible")
+      .then(($menu) => {
+        if ($menu.attr("aria-expanded") !== "true") {
+          cy.wrap($menu).click();
+        }
+      });
+    cy.get(this.selectors.administrationDashboard).should("be.visible").click();
+    cy.location("pathname").should("eq", "/MasterListsPage");
     this.closeNavigationMenu();
     return new AdminPage();
   }

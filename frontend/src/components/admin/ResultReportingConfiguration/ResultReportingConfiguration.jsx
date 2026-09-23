@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Heading,
   TextInput,
@@ -9,10 +9,11 @@ import {
   RadioButton,
   Loading,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -20,6 +21,8 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+
+const REPORTING_ENDPOINT = "/rest/ResultReportingConfiguration";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -34,23 +37,16 @@ function ResultReportingConfiguration() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const componentMounted = useRef(false);
-
   const intl = useIntl();
 
   const [loading, setLoading] = useState(false);
-  const [reportsResp, setReportsResp] = useState({});
+  const { data: reportsResp } = useServerData(REPORTING_ENDPOINT);
+  const invalidateServerData = useInvalidateServerData();
   const [reportsRespPost, setReportsRespPost] = useState({});
   const [saveButton, setSaveButton] = useState(true);
   const [reportsShow, setReportsShow] = useState([]);
   const [reportsShowMinList, setReportsShowMinList] = useState([]);
   const [reportsShowHourList, setReportsShowHourList] = useState([]);
-
-  const fetchPrograms = (programsList) => {
-    if (componentMounted.current) {
-      setReportsResp(programsList);
-    }
-  };
 
   useEffect(() => {
     if (
@@ -93,6 +89,8 @@ function ResultReportingConfiguration() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
+      setSaveButton(true);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -107,15 +105,12 @@ function ResultReportingConfiguration() {
     event.preventDefault();
     setLoading(true);
     postToOpenElisServerJsonResponse(
-      "/rest/ResultReportingConfiguration",
+      REPORTING_ENDPOINT,
       JSON.stringify(reportsRespPost),
       (res) => {
         displayStatus(res);
       },
     );
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
   }
 
   const handleRadioChange = (index, value) => {
@@ -161,15 +156,6 @@ function ResultReportingConfiguration() {
     setReportsShowMinList(reportsResp.minList);
     setSaveButton(true);
   };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer("/rest/ResultReportingConfiguration", fetchPrograms);
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
 
   return (
     <>

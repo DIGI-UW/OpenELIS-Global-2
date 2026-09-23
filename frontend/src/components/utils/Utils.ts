@@ -120,6 +120,14 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       // if (response.url.includes("LoginPage")) {
       //     throw "No Login Session";
       // }
+      // An error response carries a JSON body too. Handing that body to the
+      // caller as if it were data turns a 500 into a render-time crash, so a
+      // failed request reports nothing instead.
+      if (!response.ok) {
+        console.error(`GET ${endPoint} failed: HTTP ${response.status}`);
+        callback(undefined);
+        return;
+      }
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json().then((jsonResp) => {
@@ -130,12 +138,46 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       }
     })
     .catch((error) => {
-      if (error.name === "AbortError") {
+      if (error.name === "AbortError" || signal?.aborted) {
         return; // Component is unmounting — don't call callback
       }
       console.error(error);
       callback(undefined);
     });
+};
+
+/**
+ * Promise-based GET for the query layer.
+ *
+ * Legacy callers intentionally keep the callback contract above: many of
+ * them interpret an application error body as part of their existing flow.
+ * Cached reads need a different contract. A non-success HTTP response must
+ * reject so TanStack Query can put the screen in its error state instead of
+ * treating an error payload as usable data.
+ */
+export const fetchFromOpenElisServer = async <T>(
+  endPoint: string,
+  signal?: AbortSignal,
+): Promise<T> => {
+  const response = await fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "GET",
+    signal,
+    headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status}): ${endPoint}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error(`Expected a JSON response: ${endPoint}`);
+  }
+
+  return (await response.json()) as T;
 };
 
 export const postToOpenElisServer = <TExtra = unknown>(
@@ -226,6 +268,59 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     .catch((error) => {
       console.error(error);
       callback(0, extraParams);
+    });
+};
+
+/**
+ * Posts a multipart form and hands back the parsed JSON body, for endpoints
+ * that answer an upload with a result rather than a bare status (the catalog
+ * import's preview and apply). A non-2xx answer still resolves, carrying the
+ * status, so callers can show the server's own message.
+ */
+export const postToOpenElisServerFormDataJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  formData: FormData,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: formData,
+  })
+    .then(handleSessionError)
+    .then((response) =>
+      response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}))
+        .then((parsed) =>
+          response.ok
+            ? parsed
+            : {
+                ...parsed,
+                status: response.status,
+                statusCode: response.status,
+              },
+        )
+        .catch(() => ({
+          error: `Request failed (HTTP ${response.status})`,
+          status: response.status,
+          statusCode: response.status,
+        })),
+    )
+    .then((body) => {
+      callback(body as T, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+      callback(undefined, extraParams);
     });
 };
 

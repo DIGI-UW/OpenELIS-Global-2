@@ -1,7 +1,6 @@
 # Unified Playwright E2E executor — parameterized for both core and harness.
-# Called by e2e-authoritative-reusable.yml twice: once for core projects
-# (build.docker-compose.yml only) and once for harness projects (with
-# analyzer bridge overlay). Runs test shards, merges blob reports into
+# Called for core and analyzer harness projects.
+# Runs test shards, merges blob reports into
 # a single HTML report, and enforces a gate.
 name: E2E / Playwright (Reusable)
 
@@ -16,6 +15,11 @@ on:
         description: "Prefix for artifact names (e.g. core, harness)"
         required: true
         type: string
+      shard_indices:
+        description: "JSON array of shard indices; use [1] for a single story"
+        required: false
+        type: string
+        default: "[1,2]"
       compose_files:
         description: "Comma-separated Docker Compose files to start"
         required: false
@@ -27,7 +31,7 @@ on:
         type: string
         default: "core"
       setup_analyzer_harness:
-        description: "Run analyzer harness setup (plugin jars, seeding, cert validation)"
+        description: "Run analyzer harness setup (runtime, seeding, cert validation)"
         required: false
         type: boolean
         default: false
@@ -122,7 +126,7 @@ jobs:
 
   # ─── Test Shards ────────────────────────────────────────────────────────────
   test-shards:
-    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/2
+    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/${{ strategy.job-total }}
     needs: pre-warm-playwright
     runs-on: ubuntu-latest
     permissions:
@@ -132,7 +136,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard_index: [1, 2]
+        shard_index: ${{ fromJSON(inputs.shard_indices) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -223,30 +227,6 @@ jobs:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
 
-      - name: Download plugin jars (cross-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-          run-id: ${{ inputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download plugin jars (same-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-
-      - name: Restore plugin jars for runtime loading
-        if: inputs.setup_analyzer_harness
-        run: |
-          mkdir -p volume/plugins
-          rm -rf volume/plugins/*
-          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
-          ls -lah volume/plugins
-
       # ── Docker Setup ────────────────────────────────────────────────────────
 
       - name: Login to GHCR
@@ -272,6 +252,10 @@ jobs:
       # ── Container Startup ───────────────────────────────────────────────────
 
       - name: Start containers (no rebuild)
+        env:
+          # The fixture provisioner is intentionally disabled in normal deployments.
+          # Core E2E uses the ADMIN-gated endpoint to build its disposable scenario.
+          OE_UAT_SCENARIOS_ENABLED: "true"
         run: |
           COMPOSE_CMD=(docker compose)
           IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"
@@ -374,7 +358,7 @@ jobs:
           for p in "${PROJECTS[@]}"; do
             CMD+=("--project=$p")
           done
-          CMD+=("--shard=${{ matrix.shard_index }}/2")
+          CMD+=("--shard=${{ matrix.shard_index }}/${{ strategy.job-total }}")
           if [[ "${{ inputs.setup_analyzer_harness }}" == "true" ]]; then
             CMD+=("--workers=1")
           fi
@@ -386,9 +370,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          ANALYZER_INGRESS_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          ANALYZER_INGRESS_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
-          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
-          FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
 
       - name: Memory snapshot (post-test) + monitor dump
         if: ${{ !cancelled() }}

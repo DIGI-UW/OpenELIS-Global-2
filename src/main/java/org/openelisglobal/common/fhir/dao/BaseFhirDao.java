@@ -641,48 +641,25 @@ public abstract class BaseFhirDao {
     }
 
     /**
-     * Creates a last updated date range predicate.
+     * {@code _lastUpdated} over the entity's lastupdated column, with FHIR period
+     * semantics: a day-precision value spans the whole day, {@code gt}/{@code lt}
+     * exclude the period and {@code ge}/{@code le}/{@code eq} include it.
      */
     protected <T, R> Optional<Predicate> createLastUpdatedPredicate(FhirCriteriaContext<T, R> context,
             DateRangeParam lastUpdated) {
-
         if (context == null || lastUpdated == null) {
             return Optional.empty();
         }
-
-        DateParam lowerBound = lastUpdated.getLowerBound();
-        DateParam upperBound = lastUpdated.getUpperBound();
-
-        if (!hasDateValue(lowerBound) && !hasDateValue(upperBound)) {
-            return Optional.empty();
-        }
-
-        CriteriaBuilder criteriaBuilder = context.getCriteriaBuilder();
         Expression<Date> lastUpdatedExpression = resolveExpression(context, FhirConstants.LAST_UPDATED_PROPERTY,
                 Date.class);
-
-        Predicate lowerPredicate = createLowerDatePredicate(criteriaBuilder, lastUpdatedExpression, lowerBound);
-
-        Predicate upperPredicate = createUpperDatePredicate(criteriaBuilder, lastUpdatedExpression, upperBound);
-
-        if (lowerPredicate == null && upperPredicate == null) {
+        List<Predicate> bounds = DateParamBounds.predicates(context.getCriteriaBuilder(), lastUpdatedExpression,
+                lastUpdated);
+        if (bounds.isEmpty()) {
             return Optional.empty();
         }
-
-        if (lowerPredicate == null) {
-            return Optional.of(upperPredicate);
-        }
-
-        if (upperPredicate == null) {
-            return Optional.of(lowerPredicate);
-        }
-
-        return Optional.of(criteriaBuilder.and(lowerPredicate, upperPredicate));
+        return Optional.of(context.getCriteriaBuilder().and(bounds.toArray(new Predicate[0])));
     }
 
-    /**
-     * Creates a lower bound date predicate.
-     */
     protected Predicate createLowerDatePredicate(CriteriaBuilder criteriaBuilder, Expression<Date> expression,
             DateParam parameter) {
 
@@ -937,6 +914,8 @@ public abstract class BaseFhirDao {
      */
     private <R> List<R> executeQuery(FhirCriteriaContext<?, R> context, int firstResult, int maxResults) {
         try {
+            applyDefaultOrdering(context);
+
             List<R> results = context.createQuery().setFirstResult(firstResult).setMaxResults(maxResults)
                     .getResultList();
 
@@ -945,6 +924,36 @@ public abstract class BaseFhirDao {
         } catch (Exception exception) {
             LOGGER.error("Error executing query: {}", exception.getMessage(), exception);
             throw new RuntimeException("Failed to execute FHIR query", exception);
+        }
+    }
+
+    /**
+     * Orders an otherwise unordered search by the root identifier.
+     *
+     * <p>
+     * Paging is expressed as an offset into a result set, which only means
+     * something if the result set has a stable order. PostgreSQL is free to return
+     * rows in any order for a query with no {@code ORDER BY}, so without this a
+     * client walking the pages of a search could see the same resource twice and
+     * never see another one at all.
+     */
+    private void applyDefaultOrdering(FhirCriteriaContext<?, ?> context) {
+        if (!(context.getCriteriaQuery() instanceof CriteriaQuery<?> criteriaQuery)) {
+            return;
+        }
+        if (!criteriaQuery.getOrderList().isEmpty()) {
+            return;
+        }
+        Root<?> root = context.getRoot();
+        if (root == null || root.getModel() == null) {
+            return;
+        }
+        try {
+            String idAttribute = root.getModel().getId(Object.class).getName();
+            criteriaQuery.orderBy(context.getCriteriaBuilder().asc(root.get(idAttribute)));
+        } catch (IllegalArgumentException exception) {
+            LOGGER.debug("No single-attribute identifier on {}, leaving the search unordered",
+                    root.getModel().getName());
         }
     }
 

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "migration-fixture-plan",
+  "mode": "PLAN",
+  "sourceSnapshotFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+  "startedAt": "2026-08-24T18:00:00Z",
+  "completedAt": "2026-08-24T18:00:02Z",
+  "outcomes": [
+    {
+      "migrationKey": "oe-analyzer-42:aaaaaaaa",
+      "sourceAnalyzerId": "oe-analyzer-42",
+      "sourceConfigFingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "outcome": "READY",
+      "profileSelection": {
+        "method": "EXPLICIT",
+        "profileRef": {
+          "profileId": "fixture.synthetic-socket",
+          "revision": 2,
+          "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        "selectedBy": "user-7",
+        "selectedAt": "2026-08-24T17:55:00Z"
+      }
+    },
+    {
+      "migrationKey": "oe-analyzer-43:bbbbbbbb",
+      "sourceAnalyzerId": "oe-analyzer-43",
+      "sourceConfigFingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "outcome": "NEEDS_CORRECTION",
+      "reasonCode": "EXPLICIT_PROFILE_SELECTION_REQUIRED"
+    },
+    {
+      "migrationKey": "oe-analyzer-44:cccccccc",
+      "sourceAnalyzerId": "oe-analyzer-44",
+      "sourceConfigFingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "outcome": "INTENTIONALLY_EXCLUDED",
+      "reasonCode": "DECOMMISSIONED_BEFORE_CUTOVER"
+    }
+  ]
+}

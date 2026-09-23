@@ -311,7 +311,8 @@ public abstract class ConfigurationProperties {
 
         // S-09 (OGC-580) Sample Acceptance Checklist — per-domain enforcement
         // (MANDATORY/OPTIONAL/OFF, default OPTIONAL)
-        // dbName capped at 32 chars (site_information.name is varchar(32))
+        // The shortened dbNames below predate the widening of site_information.name
+        // and are kept for compatibility with rows already seeded under them.
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL("sampleAcceptCheck.clinical", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
@@ -321,7 +322,24 @@ public abstract class ConfigurationProperties {
         // its bundled ones, so a deployment can reword any string without a
         // source change or a frontend rebuild.
         OVERRIDE_DEFAULT_TRANSLATION("overrideDefaultTranslation", "text"),
-        REQUESTER_REQUIRED("requesterRequired", "text");
+        REQUESTER_REQUIRED("requesterRequired", "text"),
+        CONSENT_REQUIRED_FOR_COLLECTION("consentRequiredForCollection", "text"),
+        // OGC-1029 (Validation v4 V3, FR-B4): gates "Release all clear" — the only
+        // bulk release; per-row release in the review panel is always available.
+        ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text"),
+        // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
+        RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
+
+        // FR-2.3: per-deployment switches for the optional pathology bench
+        // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
+        // COMPLETED) have no switch. A missing row means enabled.
+        PATHOLOGY_STAGE_DECALCIFICATION_ENABLED("pathology.stage.DECALCIFICATION.enabled", "text"),
+        PATHOLOGY_STAGE_PROCESSING_ENABLED("pathology.stage.PROCESSING.enabled", "text"),
+        PATHOLOGY_STAGE_EMBEDDING_ENABLED("pathology.stage.EMBEDDING.enabled", "text"),
+        PATHOLOGY_STAGE_MICROTOMY_ENABLED("pathology.stage.MICROTOMY.enabled", "text"),
+        PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
+        PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
+        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text");
 
         // visible on
         // the ui

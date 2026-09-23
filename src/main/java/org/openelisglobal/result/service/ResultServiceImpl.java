@@ -13,6 +13,7 @@ import org.json.simple.JSONObject;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -149,6 +150,9 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return getDictEntry(result);
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces);
+            }
             if (significantPlaces == 0) {
                 return result.getValue().split("\\.")[0];
             }
@@ -261,6 +265,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
+                        + appendUOM(result, includeUOM);
+            }
             if (significantPlaces == -1) {
                 return result.getValue() + appendUOM(result, includeUOM);
             }
@@ -360,6 +368,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
+                        + appendUOM(result, includeUOM);
+            }
             if (significantPlaces == -1) {
                 return result.getValue() + appendUOM(result, includeUOM);
             }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -9,6 +9,9 @@ import {
   SelectItem,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import CustomDatePicker from "../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../layout/Layout";
+import { formatIsoDateForBackend } from "../../dateUtils";
 
 /**
  * ClinicalInfoSection - Clinical diagnosis and payment status
@@ -16,11 +19,16 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * Implements:
  * - ORD-6: Provisional diagnosis (free text field)
  * - Payment status dropdown
+ * - Order date, next-visit date and test location, all of which SampleOrderItem
+ *   has always carried but the new lanes never bound to an input.
  */
 
 const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
 
   // Payment options state - fetched from API
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -60,6 +68,28 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
       },
     }));
   };
+
+  const updateOrderField = (field, value) =>
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: { ...prev.sampleOrderItems, [field]: value },
+    }));
+
+  // sampleOrderItems dates are held in the site's display format — that is
+  // what the server sends in currentDate and what it parses back — unlike the
+  // per-sample dates, which are ISO in state and converted on submit. Storing
+  // ISO here is rejected by the backend date parser.
+  const handleDateChange = (field) => (pickerDate) =>
+    updateOrderField(field, pickerDate || "");
+
+  const testLocationCodes =
+    orderData?.sampleOrderItems?.testLocationCodeList || [];
+  const testLocationCode = orderData?.sampleOrderItems?.testLocationCode || "";
+  const isOtherLocation =
+    testLocationCode &&
+    !testLocationCodes.some(
+      (code) => String(code.id) === String(testLocationCode),
+    );
 
   // Handle payment status change
   const handlePaymentStatusChange = (e) => {
@@ -138,6 +168,90 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
             ))}
           </Select>
         </Column>
+
+        {/* requestDate has always been on the payload, defaulted to today and
+            stamped server-side, with no input bound to it. */}
+        <Column lg={8} md={4} sm={4}>
+          <CustomDatePicker
+            id="order_requestDate"
+            labelText={intl.formatMessage({
+              id: "order.requestDate",
+              defaultMessage: "Order Date",
+            })}
+            value={formatIsoDateForBackend(
+              orderData?.sampleOrderItems?.requestDate || "",
+              dateLocale,
+            )}
+            onChange={handleDateChange("requestDate")}
+            disabled={isReadOnly}
+          />
+        </Column>
+
+        <Column lg={8} md={4} sm={4}>
+          <CustomDatePicker
+            id="order_nextVisitDate"
+            labelText={intl.formatMessage({
+              id: "order.nextVisitDate",
+              defaultMessage: "Next Visit Date",
+            })}
+            value={formatIsoDateForBackend(
+              orderData?.sampleOrderItems?.nextVisitDate || "",
+              dateLocale,
+            )}
+            onChange={handleDateChange("nextVisitDate")}
+            disabled={isReadOnly}
+          />
+        </Column>
+
+        {testLocationCodes.length > 0 && (
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="testLocationCode"
+              labelText={intl.formatMessage({
+                id: "order.testLocationCode",
+                defaultMessage: "Sampling Performed At",
+              })}
+              value={isOtherLocation ? "other" : testLocationCode}
+              onChange={(e) =>
+                updateOrderField(
+                  "testLocationCode",
+                  e.target.value === "other" ? "" : e.target.value,
+                )
+              }
+              disabled={isReadOnly}
+            >
+              <SelectItem key="" value="" text="" />
+              {testLocationCodes.map((code) => (
+                <SelectItem key={code.id} value={code.id} text={code.value} />
+              ))}
+              <SelectItem
+                key="other"
+                value="other"
+                text={intl.formatMessage({
+                  id: "order.testLocationCode.other",
+                  defaultMessage: "Other",
+                })}
+              />
+            </Select>
+          </Column>
+        )}
+
+        {isOtherLocation && (
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="otherLocationCode"
+              labelText={intl.formatMessage({
+                id: "order.testLocationCode.otherLabel",
+                defaultMessage: "If other, specify",
+              })}
+              value={orderData?.sampleOrderItems?.otherLocationCode || ""}
+              onChange={(e) =>
+                updateOrderField("otherLocationCode", e.target.value)
+              }
+              disabled={isReadOnly}
+            />
+          </Column>
+        )}
       </Grid>
     </Tile>
   );

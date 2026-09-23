@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -220,8 +219,7 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
                     mock(TestResultInterpretationService.class), mock(TestResultService.class),
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
-                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
-                    mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
+                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class), mock(TypeOfSampleService.class),
                     mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
                     mock(PanelService.class), mock(PanelItemService.class));
         }

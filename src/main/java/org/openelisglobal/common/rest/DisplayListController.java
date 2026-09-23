@@ -18,6 +18,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.rest.provider.bean.TestDisplayBean;
 import org.openelisglobal.common.rest.provider.form.DisplayListPagingForm;
 import org.openelisglobal.common.rest.util.DisplayListPaging;
@@ -350,6 +351,39 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RESULTS_ENTRY_UNIFIED_ROUTE));
         configs.put(Property.REQUESTER_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUESTER_REQUIRED));
+        configs.put(Property.notesRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.notesRequiredForModifyResults));
+        configs.put(Property.roleRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.roleRequiredForModifyResults));
+        configs.put(Property.ALLOW_BULK_RELEASE_CLEAR.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
+        configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        // The case view's stage rail renders a stage the deployment has switched off
+        // as not applicable rather than hiding it (FR-2.3).
+        configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_STAINING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED));
+        // Required-field settings the order-entry lanes must honour. These have
+        // always existed as FormFields, consulted only by the legacy JSP screens,
+        // so the React lanes silently overrode what every shipped profile sets.
+        configs.put(Property.CONSENT_REQUIRED_FOR_COLLECTION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.CONSENT_REQUIRED_FOR_COLLECTION));
+        configs.put(FormFields.Field.PatientRequired.name(),
+                String.valueOf(FormFields.getInstance().useField(FormFields.Field.PatientRequired)));
+        configs.put(FormFields.Field.SampleEntryReferralSiteNameRequired.name(), String
+                .valueOf(FormFields.getInstance().useField(FormFields.Field.SampleEntryReferralSiteNameRequired)));
         return configs;
     }
 

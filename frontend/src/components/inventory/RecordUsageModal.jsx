@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Modal,
   NumberInput,
@@ -6,11 +6,14 @@ import {
   ComboBox,
   FormLabel,
   Stack,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryManagementAPI } from "./InventoryService";
 import { getFromOpenElisServer } from "../utils/Utils";
 
+// Consumption is item-level FEFO (POST /management/consume has no lot id),
+// so this modal speaks about the item, not the lot row it was opened from.
 const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
@@ -24,6 +27,15 @@ const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
   const [error, setError] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // onSave() unmounts this modal before the finally block runs.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleChange = (field, value) => {
     setFormData((prev) => {
@@ -59,23 +71,12 @@ const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
     );
   }, []);
 
+  // Sufficiency is the server's call: it sums the item's usable lots.
   const validate = () => {
     if (!formData.quantityUsed || formData.quantityUsed <= 0) {
-      setError("Quantity must be greater than 0");
+      setError(intl.formatMessage({ id: "usage.error.quantityPositive" }));
       return false;
     }
-
-    if (
-      lot &&
-      lot.currentQuantity &&
-      formData.quantityUsed > lot.currentQuantity
-    ) {
-      setError(
-        `Cannot use ${formData.quantityUsed} units. Only ${lot.currentQuantity} units available.`,
-      );
-      return false;
-    }
-
     return true;
   };
 
@@ -102,9 +103,15 @@ const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error recording usage:", err);
-      setError(err.message || "Error recording usage");
+      if (!isMountedRef.current) return;
+      // errorCode is an en.json id; message is the raw backend string.
+      setError(
+        err.errorCode
+          ? intl.formatMessage({ id: err.errorCode }, err.params)
+          : err.message || intl.formatMessage({ id: "usage.record.error" }),
+      );
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) setSaving(false);
     }
   };
 
@@ -134,33 +141,27 @@ const RecordUsageModal = ({ open, onClose, onSave, lot }) => {
       <Stack gap={6}>
         <div>
           <FormLabel>
-            <FormattedMessage id="lot.number" />
+            <FormattedMessage id="usage.item" />
           </FormLabel>
           <p>
-            <strong>{lot.lotNumber}</strong>
+            <strong>{lot.inventoryItem?.name}</strong>
           </p>
         </div>
 
-        <div>
-          <FormLabel>
-            <FormattedMessage id="lot.currentQuantity" />
-          </FormLabel>
-          <p>
-            <strong>
-              {lot.currentQuantity} {lot.inventoryItem?.units || "units"}
-            </strong>
-          </p>
-        </div>
+        <InlineNotification
+          kind="info"
+          title=""
+          subtitle={intl.formatMessage({ id: "usage.fefo.note" })}
+          hideCloseButton
+          lowContrast
+        />
 
         <NumberInput
           id="quantityUsed"
           label={intl.formatMessage({ id: "usage.quantityUsed" })}
           min={1}
-          max={lot.currentQuantity}
           value={formData.quantityUsed}
           onChange={(e, { value }) => handleChange("quantityUsed", value)}
-          invalidText={error}
-          invalid={!!error}
           helperText={intl.formatMessage({ id: "usage.quantityUsed.helper" })}
         />
 

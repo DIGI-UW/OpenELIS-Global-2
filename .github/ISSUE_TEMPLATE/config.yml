@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a Question
+    url: https://talk.openelis-global.org/
+    about: Get help from the OpenELIS Global community on our talk forum.
+  - name: Contribution Guide
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/CONTRIBUTING.md
+    about: Learn how to get started with contributing to OpenELIS Global 2.
+  - name: Security Vulnerability Reporting
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/SECURITY.md
+    about: Please report security vulnerabilities privately. Do not open a public issue.

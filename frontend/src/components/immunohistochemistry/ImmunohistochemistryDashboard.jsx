@@ -30,11 +30,13 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
+import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { notificationVisible } = useContext(NotificationContext);
@@ -237,7 +239,7 @@ function ImmunohistochemistryDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    history.push("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {
