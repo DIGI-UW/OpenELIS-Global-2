@@ -13,86 +13,115 @@
  */
 package org.openelisglobal.samplenewborn.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Timestamp;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "SAMPLE_NEWBORN")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class SampleNewborn extends BaseObject<String> {
 
+    @Id
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
+
+    @Column(name = "WEIGHT", precision = 5, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String weight;
+
+    @Column(name = "MULTI_BIRTH", length = 1)
     private String multiBirth;
+
+    @Column(name = "BIRTH_ORDER", precision = 2, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String birthOrder;
+
+    @Column(name = "GESTATIONAL_WEEK", precision = 5, scale = 2)
     private double gestationalWeek;
+
+    @Column(name = "DATE_FIRST_FEEDING", length = 7)
     private Timestamp dateFirstFeeding;
+
+    @Transient
     private String dateFirstFeedingForDisplay;
+
+    @Column(name = "BREAST", length = 1)
     private String breast;
+
+    @Column(name = "TPN", length = 1)
     private String tpn;
+
+    @Column(name = "FORMULA", length = 1)
     private String formula;
+
+    @Column(name = "MILK", length = 1)
     private String milk;
+
+    @Column(name = "SOY", length = 1)
     private String soy;
+
+    @Column(name = "JAUNDICE", length = 1)
     private String jaundice;
+
+    @Column(name = "ANTIBIOTICS", length = 1)
     private String antibiotic;
+
+    @Column(name = "TRANSFUSED", length = 1)
     private String transfused;
+
+    @Column(name = "DATE_TRANSFUSION", length = 7)
     private Timestamp dateTransfution;
+
+    @Transient
     private String dateTransfutionForDisplay;
+
+    @Column(name = "MEDICAL_RECORD_NUMBER", length = 18)
     private String medicalRecordNumber;
+
+    @Column(name = "NICU", length = 1)
     private String nicu;
+
+    @Column(name = "BIRTH_DEFECT", length = 1)
     private String birthDefect;
+
+    @Column(name = "PREGNANCY_COMPLICATION", length = 1)
     private String pregnancyComplication;
+
+    @Column(name = "DECEASED_SIBLING", length = 1)
     private String deceasedSibling;
+
+    @Column(name = "CAUSE_OF_DEATH", length = 50)
     private String causeOfDeath;
+
+    @Column(name = "FAMILY_HISTORY", length = 1)
     private String familyHistory;
+
+    @Column(name = "OTHER", length = 100)
     private String other;
+
+    @Column(name = "Y_NUMBER", length = 18)
     private String yNumber;
+
+    @Column(name = "YELLOW_CARD", length = 1)
     private String yellowCard;
 
     public SampleNewborn() {
         super();
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getWeight() {
-        return weight;
-    }
-
-    public void setWeight(String weight) {
-        this.weight = weight;
-    }
-
-    public String getMultiBirth() {
-        return multiBirth;
-    }
-
-    public void setMultiBirth(String multiBirth) {
-        this.multiBirth = multiBirth;
-    }
-
-    public String getBirthOrder() {
-        return birthOrder;
-    }
-
-    public void setBirthOrder(String birthOrder) {
-        this.birthOrder = birthOrder;
-    }
-
-    public double getGestationalWeek() {
-        return gestationalWeek;
-    }
-
-    public void setGestationalWeek(double gestationalWeek) {
-        this.gestationalWeek = gestationalWeek;
-    }
-
-    public Timestamp getDateFirstFeeding() {
-        return dateFirstFeeding;
     }
 
     public void setDateFirstFeeding(Timestamp dateFirstFeeding) {
@@ -100,172 +129,8 @@ public class SampleNewborn extends BaseObject<String> {
         this.dateFirstFeedingForDisplay = DateUtil.convertTimestampToStringDate(dateFirstFeeding);
     }
 
-    public String getDateFirstFeedingForDisplay() {
-        return this.dateFirstFeedingForDisplay;
-    }
-
-    public void setDateFirstFeedingForDisplay(String dateFirstFeedingForDisplay) {
-        this.dateFirstFeedingForDisplay = dateFirstFeedingForDisplay;
-    }
-
-    public void setBreast(String breast) {
-        this.breast = breast;
-    }
-
-    public String getBreast() {
-        return breast;
-    }
-
-    public void setTpn(String tpn) {
-        this.tpn = tpn;
-    }
-
-    public String getTpn() {
-        return tpn;
-    }
-
-    public void setFormula(String formula) {
-        this.formula = formula;
-    }
-
-    public String getFormula() {
-        return formula;
-    }
-
-    public void setMilk(String milk) {
-        this.milk = milk;
-    }
-
-    public String getMilk() {
-        return milk;
-    }
-
-    public void setSoy(String soy) {
-        this.soy = soy;
-    }
-
-    public String getSoy() {
-        return soy;
-    }
-
-    public void setJaundice(String jaundice) {
-        this.jaundice = jaundice;
-    }
-
-    public String getJaundice() {
-        return jaundice;
-    }
-
-    public void setAntibiotic(String antibiotic) {
-        this.antibiotic = antibiotic;
-    }
-
-    public String getAntibiotic() {
-        return antibiotic;
-    }
-
-    public void setTransfused(String transfused) {
-        this.transfused = transfused;
-    }
-
-    public String getTransfused() {
-        return transfused;
-    }
-
-    public Timestamp getDateTransfution() {
-        return dateTransfution;
-    }
-
     public void setDateTransfution(Timestamp dateTransfution) {
         this.dateTransfution = dateTransfution;
         this.dateTransfutionForDisplay = DateUtil.convertTimestampToStringDate(dateTransfution);
-    }
-
-    public String getDateTransfutionForDisplay() {
-        return this.dateTransfutionForDisplay;
-    }
-
-    public void setDateTransfutionForDisplay(String dateTransfutionForDisplay) {
-        this.dateTransfutionForDisplay = dateTransfutionForDisplay;
-    }
-
-    public String getMedicalRecordNumber() {
-        return medicalRecordNumber;
-    }
-
-    public void setMedicalRecordNumber(String medicalRecordNumber) {
-        this.medicalRecordNumber = medicalRecordNumber;
-    }
-
-    public String getNicu() {
-        return nicu;
-    }
-
-    public void setNicu(String nicu) {
-        this.nicu = nicu;
-    }
-
-    public String getBirthDefect() {
-        return birthDefect;
-    }
-
-    public void setBirthDefect(String birthDefect) {
-        this.birthDefect = birthDefect;
-    }
-
-    public String getPregnancyComplication() {
-        return pregnancyComplication;
-    }
-
-    public void setPregnancyComplication(String pregnancyComplication) {
-        this.pregnancyComplication = pregnancyComplication;
-    }
-
-    public String getDeceasedSibling() {
-        return deceasedSibling;
-    }
-
-    public void setDeceasedSibling(String deceasedSibling) {
-        this.deceasedSibling = deceasedSibling;
-    }
-
-    public String getCauseOfDeath() {
-        return causeOfDeath;
-    }
-
-    public void setCauseOfDeath(String causeOfDeath) {
-        this.causeOfDeath = causeOfDeath;
-    }
-
-    public String getFamilyHistory() {
-        return familyHistory;
-    }
-
-    public void setFamilyHistory(String familyHistory) {
-        this.familyHistory = familyHistory;
-    }
-
-    public String getOther() {
-        return other;
-    }
-
-    public void setOther(String other) {
-        this.other = other;
-    }
-
-    public String getYnumber() {
-        return yNumber;
-    }
-
-    public void setYnumber(String yNumber) {
-        this.yNumber = yNumber;
-    }
-
-    public String getYellowCard() {
-        return yellowCard;
-    }
-
-    public void setYellowCard(String yellowCard) {
-        this.yellowCard = yellowCard;
     }
 }
