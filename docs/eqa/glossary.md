@@ -11,13 +11,13 @@ renaming those is a migration, and the vocabulary problem is a copy problem.
 
 ## The objects
 
-| Word to use | Table | What it is |
-| --- | --- | --- |
-| **Scheme** | `eqa_program` | The long-lived arrangement a provider runs: HIV viral load PT, and so on. Not "program" or "programme" in new copy. |
-| **Scheme enrollment** | `eqa_program_enrollment` | A laboratory's membership of a scheme, recorded by the provider. |
-| **Cycle participant** | `eqa_cycle_participant` | A laboratory selected into one particular cycle of a scheme. |
+| Word to use                      | Table                        | What it is                                                                                                          |
+| -------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Scheme**                       | `eqa_program`                | The long-lived arrangement a provider runs: HIV viral load PT, and so on. Not "program" or "programme" in new copy. |
+| **Scheme enrollment**            | `eqa_program_enrollment`     | A laboratory's membership of a scheme, recorded by the provider.                                                    |
+| **Cycle participant**            | `eqa_cycle_participant`      | A laboratory selected into one particular cycle of a scheme.                                                        |
 | **Lab submission configuration** | `eqa_lab_program_enrollment` | This laboratory's own record of what it submits and how. Local to the participant, not the provider's view of them. |
-| **Cycle** | `eqa_cycle` | One round of a scheme. |
+| **Cycle**                        | `eqa_cycle`                  | One round of a scheme.                                                                                              |
 
 **Two tables surface as "enrollment" and they are different things.**
 `eqa_program_enrollment` is the provider's roster; `eqa_lab_program_enrollment`
@@ -25,9 +25,9 @@ is the participant's own configuration. Always say which.
 
 ## Panel means two unrelated things
 
-| Word to use | What it is | Where it appears |
-| --- | --- | --- |
-| **Test panel** | The standard bundle from the test catalogue, served by `/rest/displayList/PANELS` | My Schemes, the enrollment form |
+| Word to use            | What it is                                                                                                                                      | Where it appears                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Test panel**         | The standard bundle from the test catalogue, served by `/rest/displayList/PANELS`                                                               | My Schemes, the enrollment form                         |
 | **EQA material panel** | `eqa_panel` — physical material with a source type, lot, vendor certificate, aliquots produced, reserved and shipped, and a storage temperature | Provider prep, in-house blinding, shipments, pack lists |
 
 A participant meets both: they choose **test panels** when they enrol, and they
