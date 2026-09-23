@@ -13,20 +13,23 @@ import ca.uhn.fhir.context.FhirContext;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.hl7.fhir.r4.model.Bundle;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportException;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportSummary;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTest {
+@RunWith(MockitoJUnitRunner.class)
+public class AnalyzerFhirImportControllerTest {
 
     private static final Path FIXTURE = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
             "fixtures", "normalized-known-test.fhir.json");
@@ -35,25 +38,18 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
     private AnalyzerNormalizedResultImportService importService;
 
     private AnalyzerFhirImportController controller;
-    private Object originalImportService;
-    private Object originalFhirContext;
+    private MockMvc mockMvc;
+    private UserSessionData userSessionData;
 
     @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        SecurityContextHolder.clearContext();
-        MockitoAnnotations.initMocks(this);
-        controller = webApplicationContext.getBean(AnalyzerFhirImportController.class);
-        originalImportService = ReflectionTestUtils.getField(controller, "importService");
-        originalFhirContext = ReflectionTestUtils.getField(controller, "fhirContext");
+    public void setUp() {
+        controller = new AnalyzerFhirImportController();
         ReflectionTestUtils.setField(controller, "importService", importService);
         ReflectionTestUtils.setField(controller, "fhirContext", FhirContext.forR4());
-    }
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-    @After
-    public void tearDown() {
-        ReflectionTestUtils.setField(controller, "importService", originalImportService);
-        ReflectionTestUtils.setField(controller, "fhirContext", originalFhirContext);
+        userSessionData = new UserSessionData();
+        userSessionData.setSytemUserId(1);
     }
 
     @Test
@@ -62,6 +58,7 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
                 .thenReturn(new AnalyzerNormalizedResultImportSummary("42", 1, 0, 0));
 
         mockMvc.perform(post("/analyzer/fhir").contentType("application/fhir+json")
+                .requestAttr(IActionConstants.USER_SESSION_DATA, userSessionData)
                 .content(Files.readString(FIXTURE))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.analyzerId").value("42"))
                 .andExpect(jsonPath("$.resultsStaged").value(1)).andExpect(jsonPath("$.resultsHeld").value(0));
@@ -76,6 +73,7 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
                         "analyzer.fhirImport.error.unknownConnection", "Connection is not configured"));
 
         mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON)
+                .requestAttr(IActionConstants.USER_SESSION_DATA, userSessionData)
                 .content(Files.readString(FIXTURE))).andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorKey").value("analyzer.fhirImport.error.unknownConnection"));
@@ -83,7 +81,8 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
 
     @Test
     public void malformedFhirReturnsBadRequestWithoutCallingTheDomainService() throws Exception {
-        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content("{not-fhir"))
+        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON)
+                .requestAttr(IActionConstants.USER_SESSION_DATA, userSessionData).content("{not-fhir"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorKey").value("analyzer.fhirImport.error.invalidPayload"));
 
