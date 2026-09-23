@@ -3,11 +3,15 @@ package org.openelisglobal.batchworkplan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,9 +21,6 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.batchworkplan.dao.BatchWorkplanDAO;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -71,12 +72,13 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
     private SampleItemService sampleItemService;
 
     @Autowired
-    private IStatusService statusService;
-
-    @Autowired
     private BatchWorkplanDAO batchWorkplanDAO;
 
+    @Autowired
+    private DataSource testDataSource;
+
     private String pendingStatusId;
+    private Integer otherOwnerId;
     /**
      * Pending analyses that already exist for the chosen test before this class
      * runs. Every assertion excludes them, so a full-suite run where another class
@@ -89,6 +91,7 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
     private final List<String> createdSampleItemIds = new ArrayList<>();
     private final List<String> createdSampleIds = new ArrayList<>();
     private final List<Long> createdBatchIds = new ArrayList<>();
+    private final List<Integer> createdSystemUserIds = new ArrayList<>();
 
     @Before
     public void setUp() throws Exception {
@@ -98,7 +101,14 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         // declares test and test_section but not status_of_sample, sample or
         // analysis, so it settles the catalog without disturbing anything else.
         executeDataSetWithStateManagement("testdata/panel-item.xml");
-        pendingStatusId = statusService.getStatusID(AnalysisStatus.NotStarted);
+
+        // Read the status straight from the table instead of resolving a named one
+        // through StatusService. A sibling fixture can leave status_of_sample
+        // holding rows that no AnalysisStatus maps to, and the lookup then answers
+        // -1, which fails the analysis FK. Which status these rows carry does not
+        // matter here: the query under test filters on the ids it is handed.
+        pendingStatusId = anyStatusId();
+        otherOwnerId = createSystemUser("itbw-other");
 
         // Two tests from two different lab units, resolved from the fixture rather
         // than hardcoded: FK ids differ between a fresh container and an upgraded one.
@@ -167,6 +177,14 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         createdAnalysisIds.clear();
         createdSampleItemIds.clear();
         createdSampleIds.clear();
+        if (!createdSystemUserIds.isEmpty()) {
+            try (Connection conn = testDataSource.getConnection(); Statement st = conn.createStatement()) {
+                for (Integer id : createdSystemUserIds) {
+                    st.executeUpdate("DELETE FROM clinlims.system_user WHERE id = " + id);
+                }
+            }
+            createdSystemUserIds.clear();
+        }
     }
 
     @Test
@@ -226,7 +244,7 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
     @Test
     public void theBatchListShowsOnlyTheCallersOwnBatches() {
         Long mine = createBatch("Mine", 1, BatchWorkplanStatus.DRAFT);
-        createBatch("Theirs", 109, BatchWorkplanStatus.DRAFT);
+        createBatch("Theirs", otherOwnerId, BatchWorkplanStatus.DRAFT);
 
         List<Long> visible = batchWorkplanDAO.getForUserInStatuses(1, openStatuses()).stream().map(BatchWorkplan::getId)
                 .filter(createdBatchIds::contains).collect(Collectors.toList());
@@ -252,6 +270,36 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         createBatch("Mine", 1, BatchWorkplanStatus.DRAFT);
 
         assertEquals(Collections.emptyList(), batchWorkplanDAO.getForUserInStatuses(null, openStatuses()));
+    }
+
+    /**
+     * Any existing status row; this test cares about id filtering, not semantics.
+     */
+    private String anyStatusId() throws Exception {
+        try (Connection conn = testDataSource.getConnection();
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery("SELECT id FROM clinlims.status_of_sample ORDER BY id LIMIT 1")) {
+            assertTrue("fixture needs at least one status_of_sample row", rs.next());
+            return rs.getString(1);
+        }
+    }
+
+    /**
+     * A second owner for the isolation test. Created rather than looked up: the
+     * only system_user the suite guarantees is the audit user id 1.
+     */
+    private Integer createSystemUser(String loginName) throws Exception {
+        try (Connection conn = testDataSource.getConnection(); Statement st = conn.createStatement()) {
+            try (ResultSet rs = st.executeQuery("SELECT nextval('clinlims.system_user_seq')")) {
+                rs.next();
+                int id = rs.getInt(1);
+                st.executeUpdate("INSERT INTO clinlims.system_user"
+                        + " (id, login_name, last_name, first_name, is_active, is_employee, lastupdated) VALUES (" + id
+                        + ", '" + loginName + "', 'Other', 'Tech', 'Y', 'Y', now())");
+                createdSystemUserIds.add(id);
+                return id;
+            }
+        }
     }
 
     private List<BatchWorkplanStatus> openStatuses() {
@@ -286,7 +334,7 @@ public class BatchWorkplanReadPathIntegrationTest extends BaseWebContextSensitiv
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSample(sampleService.get(sampleId));
         sampleItem.setSortOrder("1");
-        sampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
+        sampleItem.setStatusId(pendingStatusId);
         sampleItem.setSysUserId(ACTOR);
         String sampleItemId = sampleItemService.insert(sampleItem);
         createdSampleItemIds.add(sampleItemId);
