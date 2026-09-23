@@ -93,6 +93,16 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "catalog_number", length = 100)
     private String catalogNumber;
 
+    /**
+     * The manufacturer's product barcode: a UPC or GTIN identifying this kind of
+     * item, shared by every box of it ever made. Distinct from a lot's barcode,
+     * which identifies one physical box. Scanning this says what something is,
+     * never how much of it arrived or which batch.
+     */
+    @Column(name = "upc", length = 64)
+    @Size(max = 64)
+    private String upc;
+
     @Column(name = "storage_requirements", length = 255)
     private String storageRequirements;
 

@@ -169,3 +169,12 @@
   flex: 1 1 14rem;
   min-width: 0;
 }
+
+/* The location row in quick receive: label and its action on one line, the
+   chosen path underneath. */
+.quick-receive-location {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.25rem;
+}
