@@ -58,6 +58,21 @@ jobs:
             const e2e = scope.requiresE2E(files);
             core.info(`${files.length} changed file(s); E2E ${e2e ? 'required' : 'skipped: documentation only'}`);
             core.setOutput('e2e', e2e ? 'true' : 'false');
+      # E2E / Tests reads this to know which pull request triggered the build.
+      # It is only a lookup key there: the wrapper accepts it only when the API
+      # confirms that pull request is open at this exact head sha.
+      - name: Record triggering pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/e2e-scope-context
+          echo "${{ github.event.pull_request.number }}" > /tmp/e2e-scope-context/pr_number
+      - name: Upload triggering pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-scope-context
+          path: /tmp/e2e-scope-context/
+          retention-days: 1
 
   # ─── Shared Build ───────────────────────────────────────────────────────────
   # Single image producer for the E2E pipeline. The downstream workflow_run

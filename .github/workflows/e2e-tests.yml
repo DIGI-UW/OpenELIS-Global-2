@@ -46,6 +46,16 @@ jobs:
           sparse-checkout: .github/scripts
           persist-credentials: false
 
+      - name: Download triggering pull request
+        id: download_scope
+        uses: actions/download-artifact@v6
+        with:
+          name: e2e-scope-context
+          path: /tmp/e2e-scope-context
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
       - name: Decide E2E scope
         id: scope
         uses: actions/github-script@v8
@@ -56,12 +66,19 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         with:
           script: |
+            const fs = require('fs');
             const scope = require('./.github/scripts/e2e-scope.cjs');
             let skip = false;
             if (process.env.RUN_EVENT === 'pull_request') {
               const owner = context.repo.owner;
               const repo = context.repo.repo;
-              const pull = await scope.findPullRequest({ github, owner, repo,
+              let claimedNumber;
+              try {
+                claimedNumber = fs.readFileSync('/tmp/e2e-scope-context/pr_number', 'utf8');
+              } catch (error) {
+                claimedNumber = undefined;
+              }
+              const pull = await scope.resolvePullRequest({ github, owner, repo, claimedNumber,
                 headOwner: process.env.HEAD_OWNER, headBranch: process.env.HEAD_BRANCH,
                 headSha: process.env.HEAD_SHA });
               if (pull) {
@@ -69,7 +86,7 @@ jobs:
                 skip = !scope.requiresE2E(files);
                 core.info(`PR #${pull.number}: ${files.length} changed file(s); E2E ${skip ? 'skipped: documentation only' : 'required'}`);
               } else {
-                core.info('No open pull request matches this head; running E2E.');
+                core.info('Triggering pull request not confirmed at this head, or shared with another open pull request; running E2E.');
               }
             }
             core.setOutput('skip', skip ? 'true' : 'false');

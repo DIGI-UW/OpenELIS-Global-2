@@ -43,11 +43,12 @@ async function listPullRequestFiles({ github, owner, repo, pullNumber }) {
   });
 }
 
-// Finds the open pull request whose head is exactly headSha. workflow_run
-// payloads leave pull_requests empty for forks, so this searches by head ref.
-async function findPullRequest({ github, owner, repo, headOwner, headBranch, headSha }) {
+// Open pull requests whose head is exactly headSha, found by head ref.
+// workflow_run payloads leave pull_requests empty for forks, so the head ref is
+// the only lookup that works for both.
+async function openPullsAtHead({ github, owner, repo, headOwner, headBranch, headSha }) {
   if (!headOwner || !headBranch || !headSha) {
-    return null;
+    return [];
   }
   const { data } = await github.rest.pulls.list({
     owner,
@@ -56,7 +57,41 @@ async function findPullRequest({ github, owner, repo, headOwner, headBranch, hea
     head: `${headOwner}:${headBranch}`,
     per_page: 100,
   });
-  return data.find((pull) => pull.head && pull.head.sha === headSha) || null;
+  return data.filter((pull) => pull.head && pull.head.sha === headSha);
 }
 
-module.exports = { isDocsPath, requiresE2E, listPullRequestFiles, findPullRequest, MAX_LISTED_FILES };
+// Identifies the pull request that triggered the build, or returns null, which
+// means "run E2E".
+//
+// claimedNumber comes from the triggering run's artifact. That run executes the
+// pull request's own workflow, so the number is untrusted: it is used only as a
+// lookup key, and accepted only if the API confirms that pull request is open
+// with exactly this head sha. A missing or forged number therefore runs E2E.
+//
+// The checkpoint is a commit status on the head sha, so two open pull requests
+// with the same head share it. A skip judged from one pull request's files
+// would pass the other's, so any second open pull request at the head also runs
+// E2E, even when the claimed one is identified exactly.
+async function resolvePullRequest({ github, owner, repo, claimedNumber, headOwner, headBranch, headSha }) {
+  const text = typeof claimedNumber === "string" ? claimedNumber.trim() : "";
+  if (!/^[1-9][0-9]{0,9}$/.test(text) || !headSha) {
+    return null;
+  }
+  const number = Number(text);
+  let pull;
+  try {
+    ({ data: pull } = await github.rest.pulls.get({ owner, repo, pull_number: number }));
+  } catch (error) {
+    return null;
+  }
+  if (!pull || pull.state !== "open" || !pull.head || pull.head.sha !== headSha) {
+    return null;
+  }
+  const atHead = await openPullsAtHead({ github, owner, repo, headOwner, headBranch, headSha });
+  if (atHead.length !== 1 || atHead[0].number !== pull.number) {
+    return null;
+  }
+  return pull;
+}
+
+module.exports = { isDocsPath, requiresE2E, listPullRequestFiles, openPullsAtHead, resolvePullRequest, MAX_LISTED_FILES };
