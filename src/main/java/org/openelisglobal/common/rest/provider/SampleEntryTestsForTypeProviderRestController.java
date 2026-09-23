@@ -14,6 +14,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
@@ -84,25 +85,48 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    /**
+     * The orderable tests and panels for a sample type — what the order-entry
+     * screen's test picker reads.
+     *
+     * <p>
+     * Assembled in system context. Building this list crosses six services whose
+     * gates are admin-scoped: sample_type:view, panel:view (twice), program:view,
+     * test:configure and micro:view. Reception — the role whose entire job is order
+     * entry — holds none of them, so running the assembly under the caller's
+     * authentication returned 403 and the picker showed no tests at all, where
+     * before privilege-based RBAC every authenticated user could order.
+     *
+     * <p>
+     * This is the test CATALOGUE, not patient or result data, and the response is
+     * already narrowed to the caller's own test sections by
+     * {@code getUserTestSections} above. The endpoint still requires an
+     * authenticated session, and who may actually place an order remains gated on
+     * the order-creation services this does not touch.
+     *
+     * @see org.openelisglobal.common.security.SystemContext
+     */
     public ResponseEntity<Object> processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        return SystemContext.callAsSystem(() -> {
 
-        String sampleType = request.getParameter("sampleType");
-        if (GenericValidator.isBlankOrNull(sampleType)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
-        }
-        if (!StringUtil.isInteger(sampleType)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
-        }
+            String sampleType = request.getParameter("sampleType");
+            if (GenericValidator.isBlankOrNull(sampleType)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
+            }
+            if (!StringUtil.isInteger(sampleType)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
+            }
 
-        String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
-        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(test -> testUnitIds.add(test.getId()));
-        }
+            String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
+            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
+            List<String> testUnitIds = new ArrayList<>();
+            if (testSections != null) {
+                testSections.forEach(test -> testUnitIds.add(test.getId()));
+            }
 
-        return ResponseEntity.ok(createSearchResult(sampleType, testUnitIds));
+            return ResponseEntity.ok(createSearchResult(sampleType, testUnitIds));
+        });
     }
 
     /**
