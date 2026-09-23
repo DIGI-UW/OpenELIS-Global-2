@@ -253,9 +253,12 @@ test.describe("OGC-1121 critical results look critical", () => {
         await expect(input).toHaveValue(
           expectation === "critical" ? "200" : "120",
         );
-        const background = await input.evaluate(
-          (el) => getComputedStyle(el).backgroundColor,
-        );
+        // Polled, not sampled once. Carbon transitions the field background, so a
+        // single read can land mid-transition: an interpolation from the default
+        // field colour to the abnormal yellow reads rgb(255, 255, 161) at 98.8%
+        // of the way through, one unit short of the value asserted below.
+        const background = () =>
+          input.evaluate((el) => getComputedStyle(el).backgroundColor);
         if (expectation === "critical") {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
@@ -263,12 +266,16 @@ test.describe("OGC-1121 critical results look critical", () => {
             timeout: UI_TIMEOUT,
           });
           await expect(row).toContainText("Critical");
-          expect(background).toBe("rgb(255, 215, 217)");
+          await expect
+            .poll(background, { timeout: UI_TIMEOUT })
+            .toBe("rgb(255, 215, 217)");
         } else {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
           ).toHaveCount(0);
-          expect(background).toBe("rgb(255, 255, 160)");
+          await expect
+            .poll(background, { timeout: UI_TIMEOUT })
+            .toBe("rgb(255, 255, 160)");
         }
       }
     });

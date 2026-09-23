@@ -279,8 +279,8 @@ const ControlChartDetail = () => {
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "" },
-            { label: "qc.dashboard.title", link: "" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
             { label: analyzerInfo?.name || "qc.chart.title", link: "" },
           ]}
         />
