@@ -1026,6 +1026,12 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <!-- The integration suite shares one static PostgreSQL container and
+                        does not roll back, so results depend on class order. Surefire's default
+                        "filesystem" order differs per runner VM, which made the same commit pass
+                        on one runner and fail on another. Alphabetical is deterministic and stable
+                        as classes are added. -->
+                    <runOrder>alphabetical</runOrder>
                 </configuration>
             </plugin>
             <plugin>
