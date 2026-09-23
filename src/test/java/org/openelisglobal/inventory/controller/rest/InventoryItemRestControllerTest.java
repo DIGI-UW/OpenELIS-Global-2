@@ -146,18 +146,20 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     /** Create no longer has to be told a type; the editor stopped sending one. */
     @Test
-    public void create_succeedsWithoutAnItemType() throws Exception {
+    public void create_toleratesAClientStillSendingTheRemovedItemType() throws Exception {
         HashMap<String, Object> body = new HashMap<>();
         body.put("name", CODE_PREFIX + "No Type");
         body.put("units", "tests");
         body.put("tags", List.of("Consumable"));
+        // The property this class carried until the column was dropped. A client
+        // that has not been updated still sends it, and gets its item created.
+        body.put("itemType", "REAGENT");
 
         MvcResult result = mockMvc.perform(post("/rest/inventory/items").session(mockSession)
                 .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))).andReturn();
 
         assertEquals(201, result.getResponse().getStatus());
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertEquals("REAGENT", created.get("itemType").asText());
         assertEquals("Consumable", created.get("tags").get(0).asText());
     }
 

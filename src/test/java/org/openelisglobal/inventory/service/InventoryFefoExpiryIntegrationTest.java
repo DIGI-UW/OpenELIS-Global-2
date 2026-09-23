@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -63,7 +62,6 @@ public class InventoryFefoExpiryIntegrationTest extends BaseWebContextSensitiveT
         InventoryItem item = new InventoryItem();
         item.setFhirUuid(UUID.randomUUID());
         item.setName("FEFO expiry fixture " + UUID.randomUUID());
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("tests");
         item.setLowStockThreshold(5);
         item.setIsActive("Y");

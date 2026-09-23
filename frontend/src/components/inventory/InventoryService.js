@@ -134,7 +134,6 @@ export const InventoryItemAPI = {
   // Get all items (both active and inactive)
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.itemType) params.append("itemType", filters.itemType);
     if (filters.isActive !== undefined)
       params.append("isActive", filters.isActive);
     const query = params.toString();
@@ -148,8 +147,11 @@ export const InventoryItemAPI = {
   getTags: () => get("/items/tags"),
 
   // Get all item types
-  getItemTypes: () => get("/items/types"),
+  // Get items by type
+  // Search items by name
+  search: (query) => get(`/items/search?query=${encodeURIComponent(query)}`),
 
+  // Get low stock items
   getLowStock: () => get("/items/low-stock"),
 
   // Create new item

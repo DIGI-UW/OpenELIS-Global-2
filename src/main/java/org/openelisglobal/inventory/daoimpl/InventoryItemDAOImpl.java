@@ -8,7 +8,6 @@ import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,12 +18,6 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
     public InventoryItemDAOImpl() {
         super(InventoryItem.class);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ItemType> getAllItemTypes() {
-        return java.util.Arrays.asList(ItemType.values());
     }
 
     @Override
@@ -78,23 +71,6 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
             return entityManager.createQuery(cq).getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting all active inventory items", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException {
-        try {
-            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
-            Root<InventoryItem> root = cq.from(InventoryItem.class);
-
-            cq.select(root).where(cb.and(cb.equal(root.get("itemType"), itemType), cb.equal(root.get("isActive"), "Y")))
-                    .orderBy(cb.asc(root.get("name")));
-
-            return entityManager.createQuery(cq).getResultList();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting inventory items by type", e);
         }
     }
 

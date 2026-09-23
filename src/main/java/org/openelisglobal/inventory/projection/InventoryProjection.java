@@ -60,7 +60,6 @@ public class InventoryProjection {
     private Long itemId;
     private String code;
     private String name;
-    private String itemType;
 
     /** Free-form classification, carried so the board can show and search it. */
     private List<String> tags;

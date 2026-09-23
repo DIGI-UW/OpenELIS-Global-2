@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
@@ -62,7 +61,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     private JdbcTemplate jdbc;
     private Long reagentId;
     /** An item whose legacy type is not REAGENT — it is linkable all the same. */
-    private Long nonReagentId;
+    private Long otherItemId;
 
     @Before
     @Override
@@ -80,8 +79,8 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "ReagentLinkIT", "ReagentLinkIT desc", UUID.randomUUID().toString());
-        reagentId = createInventoryItem("ReagentLinkIT Reagent", ItemType.REAGENT);
-        nonReagentId = createInventoryItem("ReagentLinkIT RDT", ItemType.RDT);
+        reagentId = createInventoryItem("ReagentLinkIT Reagent");
+        otherItemId = createInventoryItem("ReagentLinkIT RDT");
     }
 
     @After
@@ -89,10 +88,9 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         cleanup();
     }
 
-    private Long createInventoryItem(String name, ItemType type) {
+    private Long createInventoryItem(String name) {
         InventoryItem item = new InventoryItem();
         item.setName(name);
-        item.setItemType(type);
         item.setUnits("mL");
         item.setManufacturer("Acme Diagnostics");
         item.setFhirUuid(UUID.randomUUID());
@@ -174,12 +172,12 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
      * longer classifies anything, so the rule has gone with it.
      */
     @Test
-    public void link_anyInventoryItem_succeedsWhateverItsLegacyType() {
-        ReagentLinkResponse r = controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest())
+    public void link_anyInventoryItem_succeeds() {
+        ReagentLinkResponse r = controller.link(testId(), req(otherItemId, "PRIMARY", "1", "mL"), authedRequest())
                 .getBody();
 
         assertNotNull(r);
-        assertEquals(nonReagentId, r.reagentId);
+        assertEquals(otherItemId, r.reagentId);
     }
 
     @Test

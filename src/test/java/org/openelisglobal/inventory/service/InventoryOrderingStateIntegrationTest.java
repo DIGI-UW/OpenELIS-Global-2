@@ -19,7 +19,6 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.projection.InventoryProjection;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.projection.InventoryProjectionService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -65,7 +64,6 @@ public class InventoryOrderingStateIntegrationTest extends BaseWebContextSensiti
         InventoryItem item = new InventoryItem();
         item.setFhirUuid(UUID.randomUUID());
         item.setName(name + " " + UUID.randomUUID());
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("tests");
         item.setLowStockThreshold(threshold);
         item.setLeadTimeDays(leadTimeDays);

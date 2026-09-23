@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.projection.InventoryProjection;
 import org.openelisglobal.inventory.projection.InventoryProjectionService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -168,41 +167,50 @@ public class InventoryItemTagsIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     /**
-     * The legacy column is NOT NULL behind a CHECK constraint pinned to five
-     * values, so an item created without a type has to be given one or the insert
-     * fails outright.
-     */
-    @Test
-    public void anItemCreatedWithoutATypeStillSatisfiesTheLegacyColumn() {
-        Long id = inventoryItemService.insert(newItem("Typeless item", "Cartridge"));
-
-        assertEquals(ItemType.REAGENT, inventoryItemService.get(id).getItemType());
-    }
-
-    /**
      * The upgrade path, driven against the migration's own SQL rather than a
      * paraphrase of it: the statement is read out of the changeset file and run on
      * a row shaped like one that predates this change. A copy of the SQL in the
      * test would pass even if the changeset had a typo in it.
+     *
+     * <p>
+     * The column this migration reads has since been dropped, so the case puts it
+     * back for its own duration. That is not contrivance: an instance upgrading
+     * from before 105 runs the seed and <i>then</i> the drop, so a broken seed
+     * loses every item's classification moments before the evidence goes with it.
+     * The order those two changesets run in is exactly what this proves.
      */
     @Test
     public void theMigrationCarriesAnExistingItemsTypeAcrossAsATag() throws Exception {
         assertEquals("the seed changeset must be wired into base.xml", Integer.valueOf(1),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM databasechangelog"
                         + " WHERE id = 'OGC-438-seed-inventory-item-tag-from-item-type'", Integer.class));
+        assertEquals("and the drop must be wired in after it", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM databasechangelog" + " WHERE id = 'OGC-438-drop-inventory-item-type'",
+                        Integer.class));
 
-        Long legacyId = insertLegacyRow("CARTRIDGE");
-        assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
-                tagCount(legacyId));
+        restoreLegacyColumn();
+        try {
+            Long legacyId = insertLegacyRow("CARTRIDGE");
+            assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
+                    tagCount(legacyId));
 
-        jdbcTemplate.execute(seedSqlFromChangeset());
+            jdbcTemplate.execute(seedSqlFromChangeset());
 
-        assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
+            assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
 
-        // The seed is written to survive being replayed, which is what a rerun of a
-        // partially applied changelog does.
-        jdbcTemplate.execute(seedSqlFromChangeset());
-        assertEquals(Integer.valueOf(1), tagCount(legacyId));
+            // The seed is written to survive being replayed, which is what a rerun of a
+            // partially applied changelog does.
+            jdbcTemplate.execute(seedSqlFromChangeset());
+            assertEquals(Integer.valueOf(1), tagCount(legacyId));
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item DROP COLUMN IF EXISTS item_type");
+        }
+    }
+
+    /** The table as it stood before the drop, so the seed has something to read. */
+    private void restoreLegacyColumn() {
+        jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item ADD COLUMN IF NOT EXISTS item_type VARCHAR(50)");
     }
 
     /**

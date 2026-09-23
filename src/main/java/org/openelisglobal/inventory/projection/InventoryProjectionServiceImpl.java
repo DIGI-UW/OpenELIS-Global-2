@@ -74,7 +74,6 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setItemId(item.getId());
             row.setCode(item.getCode());
             row.setName(item.getName());
-            row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
             // Tags come off the item already in hand. The collection is eager and batched,
             // so this
             // adds roughly one query per fifty items rather than one per item.

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/drop-inventory-item-type.xml">
+
+    <!--
+    OGC-438: item_type goes, finishing what the tags migration started.
+
+    inventory_item_tag replaced it in 105, which copied every item's type across
+    as a readable tag and left the column populated but read for no decision. It
+    was carried because readers lived in branches that had not merged yet. They
+    have, and the reports that held most of them were recut, so the last reader
+    is gone.
+
+    The last one was not bookkeeping. Opening a lot computed a shortened expiry
+    only for items typed REAGENT, which stopped distinguishing anything once
+    every new item defaulted to that type to satisfy this column's NOT NULL. That
+    rule now reads the stability field the user fills in, which is what it always
+    effectively tested: before tags, the editor offered that field on reagents
+    alone, so no item could carry a stability value and fail the type check.
+
+    Postgres drops chk_item_type and idx_inventory_item_type with the column, so
+    they need no statement of their own. The rollback restores all three, but
+    cannot restore NOT NULL without inventing a value for existing rows, so it
+    puts the column back nullable and leaves 105's tags as the record of what
+    each item was.
+
+    105 is deliberately untouched: rewriting an applied changeset changes its
+    checksum and breaks every instance that already ran it.
+    -->
+
+    <changeSet author="openelisglobal" id="OGC-438-drop-inventory-item-type">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        </preConditions>
+        <comment>Drop item_type; inventory_item_tag has held the classification since 105</comment>
+        <dropColumn schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        <rollback>
+            <addColumn schemaName="clinlims" tableName="inventory_item">
+                <column name="item_type" type="VARCHAR(50)"/>
+            </addColumn>
+            <sql>
+                ALTER TABLE clinlims.inventory_item
+                ADD CONSTRAINT chk_item_type
+                CHECK (item_type IS NULL OR item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT'));
+            </sql>
+            <createIndex indexName="idx_inventory_item_type" schemaName="clinlims" tableName="inventory_item">
+                <column name="item_type"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

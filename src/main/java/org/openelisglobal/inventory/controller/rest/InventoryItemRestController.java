@@ -14,7 +14,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryTagService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,17 +56,6 @@ public class InventoryItemRestController extends BaseRestController {
         }
     }
 
-    @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ItemType>> getAllItemTypes() {
-        try {
-            List<ItemType> types = inventoryItemService.getAllItemTypes();
-            return ResponseEntity.ok(types);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryItem>> getAllActive() {
         try {
@@ -98,17 +86,6 @@ public class InventoryItemRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(item);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/type/{itemType}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType) {
-        try {
-            List<InventoryItem> items = inventoryItemService.getByItemType(itemType);
-            return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
