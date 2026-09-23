@@ -14,12 +14,18 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
+import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.util.MenuConfigurationLoader;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
@@ -28,11 +34,24 @@ public class MenuPresentationIntegrationTest extends BaseWebContextSensitiveTest
     private EntityManager entityManager;
     @Autowired
     private MenuService menus;
+    @Autowired
+    private HistoryService historyService;
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
 
     @Before
     public void fixture() throws Exception {
         executeDataSetWithStateManagement("testdata/menu.xml");
         MenuUtil.forceRebuild();
+        // AppTestConfig mocks AuditTrailService for the whole test profile, so the
+        // real diff-and-insert never runs unless it is swapped back in here. Same
+        // approach as P0AuditEmitSmokeTest.
+        AuditTrailServiceImpl realAuditTrail = new AuditTrailServiceImpl();
+        ReflectionTestUtils.setField(realAuditTrail, "referenceTablesService", referenceTablesService);
+        ReflectionTestUtils.setField(realAuditTrail, "historyService", historyService);
+        Object menuServiceTarget = AopTestUtils.getUltimateTargetObject(menus);
+        ReflectionTestUtils.setField(menuServiceTarget, "auditTrailService", realAuditTrail);
+        cleanRowsInCurrentConnection(new String[] { "history" });
     }
 
     @After
@@ -68,6 +87,51 @@ public class MenuPresentationIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(2, stored.getPresentationOrder());
         assertEquals("/reports/custom-data-export", stored.getActionURL());
         assertTrue(stored.getIsActive());
+    }
+
+    /**
+     * Menu carries globally visible navigation configuration, so a presentation
+     * edit must be attributable. The second half matters as much as the first:
+     * saveHistory writes only when it finds a real diff, so re-saving identical
+     * state must add nothing — otherwise every navigation rebuild, which re-saves
+     * the whole tree, would bloat the trail.
+     */
+    @Test
+    public void presentationEditIsAudited_andIdenticalResaveAddsNothing() {
+        String menuId = menus.getMenuByElementId("testElement2").getId();
+        String menuTable = referenceTablesService.getReferenceTableByName("menu").getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        savePresentation("wrench");
+        assertEquals(1, historyService.getHistoryByRefIdAndRefTableId(menuId, menuTable).size());
+
+        savePresentation("reports");
+        List<History> rows = historyService.getHistoryByRefIdAndRefTableId(menuId, menuTable);
+        assertEquals(2, rows.size());
+        // getHistoryByRefIdAndRefTableId returns newest first.
+        History latest = rows.get(0);
+        assertEquals("U", latest.getActivity());
+        assertTrue("audit entry should retain the icon that was replaced",
+                new String(latest.getChanges()).contains("wrench"));
+
+        // Identical state re-saved: no diff, so no third row.
+        savePresentation("reports");
+        assertEquals(2, historyService.getHistoryByRefIdAndRefTableId(menuId, menuTable).size());
+    }
+
+    private void savePresentation(String icon) {
+        Menu edit = new Menu();
+        edit.setElementId("testElement2");
+        edit.setActionURL("/reports/custom-data-export");
+        edit.setIsActive(true);
+        edit.setPresentationStyle("section");
+        edit.setIcon(icon);
+        MenuItem request = new MenuItem();
+        request.setMenu(edit);
+        menus.save(request);
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test

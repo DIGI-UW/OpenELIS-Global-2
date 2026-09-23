@@ -27,7 +27,11 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
 
     MenuServiceImpl() {
         super(Menu.class);
-        disableLogging();
+        // Menu rows carry globally visible navigation configuration (action URL,
+        // active flag, section style, icon), so changes need an attributable
+        // trail. saveHistory only writes when getChanges() finds a real diff, so
+        // the tree-wide saves that rebuild navigation stay silent.
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -112,6 +116,13 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
                 menuItem.setMenu(effective);
             }
         } else {
+            // Detach before mutating. The audit trail in AuditableBaseObjectServiceImpl
+            // reloads the row to diff old against new, and inside one persistence
+            // context that reload hands back this very instance -- already carrying
+            // the edits, so every change looks like no change and nothing is
+            // recorded. Detached, the reload reads the persisted state and the diff
+            // is real; BaseDAOImpl.update merges, so the write itself is unaffected.
+            getBaseObjectDAO().evict(oldMenu);
             if (!controlled.contains("actionURL")) {
                 oldMenu.setActionURL(menu.getActionURL());
             }
