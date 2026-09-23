@@ -82,6 +82,22 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
                 HttpStatus.FORBIDDEN);
     }
 
+    /**
+     * Rejected input, not a server fault. Without this, the broad RuntimeException
+     * handler below reports a caller's bad request as a 500 — which tells the UI
+     * nothing actionable and looks like an outage in the logs. The message is
+     * echoed back because these are validation failures raised deliberately by
+     * services (a duplicate role name, an unknown parent role, an uneditable role),
+     * never internal detail.
+     */
+    @ExceptionHandler(value = { IllegalArgumentException.class })
+    protected ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
+        LogEvent.logDebug(this.getClass().getName(), "handleIllegalArgumentException", ex.getMessage());
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(value = { RuntimeException.class })
     protected ResponseEntity<Object> handleRuntimeException(RuntimeException ex, WebRequest request) {
         LogEvent.logError(ex);

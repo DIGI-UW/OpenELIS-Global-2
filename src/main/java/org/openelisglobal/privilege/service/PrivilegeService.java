@@ -70,4 +70,29 @@ public interface PrivilegeService {
      */
     @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
     List<Privilege> getEffectivePrivilegesForRole(String roleId);
+
+    /**
+     * Replaces a role's DIRECT privilege grants with exactly {@code privilegeIds}.
+     * Inherited privileges are not touched: they belong to the parent role.
+     *
+     * <p>
+     * <b>This is a privilege-granting operation.</b> A holder of
+     * {@code PRIV_ROLE_MANAGE} can grant any privilege in the catalogue to any
+     * role, including a role they themselves hold — so the capability is equivalent
+     * to full system access, by design. It is deliberately NOT restricted to
+     * privileges the caller already holds. Grant {@code role:manage} accordingly.
+     *
+     * <p>
+     * Global Administrator is not editable here: it holds every privilege through
+     * the {@code "*"} sentinel rather than through grant rows, so editing its rows
+     * would silently do nothing.
+     *
+     * @return the privileges the role directly holds afterwards
+     */
+    @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
+    List<Privilege> replaceDirectPrivilegesForRole(String roleId, java.util.Collection<Integer> privilegeIds);
+
+    /** The full privilege catalogue, for the role editor's checklist. */
+    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
+    List<Privilege> getPrivilegeCatalogue();
 }

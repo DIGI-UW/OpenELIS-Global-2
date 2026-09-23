@@ -1,6 +1,7 @@
 package org.openelisglobal.role.service;
 
 import java.util.List;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.role.dao.RoleDAO;
@@ -78,5 +79,51 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Intege
     @Transactional(readOnly = true)
     public Role getRoleById(Integer roleId) {
         return getBaseObjectDAO().getRoleById(roleId);
+    }
+
+    @Override
+    @Transactional
+    public Role createAssignableRole(String name, String description, String displayKey, String groupingParentName,
+            String parentRoleName, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(name)) {
+            throw new IllegalArgumentException("Role name is required");
+        }
+        String trimmed = name.trim();
+        Role existing = getRoleByName(trimmed);
+        if (existing != null && !Integer.valueOf(-1).equals(existing.getId())) {
+            throw new IllegalArgumentException("A role named '" + trimmed + "' already exists");
+        }
+
+        Role role = new Role();
+        role.setName(trimmed);
+        role.setDescription(GenericValidator.isBlankOrNull(description) ? trimmed : description.trim());
+        if (!GenericValidator.isBlankOrNull(displayKey)) {
+            role.setDisplayKey(displayKey.trim());
+        }
+        role.setActive(true);
+        role.setEditable(true);
+        role.setGroupingRole(false);
+        role.setGroupingParent(resolveRequiredRoleId(groupingParentName, "grouping parent"));
+        if (!GenericValidator.isBlankOrNull(parentRoleName)) {
+            role.setParentRoleId(resolveRequiredRoleId(parentRoleName, "inheritance parent"));
+        }
+        role.setSysUserId(sysUserId);
+
+        Integer id = insert(role);
+        return get(id);
+    }
+
+    /**
+     * Resolves a role NAME to its id, failing loudly rather than silently nulling.
+     */
+    private Integer resolveRequiredRoleId(String roleName, String what) {
+        if (GenericValidator.isBlankOrNull(roleName)) {
+            throw new IllegalArgumentException("A " + what + " is required");
+        }
+        Role parent = getRoleByName(roleName.trim());
+        if (parent == null || Integer.valueOf(-1).equals(parent.getId())) {
+            throw new IllegalArgumentException("No such role for " + what + ": '" + roleName.trim() + "'");
+        }
+        return parent.getId();
     }
 }

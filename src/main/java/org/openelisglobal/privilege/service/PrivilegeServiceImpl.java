@@ -1,6 +1,7 @@
 package org.openelisglobal.privilege.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -192,5 +193,37 @@ public class PrivilegeServiceImpl implements PrivilegeService {
                         String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Privilege::getName, String.CASE_INSENSITIVE_ORDER));
         return effective;
+    }
+
+    @Override
+    @Transactional
+    public List<Privilege> replaceDirectPrivilegesForRole(String roleId, Collection<Integer> privilegeIds) {
+        if (GenericValidator.isBlankOrNull(roleId)) {
+            throw new IllegalArgumentException("roleId is required");
+        }
+        Integer id;
+        try {
+            id = Integer.parseInt(roleId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("roleId must be numeric: " + roleId);
+        }
+        Role role = roleService.getRoleById(id);
+        if (role == null) {
+            throw new IllegalArgumentException("No such role: " + roleId);
+        }
+        if (role.getName() != null && Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(role.getName().trim())) {
+            // Its privileges come from the "*" sentinel, not from grant rows, so
+            // writing rows here would change nothing while appearing to succeed.
+            throw new IllegalArgumentException(
+                    "Global Administrator holds every privilege implicitly and" + " cannot have its grants edited");
+        }
+        privilegeDAO.replacePrivilegesForRole(id, privilegeIds);
+        return privilegeDAO.getPrivilegesForRole(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Privilege> getPrivilegeCatalogue() {
+        return getAllPrivileges();
     }
 }

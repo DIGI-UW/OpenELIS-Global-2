@@ -95,6 +95,7 @@ import {
   ControlLotSetup,
   RuleConfigPanel,
 } from "./components/qc";
+import RoleManagement from "./components/admin/roleManagement/RoleManagement";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import {
   LegacyResultsGate,
@@ -153,7 +154,7 @@ import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntry
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
 import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
-import { Roles } from "./components/utils/Utils";
+import { Roles, Privileges } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
 const FreezerMonitoringDashboard = lazyWithRetry(
@@ -460,6 +461,12 @@ export default function App() {
                   path="/MasterListsPage"
                   render={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/RoleManagement"
+                  exact
+                  render={() => <RoleManagement />}
+                  privilege={Privileges.ROLE_MANAGE}
                 />
                 <SecureRoute
                   path="/PathologyDashboard"
