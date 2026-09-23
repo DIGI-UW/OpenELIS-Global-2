@@ -9737,5 +9737,19 @@
   "inventory.reorderStatus.buildingData": "Building data",
   "inventory.lots.useFirst": "Use first",
   "inventory.lots.flag": "Flag",
-  "inventory.lots.none": "No lots recorded for this item yet. Receive stock to start tracking it."
+  "inventory.lots.none": "No lots recorded for this item yet. Receive stock to start tracking it.",
+  "inventory.actions.forItem": "Actions for {item}",
+  "inventory.actions.forLot": "Actions for lot {lot}",
+  "inventory.actions.editItem": "Edit item details",
+  "inventory.actions.editLot": "Edit lot and location",
+  "inventory.lots.expiringInDays": "Expires in {days}d",
+  "inventory.logUsage.button": "Log usage",
+  "inventory.logUsage.title": "Log usage",
+  "inventory.logUsage.help": "Record stock used at the bench. This feeds the run-out projection; use Adjust stock to correct a count instead.",
+  "inventory.logUsage.quantityWithUnits": "Quantity used ({units})",
+  "inventory.logUsage.onHand": "{quantity} {units} on hand. Lots are drawn earliest-expiry first.",
+  "inventory.logUsage.error.noItem": "Choose an item to log usage against.",
+  "inventory.logUsage.error.wholeUnits": "Enter a whole number of units, at least 1.",
+  "inventory.search.placeholder": "Search by item name, lot number or barcode",
+  "inventory.receiveStock.button": "Receive stock"
 }

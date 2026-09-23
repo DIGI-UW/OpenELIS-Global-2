@@ -11,7 +11,6 @@ import {
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryItemsBoard from "./InventoryItemsBoard";
-import InventoryDashboard from "./InventoryDashboard";
 import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
 import "./InventoryList.css";
@@ -47,9 +46,6 @@ const InventoryManagement = () => {
                   <FormattedMessage id="inventory.board.title" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="inventory.tab.dashboard" />
-                </Tab>
-                <Tab>
                   <FormattedMessage id="inventory.tab.catalog" />
                 </Tab>
                 <Tab>
@@ -61,11 +57,6 @@ const InventoryManagement = () => {
                 {/* Items Tab - the board: what you have and what to reorder */}
                 <TabPanel>
                   <InventoryItemsBoard />
-                </TabPanel>
-
-                {/* Dashboard Tab - Metrics + Lots Table */}
-                <TabPanel>
-                  <InventoryDashboard active={selectedTab === 0} />
                 </TabPanel>
 
                 {/* Catalog Tab - Manage Inventory Items */}
