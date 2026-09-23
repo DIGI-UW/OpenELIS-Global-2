@@ -19,6 +19,7 @@ import org.openelisglobal.inventory.report.ReportTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {@link InventoryReportService} for what each report type queries.
  */
 @RestController
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class InventoryReportRestController {
 
     private static final Set<String> VALID_EXPORT_FORMATS = Set.of("PDF", "EXCEL", "CSV");

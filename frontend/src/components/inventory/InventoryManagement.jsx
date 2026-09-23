@@ -1,13 +1,5 @@
-import React, { useState } from "react";
-import {
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Grid,
-  Column,
-} from "@carbon/react";
+import React from "react";
+import { Grid, Column } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryItemsBoard from "./InventoryItemsBoard";
@@ -15,67 +7,52 @@ import ReceiveDelivery from "./ReceiveDelivery";
 import InventoryReports from "./InventoryReports";
 import "./InventoryList.css";
 
-const breadcrumbs = [
-  { label: "home.label", link: "/", defaultMessage: "Home" },
-  {
-    label: "sidenav.label.inventory.management",
-    link: "/inventory",
-    defaultMessage: "Inventory Management",
-  },
+// Inventory is a menu section with three pages, not one page with three tabs, so
+// the middle crumb carries no link: menu_inventory has no action_url either, and
+// PageBreadCrumb renders a linkless crumb as text rather than as a dead link.
+const crumbsFor = (labelId) => [
+  { label: "home.label", link: "/" },
+  { label: "sidenav.label.inventory" },
+  { label: labelId },
 ];
 
-const InventoryManagement = () => {
-  const [selectedTab, setSelectedTab] = useState(0);
+/**
+ * The chrome every inventory page shares. Each page is its own route, so the
+ * board no longer needs telling whether it is the visible tab — navigating away
+ * unmounts it and coming back mounts it again, which is the refetch.
+ */
+const InventoryPage = ({ titleId, children }) => (
+  <>
+    <PageBreadCrumb breadcrumbs={crumbsFor(titleId)} />
+    <Grid fullWidth={true}>
+      <Column lg={16} md={8} sm={4}>
+        <div className="orderLegendBody">
+          <h2>
+            <FormattedMessage id={titleId} />
+          </h2>
+          {children}
+        </div>
+      </Column>
+    </Grid>
+  </>
+);
 
-  return (
-    <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <div className="orderLegendBody">
-            <h2>
-              <FormattedMessage id="inventory.list.title" />
-            </h2>
+export const InventoryItemsPage = () => (
+  <InventoryPage titleId="sidenav.label.inventory.items">
+    <InventoryItemsBoard />
+  </InventoryPage>
+);
 
-            <Tabs
-              selectedIndex={selectedTab}
-              onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}
-            >
-              <TabList aria-label="Inventory management tabs" contained>
-                <Tab>
-                  <FormattedMessage id="inventory.board.title" />
-                </Tab>
-                <Tab>
-                  <FormattedMessage id="inventory.tab.receive" />
-                </Tab>
-                <Tab>
-                  <FormattedMessage id="inventory.tab.reports" />
-                </Tab>
-              </TabList>
+export const InventoryReceivePage = () => (
+  <InventoryPage titleId="sidenav.label.inventory.receive">
+    <ReceiveDelivery />
+  </InventoryPage>
+);
 
-              <TabPanels>
-                {/* Items Tab - the board, which is the catalog too: defining
-                    an item and watching one are the same screen now. */}
-                <TabPanel>
-                  <InventoryItemsBoard active={selectedTab === 0} />
-                </TabPanel>
+export const InventoryReportsPage = () => (
+  <InventoryPage titleId="sidenav.label.inventory.reports">
+    <InventoryReports />
+  </InventoryPage>
+);
 
-                {/* Receive Tab - a whole delivery, scanned in */}
-                <TabPanel>
-                  <ReceiveDelivery />
-                </TabPanel>
-
-                {/* Reports Tab - Generate Reports */}
-                <TabPanel>
-                  <InventoryReports />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </div>
-        </Column>
-      </Grid>
-    </>
-  );
-};
-
-export default InventoryManagement;
+export default InventoryPage;

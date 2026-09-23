@@ -322,6 +322,11 @@
        identifies one physical box. Beside the other inventory includes. -->
   <include relativeToChangelogFile="true" file="106-inventory-item-upc.xml"/>
 
+  <!-- OGC-438: Items, Receive and Reports become three routes, so each gets its own
+       menu row under the existing Inventory parent. Beside the other inventory
+       includes rather than at the end-of-file append point. -->
+  <include relativeToChangelogFile="true" file="111-inventory-sidenav-routes.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 

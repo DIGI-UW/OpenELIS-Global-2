@@ -195,7 +195,7 @@ const InventoryItemForm = ({
   // Validate form
   const validate = () => {
     if (!formData.name?.trim()) {
-      setError("Item name is required");
+      setError(intl.formatMessage({ id: "catalog.item.error.nameRequired" }));
       return false;
     }
 

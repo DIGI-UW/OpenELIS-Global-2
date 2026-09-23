@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,6 +21,16 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/inventory/board")
+/**
+ * Server-side authorization for the whole inventory module lives on these
+ * annotations, not in {@code system_module}. Two things rule that out: the
+ * interceptor matches {@code system_module_url.url_path} by exact string, so no
+ * row can cover the paths carrying an {@code {id}}, and an unmatched
+ * {@code /rest} path is allowed rather than refused
+ * ({@code ModuleAuthenticationInterceptor}). The roles mirror the {@code
+ * /inventory} route's own guard, so the API admits exactly who the screen does.
+ */
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class InventoryBoardRestController extends BaseRestController {
 
     @Autowired
