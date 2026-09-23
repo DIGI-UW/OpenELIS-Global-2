@@ -100,7 +100,14 @@ const CaseSection = ({
   );
 
   return (
-    <AccordionItem id={id} title={title} open={isOpen} disabled={isDisabled}>
+    <AccordionItem
+      id={id}
+      title={title}
+      // A disabled item's body is never shown, so it must not announce itself
+      // as expanded; the seeded choice is kept for when it is enabled again.
+      open={isOpen && !isDisabled}
+      disabled={isDisabled}
+    >
       {children}
     </AccordionItem>
   );
