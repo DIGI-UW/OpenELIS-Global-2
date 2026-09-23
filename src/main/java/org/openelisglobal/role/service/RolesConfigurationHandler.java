@@ -18,18 +18,35 @@ import org.springframework.stereotype.Component;
  * Handler for loading role configuration files. Supports CSV format with role
  * entries.
  *
- * Expected CSV format:
- * name,description,displayKey,active,editable,isGroupingRole,groupingParent Lab
- * Technician,Basic laboratory technician role,role.lab.tech,Y,Y,N, Results
- * Validator,Can validate test results,role.validator,Y,Y,N,
+ * <p>
+ * Expected CSV header:
  *
- * Notes: - First line is the header (required) - name is required field -
- * description, displayKey, active, editable, isGroupingRole, groupingParent are
- * optional - active and editable default to "Y" if not specified -
- * isGroupingRole defaults to "N" if not specified. groupingParent (UI
- * container) and parentRole (privilege inheritance) are independent columns.
- * groupingParent should be the name of the parent role (will be resolved to
- * role ID)
+ * <pre>
+ * name,description,displayKey,active,editable,isGroupingRole,groupingParent,parentRole
+ * </pre>
+ *
+ * Only {@code name} is required. {@code active} and {@code editable} default to
+ * "Y", {@code isGroupingRole} to "N".
+ *
+ * <p>
+ * The last two columns are independent and easy to confuse:
+ *
+ * <ul>
+ * <li>{@code groupingParent} — UI taxonomy. Names the container row
+ * ({@code isGroupingRole=Y}) whose section of User Management this role renders
+ * under. In practice "Lab Unit Roles" for a role scoped per test section, or
+ * "Global Roles" for one that spans the lab. A role with no groupingParent, or
+ * one pointing at a container the screen does not render, is created but cannot
+ * be assigned to anyone.</li>
+ * <li>{@code parentRole} — privilege inheritance. Names a REAL role whose
+ * privileges this role absorbs, resolved recursively by
+ * {@code PrivilegeServiceImpl}. This is the only way a CSV-defined role gains
+ * privileges: the format has no privileges column, so a role with no parentRole
+ * grants nothing (and is warned about below).</li>
+ * </ul>
+ *
+ * Both are resolved from role NAME to id. See
+ * {@code volume/configuration/backend/roles/example-lab-roles.csv}.
  */
 @Component
 public class RolesConfigurationHandler implements DomainConfigurationHandler {

@@ -1,7 +1,6 @@
-name,description,displayKey,active,editable,isGroupingRole,groupingParent
-Lab Staff,Grouping role for all laboratory staff,role.lab.staff,Y,N,Y,
-Lab Technician,Basic laboratory technician role,role.lab.technician,Y,Y,N,Lab Staff
-Results Validator,Can validate and approve test results,role.results.validator,Y,Y,N,Lab Staff
-Sample Collector,Authorized to collect patient samples,role.sample.collector,Y,Y,N,Lab Staff
-Lab Supervisor,Laboratory supervisor with extended permissions,role.lab.supervisor,Y,Y,N,Lab Staff
-Quality Control Officer,Manages quality control and assurance,role.qc.officer,Y,Y,N,
+name,description,displayKey,active,editable,isGroupingRole,groupingParent,parentRole
+Lab Technician,Enters results for the lab units assigned to the user,role.lab.technician,Y,Y,N,Lab Unit Roles,Results
+Results Validator,Validates and approves results for assigned lab units,role.results.validator,Y,Y,N,Lab Unit Roles,Validation
+Sample Collector,Registers patients and collects samples,role.sample.collector,Y,Y,N,Lab Unit Roles,Reception
+Lab Supervisor,Validation duties plus non-conformity triage,role.lab.supervisor,Y,Y,N,Lab Unit Roles,Validation
+Quality Control Officer,Runs QC reports across the whole laboratory,role.qc.officer,Y,Y,N,Global Roles,Reports
