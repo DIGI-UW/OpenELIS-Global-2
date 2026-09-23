@@ -10,6 +10,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import InventoryItemsBoard from "./InventoryItemsBoard";
 import InventoryDashboard from "./InventoryDashboard";
 import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
@@ -43,6 +44,9 @@ const InventoryManagement = () => {
             >
               <TabList aria-label="Inventory management tabs" contained>
                 <Tab>
+                  <FormattedMessage id="inventory.board.title" />
+                </Tab>
+                <Tab>
                   <FormattedMessage id="inventory.tab.dashboard" />
                 </Tab>
                 <Tab>
@@ -54,6 +58,11 @@ const InventoryManagement = () => {
               </TabList>
 
               <TabPanels>
+                {/* Items Tab - the board: what you have and what to reorder */}
+                <TabPanel>
+                  <InventoryItemsBoard />
+                </TabPanel>
+
                 {/* Dashboard Tab - Metrics + Lots Table */}
                 <TabPanel>
                   <InventoryDashboard active={selectedTab === 0} />

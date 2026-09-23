@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.After;
@@ -17,6 +18,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.config.AppConfig;
+import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.storage.service.SampleStorageService;
@@ -37,6 +40,9 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private InventoryLotRestController inventoryLotRestController;
+
+    @Autowired
+    private InventoryLotService inventoryLotService;
 
     private ObjectMapper objectMapper;
 
@@ -119,6 +125,48 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         }
         assertTrue("Should have seen lot OGC657-LOT-001 with its location", sawLot7000);
         assertTrue("Should have seen lot OGC657-LOT-002 with its location", sawLot7001);
+    }
+
+    /**
+     * The items board reads {@code availableForUse} and
+     * {@code effectiveExpirationDate} straight off this endpoint to mark the
+     * use-first lot and to split on-hand by location. Neither is a column: both are
+     * derived getters that exist in JSON only because Jackson auto-detects them, so
+     * a visibility change anywhere in the mapper config would leave the board
+     * silently marking nothing rather than failing.
+     */
+    @Test
+    public void getAll_exposesTheDerivedUsabilityFlagsTheBoardMarksUseFirstWith() throws Exception {
+        assertEquals("both fixture lots start usable", QCStatus.PASSED, inventoryLotService.get(7001L).getQcStatus());
+
+        Map<String, JsonNode> beforeByLotNumber = lotsByLotNumber();
+        assertTrue("a usable lot must carry the flag, not omit it",
+                beforeByLotNumber.get("OGC657-LOT-001").get("availableForUse").asBoolean());
+        assertTrue(beforeByLotNumber.get("OGC657-LOT-002").get("availableForUse").asBoolean());
+        // Ships as epoch milliseconds, not an ISO string: java.sql.Timestamp is not
+        // a java.time type, so the registered JavaTimeModule does not touch it and
+        // Jackson's WRITE_DATES_AS_TIMESTAMPS default stands. The board feeds this
+        // straight to Intl, which takes either, but a sort would not.
+        JsonNode effectiveExpiry = beforeByLotNumber.get("OGC657-LOT-001").get("effectiveExpirationDate");
+        assertTrue("the board sorts on this value, so it has to be a number", effectiveExpiry.isNumber());
+        assertEquals(Timestamp.valueOf("2026-12-31 00:00:00").getTime(), effectiveExpiry.asLong());
+
+        inventoryLotService.updateQCStatus(7001L, QCStatus.FAILED, "board contract test", TEST_SYS_USER_ID);
+
+        Map<String, JsonNode> afterByLotNumber = lotsByLotNumber();
+        assertFalse("a QC-failed lot must read as unusable so the board skips it for use-first",
+                afterByLotNumber.get("OGC657-LOT-002").get("availableForUse").asBoolean());
+        assertTrue("its sibling is untouched",
+                afterByLotNumber.get("OGC657-LOT-001").get("availableForUse").asBoolean());
+    }
+
+    private Map<String, JsonNode> lotsByLotNumber() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/inventory/lots")).andExpect(status().isOk()).andReturn();
+        Map<String, JsonNode> byLotNumber = new HashMap<>();
+        for (JsonNode lot : objectMapper.readTree(result.getResponse().getContentAsString())) {
+            byLotNumber.put(lot.get("lotNumber").asText(), lot);
+        }
+        return byLotNumber;
     }
 
     // ==========================================================================

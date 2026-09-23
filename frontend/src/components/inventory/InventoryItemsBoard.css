@@ -1,0 +1,116 @@
+/* Items board (OGC-438). Walk-around surface: it has to stay readable on a
+   tablet held at the fridge, so nothing here assumes a desktop width. */
+
+.board-purpose {
+  color: #525252;
+  margin-bottom: 1rem;
+}
+
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.board-toolbar .cds--search {
+  flex: 1 1 18rem;
+  min-width: 12rem;
+}
+
+/* Carbon wraps Select in .cds--form-item, so that is the toolbar's flex child.
+   Sizing .cds--select instead sets a height, not a width: it is a column flex
+   item inside the wrapper, where flex-basis runs down the cross axis. */
+.board-toolbar .cds--form-item {
+  flex: 0 1 14rem;
+}
+
+/* The second line under a cell: the projection's basis, the lead-time tier, the
+   item code. Deliberately quiet — it qualifies the figure above it. */
+.board-subline {
+  font-size: 0.75rem;
+  color: #525252;
+  line-height: 1.25;
+  /* Item codes are generated UPPER_SNAKE and can run long. Unbroken, one sets
+     the whole column's min-content width and pushes the table past the page. */
+  overflow-wrap: anywhere;
+}
+
+.board-item-name {
+  font-weight: 600;
+}
+
+.board-units,
+.board-muted {
+  color: #525252;
+}
+
+.board-units {
+  font-size: 0.75rem;
+}
+
+.board-urgent {
+  color: #da1e28;
+  font-weight: 600;
+}
+
+.board-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.board-trend.trend-up {
+  color: #8e6a00;
+}
+
+.board-trend.trend-down {
+  color: #0043ce;
+}
+
+.board-expansion {
+  padding: 0.5rem 0 1rem;
+}
+
+.board-working {
+  font-size: 0.75rem;
+  color: #525252;
+  margin-top: 0.5rem;
+}
+
+/* The lot number opens the existing lot details panel; it is a button so it is
+   keyboard reachable, but it should read as a link inside the table. */
+.board-lot-link.cds--btn {
+  padding: 0;
+  min-block-size: auto;
+  text-decoration: underline;
+}
+
+.board-empty {
+  color: #525252;
+  padding: 1.5rem 0;
+}
+
+/* Tablet: the filters stack to full width so they stay touch-sized, and the
+   table buys back its overflow from cell padding rather than from a sideways
+   scroll. At 834px Carbon's default padding pushes the table ~44px past the
+   page, which clips the status column — the one column someone walking the
+   shelf is actually reading. Row height is untouched, so rows stay tappable. */
+@media (max-width: 66rem) {
+  .board-toolbar .cds--search,
+  .board-toolbar .cds--form-item {
+    flex: 1 1 100%;
+  }
+
+  .inventory-items-board .cds--data-table th,
+  .inventory-items-board .cds--data-table td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  /* Whatever still does not fit stays reachable rather than cut off. */
+  .inventory-items-board .cds--data-table-content {
+    overflow-x: auto;
+  }
+}
