@@ -5,6 +5,7 @@ import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,17 @@ public class PathologySampleDAOImpl extends BaseDAOImpl<PathologySample, Integer
         String sql = "select count(*) from PathologySample ps where status in (:statuses)";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         query.setParameterList("statuses", statuses);
+        Long count = query.uniqueResult();
+
+        return count;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getCountWithOpenRequests() {
+        String sql = "select count(distinct ps.id) from PathologySample ps join ps.requests r where r.status = :status";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+        query.setParameter("status", RequestStatus.OPENED);
         Long count = query.uniqueResult();
 
         return count;
