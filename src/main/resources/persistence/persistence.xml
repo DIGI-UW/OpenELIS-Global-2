@@ -63,6 +63,7 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryOrderCycle</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTag</class>
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>

@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,6 +69,9 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         jdbc.update("DELETE FROM clinlims.inventory_item WHERE code LIKE ? OR code LIKE ?", CODE_PREFIX + "%",
                 GENERATED_PREFIX + "-%");
         jdbc.update("DELETE FROM clinlims.inventory_item_code_sequence WHERE prefix = ?", GENERATED_PREFIX);
+        // Tag directory rows outlive the items that referenced them, so a retired
+        // tag left behind would leak into the next run's suggestion list.
+        jdbc.update("DELETE FROM clinlims.inventory_tag WHERE name LIKE ?", CODE_PREFIX + "%");
     }
 
     private MvcResult createItem(String code, String name) throws Exception {
@@ -155,6 +159,38 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
         assertEquals("REAGENT", created.get("itemType").asText());
         assertEquals("Consumable", created.get("tags").get(0).asText());
+    }
+
+    /**
+     * Over HTTP, not through the service: the frontend reads this endpoint, and a
+     * service-level test would have passed while the controller went on calling the
+     * old method that knows nothing about retirement.
+     */
+    @Test
+    public void tagsEndpointLeavesOutARetiredTag() throws Exception {
+        String tag = CODE_PREFIX + "Retired";
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("name", CODE_PREFIX + "Retiring");
+        body.put("units", "tests");
+        body.put("tags", List.of(tag));
+        mockMvc.perform(post("/rest/inventory/items").session(mockSession).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body))).andExpect(status().isCreated());
+        assertTrue(suggestedTags().contains(tag));
+
+        HashMap<String, Object> retire = new HashMap<>();
+        retire.put("name", tag);
+        mockMvc.perform(post("/rest/inventory/tags/deactivate").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(retire)))
+                .andExpect(status().isOk());
+
+        assertFalse("a retired tag is no longer suggested", suggestedTags().contains(tag));
+    }
+
+    private List<String> suggestedTags() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rest/inventory/items/tags")).andExpect(status().isOk()).andReturn();
+        List<String> tags = new ArrayList<>();
+        objectMapper.readTree(result.getResponse().getContentAsString()).forEach(tag -> tags.add(tag.asText()));
+        return tags;
     }
 
     @Test

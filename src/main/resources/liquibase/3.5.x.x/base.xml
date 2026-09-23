@@ -306,6 +306,10 @@
        inventory includes for the same reason. -->
   <include relativeToChangelogFile="true" file="105-inventory-item-tags.xml"/>
 
+  <!-- OGC-438: per-tag state a free-form string cannot hold — whether a tag is still offered, and
+       a tag created before anything carries it. Beside the other inventory includes. -->
+  <include relativeToChangelogFile="true" file="108-inventory-tag-directory.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 

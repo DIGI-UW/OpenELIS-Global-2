@@ -144,7 +144,7 @@ export const InventoryItemAPI = {
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
-  /** Every tag any item carries — the item editor's typeahead suggestions. */
+  /** Tags the editor may suggest: in use or declared, minus the deactivated. */
   getTags: () => get("/items/tags"),
 
   // Get all item types
@@ -180,6 +180,18 @@ export const InventoryItemAPI = {
  */
 export const InventoryBoardAPI = {
   get: () => get("/board"),
+};
+
+/** The tag directory: light governance over free-form tags. */
+export const InventoryTagAPI = {
+  /** Every tag with how many items carry it and whether it is still offered. */
+  getDirectory: () => get("/tags"),
+
+  create: (name) => post("/tags", { name }),
+
+  deactivate: (name) => post("/tags/deactivate", { name }),
+
+  activate: (name) => post("/tags/activate", { name }),
 };
 
 /**

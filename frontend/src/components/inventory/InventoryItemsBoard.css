@@ -175,3 +175,28 @@
   gap: 0.125rem;
   margin-top: 0.25rem;
 }
+
+/* Carbon's FilterableMultiSelect renders a .cds--list-box__wrapper, not the
+   .cds--form-item the other toolbar controls sit in, so it inherits none of
+   their flex sizing. Size the wrapper, never the control: a flex-basis on a
+   column-direction Carbon child sets its height instead of its width. */
+.board-tag-filter {
+  flex: 0 1 16rem;
+  min-width: 0;
+}
+
+/* The tags currently filtering the table, shown as labels rather than a count
+   so what is applied is readable without opening the menu. */
+.board-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 42rem) {
+  .board-tag-filter {
+    flex: 1 1 100%;
+  }
+}

@@ -20,6 +20,7 @@ vi.mock("./InventoryService", () => ({
     getById: vi.fn(),
     markOrdered: vi.fn(),
     clearOrdered: vi.fn(),
+    getTags: vi.fn(),
   },
   InventoryManagementAPI: { consume: vi.fn() },
 }));
@@ -67,6 +68,9 @@ vi.mock("./UpdateQCStatusModal", () =>
 );
 vi.mock("./DisposeLotModal", () =>
   modalStub("dispose", (p) => `lot:${p.lot.id}`),
+);
+vi.mock("./ManageTagsModal", () =>
+  modalStub("manage-tags", () => "manage-tags"),
 );
 vi.mock("./InventoryItemForm", () =>
   modalStub(
@@ -276,6 +280,15 @@ const rowNamed = (name) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Every tag the fixtures use is offered unless a case narrows it.
+  InventoryItemAPI.getTags.mockResolvedValue([
+    "Cartridge",
+    "TB",
+    "Cold chain",
+    "Syphilis kit",
+    "RDT",
+    "Malaria",
+  ]);
 });
 
 describe("InventoryItemsBoard", () => {
@@ -482,6 +495,118 @@ describe("InventoryItemsBoard", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(document.body).toHaveFocus();
+  });
+
+  // Carbon's FilterableMultiSelect updates through Downshift, so the board
+  // re-renders on a later tick than the click. Every assertion after a
+  // selection has to wait for it.
+  const openTagFilter = () =>
+    fireEvent.click(screen.getByRole("combobox", { name: /filter by tags/i }));
+
+  // Scoped: the two Select dropdowns in the same toolbar also render options.
+  const offeredTags = () =>
+    within(document.querySelector(".board-tag-filter"))
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+
+  // The menu stays open between selections in a multi-select, so clicking the
+  // field again would close it rather than open it.
+  const selectTag = async (name) =>
+    fireEvent.click(await screen.findByRole("option", { name }));
+
+  /**
+   * An item matches if it carries ANY selected tag. Requiring all of them
+   * would turn a second selection into an intersection, which is not what
+   * picking two labels means.
+   */
+  it("matches an item carrying any one of the selected tags", async () => {
+    await renderBoard();
+
+    openTagFilter();
+    await selectTag("Cold chain");
+    await selectTag("Syphilis kit");
+
+    // The cartridge carries Cold chain, the syphilis kit carries Syphilis kit.
+    // Neither carries both, so an intersection would show nothing.
+    await waitFor(() => expect(bodyRows()).toHaveLength(2));
+  });
+
+  it("narrows to one item on a single tag", async () => {
+    await renderBoard();
+
+    openTagFilter();
+    await selectTag("Cold chain");
+
+    await waitFor(() => expect(bodyRows()).toHaveLength(1));
+    expect(bodyRows()[0]).toHaveTextContent(CARTRIDGE.name);
+  });
+
+  it("shows each selected tag as a removable chip, not a count", async () => {
+    await renderBoard();
+    openTagFilter();
+    await selectTag("Cold chain");
+    await waitFor(() => expect(bodyRows()).toHaveLength(1));
+
+    const chips = document.querySelector(".board-tag-chips");
+    expect(chips).toHaveTextContent("Cold chain");
+
+    fireEvent.click(within(chips).getAllByRole("button")[0]);
+
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+  });
+
+  it("clears every tag at once", async () => {
+    await renderBoard();
+    openTagFilter();
+    await selectTag("Cold chain");
+    await waitFor(() => expect(bodyRows()).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear tags" }));
+
+    await waitFor(() => expect(bodyRows()).toHaveLength(3));
+    expect(document.querySelector(".board-tag-chips")).toBeNull();
+  });
+
+  it("offers only tags the board's own rows carry", async () => {
+    await renderBoard();
+
+    openTagFilter();
+
+    const offered = offeredTags();
+    expect(offered).toContain("Cold chain");
+    expect(offered).not.toContain("Reagent");
+  });
+
+  /**
+   * Retiring a tag takes it out of the filter without taking it off the items
+   * carrying it — the row still shows it, and search still finds it.
+   */
+  it("stops offering a retired tag as a filter but keeps showing it on the row", async () => {
+    InventoryItemAPI.getTags.mockResolvedValue([
+      "Cartridge",
+      "Cold chain",
+      "Syphilis kit",
+      "RDT",
+      "Malaria",
+    ]);
+    await renderBoard();
+
+    openTagFilter();
+    const offered = offeredTags();
+    expect(offered).not.toContain("TB");
+    expect(offered).toContain("Cartridge");
+
+    expect(
+      within(rowNamed(CARTRIDGE.name)).getByText("TB"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the tag directory from the toolbar", async () => {
+    await renderBoard();
+
+    fireEvent.click(screen.getByRole("button", { name: "Manage tags" }));
+
+    expect(screen.getByTestId("manage-tags")).toBeInTheDocument();
   });
 
   it("offers a recovery hint when filters match nothing", async () => {
