@@ -209,6 +209,87 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         assertTrue(tags.contains(CODE_PREFIX + "Fridge"));
     }
 
+    /**
+     * The update handler copies a hand-maintained list of properties. A field the
+     * editor sends that is missing from it returns 200 and persists nothing, which
+     * is how editing a lead time silently did nothing for two tasks.
+     */
+    @Test
+    public void update_persistsTheFieldsTheEditorGained() throws Exception {
+        MvcResult createResult = createItem(CODE_PREFIX + "FIELDS", CODE_PREFIX + "Fields");
+        String id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        HashMap<String, Object> updateBody = new HashMap<>();
+        updateBody.put("name", CODE_PREFIX + "Fields");
+        updateBody.put("units", "tests");
+        updateBody.put("catalogNumber", "GX-MTB-10");
+        updateBody.put("expirationAlertDays", 60);
+        updateBody.put("trackLots", "Y");
+
+        mockMvc.perform(put("/rest/inventory/items/" + id).session(mockSession).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateBody))).andExpect(status().isOk());
+
+        MvcResult getResult = mockMvc.perform(get("/rest/inventory/items/" + id)).andExpect(status().isOk())
+                .andReturn();
+        JsonNode fetched = objectMapper.readTree(getResult.getResponse().getContentAsString());
+
+        assertEquals("GX-MTB-10", fetched.get("catalogNumber").asText());
+        assertEquals(60, fetched.get("expirationAlertDays").asInt());
+        assertEquals("Y", fetched.get("trackLots").asText());
+    }
+
+    /**
+     * Deactivating hides an item rather than deleting it, so there has to be a way
+     * to see one afterwards. Without that, deactivating and losing look identical.
+     */
+    @Test
+    public void aDeactivatedItemLeavesTheBoardAndComesBackWhenAskedFor() throws Exception {
+        MvcResult createResult = createItem(CODE_PREFIX + "HIDDEN", CODE_PREFIX + "Hidden");
+        String id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+        assertTrue(boardItemIds(false).contains(id));
+
+        mockMvc.perform(put("/rest/inventory/items/" + id + "/deactivate").session(mockSession))
+                .andExpect(status().isOk());
+
+        assertFalse("a deactivated item is off the board", boardItemIds(false).contains(id));
+        assertTrue("until it is asked for", boardItemIds(true).contains(id));
+
+        mockMvc.perform(put("/rest/inventory/items/" + id + "/activate").session(mockSession))
+                .andExpect(status().isOk());
+
+        assertTrue("and reactivating puts it back", boardItemIds(false).contains(id));
+    }
+
+    @Test
+    public void theBoardSaysWhichRowsAreDeactivated() throws Exception {
+        MvcResult createResult = createItem(CODE_PREFIX + "MARKED", CODE_PREFIX + "Marked");
+        String id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+        mockMvc.perform(put("/rest/inventory/items/" + id + "/deactivate").session(mockSession))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/rest/inventory/board?includeInactive=true")).andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode row = null;
+        for (JsonNode candidate : objectMapper.readTree(result.getResponse().getContentAsString())) {
+            if (id.equals(candidate.get("itemId").asText())) {
+                row = candidate;
+            }
+        }
+        assertNotNull(row);
+        assertFalse("the row carries its state rather than looking ordinary", row.get("active").asBoolean());
+    }
+
+    private List<String> boardItemIds(boolean includeInactive) throws Exception {
+        MvcResult result = mockMvc
+                .perform(get("/rest/inventory/board" + (includeInactive ? "?includeInactive=true" : "")))
+                .andExpect(status().isOk()).andReturn();
+        List<String> ids = new ArrayList<>();
+        objectMapper.readTree(result.getResponse().getContentAsString())
+                .forEach(row -> ids.add(row.get("itemId").asText()));
+        return ids;
+    }
+
     @Test
     public void update_leavesCodeUntouched() throws Exception {
         MvcResult createResult = createItem(CODE_PREFIX + "LOCKED", CODE_PREFIX + "Locked");

@@ -44,10 +44,17 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
     @Override
     @Transactional(readOnly = true)
     public List<InventoryProjection> getBoard() {
+        return getBoard(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryProjection> getBoard(boolean includeInactive) {
         LocalDate today = LocalDate.now();
         LocalDate windowStart = today.minusDays(InventoryProjectionCalculator.WINDOW_DAYS - 1L);
 
-        List<InventoryItem> items = inventoryItemService.getAllActive();
+        List<InventoryItem> items = includeInactive ? inventoryItemService.getAll()
+                : inventoryItemService.getAllActive();
         Map<Long, Double> usableByItem = usableQuantityByItem();
         Map<Long, List<InventoryUsage>> usageByItem = usageByItem(windowStart, today);
         Map<Long, List<Integer>> cycleDaysByItem = cycleDaysByItem(today);
@@ -73,6 +80,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             // adds roughly one query per fifty items rather than one per item.
             row.setTags(item.getTags() == null ? List.of() : new ArrayList<>(item.getTags()));
             row.setUnits(item.getUnits());
+            row.setActive(item.isActive());
             // Ordering state rides along from the item already in hand, so the board
             // stays at three queries however many items there are.
             row.setOrderedOn(item.getOrderedAt() == null ? null : item.getOrderedAt().toLocalDateTime().toLocalDate());

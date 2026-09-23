@@ -179,7 +179,8 @@ export const InventoryItemAPI = {
  * status, already sorted by urgency server side.
  */
 export const InventoryBoardAPI = {
-  get: () => get("/board"),
+  get: (includeInactive = false) =>
+    get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
 };
 
 /** The tag directory: light governance over free-form tags. */

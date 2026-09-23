@@ -21,6 +21,8 @@ vi.mock("./InventoryService", () => ({
     markOrdered: vi.fn(),
     clearOrdered: vi.fn(),
     getTags: vi.fn(),
+    deactivate: vi.fn(),
+    activate: vi.fn(),
   },
   InventoryManagementAPI: { consume: vi.fn() },
 }));
@@ -73,9 +75,10 @@ vi.mock("./ManageTagsModal", () =>
   modalStub("manage-tags", () => "manage-tags"),
 );
 vi.mock("./InventoryItemForm", () =>
-  modalStub(
-    "item-form",
-    (p) => `item:${p.item.id}:${p.item.name}:observed=${p.observedLeadTime}`,
+  modalStub("item-form", (p) =>
+    p.item
+      ? `item:${p.item.id}:${p.item.name}:observed=${p.observedLeadTime}`
+      : "item:none",
   ),
 );
 
@@ -599,6 +602,90 @@ describe("InventoryItemsBoard", () => {
     expect(
       within(rowNamed(CARTRIDGE.name)).getByText("TB"),
     ).toBeInTheDocument();
+  });
+
+  it("defines a new item from the toolbar, with no item to edit", async () => {
+    await renderBoard();
+
+    fireEvent.click(screen.getByRole("button", { name: /new item/i }));
+
+    // The stub reports what it was handed; create mode means no item.
+    expect(screen.getByTestId("item-form-target")).toHaveTextContent(
+      "item:none",
+    );
+  });
+
+  /**
+   * Deactivating hides an item from every surface that offers it, so it asks
+   * first and says what it will do. The catalog screen that used to own this
+   * explained it in three bullets; retiring that screen must not retire the
+   * explanation.
+   */
+  it("asks before deactivating an item and says what it means", async () => {
+    await renderBoard();
+
+    await openRowMenu(CARTRIDGE.name);
+    fireEvent.click(screen.getByText("Deactivate item"));
+
+    expect(screen.getByText(/Deactivate GeneXpert/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/leaves the board and stops being offered/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/lots and history are kept/i)).toBeInTheDocument();
+    expect(InventoryItemAPI.deactivate).not.toHaveBeenCalled();
+  });
+
+  it("deactivates the item once confirmed", async () => {
+    InventoryItemAPI.deactivate.mockResolvedValue({});
+    await renderBoard();
+    await openRowMenu(CARTRIDGE.name);
+    fireEvent.click(screen.getByText("Deactivate item"));
+
+    // The dialog's primary button and the row menu item carry the same label,
+    // so this has to be the one inside the dialog footer.
+    fireEvent.click(
+      document.querySelector(".cds--modal.is-visible .cds--btn--danger"),
+    );
+
+    await waitFor(() =>
+      expect(InventoryItemAPI.deactivate).toHaveBeenCalledWith(
+        CARTRIDGE.itemId,
+      ),
+    );
+  });
+
+  it("asks the server for deactivated rows only when they are wanted", async () => {
+    await renderBoard();
+    expect(InventoryBoardAPI.get).toHaveBeenCalledWith(false);
+
+    fireEvent.click(screen.getByLabelText("Show deactivated"));
+
+    await waitFor(() =>
+      expect(InventoryBoardAPI.get).toHaveBeenCalledWith(true),
+    );
+  });
+
+  it("marks a deactivated row and offers to bring it back", async () => {
+    InventoryItemAPI.activate.mockResolvedValue({});
+    await renderBoard([{ ...CARTRIDGE, active: false }, MALARIA]);
+
+    const row = rowNamed(CARTRIDGE.name);
+    expect(within(row).getByText("Deactivated")).toBeInTheDocument();
+
+    await openRowMenu(CARTRIDGE.name);
+    fireEvent.click(screen.getByText("Reactivate item"));
+
+    await waitFor(() =>
+      expect(InventoryItemAPI.activate).toHaveBeenCalledWith(CARTRIDGE.itemId),
+    );
+  });
+
+  it("leaves an active row unmarked", async () => {
+    await renderBoard();
+
+    expect(
+      within(rowNamed(CARTRIDGE.name)).queryByText("Deactivated"),
+    ).not.toBeInTheDocument();
   });
 
   it("opens the tag directory from the toolbar", async () => {

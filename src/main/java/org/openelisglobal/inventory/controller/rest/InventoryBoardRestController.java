@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -25,9 +26,10 @@ public class InventoryBoardRestController extends BaseRestController {
     private InventoryProjectionService inventoryProjectionService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryProjection>> getBoard() {
+    public ResponseEntity<List<InventoryProjection>> getBoard(
+            @RequestParam(name = "includeInactive", defaultValue = "false") boolean includeInactive) {
         try {
-            return ResponseEntity.ok(inventoryProjectionService.getBoard());
+            return ResponseEntity.ok(inventoryProjectionService.getBoard(includeInactive));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

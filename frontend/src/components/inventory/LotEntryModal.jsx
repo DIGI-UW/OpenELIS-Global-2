@@ -375,6 +375,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
+              // `find` answers undefined while the item list is still loading,
+              // and undefined is what Downshift reads as "uncontrolled" — so a
+              // preselected item flipped this control from uncontrolled to
+              // controlled the moment the list arrived, which it warns about.
               formData.inventoryItem
                 ? (items.find((i) => i.id === formData.inventoryItem.id) ??
                   null)

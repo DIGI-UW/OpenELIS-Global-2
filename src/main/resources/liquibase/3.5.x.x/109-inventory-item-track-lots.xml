@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-track-lots.xml">
+
+    <!--
+    OGC-438: whether an item is tracked by lot and expiry becomes a property of the item.
+
+    This renames a column rather than adding one. inventory_item.individual_tracking has been in the
+    schema since the module was created and has never been read or written by anything: no query, no
+    service, no form, no report, no fixture beyond two rows that set it and then ignore it. It was
+    created under an "RDT-specific fields" heading for a distinction the product never drew.
+
+    A new track_lots column beside a dead individual_tracking would be two columns for one idea, and
+    the dead one would outlive the change. The rename repurposes the storage that is already there,
+    keeps the Y/N check it already had, and leaves the table one column narrower than adding would.
+
+    Nothing in the module branches on it yet. Receive always writes a lot and synthesises a lot
+    number when none is given, and consume refuses an item with no lots — lot tracking is a runtime
+    state today, not a configured property. This is the column the surfaces that need to ask the
+    question will read.
+    -->
+    <changeSet author="OGC" id="OGC-438-rename-individual-tracking-to-track-lots">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_item" columnName="individual_tracking" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="inventory_item" columnName="track_lots" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <renameColumn schemaName="clinlims" tableName="inventory_item"
+            oldColumnName="individual_tracking" newColumnName="track_lots" columnDataType="VARCHAR(1)"/>
+
+        <!-- Postgres rewrites the expression inside a CHECK when its column is renamed, but the
+             constraint keeps its old name. Renaming it too means the next person reading the schema
+             is not told the column is still called something else. -->
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            RENAME CONSTRAINT chk_individual_tracking TO chk_track_lots;
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.inventory_item
+                RENAME CONSTRAINT chk_track_lots TO chk_individual_tracking;
+            </sql>
+            <renameColumn schemaName="clinlims" tableName="inventory_item"
+                oldColumnName="track_lots" newColumnName="individual_tracking" columnDataType="VARCHAR(1)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

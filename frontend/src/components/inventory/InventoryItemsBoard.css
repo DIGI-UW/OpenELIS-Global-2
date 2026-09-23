@@ -200,3 +200,20 @@
     flex: 1 1 100%;
   }
 }
+
+/* The show-deactivated toggle sits with the filters it modifies, so it needs
+   to baseline with them rather than with the buttons beside it. */
+.board-show-deactivated {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+/* What deactivating actually does, spelled out before it is done. */
+.board-deactivate-implications {
+  margin: 0.75rem 0 0 1rem;
+  list-style: disc;
+}
+
+.board-deactivate-implications li {
+  margin-bottom: 0.25rem;
+}
