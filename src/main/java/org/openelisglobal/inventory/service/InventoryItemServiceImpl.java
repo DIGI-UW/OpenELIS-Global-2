@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -176,5 +177,56 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
             update(item);
         }
+    }
+
+    @Override
+    @Transactional
+    public int markOrdered(List<Long> itemIds, String note, LocalDate expectedDate, String sysUserId) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return 0;
+        }
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        int changed = 0;
+        for (Long itemId : itemIds) {
+            InventoryItem item = get(itemId);
+            if (item == null) {
+                continue;
+            }
+            // Re-marking an item that is already on order refreshes the note and the
+            // expected date but keeps the original stamp: the stamp is what a learned
+            // lead time will later be measured from, and restarting it every time
+            // somebody re-selects the row would quietly erase that history.
+            if (item.getOrderedAt() == null) {
+                item.setOrderedAt(now);
+            }
+            item.setOrderNote(note);
+            item.setOrderExpectedDate(expectedDate);
+            item.setSysUserId(sysUserId);
+            update(item);
+            changed++;
+        }
+        return changed;
+    }
+
+    @Override
+    @Transactional
+    public int clearOrdered(List<Long> itemIds, String sysUserId) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return 0;
+        }
+        int changed = 0;
+        for (Long itemId : itemIds) {
+            InventoryItem item = get(itemId);
+            if (item == null || item.getOrderedAt() == null) {
+                continue;
+            }
+            item.setOrderedAt(null);
+            item.setOrderNote(null);
+            item.setOrderExpectedDate(null);
+            item.setSysUserId(sysUserId);
+            update(item);
+            changed++;
+        }
+        return changed;
     }
 }

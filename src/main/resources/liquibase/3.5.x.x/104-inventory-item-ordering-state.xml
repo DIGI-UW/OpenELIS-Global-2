@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-ordering-state.xml">
+
+    <!--
+    OGC-438: what the lab has already done about an item that needs reordering. The items board can
+    say an item runs out on the 27th, but until it knows an order was placed it has to keep saying
+    so, which is how a useful warning becomes noise.
+
+    Three nullable columns rather than an orders table, because this records an acknowledgement that
+    something was ordered, not the order itself. OpenELIS does not place orders and has no supplier,
+    price or delivery model to hang them on; a lab that needs real purchase orders has a system for
+    that already.
+
+    ordered_at is the load-bearing one: it is what lets the lead time be learned later from the gap
+    between ordering and the next receipt, rather than staying a number somebody had to guess.
+    Clearing it is how mark-as-ordered is undone, so the column is nullable in both directions.
+    -->
+    <changeSet id="OGC-438-add-ordering-state-to-inventory-item" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="ordered_at" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="ordered_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="order_note" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="order_expected_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="ordered_at" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="order_note" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="order_expected_date" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

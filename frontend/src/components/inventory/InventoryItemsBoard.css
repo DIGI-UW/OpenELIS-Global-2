@@ -140,3 +140,29 @@
 .board-log-usage {
   flex: 0 0 auto;
 }
+
+/* The critical banner sits above the toolbar and spans the board. */
+.board-critical-banner {
+  max-inline-size: none;
+  margin-bottom: 1rem;
+}
+
+/* Note and expected date sit side by side above the suggestions table. */
+.board-order-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.board-order-fields > * {
+  flex: 1 1 16rem;
+}
+
+.board-suggestions-help {
+  margin-bottom: 0.5rem;
+}
+
+.board-suggestions-button {
+  flex: 0 0 auto;
+}

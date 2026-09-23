@@ -160,6 +160,14 @@ export const InventoryItemAPI = {
 
   // Activate item (restore from soft delete)
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  // Record that these items have been ordered. One call for one item and for a
+  // selection: a per-item loop on the client half-applies on the first failure.
+  markOrdered: ({ itemIds, note, expectedDate }) =>
+    post("/items/mark-ordered", { itemIds, note, expectedDate }),
+
+  // Undo mark-as-ordered.
+  clearOrdered: (itemIds) => post("/items/clear-ordered", { itemIds }),
 };
 
 /**

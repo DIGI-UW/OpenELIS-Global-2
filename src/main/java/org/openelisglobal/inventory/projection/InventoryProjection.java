@@ -121,4 +121,20 @@ public class InventoryProjection {
     private Double trendPercent;
 
     private BoardStatus status;
+
+    /**
+     * When someone recorded that this item had been ordered, or null. An item on
+     * order still shows its run-out window and its status — the point is that the
+     * row stays visible and honest about the shortfall, while the page stops
+     * demanding attention it has already been given.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate orderedOn;
+
+    /** When the order is expected to arrive, if the lab said. */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate orderExpectedDate;
+
+    /** Free text kept with the mark. */
+    private String orderNote;
 }

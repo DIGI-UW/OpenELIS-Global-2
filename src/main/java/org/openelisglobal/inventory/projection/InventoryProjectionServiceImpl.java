@@ -63,6 +63,11 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setName(item.getName());
             row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
             row.setUnits(item.getUnits());
+            // Ordering state rides along from the item already in hand, so the board
+            // stays at three queries however many items there are.
+            row.setOrderedOn(item.getOrderedAt() == null ? null : item.getOrderedAt().toLocalDateTime().toLocalDate());
+            row.setOrderExpectedDate(item.getOrderExpectedDate());
+            row.setOrderNote(item.getOrderNote());
             board.add(row);
         }
 
