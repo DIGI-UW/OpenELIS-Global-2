@@ -45,6 +45,9 @@ public class InventoryCountIntegrationTest extends BaseWebContextSensitiveTest {
     private InventoryLotService inventoryLotService;
 
     @Autowired
+    private InventoryManagementService inventoryManagementService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private JdbcTemplate jdbcTemplate;
@@ -302,6 +305,68 @@ public class InventoryCountIntegrationTest extends BaseWebContextSensitiveTest {
 
         assertEquals("the good entry is rolled back with the bad one", 10d, quantityOf(good), 0.001);
         assertEquals(0, adjustmentsFor(good));
+    }
+
+    /**
+     * A delivery is entered as one act. Committing it line by line would leave a
+     * counter reconciling a screen, a shelf and a ledger that agree with none of
+     * each other, so the whole batch applies or none of it does.
+     */
+    @Test
+    public void awholeDeliveryIsReceivedInOneTransaction() {
+        Long itemId = createItem("Delivery item");
+        InventoryLot first = deliveryLine(itemId, "DEL-1", 10);
+        InventoryLot second = deliveryLine(itemId, "DEL-2", 20);
+
+        List<InventoryLot> received = inventoryManagementService.receiveInventoryBatch(List.of(first, second),
+                SYS_USER_ID);
+
+        assertEquals(2, received.size());
+        assertEquals(30d, inventoryItemService.getTotalCurrentStock(itemId), 0.001);
+    }
+
+    @Test
+    public void abadLineRollsBackTheWholeDelivery() {
+        Long itemId = createItem("Rolled back delivery");
+        InventoryLot good = deliveryLine(itemId, "DEL-OK", 10);
+        InventoryLot bad = deliveryLine(itemId, "DEL-BAD", 5);
+        bad.setInventoryItem(null);
+
+        try {
+            inventoryManagementService.receiveInventoryBatch(List.of(good, bad), SYS_USER_ID);
+        } catch (RuntimeException expected) {
+            // the point of the case
+        }
+
+        assertEquals("the good line is rolled back with the bad one", 0d,
+                inventoryItemService.getTotalCurrentStock(itemId), 0.001);
+    }
+
+    /**
+     * An id on a line would route it into an overwrite of that lot rather than a
+     * receipt, while still recording the full quantity as arriving.
+     */
+    @Test
+    public void alineCarryingALotIdStillCreatesANewLot() {
+        Long itemId = createItem("Id carrying delivery");
+        Long existing = stock(itemId, 10);
+        InventoryLot line = deliveryLine(itemId, "DEL-NEW", 7);
+        line.setId(existing);
+
+        inventoryManagementService.receiveInventoryBatch(List.of(line), SYS_USER_ID);
+
+        assertEquals("the existing lot is untouched", 10d, quantityOf(existing), 0.001);
+        assertEquals("and the delivery is added on top", 17d, inventoryItemService.getTotalCurrentStock(itemId), 0.001);
+    }
+
+    private InventoryLot deliveryLine(Long itemId, String lotNumber, double quantity) {
+        InventoryLot lot = new InventoryLot();
+        lot.setInventoryItem(inventoryItemService.get(itemId));
+        lot.setLotNumber(lotNumber + "-" + UUID.randomUUID().toString().substring(0, 6));
+        lot.setInitialQuantity(quantity);
+        lot.setCurrentQuantity(quantity);
+        lot.setExpirationDate(Timestamp.valueOf(LocalDateTime.now().plusDays(200)));
+        return lot;
     }
 
     @Test

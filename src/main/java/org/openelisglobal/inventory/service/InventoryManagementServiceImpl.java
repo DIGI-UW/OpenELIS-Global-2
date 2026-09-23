@@ -225,6 +225,25 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional
+    public List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId) {
+        List<InventoryLot> received = new java.util.ArrayList<>();
+        if (lots == null || lots.isEmpty()) {
+            return received;
+        }
+        for (InventoryLot lot : lots) {
+            if (lot == null) {
+                continue;
+            }
+            // An id here would turn this line into an overwrite of an existing lot
+            // rather than a receipt, so it is cleared rather than trusted.
+            lot.setId(null);
+            received.add(receiveInventory(lot, sysUserId));
+        }
+        return received;
+    }
+
+    @Override
+    @Transactional
     public InventoryLot receiveInventory(InventoryLot lotData, String sysUserId) {
         if (lotData == null) {
             throw new IllegalArgumentException("Lot data cannot be null");

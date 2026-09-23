@@ -36,6 +36,17 @@ public interface InventoryManagementService {
     InventoryLot receiveInventory(InventoryLot lotData, String sysUserId);
 
     /**
+     * Receives a whole delivery at once.
+     *
+     * <p>
+     * One transaction for the lot, because a delivery is entered as one act: a
+     * per-line loop from the client half-applies the moment one line fails, and the
+     * counter is left reconciling a screen against a shelf against a ledger that
+     * agree with none of each other.
+     */
+    List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId);
+
+    /**
      * Check if sufficient inventory is available for a given item and quantity
      *
      * @param itemId         The inventory item ID

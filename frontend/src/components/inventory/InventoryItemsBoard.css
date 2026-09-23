@@ -266,3 +266,38 @@
   color: #525252;
   white-space: nowrap;
 }
+
+/* Receiving a delivery: one line being built, then the list of lines. */
+.receive-delivery {
+  padding-top: 0.5rem;
+}
+
+.delivery-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.delivery-line > .cds--form-item,
+.delivery-line > .cds--list-box__wrapper {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.delivery-line > .cds--btn {
+  flex: 0 0 auto;
+}
+
+.delivery-unknown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delivery-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
