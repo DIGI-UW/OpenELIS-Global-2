@@ -51,6 +51,7 @@ import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -73,6 +74,7 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.service.ReferralReasonService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openelisglobal.reports.form.ReportForm;
@@ -625,6 +627,26 @@ public abstract class PatientReport extends Report {
         data.setResult(MessageUtil.getMessage("report.test.status.inProgress"));
     }
 
+    /**
+     * A result that came back from a reference laboratory prints on the patient
+     * report like any other, so the clinician has the value, but the report has to
+     * say who produced it. Returns the row's note with that attribution appended.
+     */
+    protected String noteWithReferralAttribution(String note, Referral referral) {
+        if (referral == null || referral.getOrganization() == null) {
+            return note;
+        }
+        String labName = referral.getOrganization().getOrganizationName();
+        if (GenericValidator.isBlankOrNull(labName)) {
+            return note;
+        }
+        // The note prints through Jasper's styled-text parser, which reads '<' and
+        // '&' as markup.
+        String attribution = MessageUtil.getMessage("report.referral.performedBy") + " "
+                + labName.replace("&", "&amp;").replace("<", "&lt;");
+        return GenericValidator.isBlankOrNull(note) ? attribution : note + "<br/>" + attribution;
+    }
+
     protected void setEmptyResult(ClinicalPatientData data) {
         data.setResult(MessageUtil.getMessage("report.test.status.inProgress"));
     }
@@ -649,8 +671,13 @@ public abstract class PatientReport extends Report {
         String resultValue = data.getResult();
         if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
             try {
-                resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(resultValue))) + ")log ";
-            } catch (IllegalFormatException e) {
+                // the printed value carries the notation the technologist wrote,
+                // so read the number it denotes before taking its log
+                resultValue += " ("
+                        + formatTwoDecimals(
+                                Math.log10(Double.parseDouble(StringUtil.normalizeScientificNotation(resultValue))))
+                        + ")log ";
+            } catch (IllegalFormatException | NumberFormatException e) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
                 // no-op
             }
@@ -1115,9 +1142,11 @@ public abstract class PatientReport extends Report {
 
         if (doAnalysis) {
             testName = getTestName(hasParent);
-            // Not sure if it is a bug in escapeHtml but the wrong markup is
-            // generated
-            testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            if (escapesTestNameAsHtml()) {
+                // Not sure if it is a bug in escapeHtml but the wrong markup is
+                // generated
+                testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            }
         }
 
         if (FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour)) {
@@ -1220,6 +1249,16 @@ public abstract class PatientReport extends Report {
      */
     protected boolean appendSampleTypeToTestName() {
         return false;
+    }
+
+    /**
+     * Whether this report's template renders the Test column as HTML. The patient
+     * templates do, so an accented name has to arrive escaped. A template that
+     * prints the column as plain text must turn this off, or it shows the escape
+     * sequence itself rather than the character.
+     */
+    protected boolean escapesTestNameAsHtml() {
+        return true;
     }
 
     private String getTestName(boolean indent) {

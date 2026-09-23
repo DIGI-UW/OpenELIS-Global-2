@@ -64,6 +64,7 @@ services:
             - ./volume/lucene:/var/lib/lucene_index
             - ./volume/programs/:/var/lib/openelis-global/programs
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+            - reporting-data:/var/lib/openelis-global/reporting
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
@@ -177,3 +178,4 @@ volumes:
   key_trust-store-volume:
   certs-vol:
   keys-vol:
+  reporting-data:

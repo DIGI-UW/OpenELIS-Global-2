@@ -156,7 +156,7 @@ const QCDashboard = ({ initialTab = 0 }) => {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
               { label: "qc.dashboard.title", link: "" },
             ]}
           />

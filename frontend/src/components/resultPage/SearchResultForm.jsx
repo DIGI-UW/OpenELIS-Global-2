@@ -56,6 +56,11 @@ import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
 import { classifyNumericResult, numericResultStyle } from "./numericResultFlag";
+import {
+  exceedsDecimalPlaces,
+  normalizeScientificNotation,
+  roundMantissa,
+} from "./scientificNotation";
 import { FlagChip } from "./unified/flags";
 import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
@@ -1874,7 +1879,8 @@ export function SearchResults(props) {
                   id={"ResultValue" + row.id}
                   name={"testResult[" + row.id + "].resultValue"}
                   labelText=""
-                  type="number"
+                  type="text"
+                  inputMode="text"
                   value={row.resultValue}
                   style={{ ...validationState[row.id]?.style, ...holdingStyle }}
                   onBlur={(e) => {
@@ -2544,7 +2550,9 @@ export function SearchResults(props) {
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
     }
-    var actualValue = ("" + value).replace(/[<>]/g, "");
+    var actualValue = normalizeScientificNotation(
+      ("" + value).replace(/[<>]/g, ""),
+    );
     let validation = {
       isInvalid: false,
       outsideNormal: false,
@@ -2581,14 +2589,11 @@ export function SearchResults(props) {
       greaterThanOrLessThan = value.charAt(0);
     }
     var actualValue = ("" + value).replace(/[<>]/g, "");
+    var parseableValue = normalizeScientificNotation(actualValue);
 
     let validation = { isInvalid: false };
     if (!actualValue) {
       return { ...validation, isInvalid: true, isBlank: true };
-      // resultBox.title = "";
-      // resultBox.style.background = "#ffffff";
-      // $("valid_" + row).value = false;
-      // return true;
     }
 
     if (actualValue.trim() == ".") {
@@ -2598,23 +2603,18 @@ export function SearchResults(props) {
       };
     }
 
-    if (isNaN(actualValue)) {
+    if (isNaN(parseableValue)) {
       return { ...validation, isInvalid: true, isNaN: true };
-      // $("valid_" + row).value = false;
-      // return false;
     }
 
-    if (!isNaN(row.significantDigits)) {
-      const valueStr = actualValue.toString();
-      if (valueStr.includes(".")) {
-        const decimalPlaces = valueStr.split(".")[1].length;
-        if (decimalPlaces > row.significantDigits) {
-          actualValue = parseFloat(actualValue).toFixed(row.significantDigits);
-        }
-      }
+    // The value is kept in the notation it was typed in; only a mantissa finer
+    // than the test reports to is rounded, and it is rounded in place.
+    if (exceedsDecimalPlaces(actualValue, row.significantDigits)) {
       validation = {
         ...validation,
-        newValue: greaterThanOrLessThan + actualValue,
+        newValue:
+          greaterThanOrLessThan +
+          roundMantissa(actualValue, row.significantDigits),
       };
     }
 
@@ -2764,6 +2764,24 @@ export function SearchResults(props) {
 
   const handleSave = () => {
     if (isSubmitting) {
+      return;
+    }
+    const nonNumericRow = props.results.testResult.find(
+      (row) => row.resultType === "N" && validationState[row.id]?.isNaN,
+    );
+    if (nonNumericRow) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage(
+          { id: "result.notNumeric.msg" },
+          {
+            test: nonNumericRow.testName,
+            value: nonNumericRow.resultValue,
+          },
+        ),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
       return;
     }
     setIsSubmitting(true);

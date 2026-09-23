@@ -157,6 +157,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
+        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
@@ -175,6 +176,7 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+        <class>org.openelisglobal.reports.dataexport.valueholder.ExportJob</class>
 
         <!-- User Role entities (Required for real UserService filtering) -->
         <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>

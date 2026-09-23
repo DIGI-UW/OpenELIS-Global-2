@@ -81,6 +81,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
+    /**
+     * Ranges take their ids from {@code result_limits_seq}; sibling classes seed
+     * limits with explicit ids without advancing it, so depending on class order a
+     * save collided with a seeded row. Resync before writing.
+     */
     @Before
     @Override
     public void setUp() throws Exception {
@@ -90,6 +95,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
+        resyncSequence("result_limits_seq", "clinlims.result_limits");
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'N', ?, NOW())",
@@ -105,6 +111,28 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_test_result WHERE id = ?", DICTIONARY_RESULT_TYPE_ID);
+    }
+
+    private static final long DICTIONARY_RESULT_TYPE_ID = 95456L;
+
+    /**
+     * Sibling classes' datasets replace {@code type_of_test_result} with their own
+     * rows, not all of which include a dictionary type, so the id is taken from
+     * whatever row exists and one is seeded only when none does.
+     */
+    private Long ensureDictionaryResultType() {
+        java.util.List<Long> existing = jdbc.queryForList(
+                "SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D' ORDER BY id LIMIT 1",
+                Long.class);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_test_result (id, test_result_type, description, hl7_value, lastupdated)"
+                        + " VALUES (?, 'D', 'Dictionary', 'CE', NOW())",
+                DICTIONARY_RESULT_TYPE_ID);
+        return DICTIONARY_RESULT_TYPE_ID;
     }
 
     private String seedPrimaryComponent() {
@@ -279,8 +307,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
-        Long dictTypeId = jdbc
-                .queryForObject("SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D'", Long.class);
+        Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());
         dict.setResultTypeId(String.valueOf(dictTypeId));

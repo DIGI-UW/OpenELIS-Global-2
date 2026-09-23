@@ -1,11 +1,14 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- Fixture for the guarded bulk release (OGC-1029). One accession with
-        two analyses of the same numeric test awaiting validation (Technical Acceptance):
-        id=100 (value 10.5) sits inside the test's reference range 5.0 - 20.0 with
-        QC passed and no signals — the Clear lane; id=102 (value 25.0) is above the
-        range — Needs-review. The result limit has no gender and default ages so
-        it applies without a patient. -->
+    <!-- Fixture for the guarded bulk release (OGC-1029, OGC-1226). Accession
+        VAL-BR-001 carries two analyses of the same numeric test awaiting validation
+        (Technical Acceptance): id=100 (value 10.5) sits inside the test's reference
+        range 5.0 - 20.0 with no signals and, like every patient result, no QC evaluation
+        — the Clear lane; id=102 (value 25.0) is above the range — Needs-review.
+        Accession VAL-BR-002 carries id=104 (value 12.0), in range but with a recorded
+        QC failure — Needs-review; it has its own accession because a failed QC in
+        a batch also gates that batch's release (S-08). The result limit has no gender
+        and default ages so it applies without a patient. -->
 
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y"
@@ -79,13 +82,27 @@
         test_sect_id="1" revision="0" status_id="2"
         started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
         analysis_type="MANUAL" is_reportable="Y" />
+    <sample id="102" accession_number="VAL-BR-002" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="102" sort_order="1" status_id="1"
+        samp_id="102" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <analysis id="104" sampitem_id="102" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
 
-    <!-- Both results carry a passed QC evaluation so the only difference between
-        the two rows is the range verdict. -->
+    <!-- 100 carries no QC evaluation, as a patient result never does (OGC-1226);
+        102 differs from it only in the range verdict; 104 differs only in the recorded
+        QC failure. -->
     <result id="100" analysis_id="100" result_type="N" value="10.5"
-        is_reportable="Y" lastupdated="2025-06-01 12:00:00"
-        qc_evaluation="PASS" />
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
     <result id="102" analysis_id="102" result_type="N" value="25.0"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
+    <result id="104" analysis_id="104" result_type="N" value="12.0"
         is_reportable="Y" lastupdated="2025-06-01 12:00:00"
-        qc_evaluation="PASS" />
+        qc_evaluation="FAIL" />
 </dataset>
