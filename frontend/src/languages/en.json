@@ -9880,5 +9880,6 @@
   "sidenav.label.inventory.receive": "Receive",
   "sidenav.label.inventory.receive.tooltip": "Enter a delivery, scanning or typing each line",
   "sidenav.label.inventory.reports": "Reports",
-  "sidenav.label.inventory.reports.tooltip": "Received, consumed, stock on hand and expiring"
+  "sidenav.label.inventory.reports.tooltip": "Received, consumed, stock on hand and expiring",
+  "alerts.type.inventory_low": "Low stock"
 }

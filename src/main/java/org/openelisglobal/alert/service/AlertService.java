@@ -105,6 +105,12 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
     /**
+     * Alerts of one type, for one kind of entity, that are still outstanding: OPEN
+     * or ACKNOWLEDGED. See {@link AlertDAO#getOutstandingAlerts}.
+     */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
+
+    /**
      * Count active alerts (OPEN or ACKNOWLEDGED) for a specific entity.
      *
      * @param entityType Entity class name (e.g., "Freezer")

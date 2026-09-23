@@ -66,12 +66,21 @@ const AlertsTable = ({
     return intl.formatMessage({ id: key, defaultMessage: type });
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
+  // The server writes an OffsetDateTime as a decimal number of epoch *seconds*
+  // (Jackson's default for a java.time type), and `new Date(n)` reads a number as
+  // milliseconds — which dated every alert on this screen to January 1970. A
+  // string is left alone, so this keeps working if the wire format ever becomes
+  // ISO.
+  const formatDate = (value) => {
+    if (!value) return "";
     try {
-      return new Date(dateStr).toLocaleString();
+      const date =
+        typeof value === "number" ? new Date(value * 1000) : new Date(value);
+      return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toLocaleString();
     } catch {
-      return dateStr;
+      return String(value);
     }
   };
 
