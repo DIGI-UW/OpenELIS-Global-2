@@ -102,6 +102,13 @@ services:
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
+      # Cap the delivery retry backoff for CI. Production keeps the 10-minute
+      # ceiling from OutboxProperties, sized to ride out an overnight OpenELIS
+      # outage. At that ceiling the outage spec would wait up to ten minutes
+      # after OpenELIS is healthy again before the next attempt, which does not
+      # fit a test budget. This changes only the retry cadence, never whether a
+      # result is kept.
+      - BRIDGE_OUTBOX_RETRY_MAX_DELAY=30s
     networks:
       analyzer-net:
         aliases:
