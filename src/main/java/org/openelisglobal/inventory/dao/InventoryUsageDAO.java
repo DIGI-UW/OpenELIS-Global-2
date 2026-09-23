@@ -29,8 +29,9 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
     List<InventoryUsage> getByAnalysisId(Long analysisId) throws LIMSRuntimeException;
 
     /**
-     * Get usage records within a date range, ordered by usage date descending (for
-     * the Usage Trends report)
+     * Get usage records whose usage date falls in the given range, ordered by usage
+     * date descending. Serves both the period reports and the consumption-rate
+     * reads that need a whole window in one query rather than one per item.
      */
     List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
 }
