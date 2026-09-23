@@ -6,18 +6,28 @@
  * acknowledge. Renders nothing when there are no unresolved violations.
  *
  * Fetches independently of the dashboard poll; the parent re-triggers it
- * via the refreshSignal prop.
+ * via the refreshSignal prop. The endpoint reading and the acknowledge POST
+ * are the ones the alerts tab uses, shared from qcDashboardUtils.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Tag, Button } from "@carbon/react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Tag,
+  Button,
+  StructuredListWrapper,
+  StructuredListBody,
+  StructuredListRow,
+  StructuredListCell,
+} from "@carbon/react";
 import { useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-} from "../../utils/Utils";
-import { getSeverityTagType, formatTimestamp } from "./qcDashboardUtils";
+  ACKNOWLEDGE_FAILED_KEY,
+  acknowledgeViolation,
+  fetchViolations,
+  getSeverityTagType,
+  formatTimestamp,
+} from "./qcDashboardUtils";
 import "./ActiveViolationsBanner.css";
 
 const MAX_ROWS = 5;
@@ -27,24 +37,16 @@ const severityRank = (violation) =>
 
 const ActiveViolationsBanner = ({ refreshSignal }) => {
   const intl = useIntl();
-  const intlRef = useRef(intl);
-  intlRef.current = intl;
   const history = useHistory();
 
   const [violations, setViolations] = useState([]);
   const [error, setError] = useState(null);
 
   const loadViolations = useCallback(() => {
-    getFromOpenElisServer("/rest/qc/violations?unresolved=true", (response) => {
-      if (Array.isArray(response)) {
-        setViolations(response);
-      } else if (response && response.data) {
-        setViolations(response.data.violations || response.data || []);
-      } else {
-        // Banner is supplementary; on fetch failure render nothing
-        setViolations([]);
-      }
-    });
+    // Banner is supplementary; on fetch failure render nothing.
+    fetchViolations({ unresolvedOnly: true }, setViolations, () =>
+      setViolations([]),
+    );
   }, []);
 
   useEffect(() => {
@@ -52,21 +54,13 @@ const ActiveViolationsBanner = ({ refreshSignal }) => {
   }, [loadViolations, refreshSignal]);
 
   const handleAcknowledge = (violationId) => {
-    postToOpenElisServerFullResponse(
-      `/rest/qc/violations/${violationId}/acknowledge`,
-      JSON.stringify({}),
-      (response) => {
-        if (response.ok) {
-          setError(null);
-          loadViolations();
-        } else {
-          setError(
-            intlRef.current.formatMessage({
-              id: "qc.violations.error.acknowledgeFailed",
-            }),
-          );
-        }
+    acknowledgeViolation(
+      violationId,
+      () => {
+        setError(null);
+        loadViolations();
       },
+      () => setError(intl.formatMessage({ id: ACKNOWLEDGE_FAILED_KEY })),
     );
   };
 
@@ -107,38 +101,44 @@ const ActiveViolationsBanner = ({ refreshSignal }) => {
         )}
       </div>
       {error && <div className="active-violations-banner__error">{error}</div>}
-      <ul className="active-violations-banner__list">
-        {topViolations.map((violation) => (
-          <li
-            key={violation.id}
-            className="active-violations-banner__row"
-            data-testid={`banner-violation-${violation.id}`}
-          >
-            <Tag type={getSeverityTagType(violation.severity)}>
-              {violation.severity}
-            </Tag>
-            <span className="active-violations-banner__rule">
-              {violation.ruleCode}
-            </span>
-            <span className="active-violations-banner__details">
-              {violation.instrumentName || "-"}
-              <span className="active-violations-banner__separator">|</span>
-              {violation.testName || "-"}
-            </span>
-            <span className="active-violations-banner__timestamp">
-              {formatTimestamp(violation.violationDateTime)}
-            </span>
-            <Button
-              kind="tertiary"
-              size="sm"
-              onClick={() => handleAcknowledge(violation.id)}
-              data-testid={`banner-acknowledge-${violation.id}`}
+      <StructuredListWrapper isCondensed>
+        <StructuredListBody>
+          {topViolations.map((violation) => (
+            <StructuredListRow
+              key={violation.id}
+              data-testid={`banner-violation-${violation.id}`}
             >
-              {intl.formatMessage({ id: "qc.dashboard.alerts.acknowledge" })}
-            </Button>
-          </li>
-        ))}
-      </ul>
+              <StructuredListCell>
+                <Tag type={getSeverityTagType(violation.severity)}>
+                  {violation.severity}
+                </Tag>
+              </StructuredListCell>
+              <StructuredListCell>{violation.ruleCode}</StructuredListCell>
+              <StructuredListCell>
+                {violation.instrumentName || "-"}
+              </StructuredListCell>
+              <StructuredListCell>
+                {violation.testName || "-"}
+              </StructuredListCell>
+              <StructuredListCell>
+                {formatTimestamp(violation.violationDateTime)}
+              </StructuredListCell>
+              <StructuredListCell>
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  onClick={() => handleAcknowledge(violation.id)}
+                  data-testid={`banner-acknowledge-${violation.id}`}
+                >
+                  {intl.formatMessage({
+                    id: "qc.dashboard.alerts.acknowledge",
+                  })}
+                </Button>
+              </StructuredListCell>
+            </StructuredListRow>
+          ))}
+        </StructuredListBody>
+      </StructuredListWrapper>
     </div>
   );
 };

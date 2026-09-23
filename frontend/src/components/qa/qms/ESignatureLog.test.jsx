@@ -1,10 +1,8 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../languages/en.json";
 import ESignatureLog from "./ESignatureLog";
+import { renderQa } from "../testUtils";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", async (importOriginal) => ({
@@ -51,14 +49,7 @@ const lastLogUrl = () =>
     .filter((u) => u.startsWith("/rest/esig/log"))
     .pop();
 
-const renderPage = () =>
-  render(
-    <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter>
-        <ESignatureLog />
-      </MemoryRouter>
-    </IntlProvider>,
-  );
+const renderPage = () => renderQa(<ESignatureLog />);
 
 describe("ESignatureLog", () => {
   beforeEach(() => {

@@ -136,7 +136,7 @@ const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
         <Dropdown
           id="enroll-body"
           titleText={intl.formatMessage({
-            id: "qa.qms.accreditation.enroll.field.body",
+            id: "qa.qms.accreditation.filter.body",
           })}
           label=""
           items={activeBodies}
@@ -147,14 +147,14 @@ const EnrollTestsModal = ({ open, onClose, bodies, onSaved }) => {
         <FilterableMultiSelect
           id="enroll-tests"
           titleText={intl.formatMessage({
-            id: "qa.qms.accreditation.enroll.field.tests",
+            id: "common.tests",
           })}
           items={tests}
           itemToString={(item) => (item ? item.text : "")}
           selectedItems={selectedTests}
           onChange={({ selectedItems }) => setSelectedTests(selectedItems)}
           placeholder={intl.formatMessage({
-            id: "qa.qms.accreditation.enroll.field.tests",
+            id: "common.tests",
           })}
         />
         <DatePicker

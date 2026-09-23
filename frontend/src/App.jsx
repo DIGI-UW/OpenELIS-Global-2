@@ -222,6 +222,32 @@ export const ANALYZER_RESULTS_ROLES = [
   Roles.ANALYSER_IMPORT,
 ];
 
+// Paths the QA information-architecture rehome moved (OGC-689/691/695). Kept so
+// bookmarks and anything still linking the old path land on the new page; every
+// in-app link points at the new path.
+const REHOMED_PATHS = [
+  ["/EQAOrders", "/qa/eqa/orders"],
+  ["/EQAMyPrograms", "/qa/eqa/my-programs"],
+  ["/EQAManagement", "/qa/eqa/management"],
+  ["/EQAResults", "/qa/eqa/results"],
+  ["/EQAParticipants", "/qa/eqa/participants"],
+  ["/EQADistribution/create", "/qa/eqa/distribution/create"],
+  ["/EQADistribution", "/qa/eqa/distribution"],
+  ["/qa/qi", "/qa/qi/dashboard"],
+  ["/analyzers/qc/db", "/qa/qc/dashboard"],
+  ["/analyzers/qc/control-lots", "/qa/qc/control-lots"],
+  ["/analyzers/qc/rule-config", "/qa/qc/rule-config"],
+];
+
+// The quality-indicator reports: same route shape, same roles, each gated on its
+// own indicator being enabled.
+const QI_INDICATOR_ROUTES = [
+  ["tat", "TAT", () => <TATReport breadcrumbs={qaTatBreadcrumbs} />],
+  ["rejection", "REJECTION", () => <RejectionReport />],
+  ["amendment", "AMENDMENT", () => <AmendmentReport />],
+  ["callback", "CALLBACK", () => <CallbackReport />],
+];
+
 export default function App() {
   // The stored preference, or the browser's full tag (region kept: fr-MG
   // resolves to its own bundle, not just fr). The resolver accepts either
@@ -907,30 +933,9 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
-                {/* QA v0.5 IA rehome (OGC-691): EQA pages moved to /qa/eqa/* */}
-                <Redirect exact from="/EQAOrders" to="/qa/eqa/orders" />
-                <Redirect
-                  exact
-                  from="/EQAMyPrograms"
-                  to="/qa/eqa/my-programs"
-                />
-                <Redirect exact from="/EQAManagement" to="/qa/eqa/management" />
-                <Redirect exact from="/EQAResults" to="/qa/eqa/results" />
-                <Redirect
-                  exact
-                  from="/EQAParticipants"
-                  to="/qa/eqa/participants"
-                />
-                <Redirect
-                  exact
-                  from="/EQADistribution/create"
-                  to="/qa/eqa/distribution/create"
-                />
-                <Redirect
-                  exact
-                  from="/EQADistribution"
-                  to="/qa/eqa/distribution"
-                />
+                {REHOMED_PATHS.map(([from, to]) => (
+                  <Redirect key={from} exact from={from} to={to} />
+                ))}
                 <SecureRoute
                   path="/qa/eqa/orders"
                   exact
@@ -996,7 +1001,6 @@ export default function App() {
                 />
                 {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
                     placeholder; the pillar menu entry is now expand-only. */}
-                <Redirect exact from="/qa/qi" to="/qa/qi/dashboard" />
                 <SecureRoute
                   path="/qa/qi/dashboard"
                   exact
@@ -1010,46 +1014,19 @@ export default function App() {
                   permission="qa.manage.qi"
                   role={Roles.GLOBAL_ADMIN}
                 />
-                <SecureRoute
-                  path="/qa/qi/tat"
-                  exact
-                  render={() => (
-                    <QIEnabledRoute indicator="TAT">
-                      <TATReport breadcrumbs={qaTatBreadcrumbs} />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/rejection"
-                  exact
-                  render={() => (
-                    <QIEnabledRoute indicator="REJECTION">
-                      <RejectionReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/amendment"
-                  exact
-                  render={() => (
-                    <QIEnabledRoute indicator="AMENDMENT">
-                      <AmendmentReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/callback"
-                  exact
-                  render={() => (
-                    <QIEnabledRoute indicator="CALLBACK">
-                      <CallbackReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
+                {QI_INDICATOR_ROUTES.map(([slug, indicator, page]) => (
+                  <SecureRoute
+                    key={slug}
+                    path={`/qa/qi/${slug}`}
+                    exact
+                    render={() => (
+                      <QIEnabledRoute indicator={indicator}>
+                        {page()}
+                      </QIEnabledRoute>
+                    )}
+                    role={[Roles.RESULTS, Roles.REPORTS]}
+                  />
+                ))}
                 <SecureRoute
                   path="/qa/qms/nce-register"
                   exact
@@ -1285,7 +1262,6 @@ export default function App() {
                   role={Roles.LAB_SUPERVISOR}
                 />
                 {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
-                <Redirect exact from="/analyzers/qc/db" to="/qa/qc/dashboard" />
                 <SecureRoute
                   path="/qa/qc/dashboard"
                   exact
@@ -1304,11 +1280,6 @@ export default function App() {
                   render={() => <ControlChartDetail />}
                   role={Roles.LAB_SUPERVISOR}
                 />
-                <Redirect
-                  exact
-                  from="/analyzers/qc/control-lots"
-                  to="/qa/qc/control-lots"
-                />
                 <SecureRoute
                   path="/qa/qc/control-lots"
                   exact
@@ -1326,11 +1297,6 @@ export default function App() {
                   exact
                   render={() => <ControlLotSetup />}
                   role={Roles.LAB_SUPERVISOR}
-                />
-                <Redirect
-                  exact
-                  from="/analyzers/qc/rule-config"
-                  to="/qa/qc/rule-config"
                 />
                 <SecureRoute
                   path="/qa/qc/rule-config"

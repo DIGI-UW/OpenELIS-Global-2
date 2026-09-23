@@ -10,75 +10,29 @@
  * - active: whether this tab is currently visible (replaces activeSubTab === 1)
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Dropdown, Loading, Tag, Tile, Grid, Column } from "@carbon/react";
 import { useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import LeveyJenningsChart from "../charts/LeveyJenningsChart";
+import { useControlLotChart } from "../charts/controlLotChart";
 
 const ControlChartTab = ({ instrument, active }) => {
   const intl = useIntl();
 
   // Control Chart state
   const [selectedAnalyteIndex, setSelectedAnalyteIndex] = useState(0);
-  const [chartData, setChartData] = useState([]);
-  const [chartStatistics, setChartStatistics] = useState(null);
-  const [chartLoading, setChartLoading] = useState(false);
+  const {
+    chartData,
+    statistics: chartStatistics,
+    loading: chartLoading,
+    setLoading: setChartLoading,
+    load: loadChartForControlLot,
+  } = useControlLotChart();
 
   // Active QC Rules state
   const [activeRules, setActiveRules] = useState([]);
-
-  // Transform backend dataPoints to LeveyJenningsChart format
-  const transformDataPoints = (dataPoints) => {
-    return (dataPoints || []).map((pt) => ({
-      id: pt.resultId,
-      runDateTime: pt.timestamp,
-      resultValue: pt.value,
-      value: pt.value,
-      zScore: pt.zscore ?? pt.zScore,
-      violated: pt.hasViolation,
-      violations: (pt.violatedRules || []).map((rule) => ({
-        code: rule,
-      })),
-    }));
-  };
-
-  // Load chart data for a specific control lot (two parallel calls)
-  const loadChartForControlLot = useCallback((controlLotId) => {
-    setChartLoading(true);
-    setChartData([]);
-    setChartStatistics(null);
-
-    let completedCalls = 0;
-    const checkDone = () => {
-      completedCalls++;
-      if (completedCalls >= 2) {
-        setChartLoading(false);
-      }
-    };
-
-    // Fetch data points
-    getFromOpenElisServer(`/rest/qc/charts/${controlLotId}`, (response) => {
-      const dataPoints =
-        response?.dataPoints || response?.data?.dataPoints || [];
-      setChartData(transformDataPoints(dataPoints));
-      checkDone();
-    });
-
-    // Fetch statistics (mean, SD for reference lines)
-    getFromOpenElisServer(
-      `/rest/qc/charts/${controlLotId}/statistics`,
-      (response) => {
-        if (response && response.mean != null) {
-          setChartStatistics(response);
-        } else {
-          setChartStatistics(null);
-        }
-        checkDone();
-      },
-    );
-  }, []);
 
   // When chart tab activates or analyte changes, fetch control lots then chart data
   useEffect(() => {
@@ -93,13 +47,7 @@ const ControlChartTab = ({ instrument, active }) => {
       `/rest/qc/controlLots?testId=${analyte.testId}&instrumentId=${instrument.instrumentId}`,
       (response) => {
         const lots = Array.isArray(response) ? response : response?.data || [];
-        if (lots.length > 0) {
-          loadChartForControlLot(lots[0].id);
-        } else {
-          setChartData([]);
-          setChartStatistics(null);
-          setChartLoading(false);
-        }
+        loadChartForControlLot(lots[0]?.id);
       },
     );
 
@@ -111,7 +59,13 @@ const ControlChartTab = ({ instrument, active }) => {
         setActiveRules(rules.filter((r) => r.enabled));
       },
     );
-  }, [instrument, active, selectedAnalyteIndex, loadChartForControlLot]);
+  }, [
+    instrument,
+    active,
+    selectedAnalyteIndex,
+    loadChartForControlLot,
+    setChartLoading,
+  ]);
 
   // Build analyte dropdown options
   const analyteOptions = useMemo(() => {

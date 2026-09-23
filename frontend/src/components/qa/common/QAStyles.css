@@ -1,7 +1,26 @@
 /**
- * QIDashboard / QITile styles — matches designs/quality/qa-v1-preview.html
- * (gray backdrop, white bordered cards, auto-fill tile grid).
+ * Shared QA stylesheet — matches designs/quality/qa-v1-preview.html (gray
+ * backdrop, white bordered cards, auto-fill tile grid). Imported by the QI,
+ * QMS and Overview surfaces, which is why it lives beside them rather than
+ * under one of them.
+ *
+ * Colours come from Carbon tokens. The three status tones are declared once
+ * here because Carbon has no amber that is legible as text on white
+ * (--cds-support-warning is yellow40), and the QI heatmap and rate tags need
+ * a matching background/foreground pair per tone.
  */
+
+:root {
+  --qa-green: var(--cds-support-success, #198038);
+  --qa-amber: #b28600;
+  --qa-red: var(--cds-support-error, #da1e28);
+  --qa-green-bg: #defbe6;
+  --qa-green-text: #0e6027;
+  --qa-amber-bg: #fcf4d6;
+  --qa-amber-text: #684e00;
+  --qa-red-bg: #ffd7d9;
+  --qa-red-text: #a2191f;
+}
 
 .qi-dashboard {
   background: var(--cds-layer-01, #f4f4f4);
@@ -20,10 +39,14 @@
   align-items: center;
   gap: 1rem;
   padding: 0.5rem 1rem;
-  background: #fff;
+  background: var(--cds-background, #ffffff);
   border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
   margin: 1.25rem 0 1rem;
   flex-wrap: wrap;
+}
+
+.qi-dashboard__filter {
+  min-width: 12rem;
 }
 
 .qi-dashboard__refresh {
@@ -45,7 +68,7 @@
 }
 
 .qi-tile {
-  background: #fff;
+  background: var(--cds-background, #ffffff);
   padding: 1.125rem;
   border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
   border-top: 3px solid transparent;
@@ -62,6 +85,8 @@
 }
 
 .qi-tile--clickable:hover {
+  /* A lighter tint than --cds-background-hover: the card sits on the gray
+     backdrop, so Carbon's hover gray would read as the page, not the card. */
   background: #fafafa;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
@@ -70,21 +95,21 @@
   border-top-color: var(--cds-link-primary, #0f62fe);
 }
 
-.qi-tile--gray {
-  border-top-color: #a8a8a8;
-}
-
 /* Status accents for current-state tiles (NCE Pulse): green/amber/red by
    threshold, per OGC-699. */
 .qi-tile--green {
-  border-top-color: var(--cds-support-success, #198038);
+  border-top-color: var(--qa-green);
 }
 
 .qi-tile--amber {
-  border-top-color: #b28600;
+  border-top-color: var(--qa-amber);
 }
 
-/* Amendment detail page (OGC-710) */
+.qi-tile--red {
+  border-top-color: var(--qa-red);
+}
+
+/* Detail pages: rate header, section headings, trend interval picker */
 .amendment-rate-header {
   display: flex;
   align-items: center;
@@ -106,17 +131,8 @@
 /* Carbon Tag has no amber type; between-thresholds band per OGC-699 colors.
    .cds--tag prefix outweighs Carbon's own .cds--tag--gray rule. */
 .cds--tag.qi-rate-tag--amber {
-  background-color: #fcf4d6;
-  color: #684e00;
-}
-
-.qi-tile--red {
-  border-top-color: var(--cds-support-error, #da1e28);
-}
-
-.qi-tile--gray .qi-tile__title,
-.qi-tile--gray .qi-tile__message {
-  color: var(--cds-text-helper, #6f6f6f);
+  background-color: var(--qa-amber-bg);
+  color: var(--qa-amber-text);
 }
 
 .qi-tile__title-row {
@@ -151,11 +167,11 @@
 }
 
 .qi-tile__delta--good {
-  color: var(--cds-support-success, #198038);
+  color: var(--qa-green);
 }
 
 .qi-tile__delta--bad {
-  color: var(--cds-support-error, #da1e28);
+  color: var(--qa-red);
 }
 
 .qi-tile__delta--flat {
@@ -209,18 +225,18 @@
 }
 
 .qi-heatmap__cell--green {
-  background-color: #defbe6;
-  color: #0e6027;
+  background-color: var(--qa-green-bg);
+  color: var(--qa-green-text);
 }
 
 .qi-heatmap__cell--amber {
-  background-color: #fcf4d6;
-  color: #684e00;
+  background-color: var(--qa-amber-bg);
+  color: var(--qa-amber-text);
 }
 
 .qi-heatmap__cell--red {
-  background-color: #ffd7d9;
-  color: #a2191f;
+  background-color: var(--qa-red-bg);
+  color: var(--qa-red-text);
 }
 
 /* Callback detail — time-to-acknowledge bar list (design: qa-final-preview) */
@@ -255,7 +271,7 @@
 }
 
 .qi-barlist__fill--red {
-  background: var(--cds-support-error, #da1e28);
+  background: var(--qa-red);
 }
 
 .qi-barlist__count {
@@ -264,4 +280,11 @@
   text-align: right;
   font-size: 0.875rem;
   color: var(--cds-text-secondary, #525252);
+}
+
+/* QI configuration editor: a row of fields sharing a baseline, wrapping on a
+   narrow modal. */
+.qi-config-row {
+  align-items: flex-end;
+  flex-wrap: wrap;
 }

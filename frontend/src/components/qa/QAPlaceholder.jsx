@@ -1,9 +1,9 @@
 /**
  * QAPlaceholder Component
  *
- * Static placeholder pages for the QA menu (QA v0.5 IA rehome):
- * - FUTURE features (Reagent QC, Analyzer Manual QC) — design exists, build not
- *   scheduled; cross-links to the public design doc so UAT can reference it.
+ * Static pages for the QA menu features whose design exists but whose build is
+ * not scheduled (Reagent QC, Analyzer Manual QC). Each cross-links the public
+ * design doc so UAT can reference it.
  */
 
 import React from "react";
@@ -18,7 +18,6 @@ const DESIGN_DOC_BASE =
 const CONTENT = {
   "reagent-qc": {
     titleKey: "sideNav.label.qa.qc.reagentQc",
-    future: true,
     questionKey: "qa.future.reagentQc.question",
     summaryKey: "qa.future.reagentQc.summary",
     whyKey: "qa.future.reagentQc.why",
@@ -26,7 +25,6 @@ const CONTENT = {
   },
   "manual-qc": {
     titleKey: "sideNav.label.qa.qc.manualQc",
-    future: true,
     questionKey: "qa.future.manualQc.question",
     summaryKey: "qa.future.manualQc.summary",
     whyKey: "qa.future.manualQc.why",
@@ -56,43 +54,33 @@ const QAPlaceholder = ({ feature }) => {
             kind="info"
             hideCloseButton
             lowContrast
-            title={intl.formatMessage({
-              id: content.future
-                ? "qa.future.subtitle"
-                : "qa.comingSoon.subtitle",
-            })}
-            subtitle={
-              content.future
-                ? intl.formatMessage({ id: content.summaryKey })
-                : intl.formatMessage({ id: content.bodyKey })
-            }
+            title={intl.formatMessage({ id: "qa.future.subtitle" })}
+            subtitle={intl.formatMessage({ id: content.summaryKey })}
           />
-          {content.future && (
-            <Tile style={{ marginTop: "1rem" }}>
-              <h4>
-                <FormattedMessage id="qa.future.questionLabel" />
-              </h4>
-              <p>
-                <FormattedMessage id={content.questionKey} />
-              </p>
-              <h4 style={{ marginTop: "1rem" }}>
-                <FormattedMessage id="qa.future.whyLabel" />
-              </h4>
-              <p>
-                <FormattedMessage id={content.whyKey} />
-              </p>
-              <Button
-                kind="tertiary"
-                renderIcon={Launch}
-                href={content.docUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ marginTop: "1rem" }}
-              >
-                <FormattedMessage id="qa.future.readDesignDoc" />
-              </Button>
-            </Tile>
-          )}
+          <Tile style={{ marginTop: "1rem" }}>
+            <h4>
+              <FormattedMessage id="qa.future.questionLabel" />
+            </h4>
+            <p>
+              <FormattedMessage id={content.questionKey} />
+            </p>
+            <h4 style={{ marginTop: "1rem" }}>
+              <FormattedMessage id="qa.future.whyLabel" />
+            </h4>
+            <p>
+              <FormattedMessage id={content.whyKey} />
+            </p>
+            <Button
+              kind="tertiary"
+              renderIcon={Launch}
+              href={content.docUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginTop: "1rem" }}
+            >
+              <FormattedMessage id="qa.future.readDesignDoc" />
+            </Button>
+          </Tile>
         </Column>
       </Grid>
     </div>

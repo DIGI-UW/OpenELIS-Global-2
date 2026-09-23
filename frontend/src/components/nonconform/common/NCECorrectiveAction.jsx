@@ -17,8 +17,6 @@ import {
   TableHeader,
   Checkbox,
   TableCell,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
 
 import { FormattedMessage, useIntl } from "react-intl";
@@ -26,7 +24,7 @@ import { useLocation } from "react-router-dom";
 import { initialReportFormValues, selectOptions } from "./ViewNonConforming";
 import {
   getDifferenceInDays,
-  toLocalIsoDate,
+  displayDateToIso,
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
@@ -36,7 +34,7 @@ import {
   NotificationKinds,
   AlertDialog,
 } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
 
 const initialFormData = {
   dateCompleted: null,
@@ -65,6 +63,7 @@ export const NCECorrectiveAction = () => {
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
 
   const intl = useIntl();
   const location = useLocation();
@@ -741,41 +740,27 @@ export const NCECorrectiveAction = () => {
               </Column>
 
               <Column lg={3} md={3} sm={3}>
-                <DatePicker
-                  datePickerType="single"
-                  dateFormat="Y-m-d"
-                  value={formData.actionLog.dueDate ?? ""}
-                  onChange={(dates) =>
+                {/* The picker shows the locale format; the due date is stored
+                    ISO because that is what the backend parses. */}
+                <CustomDatePicker
+                  key="capa-due-date"
+                  id="capa-due-date"
+                  labelText=""
+                  onChange={(displayed) =>
                     setFormData((prev) => ({
                       ...prev,
                       actionLog: {
                         ...prev.actionLog,
-                        dueDate: dates[0]
-                          ? toLocalIsoDate(dates[0])
-                          : undefined,
+                        dueDate:
+                          displayDateToIso(
+                            displayed,
+                            configurationProperties?.DEFAULT_DATE_LOCALE,
+                          ) || undefined,
                       },
                     }))
                   }
-                >
-                  <DatePickerInput
-                    id="capa-due-date"
-                    labelText=""
-                    placeholder="yyyy-mm-dd"
-                    // The outer flatpickr onChange only fires on calendar
-                    // selection, so typed input was silently dropped. Capture a
-                    // fully-typed ISO date here (dateFormat is Y-m-d) so manual
-                    // entry persists like every other date field.
-                    onChange={(e) => {
-                      const typed = e.target.value;
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(typed)) {
-                        setFormData((prev) => ({
-                          ...prev,
-                          actionLog: { ...prev.actionLog, dueDate: typed },
-                        }));
-                      }
-                    }}
-                  />
-                </DatePicker>
+                  style={{ marginTop: "5px" }}
+                />
               </Column>
 
               <Column lg={2} md={3} sm={3}>
@@ -865,18 +850,9 @@ export const NCECorrectiveAction = () => {
                   </Column>
 
                   <Column lg={3} md={3} sm={3}>
-                    <DatePicker
-                      datePickerType="single"
-                      dateFormat="Y-m-d"
-                      value={log[`dueDate`] ?? ""}
-                    >
-                      <DatePickerInput
-                        id={`saved-due-date-${index}`}
-                        labelText=""
-                        placeholder="yyyy-mm-dd"
-                        disabled
-                      />
-                    </DatePicker>
+                    <div id={`saved-due-date-${index}`}>
+                      {log[`dueDate`] ?? ""}
+                    </div>
                   </Column>
 
                   <Column lg={2} md={3} sm={3}>

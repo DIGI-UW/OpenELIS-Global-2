@@ -28,7 +28,10 @@ import {
 } from "@carbon/react";
 import { Renew, Download } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasPermissionOrGlobalAdmin,
+} from "../../utils/Utils";
 import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
@@ -57,9 +60,10 @@ const QCDashboard = ({ initialTab = 0 }) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // The real gate is the backend @PreAuthorize(qa.view.qc); this only hides the
   // entry point from users who would get a 403 anyway.
-  const canExport =
-    userSessionDetails?.permissions?.includes("qa.view.qc") ||
-    userSessionDetails?.roles?.includes("Global Administrator");
+  const canExport = hasPermissionOrGlobalAdmin(
+    userSessionDetails,
+    "qa.view.qc",
+  );
 
   const loadDashboardData = useCallback(() => {
     setLoading(true);
@@ -187,7 +191,7 @@ const QCDashboard = ({ initialTab = 0 }) => {
               onClick={() => setShowExport(true)}
               data-testid="qc-dashboard-export-button"
             >
-              {intl.formatMessage({ id: "qc.dashboard.export.button" })}
+              {intl.formatMessage({ id: "reports.export" })}
             </Button>
           )}
           <Button

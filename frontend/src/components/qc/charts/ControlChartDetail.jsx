@@ -12,7 +12,7 @@
  * - Export to PNG/PDF
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid,
   Column,
@@ -34,6 +34,7 @@ import { useIntl } from "react-intl";
 import { useParams, useHistory } from "react-router-dom";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import LeveyJenningsChart from "./LeveyJenningsChart";
+import { controlLevelItems, useControlLotChart } from "./controlLotChart";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ControlChartDetail.css";
@@ -53,11 +54,14 @@ const ControlChartDetail = () => {
   const { analyzerId } = useParams();
 
   // State
-  const [chartData, setChartData] = useState([]);
-  const [statistics, setStatistics] = useState(null);
+  const {
+    chartData,
+    statistics,
+    loading,
+    load: loadChartData,
+  } = useControlLotChart(true);
   const [analyzerInfo, setAnalyzerInfo] = useState(null);
   const [controlLots, setControlLots] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Filters
@@ -69,40 +73,7 @@ const ControlChartDetail = () => {
   const [zoomLevel, setZoomLevel] = useState(1);
 
   // Control level options
-  const controlLevelOptions = [
-    {
-      id: "ALL",
-      label: intl.formatMessage({ id: "qc.chart.filter.allLevels" }),
-    },
-    {
-      id: "LOW",
-      label: intl.formatMessage({ id: "qc.chart.filter.levelLow" }),
-    },
-    {
-      id: "NORMAL",
-      label: intl.formatMessage({ id: "qc.chart.filter.levelNormal" }),
-    },
-    {
-      id: "HIGH",
-      label: intl.formatMessage({ id: "qc.chart.filter.levelHigh" }),
-    },
-  ];
-
-  // Transform backend dataPoints to LeveyJenningsChart format
-  const transformDataPoints = (dataPoints) => {
-    return (dataPoints || []).map((pt) => ({
-      id: pt.resultId,
-      runDateTime: pt.timestamp,
-      resultValue: pt.value,
-      value: pt.value,
-      zScore: pt.zscore ?? pt.zScore,
-      controlLevel: pt.controlLevel,
-      violated: pt.hasViolation,
-      violations: (pt.violatedRules || []).map((rule) => ({
-        code: rule,
-      })),
-    }));
-  };
+  const controlLevelOptions = controlLevelItems(intl);
 
   // Load control lots and analyzer info on mount
   useEffect(() => {
@@ -127,70 +98,24 @@ const ControlChartDetail = () => {
     );
   }, [analyzerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load chart data for the selected control lot
-  const loadChartData = useCallback(
-    (controlLotId) => {
-      if (!controlLotId) {
-        setChartData([]);
-        setStatistics(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      // Build date range query params (only params the backend accepts)
-      const params = new URLSearchParams();
-      if (dateRange[0]) {
-        params.append("startDate", toLocalIsoDate(dateRange[0]));
-      }
-      if (dateRange[1]) {
-        params.append("endDate", toLocalIsoDate(dateRange[1]));
-      }
-
-      const qs = params.toString() ? `?${params.toString()}` : "";
-      let completedCalls = 0;
-      const checkDone = () => {
-        completedCalls++;
-        if (completedCalls >= 2) {
-          setLoading(false);
-        }
-      };
-
-      // Fetch data points
-      getFromOpenElisServer(
-        `/rest/qc/charts/${controlLotId}${qs}`,
-        (response) => {
-          const dataPoints =
-            response?.dataPoints || response?.data?.dataPoints || [];
-          setChartData(transformDataPoints(dataPoints));
-          checkDone();
-        },
-      );
-
-      // Fetch statistics (mean, SD for reference lines)
-      getFromOpenElisServer(
-        `/rest/qc/charts/${controlLotId}/statistics`,
-        (response) => {
-          if (response && response.mean != null) {
-            setStatistics(response);
-          } else {
-            setStatistics(null);
-          }
-          checkDone();
-        },
-      );
-    },
-    [dateRange],
-  );
-
   // Reload chart when selected lot or date range changes
   useEffect(() => {
-    if (selectedControlLot) {
-      loadChartData(selectedControlLot);
+    if (!selectedControlLot) return;
+    setError(null);
+
+    // Build date range query params (only params the backend accepts)
+    const params = new URLSearchParams();
+    if (dateRange[0]) {
+      params.append("startDate", toLocalIsoDate(dateRange[0]));
     }
-  }, [selectedControlLot, loadChartData]);
+    if (dateRange[1]) {
+      params.append("endDate", toLocalIsoDate(dateRange[1]));
+    }
+    loadChartData(
+      selectedControlLot,
+      params.toString() ? `?${params.toString()}` : "",
+    );
+  }, [selectedControlLot, dateRange, loadChartData]);
 
   // Handle date range change
   const handleDateRangeChange = (dates) => {
@@ -252,7 +177,7 @@ const ControlChartDetail = () => {
 
   // Navigate back to dashboard
   const handleBackToDashboard = () => {
-    history.push("/analyzers/qc/db");
+    history.push("/qa/qc/dashboard");
   };
 
   if (loading && chartData.length === 0) {
@@ -292,7 +217,7 @@ const ControlChartDetail = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label:
@@ -300,7 +225,7 @@ const ControlChartDetail = () => {
                 intl.formatMessage({ id: "qc.chart.title" }),
             },
           ]}
-          subtitle={intl.formatMessage({ id: "qc.chart.subtitle" })}
+          subtitle={intl.formatMessage({ id: "qc.leveyJennings.title" })}
         />
       </div>
 
@@ -331,14 +256,14 @@ const ControlChartDetail = () => {
               id="date-picker-start"
               placeholder="yyyy-mm-dd"
               labelText={intl.formatMessage({
-                id: "qc.chart.filter.startDate",
+                id: "reports.startDate",
               })}
               data-testid="chart-filter-start-date"
             />
             <DatePickerInput
               id="date-picker-end"
               placeholder="yyyy-mm-dd"
-              labelText={intl.formatMessage({ id: "qc.chart.filter.endDate" })}
+              labelText={intl.formatMessage({ id: "reports.endDate" })}
               data-testid="chart-filter-end-date"
             />
           </DatePicker>
@@ -347,9 +272,11 @@ const ControlChartDetail = () => {
           <Dropdown
             id="control-level-dropdown"
             titleText={intl.formatMessage({
-              id: "qc.chart.filter.controlLevel",
+              id: "qc.charts.controlLevel",
             })}
-            label={intl.formatMessage({ id: "qc.chart.filter.selectLevel" })}
+            label={intl.formatMessage({
+              id: "qc.controlLot.field.selectLevel",
+            })}
             items={controlLevelOptions}
             itemToString={(item) => item?.label || ""}
             selectedItem={controlLevelOptions.find(
@@ -362,7 +289,9 @@ const ControlChartDetail = () => {
         <Column lg={3} md={2} sm={4}>
           <Dropdown
             id="control-lot-dropdown"
-            titleText={intl.formatMessage({ id: "qc.chart.filter.controlLot" })}
+            titleText={intl.formatMessage({
+              id: "admin.testCatalog.qcTargets.lot.label",
+            })}
             label={intl.formatMessage({ id: "qc.chart.filter.selectLot" })}
             items={controlLots.map((lot) => ({
               id: lot.id,
@@ -380,7 +309,7 @@ const ControlChartDetail = () => {
                 : {
                     id: null,
                     label: intl.formatMessage({
-                      id: "qc.chart.filter.allLots",
+                      id: "result.pool.filter.allLots",
                     }),
                   }
             }
@@ -427,7 +356,7 @@ const ControlChartDetail = () => {
               onClick={() => handleExport("png")}
               data-testid="chart-export-button"
             >
-              {intl.formatMessage({ id: "qc.chart.action.export" })}
+              {intl.formatMessage({ id: "reports.export" })}
             </Button>
           </div>
         </Column>
@@ -502,7 +431,7 @@ const ControlChartDetail = () => {
           <Column lg={4} md={2} sm={4}>
             <div className="stat-item">
               <span className="stat-label">
-                {intl.formatMessage({ id: "qc.chart.stats.mean" })}
+                {intl.formatMessage({ id: "qc.chart.mean" })}
               </span>
               <span className="stat-value">
                 {statistics.mean?.toFixed(2) || "-"}
@@ -537,7 +466,9 @@ const ControlChartDetail = () => {
           <Column lg={4} md={2} sm={4}>
             <div className="stat-item">
               <span className="stat-label">
-                {intl.formatMessage({ id: "qc.chart.stats.n" })}
+                {intl.formatMessage({
+                  id: "qc.instrumentDetail.chart.stats.n",
+                })}
               </span>
               <span className="stat-value">
                 {statistics.resultCount || statistics.n || chartData.length}

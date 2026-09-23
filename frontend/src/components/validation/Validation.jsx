@@ -501,7 +501,7 @@ const Validation = (props) => {
                 openOnHover
               >
                 <Tag type="red" size="sm">
-                  <FormattedMessage id="validation.label.qcHold" />
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
                 </Tag>
               </DefinitionTooltip>
             )}
@@ -690,7 +690,7 @@ const Validation = (props) => {
               <FormattedMessage id="validation.label.nonconform" />
             </b>
             <Tag type="red" size="sm" style={{ marginLeft: "1rem" }}>
-              <FormattedMessage id="validation.label.qcHold" />
+              <FormattedMessage id="label.validation.review.qc.FAIL" />
             </Tag>
             <b>
               {" "}

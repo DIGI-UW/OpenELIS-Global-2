@@ -8,15 +8,13 @@ import ThisWeek from "./ThisWeek";
 import PillarStatus from "./PillarStatus";
 import RecentActivity from "./RecentActivity";
 import InspectorReadiness from "./InspectorReadiness";
+import "../common/QAStyles.css";
 import "./QAOverview.css";
 
 /**
- * QA Overview landing page (OGC-694).
- *
- * End-state six-section layout shipped as a shell: every slot renders a
- * ticket-annotated ComingSoon placeholder that later features replace
- * with live components (TAT, NCE, rate tiles,
- * aggregators — see the OGC-683 delivery plan).
+ * QA Overview landing page (OGC-694): six sections, each reading live data.
+ * The few slots still waiting on a feature render a ticket-annotated
+ * ComingSoon placeholder, which its feature replaces wholesale.
  */
 
 const breadcrumbs = [

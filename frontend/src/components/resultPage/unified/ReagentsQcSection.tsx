@@ -84,6 +84,22 @@ const EMPTY_QC_DRAFT: QcCaptureDraft = {
   lotId: "",
 };
 
+// A quantitative control passes or fails; a rapid test's control line is valid
+// or invalid. Same dropdown, so the two option sets live side by side.
+const OUTCOME_OPTIONS: Record<
+  "quantitative" | "rdt",
+  { value: string; labelKey: string }[]
+> = {
+  quantitative: [
+    { value: "PASS", labelKey: "label.qc.pass" },
+    { value: "FAIL", labelKey: "label.qc.fail" },
+  ],
+  rdt: [
+    { value: "VALID", labelKey: "label.results.control.capture.valid" },
+    { value: "INVALID", labelKey: "label.results.control.capture.invalid" },
+  ],
+};
+
 const lotExpiry = (value?: string | number): string => {
   if (value === undefined || value === null || value === "") {
     return "";
@@ -135,6 +151,9 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
     kind: "ok" | "error" | "blocked";
     text: string;
   } | null>(null);
+  // A failing control blocks validation, so it drives both the hint under the
+  // form and the tone of the confirmation after recording.
+  const failing = qcDraft.outcome === "INVALID" || qcDraft.outcome === "FAIL";
 
   useEffect(() => {
     if (!testId) {
@@ -247,62 +266,52 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
   };
 
   const recordControl = () => {
-    const failing = qcDraft.outcome === "INVALID" || qcDraft.outcome === "FAIL";
-    let body: Record<string, unknown>;
-    if (quantitative) {
-      const measured = Number(qcDraft.measured);
-      const expected = Number(qcDraft.expected);
-      const uncertainty = Number(qcDraft.uncertainty);
-      if (
-        !qcDraft.outcome ||
-        !qcDraft.lotId ||
-        qcDraft.measured.trim() === "" ||
-        qcDraft.expected.trim() === "" ||
-        qcDraft.uncertainty.trim() === "" ||
-        !Number.isFinite(measured) ||
-        !Number.isFinite(expected) ||
-        !Number.isFinite(uncertainty) ||
-        uncertainty < 0
-      ) {
-        setQcMessage({
-          kind: "error",
-          text: intl.formatMessage({
-            id: "label.results.control.capture.incomplete",
-          }),
-        });
-        return;
-      }
-      body = {
-        source: "MANUAL",
-        qualitativeOutcome: qcDraft.outcome,
-        resultValue: qcDraft.measured,
-        // always tech-entered — prefill from a configured QC target is
-        // OGC-1148; when that ships, seed these two fields from the target
-        expectedValue: qcDraft.expected,
-        uncertainty: qcDraft.uncertainty,
-        controlLotId: qcDraft.lotId,
-        testId,
-        testSectionId,
-        unitOfMeasure: unitOfMeasure || null,
-      };
-    } else {
-      if (!qcDraft.outcome || qcDraft.kitLot.trim() === "") {
-        setQcMessage({
-          kind: "error",
-          text: intl.formatMessage({
-            id: "label.results.control.capture.incomplete",
-          }),
-        });
-        return;
-      }
-      body = {
-        source: "RDT",
-        qualitativeOutcome: qcDraft.outcome,
-        controlLabel: qcDraft.kitLot.trim(),
-        testId,
-        testSectionId,
-      };
+    const measured = Number(qcDraft.measured);
+    const expected = Number(qcDraft.expected);
+    const uncertainty = Number(qcDraft.uncertainty);
+    const incomplete =
+      !qcDraft.outcome ||
+      (quantitative
+        ? !qcDraft.lotId ||
+          qcDraft.measured.trim() === "" ||
+          qcDraft.expected.trim() === "" ||
+          qcDraft.uncertainty.trim() === "" ||
+          !Number.isFinite(measured) ||
+          !Number.isFinite(expected) ||
+          !Number.isFinite(uncertainty) ||
+          uncertainty < 0
+        : qcDraft.kitLot.trim() === "");
+    if (incomplete) {
+      setQcMessage({
+        kind: "error",
+        text: intl.formatMessage({
+          id: "label.results.control.capture.incomplete",
+        }),
+      });
+      return;
     }
+
+    const body: Record<string, unknown> = quantitative
+      ? {
+          source: "MANUAL",
+          qualitativeOutcome: qcDraft.outcome,
+          resultValue: qcDraft.measured,
+          // always tech-entered — prefill from a configured QC target is
+          // OGC-1148; when that ships, seed these two fields from the target
+          expectedValue: qcDraft.expected,
+          uncertainty: qcDraft.uncertainty,
+          controlLotId: qcDraft.lotId,
+          testId,
+          testSectionId,
+          unitOfMeasure: unitOfMeasure || null,
+        }
+      : {
+          source: "RDT",
+          qualitativeOutcome: qcDraft.outcome,
+          controlLabel: qcDraft.kitLot.trim(),
+          testId,
+          testSectionId,
+        };
     setQcBusy(true);
     setQcMessage(null);
     postToOpenElisServerJsonResponse(
@@ -534,7 +543,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           <Button
             kind="ghost"
             size="sm"
-            onClick={() => window.open("/analyzers/qc/db", "_blank")}
+            onClick={() => window.open("/qa/qc/dashboard", "_blank")}
           >
             <FormattedMessage id="label.results.control.viewResults" />
           </Button>
@@ -554,36 +563,14 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
             data-testid="qc-outcome"
           >
             <SelectItem value="" text="" />
-            {quantitative ? (
-              <>
+            {OUTCOME_OPTIONS[quantitative ? "quantitative" : "rdt"].map(
+              (option) => (
                 <SelectItem
-                  value="PASS"
-                  text={intl.formatMessage({
-                    id: "label.results.control.capture.pass",
-                  })}
+                  key={option.value}
+                  value={option.value}
+                  text={intl.formatMessage({ id: option.labelKey })}
                 />
-                <SelectItem
-                  value="FAIL"
-                  text={intl.formatMessage({
-                    id: "label.results.control.capture.fail",
-                  })}
-                />
-              </>
-            ) : (
-              <>
-                <SelectItem
-                  value="VALID"
-                  text={intl.formatMessage({
-                    id: "label.results.control.capture.valid",
-                  })}
-                />
-                <SelectItem
-                  value="INVALID"
-                  text={intl.formatMessage({
-                    id: "label.results.control.capture.invalid",
-                  })}
-                />
-              </>
+              ),
             )}
           </Select>
           {quantitative ? (
@@ -668,7 +655,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
               data-testid="qc-kit-lot"
             />
           )}
-          {(qcDraft.outcome === "INVALID" || qcDraft.outcome === "FAIL") && (
+          {failing && (
             <div
               className="unifiedSampleStatusError"
               data-testid="qc-blocked-hint"

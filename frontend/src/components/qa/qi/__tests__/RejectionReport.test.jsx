@@ -1,25 +1,16 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../../languages/en.json";
 import RejectionReport from "../RejectionReport";
+import { renderQa } from "../../testUtils";
 
-vi.mock("../../../utils/Utils", () => ({
-  toLocalIsoDate: (d) =>
-    d instanceof Date
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      : d || "",
-  toLocalIsoDateTime: (value) => {
-    if (!value) return "\u2014";
-    const d = new Date(value);
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}`;
-  },
-  getFromOpenElisServer: vi.fn(),
-}));
+vi.mock("../../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    fetchFromOpenElisServer: vi.fn(),
+  };
+});
 
 // jsdom can't render @carbon/charts (SVG/resize observers) — stub it
 vi.mock("@carbon/charts-react", () => ({
@@ -28,7 +19,18 @@ vi.mock("@carbon/charts-react", () => ({
   SimpleBarChart: () => <div data-testid="rejection-test-bars" />,
 }));
 
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { fetchFromOpenElisServer } from "../../../utils/Utils";
+
+/** Serve each endpoint from `routes`; anything unlisted reads as unavailable. */
+const mockServer = (routes) =>
+  fetchFromOpenElisServer.mockImplementation((url) => {
+    const match = Object.keys(routes).find((fragment) =>
+      url.includes(fragment),
+    );
+    return match
+      ? Promise.resolve(routes[match])
+      : Promise.reject(new Error(`no data: ${url}`));
+  });
 
 const DETAIL = {
   totalCount: 2,
@@ -114,15 +116,10 @@ const BREAKDOWN = {
 };
 
 const renderPage = async () => {
-  await act(async () =>
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <MemoryRouter>
-          <RejectionReport />
-        </MemoryRouter>
-      </IntlProvider>,
-    ),
-  );
+  await act(async () => {
+    renderQa(<RejectionReport />, { entries: ["/qa/qi/rejection"] });
+  });
+  await act(async () => {});
 };
 
 beforeEach(() => {
@@ -131,11 +128,7 @@ beforeEach(() => {
 
 describe("RejectionReport", () => {
   test("renders rejection rows with reason and user", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/rejection/detail")) {
-        callback(DETAIL);
-      }
-    });
+    mockServer({ "/rest/reports/rejection/detail": DETAIL });
     await renderPage();
 
     expect(
@@ -153,25 +146,26 @@ describe("RejectionReport", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
 
     // paged fetch with default window
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("/rest/reports/rejection/detail?fromDate="),
-      expect.any(Function),
+      expect.anything(),
     );
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("page=0&pageSize=25"),
-      expect.any(Function),
+      expect.anything(),
     );
   });
 
   test("renders calm empty state when there are no rejections", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/rejection/detail")) {
-        callback({ totalCount: 0, page: 0, pageSize: 25, items: [] });
-      } else if (url.includes("/rest/reports/rejection/trend")) {
-        callback({ points: [] });
-      } else if (url.includes("/rest/reports/rejection/breakdown")) {
-        callback({ reasons: [], tests: [] });
-      }
+    mockServer({
+      "/rest/reports/rejection/detail": {
+        totalCount: 0,
+        page: 0,
+        pageSize: 25,
+        items: [],
+      },
+      "/rest/reports/rejection/trend": { points: [] },
+      "/rest/reports/rejection/breakdown": { reasons: [], tests: [] },
     });
     await renderPage();
 
@@ -184,7 +178,7 @@ describe("RejectionReport", () => {
   });
 
   test("renders error state when the endpoint returns no data", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => callback());
+    mockServer({});
     await renderPage();
 
     // trend section and detail table each surface the error independently
@@ -202,18 +196,12 @@ describe("RejectionReport", () => {
       action: 5,
       direction: "LOWER_BETTER",
     };
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/rejection/detail")) {
-        callback(DETAIL);
-      } else if (url.includes("/rest/reports/rejection/trend")) {
-        callback(TREND);
-      } else if (url.includes("/rest/reports/rejection/breakdown")) {
-        callback(BREAKDOWN);
-      } else if (url.includes("/rest/reports/rejection/heatmap")) {
-        callback(HEATMAP);
-      } else if (url.includes("/rest/qi-config/resolve")) {
-        callback(CONFIG);
-      }
+    mockServer({
+      "/rest/reports/rejection/detail": DETAIL,
+      "/rest/reports/rejection/trend": TREND,
+      "/rest/reports/rejection/breakdown": BREAKDOWN,
+      "/rest/reports/rejection/heatmap": HEATMAP,
+      "/rest/qi-config/resolve": CONFIG,
     });
     await renderPage();
 
