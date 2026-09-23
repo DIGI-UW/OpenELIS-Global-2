@@ -56,6 +56,7 @@ import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
   hasRole,
+  Roles,
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -186,7 +187,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      if (hasRole(userSessionDetails, "Global Administrator")) {
+      if (hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)) {
         setSelectedTestSection("all");
       } else {
         setSelectedTestSection(sections[0]?.id);
@@ -228,7 +229,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const loadCount = (data) => {
     if (componentMounted.current) {
-      setCounts(data);
+      // Keep the initialised shape when the request fails or is denied. The
+      // helper invokes this callback with undefined on a non-2xx response, and
+      // overwriting state with it crashed the whole landing page on the first
+      // tile read (`counts.ordersInProgress` of undefined) rather than showing
+      // an empty dashboard. A role without access to a metric should see a
+      // blank tile, not a white screen.
+      if (data) {
+        setCounts((current) => ({ ...current, ...data }));
+      }
       setLoading(false);
     }
   };
@@ -373,7 +382,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setSelectedTile(tile);
     } else {
       setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
         ? setSelectedTestSection("all")
         : setSelectedTestSection(testSections[0]?.id);
     }
@@ -382,7 +391,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
     ) {
       setSelectedTile(tile);
     } else {
@@ -606,10 +615,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
+                            {hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ? (
                               <TabList
                                 style={{ width: "100%" }}
                                 aria-label="List of tabs"

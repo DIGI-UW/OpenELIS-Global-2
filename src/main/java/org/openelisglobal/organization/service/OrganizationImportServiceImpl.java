@@ -58,14 +58,38 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
     @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Autowired
     private OrganizationService organizationService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
 
+    /**
+     * Scheduled system entry point. The scheduler thread carries the daemon
+     * identity (ROLE_SYSTEM) installed by SchedulerConfig's task decorator, which
+     * SystemAwareSecurityExpressionRoot accepts for PRIV_* gates — so this run does
+     * not need to go through the PRIV_ORGANIZATION_MANAGE gate on the interface
+     * method, which remains the admin-triggered path. One transaction per run,
+     * matching the previous proxy-applied @Transactional semantics.
+     */
+    @Scheduled(initialDelay = 1000, fixedRateString = "${facilitylist.schedule.fixedRate}")
+    @Override
+    public void scheduledImportOrganizationList() {
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> {
+                    try {
+                        importOrganizationList();
+                    } catch (FhirGeneralException | IOException e) {
+                        LogEvent.logError(e);
+                        status.setRollbackOnly();
+                    }
+                });
+    }
+
     @Override
     @Transactional
     @Async
-    @Scheduled(initialDelay = 1000, fixedRateString = "${facilitylist.schedule.fixedRate}")
     public void importOrganizationList() throws FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(facilityFhirStore)) {
             IGenericClient client;

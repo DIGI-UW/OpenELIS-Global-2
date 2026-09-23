@@ -10,22 +10,44 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitiveTest {
+
+    private MockHttpSession session;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/system-user.xml");
-
+        UserDetails userDetails = User.withUsername("admin").password("N/A")
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN")).build();
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, "N/A",
+                userDetails.getAuthorities());
+        SecurityContext sc = new SecurityContextImpl();
+        sc.setAuthentication(auth);
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        session = new MockHttpSession();
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, sc);
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
     }
 
     @Test
     public void getUsersWithRole_shouldReturnSystemUsersWithRoles() throws Exception {
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/users").accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        MvcResult urlResult = mockMvc.perform(get("/rest/users").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE).session(session)).andReturn();
         String results = urlResult.getResponse().getContentAsString();
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> users = objectMapper.readValue(results,
@@ -48,8 +70,8 @@ public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void getUsersWithRole_shouldReturnSystemUsersGivenThereRole() throws Exception {
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/users/adminRole")
-                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        MvcResult urlResult = mockMvc.perform(get("/rest/users/adminRole").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE).session(session)).andReturn();
         String results = urlResult.getResponse().getContentAsString();
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> users = objectMapper.readValue(results,

@@ -17,6 +17,7 @@ import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.Customizer;
@@ -42,38 +43,41 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
 
     @Test
     public void getWorklistWithUnrelatedRoleReturns403() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("reception").roles("RECEPTION")))
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .with(user("reception").authorities(SeededRoleAuthorities.role("RECEPTION"))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void getWorklistWithResultsRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("analyst").roles("RESULTS")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .with(user("analyst").authorities(SeededRoleAuthorities.role("RESULTS")))).andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistWithValidationRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("validator").roles("VALIDATION")))
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .with(user("validator").authorities(SeededRoleAuthorities.role("VALIDATION"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistWithAdminRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("manager").roles("ADMIN")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .with(user("manager").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistBindsCanonicalSurveillanceScope() throws Exception {
-        clearInvocations(worklistService);
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("analyst").roles("RESULTS")).param("grain", "ast")
+        clearInvocations(mockBehind(worklistService));
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .with(user("analyst").authorities(SeededRoleAuthorities.role("RESULTS"))).param("grain", "ast")
                 .param("from", "2026-07-01").param("to", "2026-07-31").param("specimen", "blood", "urine")
                 .param("organism", "ecoli").param("origin", "icu").param("significance", "pathogen", "screening")
                 .param("page", "3").param("pageSize", "50")).andExpect(status().isOk());
 
         ArgumentCaptor<MicroWorklistQueryForm> queryCaptor = ArgumentCaptor.forClass(MicroWorklistQueryForm.class);
-        verify(worklistService).getWorklistPage(queryCaptor.capture());
+        verify(mockBehind(worklistService)).getWorklistPage(queryCaptor.capture());
         MicroWorklistQueryForm query = queryCaptor.getValue();
         assertEquals("ast", query.grain);
         assertEquals("2026-07-01", query.from);
@@ -102,7 +106,7 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
         MicroWorklistService microWorklistService() {
             MicroWorklistService service = mock(MicroWorklistService.class);
             when(service.getWorklistPage(any(MicroWorklistQueryForm.class))).thenReturn(new MicroWorklistPageForm());
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean

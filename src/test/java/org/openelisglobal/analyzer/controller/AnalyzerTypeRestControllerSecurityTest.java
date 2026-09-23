@@ -12,6 +12,7 @@ import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,17 +36,19 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
     public void analyzerTypesRejectUnauthenticatedAndUnrelatedRoles() throws Exception {
         mockMvc.perform(get("/rest/analyzer-types").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/rest/analyzer-types").with(user("results").roles("RESULTS"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+        mockMvc.perform(
+                get("/rest/analyzer-types").with(user("results").authorities(SeededRoleAuthorities.role("RESULTS")))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     public void analyzerTypesAllowEstablishedAnalyzerAndAdministratorRoles() throws Exception {
-        mockMvc.perform(get("/rest/analyzer-types").with(user("analyzer").roles("ANALYSER_IMPORT"))
+        mockMvc.perform(get("/rest/analyzer-types")
+                .with(user("analyzer").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-        mockMvc.perform(
-                get("/rest/analyzer-types").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/analyzer-types").with(user("admin").authorities(SeededRoleAuthorities.role("ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Configuration
@@ -62,22 +65,22 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
 
         @Bean
         AnalyzerTypeCatalogService analyzerTypeCatalogService() {
-            return mock(AnalyzerTypeCatalogService.class);
+            return stubbableMock(AnalyzerTypeCatalogService.class);
         }
 
         @Bean
         BridgeProfileManagementService bridgeProfileManagementService() {
-            return mock(BridgeProfileManagementService.class);
+            return stubbableMock(BridgeProfileManagementService.class);
         }
 
         @Bean
         AnalyzerMappingCatalogService analyzerMappingCatalogService() {
-            return mock(AnalyzerMappingCatalogService.class);
+            return stubbableMock(AnalyzerMappingCatalogService.class);
         }
 
         @Bean
         AnalyzerTypeMappingService analyzerTypeMappingService() {
-            return mock(AnalyzerTypeMappingService.class);
+            return stubbableMock(AnalyzerTypeMappingService.class);
         }
 
         @Bean

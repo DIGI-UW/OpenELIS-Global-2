@@ -1,5 +1,7 @@
 package org.openelisglobal.storage.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 /**
  * Service for validating storage location barcodes Implements 5-step validation
  * process per FR-024 through FR-027: 1. Format validation 2. Location existence
@@ -13,5 +15,6 @@ public interface BarcodeValidationService {
      * @param barcode The barcode string to validate
      * @return BarcodeValidationResponse with validation result and details
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     BarcodeValidationResponse validateBarcode(String barcode);
 }

@@ -23,6 +23,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.provider.query.SampleItemTestProvider;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
@@ -41,6 +42,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Accessioner form-binding step; persistence runs through gated sample services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @Primary
 public class SampleEntry extends Accessioner implements ISampleEntry {

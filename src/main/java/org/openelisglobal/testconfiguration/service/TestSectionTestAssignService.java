@@ -3,9 +3,11 @@ package org.openelisglobal.testconfiguration.service;
 import java.util.List;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface TestSectionTestAssignService {
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void updateTestAndTestSections(Test test, TestSection testSection, TestSection deActivateTestSection,
             boolean updateTestSection);
 
@@ -17,5 +19,6 @@ public interface TestSectionTestAssignService {
      *
      * @return the updated tests
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<Test> assignTestsToSection(List<String> testIds, String targetSectionId, String sysUserId);
 }

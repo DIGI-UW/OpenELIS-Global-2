@@ -27,6 +27,7 @@ package org.openelisglobal.patient.saving;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -36,6 +37,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Accessioner form-binding step; persistence runs through gated patient/sample services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @Primary
 public class PatientEntry extends Accessioner implements IPatientEntry {

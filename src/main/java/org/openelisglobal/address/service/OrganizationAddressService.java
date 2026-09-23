@@ -4,7 +4,9 @@ import java.util.List;
 import org.openelisglobal.address.valueholder.AddressPK;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
 public interface OrganizationAddressService extends BaseObjectService<OrganizationAddress, AddressPK> {
 
     List<OrganizationAddress> getAddressPartsByOrganizationId(String organizationId);

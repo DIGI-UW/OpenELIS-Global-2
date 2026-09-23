@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
@@ -44,6 +45,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "QA-event binding helper; stateful wrapper the controller populates before persisting through gated services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @DependsOn({ "springContext" })
 public class QAService {

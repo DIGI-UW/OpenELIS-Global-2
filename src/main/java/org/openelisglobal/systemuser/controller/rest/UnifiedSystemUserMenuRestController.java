@@ -31,7 +31,6 @@ import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -44,7 +43,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasRole('ADMIN')")
 public class UnifiedSystemUserMenuRestController extends BaseMenuController<UnifiedSystemUser> {
 
     // private static final String FWD_SUCCESS = "success";
@@ -299,9 +297,9 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
         }
 
         for (SystemUser systemUser : systemUsers) {
-            List<String> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
+            List<Integer> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
 
-            for (String roleId : roleIds) {
+            for (Integer roleId : roleIds) {
                 UserRole userRole = new UserRole();
                 userRole.setSystemUserId(systemUser.getId());
                 userRole.setRoleId(roleId);

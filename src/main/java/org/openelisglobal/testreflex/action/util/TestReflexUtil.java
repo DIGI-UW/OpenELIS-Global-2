@@ -29,6 +29,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -57,6 +58,7 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Reflex-test computation helpers over passed-in test ids. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @DependsOn({ "springContext" })
 public class TestReflexUtil {
     private static final String USER_CHOOSE_FLAG = "UC";

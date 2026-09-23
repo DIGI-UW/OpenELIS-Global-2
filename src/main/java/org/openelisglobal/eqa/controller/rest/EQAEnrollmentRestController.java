@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQAEnrollmentRestController extends ControllerUtills {
 
     @Autowired
@@ -43,7 +41,6 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PostMapping(value = "/programs/{programId}/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> createEnrollments(HttpServletRequest request, @PathVariable Long programId,
             @RequestBody Map<String, Object> body) {
         try {
@@ -66,7 +63,6 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/programs/{programId}/enrollments/{enrollmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> updateEnrollmentStatus(HttpServletRequest request, @PathVariable Long programId,
             @PathVariable Long enrollmentId, @RequestBody Map<String, Object> body) {
         try {

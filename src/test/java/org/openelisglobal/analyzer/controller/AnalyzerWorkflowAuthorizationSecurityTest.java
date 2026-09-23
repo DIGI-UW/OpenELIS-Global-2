@@ -19,6 +19,7 @@ import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.qc.service.QCStatisticsService;
 import org.openelisglobal.qc.service.WestgardRuleConfigService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,37 +41,44 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
 
     @Test
     public void unrelatedAuthenticatedRoleCannotOpenAnalyzerSetup() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/analyzers").with(user("results").roles("RESULTS"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+        mockMvc.perform(
+                get("/rest/analyzer/analyzers").with(user("results").authorities(SeededRoleAuthorities.role("RESULTS")))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     public void unrelatedAuthenticatedRoleCannotProbeAnalyzerConnection() throws Exception {
-        mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection").with(user("results").roles("RESULTS"))
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection")
+                .with(user("results").authorities(SeededRoleAuthorities.role("RESULTS")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
     }
 
     @Test
     public void establishedAnalyzerRoleCanReadActivationReadiness() throws Exception {
         mockMvc.perform(get("/rest/analyzer/analyzers/77/activation-readiness")
-                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .with(user("analyzer").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT")))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Test
     public void unrelatedAuthenticatedRoleCannotOpenLinkedOperationalQc() throws Exception {
-        mockMvc.perform(get("/rest/qc/control-lots").with(user("results").roles("RESULTS"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+        mockMvc.perform(
+                get("/rest/qc/control-lots").with(user("results").authorities(SeededRoleAuthorities.role("RESULTS")))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     public void establishedAnalyzerRoleCanOpenSetupProbeAndLinkedQc() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/analyzers").with(user("analyzer").roles("ANALYSER_IMPORT"))
+        mockMvc.perform(get("/rest/analyzer/analyzers")
+                .with(user("analyzer").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
         mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection")
-                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/rest/qc/control-lots").with(user("analyzer").roles("ANALYSER_IMPORT"))
+                .with(user("analyzer").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT")))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+        mockMvc.perform(get("/rest/qc/control-lots")
+                .with(user("analyzer").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
@@ -90,17 +98,17 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
         AnalyzerInstanceService analyzerInstanceService() {
             AnalyzerInstanceService service = mock(AnalyzerInstanceService.class);
             when(service.list()).thenReturn(List.of());
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean
         AnalyzerConnectionProbeService analyzerConnectionProbeService() {
-            return mock(AnalyzerConnectionProbeService.class);
+            return stubbableMock(AnalyzerConnectionProbeService.class);
         }
 
         @Bean
         AnalyzerActivationService analyzerActivationService() {
-            return mock(AnalyzerActivationService.class);
+            return stubbableMock(AnalyzerActivationService.class);
         }
 
         @Bean
@@ -128,22 +136,22 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
         QCControlLotService qcControlLotService() {
             QCControlLotService service = mock(QCControlLotService.class);
             when(service.getAllControlLots()).thenReturn(List.of());
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean
         QCStatisticsService qcStatisticsService() {
-            return mock(QCStatisticsService.class);
+            return stubbableMock(QCStatisticsService.class);
         }
 
         @Bean
         WestgardRuleConfigService westgardRuleConfigService() {
-            return mock(WestgardRuleConfigService.class);
+            return stubbableMock(WestgardRuleConfigService.class);
         }
 
         @Bean
         QCDashboardService qcDashboardService() {
-            return mock(QCDashboardService.class);
+            return stubbableMock(QCDashboardService.class);
         }
 
         @Bean

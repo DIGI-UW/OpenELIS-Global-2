@@ -3,7 +3,9 @@ package org.openelisglobal.testresultinterpretation.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestResultInterpretationService extends BaseObjectService<TestResultInterpretation, String> {
 
     List<TestResultInterpretation> getByComponentId(String componentId);

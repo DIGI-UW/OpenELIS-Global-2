@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.massindexing.MassIndexer;
 import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,6 +23,7 @@ public class MassIndexerService {
     private int threadsToLoadObjects = 6;
 
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public void reindex() throws Exception {
         SearchSession searchSession = Search.session(entityManager);
         MassIndexer indexer = searchSession.massIndexer();

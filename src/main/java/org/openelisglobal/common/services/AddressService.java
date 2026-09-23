@@ -16,10 +16,12 @@
 
 package org.openelisglobal.common.services;
 
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "UI label lookups for address form fields; no patient or result data. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class AddressService {
 
     public static String getAddresslineLabel1() {

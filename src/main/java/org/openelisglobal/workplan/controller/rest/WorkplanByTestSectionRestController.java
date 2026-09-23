@@ -80,6 +80,9 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
             if (!GenericValidator.isBlankOrNull(testSectionId)) {
                 // get tests based on test section
                 workplanTests = getWorkplanByTestSection(testSectionId);
+                // ROLE_RESULTS is the lab-unit-role FILTER KEY (which sections this
+                // user may see), not an access gate — filterResultsByLabUnitRoles
+                // is itself gated PRIV_RESULT_VIEW at the service layer (T032).
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), workplanTests,
                         Constants.ROLE_RESULTS);
             }

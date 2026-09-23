@@ -18,6 +18,7 @@ package org.openelisglobal.common.services;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationType;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
 
 /** */
 @Service
+@CrossDomainService(callers = "Sample-requester form binding; getters/setters over request state. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @DependsOn({ "springContext" })
 public class RequesterService {

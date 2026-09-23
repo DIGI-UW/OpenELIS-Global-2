@@ -60,7 +60,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -76,7 +76,6 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
 public class AnalyzerResultsController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "paging.currentPage", "resultList*.id",
@@ -197,6 +196,12 @@ public class AnalyzerResultsController extends BaseController {
             try {
                 Analyzer analyzer = analyzerService.get(id);
                 form.setType(analyzer.getName());
+            } catch (AccessDeniedException e) {
+                // The PRIV_ANALYZER_IMPORT gate on the service is the only authorization on
+                // this endpoint now that the controller-level role check is gone. Swallowing
+                // it here turned a denial into a 200 with an empty form; let it reach the
+                // 403 handler instead.
+                throw e;
             } catch (Exception e) {
                 LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "showRestAnalyzerResults",
                         "Could not resolve analyzer for id: " + id);
@@ -208,6 +213,12 @@ public class AnalyzerResultsController extends BaseController {
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
         try {
             analyzerResultsList = getAnalyzerResults();
+        } catch (AccessDeniedException e) {
+            // The PRIV_ANALYZER_IMPORT gate on the service is the only authorization on
+            // this endpoint now that the controller-level role check is gone. Swallowing
+            // it here turned a denial into a 200 with an empty form; let it reach the
+            // 403 handler instead.
+            throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "showRestAnalyzerResults",
                     "Error loading analyzer results: " + e.getMessage());
@@ -229,6 +240,12 @@ public class AnalyzerResultsController extends BaseController {
                 paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
                 paging.page(request, form, Integer.parseInt(request.getParameter("page")));
             }
+        } catch (AccessDeniedException e) {
+            // The PRIV_ANALYZER_IMPORT gate on the service is the only authorization on
+            // this endpoint now that the controller-level role check is gone. Swallowing
+            // it here turned a denial into a 200 with an empty form; let it reach the
+            // 403 handler instead.
+            throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "showRestAnalyzerResults",
                     "Error processing analyzer results for display: " + e.getMessage());

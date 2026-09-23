@@ -28,6 +28,7 @@ import static org.openelisglobal.common.services.StatusService.RecordStatus.Init
 import static org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;
 import org.openelisglobal.patient.util.PatientUtil;
@@ -37,6 +38,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Accessioner step — canAccession predicate only. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class PatientEntryAfterAnalyzer extends PatientEntry implements IPatientEntryAfterAnalyzer {
 

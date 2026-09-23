@@ -19,12 +19,14 @@ package org.openelisglobal.common.services;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.springframework.stereotype.Service;
 
 /** */
 @Service
+@CrossDomainService(callers = "Phone format/validation helpers driven by site configuration. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class PhoneNumberService {
     private static final Object lock = new Object();
     private static String rawFormat = null;

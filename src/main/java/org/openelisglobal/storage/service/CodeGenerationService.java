@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.util.Set;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for generating codes from location names Generates codes following
@@ -17,6 +18,7 @@ public interface CodeGenerationService {
      * @param context Context type: "room", "device", "shelf", or "rack"
      * @return Generated code (≤10 chars)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String generateCodeFromName(String name, String context);
 
     /**
@@ -28,5 +30,6 @@ public interface CodeGenerationService {
      * @param existingCodes Set of existing codes to check against
      * @return Generated code with conflict resolution (≤10 chars)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String generateCodeWithConflictResolution(String name, String context, Set<String> existingCodes);
 }

@@ -22,6 +22,7 @@ import static org.openelisglobal.common.services.StatusService.RecordStatus.Vali
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.saving.form.IAccessionerForm;
 import org.springframework.context.annotation.Scope;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
  * @since Jul 6, 2010
  */
 @Service
+@CrossDomainService(callers = "Accessioner step — canAccession predicate only. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class SampleSecondEntry extends SampleEntry implements ISampleSecondEntry, IActionConstants {
 

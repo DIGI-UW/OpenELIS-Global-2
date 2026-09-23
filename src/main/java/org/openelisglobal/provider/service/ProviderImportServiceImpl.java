@@ -49,9 +49,25 @@ public class ProviderImportServiceImpl implements ProviderImportService {
     @Autowired
     private PersonService personService;
 
+    /**
+     * Scheduled system entry point. The scheduler thread carries the daemon
+     * identity (ROLE_SYSTEM) installed by SchedulerConfig's task decorator, which
+     * SystemAwareSecurityExpressionRoot accepts for PRIV_* gates — so this run does
+     * not need to go through the privilege gate on the interface method, which
+     * remains the admin-triggered path.
+     */
+    @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
+    @Override
+    public void scheduledImportPractitionerList() {
+        try {
+            importPractitionerList();
+        } catch (FhirGeneralException | IOException e) {
+            LogEvent.logError(e);
+        }
+    }
+
     @Override
     @Async
-    @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
     public void importPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(providerFhirStore)) {
             IGenericClient client = fhirUtil.getFhirClient(providerFhirStore);

@@ -22,6 +22,8 @@ import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.concurrent.DelegatingSecurityContextRunnable;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Filling a box one sample at a time.
@@ -113,14 +115,17 @@ public class BoxSampleItemAddTest extends BaseWebContextSensitiveTest {
     }
 
     private Thread adderThread(String sampleItemId, CountDownLatch startTogether, List<Throwable> failures) {
-        return new Thread(() -> {
+        // Each adder stands in for a separate Create Box request and must carry its
+        // own Authentication: a bare Thread has none, and the service gates now
+        // deny it. Hand the test thread's context to each adder explicitly.
+        return new Thread(new DelegatingSecurityContextRunnable(() -> {
             try {
                 startTogether.await();
                 boxSampleItemService.addSampleItemToBox(boxId, sampleItemId, ACTOR);
             } catch (Throwable t) {
                 failures.add(t);
             }
-        });
+        }, SecurityContextHolder.getContext()));
     }
 
     /**

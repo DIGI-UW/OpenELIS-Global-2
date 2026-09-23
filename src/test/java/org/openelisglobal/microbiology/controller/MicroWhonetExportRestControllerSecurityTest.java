@@ -16,6 +16,7 @@ import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
 import org.openelisglobal.reports.service.WHONetReportService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -48,7 +49,8 @@ public class MicroWhonetExportRestControllerSecurityTest extends SecuritySliceMo
 
     @Test
     public void previewWithReportCapableRoleReachesController() throws Exception {
-        mockMvc.perform(get(PREVIEW_URL).with(user("reports").roles("REPORTS"))).andExpect(status().isOk());
+        mockMvc.perform(get(PREVIEW_URL).with(user("reports").authorities(SeededRoleAuthorities.role("REPORTS"))))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -59,15 +61,23 @@ public class MicroWhonetExportRestControllerSecurityTest extends SecuritySliceMo
 
     @Test
     public void generateWithUnrelatedRoleReturns403() throws Exception {
+        UserSessionData session = new UserSessionData();
+        session.setSytemUserId(42);
+        // generate() resolves the acting user from the session before the gated
+        // service call; without one the actor lookup fails ahead of the 403.
         mockMvc.perform(post("/rest/microbiology/whonet/exports").with(user("user").roles("USER"))
-                .contentType(MediaType.APPLICATION_JSON).content(exportQuery())).andExpect(status().isForbidden());
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, session).contentType(MediaType.APPLICATION_JSON)
+                .content(exportQuery())).andExpect(status().isForbidden());
     }
 
     @Test
     public void generateWithReportCapableRoleReachesController() throws Exception {
         UserSessionData session = new UserSessionData();
         session.setSytemUserId(42);
-        mockMvc.perform(post("/rest/microbiology/whonet/exports").with(user("results").roles("RESULTS"))
+        // "Report-capable" means the Reports role: it is the base role the seed grants
+        // report:run to, which is what the WHONet export gate checks.
+        mockMvc.perform(post("/rest/microbiology/whonet/exports")
+                .with(user("reports").authorities(SeededRoleAuthorities.role("REPORTS")))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, session).contentType(MediaType.APPLICATION_JSON)
                 .content(exportQuery())).andExpect(status().isOk());
     }
@@ -97,7 +107,7 @@ public class MicroWhonetExportRestControllerSecurityTest extends SecuritySliceMo
             when(service.generateMicrobiologyExport(org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.eq("42")))
                     .thenReturn(new MicroWhonetExportResult("WHONET.csv", "csv".getBytes(StandardCharsets.UTF_8)));
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean
