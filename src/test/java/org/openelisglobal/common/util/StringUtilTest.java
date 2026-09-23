@@ -109,35 +109,38 @@ public class StringUtilTest {
     }
 
     @Test
-    public void normalizeNumericResultValue_shouldKeepTheComparatorAndPlainValues() {
-        assertEquals("1.5e5", StringUtil.normalizeNumericResultValue("1.5 x 10^5"));
-        assertEquals("<1.5e5", StringUtil.normalizeNumericResultValue("<1.5×10⁵"));
-        assertEquals(">2e-3", StringUtil.normalizeNumericResultValue("> 2E-03"));
-        assertEquals("12.50", StringUtil.normalizeNumericResultValue("12.50"));
-        assertEquals("<5", StringUtil.normalizeNumericResultValue("<5"));
-        assertEquals("3²", StringUtil.normalizeNumericResultValue("3²"));
-        assertEquals("", StringUtil.normalizeNumericResultValue(""));
-        assertEquals(null, StringUtil.normalizeNumericResultValue(null));
+    public void padMantissa_shouldPadWithoutChangingTheNotationWritten() {
+        assertEquals("1.50e5", StringUtil.padMantissa("1.5e5", 2));
+        assertEquals("1.50E+05", StringUtil.padMantissa("1.5E+05", 2));
+        assertEquals("1.50 x 10^5", StringUtil.padMantissa("1.5 x 10^5", 2));
+        assertEquals("1.50×10⁵", StringUtil.padMantissa("1.5×10⁵", 2));
+        assertEquals("<2.50e-3", StringUtil.padMantissa("<2.5e-3", 2));
+        assertEquals("12.50", StringUtil.padMantissa("12.5", 2));
     }
 
     @Test
-    public void padExponentNotation_shouldPadOnlyTheMantissa() {
-        assertEquals("1.50e5", StringUtil.padExponentNotation("1.5e5", 2));
-        assertEquals("3.00e2", StringUtil.padExponentNotation("3e2", 2));
-        assertEquals("<2.50e-3", StringUtil.padExponentNotation("<2.5e-3", 2));
-        assertEquals("1.567e5", StringUtil.padExponentNotation("1.567e5", 2));
-        assertEquals("1.5e5", StringUtil.padExponentNotation("1.5e5", 0));
-        assertEquals("1.5e5", StringUtil.padExponentNotation("1.5e5", -1));
-        assertEquals("12.5", StringUtil.padExponentNotation("12.5", 2));
+    public void padMantissa_shouldLeaveAValueThatNeedsNoPaddingAlone() {
+        assertEquals("1.567e5", StringUtil.padMantissa("1.567e5", 2));
+        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", 0));
+        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", -1));
+        // A bare power of ten has no mantissa to pad.
+        assertEquals("10⁻³", StringUtil.padMantissa("10⁻³", 2));
+        assertEquals("10^-3", StringUtil.padMantissa("10^-3", 2));
+        assertEquals(null, StringUtil.padMantissa(null, 2));
     }
 
     @Test
-    public void isExponentNotation_shouldRecogniseCanonicalValuesWithAComparator() {
-        assertTrue(StringUtil.isExponentNotation("1.5e5"));
-        assertTrue(StringUtil.isExponentNotation("<1.5E-3"));
-        assertFalse(StringUtil.isExponentNotation("1.5×10⁵"));
-        assertFalse(StringUtil.isExponentNotation("150000"));
-        assertFalse(StringUtil.isExponentNotation(null));
+    public void isScientificNotation_shouldRecogniseEveryWrittenFormAndNothingElse() {
+        assertTrue(StringUtil.isScientificNotation("1.5e5"));
+        assertTrue(StringUtil.isScientificNotation("1.5E+05"));
+        assertTrue(StringUtil.isScientificNotation("1.5 x 10^5"));
+        assertTrue(StringUtil.isScientificNotation("1.5×10⁵"));
+        assertTrue(StringUtil.isScientificNotation("10⁻³"));
+        assertTrue(StringUtil.isScientificNotation("<1.5E-3"));
+        assertFalse(StringUtil.isScientificNotation("150000"));
+        assertFalse(StringUtil.isScientificNotation("3²"));
+        assertFalse(StringUtil.isScientificNotation("abc"));
+        assertFalse(StringUtil.isScientificNotation(null));
     }
 
     @Test

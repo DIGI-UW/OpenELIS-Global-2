@@ -127,7 +127,20 @@ public class Result extends EnumValueItemImpl {
         this.testResult.setValue(testResult);
     }
 
+    /**
+     * The value in a form every numeric parser accepts. A numeric result typed in
+     * written scientific notation is stored as the technologist wrote it, and reads
+     * back here as canonical e-notation, so a caller handing it to
+     * {@link Double#parseDouble(String)}, to a SQL cast or to the FHIR interface
+     * always gets a number. {@link #getEnteredValue()} returns what was typed,
+     * which is what the screens and the report display.
+     */
     public String getValue() {
+        return "N".equals(resultType) ? StringUtil.normalizeScientificNotation(value) : value;
+    }
+
+    /** The value exactly as it was entered, for display. */
+    public String getEnteredValue() {
         return value;
     }
 

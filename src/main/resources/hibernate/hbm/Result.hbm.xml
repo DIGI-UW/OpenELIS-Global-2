@@ -42,7 +42,10 @@
             lazy="false">
             <column name="RESULT_TYPE" length="1" />
         </property>
-        <property name="value" type="java.lang.String">
+        <!-- Field access: getValue() normalizes written scientific notation for
+             callers that parse it, and Hibernate must persist what was entered
+             rather than that normalized form. -->
+        <property name="value" type="java.lang.String" access="field">
             <column name="VALUE" length="200" />
         </property>
         <property name="minNormal" type="java.lang.Double"

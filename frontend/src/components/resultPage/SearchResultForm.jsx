@@ -58,7 +58,7 @@ import { classifyNumericResult, numericResultStyle } from "./numericResultFlag";
 import {
   exceedsDecimalPlaces,
   normalizeScientificNotation,
-  roundToDecimalPlaces,
+  roundMantissa,
 } from "./scientificNotation";
 import { FlagChip } from "./unified/flags";
 import "./unified/unified-results.scss";
@@ -2549,21 +2549,14 @@ export function SearchResults(props) {
       return { ...validation, isInvalid: true, isNaN: true };
     }
 
-    if (!isNaN(row.significantDigits)) {
-      if (exceedsDecimalPlaces(parseableValue, row.significantDigits)) {
-        parseableValue = roundToDecimalPlaces(
-          parseableValue,
-          row.significantDigits,
-        );
-      }
+    // The value is kept in the notation it was typed in; only a mantissa finer
+    // than the test reports to is rounded, and it is rounded in place.
+    if (exceedsDecimalPlaces(actualValue, row.significantDigits)) {
       validation = {
         ...validation,
-        newValue: greaterThanOrLessThan + parseableValue,
-      };
-    } else if (parseableValue !== actualValue) {
-      validation = {
-        ...validation,
-        newValue: greaterThanOrLessThan + parseableValue,
+        newValue:
+          greaterThanOrLessThan +
+          roundMantissa(actualValue, row.significantDigits),
       };
     }
 

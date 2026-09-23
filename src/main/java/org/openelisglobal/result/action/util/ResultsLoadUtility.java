@@ -1069,7 +1069,7 @@ public class ResultsLoadUtility {
         testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
         testItem.setResultValue(getFormattedResultValue(result));
-        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getValue()));
+        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
         // Display type selection:

@@ -115,6 +115,23 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getResultValue_showsTheNotationTheTechnologistWrote() {
+        assertEquals("1.50×10⁵", resultService.getResultValue(numericResult("1.5×10⁵", 2), ",", false, false));
+        assertEquals("1.50 x 10^5", resultService.getResultValue(numericResult("1.5 x 10^5", 2), ",", false, false));
+        assertEquals("1.50E+05", resultService.getResultValue(numericResult("1.5E+05", 2), ",", false, false));
+        assertEquals("10⁻³", resultService.getResultValue(numericResult("10⁻³", 2), ",", false, false));
+    }
+
+    @Test
+    public void getValue_readsBackAsANumberWhileTheEnteredFormIsKept() {
+        Result result = numericResult("1.5×10⁵", 2);
+
+        assertEquals("1.5e5", result.getValue());
+        assertEquals("1.5×10⁵", result.getEnteredValue());
+        assertEquals(150000d, Double.parseDouble(result.getValue()), 0.0001);
+    }
+
+    @Test
     public void getResultValue_stillPadsPlainDecimals() {
         assertEquals("12.50", resultService.getResultValue(numericResult("12.5", 2), ",", false, false));
         assertEquals("12", resultService.getResultValue(numericResult("12.5", 0), ",", false, false));

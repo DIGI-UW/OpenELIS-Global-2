@@ -1,14 +1,14 @@
 import {
   decimalPlaces,
   exceedsDecimalPlaces,
-  isExponentNotation,
+  isScientificNotation,
   normalizeScientificNotation,
-  roundToDecimalPlaces,
-  splitExponentNotation,
+  roundMantissa,
+  splitMantissa,
 } from "./scientificNotation";
 
 describe("normalizeScientificNotation", () => {
-  it("rewrites every written form as canonical e-notation", () => {
+  it("reads every written form as the same number", () => {
     expect(normalizeScientificNotation("1.5e5")).toBe("1.5e5");
     expect(normalizeScientificNotation("1.5E+05")).toBe("1.5e5");
     expect(normalizeScientificNotation("1.5 x 10^5")).toBe("1.5e5");
@@ -48,20 +48,43 @@ describe("normalizeScientificNotation", () => {
   });
 });
 
-describe("splitExponentNotation and isExponentNotation", () => {
-  it("splits canonical e-notation into mantissa and exponent", () => {
-    expect(splitExponentNotation("1.5e5")).toEqual({
+describe("isScientificNotation", () => {
+  it("recognises every written form and nothing else", () => {
+    expect(isScientificNotation("1.5e5")).toBe(true);
+    expect(isScientificNotation("1.5E+05")).toBe(true);
+    expect(isScientificNotation("1.5 x 10^5")).toBe(true);
+    expect(isScientificNotation("1.5×10⁵")).toBe(true);
+    expect(isScientificNotation("10⁻³")).toBe(true);
+    expect(isScientificNotation("<1.5e-3")).toBe(true);
+    expect(isScientificNotation("150000")).toBe(false);
+    expect(isScientificNotation("3²")).toBe(false);
+    expect(isScientificNotation(null)).toBe(false);
+  });
+});
+
+describe("splitMantissa", () => {
+  it("separates the mantissa from the notation around it", () => {
+    expect(splitMantissa("1.5×10⁵")).toEqual({
+      prefix: "",
       mantissa: "1.5",
-      exponent: "5",
+      rest: "×10⁵",
     });
-    expect(splitExponentNotation("-2E-3")).toEqual({
-      mantissa: "-2",
-      exponent: "-3",
+    expect(splitMantissa("<2.5e-3")).toEqual({
+      prefix: "<",
+      mantissa: "2.5",
+      rest: "e-3",
     });
-    expect(splitExponentNotation("150000")).toBeNull();
-    expect(splitExponentNotation("1.5×10⁵")).toBeNull();
-    expect(isExponentNotation("1.5e5")).toBe(true);
-    expect(isExponentNotation("12.5")).toBe(false);
+    expect(splitMantissa("12.5")).toEqual({
+      prefix: "",
+      mantissa: "12.5",
+      rest: "",
+    });
+  });
+
+  it("reports no mantissa for a bare power of ten", () => {
+    expect(splitMantissa("10⁻³")).toBeNull();
+    expect(splitMantissa("10^-3")).toBeNull();
+    expect(splitMantissa("abc")).toBeNull();
   });
 });
 
@@ -72,10 +95,11 @@ describe("decimalPlaces", () => {
     expect(decimalPlaces("5.1234")).toBe(4);
   });
 
-  it("counts the mantissa's places for e-notation", () => {
+  it("counts the mantissa's places whatever the notation", () => {
     expect(decimalPlaces("1.5e5")).toBe(1);
+    expect(decimalPlaces("1.5×10⁵")).toBe(1);
+    expect(decimalPlaces("3.567 x 10^3")).toBe(3);
     expect(decimalPlaces("3e2")).toBe(0);
-    expect(decimalPlaces("1.25e-7")).toBe(2);
   });
 });
 
@@ -88,15 +112,15 @@ describe("exceedsDecimalPlaces", () => {
   });
 
   it("compares the mantissa's places when the test reports decimals", () => {
-    expect(exceedsDecimalPlaces("1.5e1", 1)).toBe(false);
-    expect(exceedsDecimalPlaces("1.55e1", 1)).toBe(true);
-    expect(exceedsDecimalPlaces("1.234e5", 2)).toBe(true);
+    expect(exceedsDecimalPlaces("1.5×10¹", 1)).toBe(false);
+    expect(exceedsDecimalPlaces("1.55×10¹", 1)).toBe(true);
+    expect(exceedsDecimalPlaces("3.567 x 10^3", 2)).toBe(true);
     expect(exceedsDecimalPlaces("1.5e-7", 2)).toBe(false);
   });
 
   it("does not constrain a mantissa for a whole-number test", () => {
     expect(exceedsDecimalPlaces("1.5e5", 0)).toBe(false);
-    expect(exceedsDecimalPlaces("1.234e5", 0)).toBe(false);
+    expect(exceedsDecimalPlaces("1.234×10⁵", 0)).toBe(false);
   });
 
   it("says nothing when the test declares no precision", () => {
@@ -106,15 +130,20 @@ describe("exceedsDecimalPlaces", () => {
   });
 });
 
-describe("roundToDecimalPlaces", () => {
-  it("rounds the mantissa and keeps the power of ten", () => {
-    expect(roundToDecimalPlaces("1.567e5", 2)).toBe("1.57e5");
-    expect(roundToDecimalPlaces("1.5e-7", 2)).toBe("1.50e-7");
-    expect(roundToDecimalPlaces("2.25e3", 0)).toBe("2e3");
+describe("roundMantissa", () => {
+  it("rounds in place, leaving the notation exactly as written", () => {
+    expect(roundMantissa("3.567 x 10^3", 2)).toBe("3.57 x 10^3");
+    expect(roundMantissa("1.567×10⁵", 2)).toBe("1.57×10⁵");
+    expect(roundMantissa("1.567E+05", 2)).toBe("1.57E+05");
+    expect(roundMantissa("<1.567e-7", 2)).toBe("<1.57e-7");
   });
 
   it("rounds a plain decimal as before", () => {
-    expect(roundToDecimalPlaces("3.456", 1)).toBe("3.5");
-    expect(roundToDecimalPlaces("12.5", 0)).toBe("13");
+    expect(roundMantissa("3.456", 1)).toBe("3.5");
+    expect(roundMantissa("12.5", 0)).toBe("13");
+  });
+
+  it("leaves a bare power of ten alone", () => {
+    expect(roundMantissa("10⁻³", 2)).toBe("10⁻³");
   });
 });

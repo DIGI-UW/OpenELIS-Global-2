@@ -66,6 +66,14 @@ public class StringUtil {
      */
     private static final Pattern TIMES_TEN_NOTATION_REG_EX = Pattern.compile("^(?:(" + DECIMAL_MANTISSA
             + ")\\s*[xX×*]\\s*)?([+-]?)10\\s*(?:\\^\\s*([+-]?\\d+)|([⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+))$");
+    /**
+     * A written value split into its comparator, its mantissa and everything after
+     * it.
+     */
+    private static final Pattern MANTISSA_SPLIT_REG_EX = Pattern.compile("^([<>]?\\s*)(" + DECIMAL_MANTISSA + ")(.*)$");
+    /** A power of ten carrying no mantissa of its own, such as 10^-3 or 10⁻³. */
+    private static final Pattern BARE_TEN_REG_EX = Pattern
+            .compile("^[+-]?10\\s*(?:\\^\\s*[+-]?\\d+|[⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+)$");
 
     public enum EncodeContext {
         JAVASCRIPT, HTML
@@ -753,49 +761,36 @@ public class StringUtil {
 
     /**
      * Whether the value, after an optional leading {@code <} or {@code >}, is
-     * written in e-notation such as {@code 1.5e5}.
+     * written in scientific notation in any of the accepted forms: {@code 1.5e5},
+     * {@code 1.5E+05}, {@code 1.5 x 10^5}, {@code 1.5×10⁵}, {@code 10⁻³}. A plain
+     * decimal is not.
      */
-    public static boolean isExponentNotation(String value) {
+    public static boolean isScientificNotation(String value) {
         if (value == null) {
             return false;
         }
-        String trimmed = value.trim();
-        return EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparatorPrefix(trimmed).length()).trim()).matches();
+        String number = withoutComparator(value);
+        return EXPONENT_NOTATION_REG_EX.matcher(number).matches()
+                || TIMES_TEN_NOTATION_REG_EX.matcher(number).matches();
     }
 
     /**
-     * A numeric result value as it is stored: written scientific notation becomes
-     * canonical e-notation and a leading {@code <} or {@code >} is kept. Anything
-     * else, plain decimals included, is returned exactly as given.
+     * Pads the mantissa with zeros up to the decimal places the test reports to,
+     * leaving the notation the technologist wrote exactly as they wrote it: at two
+     * places {@code 1.5×10⁵} prints as {@code 1.50×10⁵} and {@code 7.5 x 10^0} as
+     * {@code 7.50 x 10^0}. A mantissa already that precise, a value written as a
+     * bare power of ten such as {@code 10⁻³}, and a test reporting no decimals are
+     * all returned unchanged.
      */
-    public static String normalizeNumericResultValue(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return value;
-        }
-        String trimmed = value.trim();
-        String comparator = comparatorPrefix(trimmed);
-        String number = trimmed.substring(comparator.length()).trim();
-        String normalized = normalizeScientificNotation(number);
-        return normalized.equals(number) ? value : comparator + normalized;
-    }
-
-    /**
-     * Pads the mantissa of an e-notation value with zeros up to the configured
-     * decimal places, so {@code 1.5e5} reported to two places prints as
-     * {@code 1.50e5}. A mantissa already carrying that many places, and any value
-     * not in e-notation, is returned unchanged.
-     */
-    public static String padExponentNotation(String value, int decimalPlaces) {
+    public static String padMantissa(String value, int decimalPlaces) {
         if (value == null || decimalPlaces <= 0) {
             return value;
         }
-        String trimmed = value.trim();
-        String comparator = comparatorPrefix(trimmed);
-        Matcher exponent = EXPONENT_NOTATION_REG_EX.matcher(trimmed.substring(comparator.length()).trim());
-        if (!exponent.matches()) {
+        Matcher parts = MANTISSA_SPLIT_REG_EX.matcher(value.trim());
+        if (!parts.matches() || BARE_TEN_REG_EX.matcher(withoutComparator(value)).matches()) {
             return value;
         }
-        StringBuilder mantissa = new StringBuilder(exponent.group(1));
+        StringBuilder mantissa = new StringBuilder(parts.group(2));
         int dot = mantissa.indexOf(".");
         if (dot < 0) {
             mantissa.append('.');
@@ -804,7 +799,13 @@ public class StringUtil {
         for (int places = mantissa.length() - dot - 1; places < decimalPlaces; places++) {
             mantissa.append('0');
         }
-        return comparator + mantissa + "e" + exponent.group(2);
+        return parts.group(1) + mantissa + parts.group(3);
+    }
+
+    /** The value without a leading {@code <} or {@code >} and surrounding space. */
+    private static String withoutComparator(String value) {
+        String trimmed = value.trim();
+        return trimmed.substring(comparatorPrefix(trimmed).length()).trim();
     }
 
     private static String comparatorPrefix(String value) {

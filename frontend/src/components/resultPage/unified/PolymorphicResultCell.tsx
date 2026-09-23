@@ -58,7 +58,7 @@ export interface ResultCellRow {
  * constrain a mantissa: 1.5e5 is a whole number.
  */
 export function enteredDecimalPlaces(value: string): number {
-  return decimalPlaces(normalizeScientificNotation(value));
+  return decimalPlaces(value);
 }
 
 export function exceedsConfiguredPrecision(
@@ -68,10 +68,9 @@ export function exceedsConfiguredPrecision(
   if (!value || significantDigits === undefined || significantDigits < 0) {
     return false;
   }
-  const normalized = normalizeScientificNotation(value);
   return (
-    Number.isFinite(Number(normalized)) &&
-    exceedsDecimalPlaces(normalized, significantDigits)
+    Number.isFinite(Number(normalizeScientificNotation(value))) &&
+    exceedsDecimalPlaces(value, significantDigits)
   );
 }
 

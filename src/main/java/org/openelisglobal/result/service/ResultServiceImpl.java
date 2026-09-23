@@ -150,8 +150,8 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return getDictEntry(result);
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isExponentNotation(result.getValue())) {
-                return StringUtil.padExponentNotation(result.getValue(), significantPlaces);
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces);
             }
             if (significantPlaces == 0) {
                 return result.getValue().split("\\.")[0];
@@ -265,8 +265,8 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isExponentNotation(result.getValue())) {
-                return StringUtil.padExponentNotation(result.getValue(), significantPlaces)
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
                         + appendUOM(result, includeUOM);
             }
             if (significantPlaces == -1) {
@@ -368,8 +368,8 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isExponentNotation(result.getValue())) {
-                return StringUtil.padExponentNotation(result.getValue(), significantPlaces)
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
                         + appendUOM(result, includeUOM);
             }
             if (significantPlaces == -1) {

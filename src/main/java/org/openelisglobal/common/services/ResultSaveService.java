@@ -308,16 +308,27 @@ public class ResultSaveService {
     }
 
     private void setStandardResultValues(String value, Result result) {
-        if ("N".equals(result.getResultType())) {
-            value = StringUtil.normalizeNumericResultValue(value);
-        }
-        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getValue()))
-                && !StringUtil.blankIfNull(value).equals(result.getValue())) {
+        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getEnteredValue()))
+                && !isSameValue(value, result)) {
             updatedResult = true;
         }
         result.setValue(value);
         result.setSysUserId(currentUserId);
         result.setSortOrder("0");
+    }
+
+    /**
+     * A numeric result rewritten in another scientific notation is the same result,
+     * so it must not book a correction against a report that has already gone out.
+     */
+    private boolean isSameValue(String value, Result result) {
+        String entered = StringUtil.blankIfNull(result.getEnteredValue());
+        String incoming = StringUtil.blankIfNull(value);
+        if ("N".equals(result.getResultType())) {
+            return StringUtil.normalizeScientificNotation(incoming.trim())
+                    .equals(StringUtil.normalizeScientificNotation(entered.trim()));
+        }
+        return incoming.equals(entered);
     }
 
     private String getResultSortOrder(String resultValue, String componentId) {
