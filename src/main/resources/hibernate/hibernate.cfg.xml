@@ -37,8 +37,6 @@
         <mapping resource="hibernate/hbm/CityStateZip.hbm.xml" />
         <mapping resource="hibernate/hbm/CityView.hbm.xml" />
         <mapping resource="hibernate/hbm/StateView.hbm.xml" />
-        <mapping resource="hibernate/hbm/County.hbm.xml" />
-        <mapping resource="hibernate/hbm/Label.hbm.xml" />
         <mapping resource="hibernate/hbm/Method.hbm.xml" />
         <mapping resource="hibernate/hbm/Note.hbm.xml" />
         <mapping resource="hibernate/hbm/Organization.hbm.xml" />
@@ -121,8 +119,6 @@
             resource="hibernate/hbm/OrganizationHL7Schema.hbm.xml" />
         <mapping resource="hibernate/hbm/TestCode.hbm.xml" />
         <mapping resource="hibernate/hbm/RequesterType.hbm.xml" />
-        <mapping resource="hibernate/hbm/AddressPart.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/PersonAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationContact.hbm.xml" />
         <mapping resource="hibernate/hbm/Menu.hbm.xml" />
@@ -138,7 +134,6 @@
         <mapping resource="hibernate/hbm/TestDictionary.hbm.xml" />
         <mapping resource="hibernate/hbm/Image.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferringTestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/BarcodeLabelInfo.hbm.xml" />
         <mapping resource="hibernate/hbm/HL7MessageOut.hbm.xml" />
         <mapping resource="hibernate/hbm/DataIndicator.hbm.xml" />
         <mapping resource="hibernate/hbm/DataResource.hbm.xml" />
