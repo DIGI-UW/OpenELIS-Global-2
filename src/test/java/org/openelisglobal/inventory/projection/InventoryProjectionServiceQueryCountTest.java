@@ -19,6 +19,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.service.InventoryOrderCycleService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -41,6 +42,9 @@ public class InventoryProjectionServiceQueryCountTest {
 
     @Mock
     private InventoryItemService inventoryItemService;
+
+    @Mock
+    private InventoryOrderCycleService inventoryOrderCycleService;
 
     @Mock
     private InventoryLotService inventoryLotService;

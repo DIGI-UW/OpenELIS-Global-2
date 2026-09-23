@@ -112,3 +112,15 @@
     min-width: unset;
   }
 }
+
+/* An inline hint beside a field: what the deliveries showed, and one click to
+   take it. Never applied automatically — the lab's own value wins. */
+.inventory-item-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #525252;
+}

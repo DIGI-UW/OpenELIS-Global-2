@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryItemService inventoryItemService;
+
+    @Autowired
+    private InventoryOrderCycleService inventoryOrderCycleService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
@@ -257,7 +262,49 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         transactionService.recordTransaction(savedLot.getId(), TransactionType.RECEIPT, savedLot.getCurrentQuantity(),
                 savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
 
+        closeOrderCycle(managedItem, sysUserId);
+
         return savedLot;
+    }
+
+    /**
+     * If this item was marked as ordered, the stock arriving is that order
+     * arriving: write down how long it took and take the mark off.
+     *
+     * <p>
+     * This is the only moment the elapsed time is knowable.
+     * {@code inventory_item.ordered_at} holds a single mark, and the next mark
+     * replaces it, so a cycle not recorded here is lost rather than deferred.
+     *
+     * <p>
+     * Both ends are stamps this module made itself. The lot's receipt date is not
+     * used: it is overwritten with the server clock on every receive, so it records
+     * when somebody typed the delivery in, and every lot carried over from the old
+     * schema shares the single timestamp of the migration run.
+     */
+    private void closeOrderCycle(InventoryItem item, String sysUserId) {
+        Timestamp orderedAt = item.getOrderedAt();
+        if (orderedAt == null) {
+            return;
+        }
+        Timestamp receivedAt = new Timestamp(System.currentTimeMillis());
+
+        InventoryOrderCycle cycle = new InventoryOrderCycle();
+        cycle.setInventoryItem(item);
+        cycle.setOrderedAt(orderedAt);
+        cycle.setReceivedAt(receivedAt);
+        // Whole days, floored: an order placed on Monday and received on Tuesday
+        // afternoon took one day, not two.
+        cycle.setLeadTimeDays((int) Duration.between(orderedAt.toInstant(), receivedAt.toInstant()).toDays());
+        cycle.setSysUserId(sysUserId);
+        inventoryOrderCycleService.insert(cycle);
+
+        // The order is no longer outstanding, so the board should stop saying it is.
+        item.setOrderedAt(null);
+        item.setOrderNote(null);
+        item.setOrderExpectedDate(null);
+        item.setSysUserId(sysUserId);
+        inventoryItemService.update(item);
     }
 
     /**

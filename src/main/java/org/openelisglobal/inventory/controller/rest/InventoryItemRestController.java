@@ -177,6 +177,10 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setManufacturer(item.getManufacturer());
             existingItem.setUnits(item.getUnits());
             existingItem.setLowStockThreshold(item.getLowStockThreshold());
+            // Absent from this whitelist until now, so an edit returned 200 and silently
+            // persisted nothing while create worked — the column existed and the board
+            // displayed it, but nothing could change it.
+            existingItem.setLeadTimeDays(item.getLeadTimeDays());
 
             // Type-specific fields
             existingItem.setStabilityAfterOpening(item.getStabilityAfterOpening());
