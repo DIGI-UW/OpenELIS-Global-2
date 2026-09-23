@@ -68,6 +68,7 @@ const PANEL = {
 const notification = {
   addNotification: vi.fn(),
   setNotificationVisible: vi.fn(),
+  notificationVisible: false,
 };
 
 const wrap = () =>
@@ -117,6 +118,41 @@ describe("PanelEditor shell (OGC-224 C2)", () => {
         ([url]) => !url.startsWith("/rest/test-catalog/panels/new"),
       ),
     ).toBe(true);
+  });
+
+  it("renders the notification dialog so the sections' messages reach the operator (OGC-1232)", async () => {
+    // Without this the panel editor raised every message — refusals included —
+    // into a dialog no screen rendered, so they were invisible.
+    const { unmount } = wrap();
+    await screen.findByTestId("panel-editor-title");
+    expect(document.querySelector(".cds--toast-notification")).toBeNull();
+    unmount();
+
+    render(
+      <BrowserRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{
+              ...notification,
+              notificationVisible: true,
+              notifications: [
+                {
+                  kind: "error",
+                  title: "Notification",
+                  message: messages["error.panel.nameRequired"],
+                },
+              ],
+              removeNotification: vi.fn(),
+            }}
+          >
+            <PanelEditor />
+          </NotificationContext.Provider>
+        </IntlProvider>
+      </BrowserRouter>,
+    );
+    expect(
+      await screen.findByText(messages["error.panel.nameRequired"]),
+    ).toBeInTheDocument();
   });
 
   it("canonicalizes an unknown section to basic-info", async () => {

@@ -198,6 +198,14 @@ test.describe("Panel domain writes (OGC-1232)", () => {
     expect(body.domainConflict.domain).toBe("ENVIRONMENTAL");
     expect(offenders.map((t) => t.testId)).toContain(String(member.testId));
 
+    // The editor's own notification reaches the operator: the shell has to
+    // render the dialog its sections raise messages into (OGC-1232).
+    await expect(
+      page
+        .locator(".cds--toast-notification")
+        .filter({ hasText: "This panel cannot be filed under Environmental" }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
+
     // The screen: an explanation that names the test, beside the domain radios.
     const explanation = page.getByTestId("panel-domain-conflict");
     await expect(explanation).toBeVisible({ timeout: UI_TIMEOUT });
