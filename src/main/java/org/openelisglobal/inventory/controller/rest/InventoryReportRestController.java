@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.exception.LocalizedValidationException;
@@ -17,6 +18,7 @@ import org.openelisglobal.inventory.report.InventoryReportWriter;
 import org.openelisglobal.inventory.report.ReportTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,9 +42,7 @@ public class InventoryReportRestController {
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
             @RequestParam(required = false, defaultValue = "true") boolean includeExpired,
-            @RequestParam(required = false, defaultValue = "false") boolean groupByType,
-            @RequestParam(required = false, defaultValue = "false") boolean groupByLocation,
-            HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) List<String> tags, HttpServletResponse response) throws IOException {
         try {
             ReportTable table;
             try {
@@ -50,10 +50,8 @@ public class InventoryReportRestController {
                     throw new LocalizedValidationException("reports.error.unknownExportFormat",
                             "Unknown export format: " + exportFormat);
                 }
-                InventoryReportRequest request = new InventoryReportRequest(reportType, exportFormat,
-                        parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, groupByType,
-                        groupByLocation);
-                table = inventoryReportService.generateReport(request);
+                table = inventoryReportService.generateReport(new InventoryReportRequest(reportType, exportFormat,
+                        parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, tags));
             } catch (LocalizedValidationException e) {
                 sendValidationError(response, e);
                 return;
@@ -89,6 +87,29 @@ public class InventoryReportRestController {
     }
 
     /**
+     * The same table {@link #generate} would export, as JSON, so the screen can
+     * show a report before anyone downloads it. Both are wanted; the export path
+     * streams a file and cannot also answer the page.
+     */
+    @PostMapping("/rest/inventory/reports/preview")
+    public ResponseEntity<Object> preview(@RequestParam String reportType,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(required = false, defaultValue = "true") boolean includeExpired,
+            @RequestParam(required = false) List<String> tags) {
+        try {
+            return ResponseEntity.ok(inventoryReportService.generateReport(new InventoryReportRequest(reportType, "CSV",
+                    parseStartDate(startDate), parseEndDate(endDate), includeInactive, includeExpired, tags)));
+        } catch (LocalizedValidationException e) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", e.getMessage());
+            body.put("errorCode", e.getErrorCode());
+            body.put("params", e.getParams());
+            return ResponseEntity.badRequest().body(body);
+        }
+    }
+
+    /**
      * Same {message, errorCode, params} body as
      * {@link InventoryItemRestController}.
      */
@@ -108,12 +129,14 @@ public class InventoryReportRestController {
     }
 
     /**
-     * The consuming queries use an inclusive {@code BETWEEN}, so an end date left
-     * at midnight would drop the whole last day.
+     * The end of the range is the start of the day after the one the user picked,
+     * and every consuming query is half-open, so the picked day is included whole.
+     * Widening to 23:59:59.999 instead would drop whatever a microsecond-precision
+     * column recorded in the last millisecond of the day.
      */
     private Timestamp parseEndDate(String value) {
         LocalDate date = parseLocalDate(value);
-        return date == null ? null : Timestamp.valueOf(date.atTime(23, 59, 59, 999_000_000));
+        return date == null ? null : Timestamp.valueOf(date.plusDays(1).atStartOfDay());
     }
 
     private LocalDate parseLocalDate(String value) {
