@@ -5,10 +5,8 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
@@ -77,14 +75,9 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before) {
-        return resultDAO.findLatestAcceptedBefore(instrumentId, testId, before);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before) {
-        return resultDAO.findLatestAcceptedBenchResultBefore(testSectionId, testId, before);
+    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testSectionId, String testId,
+            Timestamp before) {
+        return resultDAO.findLatestAcceptedBefore(instrumentId, testSectionId, testId, before);
     }
 
     @Override
@@ -117,20 +110,8 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         }
 
         // Retrieve control lot (compile data within transaction per Constitution IV.4)
-        Optional<QCControlLot> lotOpt = controlLotDAO.get(controlLotId);
-        if (!lotOpt.isPresent()) {
-            throw new IllegalArgumentException("Control lot not found: " + controlLotId);
-        }
-
-        QCControlLot controlLot = lotOpt.get();
-        String status = controlLot.getStatus();
-        boolean isEstablishment = "ESTABLISHMENT".equals(status);
-
-        // Allow ACTIVE and ESTABLISHMENT; reject everything else (EXPIRED, ARCHIVED)
-        if (!"ACTIVE".equals(status) && !isEstablishment) {
-            throw new IllegalArgumentException(
-                    "Control lot is not active: " + controlLotId + " (status: " + status + ")");
-        }
+        QCControlLot controlLot = requireUsableLot(controlLotId);
+        boolean isEstablishment = "ESTABLISHMENT".equals(controlLot.getStatus());
 
         // Retrieve latest statistics for z-score calculation
         QCStatistics statistics = statisticsDAO.findLatestByControlLot(controlLotId);
@@ -165,12 +146,6 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         String id = resultDAO.insert(result);
         LogEvent.logInfo(this.getClass().getName(), "createQCResult", "Created QC result: " + id);
 
-        // Retrieve persisted result
-        Optional<QCResult> persistedResult = resultDAO.get(id);
-        if (!persistedResult.isPresent()) {
-            throw new LIMSRuntimeException("Failed to retrieve persisted QC result: " + id);
-        }
-
         // During establishment, try to compute statistics now that we have a new
         // result.
         // If enough results have accumulated for the rolling window, compute stats
@@ -184,31 +159,27 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
             recalculateRollingStatistics(controlLot, sysUserId);
         }
 
-        // Only publish event for rule evaluation when the lot is ACTIVE and
-        // the result has a z-score. During establishment there are no
-        // meaningful statistics to evaluate rules against.
-        if ("ACTIVE".equals(controlLot.getStatus()) && persistedResult.get().getZScore() != null) {
-            eventPublisher.publishEvent(new QCResultCreatedEvent(this, persistedResult.get()));
-        }
+        publishForRuleEvaluation(controlLot, result);
 
-        return persistedResult.get();
+        return result;
     }
 
     /**
      * Record a bench control run (OGC-1147). See
      * {@link QCResultService#createBenchQCResult(BenchQCCaptureForm, int)} for the
-     * contract; this method deliberately mirrors the ASTM path above rather than
-     * refactoring it, so the shipped analyzer flow is untouched.
+     * contract. The lot gate, the persist step and the rule-evaluation gate are
+     * shared with the ASTM path above; the field set and the technician's own
+     * verdict are what differ.
      */
     @Override
     @Transactional
     public QCResult createBenchQCResult(BenchQCCaptureForm capture, int sysUserId) throws IllegalArgumentException {
 
-        QCSource source = capture.getSource();
+        QCSource source = capture.source();
         if (source == null || !source.isBenchEntered()) {
             throw new IllegalArgumentException("Bench capture requires source MANUAL or RDT, got: " + source);
         }
-        QCQualitativeOutcome outcome = capture.getQualitativeOutcome();
+        QCQualitativeOutcome outcome = capture.qualitativeOutcome();
         if (outcome == null) {
             throw new IllegalArgumentException("Bench capture requires a qualitative outcome");
         }
@@ -219,7 +190,7 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
             throw new IllegalArgumentException("Outcome " + outcome + " is not valid for source " + source);
         }
 
-        BigDecimal resultValue = capture.getResultValue();
+        BigDecimal resultValue = capture.resultValue();
         if (source.isQuantitative() && resultValue == null) {
             throw new IllegalArgumentException("A " + source + " control requires a measured value");
         }
@@ -232,14 +203,8 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         // but is what makes a manual quantitative run plottable, so validate it when
         // present.
         QCControlLot controlLot = null;
-        if (capture.getControlLotId() != null) {
-            controlLot = controlLotDAO.get(capture.getControlLotId()).orElseThrow(
-                    () -> new IllegalArgumentException("Control lot not found: " + capture.getControlLotId()));
-            String status = controlLot.getStatus();
-            if (!"ACTIVE".equals(status) && !"ESTABLISHMENT".equals(status)) {
-                throw new IllegalArgumentException(
-                        "Control lot is not usable: " + controlLot.getId() + " (status: " + status + ")");
-            }
+        if (capture.controlLotId() != null) {
+            controlLot = requireUsableLot(capture.controlLotId());
             // The UI only offers bench lots, but the API must refuse too: a bench
             // point recorded against an analyzer's lot enters that analyzer's
             // history and its multi-result Westgard windows.
@@ -262,27 +227,27 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
             }
         }
 
-        LocalDateTime runAt = capture.getRunDateTime() != null ? capture.getRunDateTime() : LocalDateTime.now();
+        LocalDateTime runAt = capture.runDateTime() != null ? capture.runDateTime() : LocalDateTime.now();
 
         QCResult result = new QCResult();
         result.setId(UUID.randomUUID().toString());
         result.setSource(source);
         result.setQualitativeOutcome(outcome);
-        result.setTestId(capture.getTestId());
-        result.setTestSectionId(capture.getTestSectionId());
-        result.setControlLotId(capture.getControlLotId());
-        result.setControlLabel(capture.getControlLabel());
+        result.setTestId(capture.testId());
+        result.setTestSectionId(capture.testSectionId());
+        result.setControlLotId(capture.controlLotId());
+        result.setControlLabel(capture.controlLabel());
         result.setResultValue(resultValue);
-        result.setUnitOfMeasure(resolveUnit(capture.getUnitOfMeasure(), capture.getTestId()));
-        result.setExpectedValue(capture.getExpectedValue());
-        result.setUncertainty(capture.getUncertainty());
+        result.setUnitOfMeasure(resolveUnit(capture.unitOfMeasure(), capture.testId()));
+        result.setExpectedValue(capture.expectedValue());
+        result.setUncertainty(capture.uncertainty());
         result.setZScore(zScore);
         result.setRunDateTime(Timestamp.valueOf(runAt));
         // The tech has already judged this run, so it is not PENDING evaluation the
         // way an analyzer result is: record their verdict directly.
         result.setResultStatus(outcome.isFailing() ? "REJECTED" : "ACCEPTED");
         result.setNonConformityFlag(outcome.isFailing());
-        result.setExternalNotes(capture.getNotes());
+        result.setExternalNotes(capture.notes());
         // The acting technician, not SYSTEM_AUTOMATION_USER_ID: this is the seam
         // that made a bench path impossible before OGC-1147.
         result.setSystemUserId(sysUserId);
@@ -293,24 +258,56 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         LogEvent.logInfo(this.getClass().getName(), "createBenchQCResult",
                 "Recorded " + source + " QC result " + id + " outcome=" + outcome);
 
-        QCResult persisted = resultDAO.get(id)
-                .orElseThrow(() -> new LIMSRuntimeException("Failed to retrieve persisted QC result: " + id));
-
-        // Identical gate to the analyzer path: only a lot with real statistics and a
-        // computed z-score reaches rule evaluation.
-        if (controlLot != null && "ACTIVE".equals(controlLot.getStatus()) && persisted.getZScore() != null) {
-            eventPublisher.publishEvent(new QCResultCreatedEvent(this, persisted));
-        }
-
-        // Raised as an after-commit event, never inline. Anything that throws while
-        // raising the signal would mark THIS transaction rollback-only, and catching it
-        // here would not undo that — the control result would be silently discarded by
-        // the very code meant to react to it. See BenchControlFailedEventListener.
+        // One run raises one signal. A failing control already carries the
+        // technician's own verdict, so it goes to the bench-failure route only:
+        // publishing the rule-evaluation event as well made a failing manual control
+        // that also tripped a Westgard rule produce two violations and two
+        // non-conformity events for the same run, since idempotency downstream is
+        // keyed per violation. An in-control run still goes to rule evaluation, which
+        // is where a statistically out-of-control point the technician passed is
+        // caught.
+        //
+        // The bench failure is raised as an after-commit event, never inline. Anything
+        // that throws while raising the signal would mark THIS transaction
+        // rollback-only, and catching it here would not undo that — the control result
+        // would be silently discarded by the very code meant to react to it. See
+        // BenchControlFailedEventListener.
         if (outcome.isFailing()) {
-            eventPublisher.publishEvent(new BenchControlFailedEvent(this, persisted));
+            eventPublisher.publishEvent(new BenchControlFailedEvent(this, result));
+        } else {
+            publishForRuleEvaluation(controlLot, result);
         }
 
-        return persisted;
+        return result;
+    }
+
+    /**
+     * Fetch a control lot and refuse one that cannot take a new run. ACTIVE and
+     * ESTABLISHMENT both accept results — an establishment lot simply has no
+     * statistics yet, so its runs carry no z-score. Everything else (EXPIRED,
+     * ARCHIVED) is rejected.
+     */
+    private QCControlLot requireUsableLot(String controlLotId) {
+        QCControlLot controlLot = controlLotDAO.get(controlLotId)
+                .orElseThrow(() -> new IllegalArgumentException("Control lot not found: " + controlLotId));
+        String status = controlLot.getStatus();
+        if (!"ACTIVE".equals(status) && !"ESTABLISHMENT".equals(status)) {
+            throw new IllegalArgumentException(
+                    "Control lot is not usable: " + controlLotId + " (status: " + status + ")");
+        }
+        return controlLot;
+    }
+
+    /**
+     * Hand a persisted result to Westgard rule evaluation. Only a lot with
+     * established statistics and a result carrying a z-score qualifies: during
+     * establishment there are no meaningful statistics to evaluate rules against,
+     * and a qualitative run has no number to evaluate.
+     */
+    private void publishForRuleEvaluation(QCControlLot controlLot, QCResult result) {
+        if (controlLot != null && "ACTIVE".equals(controlLot.getStatus()) && result.getZScore() != null) {
+            eventPublisher.publishEvent(new QCResultCreatedEvent(this, result));
+        }
     }
 
     /**

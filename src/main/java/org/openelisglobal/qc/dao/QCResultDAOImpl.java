@@ -135,35 +135,29 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     }
 
     @Override
-    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before)
-            throws LIMSRuntimeException {
+    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testSectionId, String testId,
+            Timestamp before) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("instrumentId"), instrumentId), cb.equal(root.get("testId"), testId),
-                    cb.equal(root.get("resultStatus"), "ACCEPTED"), cb.lessThan(root.get("runDateTime"), before));
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("testId"), testId));
+            predicates.add(cb.equal(root.get("resultStatus"), "ACCEPTED"));
+            predicates.add(cb.lessThan(root.get("runDateTime"), before));
+            if (instrumentId != null) {
+                predicates.add(cb.equal(root.get("instrumentId"), instrumentId));
+            } else {
+                // A bench control has no analyzer, so the lab unit is the scope — and
+                // only bench-entered runs belong to it.
+                predicates.add(cb.equal(root.get("testSectionId"), testSectionId));
+                predicates.add(root.get("source").in(QCSource.BENCH_SOURCES));
+            }
+            cq.where(predicates.toArray(new Predicate[0]));
             cq.orderBy(cb.desc(root.get("runDateTime")));
             return entityManager.createQuery(cq).setMaxResults(1).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving latest accepted QC result before timestamp", e);
-        }
-    }
-
-    @Override
-    public List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before)
-            throws LIMSRuntimeException {
-        try {
-            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
-            Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(cb.equal(root.get("testSectionId"), testSectionId), cb.equal(root.get("testId"), testId),
-                    root.get("source").in(QCSource.MANUAL, QCSource.RDT),
-                    cb.equal(root.get("resultStatus"), "ACCEPTED"), cb.lessThan(root.get("runDateTime"), before));
-            cq.orderBy(cb.desc(root.get("runDateTime")));
-            return entityManager.createQuery(cq).setMaxResults(1).getResultList();
-        } catch (RuntimeException e) {
-            throw new LIMSRuntimeException("Error retrieving latest accepted bench QC result before timestamp", e);
         }
     }
 
@@ -190,7 +184,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
                 + " GROUP BY r.testSectionId, r.testId, r.source ORDER BY MAX(r.runDateTime) DESC";
         try {
             var query = entityManager.createQuery(hql, Object[].class);
-            query.setParameter("sources", source == null ? List.of(QCSource.MANUAL, QCSource.RDT) : List.of(source));
+            query.setParameter("sources", source == null ? QCSource.BENCH_SOURCES : List.of(source));
             query.setParameter("failing", List.of(QCQualitativeOutcome.FAIL, QCQualitativeOutcome.INVALID));
             query.setParameter("startDate", startDate);
             query.setParameter("endDate", endDate);
@@ -218,7 +212,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
             Root<QCResult> root = cq.from(QCResult.class);
-            cq.where(root.get("source").in(source == null ? List.of(QCSource.MANUAL, QCSource.RDT) : List.of(source)),
+            cq.where(root.get("source").in(source == null ? QCSource.BENCH_SOURCES : List.of(source)),
                     cb.greaterThanOrEqualTo(root.get("runDateTime"), startDate),
                     cb.lessThan(root.get("runDateTime"), endDate));
             cq.orderBy(cb.desc(root.get("runDateTime")));

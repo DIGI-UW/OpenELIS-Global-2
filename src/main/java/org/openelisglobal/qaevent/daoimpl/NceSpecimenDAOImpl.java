@@ -7,6 +7,7 @@ import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.qaevent.dao.NceSpecimenDAO;
+import org.openelisglobal.qaevent.service.QcViolationNceServiceImpl;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implements NceSpecimenDAO {
 
     /** NCE trigger sources that represent a QC failure holding patient results. */
-    private static final List<String> QC_TRIGGER_SOURCES = List.of("QC_VIOLATION", "QC_BENCH_CONTROL");
+    private static final List<String> QC_TRIGGER_SOURCES = List.of(
+            QcViolationNceServiceImpl.TRIGGER_SOURCE_QC_VIOLATION,
+            QcViolationNceServiceImpl.TRIGGER_SOURCE_BENCH_CONTROL);
 
     /** Statuses that end a hold. Anything else still counts as open. */
     private static final List<String> CLOSED_STATUSES = List.of("Closed", "Completed");

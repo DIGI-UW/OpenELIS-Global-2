@@ -1,6 +1,6 @@
 package org.openelisglobal.qaevent.qiconfig.breach;
 
-import java.math.BigDecimal;
+import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 
 /**
@@ -12,7 +12,10 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
  */
 public interface QiBreachNceService {
 
-    /** {@code unit} is the metric's display unit ("%" for rates, "h" for TAT). */
-    NcEvent createBreachNce(String indicatorKey, String periodKey, BigDecimal actualValue, BigDecimal actionThreshold,
-            String direction, String unit);
+    /**
+     * @param summary one sentence naming what breached by how much, as the
+     *                evaluator phrased it; it becomes the NCE description and the
+     *                history entry
+     */
+    NcEvent createBreachNce(QiIndicator indicator, String periodKey, String summary);
 }

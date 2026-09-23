@@ -1,6 +1,7 @@
 package org.openelisglobal.qaevent.qiconfig.dto;
 
 import java.math.BigDecimal;
+import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
 
 /**
  * OGC-709 — the resolved thresholds for one (indicator, test section) pair,
@@ -19,10 +20,11 @@ public class ResolvedConfig {
     private final boolean enabled;
     private final BigDecimal target;
     private final BigDecimal action;
-    private final String direction;
+    /** Serializes as its name, so the JSON reads the same as the old string. */
+    private final QiIndicator.Direction direction;
 
     public ResolvedConfig(String indicatorKey, boolean enabled, BigDecimal target, BigDecimal action,
-            String direction) {
+            QiIndicator.Direction direction) {
         this.indicatorKey = indicatorKey;
         this.enabled = enabled;
         this.target = target;
@@ -46,7 +48,7 @@ public class ResolvedConfig {
         return action;
     }
 
-    public String getDirection() {
+    public QiIndicator.Direction getDirection() {
         return direction;
     }
 }

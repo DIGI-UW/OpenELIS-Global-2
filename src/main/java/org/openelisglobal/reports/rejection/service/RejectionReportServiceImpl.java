@@ -2,15 +2,13 @@ package org.openelisglobal.reports.rejection.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.reports.qi.QiReportSupport;
 import org.openelisglobal.reports.rejection.bean.RejectionBreakdownResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionDetailResponse;
 import org.openelisglobal.reports.rejection.bean.RejectionHeatmapResponse;
@@ -78,8 +76,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
 
     @Override
     public RejectionSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         Object[] row = (Object[]) session.createNativeQuery("SELECT " + COUNT_COLUMNS + COHORT_FROM)
@@ -92,14 +90,14 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         RejectionSummaryResponse response = new RejectionSummaryResponse();
         response.setRejectedCount(rejected);
         response.setTotalCount(total);
-        response.setRatePercent(ratePercent(rejected, total));
+        response.setRatePercent(QiReportSupport.ratePercent(rejected, total));
         return response;
     }
 
     @Override
     public RejectionDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, int page, int pageSize) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         // Loads the whole window (rejections are rare, max 366 days) and pages in
@@ -133,11 +131,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             all.add(event);
         }
 
-        int fromIndex = Math.min(page * pageSize, all.size());
-        int toIndex = Math.min(fromIndex + pageSize, all.size());
-
         RejectionDetailResponse response = new RejectionDetailResponse();
-        response.setItems(all.subList(fromIndex, toIndex));
+        response.setItems(QiReportSupport.page(all, page, pageSize));
         response.setTotalCount(all.size());
         response.setPage(page);
         response.setPageSize(pageSize);
@@ -146,10 +141,10 @@ public class RejectionReportServiceImpl implements RejectionReportService {
 
     @Override
     public RejectionTrendResponse getTrend(LocalDate fromDate, LocalDate toDate, String interval) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
-        String unit = truncUnit(interval);
+        String unit = QiReportSupport.truncUnit(interval);
 
         @SuppressWarnings("unchecked")
         List<Object[]> buckets = session
@@ -163,10 +158,10 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             long total = ((Number) row[1]).longValue();
             long rejected = ((Number) row[2]).longValue();
             RejectionTrendResponse.TrendPoint point = new RejectionTrendResponse.TrendPoint();
-            point.setPeriod(periodKey(row[0], interval));
+            point.setPeriod(QiReportSupport.periodKey(row[0], interval));
             point.setRejectedCount(rejected);
             point.setTotalCount(total);
-            point.setRatePercent(ratePercent(rejected, total));
+            point.setRatePercent(QiReportSupport.ratePercent(rejected, total));
             points.add(point);
         }
 
@@ -177,8 +172,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
 
     @Override
     public RejectionBreakdownResponse getBreakdown(LocalDate fromDate, LocalDate toDate) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         RejectionBreakdownResponse response = new RejectionBreakdownResponse();
@@ -204,10 +199,10 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             RejectionBreakdownResponse.ReasonRow reasonRow = new RejectionBreakdownResponse.ReasonRow();
             reasonRow.setReason((String) row[0]);
             reasonRow.setCount(((Number) row[1]).longValue());
-            Double percent = ratePercent(reasonRow.getCount(), reasonTotal);
+            Double percent = QiReportSupport.ratePercent(reasonRow.getCount(), reasonTotal);
             reasonRow.setPercentOfRejections(percent);
             if (percent != null) {
-                cumulative = Math.min(100d, round2(cumulative + percent));
+                cumulative = Math.min(100d, QiReportSupport.round2(cumulative + percent));
                 reasonRow.setCumulativePercent(cumulative);
             }
             response.getReasons().add(reasonRow);
@@ -230,7 +225,7 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             testRow.setTestName((String) row[1]);
             testRow.setTotalCount(((Number) row[2]).longValue());
             testRow.setRejectedCount(((Number) row[3]).longValue());
-            testRow.setRatePercent(ratePercent(testRow.getRejectedCount(), testRow.getTotalCount()));
+            testRow.setRatePercent(QiReportSupport.ratePercent(testRow.getRejectedCount(), testRow.getTotalCount()));
             tests.add(testRow);
         }
         tests.sort((a, b) -> a.getRejectedCount() != b.getRejectedCount()
@@ -243,8 +238,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
 
     @Override
     public RejectionHeatmapResponse getHeatmap(LocalDate fromDate, LocalDate toDate) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         // Section falls back to the test's home section — dev/legacy analyses
@@ -271,46 +266,13 @@ public class RejectionReportServiceImpl implements RejectionReportService {
             cell.setSection((String) row[1]);
             cell.setTotalCount(((Number) row[2]).longValue());
             cell.setRejectedCount(((Number) row[3]).longValue());
-            cell.setRatePercent(ratePercent(cell.getRejectedCount(), cell.getTotalCount()));
+            cell.setRatePercent(QiReportSupport.ratePercent(cell.getRejectedCount(), cell.getTotalCount()));
             response.getCells().add(cell);
         }
         return response;
     }
 
-    private static String truncUnit(String interval) {
-        if (interval == null) {
-            return "day";
-        }
-        return switch (interval.toUpperCase()) {
-        case "WEEKLY" -> "week";
-        case "MONTHLY" -> "month";
-        default -> "day"; // DAILY + unknown, matching the TAT/amendment reports
-        };
-    }
-
-    private static String periodKey(Object truncatedBucket, String interval) {
-        LocalDate date = ((Timestamp) truncatedBucket).toLocalDateTime().toLocalDate();
-        if (interval == null)
-            interval = "DAILY";
-        return switch (interval.toUpperCase()) {
-        case "WEEKLY" -> date.getYear() + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-        case "MONTHLY" -> date.getYear() + "-" + String.format("%02d", date.getMonthValue());
-        default -> date.toString(); // DAILY
-        };
-    }
-
-    private static Double ratePercent(long part, long whole) {
-        if (whole == 0) {
-            return null;
-        }
-        return round2(part * 100.0 / whole);
-    }
-
-    private static double round2(double value) {
-        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
-    }
-
     private Long analysisRefTableId() {
-        return Long.valueOf(referenceTablesService.getReferenceTableByName("ANALYSIS").getId());
+        return QiReportSupport.refTableId(referenceTablesService, "ANALYSIS");
     }
 }

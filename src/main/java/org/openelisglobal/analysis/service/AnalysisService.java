@@ -195,6 +195,10 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     Panel getPanel(Analysis analysis);
 
+    /**
+     * The analysis's own section when one is assigned, else the test's home
+     * section. Null only when neither is known.
+     */
     TestSection getTestSection(Analysis analysis);
 
     List<Analysis> getAllAnalysisByTestsAndStatus(List<String> list, List<String> analysisStatusList,

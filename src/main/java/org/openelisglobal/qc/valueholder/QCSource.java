@@ -1,5 +1,8 @@
 package org.openelisglobal.qc.valueholder;
 
+import java.util.List;
+import java.util.Locale;
+
 /**
  * OGC-1147 — where a QC result came from, and the single source of truth for
  * that vocabulary. The {@code qc_result.source} CHECK constraint (changeset
@@ -24,6 +27,29 @@ public enum QCSource {
 
     /** Rapid diagnostic test control line: qualitative, never a number. */
     RDT;
+
+    /** Every bench-entered source, for queries that cover the bench as a whole. */
+    public static final List<QCSource> BENCH_SOURCES = List.of(MANUAL, RDT);
+
+    /**
+     * Resolve the {@code source} request parameter of the bench listings. Blank or
+     * {@code ALL} means every bench source, returned as null so a query can leave
+     * the filter off.
+     *
+     * @throws IllegalArgumentException if the text names no source at all, or names
+     *                                  the analyzer source, which belongs to the
+     *                                  instrument views rather than a bench listing
+     */
+    public static QCSource parseBenchFilter(String source) {
+        if (source == null || source.isBlank() || "ALL".equalsIgnoreCase(source)) {
+            return null;
+        }
+        QCSource parsed = QCSource.valueOf(source.toUpperCase(Locale.ROOT));
+        if (!parsed.isBenchEntered()) {
+            throw new IllegalArgumentException("Analyzer QC belongs to the instrument views, not the bench listing");
+        }
+        return parsed;
+    }
 
     /**
      * Whether results of this source are entered by a technician rather than

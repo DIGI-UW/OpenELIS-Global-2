@@ -20,15 +20,6 @@ public class CriticalCallbackDAOImpl extends BaseDAOImpl<CriticalCallback, Strin
 
     @Override
     @Transactional(readOnly = true)
-    public List<CriticalCallback> getByAnalysisId(String analysisId) {
-        String hql = "from CriticalCallback c where c.analysisId = :analysisId order by c.loggedAt desc";
-        Query<CriticalCallback> query = entityManager.unwrap(Session.class).createQuery(hql, CriticalCallback.class);
-        query.setParameter("analysisId", analysisId);
-        return query.list();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<String> getLoggedResultIds(Collection<String> resultIds) {
         if (resultIds == null || resultIds.isEmpty()) {
             return List.of();

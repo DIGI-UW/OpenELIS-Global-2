@@ -12,6 +12,12 @@ public interface AccreditingBodyService extends BaseObjectService<AccreditingBod
     List<AccreditingBodyView> getBodyViews();
 
     /**
+     * One body's view row — the same assembler {@link #getBodyViews()} uses, for a
+     * write response that has to echo the row it just changed.
+     */
+    AccreditingBodyView getBodyView(Long id);
+
+    /**
      * Portfolio counts + active body names, for the page banner and QA Overview.
      */
     AccreditationSummary getSummary();

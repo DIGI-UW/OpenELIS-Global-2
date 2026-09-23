@@ -3,17 +3,16 @@ package org.openelisglobal.qaevent.criticalcallback.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackDetailResponse;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback;
+import org.openelisglobal.reports.qi.QiReportRange;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -57,7 +56,7 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 @RequestMapping("/rest/critical-callback")
-@PreAuthorize("hasAuthority('qa.view.qi') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(QaPermissions.VIEW_QI)
 public class CriticalCallbackRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(CriticalCallbackRestController.class);
@@ -65,10 +64,6 @@ public class CriticalCallbackRestController extends BaseRestController {
     private static final Set<String> STATUSES = Set.of("CONFIRMED", "REACHED_NO_READBACK", "UNABLE_TO_REACH");
 
     private static final int RECIPIENT_NAME_MAX = 255;
-
-    private static final int MAX_PAGE_SIZE = 200;
-
-    private static final long MAX_DATE_RANGE_DAYS = 366;
 
     private final CriticalCallbackService callbackService;
 
@@ -110,7 +105,7 @@ public class CriticalCallbackRestController extends BaseRestController {
     @GetMapping("/summary")
     public CallbackSummaryResponse getSummary(@RequestParam String fromDate, @RequestParam String toDate,
             HttpServletRequest request) {
-        Range range = parseRange(fromDate, toDate);
+        QiReportRange range = QiReportRange.parse(fromDate, toDate);
 
         CallbackSummaryResponse response = callbackService.getSummary(range.from(), range.to());
 
@@ -124,9 +119,9 @@ public class CriticalCallbackRestController extends BaseRestController {
     public CallbackDetailResponse getDetail(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int pageSize,
             HttpServletRequest request) {
-        Range range = parseRange(fromDate, toDate);
-        page = Math.max(page, 0);
-        pageSize = pageSize < 1 ? 25 : Math.min(pageSize, MAX_PAGE_SIZE);
+        QiReportRange range = QiReportRange.parse(fromDate, toDate);
+        page = QiReportRange.clampPage(page);
+        pageSize = QiReportRange.clampPageSize(pageSize);
 
         CallbackDetailResponse response = callbackService.getDetail(range.from(), range.to(), page, pageSize);
 
@@ -134,31 +129,6 @@ public class CriticalCallbackRestController extends BaseRestController {
                 fromDate, toDate, page, pageSize, response.getTotalCount());
 
         return response;
-    }
-
-    private record Range(LocalDate from, LocalDate to) {
-    }
-
-    /**
-     * Shared range guard: ISO dates, from ≤ to, capped at 366 days; bad input →
-     * 400.
-     */
-    private static Range parseRange(String fromDate, String toDate) {
-        LocalDate from;
-        LocalDate to;
-        try {
-            from = LocalDate.parse(fromDate);
-            to = LocalDate.parse(toDate);
-        } catch (DateTimeParseException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid parameter: " + e.getMessage());
-        }
-        if (from.isAfter(to)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fromDate must not be after toDate");
-        }
-        if (ChronoUnit.DAYS.between(from, to) > MAX_DATE_RANGE_DAYS) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date range must not exceed 1 year");
-        }
-        return new Range(from, to);
     }
 
     /**
