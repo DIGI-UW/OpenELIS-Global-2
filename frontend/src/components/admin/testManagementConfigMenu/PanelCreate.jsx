@@ -1,8 +1,7 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
@@ -11,10 +10,11 @@ import {
   ListItem,
   TextInput,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -24,6 +24,8 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+
+const PANEL_CREATE_ENDPOINT = "/rest/PanelCreate";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -47,26 +49,15 @@ function PanelCreate() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(true);
   const [bothFilled, setBothFilled] = useState(false);
-  const [panelCreateList, setPanelCreateList] = useState({});
 
-  const componentMounted = useRef(false);
+  const { data: panelCreateList } = useServerData(PANEL_CREATE_ENDPOINT);
+  const invalidateServerData = useInvalidateServerData();
 
-  const handlePanelCreateList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setPanelCreateList(res);
-    }
-  };
-
-  const handlePanelCreateListCall = ({
-    englishLangPost,
-    frenchLangPost,
-    selectedSampleTypeId,
-    loincPost,
-  }) => {
+  const handlePanelCreateListCall = (
+    actions,
+    { englishLangPost, frenchLangPost, selectedSampleTypeId, loincPost },
+  ) => {
     postToOpenElisServerJsonResponse(
       "/rest/PanelCreate",
       JSON.stringify({
@@ -76,15 +67,14 @@ function PanelCreate() {
         panelLoinc: loincPost,
       }),
       (res) => {
-        handlePostPanelCreateListCallBack(res);
+        handlePostPanelCreateListCallBack(res, actions);
       },
     );
   };
 
-  const handlePostPanelCreateListCallBack = (res) => {
+  const handlePostPanelCreateListCallBack = (res, actions) => {
     if (res) {
       if (res) {
-        setIsLoading(false);
         addNotification({
           title: intl.formatMessage({
             id: "notification.title",
@@ -94,12 +84,13 @@ function PanelCreate() {
           }),
           kind: NotificationKinds.success,
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
+        actions.resetForm();
+        setBothFilled(false);
+        invalidateServerData();
         setNotificationVisible(true);
       }
     } else {
+      actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -147,24 +138,6 @@ function PanelCreate() {
   const validatePanelType = (name) => {
     return allPanels.some((panel) => panel?.panelName === name);
   };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/PanelCreate`, handlePanelCreateList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
 
   return (
     <>
@@ -224,7 +197,7 @@ function PanelCreate() {
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
               if (bothFilled) {
-                handlePanelCreateListCall(values);
+                handlePanelCreateListCall(actions, values);
               } else {
                 setBothFilled(true);
                 actions.setSubmitting(false);
@@ -239,6 +212,7 @@ function PanelCreate() {
               handleBlur,
               handleSubmit,
               isSubmitting,
+              resetForm,
             }) => (
               <Form onSubmit={handleSubmit}>
                 <Grid fullWidth={true}>
@@ -390,7 +364,8 @@ function PanelCreate() {
                       type="button"
                       kind="tertiary"
                       onClick={() => {
-                        window.location.reload();
+                        resetForm();
+                        setBothFilled(false);
                       }}
                     >
                       {bothFilled ? (

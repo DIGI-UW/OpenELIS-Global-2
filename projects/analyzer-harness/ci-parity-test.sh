@@ -15,7 +15,7 @@
 #   projects/analyzer-harness/ci-parity-test.sh --seed-only
 #   projects/analyzer-harness/ci-parity-test.sh --mode video
 #   projects/analyzer-harness/ci-parity-test.sh --project harness-demo-video
-#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/analyzer-demo-flow.spec.ts
+#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
 #   projects/analyzer-harness/ci-parity-test.sh --shard 2/2
 #   projects/analyzer-harness/ci-parity-test.sh --artifact-dir /tmp/oe-ci-parity
 
@@ -25,10 +25,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FRONTEND_DIR="$REPO_ROOT/frontend"
 source "$SCRIPT_DIR/compose-stack.sh"
+source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
-REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-analyzer-harness-reusable.yml"
+MVP_TRAFFIC_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-mvp-traffic.sh"
+FIXTURE_DB_TARGET_TEST="$REPO_ROOT/projects/analyzer-harness/scripts/test-fixture-loader-db-target.sh"
+REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
 SEED_ONLY=false
@@ -74,7 +77,7 @@ while [[ $# -gt 0 ]]; do
     --project)
       PLAYWRIGHT_PROJECT="${2:-}"
       if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-        echo "ERROR: --project requires value harness-demo|harness-demo-video" >&2
+        echo "ERROR: --project requires a harness Playwright project" >&2
         exit 2
       fi
       shift 2
@@ -265,89 +268,35 @@ collect_failure_artifacts() {
   fi
 }
 
-required_analyzers=(
-  "Cepheid GeneXpert (ASTM Mode)"
-  "QuantStudio 5"
-  "QuantStudio 7"
-  "FluoroCycler XT"
-  "Mindray BC-5380"
-  "Mindray BS-200"
-  "Mindray BS-300"
-)
-
-mapping_count_for_analyzer() {
-  local analyzer_name="$1"
-  docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
-    -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '${analyzer_name}';" \
-    2>/dev/null | tr -d '[:space:]' || echo 0
-}
-
-verify_required_mappings() {
-  local max_attempts=12
-  local sleep_seconds=5
-  local attempt=1
-  local missing=0
-  local mappings=0
-
-  while (( attempt <= max_attempts )); do
-    missing=0
-    echo "Verifying analyzer test mappings (attempt ${attempt}/${max_attempts})..." | tee -a "$RUN_LOG"
-    for analyzer in "${required_analyzers[@]}"; do
-      mappings="$(mapping_count_for_analyzer "$analyzer")"
-      mappings="${mappings:-0}"
-      echo "$analyzer: $mappings test mappings" | tee -a "$RUN_LOG"
-      if [[ "$mappings" == "0" ]]; then
-        missing=1
-      fi
-    done
-    if [[ "$missing" -eq 0 ]]; then
-      echo "Analyzer mapping gate passed." | tee -a "$RUN_LOG"
-      return 0
-    fi
-    if (( attempt < max_attempts )); then
-      echo "Mappings still missing; waiting ${sleep_seconds}s before retry..." | tee -a "$RUN_LOG"
-      sleep "$sleep_seconds"
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  echo "ERROR: Analyzer mapping gate failed. At least one required analyzer has 0 test mappings." | tee -a "$RUN_LOG"
-  return 1
-}
-
-verify_bridge_registry() {
-  local registry_file="$1"
-  if [[ ! -s "$registry_file" ]]; then
-    echo "ERROR: bridge registry capture failed or empty" | tee -a "$RUN_LOG"
+verify_analyzer_connections() {
+  local connections_file="$1"
+  if [[ ! -s "$connections_file" ]]; then
+    echo "ERROR: analyzer connection capture failed or empty" | tee -a "$RUN_LOG"
     return 1
   fi
 
   local missing
   missing="$(
-    python3 - "$registry_file" <<'PY'
+    python3 - "$connections_file" <<'PY'
 import json, sys
 try:
-    registry = json.load(open(sys.argv[1]))
+    response = json.load(open(sys.argv[1]))
 except Exception:
     print("__PARSE_ERROR__")
     raise SystemExit(0)
 
-if isinstance(registry, dict):
-    entries = [value for value in registry.values() if isinstance(value, dict)]
-elif isinstance(registry, list):
-    entries = [value for value in registry if isinstance(value, dict)]
-else:
-    entries = []
+entries = response.get("analyzers", []) if isinstance(response, dict) else []
 
-names = {item.get("name", "") for item in entries}
+names = {
+    item.get("name", "")
+    for item in entries
+    if item.get("connected") is True and item.get("bridgeConnectionId")
+}
 required = {
     "Cepheid GeneXpert (ASTM Mode)",
     "QuantStudio 5",
     "QuantStudio 7",
     "FluoroCycler XT",
-    "Mindray BC-5380",
-    "Mindray BS-200",
-    "Mindray BS-300",
 }
 missing = sorted(required - names)
 print("\n".join(missing))
@@ -355,17 +304,17 @@ PY
   )"
 
   if [[ "$missing" == "__PARSE_ERROR__" ]]; then
-    echo "ERROR: bridge registry payload is not valid JSON" | tee -a "$RUN_LOG"
+    echo "ERROR: analyzer connection payload is not valid JSON" | tee -a "$RUN_LOG"
     return 1
   fi
 
   if [[ -n "$missing" ]]; then
-    echo "ERROR: bridge registry missing required analyzers:" | tee -a "$RUN_LOG"
+    echo "ERROR: required analyzers are missing durable Bridge connection references:" | tee -a "$RUN_LOG"
     echo "$missing" | tee -a "$RUN_LOG"
     return 1
   fi
 
-  echo "Bridge registry gate passed." | tee -a "$RUN_LOG"
+  echo "Analyzer connection reference gate passed." | tee -a "$RUN_LOG"
   return 0
 }
 
@@ -388,8 +337,16 @@ check_file "$CI_BUILD_COMPOSE"
 check_file "$CI_HARNESS_COMPOSE"
 check_file "$FIXTURE_SCRIPT"
 check_file "$SEED_SCRIPT"
+check_file "$MVP_TRAFFIC_SCRIPT"
+check_file "$FIXTURE_DB_TARGET_TEST"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
+
+if bash "$FIXTURE_DB_TARGET_TEST"; then
+  pass "fixture loader honors an explicit database container"
+else
+  fail "fixture loader ignored an explicit database container"
+fi
 
 if [[ -f "$REPO_ROOT/.env" ]]; then
   pass ".env exists at repo root"
@@ -413,12 +370,6 @@ else
   fail "TEST_PASS not set (export TEST_PASS or add TEST_PASS in .env)"
 fi
 
-if compgen -G "$REPO_ROOT/volume/plugins/*.jar" >/dev/null; then
-  pass "plugin jars present in volume/plugins"
-else
-  fail "no plugin jars found in volume/plugins (stage plugin jars before parity run)"
-fi
-
 if [[ "$SEED_ONLY" == false ]]; then
   if [[ -d "$FRONTEND_DIR/node_modules" ]] && [[ -x "$FRONTEND_DIR/node_modules/.bin/playwright" ]]; then
     pass "frontend dependencies installed (node_modules/.bin/playwright present)"
@@ -440,18 +391,7 @@ if [[ "$PRECHECK_ONLY" == true ]]; then
   exit 0
 fi
 
-if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-  if [[ "$MODE" == "video" ]]; then
-    PLAYWRIGHT_PROJECT="harness-demo-video"
-  else
-    PLAYWRIGHT_PROJECT="harness-demo"
-  fi
-fi
-
-if [[ "$PLAYWRIGHT_PROJECT" != "harness-demo" && "$PLAYWRIGHT_PROJECT" != "harness-demo-video" ]]; then
-  echo "ERROR: unsupported project '$PLAYWRIGHT_PROJECT' (expected harness-demo or harness-demo-video)" >&2
-  exit 2
-fi
+PLAYWRIGHT_PROJECT="$(resolve_harness_playwright_project "$MODE" "$PLAYWRIGHT_PROJECT")"
 
 if [[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" && -n "$SHARD" ]]; then
   echo "ERROR: sharding is unsupported in harness-demo-video mode" >&2
@@ -531,18 +471,14 @@ for dir in \
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
 
-if ! verify_required_mappings; then
-  collect_failure_artifacts
-  exit 5
-fi
-
-bridge_registry="$ARTIFACT_DIR/bridge-registry.json"
-curl -k -s "https://localhost:8442/api/analyzers" > "$bridge_registry" || true
-if ! verify_bridge_registry "$bridge_registry"; then
+analyzer_connections="$ARTIFACT_DIR/analyzer-connections.json"
+curl -k -s -u "$TEST_USER_RESOLVED:$TEST_PASS_RESOLVED" \
+  "https://localhost/api/OpenELIS-Global/rest/analyzer/analyzers" > "$analyzer_connections" || true
+if ! verify_analyzer_connections "$analyzer_connections"; then
   collect_failure_artifacts
   exit 6
 fi
-echo "Bridge registry captured at $bridge_registry" | tee -a "$RUN_LOG"
+echo "Analyzer connection references captured at $analyzer_connections" | tee -a "$RUN_LOG"
 
 PLAYWRIGHT_CMD=(npm run pw:test -- --project="$PLAYWRIGHT_PROJECT" --workers=1)
 if [[ -n "$SHARD" ]]; then
@@ -562,8 +498,6 @@ set +e
   TEST_PASS="$TEST_PASS_RESOLVED" \
   PLAYWRIGHT_VIDEO="$([[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]] && echo "on" || echo "off")" \
   PLAYWRIGHT_SLOWMO="$PLAYWRIGHT_SLOWMO_INPUT" \
-  FILE_IMPORT_POLL_MS=5000 \
-  FILE_IMPORT_DROP_BUFFER_MS=45000 \
   "${PLAYWRIGHT_CMD[@]}"
 ) 2>&1 | tee -a "$RUN_LOG"
 pw_exit=$?

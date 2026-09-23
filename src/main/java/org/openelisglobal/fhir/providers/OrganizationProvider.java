@@ -1,36 +1,45 @@
 package org.openelisglobal.fhir.providers;
 
+import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Count;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.Offset;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.SortSpec;
+import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
-import ca.uhn.fhir.rest.param.StringParam;
+import ca.uhn.fhir.rest.param.ReferenceAndListParam;
+import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
-import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Organization;
-import org.hl7.fhir.r4.model.Practitioner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.fhir.search.searchparams.OrganizationSearchParams;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.search.service.OrganizationSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +57,9 @@ public class OrganizationProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
+    @Autowired
+    private OrganizationSearchService organizationSearchService;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -78,6 +90,9 @@ public class OrganizationProvider implements IResourceProvider {
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Organization", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Organization: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Organization", e);
@@ -105,6 +120,7 @@ public class OrganizationProvider implements IResourceProvider {
 
             org.openelisglobal.organization.valueholder.Organization organization = fhirTransformService
                     .transformToOrganization(fhirOrganization);
+            organization.setOrganization(resolveParent(fhirOrganization));
 
             org.openelisglobal.organization.valueholder.Organization savedOrganization = organizationService
                     .save(organization);
@@ -125,12 +141,40 @@ public class OrganizationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Organization", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while creating Organization: " + e.getMessage());
 
             throw new InternalErrorException("Unexpected server error while creating Organization", e);
         }
+    }
+
+    /**
+     * Resolves {@code partOf} to the parent OpenELIS organization, or null when the
+     * resource has none. An unknown or malformed parent reference is a 422.
+     */
+    private org.openelisglobal.organization.valueholder.Organization resolveParent(Organization fhirOrganization) {
+        if (!fhirOrganization.hasPartOf() || !fhirOrganization.getPartOf().hasReference()) {
+            return null;
+        }
+        String parentId = fhirOrganization.getPartOf().getReferenceElement().getIdPart();
+        if (parentId == null || parentId.isBlank()) {
+            throw new UnprocessableEntityException("Organization.partOf must reference a parent Organization");
+        }
+        org.openelisglobal.organization.valueholder.Organization parent = null;
+        try {
+            UUID.fromString(parentId);
+            parent = organizationService.getOrganizationByFhirId(parentId);
+        } catch (IllegalArgumentException e) {
+            parent = organizationService.get(parentId);
+        }
+        if (parent == null) {
+            throw new UnprocessableEntityException("Parent Organization not found for partOf reference: " + parentId);
+        }
+        return parent;
     }
 
     @Update
@@ -157,6 +201,7 @@ public class OrganizationProvider implements IResourceProvider {
                     .transformToOrganization(fhirOrganization);
             existingOrg.setOrganizationName(incomingOrg.getOrganizationName());
             existingOrg.setIsActive(incomingOrg.getIsActive());
+            existingOrg.setOrganization(resolveParent(fhirOrganization));
             existingOrg.setSysUserId(FhirProviderUtils.getSysUserId(request));
             org.openelisglobal.organization.valueholder.Organization updatedOrg = organizationService.save(existingOrg);
             if (updatedOrg == null) {
@@ -176,6 +221,9 @@ public class OrganizationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Organization", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while updating Organization: " + e.getMessage());
@@ -221,6 +269,9 @@ public class OrganizationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Organization", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Organization: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while deleting Organization", e);
@@ -228,33 +279,41 @@ public class OrganizationProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchPractitionerBundle(
+    public IBundleProvider searchOrganizations(@OptionalParam(name = Organization.SP_RES_ID) TokenAndListParam id,
             @OptionalParam(name = Organization.SP_IDENTIFIER) TokenAndListParam identifier,
-            @OptionalParam(name = Organization.SP_NAME) StringParam name,
-            @OptionalParam(name = Organization.SP_ACTIVE) TokenParam active,
+            @OptionalParam(name = Organization.SP_NAME) StringAndListParam name,
+            @OptionalParam(name = Organization.SP_ACTIVE) TokenAndListParam active,
             @OptionalParam(name = Organization.SP_TYPE) TokenAndListParam type,
-            @OptionalParam(name = Organization.SP_ADDRESS) StringParam address,
-            @OptionalParam(name = Organization.SP_ADDRESS_CITY) StringParam addressCity,
-            @OptionalParam(name = Organization.SP_ADDRESS_STATE) StringParam addressState,
-            @OptionalParam(name = Organization.SP_ADDRESS_POSTALCODE) StringParam addressPostalCode,
-            @OptionalParam(name = Organization.SP_ADDRESS_COUNTRY) StringParam addressCountry,
-            @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
-            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, HttpServletRequest request) {
+            @OptionalParam(name = Organization.SP_PARTOF) ReferenceAndListParam partOf,
+            @OptionalParam(name = Organization.SP_ADDRESS_CITY) StringAndListParam addressCity,
+            @OptionalParam(name = Organization.SP_ADDRESS_STATE) StringAndListParam addressState,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
+            @Offset Integer offset, @Count Integer count,
+            @IncludeParam(allow = { FhirConstants.ORGANIZATION_PARTOF_INCLUDE }) HashSet<Include> includes,
+            @IncludeParam(reverse = true, allow = {
+                    FhirConstants.ORGANIZATION_PARTOF_INCLUDE }) HashSet<Include> revIncludes,
+            HttpServletRequest request) {
 
-        String methodName = "searchPractitionerBundle";
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
-                "Searching for Practitioners (returning Bundle)");
+        String methodName = "searchOrganizations";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Organizations");
 
         try {
-
-            Bundle bundle = util.forwardSearchToFhirStore(request);
-
-            return bundle;
-
-        } catch (Exception e) {
+            OrganizationSearchParams params = new OrganizationSearchParams(id, identifier, name, active, type, partOf,
+                    addressCity, addressState, lastUpdated, sort, includes, revIncludes);
+            return FhirProviderUtils.withPaging(organizationSearchService.searchOrganizations(params), offset, count);
+        } catch (InvalidRequestException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
-                    "Error searching Practitioners: " + e.getMessage());
-            throw new InternalErrorException("Error searching Practitioners", e);
+                    "Invalid Organization search parameter: " + e.getMessage());
+            throw new InvalidRequestException("Invalid Organization search parameter: " + e.getMessage(), e);
+        } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Organization", e);
+            }
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Error searching Organizations: " + e.getMessage());
+            throw new InternalErrorException("Error searching Organizations", e);
         }
     }
 }

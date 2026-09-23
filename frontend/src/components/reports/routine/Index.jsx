@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { Loading } from "@carbon/react";
@@ -107,6 +108,7 @@ export const RoutineReports = (props) => {
 };
 
 const RoutineIndex = () => {
+  const history = useHistory();
   const intl = useIntl();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
@@ -125,7 +127,7 @@ const RoutineIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/RoutineReports";
+      history.replace("/RoutineReports");
     }
   }, []);
 

@@ -68,6 +68,7 @@ jobs:
             shard_name: Admin
             specs: >-
               cypress/e2e/AdminE2E/userManagement.cy.js,
+              cypress/e2e/logout.cy.js,
               cypress/e2e/siteBranding.cy.js,
               cypress/e2e/patientMerge.cy.js,
               cypress/e2e/help.cy.js,

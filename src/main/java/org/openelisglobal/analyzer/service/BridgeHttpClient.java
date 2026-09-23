@@ -5,23 +5,20 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
  * The single HTTP client for every OE2 → analyzer-bridge call.
  *
  * <p>
- * The connection + TLS setup used to be hand-rolled in five places —
- * registration, drift sync, query, test-connectivity/health, and order dispatch
- * — each opening its own {@code HttpURLConnection}/{@code HttpClient} and (in
- * four of them) pasting the same ~13-line trust-all {@code SSLContext} block.
- * The fifth, order dispatch, silently omitted that block and so failed PKIX
- * against the bridge's self-signed cert while every other path worked. Routing
- * all bridge traffic through this one component is what makes that class of
- * "one path forgot the TLS config" bug impossible to reintroduce.
+ * Durable profile, connection, probe, and runtime-command calls share this
+ * connection and TLS setup.
  *
  * <p>
  * The bridge presents a self-signed cert on the internal OE2↔bridge hop, so
@@ -36,9 +33,14 @@ public class BridgeHttpClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 
     private final HttpClient httpClient;
+    private final String username;
+    private final String password;
 
-    public BridgeHttpClient() {
+    public BridgeHttpClient(@Value("${analyzer.bridge.username:}") String username,
+            @Value("${analyzer.bridge.password:}") String password) {
         this.httpClient = buildTrustAllClient();
+        this.username = username;
+        this.password = password;
     }
 
     private static HttpClient buildTrustAllClient() {
@@ -110,6 +112,7 @@ public class BridgeHttpClient {
             publisher = HttpRequest.BodyPublishers.ofString(jsonBody);
             builder.header("Content-Type", "application/json");
         }
+        builder.header("Authorization", authorizationHeader());
         builder.method(method, publisher);
         try {
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
@@ -118,5 +121,16 @@ public class BridgeHttpClient {
             Thread.currentThread().interrupt();
             throw new IOException(method + " " + url + " interrupted", e);
         }
+    }
+
+    private String authorizationHeader() {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Analyzer Bridge username must be configured");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Analyzer Bridge password must be configured");
+        }
+        String credentials = username + ":" + password;
+        return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 }

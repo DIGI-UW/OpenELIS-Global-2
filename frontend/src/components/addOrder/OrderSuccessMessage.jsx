@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { Button, Row, Stack } from "@carbon/react";
 import { Checkmark, CheckmarkFilled } from "@carbon/icons-react";
 import config from "../../config.json";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { sampleObject } from "./Index";
 import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
@@ -134,7 +134,7 @@ const OrderSuccessMessage = (props) => {
   // belongs to this consumer (not the dialog) — the dialog is reused on case
   // views where there is no "done" semantic.
   const handleDone = () => {
-    setOrderFormValues(SampleOrderFormValues);
+    setOrderFormValues(createSampleOrderFormValues());
     setSamples([sampleObject]);
     setPage(0);
   };
@@ -166,13 +166,12 @@ const OrderSuccessMessage = (props) => {
     const providerFax = orderFormValues.sampleOrderItems.providerFax;
     const providerEmail = orderFormValues.sampleOrderItems.providerEmail;
 
-    setOrderFormValues(SampleOrderFormValues);
-
+    const freshValues = createSampleOrderFormValues();
     setOrderFormValues({
-      ...SampleOrderFormValues,
+      ...freshValues,
       rememberSiteAndRequester: true,
       sampleOrderItems: {
-        ...SampleOrderFormValues.sampleOrderItems,
+        ...freshValues.sampleOrderItems,
         referringSiteId: siteId,
         referringSiteName: siteName,
         providerId: providerId,
@@ -188,7 +187,7 @@ const OrderSuccessMessage = (props) => {
 
   useEffect(() => {
     if (!orderFormValues.rememberSiteAndRequester) {
-      setOrderFormValues(SampleOrderFormValues);
+      setOrderFormValues(createSampleOrderFormValues());
     }
     setSamples([sampleObject]);
   }, []);

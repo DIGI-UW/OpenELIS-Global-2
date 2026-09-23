@@ -52,6 +52,18 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TestTerminologyMapping> getActiveBySource(String source) {
+        List<TestTerminologyMapping> active = new ArrayList<>();
+        for (TestTerminologyMapping mapping : getAllMatching("source", source)) {
+            if ("Y".equals(mapping.getIsActive())) {
+                active.add(mapping);
+            }
+        }
+        return active;
+    }
+
+    @Override
     @Transactional
     public void saveMappingsForTest(String testId, List<TestTerminologyMapping> desired, String sysUserId) {
         // Key everything (active + soft-deleted) by the natural key the DB enforces

@@ -15,7 +15,6 @@ import {
   CicsSystemGroup,
   QrCode,
   ContainerSoftware,
-  BootVolumeAlt,
   Report,
   Bullhorn,
   User,
@@ -28,6 +27,7 @@ import {
   TrashCan,
   Sprout,
   ListChecked,
+  Chemistry,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -39,6 +39,10 @@ import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
 import { PANEL_SECTIONS } from "./testCatalog/panelSectionConfig";
 import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
+import {
+  MICROBIOLOGY_REFERENCE_SECTIONS,
+  sectionPath,
+} from "./microbiologyReference/sectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -129,6 +133,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     /\/LabUnitManagement\/([^/]+)/,
   );
   const editorLabUnitId = labUnitEditorMatch ? labUnitEditorMatch[1] : null;
+
+  // Whether the shell is showing Lab Units, selected or not — mirrors the panel
+  // and sample-type contexts so the plain /LabUnitManagement list greys out the
+  // lab-unit sections instead of falling through to the test sections.
+  const inLabUnitsContext =
+    !!editorLabUnitId || /\/LabUnitManagement(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
@@ -318,6 +328,23 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
+      <SideNavMenu
+        data-testid="microbiology-reference-menu"
+        renderIcon={Chemistry}
+        defaultExpanded={location.pathname.includes("/MicrobiologyReference/")}
+        isActive={location.pathname.includes("/MicrobiologyReference/")}
+        title={intl.formatMessage({ id: "microbiology.admin.title" })}
+      >
+        {MICROBIOLOGY_REFERENCE_SECTIONS.map((section) => (
+          <SideNavMenuItem
+            key={section.key}
+            data-testid={`microbiology-reference-${section.key}`}
+            {...navProps(sectionPath(path, section.key))}
+          >
+            <FormattedMessage id={section.label} />
+          </SideNavMenuItem>
+        ))}
+      </SideNavMenu>
       {/* key flips on entering/leaving the Test Catalog area to force a
           remount — Carbon SideNavMenu reads defaultExpanded only at mount.
           Within the area the key is stable, so navigating between the lists
@@ -377,6 +404,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="catalogImport"
+          {...navProps(`${path}/CatalogImport`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.catalogImport" />
+        </SideNavMenuItem>
         {editorLabUnitId ? (
           <>
             {editorLabUnitId === "new"
@@ -408,6 +441,24 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 <FormattedMessage id={`label.labUnit.section.${sectionKey}`} />
               </SideNavMenuItem>
             ))}
+          </>
+        ) : inLabUnitsContext ? (
+          <>
+            {/* OGC-189 — lab-unit context with nothing selected: caption + the
+                lab-unit sections shown greyed, like Panels / Sample Types /
+                Tests, rather than falling through to the test sections. */}
+            {sectionsCaption(
+              "labUnitSectionsHelp",
+              "labUnitSectionsContext",
+              "sidenav.label.admin.labUnit.sectionsHelper",
+            )}
+            {LAB_UNIT_SECTIONS.map((sectionKey) =>
+              disabledSection(
+                `labUnit-section-${sectionKey}`,
+                "labUnitSectionsHelp",
+                <FormattedMessage id={`label.labUnit.section.${sectionKey}`} />,
+              ),
+            )}
           </>
         ) : inPanelsContext ? (
           <>
@@ -563,12 +614,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         )}
       </SideNavMenu>
       <SideNavLink
-        renderIcon={ListDropdown}
-        {...navProps(`${path}/AnalyzerTestName`)}
-      >
-        <FormattedMessage id="sidenav.label.admin.analyzerTest" />
-      </SideNavLink>
-      <SideNavLink
         data-cy="labNumberMgmnt"
         renderIcon={CharacterWholeNumber}
         {...navProps(`${path}/labNumber`)}
@@ -582,26 +627,29 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="sidenav.label.admin.program" />
       </SideNavLink>
-      <SideNavLink
-        data-cy="providerMgmnt"
+      <SideNavMenu
         renderIcon={CicsSystemGroup}
-        {...navProps(`${path}/providerMenu`)}
+        title={intl.formatMessage({ id: "provider.browse.title" })}
       >
-        <FormattedMessage id="provider.browse.title" />
-      </SideNavLink>
+        <SideNavMenuItem
+          data-cy="providerMgmnt"
+          {...navProps(`${path}/providerMenu`)}
+        >
+          <FormattedMessage id="provider.browse.title" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="providerTitles"
+          {...navProps(`${path}/providerTitleMenu`)}
+        >
+          <FormattedMessage id="providerTitle.titles" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="labelPresets"
         renderIcon={QrCode}
         {...navProps(`${path}/labelPresets`)}
       >
         <FormattedMessage id="sidenav.label.admin.labelPresets" />
-      </SideNavLink>
-      <SideNavLink
-        data-cy="pluginFile"
-        renderIcon={BootVolumeAlt}
-        {...navProps(`${path}/PluginFile`)}
-      >
-        <FormattedMessage id="sidenav.label.admin.Listplugin" />
       </SideNavLink>
       <SideNavMenu
         data-cy="vectorSurveillance"

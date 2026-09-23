@@ -13,14 +13,14 @@
   <include file="liquibase/2.6.x.x/base.xml" />
   <include file="liquibase/2.7.x.x/base.xml" />
   <include file="liquibase/2.8.x.x/base.xml" />
+  <include file="liquibase/2.9.x.x/base.xml" />
   <include file="liquibase/3.1.x.x/base.xml" />
   <include file="liquibase/3.2.x.x/base.xml" />
   <include file="liquibase/3.3.x.x/base.xml" />
   <include file="liquibase/3.4.x.x/base.xml" />
   <include file="liquibase/3.4.14.x/base.xml" />
   <include file="liquibase/3.5.x.x/base.xml" />
-  <!-- Analyzer QC Rule Migrations -->
-  <include file="liquibase/analyzer/base.xml" />
+  <include file="liquibase/3.6.x.x/base.xml" />
   <!-- QC (Quality Control) Westgard Rules Feature -->
   <include file="liquibase/qc/001-create-qc-tables.xml" />
   <include file="liquibase/qc/002-create-westgard-rule-config.xml" />
@@ -36,4 +36,5 @@
   <include file="liquibase/qc/012-add-result-qc-evaluation.xml" />
   <include file="liquibase/qc/013-create-validation-qc-acknowledgment.xml" />
   <include file="liquibase/qc/014-register-validation-qc-ack-reference-table.xml" />
+
 </databaseChangeLog>

@@ -6,6 +6,12 @@ import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
 import Questionnaire from "../common/Questionnaire";
 
+/**
+ * The default program is matched on its code, not its display name: a site that
+ * renames or translates "Routine Testing" keeps its default either way.
+ */
+const ROUTINE_PROGRAM_CODE = "ROUTINE";
+
 export const ProgramSelect = ({
   programChange = () => {
     console.debug("default programChange function does nothing");
@@ -21,7 +27,9 @@ export const ProgramSelect = ({
 
   const fetchPrograms = (programsList) => {
     if (componentMounted.current) {
-      setPrograms(programsList);
+      // Anything but a list leaves the select empty rather than letting a
+      // later find() throw and take the whole order page down with it.
+      setPrograms(Array.isArray(programsList) ? programsList : []);
     }
   };
 
@@ -30,7 +38,7 @@ export const ProgramSelect = ({
       programChange({
         target: {
           value: programs.find((program) => {
-            return program.value === "Routine Testing";
+            return program.code?.toUpperCase() === ROUTINE_PROGRAM_CODE;
           })?.id,
         },
       });

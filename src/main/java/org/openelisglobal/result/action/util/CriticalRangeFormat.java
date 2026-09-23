@@ -13,7 +13,7 @@ import org.openelisglobal.resultlimits.valueholder.ResultLimit;
  * which renders a one-sided low bound as "Infinity - x": its unset sentinel is
  * POSITIVE_INFINITY, which getDisplayNormalRange does not recognise.
  */
-final class CriticalRangeFormat {
+public final class CriticalRangeFormat {
 
     private static final String NUMERIC_RESULT_TYPE = "N";
 
@@ -25,7 +25,7 @@ final class CriticalRangeFormat {
      * @param resultType        the type the result is entered as
      * @param significantDigits decimal places the test reports to
      */
-    static String display(ResultLimit limit, String resultType, String significantDigits) {
+    public static String display(ResultLimit limit, String resultType, String significantDigits) {
         if (limit == null || GenericValidator.isBlankOrNull(limit.getId()) || !NUMERIC_RESULT_TYPE.equals(resultType)) {
             return "";
         }
