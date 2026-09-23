@@ -18,6 +18,12 @@ public interface SearchResultsDAO {
     String DATE_OF_BIRTH_FORMATED = "dateOfBirthFormatted";
     String GENDER = "gender";
 
+    /** Search terms and tolerances backing the fuzzy name match. */
+    String LAST_NAME_TERM = "lastNameTerm";
+    String FIRST_NAME_TERM = "firstNameTerm";
+    String LAST_NAME_SWAPS = "lastNameSwaps";
+    String FIRST_NAME_SWAPS = "firstNameSwaps";
+
     String ID_TYPE_FOR_ST = "stNumberId";
     String ID_TYPE_FOR_SUBJECT_NUMBER = "subjectNumberId";
     String ID_TYPE_FOR_GUID = "guidId";

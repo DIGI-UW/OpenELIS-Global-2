@@ -20,7 +20,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
@@ -38,6 +38,7 @@ function TestNotificationConfigEdit() {
 
   const intl = useIntl();
   const location = useLocation();
+  const history = useHistory();
 
   const ID = (() => {
     const search = location.search;
@@ -752,9 +753,7 @@ function TestNotificationConfigEdit() {
                 </Button>{" "}
                 <Button
                   onClick={() =>
-                    window.location.assign(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
+                    history.push("/MasterListsPage/testNotificationConfigMenu")
                   }
                   kind="tertiary"
                   type="button"

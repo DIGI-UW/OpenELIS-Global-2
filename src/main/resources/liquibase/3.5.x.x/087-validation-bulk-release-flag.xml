@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1029 (Validation v4 slice V3, FR-B4) — "Allow bulk release of clear results".
+    The Validation page's only bulk action, "Release all clear (N)", is gated by this
+    site flag. Default true: today's page already offers bulk release ("Save All
+    Results"), and the guarded version can only ever touch the Clear lane, so keeping
+    bulk available is strictly safer than the behaviour it replaces. A lab that wants
+    every result released individually after review turns it off.
+    -->
+    <changeSet id="OGC-1029-validation-bulk-release-flag" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'allowBulkReleaseClear';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating the guarded "Release all clear" bulk release on the Validation page (OGC-1029); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="allowBulkReleaseClear" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, validators may release all Clear-lane results at once under one e-signature; if false, each is released alone" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.validation.bulk.release" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -34,8 +34,7 @@ todos:
       confirmed root-cause class before finalizing Phase 2 scope.
     status: pending
   - id: standardize-harness-scripts
-    content:
-      Refactor reset and bootstrap harness tooling so local workflows are
+    content: Refactor reset and bootstrap harness tooling so local workflows are
       wrappers or thin overlays on the authoritative CI base instead of a
       separate stack definition.
     status: pending
@@ -45,8 +44,7 @@ todos:
       and replace it with explicit hard failures and post-seed verification.
     status: pending
   - id: remediate-residual-tests
-    content:
-      After harness parity and hardening are proven, fix any remaining
+    content: After harness parity and hardening are proven, fix any remaining
       Playwright or product-level failures one at a time with the CI-parity
       runner as the regression gate.
     status: pending
@@ -174,8 +172,7 @@ Exact CI step sequence the script must mirror (from reusable workflow lines
 6. Wait for bridge-created import dirs to appear, then fix permissions.
 7. Verify analyzer test mappings (warning-only in CI -- reproduce as-is).
 8. `npm run pw:test -- --project=harness-demo --workers=1` with `CI=true`,
-   `ANALYZER_HARNESS=true`, `BASE_URL=https://localhost`,
-   `FILE_IMPORT_POLL_MS=5000`, `FILE_IMPORT_DROP_BUFFER_MS=45000`.
+   `ANALYZER_HARNESS=true`, and `BASE_URL=https://localhost`.
 
 Hard checkpoints in the script (beyond CI's current checks):
 
@@ -184,8 +181,8 @@ Hard checkpoints in the script (beyond CI's current checks):
 - All three readiness checks pass.
 - Fixture load exits zero.
 - Seed exits zero with no fallback warnings in output.
-- Bridge registry (`GET http://localhost:8442/api/analyzers`) returns expected
-  source bindings.
+- OpenELIS analyzer connections contain the expected durable Bridge connection
+  references.
 - The script captures and stores evidence bundles (OE logs, bridge logs,
   simulator logs, seed output, Playwright traces/screenshots).
 - The script exits non-zero on the same failure CI is currently hitting.

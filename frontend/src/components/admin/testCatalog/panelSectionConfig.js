@@ -6,10 +6,15 @@
  * Labels resolve via i18n `label.panel.section.{key}`.
  *
  * The registry grows with the OGC-224 slices: basic-info (C2), tests (C3),
- * terminology (C4). Vector Config is deferred to the Environmental/Vector
+ * terminology (C4), localization. Vector Config is deferred to the Environmental/Vector
  * phase and is not registered while only Clinical is enabled.
  */
-export const PANEL_SECTIONS = ["basic-info", "tests", "terminology"];
+export const PANEL_SECTIONS = [
+  "basic-info",
+  "tests",
+  "terminology",
+  "localization",
+];
 
 export const DEFAULT_PANEL_SECTION = PANEL_SECTIONS[0];
 

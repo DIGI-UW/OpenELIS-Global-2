@@ -1,9 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import { Heading, Button, Loading, Grid, Column, Section } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useServerData,
+  useInvalidateServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -35,27 +36,17 @@ function SampleTypeOrder() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(false);
   const [confirmSelection, setConfirmSelection] = useState(false);
-  const [sampleTypeOrderList, setSampleTypeOrderList] = useState({});
+  const [pendingOrder, setPendingOrder] = useState(null);
   const [sampleTypeOrderListPost, setSampleTypeOrderListPost] = useState([]);
 
-  const componentMounted = useRef(false);
-
-  const handleSampleTypeOrderList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setSampleTypeOrderList(res);
-    }
-  };
-
   const handleSampleTypeOrderListCall = () => {
-    if (!sampleTypeOrderListPost) {
-      setIsLoading(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+    if (!sampleTypeOrderListPost?.length) {
+      // Accepting an unchanged preview is complete once it leaves confirmation.
+      setPendingOrder(null);
+      setSampleTypeOrderListPost([]);
+      setConfirmSelection(false);
+      return;
     }
     postToOpenElisServerJsonResponse(
       "/rest/SampleTypeOrder",
@@ -73,7 +64,6 @@ function SampleTypeOrder() {
   const handlePostSampleTypeOrderListCallBack = (res) => {
     if (res) {
       if (res) {
-        setIsLoading(false);
         addNotification({
           title: intl.formatMessage({
             id: "notification.title",
@@ -83,9 +73,10 @@ function SampleTypeOrder() {
           }),
           kind: NotificationKinds.success,
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
+        setPendingOrder(null);
+        setSampleTypeOrderListPost([]);
+        setConfirmSelection(false);
+        refreshSampleTypeOrderList("/rest/SampleTypeOrder");
         setNotificationVisible(true);
       }
     } else {
@@ -98,17 +89,20 @@ function SampleTypeOrder() {
     }
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/SampleTypeOrder`, handleSampleTypeOrderList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
+  // The order shown is a read of /rest/SampleTypeOrder; a save marks it out of date
+  // and the screen reads it again, which is what reloading used to do.
+  const {
+    data: fetchedSampleTypeOrderList,
+    isFetching: sampleTypeOrderListFetching,
+  } = useServerData("/rest/SampleTypeOrder");
+  const refreshSampleTypeOrderList = useInvalidateServerData();
 
-  if (!isLoading) {
+  // A pending reorder sits on top of the stored order, so discarding it is
+  // clearing it: the stored array comes back as the same reference the list
+  // was seeded from, which is a change the list can see.
+  const shownOrder = pendingOrder ?? fetchedSampleTypeOrderList?.sampleTypeList;
+
+  if (sampleTypeOrderListFetching && !fetchedSampleTypeOrderList) {
     return (
       <>
         <Loading />
@@ -168,26 +162,21 @@ function SampleTypeOrder() {
           <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              {sampleTypeOrderList &&
-                sampleTypeOrderList?.sampleTypeList &&
-                sampleTypeOrderList?.sampleTypeList?.length > 0 && (
-                  <CustomCommonSortableOrderList
-                    test={sampleTypeOrderList?.sampleTypeList}
-                    onSort={(updatedList) => {
-                      setSampleTypeOrderList((prev) => ({
-                        ...prev,
-                        sampleTypeList: updatedList,
-                      }));
-                      setSampleTypeOrderListPost(
-                        updatedList.map(({ id, sortOrder }) => ({
-                          id: Number(id),
-                          sortOrder,
-                        })),
-                      );
-                    }}
-                    disableSorting={confirmSelection}
-                  />
-                )}
+              {shownOrder?.length > 0 && (
+                <CustomCommonSortableOrderList
+                  test={shownOrder}
+                  onSort={(updatedList) => {
+                    setPendingOrder(updatedList);
+                    setSampleTypeOrderListPost(
+                      updatedList.map(({ id, sortOrder }) => ({
+                        id: Number(id),
+                        sortOrder,
+                      })),
+                    );
+                  }}
+                  disableSorting={confirmSelection}
+                />
+              )}
             </Column>
           </Grid>
           {confirmSelection && (
@@ -213,6 +202,7 @@ function SampleTypeOrder() {
                 onClick={() => {
                   if (confirmSelection) {
                     handleSampleTypeOrderListCall();
+                    return;
                   }
                   setConfirmSelection(true);
                 }}
@@ -229,7 +219,11 @@ function SampleTypeOrder() {
                 type="button"
                 kind="tertiary"
                 onClick={() => {
-                  window.location.reload();
+                  // Discard the pending reordering and show what is stored.
+                  setPendingOrder(null);
+                  setSampleTypeOrderListPost([]);
+                  setConfirmSelection(false);
+                  refreshSampleTypeOrderList("/rest/SampleTypeOrder");
                 }}
               >
                 {confirmSelection ? (

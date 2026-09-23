@@ -263,9 +263,12 @@ const ControlLotSetup = () => {
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "" },
-            { label: "qc.dashboard.title", link: "" },
-            { label: "qc.controlLots.title", link: "" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            {
+              label: "qc.controlLots.title",
+              link: "/analyzers/qc/control-lots",
+            },
             {
               label: isEditMode
                 ? "qc.controlLot.edit.title"

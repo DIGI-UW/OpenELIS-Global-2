@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   NumberInput,
@@ -12,6 +12,15 @@ import { InventoryLotAPI } from "./InventoryService";
 
 const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
+
+  // onSave() unmounts this modal before the finally block runs.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const adjustmentReasons = [
     { id: "INVENTORY_COUNT", text: "Physical Inventory Count" },
@@ -82,9 +91,10 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error adjusting lot:", err);
-      setError(err.message || "Error adjusting lot quantity");
+      if (isMountedRef.current)
+        setError(err.message || "Error adjusting lot quantity");
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) setSaving(false);
     }
   };
 
@@ -159,7 +169,9 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "adjustment.reason.select" })}
           items={adjustmentReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={adjustmentReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            adjustmentReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }

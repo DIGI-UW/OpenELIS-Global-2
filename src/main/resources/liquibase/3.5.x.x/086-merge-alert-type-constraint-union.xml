@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    chk_alert_type is redefined wholesale by every changeset that adds a type,
+    so the last one to run decides which values exist. This branch's 057 added
+    the referral types; develop's 070 then added CRITICAL_RESULT from a list
+    that never knew about them — leaving whichever side ran second missing the
+    other's values, and inserts of REQUIRED_BY_DEADLINE / REFERRAL_* failing
+    the check. Redeclare the constraint as the union of both.
+    -->
+    <changeSet id="OGC-merge-alert-type-constraint-union" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="alert"/>
+        </preConditions>
+        <comment>Union of the alert types both sides of the demo-silnas merge declare</comment>
+        <sql>
+            ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN (
+                'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+                'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED',
+                'CRITICAL_RESULT'
+            ));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+                ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+                CHECK (alert_type IN (
+                    'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                    'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+                    'CRITICAL_RESULT'
+                ));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

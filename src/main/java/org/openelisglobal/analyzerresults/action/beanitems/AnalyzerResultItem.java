@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.analyzerresults.action.beanitems;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -106,6 +107,13 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
     private String significantDigits = "";
+    private String importIssueReason;
+    private String sourceProfileId;
+    private Integer sourceProfileRevision;
+    private String sourceProtocol;
+    private String sourceTransport;
+    private String rawTestCode;
+    private String rawResultValue;
 
     public String getSignificantDigits() {
         return significantDigits;
@@ -348,6 +356,7 @@ public class AnalyzerResultItem implements Serializable {
         this.dictionaryResultList = dictionaryResultList;
     }
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     public List<Dictionary> getDictionaryResultList() {
         return dictionaryResultList;
     }
@@ -430,5 +439,61 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    public String getSourceProfileId() {
+        return sourceProfileId;
+    }
+
+    public void setSourceProfileId(String sourceProfileId) {
+        this.sourceProfileId = sourceProfileId;
+    }
+
+    public Integer getSourceProfileRevision() {
+        return sourceProfileRevision;
+    }
+
+    public void setSourceProfileRevision(Integer sourceProfileRevision) {
+        this.sourceProfileRevision = sourceProfileRevision;
+    }
+
+    public String getSourceProtocol() {
+        return sourceProtocol;
+    }
+
+    public void setSourceProtocol(String sourceProtocol) {
+        this.sourceProtocol = sourceProtocol;
+    }
+
+    public String getSourceTransport() {
+        return sourceTransport;
+    }
+
+    public void setSourceTransport(String sourceTransport) {
+        this.sourceTransport = sourceTransport;
+    }
+
+    public String getRawTestCode() {
+        return rawTestCode;
+    }
+
+    public void setRawTestCode(String rawTestCode) {
+        this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
     }
 }

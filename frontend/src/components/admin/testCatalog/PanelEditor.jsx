@@ -11,6 +11,7 @@ import {
 import PanelBasicInfoSection from "./sections/PanelBasicInfoSection";
 import PanelTestsSection from "./sections/PanelTestsSection";
 import PanelTerminologySection from "./sections/PanelTerminologySection";
+import LocalizationSection from "./sections/LocalizationSection";
 import { domainTagType } from "./PanelsList";
 
 /**
@@ -147,6 +148,17 @@ const PanelEditor = () => {
               )}
               {activeSection === "terminology" && !isCreate && (
                 <PanelTerminologySection panel={panel} onSaved={setPanel} />
+              )}
+              {/* Same section a test uses; a panel's name lives in the same
+                  localization tables, reached through the panel's own bridge
+                  endpoint. Not offered while creating: there is no panel to
+                  hang translations off yet. */}
+              {activeSection === "localization" && !isCreate && (
+                <LocalizationSection
+                  entity="panel"
+                  entityId={panelId}
+                  refsUrl={`/rest/test-catalog/panels/${panelId}/localization`}
+                />
               )}
             </>
           )}

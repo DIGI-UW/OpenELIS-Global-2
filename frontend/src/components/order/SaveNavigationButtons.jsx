@@ -1,9 +1,14 @@
 import React from "react";
 import { Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useOrderContext } from "./OrderContext";
-import { ORDER_STEPS } from "./OrderStepper";
+
+import {
+  CLINICAL_ORDER_STEPS,
+  ENVIRONMENTAL_ORDER_STEPS,
+  VECTOR_ORDER_STEPS,
+} from "./OrderStepper";
 
 /**
  * SaveNavigationButtons - Dual-button component for Save & Next vs Save.
@@ -20,14 +25,34 @@ const SaveNavigationButtons = ({
   onSave,
   onSaveAndNext,
   canProceed = true,
+  canSave = true,
   showBack = true,
   className = "",
 }) => {
   const history = useHistory();
-  const { isSubmitting, isReadOnly, isEditMode, saveOrder } = useOrderContext();
+  const location = useLocation();
+  const { isSubmitting, isReadOnly, isEditMode, saveOrder, labNumber } =
+    useOrderContext();
 
-  const isLastStep = currentStep >= ORDER_STEPS.length - 1;
+  // Infer step set from URL prefix — no workflowType context read needed.
+  const steps = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
+    if (path.startsWith("/order/environmental"))
+      return ENVIRONMENTAL_ORDER_STEPS;
+    return CLINICAL_ORDER_STEPS;
+  })();
+
+  const isLastStep = currentStep >= steps.length - 1;
   const isFirstStep = currentStep <= 0;
+
+  // Always carry ?order= when an order is loaded, regardless of how we arrived.
+  // Derived from context labNumber so it survives regardless of URL history.
+  const navigateTo = (path) => {
+    history.push(
+      labNumber ? `${path}?order=${encodeURIComponent(labNumber)}` : path,
+    );
+  };
 
   const handleSave = async () => {
     if (onSave) {
@@ -42,15 +67,15 @@ const SaveNavigationButtons = ({
       await onSaveAndNext();
     } else {
       await saveOrder();
-      if (currentStep < ORDER_STEPS.length - 1) {
-        history.push(ORDER_STEPS[currentStep + 1].path);
+      if (currentStep < steps.length - 1) {
+        navigateTo(steps[currentStep + 1].path);
       }
     }
   };
 
   const handleBack = () => {
     if (!isFirstStep) {
-      history.push(ORDER_STEPS[currentStep - 1].path);
+      navigateTo(steps[currentStep - 1].path);
     }
   };
 
@@ -67,7 +92,7 @@ const SaveNavigationButtons = ({
           <Button
             kind="primary"
             className="forward-button"
-            onClick={() => history.push(ORDER_STEPS[currentStep + 1].path)}
+            onClick={() => navigateTo(steps[currentStep + 1].path)}
           >
             <FormattedMessage id="next.action.button" />
           </Button>
@@ -85,7 +110,11 @@ const SaveNavigationButtons = ({
       )}
 
       <div className="save-buttons-group">
-        <Button kind="secondary" onClick={handleSave} disabled={isSubmitting}>
+        <Button
+          kind="secondary"
+          onClick={handleSave}
+          disabled={isSubmitting || !canSave}
+        >
           <FormattedMessage id="button.save.stay" />
         </Button>
 
@@ -94,7 +123,7 @@ const SaveNavigationButtons = ({
             kind="primary"
             className="forward-button"
             onClick={handleSaveAndNext}
-            disabled={isSubmitting || !canProceed}
+            disabled={isSubmitting || !canProceed || !canSave}
           >
             <FormattedMessage id="button.save.next" />
           </Button>
@@ -105,7 +134,7 @@ const SaveNavigationButtons = ({
             kind="primary"
             className="forward-button"
             onClick={handleSave}
-            disabled={isSubmitting || !canProceed}
+            disabled={isSubmitting || !canProceed || !canSave}
           >
             <FormattedMessage id="label.button.submit" />
           </Button>

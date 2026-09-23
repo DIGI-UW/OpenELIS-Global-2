@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-inoculation-lineage" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_case_inoculation">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_case_inoculation"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_inoculation_id" type="VARCHAR(36)"/>
+            <column name="activity_id" type="VARCHAR(36)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_micro_case_inoculation_activity"/>
+            </column>
+            <column name="method_id" type="numeric(10)"/>
+            <column name="container_identifier" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="incubation" type="TEXT"/>
+            <column name="atmosphere" type="TEXT"/>
+            <column name="occurred_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_inoculation_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inoculation_source"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="source_inoculation_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inoculation_activity"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="activity_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_activity" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inoculation_method"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="method_id"
+            referencedTableSchemaName="clinlims" referencedTableName="method" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_case_inoculation" indexName="idx_micro_inoculation_case">
+            <column name="case_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="micro_case_inoculation" indexName="idx_micro_inoculation_source">
+            <column name="source_inoculation_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_case_inoculation"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

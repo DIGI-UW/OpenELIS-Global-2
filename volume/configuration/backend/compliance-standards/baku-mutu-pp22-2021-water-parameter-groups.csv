@@ -1,0 +1,5 @@
+regulationNumber,standardName,name,description,sortOrder,isMandatory
+"PP 22/2021","PP No. 22/2021 - Water Quality","Physical Parameters","Sensory and physical-chemical parameters",1,true
+"PP 22/2021","PP No. 22/2021 - Water Quality","Chemical Parameters","Dissolved oxygen and oxygen demand",2,true
+"PP 22/2021","PP No. 22/2021 - Water Quality","Heavy Metals","Toxic heavy-metal concentration limits",3,true
+"PP 22/2021","PP No. 22/2021 - Water Quality","Microbiology","Indicator-organism limits for water safety",4,true

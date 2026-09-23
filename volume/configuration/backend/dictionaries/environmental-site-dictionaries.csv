@@ -13,3 +13,26 @@ Environmental Zone,Rural,RURAL,Y,3,,Rural,Rural,Rural,Pedesaan
 Environmental Zone,Industrial,INDUST,Y,4,,Industrial,Industriel,Industrial,Industri
 Environmental Zone,Agricultural,AGRI,Y,5,,Agricultural,Agricole,Agricola,Pertanian
 Environmental Zone,Protected Area,PROTEC,Y,6,,Protected Area,Zone Protegee,Area Protegida,Kawasan Lindung
+Sample Container,Composite jerry can 5L,CJC5,Y,1,,Composite jerry can 5L,Jerrican composite 5L,Bidon compuesto 5L,Jeriken komposit 5L
+Sample Container,1L HDPE bottle,HDPE1,Y,2,,1L HDPE bottle,Bouteille HDPE 1L,Botella HDPE 1L,Botol HDPE 1L
+Sample Container,500mL glass bottle,GLASS500,Y,3,,500mL glass bottle,Bouteille en verre 500mL,Botella de vidrio 500mL,Botol kaca 500mL
+Sample Container,250mL glass bottle,GLASS250,Y,4,,250mL glass bottle,Bouteille en verre 250mL,Botella de vidrio 250mL,Botol kaca 250mL
+Sample Container,Filter membrane,FMEM,Y,5,,Filter membrane,Membrane filtrante,Membrana filtrante,Membran filter
+Sample Container,Sterile bag,SBAG,Y,6,,Sterile bag,Sac sterile,Bolsa esteril,Kantong steril
+Sample Container,Other,CONT_OTHER,Y,7,,Other,Autre,Otro,Lainnya
+Env Collection Method,Grab Sample,GRAB,Y,1,,Grab Sample,Echantillon instantane,Muestra puntual,Sampel sesaat
+Env Collection Method,Composite 24h,COMP24,Y,2,,Composite 24h,Composite 24h,Compuesto 24h,Komposit 24 jam
+Env Collection Method,Composite 8h,COMP8,Y,3,,Composite 8h,Composite 8h,Compuesto 8h,Komposit 8 jam
+Env Collection Method,Passive Sampler,PASS,Y,4,,Passive Sampler,Echantillonneur passif,Muestreador pasivo,Sampler pasif
+Env Collection Method,Depth Integrated,DEPTH,Y,5,,Depth Integrated,Integre en profondeur,Integrado en profundidad,Terintegrasi kedalaman
+Env Collection Method,Surface Grab,SURFGRAB,Y,6,,Surface Grab,Prise de surface,Toma de superficie,Ambil permukaan
+Env Collection Method,Other,COLL_OTHER,Y,7,,Other,Autre,Otro,Lainnya
+Env Weather,Clear / Sunny,CLEAR,Y,1,,Clear / Sunny,Clair / Ensoleille,Despejado / Soleado,Cerah / Matahari
+Env Weather,Partly Cloudy,PCLOUD,Y,2,,Partly Cloudy,Partiellement nuageux,Parcialmente nublado,Sebagian berawan
+Env Weather,Overcast,OCAST,Y,3,,Overcast,Couvert,Nublado,Mendung
+Env Weather,Light Rain,LRAIN,Y,4,,Light Rain,Pluie legere,Lluvia ligera,Hujan ringan
+Env Weather,Heavy Rain,HRAIN,Y,5,,Heavy Rain,Pluie forte,Lluvia fuerte,Hujan lebat
+Env Weather,Drizzle,DRIZ,Y,6,,Drizzle,Bruine,Llovizna,Gerimis
+Env Weather,Windy,WINDY,Y,7,,Windy,Venteux,Ventoso,Berangin
+Env Weather,Foggy,FOGGY,Y,8,,Foggy,Brumeux,Neblinoso,Berkabut
+Env Weather,Other,WEATH_OTHER,Y,9,,Other,Autre,Otro,Lainnya

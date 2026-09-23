@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="092-normalize-analyzer-deleted-status" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <columnExists schemaName="clinlims" tableName="analyzer" columnName="status"/>
+    </preConditions>
+    <comment>
+      Replace the superseded analyzer hard-delete state with the retained
+      inactive lifecycle state before the application removes DELETED.
+    </comment>
+    <update schemaName="clinlims" tableName="analyzer">
+      <column name="status" value="INACTIVE"/>
+      <column name="is_active" valueBoolean="false"/>
+      <where>status = 'DELETED'</where>
+    </update>
+    <rollback/>
+  </changeSet>
+</databaseChangeLog>

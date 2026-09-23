@@ -37,8 +37,10 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     public static class FhirOperations {
         // theses are maps so you can see if the resources you're creating will collide,
         // the map key is not used otherwise
-        Map<String, Resource> createResources; // will do a put with a new uuid
-        Map<String, Resource> updateResources; // will do a put with the id used in the resource
+        // Both do a put with the id on the resource; a create resource with no id
+        // gets a fresh uuid.
+        Map<String, Resource> createResources;
+        Map<String, Resource> updateResources;
 
         public FhirOperations() {
             createResources = new HashMap<>();
@@ -194,6 +196,19 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     }
 
     @Override
+    public Optional<Organization> getFhirOrganizationByUuid(String uuid) {
+        if (localFhirClient == null || StringUtils.isBlank(uuid)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(localFhirClient.read().resource(Organization.class).withId(uuid).execute());
+        } catch (Exception e) {
+            // Not there (or the store is down): the caller falls back to the name.
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Optional<Patient> getPatientByUuid(String uuid) {
 
         try {
@@ -252,6 +267,45 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     }
 
     @Override
+    public Optional<Specimen> getSpecimenByUuid(String uuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(Specimen.class) //
+                .returnBundle(Bundle.class) //
+                .where(Specimen.RES_ID.exactly().identifier(uuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((Specimen) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ServiceRequest> getServiceRequestBySpecimenUuid(String specimenUuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(ServiceRequest.class) //
+                .returnBundle(Bundle.class) //
+                .where(ServiceRequest.SPECIMEN.hasId("Specimen/" + specimenUuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((ServiceRequest) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<org.hl7.fhir.r4.model.SupplyDelivery> getSupplyDeliveryByUuid(String uuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(org.hl7.fhir.r4.model.SupplyDelivery.class) //
+                .returnBundle(Bundle.class) //
+                .where(org.hl7.fhir.r4.model.SupplyDelivery.RES_ID.exactly().identifier(uuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((org.hl7.fhir.r4.model.SupplyDelivery) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<DiagnosticReport> getDiagnosticReportByAnalysisUuid(String uuid) {
         Bundle bundle = localFhirClient.search() //
                 .forResource(DiagnosticReport.class) //
@@ -282,7 +336,16 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     public Bundle addCreateToTransactionBundle(Map<String, Resource> createResources, Bundle transactionBundle) {
         for (Resource resource : createResources.values()) {
-            String id = UUID.randomUUID().toString();
+            // Keep the id the caller put on the resource. Peers address resources by
+            // the uuid this installation already published — an Organization by its
+            // fhir_uuid, say — so minting a fresh one here made every created resource
+            // unfindable from the other side.
+            //
+            // A caller with no uuid to hand falls back to the local database id, and a
+            // FHIR server rejects a client-assigned id that is all digits, so those
+            // still get a fresh uuid, as does a resource with no id at all.
+            String callerId = resource.getIdElement().getIdPart();
+            String id = isClientAssignable(callerId) ? callerId : UUID.randomUUID().toString();
             String resourceType = resource.getResourceType().toString();
             if (ResourceType.Patient.toString().equalsIgnoreCase(resourceType)) {
                 Patient patient = (Patient) resource;
@@ -296,6 +359,11 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
                     .getRequest().setUrl(resourceType + "/" + id).setMethod(Bundle.HTTPVerb.PUT);
         }
         return transactionBundle;
+    }
+
+    /** A FHIR server accepts a client-assigned id only if it is not all digits. */
+    private boolean isClientAssignable(String id) {
+        return StringUtils.isNotBlank(id) && !StringUtils.isNumeric(id);
     }
 
     public Bundle addUpdatesToTransactionBundle(Map<String, Resource> updateResources, Bundle transactionBundle) {

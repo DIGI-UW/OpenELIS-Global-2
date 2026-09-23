@@ -1,0 +1,90 @@
+{
+  "program": {
+    "code": "VFS",
+    "programName": "Vector Field Survey",
+    "questionnaireUUID": "c7a3e1f0-9b2d-4e85-a6c4-1f8b0d3e7a52"
+  },
+  "additionalOrderEntryQuestions": {
+    "resourceType": "Questionnaire",
+    "id": "c7a3e1f0-9b2d-4e85-a6c4-1f8b0d3e7a52",
+    "name": "VectorFieldSurvey",
+    "title": "Vector Field Survey",
+    "status": "active",
+    "subjectType": ["Specimen", "ServiceRequest"],
+    "description": "Summary larval/pupal field-survey counts transcribed by the lab to drive Vector LHU Mode C (HI/CI/BI/ABJ) and Mode D (PPI). Field-level surveillance capture is out of scope; these are summary counts only.",
+    "item": [
+      {
+        "linkId": "houses_examined",
+        "text": "Larval — Houses examined",
+        "type": "integer"
+      },
+      {
+        "linkId": "houses_positive",
+        "text": "Larval — Houses positive",
+        "type": "integer"
+      },
+      {
+        "linkId": "containers_examined",
+        "text": "Larval — Containers examined",
+        "type": "integer"
+      },
+      {
+        "linkId": "containers_positive",
+        "text": "Larval — Containers positive",
+        "type": "integer"
+      },
+      {
+        "linkId": "pupae_count",
+        "text": "Pupal — Pupae count",
+        "type": "integer"
+      },
+      {
+        "linkId": "population_at_risk",
+        "text": "Pupal — Population at risk",
+        "type": "integer"
+      },
+      {
+        "linkId": "survey_method",
+        "text": "Survey method",
+        "type": "choice",
+        "answerOption": [
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/vector/survey-method",
+              "code": "VISUAL_INSPECTION",
+              "display": "Visual inspection"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/vector/survey-method",
+              "code": "DIPPER",
+              "display": "Dipper"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/vector/survey-method",
+              "code": "PIPETTE",
+              "display": "Pipette"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/vector/survey-method",
+              "code": "LIGHT_TRAP_LARVAL",
+              "display": "Larval light trap"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/vector/survey-method",
+              "code": "OTHER",
+              "display": "Other"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

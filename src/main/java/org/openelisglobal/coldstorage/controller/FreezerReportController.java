@@ -8,6 +8,7 @@ import org.openelisglobal.coldstorage.service.FreezerReportService;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,7 @@ public class FreezerReportController {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PostMapping(value = "/generate", produces = MediaType.APPLICATION_PDF_VALUE)
     public void generateReport(@RequestBody ReportRequest request, HttpServletResponse response) {
         try {

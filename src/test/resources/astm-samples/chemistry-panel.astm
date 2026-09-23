@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Chemistry Panel with Unit Conversion Scenarios
 # Purpose: Test unit mapping and conversion factors (User Story 1, FR-004)
-# Reference: specs/004-astm-analyzer-mapping/spec.md FR-004
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # This sample includes results in various units that may require conversion:
 # - Glucose in mg/dL (US conventional) 
@@ -29,7 +29,6 @@ R|14|^^^AST^Aspartate Aminotransferase|22|IU/L|10-40|N||F|20250115090100
 R|15|^^^ALP^Alkaline Phosphatase|65|IU/L|44-147|N||F|20250115090100
 R|16|^^^BILIRUBIN^Total Bilirubin|0.8|mg/dL|0.1-1.2|N||F|20250115090100
 L|1|N
-
 
 
 

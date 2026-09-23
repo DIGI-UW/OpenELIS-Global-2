@@ -42,6 +42,14 @@ class TestManagementPage {
   button(buttonType) {
     cy.contains("button", buttonType).click();
   }
+
+  // Scope confirm-dialog buttons to the open modal. A bare
+  // cy.contains("button", "Accept") substring-matches side-nav items such as
+  // "Sample Acceptance Checklist", which sit earlier in the DOM and are covered
+  // by the modal.
+  clickModalButton(buttonType) {
+    cy.get(".cds--modal.is-visible").contains("button", buttonType).click();
+  }
 }
 
 export default TestManagementPage;

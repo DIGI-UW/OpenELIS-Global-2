@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION')")
 public class EQAAlertRestController extends ControllerUtills {
 
     @Autowired

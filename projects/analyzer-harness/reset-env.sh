@@ -7,6 +7,7 @@
 #   --build        Build WAR + harness Docker images first (start from scratch)
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
 #   --skip-fixtures   Skip loading test fixtures after startup
+#   --mvp-story     Seed the real analyzer traffic used by the OGC-1054 story
 #   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
 #   --ci-parity    Bring up the CI-parity stack (build.docker-compose.yml +
 #                  ci.analyzer-harness.yml) instead of the local dev stack.
@@ -33,7 +34,6 @@ NC='\033[0m'
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
-HARNESS_PLUGIN_DIR="$HARNESS_DIR/volume/plugins"
 source "$HARNESS_DIR/compose-stack.sh"
 if [ -f "$HARNESS_DIR/.env" ]; then
   ENV_FILE="$HARNESS_DIR/.env"
@@ -56,6 +56,7 @@ DO_BUILD=false
 USE_LETSENCRYPT=false
 SKIP_LETSENCRYPT=false
 CI_PARITY=false
+MVP_STORY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -73,6 +74,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-fixtures)
             SKIP_FIXTURES=true
+            shift
+            ;;
+        --mvp-story)
+            MVP_STORY=true
             shift
             ;;
         --skip-letsencrypt)
@@ -125,6 +130,8 @@ cd "$HARNESS_DIR"
 if [ "$FULL_RESET" = true ]; then
     echo -e "  ${YELLOW}→ Full reset: removing volumes${NC}"
     docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans -v 2>/dev/null || true
+    mkdir -p "$HARNESS_DIR/volume/analyzer-imports"
+    find "$HARNESS_DIR/volume/analyzer-imports" -mindepth 1 -delete
 else
     docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans 2>/dev/null || true
 fi
@@ -136,36 +143,18 @@ echo -e "  ${GREEN}✓ Stack stopped${NC}"
 # Ensure repo volume dirs exist so proxy bind mounts work (and so valid certs in volume/letsencrypt are used)
 mkdir -p "$REPO_ROOT/volume/letsencrypt" "$REPO_ROOT/volume/nginx/certbot"
 
-# Step 2: Stage plugin jars for runtime loading (parity with CI)
-echo -e "${YELLOW}[2/5] Staging analyzer plugin jars for runtime loading...${NC}"
-cd "$REPO_ROOT"
-mkdir -p "$HARNESS_PLUGIN_DIR"
-
-if ! find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
-    ! -name "*sources.jar" ! -name "*javadoc.jar" | grep -q .; then
-    echo -e "  ${YELLOW}→ No built plugin jars found; building plugins first${NC}"
-    mvn clean install -DskipTests -Dmaven.test.skip=true -f "$REPO_ROOT/plugins/pom.xml"
-fi
-
-rm -rf "$HARNESS_PLUGIN_DIR"/*
-find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
-    ! -name "*sources.jar" ! -name "*javadoc.jar" \
-    -exec cp {} "$HARNESS_PLUGIN_DIR/" \;
-PLUGIN_COUNT=$(find "$HARNESS_PLUGIN_DIR" -maxdepth 1 -type f -name "*.jar" | wc -l | tr -d ' ')
-echo -e "  ${GREEN}✓ Staged ${PLUGIN_COUNT} plugin jars${NC}"
-
-# Step 3: Start stack
+# Step 2: Start stack
 if [ "$USE_LETSENCRYPT" = true ]; then
-    echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
+    echo -e "${YELLOW}[2/4] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
 else
-    echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test)...${NC}"
+    echo -e "${YELLOW}[2/4] Starting harness stack (dev + analyzer-test)...${NC}"
 fi
 cd "$HARNESS_DIR"
 docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" up -d --remove-orphans
 echo -e "  ${GREEN}✓ Stack started${NC}"
 
-# Step 4: Wait for OE login over the harness proxy
-echo -e "${YELLOW}[4/5] Waiting for OE login readiness...${NC}"
+# Step 3: Wait for OE login over the harness proxy
+echo -e "${YELLOW}[3/4] Waiting for OE login readiness...${NC}"
 MAX_WAIT=240
 WAIT_INTERVAL=5
 ELAPSED=0
@@ -185,7 +174,7 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Step 4b: Optional Let's Encrypt setup
+# Optional Let's Encrypt setup
 if [ "$USE_LETSENCRYPT" = true ] && [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
     echo -e "${YELLOW}[3b] Setting up Let's Encrypt for ${LETSENCRYPT_DOMAIN}...${NC}"
     if "$HARNESS_DIR/scripts/generate-letsencrypt-certs.sh"; then
@@ -204,11 +193,11 @@ else
     fi
 fi
 
-# Step 5: Load fixtures (from repo root, direct psql to harness DB on 15432)
+# Step 4: Load fixtures (from repo root, direct psql to harness DB on 15432)
 if [ "$SKIP_FIXTURES" = true ]; then
-    echo -e "${YELLOW}[5/5] Skipping fixtures (--skip-fixtures)${NC}"
+    echo -e "${YELLOW}[4/4] Skipping fixtures (--skip-fixtures)${NC}"
 else
-    echo -e "${YELLOW}[5/5] Loading fixtures (DB_PORT=15432)...${NC}"
+    echo -e "${YELLOW}[4/4] Loading fixtures (DB_PORT=15432)...${NC}"
     cd "$REPO_ROOT"
     export DB_PORT=15432
     export DB_HOST="${DB_HOST:-localhost}"
@@ -225,6 +214,10 @@ else
     set -a && [ -f .env ] && . ./.env && set +a
     BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
     echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
+    if [ "$MVP_STORY" = true ]; then
+        BASE_URL=https://localhost bash projects/analyzer-harness/seed-mvp-traffic.sh
+        echo -e "  ${GREEN}✓ OGC-1054 MVP traffic seeded${NC}"
+    fi
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

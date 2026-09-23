@@ -1,0 +1,20 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+Clinical Collection Method,Venipuncture,VENI,Y,1,,Venipuncture,Ponction veineuse,Venopuncion,Pungsi vena
+Clinical Collection Method,Capillary / Finger Prick,CAP,Y,2,,Capillary / Finger Prick,Capillaire / Piqure au doigt,Capilar / Puncion digital,Kapiler / Tusuk jari
+Clinical Collection Method,Heel Prick,HEEL,Y,3,,Heel Prick,Piqure au talon,Puncion de talon,Tusuk tumit
+Clinical Collection Method,Arterial Puncture,ART,Y,4,,Arterial Puncture,Ponction arterielle,Puncion arterial,Pungsi arteri
+Clinical Collection Method,Midstream Clean Catch,MSU,Y,5,,Midstream Clean Catch,Urine a mi-jet,Chorro medio,Urine pancar tengah
+Clinical Collection Method,Catheter,CATH,Y,6,,Catheter,Sonde,Cateter,Kateter
+Clinical Collection Method,Swab,SWAB,Y,7,,Swab,Ecouvillon,Hisopo,Usap
+Clinical Collection Method,Aspirate,ASP,Y,8,,Aspirate,Aspiration,Aspirado,Aspirat
+Clinical Collection Method,Biopsy,BIOP,Y,9,,Biopsy,Biopsie,Biopsia,Biopsi
+Clinical Collection Method,Sputum Expectoration,SPUT,Y,10,,Sputum Expectoration,Expectoration,Expectoracion,Ekspektorasi
+Clinical Collection Method,Lumbar Puncture,LP,Y,11,,Lumbar Puncture,Ponction lombaire,Puncion lumbar,Pungsi lumbal
+Clinical Collection Method,Other,OTHCM,Y,12,,Other,Autre,Otro,Lainnya
+Specimen Origin,Inpatient Ward,INPAT,Y,1,,Inpatient Ward,Service d'hospitalisation,Sala de hospitalizacion,Bangsal rawat inap
+Specimen Origin,Outpatient Clinic,OUTPAT,Y,2,,Outpatient Clinic,Consultation externe,Consulta externa,Klinik rawat jalan
+Specimen Origin,Emergency Department,EMERG,Y,3,,Emergency Department,Urgences,Urgencias,Unit gawat darurat
+Specimen Origin,Operating Theatre,THEATRE,Y,4,,Operating Theatre,Bloc operatoire,Quirofano,Ruang operasi
+Specimen Origin,Intensive Care,ICU,Y,5,,Intensive Care,Soins intensifs,Cuidados intensivos,Perawatan intensif
+Specimen Origin,Referred from External Facility,EXTREF,Y,6,,Referred from External Facility,Refere d'un etablissement externe,Referido de centro externo,Rujukan dari fasilitas luar
+Specimen Origin,Community / Field,FIELD,Y,7,,Community / Field,Communaute / Terrain,Comunidad / Campo,Komunitas / Lapangan

@@ -54,6 +54,55 @@ public class PanelTerminologyMappingServiceImpl extends AuditableBaseObjectServi
 
     @Override
     @Transactional
+    public void syncLegacyLoinc(String panelId, String loinc, String sysUserId) {
+        String code = (loinc == null || loinc.trim().isEmpty()) ? null : loinc.trim();
+        List<PanelTerminologyMapping> all = getAllMatching("panelId", panelId);
+
+        // Retire an active LOINC mapping the legacy column no longer names. Doing
+        // this first keeps the unique key free for the upsert below.
+        for (PanelTerminologyMapping m : all) {
+            if (LOINC.equals(m.getSource()) && "Y".equals(m.getIsActive())
+                    && !java.util.Objects.equals(m.getCode(), code)) {
+                m.setIsActive("N");
+                m.setSysUserId(sysUserId);
+                update(m);
+            }
+        }
+        if (code == null) {
+            return;
+        }
+
+        PanelTerminologyMapping existing = null;
+        for (PanelTerminologyMapping m : all) {
+            if (LOINC.equals(m.getSource()) && code.equals(m.getCode())) {
+                existing = m;
+                break;
+            }
+        }
+        if (existing != null) {
+            // A code the editor had recorded as something other than SAME_AS keeps
+            // that relationship: the legacy column says which code, not what it
+            // means, and the editor is the more expressive of the two.
+            if (existing.getRelationship() == null) {
+                existing.setRelationship(SAME_AS);
+            }
+            existing.setIsActive("Y");
+            existing.setSysUserId(sysUserId);
+            update(existing);
+            return;
+        }
+        PanelTerminologyMapping fresh = new PanelTerminologyMapping();
+        fresh.setPanelId(panelId);
+        fresh.setSource(LOINC);
+        fresh.setCode(code);
+        fresh.setRelationship(SAME_AS);
+        fresh.setIsActive("Y");
+        fresh.setSysUserId(sysUserId);
+        insert(fresh);
+    }
+
+    @Override
+    @Transactional
     public void saveMappingsForPanel(String panelId, List<PanelTerminologyMapping> desired, String sysUserId) {
         // Key everything (active + soft-deleted) by the natural key the DB enforces
         // unique, so a re-added (source, code) reactivates its row instead of

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-remove-openelis-analyzer-connection-runtime" author="OGC">
+        <preConditions onFail="HALT" onError="HALT">
+            <columnExists tableName="analyzer" columnName="ip_address"/>
+            <columnExists tableName="analyzer" columnName="bridge_connection_id"/>
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*)
+                FROM analyzer a
+                WHERE a.bridge_connection_id IS NULL
+                  AND (
+                    a.ip_address IS NOT NULL
+                    OR a.port IS NOT NULL
+                    OR a.import_directory IS NOT NULL
+                    OR a.file_pattern IS NOT NULL
+                    OR a.column_mappings_json IS NOT NULL
+                    OR a.file_format IS NOT NULL
+                  )
+            ]]></sqlCheck>
+        </preConditions>
+        <comment>
+            Remove analyzer-facing connection values and transport persistence from
+            OpenELIS after every retained released analyzer references its durable
+            Bridge connection. Local lab units, lifecycle, verification, audit, and
+            Bridge reference columns remain.
+        </comment>
+
+        <sql splitStatements="false"><![CDATA[
+            DO $$
+            DECLARE
+                unmigrated_count BIGINT;
+            BEGIN
+                IF to_regclass(current_schema() || '.serial_port_configuration') IS NOT NULL THEN
+                    EXECUTE 'SELECT COUNT(*)
+                             FROM serial_port_configuration serial
+                             JOIN analyzer a ON a.id = serial.analyzer_id
+                             WHERE a.bridge_connection_id IS NULL'
+                        INTO unmigrated_count;
+                    IF unmigrated_count > 0 THEN
+                        RAISE EXCEPTION
+                            'OpenELIS serial analyzer runtime remains without a Bridge connection';
+                    END IF;
+                END IF;
+
+                IF to_regclass(current_schema() || '.file_import_configuration') IS NOT NULL THEN
+                    EXECUTE 'SELECT COUNT(*)
+                             FROM file_import_configuration file_config
+                             JOIN analyzer a ON a.id = file_config.analyzer_id
+                             WHERE a.bridge_connection_id IS NULL'
+                        INTO unmigrated_count;
+                    IF unmigrated_count > 0 THEN
+                        RAISE EXCEPTION
+                            'OpenELIS FILE analyzer runtime remains without a Bridge connection';
+                    END IF;
+                END IF;
+            END
+            $$;
+        ]]></sql>
+
+        <sql>
+            DROP TABLE IF EXISTS serial_port_configuration;
+            DROP TABLE IF EXISTS file_import_configuration;
+        </sql>
+        <dropColumn tableName="analyzer" columnName="ip_address"/>
+        <dropColumn tableName="analyzer" columnName="port"/>
+        <dropColumn tableName="analyzer" columnName="protocol_version"/>
+        <dropColumn tableName="analyzer" columnName="communication_mode"/>
+        <dropColumn tableName="analyzer" columnName="import_directory"/>
+        <dropColumn tableName="analyzer" columnName="file_pattern"/>
+        <dropColumn tableName="analyzer" columnName="column_mappings_json"/>
+        <dropColumn tableName="analyzer" columnName="file_format"/>
+        <dropColumn tableName="analyzer" columnName="delimiter"/>
+        <dropColumn tableName="analyzer" columnName="has_header"/>
+        <dropColumn tableName="analyzer" columnName="skip_rows"/>
+
+        <rollback>
+            <addColumn tableName="analyzer">
+                <column name="ip_address" type="VARCHAR(15)"/>
+                <column name="port" type="INTEGER"/>
+                <column name="protocol_version" type="VARCHAR(20)"/>
+                <column name="communication_mode" type="VARCHAR(25)"/>
+                <column name="import_directory" type="VARCHAR(500)"/>
+                <column name="file_pattern" type="VARCHAR(100)"/>
+                <column name="column_mappings_json" type="TEXT"/>
+                <column name="file_format" type="VARCHAR(30)"/>
+                <column name="delimiter" type="VARCHAR(10)"/>
+                <column name="has_header" type="BOOLEAN"/>
+                <column name="skip_rows" type="INTEGER"/>
+            </addColumn>
+            <createTable tableName="serial_port_configuration">
+                <column name="id" type="VARCHAR(36)">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+                <column name="analyzer_id" type="NUMERIC(10,0)">
+                    <constraints nullable="false" unique="true"
+                        foreignKeyName="fk_serial_port_analyzer" references="analyzer(id)"
+                        deleteCascade="true"/>
+                </column>
+                <column name="port_name" type="VARCHAR(50)"><constraints nullable="false"/></column>
+                <column name="baud_rate" type="INT" defaultValueNumeric="9600"><constraints nullable="false"/></column>
+                <column name="data_bits" type="INT" defaultValueNumeric="8"><constraints nullable="false"/></column>
+                <column name="stop_bits" type="VARCHAR(10)" defaultValue="ONE"><constraints nullable="false"/></column>
+                <column name="parity" type="VARCHAR(10)" defaultValue="NONE"><constraints nullable="false"/></column>
+                <column name="flow_control" type="VARCHAR(20)" defaultValue="NONE"><constraints nullable="false"/></column>
+                <column name="active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+                <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>
+                <column name="sys_user_id" type="VARCHAR(36)"/>
+                <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()"><constraints nullable="false"/></column>
+            </createTable>
+            <createTable tableName="file_import_configuration">
+                <column name="id" type="VARCHAR(36)"><constraints primaryKey="true" nullable="false"/></column>
+                <column name="analyzer_id" type="NUMERIC(10,0)">
+                    <constraints nullable="false" unique="true"
+                        foreignKeyName="fk_file_import_analyzer" references="analyzer(id)"
+                        deleteCascade="true"/>
+                </column>
+                <column name="import_directory" type="VARCHAR(255)"><constraints nullable="false"/></column>
+                <column name="file_pattern" type="VARCHAR(100)" defaultValue="*.csv"><constraints nullable="false"/></column>
+                <column name="archive_directory" type="VARCHAR(255)"/>
+                <column name="error_directory" type="VARCHAR(255)"/>
+                <column name="column_mappings" type="TEXT"/>
+                <column name="delimiter" type="VARCHAR(10)" defaultValue=","><constraints nullable="false"/></column>
+                <column name="has_header" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+                <column name="skip_rows" type="INTEGER" defaultValueNumeric="0"/>
+                <column name="file_format" type="VARCHAR(20)" defaultValue="CSV"><constraints nullable="false"/></column>
+                <column name="active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+                <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>
+                <column name="sys_user_id" type="VARCHAR(36)"/>
+                <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()"><constraints nullable="false"/></column>
+            </createTable>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

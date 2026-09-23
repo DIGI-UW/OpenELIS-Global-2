@@ -2,8 +2,10 @@ package org.openelisglobal.result;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.List;
 import java.util.Map;
@@ -619,5 +621,74 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         Result parent = resultService.get("3");
         List<Result> children = resultService.getChildResults(parent.getId());
         assertNotNull(children);
+    }
+
+    @Test
+    public void getResult_shouldReturnExpandedUncertaintyWhenSet() {
+        Result result = resultService.get("3");
+        assertNotNull(result.getExpandedUncertainty());
+        assertEquals(0, new BigDecimal("3.5").compareTo(result.getExpandedUncertainty()));
+    }
+
+    @Test
+    public void getResult_shouldReturnCoverageFactorWhenUncertaintySet() {
+        Result result = resultService.get("3");
+        assertNotNull(result.getCoverageFactor());
+        assertEquals(0, new BigDecimal("2").compareTo(result.getCoverageFactor()));
+    }
+
+    @Test
+    public void getResult_shouldReturnNullExpandedUncertaintyWhenNotSet() {
+        Result result = resultService.get("4");
+        assertNull(result.getExpandedUncertainty());
+    }
+
+    @Test
+    public void getResult_shouldReturnNullCoverageFactorWhenUncertaintyNotSet() {
+        Result result = resultService.get("4");
+        assertNull(result.getCoverageFactor());
+    }
+
+    @Test
+    public void save_withExpandedUncertainty_shouldPersistUncertaintyAndCoverageFactor() {
+        List<ResultSignature> signatures = resultSignatureService.getAll();
+        resultSignatureService.deleteAll(signatures);
+        List<Result> existing = resultService.getAll();
+        existing.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        resultService.deleteAll(existing);
+
+        Result result = new Result();
+        result.setValue("120.0");
+        result.setAnalysis(analysisService.get("1"));
+        result.setTestResult(testResultService.get("1"));
+        result.setAnalyte(analyteService.get("3"));
+        result.setExpandedUncertainty(new BigDecimal("1.5"));
+        result.setCoverageFactor(new BigDecimal("2"));
+        String savedId = resultService.insert(result);
+        Result saved = resultService.get(savedId);
+        assertNotNull(saved.getExpandedUncertainty());
+        assertNotNull(saved.getCoverageFactor());
+        assertEquals(0, new BigDecimal("1.5").compareTo(saved.getExpandedUncertainty()));
+        assertEquals(0, new BigDecimal("2").compareTo(saved.getCoverageFactor()));
+    }
+
+    @Test
+    public void update_shouldClearExpandedUncertaintyWhenSetToNull() {
+        Result result = resultService.get("3");
+        result.setExpandedUncertainty(null);
+        result.setCoverageFactor(null);
+        Result updated = resultService.update(result);
+        assertNull(updated.getExpandedUncertainty());
+        assertNull(updated.getCoverageFactor());
+    }
+
+    @Test
+    public void update_shouldUpdateExpandedUncertainty() {
+        Result result = resultService.get("3");
+        result.setExpandedUncertainty(new BigDecimal("5.0"));
+        result.setCoverageFactor(new BigDecimal("2"));
+        Result updated = resultService.update(result);
+        assertEquals(0, new BigDecimal("5.0").compareTo(updated.getExpandedUncertainty()));
+        assertEquals(0, new BigDecimal("2").compareTo(updated.getCoverageFactor()));
     }
 }

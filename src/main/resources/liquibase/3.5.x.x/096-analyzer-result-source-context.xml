@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="096-analyzer-result-source-context" author="codex">
+        <comment>Preserve normalized Bridge source identity and raw analyzer context on the existing result staging row.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="source_message_id" type="VARCHAR(255)"/>
+            <column name="source_connection_id" type="VARCHAR(255)"/>
+            <column name="source_profile_id" type="VARCHAR(128)"/>
+            <column name="source_profile_revision" type="INTEGER"/>
+            <column name="source_protocol" type="VARCHAR(20)"/>
+            <column name="source_transport" type="VARCHAR(20)"/>
+            <column name="raw_test_code" type="VARCHAR(255)"/>
+            <column name="raw_result_value" type="TEXT"/>
+            <column name="result_classification" type="VARCHAR(12)"/>
+            <column name="recognition_mode" type="VARCHAR(12)"/>
+            <column name="recognition_outcome" type="VARCHAR(20)"/>
+            <column name="recognition_fingerprint" type="VARCHAR(71)"/>
+            <column name="source_payload" type="TEXT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_payload"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="recognition_fingerprint"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="recognition_outcome"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="recognition_mode"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="result_classification"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="raw_result_value"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="raw_test_code"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_transport"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_protocol"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_profile_revision"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_profile_id"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_connection_id"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="source_message_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
