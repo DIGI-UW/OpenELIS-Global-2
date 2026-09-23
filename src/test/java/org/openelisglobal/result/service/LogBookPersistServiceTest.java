@@ -195,5 +195,13 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("N", savedResults.get(0).getResultType());
         assertFalse("Results should be persisted", savedResults.isEmpty());
 
+        // The rule engines are handed new plus modified results, and that list
+        // used to be the data set's own new-results collection with the modified
+        // ones appended to it. Callers that read both afterwards - the two
+        // result-entry controllers, which evaluate alert rules over new plus
+        // modified - then saw every edit twice and raised its alert twice.
+        assertTrue("an edited result must not be filed as newly entered",
+                dataSet.getNewResults().stream().noneMatch(rs -> results.contains(rs.result)));
+        assertEquals(results.size(), dataSet.getModifiedResults().size());
     }
 }

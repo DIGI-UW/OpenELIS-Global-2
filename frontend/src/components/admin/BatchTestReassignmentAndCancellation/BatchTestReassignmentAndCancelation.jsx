@@ -127,6 +127,9 @@ function BatchTestReassignmentAndCancelation() {
   };
 
   useEffect(() => {
+    if (!sampleTypeToGetId) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeHandle = (res) => {
       if (!res) {
         setIsLoading(true);
@@ -153,12 +156,15 @@ function BatchTestReassignmentAndCancelation() {
     };
 
     getFromOpenElisServer(
-      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${sampleTypeToGetId}`,
+      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${encodeURIComponent(sampleTypeToGetId)}`,
       handleBatchTestReassignmentSampleTypeHandle,
     );
   }, [sampleTypeToGetId]);
 
   useEffect(() => {
+    if (!sampleTypeTestIdToGetIdPending) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeTestHandle = (res) => {
       if (!res) {
         setIsLoading(true);
@@ -168,7 +174,7 @@ function BatchTestReassignmentAndCancelation() {
     };
 
     getFromOpenElisServer(
-      `/rest/getPendingAnalysisForTestProvider?testId=${sampleTypeTestIdToGetIdPending}`,
+      `/rest/getPendingAnalysisForTestProvider?testId=${encodeURIComponent(sampleTypeTestIdToGetIdPending)}`,
       handleBatchTestReassignmentSampleTypeTestHandle,
     );
   }, [sampleTypeTestIdToGetIdPending]);
@@ -249,9 +255,7 @@ function BatchTestReassignmentAndCancelation() {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      resetToDefault();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -259,9 +263,6 @@ function BatchTestReassignmentAndCancelation() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
   const capitalizeFirstLetter = (string) => {
@@ -802,12 +803,7 @@ function BatchTestReassignmentAndCancelation() {
               </Button>{" "}
               <Button
                 data-cy="cancelButton"
-                onClick={() => {
-                  resetToDefault();
-                  window.location.assign(
-                    "/MasterListsPage/batchTestReassignment",
-                  );
-                }}
+                onClick={resetToDefault}
                 kind="tertiary"
                 type="button"
               >
@@ -1012,11 +1008,7 @@ function BatchTestReassignmentAndCancelation() {
                     <FormattedMessage id="column.name.accept" />
                   </Button>{" "}
                   <Button
-                    onClick={() =>
-                      window.location.assign(
-                        "/MasterListsPage/batchTestReassignment",
-                      )
-                    }
+                    onClick={resetToDefault}
                     kind="tertiary"
                     type="button"
                   >

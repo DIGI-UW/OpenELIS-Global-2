@@ -1,10 +1,14 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
-import { useIntl } from "react-intl";
-import { Stack, InlineNotification } from "@carbon/react";
+import { useWorkflowPrefix } from "../OrderContext";
+import { useIntl, FormattedMessage } from "react-intl";
+import { Stack, InlineNotification, Button } from "@carbon/react";
+import { Warning } from "@carbon/icons-react";
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext } from "../../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -14,10 +18,14 @@ import {
   getPendingRequests,
   convertRequestsToSamples,
 } from "../api/sampleTypeRequestApi";
+import SampleAcceptanceReview from "./sections/SampleAcceptanceReview";
+import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
+import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
+import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -32,6 +40,7 @@ import "../order-workflow.scss";
 const OrderCollect = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
 
   const {
@@ -40,7 +49,6 @@ const OrderCollect = () => {
     samples,
     setSamples,
     saveOrder,
-    loadOrder,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -49,64 +57,40 @@ const OrderCollect = () => {
     removeTestFromSample,
     updateSampleCollectionDetails,
     setOrderData,
+    labNumber,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+
+  // Sample types from API
+  const [showNceForm, setShowNceForm] = useState(false);
+  // Intake acceptance is hidden when this order's domain enforcement is OFF,
+  // matching QA Review. Default false → fail open.
+  const [acceptanceOff, setAcceptanceOff] = useState(false);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
-  const [isLoadingSampleTypes, setIsLoadingSampleTypes] = useState(true);
-
   // Units of measure for sample collection
   const [unitOfMeasures, setUnitOfMeasures] = useState([]);
 
-  // Pending sample type requests from Step 1
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-
-  // Informed consent data
-  const [consentData, setConsentData] = useState({
-    consentGiven: false,
-    consentFormReference: "",
-    consentRecordedAt: "",
-    consentRecordedBy: "",
-  });
-
-  // Initialize consent data from orderData (for edit scenarios)
-  useEffect(() => {
-    if (orderData?.sampleOrderItems) {
-      const {
-        consentGiven,
-        consentFormReference,
-        consentRecordedAt,
-        consentRecordedBy,
-      } = orderData.sampleOrderItems;
-      if (consentGiven !== undefined) {
-        setConsentData({
-          consentGiven: consentGiven || false,
-          consentFormReference: consentFormReference || "",
-          consentRecordedAt: consentRecordedAt || "",
-          consentRecordedBy: consentRecordedBy || "",
-        });
-      }
-    }
-  }, [
-    orderData?.sampleOrderItems?.consentGiven,
-    orderData?.sampleOrderItems?.consentFormReference,
-    orderData?.sampleOrderItems?.consentRecordedAt,
-    orderData?.sampleOrderItems?.consentRecordedBy,
-  ]);
+  // Consent is already part of canonical order state; do not mirror it locally.
+  const consentData = {
+    consentGiven: orderData?.sampleOrderItems?.consentGiven || false,
+    consentFormReference:
+      orderData?.sampleOrderItems?.consentFormReference || "",
+    consentRecordedAt: orderData?.sampleOrderItems?.consentRecordedAt || "",
+    consentRecordedBy: orderData?.sampleOrderItems?.consentRecordedBy || "",
+  };
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
     componentMounted.current = true;
-    setIsLoadingSampleTypes(true);
-
     getFromOpenElisServer("/rest/user-sample-types", (response) => {
       if (componentMounted.current && response) {
         setSampleTypes(response);
-        setIsLoadingSampleTypes(false);
       }
     });
 
@@ -122,6 +106,21 @@ const OrderCollect = () => {
     };
   }, []);
 
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+
+  useEffect(() => {
+    let active = true;
+    getEnforcement().then((modes) => {
+      if (!active) return;
+      setAcceptanceOff((modes?.[workflowType] || "").toUpperCase() === "OFF");
+    });
+    return () => {
+      active = false;
+    };
+  }, [workflowType]);
+
   // Load pending sample type requests when orderId is available
   useEffect(() => {
     const loadPendingRequests = async () => {
@@ -131,11 +130,9 @@ const OrderCollect = () => {
       const hasSampleItemIds = samples.some((s) => s.sampleItemId);
       if (hasSampleItemIds) return;
 
-      setIsLoadingRequests(true);
       try {
         const requests = await getPendingRequests(orderId);
         if (componentMounted.current && requests && requests.length > 0) {
-          setPendingRequests(requests);
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
           // Merge with any existing sample data.
@@ -163,41 +160,31 @@ const OrderCollect = () => {
         }
       } catch {
         // Failed to load pending requests
-      } finally {
-        if (componentMounted.current) {
-          setIsLoadingRequests(false);
-        }
       }
     };
 
     loadPendingRequests();
   }, [orderId]);
 
-  // Track if we've already attempted to reload samples
-  const hasAttemptedReload = useRef(false);
-
-  // Reload order if samples don't have sampleItemId (needed for updates)
-  // This handles the case where user navigates directly to this step
-  useEffect(() => {
-    const labNo = orderData?.sampleOrderItems?.labNo;
-    const hasSampleItemIds = samples.some((s) => s.sampleItemId);
-    const hasSamplesWithTypes = samples.some((s) => s.sampleTypeId);
-
-    if (
-      labNo &&
-      !hasSampleItemIds &&
-      hasSamplesWithTypes &&
-      !hasAttemptedReload.current
-    ) {
-      // Samples exist but don't have sampleItemId - reload to get them
-      hasAttemptedReload.current = true;
-      loadOrder(labNo, false);
-    }
-  }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
-
   // Validate that at least one sample with a sample type is present.
-  // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
-  const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
+  // Informed consent stays advisory by default, which is what FRS FR-5-001/
+  // FR-5-002 describes, but a site whose regulator requires consent before
+  // collection can turn consentRequiredForCollection on and have it gate.
+  // Environmental and vector samples have no human subject, so they capture
+  // no consent and the gate never applies to them.
+  const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
+  const hasCollectionDateConflict = samples.some((sample) =>
+    isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
+  );
+  // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
+  const consentRequired =
+    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentSatisfied = !consentRequired || consentData.consentGiven;
+  const canProceed =
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    !hasCollectionDateConflict &&
+    consentSatisfied;
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -213,7 +200,7 @@ const OrderCollect = () => {
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
-    } catch (error) {
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -227,8 +214,8 @@ const OrderCollect = () => {
     try {
       await saveOrder();
       markStepComplete("collect");
-      history.push("/order/label");
-    } catch (error) {
+      history.push(`${workflowPrefix}/label`);
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -239,8 +226,6 @@ const OrderCollect = () => {
   };
 
   const handleConsentChange = (updatedConsent) => {
-    setConsentData(updatedConsent);
-
     // Sync consent data with orderData.sampleOrderItems for backend persistence
     setOrderData({
       ...orderData,
@@ -256,15 +241,48 @@ const OrderCollect = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={1}
       title="order.step.collect"
       canProceed={canProceed}
+      canSave={!hasCollectionDateConflict}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
+      extraButtons={
+        labNumber && (
+          <Button
+            kind="danger--tertiary"
+            size="md"
+            renderIcon={Warning}
+            onClick={() => setShowNceForm((v) => !v)}
+          >
+            <FormattedMessage
+              id="nce.button.reportNce"
+              defaultMessage="Report NCE"
+            />
+          </Button>
+        )
+      }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice />
 
       <Stack gap={7}>
+        {consentRequired && !consentData.consentGiven && (
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({
+              id: "collect.consentRequired.title",
+              defaultMessage: "Informed consent is required",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.consentRequired.subtitle",
+              defaultMessage:
+                "This laboratory requires consent to be recorded before a collection can proceed.",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
         {/* Warning if no tests ordered */}
         {!hasOrderedTests && (
           <InlineNotification
@@ -294,12 +312,32 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
         />
 
+        {/* A: the collector could see the ordered tests but not add one. */}
+        <CollectTestPickerSection
+          samples={samples}
+          setSamples={setSamples}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
         {/* Section 2: Informed Consent */}
         <ConsentAccordionSection
           consentData={consentData}
           onConsentChange={handleConsentChange}
           isReadOnly={isReadOnly && !isEditMode}
         />
+
+        {/* A collector holding a hemolyzed specimen could log an NCE here but
+            had to walk to QA Review to reject or resample it. The same
+            per-specimen acceptance table is mounted here, without the submit
+            gate that belongs to QA. Acceptance is recorded against
+            sample_items, so it appears once the collection has been saved. */}
+        {!acceptanceOff && samples.some((s) => s.sampleItemId) && (
+          <SampleAcceptanceReview
+            orderId={orderId}
+            labNumber={labNumber}
+            samples={samples}
+          />
+        )}
 
         {/* Section 3: Samples Collection */}
         <SamplesCollectionSection
@@ -309,7 +347,16 @@ const OrderCollect = () => {
           unitOfMeasures={unitOfMeasures}
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
+          admissionDate={admissionDate}
         />
+
+        {showNceForm && labNumber && (
+          <InlineNceForm
+            accessionNumber={labNumber}
+            onClose={() => setShowNceForm(false)}
+            onSubmitSuccess={() => setShowNceForm(false)}
+          />
+        )}
       </Stack>
     </OrderWorkflowLayout>
   );

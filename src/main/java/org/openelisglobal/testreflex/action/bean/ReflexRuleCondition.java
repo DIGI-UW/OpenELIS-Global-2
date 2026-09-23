@@ -42,6 +42,13 @@ public class ReflexRuleCondition {
     @Column(name = "test_analyte_id")
     private Integer testAnalyteId;
 
+    /**
+     * The result component whose value this condition tests; null means the test's
+     * primary component.
+     */
+    @Column(name = "component_id")
+    private String componentId;
+
     public Integer getId() {
         return id;
     }
@@ -96,6 +103,14 @@ public class ReflexRuleCondition {
 
     public void setValue2(String value2) {
         this.value2 = value2;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 
     public Integer getTestAnalyteId() {

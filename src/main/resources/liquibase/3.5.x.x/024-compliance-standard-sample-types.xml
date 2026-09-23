@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        FRS S-01 alignment (FR-1-007a, FR-1-007b, data model):
+        applicableSampleTypes is now a Set<String> persisted via a join
+        table. This migration:
+          1. creates compliance_standard_sample_type(standard_id, sample_type)
+             with a PK + FK to compliance_standard.
+          2. backfills from the legacy comma-delimited applicable_sample_types
+             TEXT column on compliance_standard, splitting on ',' and
+             trimming whitespace.
+          3. drops the legacy column.
+
+        The join-table model lets the Link Test form expose chip filters
+        per declared sample type and lets HQL queries use MEMBER OF /
+        IS EMPTY semantics instead of LIKE-string contains.
+    -->
+
+    <changeSet id="024-1-create-compliance-standard-sample-type-table" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="compliance_standard_sample_type"/></not>
+        </preConditions>
+        <createTable tableName="compliance_standard_sample_type">
+            <column name="standard_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="compliance_standard_sample_type"
+            columnNames="standard_id, sample_type"
+            constraintName="pk_compliance_standard_sample_type"/>
+        <rollback>
+            <dropTable tableName="compliance_standard_sample_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="024-2-add-compliance-standard-sample-type-fk" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_standard_sample_type"/>
+            <tableExists tableName="compliance_standard"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_compliance_sst_standard"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_compliance_sst_standard"
+            baseTableName="compliance_standard_sample_type"
+            baseColumnNames="standard_id"
+            referencedTableName="compliance_standard"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="NO ACTION"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="compliance_standard_sample_type"
+                constraintName="fk_compliance_sst_standard"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="024-3-backfill-compliance-standard-sample-types" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_standard"/>
+            <columnExists tableName="compliance_standard" columnName="applicable_sample_types"/>
+            <tableExists tableName="compliance_standard_sample_type"/>
+        </preConditions>
+        <sql splitStatements="false"><![CDATA[
+            INSERT INTO compliance_standard_sample_type (standard_id, sample_type)
+            SELECT cs.id, btrim(t.token)
+            FROM compliance_standard cs
+            CROSS JOIN LATERAL unnest(string_to_array(cs.applicable_sample_types, ',')) AS t(token)
+            WHERE cs.applicable_sample_types IS NOT NULL
+              AND btrim(t.token) <> ''
+            ON CONFLICT (standard_id, sample_type) DO NOTHING;
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM compliance_standard_sample_type</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="024-4-drop-legacy-applicable-sample-types-column" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_standard"/>
+            <columnExists tableName="compliance_standard" columnName="applicable_sample_types"/>
+        </preConditions>
+        <dropColumn tableName="compliance_standard" columnName="applicable_sample_types"/>
+        <rollback>
+            <addColumn tableName="compliance_standard">
+                <column name="applicable_sample_types" type="TEXT"/>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

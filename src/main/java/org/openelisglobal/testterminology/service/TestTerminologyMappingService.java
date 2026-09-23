@@ -9,6 +9,9 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
     /** Active terminology mappings for a test. */
     List<TestTerminologyMapping> getActiveByTestId(String testId);
 
+    /** Active terminology mappings for a terminology source, across all tests. */
+    List<TestTerminologyMapping> getActiveBySource(String source);
+
     /**
      * OGC-949 M10: reconcile a test's terminology mappings to exactly the desired
      * set, in one transaction. Identity is the natural key {@code (source, code)}

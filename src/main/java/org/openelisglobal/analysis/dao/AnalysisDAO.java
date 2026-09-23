@@ -82,6 +82,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -125,6 +127,10 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
+    List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -159,6 +165,9 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) throws LIMSRuntimeException;
+
+    List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisStartedOnRangeByStatusId(Date lowDate, Date highDate, String statusID)
             throws LIMSRuntimeException;
@@ -200,16 +209,27 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList);
     // void updateData(Analysis analysis, boolean skipAuditTrail) throws
     // LIMSRuntimeException;
 
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> statusIdList,
+            boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList);
 
     int getCountAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber);
@@ -235,11 +255,43 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
 
+    int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
+    int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 
     int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds);
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}.
+     */
+    int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}.
+     */
+    int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds);
 
     List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 

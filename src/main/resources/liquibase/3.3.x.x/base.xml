@@ -98,4 +98,8 @@
   <!-- OGC-356: Sample type request table for decoupled order workflow -->
   <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
 
+  <!-- FR-2.3: widen site_information.name so standard property names fit, then seed the pathology stage enablement flags -->
+  <include relativeToChangelogFile="true" file="035-widen-site-information-name.xml"/>
+  <include relativeToChangelogFile="true" file="036-pathology-stage-enablement-flags.xml"/>
+
 </databaseChangeLog>

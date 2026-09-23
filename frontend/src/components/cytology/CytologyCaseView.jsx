@@ -40,6 +40,7 @@ import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
+  { label: "breadcrumb.caseView", link: "" },
 ];
 
 function CytologyCaseView() {

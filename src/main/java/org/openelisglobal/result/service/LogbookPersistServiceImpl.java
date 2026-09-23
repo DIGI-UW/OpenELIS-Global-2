@@ -1,5 +1,6 @@
 package org.openelisglobal.result.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -7,18 +8,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -26,9 +31,11 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
+import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +61,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private ReferralResultService referralResultService;
     @Autowired
     private ReferralSetService referralSetService;
+    @Autowired
+    private QcEvaluationService qcEvaluationService;
+    @Autowired
+    private VectorDeconvolutionService vectorDeconvolutionService;
 
     @Override
     @Transactional
@@ -87,6 +98,11 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 resultInventoryService.insert(resultSet.testKit);
             }
             resultSet.result.setId(resultId);
+
+            qcEvaluationService.evaluateQc(resultSet.result);
+            if (resultSet.result.getQcEvaluation() != null) {
+                resultService.update(resultSet.result);
+            }
         }
 
         for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
@@ -97,6 +113,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
             resultSet.result.setResultEvent(Event.RESULT);
+            qcEvaluationService.evaluateQc(resultSet.result);
             resultService.update(resultSet.result);
 
             if (resultSet.signature != null) {
@@ -128,32 +145,170 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         setSampleStatus(actionDataSet, sysUserId);
 
+        evaluateVectorResults(actionDataSet, sysUserId);
+
+        advanceReferralsForManualEntry(actionDataSet, sysUserId);
+
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
         return reflexAnalysises;
     }
 
+    /**
+     * OGC-799 Manual Entry hook: when a Result is saved against an Analysis whose
+     * Referral is still Outstanding, advance the referral to COMPLETED and set its
+     * manually_entered flag so the row routes from Outstanding → History. Only the
+     * referral's own bookkeeping is touched — the Analysis status stays under the
+     * Result Validation workflow's control.
+     *
+     * <p>
+     * {@code markReferralCompletedFromManualEntry} joins this transaction rather
+     * than opening its own: {@code persistDataSet} has already flushed the Analysis
+     * updates above and holds those row locks, so a second connection writing the
+     * same rows would block indefinitely. The per-referral catch keeps an expected
+     * no-op or a FHIR-sync problem from aborting the result save; a genuine DB
+     * failure inside the joined transaction still rolls the whole save back, which
+     * is the correct outcome once both writes share one transaction.
+     */
+    private void advanceReferralsForManualEntry(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<String> analysisIds = new HashSet<>();
+        for (ResultSet rs : actionDataSet.getNewResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        for (ResultSet rs : actionDataSet.getModifiedResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        // A refer-out saved in this same request is a request going out, not a result
+        // coming back from the reference lab. Completing it here would close it the
+        // instant it was raised (OGC-1188).
+        Set<String> referralsRaisedInThisSave = new HashSet<>();
+        for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
+            if (referralSet != null && referralSet.getReferral() != null && referralSet.getReferral().getId() != null) {
+                referralsRaisedInThisSave.add(referralSet.getReferral().getId());
+            }
+        }
+        for (String analysisId : analysisIds) {
+            try {
+                Referral referral = referralService.getReferralByAnalysisId(analysisId);
+                if (referral != null && referral.getId() != null
+                        && !referralsRaisedInThisSave.contains(referral.getId())) {
+                    referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
+                    recordReferenceLabReportDate(referral.getId(), reportDateFor(actionDataSet, analysisId), sysUserId);
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "advanceReferralsForManualEntry",
+                        "failed to advance referral for analysis " + analysisId);
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    /**
+     * The date the reference laboratory itself reported the result, as typed on the
+     * row being saved. Only the electronic path used to set it, so a manually
+     * entered result left the External Referrals report's report-date column blank.
+     */
+    private String reportDateFor(ResultsUpdateDataSet actionDataSet, String analysisId) {
+        for (TestResultItem item : actionDataSet.getModifiedItems()) {
+            if (analysisId.equals(item.getAnalysisId()) && item.getReferralItem() != null) {
+                return item.getReferralItem().getReferredReportDate();
+            }
+        }
+        return null;
+    }
+
+    private void recordReferenceLabReportDate(String referralId, String reportDate, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(reportDate)) {
+            return;
+        }
+        Timestamp reported = DateUtil.convertStringDateToTruncatedTimestamp(reportDate);
+        if (reported == null) {
+            return;
+        }
+        for (ReferralResult referralResult : referralResultService.getReferralResultsForReferral(referralId)) {
+            referralResult.setReferralReportDate(reported);
+            referralResult.setSysUserId(sysUserId);
+            referralResultService.update(referralResult);
+        }
+    }
+
+    private void collectAnalysisId(ResultSet rs, Set<String> analysisIds) {
+        if (rs != null && rs.result != null && rs.result.getAnalysis() != null
+                && rs.result.getAnalysis().getId() != null) {
+            analysisIds.add(rs.result.getAnalysis().getId());
+        }
+    }
+
+    private void evaluateVectorResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<ResultSet> evaluated = new HashSet<>();
+        evaluated.addAll(actionDataSet.getNewResults());
+        evaluated.addAll(actionDataSet.getModifiedResults());
+        for (ResultSet resultSet : evaluated) {
+            if (resultSet == null || resultSet.result == null) {
+                continue;
+            }
+            org.openelisglobal.analysis.valueholder.Analysis analysis = resultSet.result.getAnalysis();
+            if (analysis == null || analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+                continue;
+            }
+            try {
+                Long poolId = Long.valueOf(analysis.getVectorPoolId());
+                vectorDeconvolutionService.evaluateResultEntered(poolId, sysUserId);
+            } catch (NumberFormatException e) {
+                // pool id not numeric — skip silently
+            }
+        }
+        // Completion is now triggered by confirmResultForAllMembers(), not by result
+        // entry — so evaluateChildResultsForCompletion is no longer called here.
+    }
+
     private void saveReferralsWithRequiredObjects(ReferralSet referralSet, String sysUserId) {
 
         if (referralSet.getReferral().getId() != null) {
             referralService.update(referralSet.getReferral());
+            referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                    new ArrayList<>(), sysUserId);
         } else {
-            referralService.insert(referralSet.getReferral());
+            // a brand-new referral (results-entry refer-out) is fully persisted
+            // right here; running updateReferralSets on it as well re-saved the
+            // referenced Result through a merge-detached copy whose version was
+            // already stale from this request's own result save — an
+            // OptimisticLockException that failed the whole save (OGC-1023). The
+            // update pass belongs to the referred-out page's edit flow only.
+            Referral referral = referralSet.getReferral();
+            referralService.insert(referral);
+            referralSetService.insertInitialDraftHistory(referral.getId(), sysUserId);
+            // The send date the bench entered on the Refer Out row IS the handoff: the
+            // specimen left with it, so dispatch now rather than waiting for a shipment
+            // box that this workflow never creates. Dispatch is what writes the history
+            // row, pushes the FHIR Task the reference lab polls for, and fires the
+            // notification. Without a date the referral stays DRAFT for a box to send
+            // (OGC-1188).
+            if (referral.getSentDate() != null) {
+                referralService.dispatchReferral(referral.getId(), referral.getSentDate(), sysUserId,
+                        "Handed off from Result Entry");
+            }
             ReferralResult referralResult = referralSet.getNextReferralResult();
-            referralResult.setReferralId(referralSet.getReferral().getId());
+            referralResult.setReferralId(referral.getId());
             referralResult.setSysUserId(sysUserId);
             referralResultService.insert(referralResult);
+            if (referralSet.getNote() != null) {
+                noteService.insert(referralSet.getNote());
+            }
         }
-
-        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
-                new ArrayList<>(), sysUserId);
     }
 
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         TestCalculatedUtil testCaliculatedUtil = new TestCalculatedUtil();
-        List allResults = actionDataSet.getNewResults();
+        // A copy, not the data set's own list: getNewResults() hands back the
+        // live collection, so appending the modified results to it left every
+        // edited result filed as newly entered as well. Callers that go on to
+        // read both lists - the two result-entry controllers, which evaluate
+        // alert rules over new plus modified - then saw each edit twice and
+        // raised the alert twice.
+        List<ResultSet> allResults = new ArrayList<>(actionDataSet.getNewResults());
         allResults.addAll(actionDataSet.getModifiedResults());
         List<Analysis> reflexAnalysises = testReflexUtil
                 .addNewTestsToDBForReflexTests(convertToTestReflexBeanList(allResults), sysUserId);

@@ -1,7 +1,7 @@
 import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
-import Avatar from "react-avatar";
+import AsyncAvatar from "../../patient/photoManagement/photoAvatar/AyncAvatar";
 import { openPatientResults, type PatientSearchResult } from "./searchService";
 
 interface SearchOutputProps {
@@ -27,19 +27,13 @@ const SearchOutput: React.FC<SearchOutputProps> = ({
                 >
                   <Column lg={2} md={1}>
                     <div role="img">
-                      <Avatar
-                        alt="Patient avatar"
-                        color="rgba(0,0,0,0)"
-                        name={`${patient.lastName ?? ""} ${
+                      <AsyncAvatar
+                        patientId={patient.patientID ?? patient.id}
+                        hasPhoto={Boolean(patient.patientID ?? patient.id)}
+                        patientName={`${patient.lastName ?? ""} ${
                           patient.firstName ?? ""
                         }`}
-                        src={""}
-                        size={patient.referringFacility ? "50" : "40"}
-                        textSizeRatio={2}
-                        style={{
-                          backgroundImage: `url('/images/patient-background.svg')`,
-                          marginTop: "5px",
-                        }}
+                        size={patient.referringFacility ? 50 : 40}
                       />
                     </div>
                   </Column>

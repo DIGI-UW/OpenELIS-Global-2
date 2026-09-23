@@ -799,7 +799,7 @@
 				<textElement verticalAlignment="Middle"/>
 				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
 			</textField>
-			<textField pattern="MM/dd/yyyy">
+			<textField pattern="dd/MM/yyyy">
 				<reportElement x="284" y="17" width="121" height="20" uuid="1707eafe-e05a-4d28-9497-551a71f629e7"/>
 				<textElement verticalAlignment="Middle"/>
 				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>

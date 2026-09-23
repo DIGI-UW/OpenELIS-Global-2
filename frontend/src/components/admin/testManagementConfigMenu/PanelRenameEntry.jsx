@@ -1,9 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import { Heading, Grid, Column, Section } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -12,6 +13,9 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import RenameModelBox from "./renameModel/RenameModelBox";
+
+const PANEL_ENDPOINT = "/rest/PanelRenameEntry";
+const EMPTY_NAMES = { name: { english: "", french: "" } };
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -33,62 +37,44 @@ function PanelRenameEntry() {
   const intl = useIntl();
   const modalHeading = intl.formatMessage({ id: "field.panel" });
 
-  const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [finished, setFinished] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmationStep, setConfirmationStep] = useState(false);
   const [inputError, setInputError] = useState(false);
-  const [panel, setPanel] = useState({});
-  const [panelListShow, setPanelListShow] = useState([]);
-  const [panelPost, setPanelPost] = useState({});
-  const [entityNamesProvider, setEntityNamesProvider] = useState({
-    name: { english: "", french: "" },
-  });
-  const [entityNamesProviderPost, setEntityNamesProviderPost] = useState({
-    name: {
-      english: "",
-      french: "",
-    },
-  });
+  const [nameEdits, setNameEdits] = useState(null);
   const [entityId, setEntityId] = useState();
-  const [entityName, setEntityName] = useState("panel");
+  const entityName = "panel";
   const [selectedItem, setSelectedItem] = useState({});
 
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer("/rest/PanelRenameEntry", handelPanelRename);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+  const invalidateServerData = useInvalidateServerData();
+  const { data: panel } = useServerData(PANEL_ENDPOINT);
+  const panelListShow = panel?.panelList ?? [];
 
-  const handelPanelRename = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setPanel(res);
-      setPanelPost(res);
-      setPanelListShow(res.panelList);
-    }
-  };
+  // Held off until a panel is picked and keyed on it, so picking another panel
+  // is a second read rather than a hand-written refetch. Until that read
+  // arrives the hook still serves the panel picked before, so the names it
+  // offers to edit are the empty ones rather than the previous panel's.
+  const { data: readNames, isPreviousData } = useServerData(
+    entityId && entityName
+      ? `/rest/EntityNamesProvider?entityId=${entityId}&entityName=${entityName}`
+      : null,
+  );
+  const entityNamesProvider =
+    isPreviousData || !readNames ? EMPTY_NAMES : readNames;
 
-  useEffect(() => {
-    if (entityId && entityName) {
-      getFromOpenElisServer(
-        `/rest/EntityNamesProvider?entityId=${entityId}&entityName=${entityName}`,
-        handelEntityNamesProvider,
-      );
-    }
-  }, [entityId, entityName]);
+  // Only the edits live in state, on top of what the server holds, so
+  // clearing them is all it takes to show the stored names again.
+  const entityNamesProviderPost = nameEdits ?? entityNamesProvider;
 
-  const handelEntityNamesProvider = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setEntityNamesProvider(res);
-      setEntityNamesProviderPost(res);
-    }
+  const panelPost = {
+    ...panel,
+    ...(entityId
+      ? {
+          panelId: entityId,
+          nameEnglish: entityNamesProviderPost?.name?.english,
+          nameFrench: entityNamesProviderPost?.name?.french,
+        }
+      : {}),
   };
 
   function panelUpdatePost() {
@@ -107,9 +93,8 @@ function PanelRenameEntry() {
   }
 
   function panelUpdatePostCallback(res) {
+    setIsLoading(false);
     if (res) {
-      setIsLoading(false);
-      setFinished(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -121,9 +106,10 @@ function PanelRenameEntry() {
       });
       setNotificationVisible(true);
       setIsAddModalOpen(false);
-      setTimeout(() => {
-        window.location.reload();
-      }, 10);
+      setConfirmationStep(false);
+      setEntityId(undefined);
+      setNameEdits(null);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -131,9 +117,6 @@ function PanelRenameEntry() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
 
@@ -141,44 +124,27 @@ function PanelRenameEntry() {
     setConfirmationStep(false);
     setIsAddModalOpen(true);
     setEntityId(item.id);
-    // setEntityName(test.value);
+    setNameEdits(null);
     setSelectedItem(item);
   };
 
   const onInputChangeEn = (e) => {
     e.preventDefault();
     const englishName = e.target.value;
-    setEntityNamesProviderPost((prev) => ({
-      name: {
-        ...prev.name,
-        english: englishName,
-      },
-    }));
+    setNameEdits({
+      name: { ...entityNamesProviderPost.name, english: englishName },
+    });
     setInputError(false);
   };
 
   const onInputChangeFr = (e) => {
     e.preventDefault();
     const frenchName = e.target.value;
-    setEntityNamesProviderPost((prev) => ({
-      name: {
-        ...prev.name,
-        french: frenchName,
-      },
-    }));
+    setNameEdits({
+      name: { ...entityNamesProviderPost.name, french: frenchName },
+    });
     setInputError(false);
   };
-
-  useEffect(() => {
-    if (entityId && entityNamesProviderPost && entityNamesProviderPost.name) {
-      setPanelPost((prev) => ({
-        ...prev,
-        panelId: entityId,
-        nameEnglish: entityNamesProviderPost.name.english,
-        nameFrench: entityNamesProviderPost.name.french,
-      }));
-    }
-  }, [entityNamesProviderPost, entityId]);
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);

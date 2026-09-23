@@ -1,3 +1,20 @@
-// Patient history matrix is rendered via Carbon's DataTable in
-// grouped-timeline.tsx; no custom styles needed. Kept as an empty
-// stylesheet because index.ts imports it.
+// The patient history matrix is rendered with Carbon's DataTable in
+// grouped-timeline.tsx; the only custom styling is the Test column, which
+// stacks the test name over the specimen, component and reference range.
+
+.timelineTestCell {
+  // One date column per observation leaves the Test column to be squeezed to
+  // nothing; a floor keeps the identification readable rather than wrapped a
+  // word at a time.
+  min-width: 11rem;
+}
+
+.timelineTestName {
+  font-weight: 600;
+}
+
+.timelineTestMeta {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--cds-text-secondary, #525252);
+}

@@ -89,6 +89,52 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                     + " = ? AND name = ?)", status[1], status[0], status[1], status[0], status[1]);
         }
         statusService.refreshCache();
+        ensureSequencesAheadOfSeededIds();
+        ensureCanonicalObservationHistoryTypes();
+    }
+
+    /**
+     * The accept path writes the whole order graph through the entity sequences.
+     * Fixture datasets (observation-history.xml, result-facade.xml,
+     * analyzer-results.xml, ...) seed those tables with explicit low ids without
+     * advancing the sequences, so under full-suite ordering the next sequence value
+     * collides with a seeded PK ("duplicate key ... samp_pk", "...
+     * observation_history_pk"). Realign every sequence this flow draws from so the
+     * test is order-independent — the same drift the person/provider/ patient
+     * singletons below guard against.
+     */
+    private void ensureSequencesAheadOfSeededIds() {
+        String[][] sequences = { { "sample_seq", "sample" }, { "sample_item_seq", "sample_item" },
+                { "analysis_seq", "analysis" }, { "result_seq", "result" }, { "sample_human_seq", "sample_human" },
+                { "observation_history_seq", "observation_history" }, { "note_seq", "note" } };
+        for (String[] sequence : sequences) {
+            jdbc.queryForObject("SELECT setval('clinlims." + sequence[0] + "', CAST((SELECT COALESCE(MAX(id), 0) + 1"
+                    + " FROM clinlims." + sequence[1] + ") AS BIGINT), false)", Long.class);
+        }
+    }
+
+    /**
+     * The sibling of the drift above, on the referenced side: the fixtures that
+     * seed observation_history (observation-history.xml, observation-history-type
+     * .xml, result-facade.xml, facade-servicerequest.xml) CLEAN_INSERT
+     * observation_history_type with their own ids 1-5 only, so the Liquibase
+     * reference rows the accept path resolves by name — SampleRecordStatus and
+     * PatientRecordStatus — are gone for every later test in the same container.
+     * The accept flow then inserts an observation_history row whose type FK no
+     * longer resolves and the batch dies on demographics_history_type_fk. Restore
+     * the missing canonical rows at their canonical ids (name is unique, so an
+     * existing row under another id is left alone and resolves by name).
+     */
+    private void ensureCanonicalObservationHistoryTypes() {
+        String[][] canonical = { { "15", "SampleRecordStatus" }, { "16", "PatientRecordStatus" } };
+        for (String[] type : canonical) {
+            jdbc.update(
+                    "INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
+                            + " SELECT ?::numeric, ?, ?, NOW() WHERE NOT EXISTS (SELECT 1 FROM"
+                            + " clinlims.observation_history_type WHERE type_name = ?)"
+                            + " AND NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE id = ?::numeric)",
+                    type[0], type[1], type[1], type[1], type[0]);
+        }
     }
 
     /**

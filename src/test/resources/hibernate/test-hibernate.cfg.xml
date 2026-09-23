@@ -111,6 +111,9 @@
         <mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
         <mapping resource="hibernate/hbm/Referral.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralResult.hbm.xml" />
+        <mapping resource="hibernate/hbm/ReferralSubcontract.hbm.xml" />
+        <mapping
+            resource="hibernate/hbm/ReferralStatusHistory.hbm.xml" />
         <mapping resource="hibernate/hbm/TestCodeType.hbm.xml" />
         <mapping
             resource="hibernate/hbm/OrganizationHL7Schema.hbm.xml" />
@@ -151,6 +154,8 @@
             class="org.openelisglobal.qaevent.valueholder.NceSpecimen" />
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceAttachment" />
+        <mapping
+            class="org.openelisglobal.sample.attachment.valueholder.OrderAttachment" />
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceHistory" />
         <mapping

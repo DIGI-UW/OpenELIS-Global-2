@@ -23,17 +23,14 @@ function ResultSearch() {
   return (
     <>
       <PageBreadCrumb
-        breadcrumbs={
-          source
-            ? [
-                { label: "home.label", link: "/" },
-                {
-                  label: "banner.menu.workplan",
-                  link: `/${source}`,
-                },
-              ]
-            : [{ label: "home.label", link: "/" }]
-        }
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          // arriving from a workplan keeps that page as the parent
+          ...(source
+            ? [{ label: "banner.menu.workplan", link: `/${source}` }]
+            : []),
+          { label: "sidenav.label.results", link: "" },
+        ]}
       />
 
       <Grid fullWidth={true}>

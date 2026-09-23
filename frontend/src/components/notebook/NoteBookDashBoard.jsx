@@ -261,7 +261,7 @@ function NoteBookDashBoard() {
 
   let breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "label.button.newEntry", link: "/NoteBookEntryForm" },
+    { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
   ];
 
   const handlePageChange = (pageInfo) => {

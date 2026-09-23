@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - the map holding "which result feeds which input of this
+    calculation" was keyed by test id, so one multi-component test could only
+    ever occupy a single slot and whichever component's result was written last
+    became the value the calculation read.
+
+    The operand is what names a measurement - it carries the test, and now the
+    specimen and the component too - so the slot belongs to the operand. The
+    old test_id column is left in place: it is what the backfill reads, and
+    keeping it means this changeset can be rolled back without losing which
+    test a row belonged to.
+    -->
+
+    <changeSet id="calc-operand-001-add-operation-key" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="test_result_map"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="test_result_map" columnName="operation_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Key each calculation input by its operand rather than its test</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_map">
+            <column name="operation_id" type="INT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!--
+    Each row names the test it fed; the operand is the TEST_RESULT operand of
+    that same calculation carrying that test. A calculation that reads one test
+    twice (both sides of a ratio, say) has two such operands - the row is bound
+    to the lowest-ordered one, which is the input it has been feeding all along
+    because there was only ever one slot for the pair.
+    -->
+    <changeSet id="calc-operand-002-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="test_result_map" columnName="operation_id"/>
+        </preConditions>
+        <comment>Bind existing calculation inputs to their operand</comment>
+        <sql>
+            UPDATE clinlims.test_result_map m
+            SET operation_id = (
+                SELECT op.id
+                FROM clinlims.calculation_operation op
+                JOIN clinlims.result_calculation rc ON rc.id = m.result_calculation_id
+                WHERE op.calculation_id = rc.calculation_id
+                  AND op.type = 'TEST_RESULT'
+                  AND op.value ~ '^[0-9]+$'
+                  AND CAST(op.value AS INT) = m.test_id
+                ORDER BY op.operation_order, op.id
+                LIMIT 1
+            )
+            WHERE m.operation_id IS NULL;
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.test_result_map SET operation_id = NULL;</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+    A row whose operand no longer exists fed an input the calculation has since
+    dropped. It cannot be read under the new key and would load as a null map
+    key, so it goes - the calculation itself and its remaining inputs are
+    untouched.
+    -->
+    <changeSet id="calc-operand-003-drop-orphans" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="test_result_map" columnName="operation_id"/>
+        </preConditions>
+        <comment>Discard calculation inputs whose operand is gone</comment>
+        <delete schemaName="clinlims" tableName="test_result_map">
+            <where>operation_id IS NULL</where>
+        </delete>
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

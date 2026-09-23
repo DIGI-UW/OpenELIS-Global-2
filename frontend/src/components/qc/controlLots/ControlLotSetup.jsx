@@ -37,6 +37,7 @@ import {
 } from "../../utils/Utils";
 import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ControlLotSetup.css";
 
 const ControlLotSetup = () => {
@@ -259,6 +260,23 @@ const ControlLotSetup = () => {
         className="control-lot-setup-header"
         data-testid="control-lot-setup-header"
       >
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            {
+              label: "qc.controlLots.title",
+              link: "/analyzers/qc/control-lots",
+            },
+            {
+              label: isEditMode
+                ? "qc.controlLot.edit.title"
+                : "qc.controlLot.new.title",
+              link: "",
+            },
+          ]}
+        />
         <PageTitle
           breadcrumbs={[
             {

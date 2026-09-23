@@ -1,6 +1,7 @@
 package org.openelisglobal.common.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.spring.util.SpringContext;
@@ -11,10 +12,14 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class ControllerUtills {
 
     public static String getSysUserId(HttpServletRequest request) {
-        // Strategy 1: OE session attribute (set by login flow)
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
+        // Strategy 1: request-scoped data (stateless auth), then an existing OE
+        // session (interactive login). Reading the actor must not create a session.
+        UserSessionData usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
         if (usd == null) {
-            usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                usd = (UserSessionData) session.getAttribute(IActionConstants.USER_SESSION_DATA);
+            }
         }
         if (usd != null) {
             return String.valueOf(usd.getSystemUserId());
@@ -42,10 +47,12 @@ public class ControllerUtills {
         if (requestAttributes instanceof ServletRequestAttributes) {
             HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
             if (request != null) {
-                UserSessionData usd = (UserSessionData) request.getSession()
-                        .getAttribute(IActionConstants.USER_SESSION_DATA);
+                UserSessionData usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
                 if (usd == null) {
-                    usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
+                    HttpSession session = request.getSession(false);
+                    if (session != null) {
+                        usd = (UserSessionData) session.getAttribute(IActionConstants.USER_SESSION_DATA);
+                    }
                 }
                 if (usd != null) {
                     return String.valueOf(usd.getSystemUserId());

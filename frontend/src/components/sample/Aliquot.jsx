@@ -8,7 +8,12 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 function Aliquot() {
   return (
     <>
-      <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "aliquot", link: "/Aliquot" },
+        ]}
+      />
 
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>

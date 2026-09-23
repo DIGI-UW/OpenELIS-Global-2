@@ -6,6 +6,7 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import "../../Style.css";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 function DatabaseCleaning() {
   const intl = useIntl();
@@ -53,6 +54,12 @@ function DatabaseCleaning() {
     );
   };
 
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+    { label: "database.clean", link: "/MasterListsPage/DatabaseCleaning" },
+  ];
+
   if (loading) {
     return <Loading />;
   }
@@ -60,6 +67,7 @@ function DatabaseCleaning() {
   if (!isTrainingInstallation) {
     return (
       <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <InlineNotification
           kind="warning"
           title={intl.formatMessage({ id: "alert.warning" })}
@@ -71,6 +79,7 @@ function DatabaseCleaning() {
 
   return (
     <div className="adminPageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
         <FormattedMessage id="database.clean" />
       </h2>
