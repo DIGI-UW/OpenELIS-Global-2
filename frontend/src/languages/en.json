@@ -9767,5 +9767,11 @@
   "inventory.item.leadTime": "Lead time (days)",
   "inventory.item.leadTime.help": "How long this item takes to arrive after it is ordered. Leave blank to let it be learned from your own deliveries.",
   "inventory.item.leadTime.observedSuggest": "Your last few deliveries took about {days} days.",
-  "inventory.item.leadTime.useObserved": "Use this"
+  "inventory.item.leadTime.useObserved": "Use this",
+  "inventory.item.tags": "Tags",
+  "inventory.item.tags.help": "How this item is grouped, filtered and reported on. An item can carry more than one.",
+  "inventory.item.tags.add": "Type to find or add a tag",
+  "inventory.item.tags.remove": "Remove the tag {tag}",
+  "inventory.item.autoConsume.help": "There is no auto-consume setting. An item is consumed automatically when a test in the Test Catalog is linked to it.",
+  "inventory.search.placeholder.board": "Search by item name, code, tag or lot number"
 }

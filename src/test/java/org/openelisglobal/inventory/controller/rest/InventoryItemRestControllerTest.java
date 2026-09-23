@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -9,7 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,6 +109,68 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         assertEquals("inventory.item.error.duplicateCode", body.get("errorCode").asText());
         assertEquals(CODE_PREFIX + "DUP", body.get("params").get("code").asText());
+    }
+
+    /**
+     * The whitelist in the update handler is hand-maintained, and a field missing
+     * from it returns 200 while persisting nothing. That is exactly how editing a
+     * lead time silently did nothing until it was found, so a tag edit is proved
+     * over HTTP and read back rather than asserted on the response alone.
+     */
+    @Test
+    public void update_persistsTagsAndReadsThemBack() throws Exception {
+        MvcResult createResult = createItem(CODE_PREFIX + "TAGGED", CODE_PREFIX + "Tagged");
+        String id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        HashMap<String, Object> updateBody = new HashMap<>();
+        updateBody.put("name", CODE_PREFIX + "Tagged");
+        updateBody.put("units", "mL");
+        updateBody.put("tags", List.of("Cartridge", "TB"));
+
+        mockMvc.perform(put("/rest/inventory/items/" + id).session(mockSession).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateBody))).andExpect(status().isOk());
+
+        MvcResult getResult = mockMvc.perform(get("/rest/inventory/items/" + id)).andExpect(status().isOk())
+                .andReturn();
+        JsonNode fetched = objectMapper.readTree(getResult.getResponse().getContentAsString());
+        List<String> persisted = new ArrayList<>();
+        fetched.get("tags").forEach(tag -> persisted.add(tag.asText()));
+        Collections.sort(persisted);
+
+        assertEquals(List.of("Cartridge", "TB"), persisted);
+    }
+
+    /** Create no longer has to be told a type; the editor stopped sending one. */
+    @Test
+    public void create_succeedsWithoutAnItemType() throws Exception {
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("name", CODE_PREFIX + "No Type");
+        body.put("units", "tests");
+        body.put("tags", List.of("Consumable"));
+
+        MvcResult result = mockMvc.perform(post("/rest/inventory/items").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))).andReturn();
+
+        assertEquals(201, result.getResponse().getStatus());
+        JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("REAGENT", created.get("itemType").asText());
+        assertEquals("Consumable", created.get("tags").get(0).asText());
+    }
+
+    @Test
+    public void tagsEndpointListsWhatIsInUse() throws Exception {
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("name", CODE_PREFIX + "Suggestible");
+        body.put("units", "tests");
+        body.put("tags", List.of(CODE_PREFIX + "Fridge"));
+        mockMvc.perform(post("/rest/inventory/items").session(mockSession).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body))).andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(get("/rest/inventory/items/tags")).andExpect(status().isOk()).andReturn();
+
+        List<String> tags = new ArrayList<>();
+        objectMapper.readTree(result.getResponse().getContentAsString()).forEach(tag -> tags.add(tag.asText()));
+        assertTrue(tags.contains(CODE_PREFIX + "Fridge"));
     }
 
     @Test

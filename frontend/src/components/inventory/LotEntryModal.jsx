@@ -120,7 +120,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
       setItems(
         validItems.map((item) => ({
           id: item.id,
-          text: `${item.name} (${item.itemType})`,
+          text: `${item.name} (${item.code})`,
           item: item,
         })),
       );

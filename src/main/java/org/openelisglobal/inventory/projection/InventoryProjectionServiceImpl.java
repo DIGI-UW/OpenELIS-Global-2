@@ -68,6 +68,10 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setCode(item.getCode());
             row.setName(item.getName());
             row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
+            // Tags come off the item already in hand. The collection is eager and batched,
+            // so this
+            // adds roughly one query per fifty items rather than one per item.
+            row.setTags(item.getTags() == null ? List.of() : new ArrayList<>(item.getTags()));
             row.setUnits(item.getUnits());
             // Ordering state rides along from the item already in hand, so the board
             // stays at three queries however many items there are.

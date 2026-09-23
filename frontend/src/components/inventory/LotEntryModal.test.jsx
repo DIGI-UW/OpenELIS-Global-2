@@ -66,7 +66,7 @@ const fillRequiredFieldsExceptLocation = async () => {
   fireEvent.click(
     screen.getByRole("combobox", { name: /select catalog item/i }),
   );
-  fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+  fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
   fireEvent.change(screen.getByLabelText(/lot number/i), {
     target: { value: "LOT-1" },
   });
@@ -78,7 +78,7 @@ const fillRequiredFieldsExceptLocation = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   InventoryItemAPI.getAll.mockResolvedValue([
-    { id: "MALARIA_RDT", name: "Malaria RDT", itemType: "RDT" },
+    { id: "MALARIA_RDT", name: "Malaria RDT", code: "MAL_RDT" },
   ]);
   InventoryLotStorageAPI.getLocation.mockResolvedValue({});
 });
@@ -214,7 +214,7 @@ describe("LotEntryModal — auto-generated lot number", () => {
     fireEvent.click(
       screen.getByRole("combobox", { name: /select catalog item/i }),
     );
-    fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+    fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
     fireEvent.change(screen.getByLabelText(/initial quantity/i), {
       target: { value: "5" },
     });

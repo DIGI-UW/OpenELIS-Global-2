@@ -124,3 +124,20 @@
   font-size: 0.75rem;
   color: #525252;
 }
+
+/* Applied tags sit directly under the field that adds them, so adding one and
+   seeing it land read as a single action. */
+.inventory-item-tags__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+/* Says why the editor has no auto-consume switch, rather than leaving its
+   absence to be read as an oversight. */
+.inventory-item-derived {
+  font-size: 0.75rem;
+  color: #525252;
+  margin: 0;
+}

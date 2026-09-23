@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -158,17 +157,18 @@ public class TestReagentLinkRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Any inventory item can back a test. The item's type used to have to be
+     * REAGENT, which put the commonest auto-consumed item of all — an analyzer
+     * cartridge — out of reach, and item type has stopped being a classification
+     * the product enforces anything on.
+     */
     private void requireReagent(Long reagentId) {
         if (reagentId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reagentId is required");
         }
-        InventoryItem item = findItem(reagentId);
-        if (item == null) {
+        if (findItem(reagentId) == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reagent not found: " + reagentId);
-        }
-        if (item.getItemType() != ItemType.REAGENT) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Inventory item " + reagentId + " is not a reagent");
         }
     }
 

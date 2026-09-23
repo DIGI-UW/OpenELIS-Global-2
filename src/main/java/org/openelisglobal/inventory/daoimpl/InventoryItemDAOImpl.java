@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.daoimpl;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -24,6 +25,44 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<ItemType> getAllItemTypes() {
         return java.util.Arrays.asList(ItemType.values());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAllTags() throws LIMSRuntimeException {
+        try {
+            // The collection table has no entity of its own, so this reads it
+            // directly. Whatever is in use is the whole suggestion list: there
+            // is no curated directory to draw one from.
+            @SuppressWarnings("unchecked")
+            List<String> results = entityManager
+                    .createNativeQuery("SELECT DISTINCT tag FROM clinlims.inventory_item_tag ORDER BY tag")
+                    .getResultList();
+            return results;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting inventory item tags", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTagsMatching(Collection<String> canonicalKeys) throws LIMSRuntimeException {
+        if (canonicalKeys == null || canonicalKeys.isEmpty()) {
+            return List.of();
+        }
+        try {
+            // The key is built in SQL the same way tagKey() builds it in Java:
+            // trimmed, inner whitespace collapsed, lower case. Anything looser
+            // would return a spelling the service would then not recognise.
+            @SuppressWarnings("unchecked")
+            List<String> results = entityManager
+                    .createNativeQuery("SELECT DISTINCT tag FROM clinlims.inventory_item_tag"
+                            + " WHERE regexp_replace(lower(trim(tag)), '\\s+', ' ', 'g') IN (:keys)")
+                    .setParameter("keys", canonicalKeys).getResultList();
+            return results;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting matching inventory item tags", e);
+        }
     }
 
     @Override

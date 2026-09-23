@@ -239,6 +239,7 @@ const InventoryItemsBoard = () => {
       return (
         row.name?.toLowerCase().includes(term) ||
         row.code?.toLowerCase().includes(term) ||
+        row.tags?.some((tag) => tag.toLowerCase().includes(term)) ||
         itemLots.some(
           (lot) =>
             lot.lotNumber?.toLowerCase().includes(term) ||
@@ -632,6 +633,13 @@ const InventoryItemsBoard = () => {
           lowContrast
           inline
           hideCloseButton
+          // A banner reporting the state of the page, not a dialog interrupting
+          // it. Carbon's default role="alertdialog" moves focus to the action
+          // button on mount and wraps focus back whenever it leaves, so the
+          // banner held the keyboard for the whole board: Enter in any field of
+          // any modal opened by this page fired "Review and mark as ordered"
+          // instead. role="status" is what turns both behaviours off.
+          role="status"
           className="board-critical-banner"
           title={intl.formatMessage({ id: "inventory.reorderStatus.now" })}
           subtitle={unaddressedCritical.map((row) => row.name).join(" · ")}
@@ -646,9 +654,11 @@ const InventoryItemsBoard = () => {
         <Search
           id="inventory-board-search"
           size="lg"
-          labelText={intl.formatMessage({ id: "inventory.search.placeholder" })}
+          labelText={intl.formatMessage({
+            id: "inventory.search.placeholder.board",
+          })}
           placeholder={intl.formatMessage({
-            id: "inventory.search.placeholder",
+            id: "inventory.search.placeholder.board",
           })}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -750,11 +760,16 @@ const InventoryItemsBoard = () => {
                   >
                     <TableCell>
                       <div className="board-item-name">{row.name}</div>
-                      <div className="board-subline">
-                        {row.code}
-                        {row.itemType &&
-                          ` · ${labelFor(intl, "inventory.itemType.", row.itemType)}`}
-                      </div>
+                      <div className="board-subline">{row.code}</div>
+                      {row.tags?.length > 0 && (
+                        <div className="board-item-tags">
+                          {row.tags.map((tag) => (
+                            <Tag key={tag} type="cool-gray" size="sm">
+                              {tag}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {intl.formatNumber(row.onHand)}{" "}

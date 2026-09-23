@@ -39,4 +39,24 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
 
     List<ItemType> getAllItemTypes();
+
+    /**
+     * Every distinct tag any item carries, alphabetically — the typeahead's
+     * suggestion list.
+     */
+    List<String> getAllTags();
+
+    /**
+     * The stored spellings of the given tags, matched on the canonical key
+     * (trimmed, inner whitespace collapsed, lower case).
+     *
+     * <p>
+     * A narrower {@link #getAllTags()} for the one thing a write needs: which
+     * spelling of the handful of tags on this item is already in use. Reading the
+     * whole table to answer that cost a full scan on every item write, and a CSV
+     * import pays it once per row.
+     *
+     * @param canonicalKeys the keys to look for, already canonicalised
+     */
+    List<String> getTagsMatching(java.util.Collection<String> canonicalKeys);
 }
