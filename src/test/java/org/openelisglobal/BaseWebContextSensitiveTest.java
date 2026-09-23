@@ -470,24 +470,29 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Resync a Postgres sequence to {@code MAX(id)+1} of its table using an
-     * existing connection.
+     * Move a Postgres sequence forward to {@code MAX(id)+1} of its table using an
+     * existing connection. Never moves it backwards: several of these sequences are
+     * declared {@code CACHE 20}, so each pooled connection holds a block of values
+     * it has not handed out yet. Rewinding the sequence into a block another
+     * connection is still holding makes both connections issue the same id, and the
+     * loser fails on the primary key an insert or two later, in whichever test
+     * class happens to run next.
      */
     protected void resyncSequence(Connection conn, String sequence, String table) {
         try (Statement st = conn.createStatement()) {
             // id columns are numeric(10); setval needs a bigint.
-            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
-                    + ")::bigint, false)");
+            st.execute("SELECT setval('" + sequence + "', GREATEST((SELECT last_value FROM " + sequence
+                    + "), (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table + "))::bigint, false)");
         } catch (SQLException e) {
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
         }
     }
 
     /**
-     * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
-     * loads insert rows with explicit ids without advancing the sequence, so a
-     * later sequence-backed insert can collide with a seeded id depending on test
-     * order (e.g. {@code person_pk id=2 already exists}). Call this before
+     * Move a Postgres sequence forward to {@code MAX(id)+1} of its table. DBUnit
+     * fixture loads insert rows with explicit ids without advancing the sequence,
+     * so a later sequence-backed insert can collide with a seeded id depending on
+     * test order (e.g. {@code person_pk id=2 already exists}). Call this before
      * sequence-backed inserts into a fixture-seeded table.
      */
     protected void resyncSequence(String sequence, String table) {
