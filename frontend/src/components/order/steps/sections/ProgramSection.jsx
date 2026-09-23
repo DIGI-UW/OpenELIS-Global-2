@@ -102,10 +102,13 @@ const ProgramSection = ({
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/user-programs", (response) => {
-      if (componentMounted.current && response) {
-        setPrograms(response);
-        setProgramsLoaded(true);
+      if (!componentMounted.current) {
+        return;
       }
+      // Anything but a list leaves the section empty rather than letting a
+      // later find() throw and take the whole order page down with it.
+      setPrograms(Array.isArray(response) ? response : []);
+      setProgramsLoaded(true);
     });
     return () => {
       componentMounted.current = false;

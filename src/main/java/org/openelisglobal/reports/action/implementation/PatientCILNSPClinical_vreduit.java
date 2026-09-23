@@ -253,7 +253,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 copyParentData(data, parentData);
 
                 data.setResult(reportReferralResultValue);
-                data.setNote(note);
+                data.setNote(noteWithReferralAttribution(note, referral));
                 data.setSampleType(parentData.getSampleType());
                 data.setSampleId(parentData.getSampleId());
                 String testId = referralResult.getTestId();

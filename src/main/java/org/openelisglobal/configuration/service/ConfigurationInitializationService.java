@@ -279,7 +279,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      * <p>
      * Files already present in {@code claimedFiles} (claimed by a handler with
      * lower load order) are skipped. Every file this handler processes is added to
-     * the set so that later, broader-pattern handlers won't reprocess it.
+     * the set so that later, broader-pattern handlers won't reprocess it. A file
+     * outside the reload's named set is neither claimed nor reported: the reload
+     * did not concern it.
      */
     private LoadResult processFiles(DomainConfigurationHandler handler, Map<String, InputStreamSource> files,
             Properties checksums, String domainName, Set<String> claimedFiles, ConfigurationReloadOptions options) {
@@ -291,6 +293,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             String fileName = entry.getKey();
             InputStreamSource streamSource = entry.getValue();
             filesFound = true;
+
+            if (!options.includesFile(fileName)) {
+                continue;
+            }
 
             // Skip files already claimed by a more-specific handler
             String fileKey = domainName + "/" + fileName;

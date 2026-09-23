@@ -4,26 +4,6 @@ import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { LEVEL_ORDER } from "../useLocationPicker";
 
-/**
- * SearchField — flat type-ahead input for the LocationPicker.
- *
- * Hits the existing `/rest/storage/locations/search?q=` endpoint, which
- * returns matches across all hierarchy levels (Room/Device/Shelf/Rack)
- * with a pre-composed `hierarchicalPath` per result. The user clicks a
- * result; we hand it back via `onSelect` and the parent's reducer
- * dispatches `PRELOAD` to populate the cascading selection.
- *
- * Stateless beyond a debounce timer ref. All actual state lives in the
- * useLocationPicker reducer; this component receives `query` + `results`
- * as props and fires callbacks. That separation is the structural fix
- * for the legacy LocationFilterDropdown's prop-sync race (the
- * `// CRITICAL: Don't sync when form just closed` workarounds).
- *
- * Threshold: skip the API for queries < 2 chars (matches the legacy
- * LocationFilterDropdown threshold so the API isn't pummeled by single-
- * character typing). Debounce: 300ms.
- */
-
 const DEBOUNCE_MS = 300;
 const MIN_QUERY_LENGTH = 2;
 
@@ -40,6 +20,9 @@ export default function SearchField({
   const requestIdRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [status, setStatus] = useState("idle");
+  // Picking a result writes its full path into the input; searching for
+  // that path again finds nothing and shows "No storage locations match".
+  const pickedPathRef = useRef(null);
   // The parent passes onResultsChange as an inline arrow, so its identity
   // changes every render. Depending on it re-runs the search effect on every
   // render, and any state update in that effect then loops forever.
@@ -81,6 +64,10 @@ export default function SearchField({
       onResultsChangeRef.current([]);
       return undefined;
     }
+    if (query === pickedPathRef.current) {
+      setStatus("idle");
+      return undefined;
+    }
     setStatus("loading");
     debounceRef.current = setTimeout(() => {
       try {
@@ -113,6 +100,14 @@ export default function SearchField({
       }
     };
   }, [query]);
+
+  const pick = (result) => {
+    const path = result.hierarchicalPath || result.name || "";
+    pickedPathRef.current = path;
+    onSelect(result);
+    onQueryChange(path);
+    onResultsChange([]);
+  };
 
   return (
     <div className="storage-location-picker-search">
@@ -150,10 +145,7 @@ export default function SearchField({
           }
           if (e.key === "Enter" && activeIndex >= 0) {
             e.preventDefault();
-            const selected = results[activeIndex];
-            onSelect(selected);
-            onQueryChange(selected.hierarchicalPath || selected.name || "");
-            onResultsChange([]);
+            pick(results[activeIndex]);
           }
         }}
       />
@@ -228,11 +220,7 @@ export default function SearchField({
                 className={`storage-search-result depth-${depth}`}
                 style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => {
-                  onSelect(result);
-                  onQueryChange(result.hierarchicalPath || result.name || "");
-                  onResultsChange([]);
-                }}
+                onClick={() => pick(result)}
               >
                 {depth > 0 && (
                   <span className="storage-search-result-ancestors">

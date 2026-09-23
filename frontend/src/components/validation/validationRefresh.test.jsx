@@ -57,6 +57,7 @@ const row = (id, overrides = {}) => ({
   ackPending: false,
   nonconforming: false,
   critical: false,
+  clear: true,
   ...overrides,
 });
 
@@ -125,7 +126,7 @@ describe("Validation queue refresh", () => {
   });
 
   it("serves the queue the server holds after a per-row action, without a page load", () => {
-    renderQueue([row(0, { normal: false })]);
+    renderQueue([row(0, { normal: false, clear: false })]);
     fireEvent.click(screen.getByTestId("review-row-0"));
 
     // Only the server knows about ACC7, so seeing it proves a real refetch.

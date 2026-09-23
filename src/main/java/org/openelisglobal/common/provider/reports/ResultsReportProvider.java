@@ -54,6 +54,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.provider.service.ProviderDisplayName;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.reports.valueholder.common.JRHibernateDataSource;
@@ -371,8 +372,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
                                         + sample.getCollectionTimeForDisplay());
                                 reportSample.setSampleReceivedDate(sample.getReceivedDateForDisplay());
                                 reportSample.setSampleClientReferenceNumber(sample.getClientReference());
-                                reportSample.setClinicianName(" " + StringUtil.trim(providerPerson.getLastName()) + " "
-                                        + StringUtil.trim(providerPerson.getFirstName()));
+                                reportSample.setClinicianName(ProviderDisplayName.titled(providerPerson.getTitleCode(),
+                                        providerPerson.getFirstName(), providerPerson.getLastName()));
 
                                 SampleProject project1 = null;
                                 SampleProject project2 = null;

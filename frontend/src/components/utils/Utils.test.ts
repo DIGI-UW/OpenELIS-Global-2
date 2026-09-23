@@ -38,6 +38,30 @@ describe("getFromOpenElisServer", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it("treats an error status as a failure, not as data (OGC-1222)", async () => {
+    // Spring answers a 500 with a JSON body. Passing that body to the caller
+    // as if it were data is what turned a dead program id into a blank page.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const json = vi.fn();
+    const callback = vi.fn();
+    const fetchPromise = Promise.resolve({
+      ok: false,
+      status: 500,
+      headers: { get: () => "application/json" },
+      json,
+    } as unknown as Response);
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(fetchPromise));
+
+    getFromOpenElisServer("/rest/user-programs", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(undefined);
+    expect(json).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalled();
+  });
+
   it("still reports a real network failure and completes with undefined", async () => {
     let rejectFetch: (reason: Error) => void = () => undefined;
     const fetchPromise = new Promise<Response>((_resolve, reject) => {

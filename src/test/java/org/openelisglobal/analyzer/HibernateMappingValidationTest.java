@@ -60,6 +60,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingResult.class);
         configuration.addAnnotatedClass(AnalyzerResults.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt.class);
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
