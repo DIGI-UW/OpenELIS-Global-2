@@ -38,11 +38,9 @@ import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
-import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
-import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
@@ -383,18 +381,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TestProductMapping testProductMapping() {
         return mock(TestProductMapping.class);
-    }
-
-    @Bean()
-    @Profile("Test")
-    public RequesterTypeService RequesterTypeService() {
-        return mock(RequesterTypeService.class);
-    }
-
-    @Bean()
-    @Profile("Test")
-    public OrganizationTypeService OrganizationTypeService() {
-        return mock(OrganizationTypeService.class);
     }
 
     @Override

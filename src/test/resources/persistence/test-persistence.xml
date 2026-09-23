@@ -176,6 +176,7 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+        <class>org.openelisglobal.reports.dataexport.valueholder.ExportJob</class>
 
         <!-- User Role entities (Required for real UserService filtering) -->
         <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>

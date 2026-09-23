@@ -6,10 +6,12 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.CsvParsingUtil;
@@ -52,6 +54,13 @@ import org.springframework.transaction.PlatformTransactionManager;
  * choice, and a panel may legitimately reach a specimen from another domain.
  * Omitting the column leaves the panel's stored domain alone, which for a new
  * panel is the {@code CLINICAL} default.
+ * <p>
+ * A panel never mixes domains (OGC-224), and the import holds that rule exactly
+ * as the Panel Editor does (OGC-1232): a row whose domain, stored or from the
+ * file, is not the domain of every member it would leave in the panel is
+ * skipped with a reason naming those tests, and nothing of the row is written.
+ * Load the tests file with a {@code domain} column first, or fix the panel's
+ * domain.
  */
 @Component
 public class PanelConfigurationHandler implements DomainConfigurationHandler {
@@ -210,6 +219,20 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
         Panel panel = panelService.getPanelByName(panelName);
         boolean created = panel == null;
+
+        String sampleTypesValue = getValueOrEmpty(values, sampleTypesIndex);
+        String testsValue = getValueOrEmpty(values, testsIndex);
+        Map<String, List<Test>> members = resolveMemberTests(testsValue, resolveSampleTypeIds(sampleTypesValue),
+                panelName, lineNumber, fileName);
+
+        String effectiveDomain = !domain.isEmpty() ? domain.toUpperCase()
+                : created ? Domain.DEFAULT.name() : Domain.normalize(panel.getDomain());
+        List<Test> outsideDomain = membersOutsideDomain(effectiveDomain,
+                created ? List.of() : panelItemService.getPanelItemsForPanel(panel.getId()), members);
+        if (!outsideDomain.isEmpty()) {
+            return LoadedRow.skipped(domainConflictReason(effectiveDomain, outsideDomain));
+        }
+
         if (created) {
             panel = createPanel(panelName, isActive, sortOrderStr, hasLoincColumn ? loinc : null, values,
                     localizationColumns);
@@ -226,12 +249,44 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             syncLoincMapping(panel, loinc);
         }
 
-        String sampleTypesValue = getValueOrEmpty(values, sampleTypesIndex);
-        String testsValue = getValueOrEmpty(values, testsIndex);
-        reconcilePanelItems(panel, testsValue, resolveSampleTypeIds(sampleTypesValue), lineNumber, fileName);
+        reconcilePanelItems(panel, members);
         reconcileSampleTypeLinks(panel, sampleTypesValue);
 
         return created ? LoadedRow.created(panel) : LoadedRow.updated(panel);
+    }
+
+    /**
+     * The member tests, existing and desired, whose own domain is not the domain
+     * the panel has or is being given. Each test is named once.
+     */
+    private List<Test> membersOutsideDomain(String panelDomain, List<PanelItem> existing,
+            Map<String, List<Test>> desired) {
+        Map<String, Test> outside = new LinkedHashMap<>();
+        for (PanelItem item : existing) {
+            Test test = item.getTest();
+            if (test != null && !panelDomain.equals(Domain.normalize(test.getDomain()))) {
+                outside.put(test.getId(), test);
+            }
+        }
+        for (List<Test> tests : desired.values()) {
+            for (Test test : tests) {
+                if (!panelDomain.equals(Domain.normalize(test.getDomain()))) {
+                    outside.put(test.getId(), test);
+                }
+            }
+        }
+        return new ArrayList<>(outside.values());
+    }
+
+    private String domainConflictReason(String panelDomain, List<Test> outsideDomain) {
+        StringBuilder reason = new StringBuilder("domain ").append(panelDomain)
+                .append(" is not the domain of every member test:");
+        for (int i = 0; i < outsideDomain.size(); i++) {
+            Test test = outsideDomain.get(i);
+            reason.append(i == 0 ? " " : ", ").append(test.getDescription()).append(" (")
+                    .append(Domain.normalize(test.getDomain())).append(")");
+        }
+        return reason.toString();
     }
 
     // Bridge the legacy panel.loinc value into the panel terminology mappings as a
@@ -371,19 +426,36 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         return ids;
     }
 
-    private void reconcilePanelItems(Panel panel, String testsValue, Set<String> panelSampleTypeIds, int lineNumber,
-            String fileName) {
-        List<PanelItem> existing = panelItemService.getPanelItemsForPanel(panel.getId());
-        List<String> desiredTestNames = new ArrayList<>();
-
-        if (!testsValue.isEmpty()) {
-            for (String testName : testsValue.split("\\|")) {
-                testName = testName.trim();
-                if (!testName.isEmpty()) {
-                    desiredTestNames.add(testName);
-                }
-            }
+    /**
+     * The tests the row's {@code tests} column names, in file order, keyed by the
+     * name as written. A name that resolves to nothing maps to an empty list and is
+     * queued as an unresolved reference for the decision queue.
+     */
+    private Map<String, List<Test>> resolveMemberTests(String testsValue, Set<String> panelSampleTypeIds,
+            String panelName, int lineNumber, String fileName) {
+        Map<String, List<Test>> members = new LinkedHashMap<>();
+        if (testsValue.isEmpty()) {
+            return members;
         }
+        for (String testName : testsValue.split("\\|")) {
+            testName = testName.trim();
+            if (testName.isEmpty() || members.containsKey(testName)) {
+                continue;
+            }
+            List<Test> tests = findTests(testName, panelSampleTypeIds);
+            if (tests.isEmpty()) {
+                ImportRunContext.addPending(UnresolvedReference.TYPE_TEST, testName,
+                        fileName + " line " + lineNumber + " (panel " + panelName + ")");
+                LogEvent.logWarn(this.getClass().getSimpleName(), "resolveMemberTests",
+                        "Test '" + testName + "' not found (line " + lineNumber + " of " + fileName + "). Skipping.");
+            }
+            members.put(testName, tests);
+        }
+        return members;
+    }
+
+    private void reconcilePanelItems(Panel panel, Map<String, List<Test>> members) {
+        List<PanelItem> existing = panelItemService.getPanelItemsForPanel(panel.getId());
 
         Map<String, PanelItem> existingByTestId = new HashMap<>();
         for (PanelItem item : existing) {
@@ -393,15 +465,9 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        for (String testName : desiredTestNames) {
-            List<Test> tests = findTests(testName, panelSampleTypeIds);
-            if (tests.isEmpty()) {
-                ImportRunContext.addPending(UnresolvedReference.TYPE_TEST, testName,
-                        fileName + " line " + lineNumber + " (panel " + panel.getPanelName() + ")");
-                LogEvent.logWarn(this.getClass().getSimpleName(), "reconcilePanelItems",
-                        "Test '" + testName + "' not found (line " + lineNumber + " of " + fileName + "). Skipping.");
-                continue;
-            }
+        int position = 0;
+        for (List<Test> tests : members.values()) {
+            position++;
             for (Test test : tests) {
                 if (existingByTestId.containsKey(test.getId())) {
                     continue;
@@ -412,7 +478,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
                 item.setTest(test);
                 String desc = test.getDescription();
                 item.setTestName(desc != null && desc.length() > 20 ? desc.substring(0, 20) : desc);
-                item.setSortOrder(String.valueOf(desiredTestNames.indexOf(testName) + 1));
+                item.setSortOrder(String.valueOf(position));
                 item.setSysUserId("1");
                 panelItemService.insert(item);
                 existingByTestId.put(test.getId(), item);
