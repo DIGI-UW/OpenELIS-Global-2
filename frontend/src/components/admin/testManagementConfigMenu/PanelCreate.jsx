@@ -4,6 +4,8 @@ import {
   Button,
   Grid,
   Column,
+  RadioButton,
+  RadioButtonGroup,
   Section,
   Select,
   SelectItem,
@@ -20,12 +22,32 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
+import useDomains from "../../common/useDomains";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 
 const PANEL_CREATE_ENDPOINT = "/rest/PanelCreate";
+
+/**
+ * The legacy create answers with the form on success and with a status code
+ * on failure (400 validation, 409 duplicate name, 500 insert failure); the
+ * JSON helper folds a non-2xx status into the body it hands back (OGC-1232).
+ */
+const failureMessageId = (res) => {
+  const status = res?.status ?? res?.statusCode;
+  if (!res || res.error || (typeof status === "number" && status >= 400)) {
+    if (status === 409) {
+      return "configuration.panel.create.duplicate";
+    }
+    if (status === 400) {
+      return "error.panel.create.invalid";
+    }
+    return "server.error.msg";
+  }
+  return null;
+};
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -50,13 +72,26 @@ function PanelCreate() {
 
   const intl = useIntl();
   const [bothFilled, setBothFilled] = useState(false);
+  const domains = useDomains();
 
   const { data: panelCreateList } = useServerData(PANEL_CREATE_ENDPOINT);
   const invalidateServerData = useInvalidateServerData();
 
+  const domainLabel = (domain) =>
+    intl.formatMessage({
+      id: `label.domain.${domain}`,
+      defaultMessage: domain,
+    });
+
   const handlePanelCreateListCall = (
     actions,
-    { englishLangPost, frenchLangPost, selectedSampleTypeId, loincPost },
+    {
+      englishLangPost,
+      frenchLangPost,
+      selectedSampleTypeId,
+      loincPost,
+      domain,
+    },
   ) => {
     postToOpenElisServerJsonResponse(
       "/rest/PanelCreate",
@@ -65,6 +100,7 @@ function PanelCreate() {
         panelFrenchName: frenchLangPost,
         sampleTypeId: selectedSampleTypeId,
         panelLoinc: loincPost,
+        domain,
       }),
       (res) => {
         handlePostPanelCreateListCallBack(res, actions);
@@ -73,28 +109,27 @@ function PanelCreate() {
   };
 
   const handlePostPanelCreateListCallBack = (res, actions) => {
-    if (res) {
-      if (res) {
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        actions.resetForm();
-        setBothFilled(false);
-        invalidateServerData();
-        setNotificationVisible(true);
-      }
+    actions.setSubmitting(false);
+    const failureId = failureMessageId(res);
+    if (failureId === null) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "success.panel.created",
+        }),
+        kind: NotificationKinds.success,
+      });
+      actions.resetForm();
+      setBothFilled(false);
+      invalidateServerData();
+      setNotificationVisible(true);
     } else {
-      actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({ id: failureId }),
       });
       setNotificationVisible(true);
     }
@@ -193,6 +228,7 @@ function PanelCreate() {
               frenchLangPost: "",
               selectedSampleTypeId: "",
               loincPost: "",
+              domain: "CLINICAL",
             }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
@@ -213,6 +249,7 @@ function PanelCreate() {
               handleSubmit,
               isSubmitting,
               resetForm,
+              setFieldValue,
             }) => (
               <Form onSubmit={handleSubmit}>
                 <Grid fullWidth={true}>
@@ -321,9 +358,51 @@ function PanelCreate() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required
-                      //invalid={touched.loincPost && !!errors.loincPost}
-                      //invalidText={touched.loincPost && errors.loincPost}
+                      invalid={touched.loincPost && !!errors.loincPost}
+                      invalidText={touched.loincPost && errors.loincPost}
                     />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="label.panel.domain" />
+                      <span className="requiredlabel">*</span> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      id="panelDomain"
+                      name="domain"
+                      legendText=""
+                      orientation="horizontal"
+                      valueSelected={values.domain}
+                      disabled={bothFilled}
+                      onChange={(value) => setFieldValue("domain", value)}
+                    >
+                      {domains.map((d) => (
+                        <RadioButton
+                          key={d.id}
+                          id={`panel-domain-${d.id}`}
+                          value={d.id}
+                          labelText={intl.formatMessage({
+                            id: d.labelKey,
+                            defaultMessage: d.id,
+                          })}
+                        />
+                      ))}
+                    </RadioButtonGroup>
+                    <p
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--cds-text-secondary, #6f6f6f)",
+                        marginTop: "0.25rem",
+                      }}
+                      data-testid="panel-create-domain-helper"
+                    >
+                      {intl.formatMessage(
+                        { id: "helper.panel.domainGuard" },
+                        { domain: domainLabel(values.domain) },
+                      )}
+                    </p>
                   </Column>
                 </Grid>
                 {bothFilled && (
