@@ -359,6 +359,22 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
         configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        // The case view's stage rail renders a stage the deployment has switched off
+        // as not applicable rather than hiding it (FR-2.3).
+        configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_STAINING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED));
         // Required-field settings the order-entry lanes must honour. These have
         // always existed as FormFields, consulted only by the legacy JSP screens,
         // so the React lanes silently overrode what every shipped profile sets.

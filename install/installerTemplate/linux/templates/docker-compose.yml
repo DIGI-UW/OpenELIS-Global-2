@@ -79,6 +79,7 @@ services:
     volumes:
       - [% etc_dir %]oe_server.xml:/usr/local/tomcat/conf/server.xml
       - [% logs_dir %]:/var/lib/openelis-global/logs
+      - reporting-data:/var/lib/openelis-global/reporting
       - [% tomcat_logs_dir %]:/usr/local/tomcat/logs
     secrets:
       - source: client_facing_keystore
@@ -211,3 +212,6 @@ networks:
     ipam:
       config:
         - subnet: 172.20.1.0/24
+
+volumes:
+  reporting-data:

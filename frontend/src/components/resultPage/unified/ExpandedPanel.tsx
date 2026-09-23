@@ -142,6 +142,8 @@ interface ExpandedPanelProps {
   referralReasons: IdValue[];
   referralDraft: ReferralDraft | null;
   onReferralDraftChange: (draft: ReferralDraft | null) => void;
+  referenceLabReportDate?: string;
+  onReferenceLabReportDateChange?: (value: string) => void;
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
@@ -203,6 +205,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   referralReasons,
   referralDraft,
   onReferralDraftChange,
+  referenceLabReportDate = "",
+  onReferenceLabReportDateChange = () => {},
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
@@ -557,6 +561,27 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             onDraftChange={(draft) => onReferralDraftChange(draft)}
             onCancel={() => onReferralDraftChange(null)}
           />
+        )}
+
+        {/* Typing in a result the reference laboratory reported: its own report
+            date belongs to the referral, not to this laboratory's entry date,
+            and the External Referrals report prints it. */}
+        {row.referredOut && (
+          <div data-testid={`referral-report-date-row-${rowKey}`}>
+            <TextInput
+              id={`referral-report-date-${rowKey}`}
+              labelText={intl.formatMessage({
+                id: "label.results.referral.reportDate",
+              })}
+              placeholder={intl.formatMessage({
+                id: "label.results.referral.reportDate.placeholder",
+              })}
+              value={referenceLabReportDate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onReferenceLabReportDateChange(e.target.value)
+              }
+            />
+          </div>
         )}
       </div>
 

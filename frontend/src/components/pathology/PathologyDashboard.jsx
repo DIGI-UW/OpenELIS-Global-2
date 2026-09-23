@@ -33,6 +33,7 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { inProgressStageIds, stageLabel } from "./pathologyStages";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
@@ -70,10 +71,12 @@ function PathologyDashboard() {
       // Set all statuses
       setStatuses(statusList);
 
-      // Filter out COMPLETED statuses and update the in-progress statuses state
-      const filteredStatuses = statusList
-        .filter((status) => status.id !== "COMPLETED")
-        .map((status) => status.id);
+      // Mirrors the backend dashboard tile grouping (everything except
+      // awaiting-review and complete counts as in progress) so the filter
+      // and the tiles never disagree about which cases are in progress.
+      const filteredStatuses = inProgressStageIds(
+        statusList.map((status) => status.id),
+      );
 
       setInProgressStatuses(filteredStatuses);
 
@@ -153,9 +156,19 @@ function PathologyDashboard() {
           </Button>
         </TableCell>
       );
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
+    if (cell.info.header === "status") {
+      return (
+        <TableCell key={cell.id}>
+          {stageLabel(
+            intl,
+            cell.value,
+            statuses.find((s) => s.id === cell.value)?.value,
+          )}
+        </TableCell>
+      );
+    }
+    return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
   const setPathologyEntriesWithIds = (entries) => {
@@ -361,13 +374,23 @@ function PathologyDashboard() {
                 onChange={setStatusFilter}
                 noLabel
               >
-                <SelectItem disabled value="placeholder" text="Status" />
-                <SelectItem text="All" value="All" />
-                <SelectItem text="In Progress" value="IN_PROGRESS" />
+                <SelectItem
+                  disabled
+                  value="placeholder"
+                  text={intl.formatMessage({ id: "common.status" })}
+                />
+                <SelectItem
+                  text={intl.formatMessage({ id: "common.all" })}
+                  value="All"
+                />
+                <SelectItem
+                  text={intl.formatMessage({ id: "common.inProgress" })}
+                  value="IN_PROGRESS"
+                />
                 {statuses.map((status, index) => (
                   <SelectItem
                     key={index}
-                    text={status.value}
+                    text={stageLabel(intl, status.id, status.value)}
                     value={status.id}
                   />
                 ))}
