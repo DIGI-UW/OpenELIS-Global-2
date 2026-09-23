@@ -1352,7 +1352,8 @@ public class ResultsLoadUtility {
 
         if (!GenericValidator.isBlankOrNull(resultValue) && resultLimit != null) {
             try {
-                double value = Double.valueOf(resultValue);
+                // the row carries the value as written, so read the number it denotes
+                double value = Double.valueOf(StringUtil.normalizeScientificNotation(resultValue));
 
                 valid = value >= resultLimit.getLowValid() && value <= resultLimit.getHighValid();
 
@@ -1381,7 +1382,8 @@ public class ResultsLoadUtility {
 
         if (!GenericValidator.isBlankOrNull(resultValue) && resultLimit != null) {
             try {
-                double value = Double.valueOf(resultValue);
+                // the row carries the value as written, so read the number it denotes
+                double value = Double.valueOf(StringUtil.normalizeScientificNotation(resultValue));
 
                 normal = value >= resultLimit.getLowNormal() && value <= resultLimit.getHighNormal();
             } catch (NumberFormatException e) {

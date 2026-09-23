@@ -77,10 +77,13 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         if (test == null) {
             return;
         }
+        // the number drives the rules; what the technologist wrote is what a
+        // person reads in the alert
         String value = result.getValue();
+        String writtenValue = result.getEnteredValue();
         boolean critical = isCriticalValue(result, value);
         if (critical) {
-            recordCriticalResultAlert(result, test, value);
+            recordCriticalResultAlert(result, test, writtenValue);
         }
         List<TestAlertRule> rules = alertRuleService.getByTestId(test.getId());
         if (rules == null || rules.isEmpty()) {
@@ -101,7 +104,8 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             }
             String testName = test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
             String subject = "Test alert: " + testName;
-            String message = "[ALERT: " + rule.getName() + "] " + testName + (value != null ? " result " + value : "");
+            String message = "[ALERT: " + rule.getName() + "] " + testName
+                    + (writtenValue != null ? " result " + writtenValue : "");
             dispatchHeader(rule, message, sysUserId);
             dispatchExternal(rule, subject, message, result);
         }
