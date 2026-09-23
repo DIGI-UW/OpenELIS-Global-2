@@ -123,6 +123,7 @@ function BatchTestReassignmentAndCancelation() {
       setIsLoading(true);
     } else {
       setBatchTestGet(res);
+      setIsLoading(false);
     }
   };
 
@@ -152,6 +153,7 @@ function BatchTestReassignmentAndCancelation() {
           ...prevSampleTypeToGetIdDataTag,
           tests: [extraObject, ...(res.tests || [])],
         }));
+        setIsLoading(false);
       }
     };
 
@@ -170,6 +172,7 @@ function BatchTestReassignmentAndCancelation() {
         setIsLoading(true);
       } else {
         setSampleTypeTestIdToGetIdPendingData(res);
+        setIsLoading(false);
       }
     };
 
@@ -416,7 +419,7 @@ function BatchTestReassignmentAndCancelation() {
     }
   }, [batchTestPost, sampleTypeToGetIdDataTag, sampleTypeListShow]);
 
-  if (!isLoading) {
+  if (isLoading) {
     return (
       <>
         <Loading />

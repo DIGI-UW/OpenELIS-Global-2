@@ -145,6 +145,7 @@ function UserAddModify() {
         KeyList.push(key),
       );
       setSelectedTestSectionList(KeyList);
+      setIsLoading(false);
     }
   };
 
@@ -163,6 +164,7 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setCopyUserPermissionList(res);
+      setIsLoading(false);
     }
   };
 
@@ -819,7 +821,7 @@ function UserAddModify() {
     }
   };
 
-  if (!isLoading) {
+  if (isLoading) {
     return (
       <>
         <Loading />
