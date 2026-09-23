@@ -63,9 +63,22 @@ public final class CsvParsingUtil {
     public static Map<String, Integer> createColumnMap(String[] headers) {
         Map<String, Integer> columnMap = new HashMap<>();
         for (int i = 0; i < headers.length; i++) {
-            columnMap.put(headers[i].trim().toLowerCase(), i);
+            String header = headers[i];
+            if (i == 0) {
+                // Excel and most Windows editors write a UTF-8 byte order mark at
+                // the head of the file. It lands invisibly on the first header, so
+                // "name" does not match "name" and a perfectly good file is refused
+                // for missing the column it plainly has.
+                header = stripByteOrderMark(header);
+            }
+            columnMap.put(header.trim().toLowerCase(), i);
         }
         return columnMap;
+    }
+
+    /** The first header with any leading UTF-8 byte order mark removed. */
+    public static String stripByteOrderMark(String value) {
+        return value != null && !value.isEmpty() && value.charAt(0) == '\uFEFF' ? value.substring(1) : value;
     }
 
     /** Returns the trimmed cell at index, or {@code ""} when out of range/null. */
@@ -92,7 +105,9 @@ public final class CsvParsingUtil {
      */
     public static int findColumn(String[] headers, String name) {
         for (int i = 0; i < headers.length; i++) {
-            if (headers[i] != null && name.equalsIgnoreCase(headers[i].trim())) {
+            // Same byte order mark as createColumnMap: the two have to agree, or a
+            // required column reads as present in one and absent in the other.
+            if (headers[i] != null && name.equalsIgnoreCase(stripByteOrderMark(headers[i]).trim())) {
                 return i;
             }
         }

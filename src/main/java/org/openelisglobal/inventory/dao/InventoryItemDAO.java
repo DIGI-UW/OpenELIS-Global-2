@@ -28,6 +28,20 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     InventoryItem getByCode(String code) throws LIMSRuntimeException;
 
     /**
+     * The item carrying this UPC, or null. Distinct from
+     * {@link #searchByName(String)}: that one matches a substring and only among
+     * active items, neither of which an importer can key on.
+     */
+    InventoryItem getByUpc(String upc) throws LIMSRuntimeException;
+
+    /**
+     * The item with exactly this name, or null. Deliberately includes deactivated
+     * items: a re-import that skipped them would define a second item with the same
+     * name rather than recognising the one already there.
+     */
+    InventoryItem getByExactName(String name) throws LIMSRuntimeException;
+
+    /**
      * Get inventory item by FHIR UUID
      */
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;

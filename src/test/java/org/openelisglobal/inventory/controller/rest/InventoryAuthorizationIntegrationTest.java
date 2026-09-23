@@ -55,7 +55,7 @@ public class InventoryAuthorizationIntegrationTest extends BaseWebContextSensiti
                 .map(bean -> org.springframework.aop.support.AopUtils.getTargetClass(bean))
                 .filter(type -> type.getPackageName().startsWith("org.openelisglobal.inventory")).count();
 
-        assertEquals("the roster case passes vacuously if it finds nothing", 9, inventoryControllers);
+        assertEquals("the roster case passes vacuously if it finds nothing", 10, inventoryControllers);
     }
 
 }

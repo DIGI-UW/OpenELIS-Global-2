@@ -46,6 +46,7 @@ import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import InventoryItemForm from "./InventoryItemForm";
 import ManageTagsModal from "./ManageTagsModal";
+import ImportItemsModal from "./ImportItemsModal";
 import QuickReceiveModal from "./QuickReceiveModal";
 import QuickLogUsageModal from "./QuickLogUsageModal";
 import ReorderSuggestionsModal, {
@@ -143,6 +144,7 @@ const InventoryItemsBoard = ({ active = true }) => {
   const [tagFilter, setTagFilter] = useState([]);
   const [activeTags, setActiveTags] = useState([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [countMode, setCountMode] = useState(false);
   // Keyed by lot id. A lot missing from here was not counted, which is not the
@@ -935,6 +937,14 @@ const InventoryItemsBoard = ({ active = true }) => {
         <Button
           kind="tertiary"
           size="lg"
+          className="board-import-items"
+          onClick={() => setImportOpen(true)}
+        >
+          <FormattedMessage id="inventory.import.button" />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="lg"
           className="board-log-usage"
           onClick={() => setAction({ kind: "quickLog" })}
         >
@@ -1353,6 +1363,14 @@ const InventoryItemsBoard = ({ active = true }) => {
             setTagFilter([]);
             refresh();
           }}
+        />
+      )}
+
+      {importOpen && (
+        <ImportItemsModal
+          open
+          onClose={() => setImportOpen(false)}
+          onImported={refresh}
         />
       )}
 

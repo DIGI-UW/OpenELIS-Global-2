@@ -81,10 +81,18 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "category", length = 100)
     private String category;
 
+    /*
+     * Sized as well as columned. A file-driven write reaches these with whatever
+     * the spreadsheet held, and a column width the entity does not declare is a
+     * rule only the database knows: the row fails at flush with a Postgres message
+     * rather than being turned away with its line number and a readable reason.
+     */
     @Column(name = "manufacturer", length = 255)
+    @Size(max = 255)
     private String manufacturer;
 
     @Column(name = "catalog_number", length = 100)
+    @Size(max = 100)
     private String catalogNumber;
 
     /**

@@ -194,6 +194,21 @@ export const InventoryCountAPI = {
   record: (entries) => post("/count", { entries }),
 };
 
+/**
+ * Defining a catalogue from a CSV file. The browser reads the file and posts
+ * its text; the server is the only thing that parses CSV, so the preview and
+ * the commit cannot be two different readings of the same file.
+ */
+export const InventoryImportAPI = {
+  /** What the file would do. Writes nothing. */
+  preview: (csv) => post("/import/preview", { csv }),
+
+  /** What the file did. */
+  apply: (csv) => post("/import/apply", { csv }),
+
+  templateUrl: () => `${config.serverBaseUrl}${BASE_PATH}/import/template`,
+};
+
 /** The tag directory: light governance over free-form tags. */
 export const InventoryTagAPI = {
   /** Every tag with how many items carry it and whether it is still offered. */
