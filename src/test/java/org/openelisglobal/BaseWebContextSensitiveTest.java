@@ -483,12 +483,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * Reference vocabularies the production Liquibase seed guarantees but a fixture
      * load can silently gut: {@code executeDataSetWithStateManagement} truncates
      * every table a dataset names and re-inserts only the dataset's own rows, so a
-     * dataset declaring a partial {@code type_of_test_result} or
-     * {@code requester_type} leaves later suites without rows their inserts FK to
-     * (test_result_type_fk) or look up by name (getRequesterTypeByName). Restore
-     * the seed after every load, like {@link #ensureAuditSystemUser}: by id for
-     * type_of_test_result (fixture extras untouched), by name for requester_type
-     * (fixtures legitimately repurpose ids 1-2 for their own vocabularies).
+     * dataset declaring a partial {@code type_of_test_result} leaves later suites
+     * without rows their inserts FK to (test_result_type_fk). Restore the seed
+     * after every load, like {@link #ensureAuditSystemUser}, by id so a fixture's
+     * own extra rows are left alone. {@code requester_type} needs no restore here:
+     * it is in {@link #PROTECTED_SEED_TABLES}, so a dataset declaring it is
+     * stripped before the truncation rather than after.
      */
     private void ensureReferenceSeedRows() throws SQLException {
         try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
@@ -505,12 +505,6 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             st.execute("INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
                     + " VALUES (15, 'SampleRecordStatus', 'Sample Record Status', now()),"
                     + " (16, 'PatientRecordStatus', 'Patient Record Status', now())" + " ON CONFLICT (id) DO NOTHING");
-            for (String requesterType : new String[] { "organization", "provider" }) {
-                st.execute("INSERT INTO clinlims.requester_type (id, requester_type)"
-                        + " SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.requester_type), '" + requesterType
-                        + "' WHERE NOT EXISTS (SELECT 1 FROM clinlims.requester_type WHERE requester_type = '"
-                        + requesterType + "')");
-            }
         }
     }
 

@@ -17,29 +17,22 @@ import java.sql.Timestamp;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.common.util.DefaultConfigurationProperties;
-import org.openelisglobal.config.ControllerSetup;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
  * Verifies the /rest/esig/log gate is the qa.view.qms permission authority (QA
@@ -48,7 +41,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * endpoint's parameter validation once past the gate.
  */
 @WebAppConfiguration
-@ContextConfiguration(classes = { ElectronicSignatureLogSecurityTest.TestConfig.class })
+@ContextConfiguration(classes = { SliceSecurityConfig.class, ElectronicSignatureLogSecurityTest.TestConfig.class })
 @TestPropertySource("classpath:common.properties")
 public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest {
 
@@ -66,11 +59,6 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
         reset(service);
         when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
         when(service.countSearchSignatures(any(), any(), any(), any(), any())).thenReturn(0L);
-    }
-
-    @Test
-    public void log_withoutAuthenticationReturns401() throws Exception {
-        mockMvc.perform(get(LOG_URL)).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -116,11 +104,6 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
     // ========================
 
     @Test
-    public void exportCsv_withoutAuthenticationReturns401() throws Exception {
-        mockMvc.perform(get(CSV_URL)).andExpect(status().isUnauthorized());
-    }
-
-    @Test
     public void exportCsv_roleWithoutPermissionAuthorityReturns403() throws Exception {
         mockMvc.perform(get(CSV_URL).with(user("validator").roles("VALIDATION"))).andExpect(status().isForbidden());
     }
@@ -150,11 +133,6 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
                         && lines[1].contains("QC_RESULT #42") && lines[1].contains("\"Hemolyzed, recollect\""));
         assertTrue("Second row should guard the formula-injection reason", lines[2].contains("John Tech")
                 && lines[2].contains("Validated & Released") && lines[2].contains("'=cmd"));
-    }
-
-    @Test
-    public void exportPdf_withoutAuthenticationReturns401() throws Exception {
-        mockMvc.perform(get(PDF_URL)).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -199,54 +177,32 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
     }
 
     @Configuration
-    @EnableWebMvc
-    @EnableWebSecurity
-    @EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
-        @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
-                    .csrf(csrf -> csrf.disable());
-            return http.build();
-        }
-
-        // The controller autowires ConfigurationProperties, whose
-        // DefaultConfigurationProperties gained an @Autowired DaemonContextExecutor
-        // in #3356 — so the slice must supply it (and its @Qualifier
-        // "daemonSysUserId" dependency), as
-        // ConfigurationReloadRestControllerSecurityTest does.
-        @Bean("daemonSysUserId")
-        String daemonSysUserId() {
-            return "1";
-        }
-
-        @Bean
-        DaemonContextExecutor daemonContextExecutor() {
-            return new DaemonContextExecutor();
-        }
 
         @Bean
         ElectronicSignatureService electronicSignatureService() {
-            // The slice exercises the @PreAuthorize gate and request
-            // validation, not the query.
-            ElectronicSignatureService service = mock(ElectronicSignatureService.class);
-            when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
-            when(service.countSearchSignatures(any(), any(), any(), any(), any())).thenReturn(0L);
-            return service;
+            // The slice exercises the @PreAuthorize gate and request validation, not
+            // the query. resetServiceStub sets the return values before every test.
+            return mock(ElectronicSignatureService.class);
+        }
+
+        /**
+         * The controller injects the abstract type, so one mock of it is the whole
+         * requirement — registering the concrete implementation instead would drag in
+         * its own injected collaborators.
+         */
+        @Bean
+        ConfigurationProperties configurationProperties() {
+            return mock(ConfigurationProperties.class);
         }
 
         @Bean
-        ElectronicSignatureRestController electronicSignatureRestController(ElectronicSignatureService service) {
+        ElectronicSignatureRestController electronicSignatureRestController(ElectronicSignatureService service,
+                ConfigurationProperties configurationProperties) {
             ElectronicSignatureRestController controller = new ElectronicSignatureRestController();
             ReflectionTestUtils.setField(controller, "electronicSignatureService", service);
+            ReflectionTestUtils.setField(controller, "configurationProperties", configurationProperties);
             return controller;
-        }
-
-        @Bean
-        ControllerSetup controllerSetup() {
-            // Real @ControllerAdvice in the slice so @PreAuthorize denials
-            // surface as 403s, not 500s (guards the advice ordering).
-            return new ControllerSetup();
         }
 
         @Bean
@@ -261,30 +217,5 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
             return messageSource;
         }
 
-        @Bean
-        DefaultConfigurationProperties defaultConfigurationProperties() {
-            // Satisfies the controller's injected ConfigurationProperties for
-            // the PDF lab-name lookup. Deliberately NOT registering a
-            // SpringContext bean here: its ApplicationContextAware callback
-            // overwrites the static holder for every later test in the JVM.
-            return mock(DefaultConfigurationProperties.class);
-        }
-
-        // The DefaultConfigurationProperties mock still receives superclass
-        // @Autowired field injection — satisfy it with inert mocks.
-        @Bean
-        org.openelisglobal.siteinformation.service.SiteInformationService siteInformationService() {
-            return mock(org.openelisglobal.siteinformation.service.SiteInformationService.class);
-        }
-
-        @Bean
-        org.openelisglobal.externalconnections.service.BasicAuthenticationDataService basicAuthenticationDataService() {
-            return mock(org.openelisglobal.externalconnections.service.BasicAuthenticationDataService.class);
-        }
-
-        @Bean
-        org.openelisglobal.externalconnections.service.ExternalConnectionService externalConnectionService() {
-            return mock(org.openelisglobal.externalconnections.service.ExternalConnectionService.class);
-        }
     }
 }

@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.qc.builder.BenchQCCaptureFormBuilder;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
-import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,27 +156,15 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     private void recordManual(QCQualitativeOutcome outcome, BigDecimal value, String runAt) {
-        BenchQCCaptureForm form = new BenchQCCaptureForm();
-        form.setSource(QCSource.MANUAL);
-        form.setTestId(TEST_ID);
-        form.setTestSectionId(LAB_UNIT);
-        form.setControlLotId("bench-lot-a");
-        form.setQualitativeOutcome(outcome);
-        form.setResultValue(value);
-        form.setExpectedValue(new BigDecimal("100.00000"));
-        form.setUncertainty(new BigDecimal("5.00000"));
-        form.setRunDateTime(Timestamp.valueOf(runAt).toLocalDateTime());
-        qcResultService.createBenchQCResult(form, TECHNICIAN);
+        qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID)
+                .withTestSectionId(LAB_UNIT).withControlLotId("bench-lot-a").withOutcome(outcome).withResultValue(value)
+                .withTarget(new BigDecimal("100.00000"), new BigDecimal("5.00000")).withRunDateTime(runAt).build(),
+                TECHNICIAN);
     }
 
     private void recordRdt(QCQualitativeOutcome outcome, String runAt) {
-        BenchQCCaptureForm form = new BenchQCCaptureForm();
-        form.setSource(QCSource.RDT);
-        form.setTestId(RDT_TEST_ID);
-        form.setTestSectionId(LAB_UNIT);
-        form.setControlLabel("Malaria RDT · LOT-BENCH-1");
-        form.setQualitativeOutcome(outcome);
-        form.setRunDateTime(Timestamp.valueOf(runAt).toLocalDateTime());
-        qcResultService.createBenchQCResult(form, TECHNICIAN);
+        qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.RDT).withTestId(RDT_TEST_ID)
+                .withTestSectionId(LAB_UNIT).withControlLabel("Malaria RDT · LOT-BENCH-1").withOutcome(outcome)
+                .withRunDateTime(runAt).build(), TECHNICIAN);
     }
 }

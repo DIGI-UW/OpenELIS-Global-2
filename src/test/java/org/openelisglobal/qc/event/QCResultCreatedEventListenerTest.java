@@ -79,7 +79,7 @@ public class QCResultCreatedEventListenerTest {
      * OGC-1147 regression. An empty evaluation means "no rules ran", not "in control", so
      * the status the writer set must survive. A bench control has no westgard_rule_config
      * row at all — that table is keyed on a non-null instrument_id — so without this the
-     * listener would flip a technician's FAIL to ACCEPTED. findLatestAcceptedBenchResultBefore
+     * listener would flip a technician's FAIL to ACCEPTED. findLatestAcceptedBefore
      * would then treat the failed control as the last in-control one when bounding the next
      * failure's window, holding FEWER patient results than it should.
      */

@@ -36,31 +36,37 @@ public class SigmaMetricsTest {
     }
 
     @Test
-    public void notCalculableWhenTeaMissingOrNonPositive() {
-        assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), new BigDecimal("2"), null));
-        assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), new BigDecimal("2"), 0.0));
-        assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), new BigDecimal("2"), -5.0));
+    public void sigmaIsNotCalculableWithoutATea_butTheCvStillIs() {
+        // CV is a property of the control statistics alone, so it is reported wherever
+        // mean/SD are usable; only sigma needs the per-test total allowable error.
+        for (Double tea : new Double[] { null, 0.0, -5.0 }) {
+            SigmaResult r = SigmaMetrics.compute(new BigDecimal("100"), new BigDecimal("2"), tea);
+            assertEquals("TEa " + tea, 2.0, r.cv(), 1e-9);
+            assertNull("TEa " + tea, r.sigma());
+            assertEquals("TEa " + tea, SigmaMetrics.NOT_CALCULABLE, r.category());
+        }
+        // A less round case, so the arithmetic is pinned rather than the shape alone.
+        assertEquals(8.088, SigmaMetrics.compute(new BigDecimal("1250.31"), new BigDecimal("101.12"), null).cv(), 1e-3);
     }
 
     @Test
-    public void notCalculableWhenMeanOrSdNonPositiveOrNull() {
-        // sd=0 (fewer than 2 usable points) and mean=0 (divide-by-zero guard)
-        assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), BigDecimal.ZERO, 10.0));
+    public void nothingIsCalculableWhenThereIsNoUsableMeanOrSd() {
+        // mean=0 is the divide-by-zero guard; a missing mean or SD has nothing to
+        // divide at all.
         assertNotCalculable(SigmaMetrics.compute(BigDecimal.ZERO, new BigDecimal("2"), 10.0));
         assertNotCalculable(SigmaMetrics.compute(null, new BigDecimal("2"), 10.0));
         assertNotCalculable(SigmaMetrics.compute(new BigDecimal("100"), null, 10.0));
     }
 
     @Test
-    public void cvIsComputableIndependentlyOfTea() {
-        // CV = SD/mean*100 — available even when the sigma metric is NOT_CALCULABLE.
-        assertEquals(2.0, SigmaMetrics.cv(new BigDecimal("100"), new BigDecimal("2")), 1e-9);
-        assertEquals(8.088, SigmaMetrics.cv(new BigDecimal("1250.31"), new BigDecimal("101.12")), 1e-3);
-        assertNull(SigmaMetrics.cv(null, new BigDecimal("2")));
-        assertNull(SigmaMetrics.cv(new BigDecimal("0"), new BigDecimal("2")));
-        // Contract preserved: compute()'s RESULT still carries cv=null when TEa is
-        // missing, even though cv() alone is non-null for the same mean/SD.
-        assertNull(SigmaMetrics.compute(new BigDecimal("1250.31"), new BigDecimal("101.12"), null).cv());
+    public void zeroSdReportsNoVariationRatherThanNoCv() {
+        // An SD of 0 means fewer than 2 usable points, so there is no sigma to
+        // report — but 0/mean is a real CV of zero, not an absent one, and the
+        // report prints it rather than a dash.
+        SigmaResult r = SigmaMetrics.compute(new BigDecimal("100"), BigDecimal.ZERO, 10.0);
+        assertEquals(0.0, r.cv(), 1e-9);
+        assertNull(r.sigma());
+        assertEquals(SigmaMetrics.NOT_CALCULABLE, r.category());
     }
 
     private static void assertNotCalculable(SigmaResult r) {
