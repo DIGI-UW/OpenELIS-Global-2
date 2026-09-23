@@ -63,6 +63,15 @@
         result_status="ACCEPTED" sys_user_id="1"
         last_updated="2025-06-07 12:00:00" />
 
+    <!-- The sample and sample_item rows below reference status 1. Declare it
+        here rather than relying on whatever the previous test class left behind:
+        a fixture that seeds only its own statuses (patient merge seeds 9001 alone)
+        otherwise strips it and this load fails on sample_status_fk. -->
+    <status_of_sample id="1" name="Status 1" code="1"
+        status_type="SampleType1" description="Sample Description 1"
+        display_key="sample_display_key_1" lastupdated="2025-06-09"
+        is_active="Y" />
+
     <sample id="701" accession_number="WG0001" status_id="1"
         received_date="2025-06-09 00:00:00.0"
         entered_date="2025-06-09 00:00:00.0"
