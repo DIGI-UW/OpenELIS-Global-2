@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Separate privilege inheritance from UI grouping (spec 012 FR-005 vs the legacy
+    grouping taxonomy).
+
+    `system_role.grouping_parent` was a UI taxonomy pointer: "which section of User
+    Management do I render under?". Its targets are container rows flagged
+    `is_grouping_role` ("Global Roles", "Lab Unit Roles", "Lab Staff") that nobody
+    is ever assigned. Spec 012 then reused the SAME column as the privilege
+    inheritance pointer (PrivilegeServiceImpl walks it recursively), which makes
+    the two meanings mutually exclusive per role:
+
+      - point at a base role to inherit its privileges  -> the parent is not a
+        container, so the role matches neither hardcoded group id in
+        UnifiedSystemUserRestController#setupRoles and DISAPPEARS from the UI;
+      - point at a container to stay visible            -> you inherit that
+        container's privileges. Harmless only because all three containers happen
+        to hold zero privileges today; granting one privilege to "Lab Unit Roles"
+        would silently widen every bench role.
+
+    This adds `parent_role_id` as the dedicated inheritance pointer.
+    `grouping_parent` keeps its original, single meaning: UI taxonomy.
+
+    Data migration: none of the currently seeded roles inherit anything — every
+    grouping_parent points at a container, and all three containers hold zero
+    privileges (verified on a live 3.5 database). So copying grouping_parent into
+    parent_role_id would introduce inheritance edges that do not exist today and
+    would couple the two meanings right back together. The column therefore starts
+    NULL for every row, which preserves current behaviour exactly: same effective
+    privileges for every role, before and after.
+  -->
+  <changeSet author="openelis" id="104-add-parent-role-id">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <tableExists tableName="system_role" schemaName="clinlims"/>
+        <not>
+          <columnExists tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+        </not>
+      </and>
+    </preConditions>
+    <comment>Add system_role.parent_role_id — privilege inheritance, distinct from grouping_parent (UI taxonomy)</comment>
+
+    <addColumn tableName="system_role" schemaName="clinlims">
+      <column name="parent_role_id" type="numeric(10,0)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint
+        constraintName="role_parent_role_id_fk"
+        baseTableSchemaName="clinlims" baseTableName="system_role" baseColumnNames="parent_role_id"
+        referencedTableSchemaName="clinlims" referencedTableName="system_role" referencedColumnNames="id"/>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="system_role"
+          constraintName="role_parent_role_id_fk"/>
+      <dropColumn tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!--
+    A role may not be its own parent. Deeper cycles (A->B->A) are guarded at
+    resolution time by PrivilegeServiceImpl's visited-set, which terminates and
+    returns the partial set rather than recursing forever; this constraint just
+    rejects the trivial case at write time.
+  -->
+  <changeSet author="openelis" id="104a-parent-role-id-not-self">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <columnExists tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+        <not>
+          <sqlCheck expectedResult="1">
+            SELECT COUNT(*) FROM pg_constraint WHERE conname = 'role_parent_role_id_not_self'
+          </sqlCheck>
+        </not>
+      </and>
+    </preConditions>
+    <comment>A role cannot inherit from itself</comment>
+    <sql>
+      ALTER TABLE clinlims.system_role
+        ADD CONSTRAINT role_parent_role_id_not_self CHECK (parent_role_id IS NULL OR parent_role_id &lt;&gt; id);
+    </sql>
+    <rollback>
+      <sql>ALTER TABLE clinlims.system_role DROP CONSTRAINT role_parent_role_id_not_self;</sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

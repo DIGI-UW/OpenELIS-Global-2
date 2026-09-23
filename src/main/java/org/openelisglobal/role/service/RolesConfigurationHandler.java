@@ -26,8 +26,10 @@ import org.springframework.stereotype.Component;
  * Notes: - First line is the header (required) - name is required field -
  * description, displayKey, active, editable, isGroupingRole, groupingParent are
  * optional - active and editable default to "Y" if not specified -
- * isGroupingRole defaults to "N" if not specified - groupingParent should be
- * the name of the parent role (will be resolved to role ID)
+ * isGroupingRole defaults to "N" if not specified. groupingParent (UI
+ * container) and parentRole (privilege inheritance) are independent columns.
+ * groupingParent should be the name of the parent role (will be resolved to
+ * role ID)
  */
 @Component
 public class RolesConfigurationHandler implements DomainConfigurationHandler {
@@ -73,13 +75,13 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         int activeIndex = findColumnIndex(headers, "active");
         int editableIndex = findColumnIndex(headers, "editable");
         int isGroupingRoleIndex = findColumnIndex(headers, "isGroupingRole");
-        // Spec 012 T047: the inheritance parent may be declared as either
-        // `groupingParent` (legacy grouping meaning) or `parentRole` (functional
-        // privilege-inheritance meaning) — both resolve to grouping_parent.
+        // Two distinct columns, two distinct meanings (spec 012 FR-005):
+        // `groupingParent` places the role under a UI container; `parentRole` names
+        // the role whose privileges it inherits. They used to collapse onto
+        // grouping_parent, which made a role either inheritable-from or assignable
+        // but never both.
         int groupingParentIndex = findColumnIndex(headers, "groupingParent");
-        if (groupingParentIndex < 0) {
-            groupingParentIndex = findColumnIndex(headers, "parentRole");
-        }
+        int parentRoleIndex = findColumnIndex(headers, "parentRole");
 
         List<Role> processedRoles = new ArrayList<>();
         String line;
@@ -95,7 +97,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             try {
                 String[] values = parseCsvLine(line);
                 Role role = processCsvLine(values, nameIndex, descriptionIndex, displayKeyIndex, activeIndex,
-                        editableIndex, isGroupingRoleIndex, groupingParentIndex);
+                        editableIndex, isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
                 if (role != null) {
                     processedRoles.add(role);
                 }
@@ -171,7 +173,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private Role processCsvLine(String[] values, int nameIndex, int descriptionIndex, int displayKeyIndex,
-            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         // Get required field
         String name = getValueOrEmpty(values, nameIndex);
@@ -187,13 +189,13 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         if (existingRole != null && !Integer.valueOf(-1).equals(existingRole.getId())) {
             // Update existing role
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
-                    isGroupingRoleIndex, groupingParentIndex);
+                    isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
             roleService.update(existingRole);
             return existingRole;
         } else {
             // Create new role
             return createRole(name, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
-                    isGroupingRoleIndex, groupingParentIndex);
+                    isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
         }
     }
 
@@ -206,7 +208,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private void updateRoleFromCsv(Role role, String[] values, int descriptionIndex, int displayKeyIndex,
-            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         // Set optional fields
         String description = getValueOrEmpty(values, descriptionIndex);
@@ -252,10 +254,23 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
+        // Privilege inheritance parent — a REAL role whose privileges this role
+        // absorbs, resolved independently of the UI grouping above.
+        String parentRoleName = getValueOrEmpty(values, parentRoleIndex);
+        if (!parentRoleName.isEmpty()) {
+            Role inheritedFrom = roleService.getRoleByName(parentRoleName);
+            if (inheritedFrom != null && !Integer.valueOf(-1).equals(inheritedFrom.getId())) {
+                role.setParentRoleId(inheritedFrom.getId());
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "updateRoleFromCsv",
+                        "Inheritance parent role '" + parentRoleName + "' not found for role '" + role.getName() + "'");
+            }
+        }
+
     }
 
     private Role createRole(String name, String[] values, int descriptionIndex, int displayKeyIndex, int activeIndex,
-            int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         Role role = new Role();
         role.setName(name);
@@ -303,6 +318,19 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
                         "Parent role '" + groupingParentName + "' not found for role '" + name + "'");
+            }
+        }
+
+        // Privilege inheritance parent — a REAL role whose privileges this role
+        // absorbs, resolved independently of the UI grouping above.
+        String parentRoleName = getValueOrEmpty(values, parentRoleIndex);
+        if (!parentRoleName.isEmpty()) {
+            Role inheritedFrom = roleService.getRoleByName(parentRoleName);
+            if (inheritedFrom != null && !Integer.valueOf(-1).equals(inheritedFrom.getId())) {
+                role.setParentRoleId(inheritedFrom.getId());
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
+                        "Inheritance parent role '" + parentRoleName + "' not found for role '" + name + "'");
             }
         }
 

@@ -57,7 +57,7 @@ public class PrivilegeServiceImpl implements PrivilegeService {
 
     /**
      * Resolves the full effective privilege-name set for one role (spec 012 T048).
-     * Resolution walks the {@code grouping_parent} chain recursively:
+     * Resolution walks the {@code parent_role_id} chain recursively:
      *
      * <ol>
      * <li><b>Global Administrator shortcut</b> — if the role (or any ancestor) is
@@ -127,8 +127,11 @@ public class PrivilegeServiceImpl implements PrivilegeService {
             privileges.add(p.getName());
         }
 
-        // Inherit privileges from parent role recursively
-        Integer parentId = role.getGroupingParent();
+        // Inherit privileges from parent role recursively. parent_role_id, NOT
+        // grouping_parent: the latter is the UI taxonomy pointer whose targets are
+        // container rows nobody is assigned. Reading it here coupled the two
+        // meanings — a role could either inherit or be assignable, never both.
+        Integer parentId = role.getParentRoleId();
         if (parentId != null) {
             Set<String> parentPrivileges = resolveAllPrivilegesForRole(parentId, visited);
             if (parentPrivileges.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {

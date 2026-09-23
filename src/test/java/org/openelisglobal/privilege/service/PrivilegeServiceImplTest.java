@@ -93,7 +93,7 @@ public class PrivilegeServiceImplTest {
     @Test
     public void resolveAllPrivilegesForRole_withParent_includesParentPrivileges() {
         // Results inherits from Reception
-        resultsRole.setGroupingParent(1);
+        resultsRole.setParentRoleId(1);
 
         when(roleService.getRoleById(2)).thenReturn(resultsRole);
         when(roleService.getRoleById(1)).thenReturn(receptionRole);
@@ -111,8 +111,8 @@ public class PrivilegeServiceImplTest {
     @Test
     public void resolveAllPrivilegesForRole_multiLevel_walksFullChain() {
         // Validation -> Results -> Reception
-        validationRole.setGroupingParent(2);
-        resultsRole.setGroupingParent(1);
+        validationRole.setParentRoleId(2);
+        resultsRole.setParentRoleId(1);
 
         when(roleService.getRoleById(3)).thenReturn(validationRole);
         when(roleService.getRoleById(2)).thenReturn(resultsRole);
@@ -170,12 +170,12 @@ public class PrivilegeServiceImplTest {
         Role role2 = new Role();
         role2.setId(11);
         role2.setName("Role2");
-        role2.setGroupingParent(10);
+        role2.setParentRoleId(10);
 
         Role role3 = new Role();
         role3.setId(12);
         role3.setName("Role3");
-        role3.setGroupingParent(10);
+        role3.setParentRoleId(10);
 
         // Role4 has two parents — simulate by testing each parent branch separately
         // and asserting the visited-set guard prevents double-counting.
@@ -210,12 +210,12 @@ public class PrivilegeServiceImplTest {
         Role roleA = new Role();
         roleA.setId(100);
         roleA.setName("Role A");
-        roleA.setGroupingParent(101);
+        roleA.setParentRoleId(101);
 
         Role roleB = new Role();
         roleB.setId(101);
         roleB.setName("Role B");
-        roleB.setGroupingParent(100);
+        roleB.setParentRoleId(100);
 
         when(roleService.getRoleById(100)).thenReturn(roleA);
         when(roleService.getRoleById(101)).thenReturn(roleB);

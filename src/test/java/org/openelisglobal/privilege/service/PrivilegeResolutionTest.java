@@ -70,12 +70,12 @@ public class PrivilegeResolutionTest {
         resultsRole = new Role();
         resultsRole.setId(2);
         resultsRole.setName(Constants.ROLE_RESULTS);
-        resultsRole.setGroupingParent(1); // inherits from Reception
+        resultsRole.setParentRoleId(1); // inherits from Reception
 
         validationRole = new Role();
         validationRole.setId(3);
         validationRole.setName(Constants.ROLE_VALIDATION);
-        validationRole.setGroupingParent(2); // inherits from Results
+        validationRole.setParentRoleId(2); // inherits from Results
 
         orderCreate = privilege("order:create");
         patientView = privilege("patient:view");

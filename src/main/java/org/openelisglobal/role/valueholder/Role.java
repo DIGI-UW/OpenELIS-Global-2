@@ -46,8 +46,29 @@ public class Role extends BaseObject<Integer> implements PermissionAgent {
     @Column(name = "is_grouping_role")
     private Boolean groupingRole;
 
+    /**
+     * UI taxonomy only: which container row ({@code is_grouping_role}) this role
+     * renders under in User Management. NOT privilege inheritance — see
+     * {@link #parentRoleId}.
+     */
     @Column(name = "grouping_parent")
     private Integer groupingParent;
+
+    /**
+     * Privilege inheritance (spec 012 FR-005): this role's effective privileges are
+     * its own plus, recursively, those of the role named here.
+     * {@code PrivilegeServiceImpl.resolveAllPrivilegesForRole} walks this chain,
+     * guarding against cycles with a visited set.
+     *
+     * <p>
+     * Deliberately distinct from {@link #groupingParent}. Overloading one column
+     * for both meanings makes them mutually exclusive: a role that points at a base
+     * role to inherit its privileges stops matching the UI's group filter and
+     * becomes unassignable, while a role that points at a container to stay visible
+     * inherits whatever that container holds.
+     */
+    @Column(name = "parent_role_id")
+    private Integer parentRoleId;
 
     @Column(name = "display_key")
     private String displayKey;
@@ -108,6 +129,14 @@ public class Role extends BaseObject<Integer> implements PermissionAgent {
 
     public void setGroupingParent(Integer groupingParent) {
         this.groupingParent = groupingParent;
+    }
+
+    public Integer getParentRoleId() {
+        return parentRoleId;
+    }
+
+    public void setParentRoleId(Integer parentRoleId) {
+        this.parentRoleId = parentRoleId;
     }
 
     public String getDisplayKey() {
