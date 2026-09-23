@@ -478,7 +478,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 for (Result poolResult : poolResults) {
                     Result resultCopy = new Result();
                     resultCopy.setAnalysis(analysisService.get(newAnalysisId));
-                    resultCopy.setValue(poolResult.getValue());
+                    resultCopy.setValue(poolResult.getEnteredValue());
                     resultCopy.setResultType(poolResult.getResultType());
                     resultCopy.setSysUserId(sysUserId);
                     resultService.insert(resultCopy);
@@ -564,7 +564,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             for (Result poolResult : poolResults) {
                 Result resultCopy = new Result();
                 resultCopy.setAnalysis(analysisService.get(newAnalysisId));
-                resultCopy.setValue(poolResult.getValue());
+                resultCopy.setValue(poolResult.getEnteredValue());
                 resultCopy.setResultType(poolResult.getResultType());
                 resultCopy.setSysUserId(sysUserId);
                 resultService.insert(resultCopy);

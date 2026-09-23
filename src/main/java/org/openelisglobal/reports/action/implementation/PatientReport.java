@@ -51,6 +51,7 @@ import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -663,8 +664,13 @@ public abstract class PatientReport extends Report {
         String resultValue = data.getResult();
         if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
             try {
-                resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(resultValue))) + ")log ";
-            } catch (IllegalFormatException e) {
+                // the printed value carries the notation the technologist wrote,
+                // so read the number it denotes before taking its log
+                resultValue += " ("
+                        + formatTwoDecimals(
+                                Math.log10(Double.parseDouble(StringUtil.normalizeScientificNotation(resultValue))))
+                        + ")log ";
+            } catch (IllegalFormatException | NumberFormatException e) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
                 // no-op
             }
