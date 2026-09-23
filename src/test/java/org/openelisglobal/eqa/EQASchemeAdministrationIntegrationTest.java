@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
@@ -22,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Scheme administration from the application, against the real schema: the
@@ -37,6 +40,9 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQAProgramEnrollmentService enrollmentService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private EQAProgramRestController controller;
 
@@ -126,6 +132,30 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void updateProgram_refusesATypeChangeWhenTheSchemeStaysManagedAcrossTheCall() {
+        // Every other update test here runs its service calls in separate transactions,
+        // so the scheme is already detached by the time update() sees it and the guard
+        // reads the stored row without trying. A request holds one persistence context
+        // across the read and the write, and there a plain read hands the guard back
+        // the
+        // very object the controller has just edited, so it compares the new type with
+        // itself and waves the change through. Holding one transaction open around the
+        // call reproduces that, which is the only shape in which this guard can fail.
+        Long id = created(Map.of("name", "Managed across the call " + System.nanoTime(), "schemeType", "REGIONAL_PT",
+                "provider", "CPHL"));
+        insertCycle(eqaProgramService.get(id), 7);
+
+        ResponseEntity<?> response = inOneTransaction(
+                () -> controller.updateProgram(request(), id, Map.of("schemeType", "IN_HOUSE")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue("the refusal names the cycle that blocks it: " + errorOf(response),
+                errorOf(response).contains("cycle 7"));
+        assertEquals("and the stored type is untouched", EQASchemeType.REGIONAL_PT,
+                eqaProgramService.get(id).getSchemeType());
+    }
+
+    @Test
     public void updateProgram_allowsATypeChangeWhenEveryCycleIsClosed() {
         // The V1 upgrade path. Every completed legacy distribution was backfilled a
         // CLOSED cycle, and those schemes all took the INTERNATIONAL_PT default, so
@@ -180,6 +210,21 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
     }
 
     // ---- helpers ----
+
+    /**
+     * Runs the call with one transaction, and so one persistence context, open
+     * around it, the way a request does. The transaction is rolled back rather than
+     * committed: refusing marks it rollback-only, and committing a rollback-only
+     * transaction raises UnexpectedRollbackException over whichever assertion
+     * should be reporting the real failure.
+     */
+    private ResponseEntity<?> inOneTransaction(Supplier<ResponseEntity<?>> call) {
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            ResponseEntity<?> response = call.get();
+            status.setRollbackOnly();
+            return response;
+        });
+    }
 
     private String errorOf(ResponseEntity<?> response) {
         Object error = ((Map<?, ?>) response.getBody()).get("error");

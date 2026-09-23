@@ -90,15 +90,17 @@ public class EQAProgramServiceImpl extends BaseObjectServiceImpl<EQAProgram, Lon
      * CLOSED directly, which is the case the rule exists to admit.
      *
      * <p>
-     * The comparison reads the stored row rather than trusting the argument: both
-     * callers mutate a detached scheme in place, so by the time update() sees it
-     * the previous type is gone from the object.
+     * The comparison has to reach the database for the previous type. Both callers
+     * mutate a scheme that is still managed and then hand that same object to
+     * update(), so by the time this runs the object carries only the new type, and
+     * an ordinary read is answered from the persistence context with that same
+     * object. findStoredSchemeType reads the committed column instead.
      */
     private void validateSchemeTypeNotChangedUnderLiveCycles(EQAProgram program) {
         if (program.getId() == null) {
             return;
         }
-        EQASchemeType stored = eqaProgramDAO.get(program.getId()).map(EQAProgram::getSchemeType).orElse(null);
+        EQASchemeType stored = eqaProgramDAO.findStoredSchemeType(program.getId());
         if (stored == null || stored == program.getSchemeType()) {
             return;
         }
