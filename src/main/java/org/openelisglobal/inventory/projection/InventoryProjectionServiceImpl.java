@@ -80,6 +80,9 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             // adds roughly one query per fifty items rather than one per item.
             row.setTags(item.getTags() == null ? List.of() : new ArrayList<>(item.getTags()));
             row.setUnits(item.getUnits());
+            row.setTrackLots(item.tracksLots());
+            row.setLastCountedOn(
+                    item.getLastCountedAt() == null ? null : item.getLastCountedAt().toLocalDateTime().toLocalDate());
             row.setActive(item.isActive());
             // Ordering state rides along from the item already in hand, so the board
             // stays at three queries however many items there are.

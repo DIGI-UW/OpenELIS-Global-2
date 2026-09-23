@@ -217,3 +217,52 @@
 .board-deactivate-implications li {
   margin-bottom: 0.25rem;
 }
+
+/* Count mode. The bar states the scope before the numbers, because counting the
+   whole catalogue when you meant one fridge is the mistake worth preventing. */
+.board-count-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: #f4f4f4;
+  border-left: 3px solid #0f62fe;
+}
+
+.board-count-scope {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.board-count-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.board-count-tally {
+  font-size: 0.875rem;
+}
+
+/* Expected sits beside the input rather than under it: at a fridge door the
+   comparison is the whole point and should need no scrolling. */
+.board-count-entry {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.board-count-entry .cds--number {
+  width: 6rem;
+  min-width: 6rem;
+}
+
+.board-count-expected {
+  font-size: 0.75rem;
+  color: #525252;
+  white-space: nowrap;
+}
