@@ -57,6 +57,8 @@ export interface PathologyOrderTarget {
   /** Empty when the deployment has no organization usable as a referring site. */
   referringSiteId: string;
   /** Empty when the deployment has no provider on file. */
+  providerId: string;
+  /** The person behind that provider; empty whenever providerId is. */
   providerPersonId: string;
 }
 
@@ -155,7 +157,7 @@ export async function discoverPathologyOrderTarget(
         testId: test.id,
         testName: test.name,
         referringSiteId: await firstReferringSiteId(page),
-        providerPersonId: await firstProviderId(page),
+        ...(await firstProvider(page)),
       };
     }
   }
@@ -182,13 +184,27 @@ async function firstReferringSiteId(page: Page): Promise<string> {
   return (found.organizations ?? [])[0]?.id ?? "";
 }
 
-/** The first provider on file, or "" when the deployment has none. */
-async function firstProviderId(page: Page): Promise<string> {
-  const found = await apiGet<{ providers?: { id?: string }[] }>(
-    page,
-    `${API_PREFIX}/rest/provider/search?search=`,
+/**
+ * The first provider on file that has a person behind it, as the two ids the
+ * order form carries, or both "" when the deployment has none.
+ *
+ * A provider and its person are separate rows with separate ids, and the save
+ * looks the person up by providerPersonId, so both ids are taken from the same
+ * search result exactly as the order screen sends them.
+ */
+async function firstProvider(
+  page: Page,
+): Promise<{ providerId: string; providerPersonId: string }> {
+  const found = await apiGet<{
+    providers?: { id?: string; personId?: string }[];
+  }>(page, `${API_PREFIX}/rest/provider/search?search=`);
+  const provider = (found.providers ?? []).find(
+    (entry) => entry.id && entry.personId,
   );
-  return (found.providers ?? []).find((entry) => entry.id)?.id ?? "";
+  return {
+    providerId: provider?.id ?? "",
+    providerPersonId: provider?.personId ?? "",
+  };
 }
 
 /**
@@ -334,7 +350,7 @@ export async function createPathologyCase(
       referringSiteList: [],
       referringSiteDepartmentList: [],
       providersList: [],
-      providerId: order.providerPersonId,
+      providerId: order.providerId,
       providerPersonId: order.providerPersonId,
       providerFirstName: "",
       providerLastName: "",
