@@ -6,17 +6,33 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-      Base roles ship FLAT — grouping_parent between base roles is NOT set here.
+      Role parentage: TWO columns, two meanings. Keep them apart.
 
-      Inheritance is opt-in by implementors: a deployment that needs a composite
-      role (e.g., "Receptionist with result view") creates a new role via the
-      CSV config system or a deployment-specific Liquibase changeset, sets
-      grouping_parent to the desired base role, and adds the extra privileges
-      in system_role_privilege. The privilege resolution service then walks the
-      parent chain for that derived role only.
+      `grouping_parent` (pre-existing) is UI taxonomy only: which section of User
+      Management a role renders under. Its targets are container rows flagged
+      `is_grouping_role` ("Global Roles", "Lab Unit Roles") that nobody is ever
+      assigned.
 
-      This changeset does one thing only: fix a pre-existing spelling error
-      introduced by the cytology migration (2.8.x.x/cytology.xml).
+      `parent_role_id` (added below) is privilege inheritance: a role's effective
+      privileges are its own plus, recursively, those of the role named there.
+      PrivilegeServiceImpl walks that chain, guarding cycles with a visited set.
+
+      They must not be the same column. Overloading one pointer makes the two
+      meanings mutually exclusive per role: point at a base role to inherit its
+      privileges and the role stops sitting under a container, so
+      UnifiedSystemUserRestController#setupRoles drops it and it becomes
+      unassignable; point at a container to stay visible and you inherit whatever
+      that container holds — silently widening every role under it the moment a
+      container is granted a privilege.
+
+      Base roles ship FLAT: no inheritance between them, so no parent_role_id is
+      set here. Each base role is self-contained. Implementors compose by creating
+      a NEW role (CSV config or a deployment changeset) that sets parent_role_id
+      to the base role it extends and adds its extra privileges, while setting
+      grouping_parent to the container it should render under.
+
+      This file also fixes a pre-existing spelling error introduced by the
+      cytology migration (2.8.x.x/cytology.xml).
     -->
 
     <changeSet author="openelis" id="012-005a-fix-cytopathologist-spelling">
@@ -36,6 +52,67 @@
                 <column name="name" value="CytoPathologist"/>
                 <where>name = 'Cytopathologist'</where>
             </update>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Privilege inheritance pointer, distinct from the grouping_parent taxonomy.
+      Starts NULL for every role: base roles ship flat, so there is no inheritance
+      edge to express, and defaulting it from grouping_parent would invent edges
+      and re-couple the two meanings.
+    -->
+    <changeSet author="openelis" id="012-005b-add-parent-role-id">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="system_role" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Add system_role.parent_role_id — privilege inheritance, separate from grouping_parent (UI taxonomy)</comment>
+
+        <addColumn tableName="system_role" schemaName="clinlims">
+            <column name="parent_role_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="role_parent_role_id_fk"
+            baseTableSchemaName="clinlims" baseTableName="system_role" baseColumnNames="parent_role_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_role" referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="system_role"
+                constraintName="role_parent_role_id_fk"/>
+            <dropColumn tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!--
+      A role may not inherit from itself. Deeper cycles (A->B->A) terminate at
+      resolution time via PrivilegeServiceImpl's visited set; this rejects the
+      trivial case at write time.
+    -->
+    <changeSet author="openelis" id="012-005c-parent-role-id-not-self">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists tableName="system_role" columnName="parent_role_id" schemaName="clinlims"/>
+                <not>
+                    <sqlCheck expectedResult="1">
+                        SELECT COUNT(*) FROM pg_constraint WHERE conname = 'role_parent_role_id_not_self'
+                    </sqlCheck>
+                </not>
+            </and>
+        </preConditions>
+        <comment>A role cannot inherit from itself</comment>
+        <sql>
+            ALTER TABLE clinlims.system_role
+              ADD CONSTRAINT role_parent_role_id_not_self CHECK (parent_role_id IS NULL OR parent_role_id &lt;&gt; id);
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.system_role DROP CONSTRAINT role_parent_role_id_not_self;</sql>
         </rollback>
     </changeSet>
 

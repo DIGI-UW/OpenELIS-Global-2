@@ -570,8 +570,4 @@
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
   <include relativeToChangelogFile="true" file="104-analyzer-delivery-receipt.xml"/>
 
-  <!-- Privilege inheritance gets its own pointer, separate from the UI grouping
-       taxonomy that grouping_parent drives (spec 012 FR-005). -->
-  <include relativeToChangelogFile="true" file="104-role-parent-role-id.xml"/>
-
 </databaseChangeLog>

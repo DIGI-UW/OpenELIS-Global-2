@@ -13,20 +13,60 @@
       gets exactly and only the privileges listed here for Validation.
 
       Implementors extend the system by creating NEW roles that:
-        - set grouping_parent to a base role (e.g., parent = Reception)
+        - set parent_role_id to a base role (e.g., Reception) to INHERIT its
+          privileges — NOT grouping_parent, which is UI taxonomy (see 012-005)
+        - set grouping_parent to the container the role renders under:
+          "Lab Unit Roles" when it is scoped per test section, else "Global Roles"
         - add additional privileges in system_role_privilege
 
       Example implementor-defined extension:
         "Receptionist with result view"
-          parent:     Reception
-          adds:       result:view
-          effective:  all Reception privileges + result:view
+          parent_role_id:   Reception        (inherits all Reception privileges)
+          grouping_parent:  Lab Unit Roles   (renders in the lab-unit picker)
+          adds:             result:view
+          effective:        all Reception privileges + result:view
 
       This keeps base roles minimal and deployments composable.
 
       Global Administrator has no rows — it holds ALL privileges implicitly,
       resolved in the privilege service via a Global Admin shortcut.
     -->
+
+    <!--
+      EQA Coordinator is referenced in code (Constants.ROLE_EQA_COORDINATOR, and
+      UserService's report-scope handling) and is granted privileges below, but no
+      migration ever created the row — so those grants silently matched nothing.
+      Create it here, before the grants.
+
+      grouping_parent = "Global Roles": the role is not scoped per test section
+      (its work — EQA programme administration and reporting — spans the lab), so
+      it belongs with the other whole-system roles rather than in the lab-unit
+      picker. parent_role_id stays NULL: base roles ship flat (see 012-005).
+    -->
+    <changeSet author="openelis" id="012-004-create-eqa-coordinator-role">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="system_role" schemaName="clinlims"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.system_role WHERE trim(name) = 'EQA Coordinator'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM clinlims.system_role WHERE trim(name) = 'Global Roles'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Create the EQA Coordinator role (Global Roles) — referenced in code but never seeded</comment>
+        <sql>
+            INSERT INTO clinlims.system_role (id, name, description, display_key, active, editable, is_grouping_role, grouping_parent)
+            SELECT nextval('clinlims.system_role_seq'), 'EQA Coordinator',
+                   'Administers external quality assessment programmes and their reporting',
+                   'role.eqa.coordinator', true, false, false,
+                   (SELECT id FROM clinlims.system_role WHERE trim(name) = 'Global Roles');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.system_role WHERE trim(name) = 'EQA Coordinator';</sql>
+        </rollback>
+    </changeSet>
 
     <changeSet author="openelis" id="012-004-seed-role-privilege-mappings">
         <preConditions onFail="MARK_RAN">
