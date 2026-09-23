@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.compliance.service.ComplianceStandardService;
 import org.openelisglobal.compliance.service.ComplianceThresholdService;
@@ -73,7 +74,13 @@ public class ComplianceStandardRestController extends BaseRestController {
     @GetMapping("/active")
     public ResponseEntity<List<ComplianceStandard>> getActiveStandards() {
         try {
-            List<ComplianceStandard> activeStandards = complianceStandardService.getActiveComplianceStandards();
+            // The active-standards list populates a dropdown on environmental order
+            // entry. getActiveComplianceStandards is gated on sample_type:view, which
+            // order-entry roles do not hold, so this 403'd and left the form's
+            // standard selector empty. Reading the catalogue of active standards is
+            // reference data; creating or archiving one stays gated below.
+            List<ComplianceStandard> activeStandards = SystemContext
+                    .callAsSystem(complianceStandardService::getActiveComplianceStandards);
             return ResponseEntity.ok(activeStandards);
         } catch (LIMSRuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

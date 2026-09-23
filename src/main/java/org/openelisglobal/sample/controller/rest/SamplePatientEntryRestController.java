@@ -20,6 +20,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -614,9 +615,42 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 }
             }
         }
-        form.setPatientProperties(new PatientManagementInfo());
+        PatientManagementInfo patientProperties = new PatientManagementInfo();
+        // getAddressDepartments() is a LAZY getter: it calls DictionaryService
+        // (PRIV_DICTIONARY_VIEW) the first time it is read, and Jackson reads it while
+        // serialising the response — after this method has returned, so outside any
+        // system context we establish here. For a user without dictionary:view that
+        // threw AccessDenied mid-write, surfacing as HttpMessageNotWritableException
+        // and a 500 with no usable message. Prime it here instead, where the system
+        // context applies, so the value is already cached by the time Jackson asks.
+        //
+        // The field behind it is static, so it is populated process-wide on first
+        // successful read. That is why this only appears on a freshly restarted
+        // instance where a non-admin is the first to open order entry — an admin
+        // visiting first would have populated it and hidden the bug.
+        SystemContext.runAsSystem(patientProperties::getAddressDepartments);
+        form.setPatientProperties(patientProperties);
         form.setPatientSearch(new PatientSearch());
-        form.setSampleTypes(userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION));
+        // Reference-data assembly for the order-entry form, run in system context for
+        // the same reason as DisplayListService's caches (see
+        // DisplayListService.refreshLists) and the home dashboard's counts.
+        //
+        // getUserSampleTypes is gated on PRIV_RESULT_VIEW and getAll() on
+        // PRIV_EQA_VIEW, but neither is a result read or an EQA read here: the first
+        // returns the sample types the user may order against, the second the project
+        // list for the order's dropdown. Reception holds neither privilege, so
+        // building the form denied outright and GET /rest/SamplePatientEntry returned
+        // 403 for the role whose entire job is order entry — on both /order/clinical
+        // and /order/environmental, which share this endpoint via OrderProvider.
+        //
+        // Scoped to these two reads rather than the whole method so that anything
+        // else added to setupForm later is still gated as the caller. What the user
+        // may actually DO with the form is unaffected: the sample-type list is
+        // already narrowed per user by getUserSampleTypes' own systemUserId argument,
+        // the endpoint still requires an authenticated session, and order creation
+        // remains gated on the persistence services this does not touch.
+        SystemContext.runAsSystem(() -> form
+                .setSampleTypes(userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION)));
         form.setTestSectionList(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
         form.setCurrentDate(DateUtil.getCurrentDateAsText());
         form.setRejectReasonList(DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
@@ -628,7 +662,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // program).getValue());
         // }
 
-        addProjectList(form);
+        SystemContext.runAsSystem(() -> {
+            try {
+                addProjectList(form);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new LIMSRuntimeException(e);
+            }
+        });
         addBillingLabel();
 
         if (FormFields.getInstance().useField(FormFields.Field.InitialSampleCondition)) {
