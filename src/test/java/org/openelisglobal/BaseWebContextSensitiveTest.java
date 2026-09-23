@@ -33,6 +33,7 @@ import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -44,6 +45,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,7 +111,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
             { "patient", "patient_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
-            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" } };
+            { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
+            { "organization", "organization_seq" }, { "analyzer", "analyzer_seq" },
+            { "referral_status_history", "referral_status_history_seq" }, { "calculation", "calculation_seq" },
+            { "result_limits", "result_limits_seq" }, { "site_information", "site_information_seq" },
+            { "reflex_rule", "reflex_rule_seq" }, { "reflex_rule_condition", "reflex_rule_condition_seq" },
+            { "reflex_rule_action", "reflex_rule_action_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -461,6 +469,20 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
+     * Resync a Postgres sequence to {@code MAX(id)+1} of its table using an
+     * existing connection.
+     */
+    protected void resyncSequence(Connection conn, String sequence, String table) {
+        try (Statement st = conn.createStatement()) {
+            // id columns are numeric(10); setval needs a bigint.
+            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
+                    + ")::bigint, false)");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
+        }
+    }
+
+    /**
      * Resync a Postgres sequence to {@code MAX(id)+1} of its table. DBUnit fixture
      * loads insert rows with explicit ids without advancing the sequence, so a
      * later sequence-backed insert can collide with a seeded id depending on test
@@ -468,10 +490,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * sequence-backed inserts into a fixture-seeded table.
      */
     protected void resyncSequence(String sequence, String table) {
-        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
-            // id columns are numeric(10); setval needs a bigint.
-            st.execute("SELECT setval('" + sequence + "', (SELECT COALESCE(MAX(id), 0) + 1 FROM " + table
-                    + ")::bigint, false)");
+        try (Connection conn = dataSource.getConnection()) {
+            resyncSequence(conn, sequence, table);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
         }
@@ -576,5 +596,43 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         } catch (SQLException e) {
             throw new RuntimeException("Failed to ensure site_information row for " + name, e);
         }
+    }
+
+    /**
+     * Resync all tracked entity sequences to MAX(id)+1. Convenience method for
+     * tests that insert multiple records programmatically across different
+     * entities.
+     */
+    protected void resyncAllSequences() {
+        try (Connection conn = dataSource.getConnection()) {
+            for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
+                resyncSequence(conn, "clinlims." + mapping[1], "clinlims." + mapping[0]);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to resync all sequence mappings", e);
+        }
+    }
+
+    /**
+     * Helper for MockMvc GET requests pre-configured with JSON headers.
+     *
+     * @param url the endpoint URL
+     * @return ResultActions to perform assertions on
+     */
+    protected ResultActions performGet(String url) throws Exception {
+        return mockMvc.perform(MockMvcRequestBuilders.get(url).contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    /**
+     * Helper for MockMvc POST requests pre-configured with JSON body and headers.
+     *
+     * @param url     the endpoint URL
+     * @param content the object payload to serialize as JSON
+     * @return ResultActions to perform assertions on
+     */
+    protected ResultActions performPost(String url, Object content) throws Exception {
+        return mockMvc.perform(MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON).content(mapToJson(content)));
     }
 }

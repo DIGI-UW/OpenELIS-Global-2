@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,10 +22,12 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -59,6 +62,9 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
     private AnnotationConfigWebApplicationContext securityContext;
 
     private String coverslippingBefore;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Configuration
     @EnableWebMvc
@@ -97,6 +103,7 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
         // that would replace system_user, so it keeps that principal.
         coverslippingBefore = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED);
+        ensureBannerLocalization();
 
         securityContext = new AnnotationConfigWebApplicationContext();
         securityContext.setParent(webApplicationContext);
@@ -181,6 +188,26 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
     }
 
     // helpers
+
+    /**
+     * The endpoint resolves the banner heading's localization and fails outright
+     * when that row is gone. It is seeded, but a fixture that names localization
+     * truncates the table, so put back the one row this endpoint reads.
+     */
+    private void ensureBannerLocalization() {
+        String id = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer present = jdbc.queryForObject("SELECT count(*) FROM clinlims.localization WHERE id = ?", Integer.class,
+                Long.valueOf(id));
+        if (present != null && present > 0) {
+            return;
+        }
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())",
+                Long.valueOf(id), "banner heading");
+    }
 
     private MockHttpServletResponse callEndpoint() throws Exception {
         return mockMvc.perform(get(ENDPOINT).with(user("admin"))).andReturn().getResponse();
