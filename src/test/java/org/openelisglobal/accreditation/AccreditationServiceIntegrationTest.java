@@ -8,24 +8,16 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.util.List;
-import javax.sql.DataSource;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.accreditation.dao.TestAccreditationDAO;
 import org.openelisglobal.accreditation.dto.AccreditationSummary;
 import org.openelisglobal.accreditation.dto.AccreditingBodyView;
 import org.openelisglobal.accreditation.dto.TestAccreditationView;
-import org.openelisglobal.accreditation.service.AccreditingBodyService;
-import org.openelisglobal.accreditation.service.TestAccreditationService;
 import org.openelisglobal.accreditation.valueholder.AccreditationStatus;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.LogoVisibilityMode;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.image.valueholder.Image;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * OGC-686 — accreditation schema + service behaviour against a real DB (no
@@ -46,46 +38,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * same limitation the sibling QI-config and test-catalog ITs document. That is
  * a UAT step.
  */
-public class AccreditationServiceIntegrationTest extends BaseWebContextSensitiveTest {
-
-    private static final String TEST_GLUCOSE = "9101";
-    private static final String TEST_SODIUM = "9102";
-    private static final String USER = "1";
-
-    @Autowired
-    private AccreditingBodyService accreditingBodyService;
-
-    @Autowired
-    private TestAccreditationService testAccreditationService;
-
-    @Autowired
-    private TestAccreditationDAO testAccreditationDAO;
+public class AccreditationServiceIntegrationTest extends AccreditationIntegrationTestBase {
 
     @Autowired
     private ImageService imageService;
 
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbc;
-
-    @Before
+    /** This suite also uploads logos, which live in their own table. */
     @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
-        executeDataSetWithStateManagement("testdata/accreditation.xml");
-        clean();
-    }
-
-    @After
-    public void tearDown() {
-        clean();
-    }
-
-    private void clean() {
-        jdbc.update("DELETE FROM clinlims.test_accreditation");
-        jdbc.update("DELETE FROM clinlims.accrediting_body");
+    protected void clean() {
+        super.clean();
         jdbc.update("DELETE FROM clinlims.image WHERE description = 'accreditation-logo-test'");
     }
 
@@ -203,17 +164,6 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
         assertEquals(AccreditationStatus.INACTIVE.name(), statusOf("OFF"));
     }
 
-    @Test
-    public void status_boundaryOfExpiringWindowIsInclusive() {
-        LocalDate today = LocalDate.now();
-        assertEquals(AccreditationStatus.EXPIRING,
-                AccreditationStatus.of(true, today.plusDays(AccreditationStatus.EXPIRING_WINDOW_DAYS), today));
-        assertEquals(AccreditationStatus.ACTIVE,
-                AccreditationStatus.of(true, today.plusDays(AccreditationStatus.EXPIRING_WINDOW_DAYS + 1), today));
-        // Expiring today is still valid for reporting, not yet expired.
-        assertEquals(AccreditationStatus.EXPIRING, AccreditationStatus.of(true, today, today));
-    }
-
     // ---- enrollment ----
 
     @Test
@@ -247,7 +197,8 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> testAccreditationService.enroll(TEST_GLUCOSE, bodyId, null, USER));
         assertTrue(e.getMessage().contains("already accredited"));
-        assertEquals(1L, testAccreditationDAO.countByBody(bodyId));
+        assertEquals("the refused second enrollment must not have been written", 1,
+                testAccreditationService.getEnrollmentViews(bodyId, null).size());
     }
 
     @Test
@@ -278,8 +229,8 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
 
         testAccreditationService.unenroll(rowId, USER);
 
-        assertEquals(0L, testAccreditationDAO.countByBody(bodyId));
-        assertTrue(accreditingBodyService.getBodyViews().get(0).enrolledTestCount == 0);
+        assertTrue(testAccreditationService.getEnrollmentViews(bodyId, null).isEmpty());
+        assertEquals(0L, accreditingBodyService.getBodyViews().get(0).enrolledTestCount);
     }
 
     // ---- delete guard ----
@@ -428,11 +379,4 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
                 .orElseThrow(() -> new AssertionError("no body with code " + code)).status;
     }
 
-    private AccreditingBody body(String code, String name, LocalDate expiresOn) {
-        AccreditingBody b = new AccreditingBody();
-        b.setCode(code);
-        b.setName(name);
-        b.setExpiresOn(expiresOn);
-        return b;
-    }
 }

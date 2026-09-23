@@ -1,5 +1,4 @@
 import { test, expect } from "../../../helpers/test-base";
-import { Page } from "@playwright/test";
 import {
   seedExportData,
   ExportSeed,
@@ -8,28 +7,13 @@ import {
 /**
  * QC inspector export (OGC-706) — E2E.
  *
- * Covers what the backend slice test can't: the whole path exercised through the
- * authenticated browser session against real seeded rows (the seed-qc-sigma-data
- * pattern), plus the dashboard modal UI. Content correctness (BOM, escaping,
- * PDF text) is asserted in QCExportRestControllerSecurityTest; here we assert the
- * endpoints and UI wire up end-to-end.
+ * Content correctness (BOM, escaping, PDF text, rejected date ranges) is
+ * asserted in QCExportRestControllerSecurityTest. What is left for a browser:
+ * that an authenticated session reaches the export over real seeded rows, and
+ * that the dashboard modal offers it.
  */
 
 const API = "/api/OpenELIS-Global";
-
-async function fetchExport(
-  page: Page,
-  url: string,
-): Promise<{ status: number; contentType: string; body: string }> {
-  return page.evaluate(async (u) => {
-    const res = await fetch(u, { credentials: "include" });
-    return {
-      status: res.status,
-      contentType: res.headers.get("content-type") || "",
-      body: await res.text(),
-    };
-  }, url);
-}
 
 test.describe("QC inspector export (OGC-706)", () => {
   let seed: ExportSeed;
@@ -43,15 +27,14 @@ test.describe("QC inspector export (OGC-706)", () => {
   });
 
   test("CSV export returns the seeded runs and violation", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-
-    const url =
+    const res = await page.request.get(
       `${API}/rest/qc/export/csv?instrumentId=${seed.analyzerId}` +
-      `&startDate=${seed.startDate}&endDate=${seed.endDate}`;
-    const { status, contentType, body } = await fetchExport(page, url);
+        `&startDate=${seed.startDate}&endDate=${seed.endDate}`,
+    );
 
-    expect(status).toBe(200);
-    expect(contentType).toContain("text/csv");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/csv");
+    const body = await res.text();
     expect(body).toContain("Instrument"); // header row
     expect(body).toContain("PW Export Analyzer"); // resolved instrument name
     expect(body).toContain("1_3S"); // seeded violation rule code
@@ -61,30 +44,6 @@ test.describe("QC inspector export (OGC-706)", () => {
       .split(/\r?\n/)
       .filter((line) => line.includes("PW Export Analyzer"));
     expect(dataRows.length).toBe(3);
-  });
-
-  test("PDF export returns a PDF document", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-
-    const url =
-      `${API}/rest/qc/export/pdf?instrumentId=${seed.analyzerId}` +
-      `&startDate=${seed.startDate}&endDate=${seed.endDate}`;
-    const { status, contentType, body } = await fetchExport(page, url);
-
-    expect(status).toBe(200);
-    expect(contentType).toContain("application/pdf");
-    expect(body.slice(0, 5)).toBe("%PDF-");
-  });
-
-  test("reversed date range is rejected with 400", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-
-    const url =
-      `${API}/rest/qc/export/csv?instrumentId=${seed.analyzerId}` +
-      `&startDate=${seed.endDate}&endDate=${seed.startDate}`;
-    const { status } = await fetchExport(page, url);
-
-    expect(status).toBe(400);
   });
 
   test("export modal opens from the dashboard", async ({ page }) => {

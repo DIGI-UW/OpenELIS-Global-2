@@ -7,9 +7,12 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,6 +35,7 @@ import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for the Westgard-violation → NCE auto-create flow (OGC-701
@@ -55,6 +59,8 @@ public class QcViolationNceServiceTest extends BaseWebContextSensitiveTest {
     private QCRuleViolationService qcRuleViolationService;
     @Autowired
     private QCResultService qcResultService;
+    @Autowired
+    private javax.sql.DataSource dataSource;
 
     @Before
     public void setUp() throws Exception {
@@ -154,6 +160,8 @@ public class QcViolationNceServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createNceForViolation_shouldCapAtFiftyNewestDistinctSamples() {
+        seedFiftyOneInWindowAnalyses();
+
         NcEvent nce = qcViolationNceService.createNceForViolation(buildViolation("wg-vio-c", "503", "10ₓ"));
 
         Set<Integer> linkedSamples = linkedSampleItemIds(nce);
@@ -172,15 +180,13 @@ public class QcViolationNceServiceTest extends BaseWebContextSensitiveTest {
                 .message("single result exceeds 2SD").build();
         QCRuleViolation warningViolation = qcRuleViolationService.createViolation(warning, triggeringResult);
         assertNotNull(warningViolation);
-        assertNull("WARNING violations must not auto-create an NCE", ncEventService
-                .findByTriggerSource(QcViolationNceServiceImpl.TRIGGER_SOURCE_QC_VIOLATION, warningViolation.getId()));
+        assertNull("WARNING violations must not auto-create an NCE", nceForViolation(warningViolation.getId()));
 
         RuleEvaluationResult rejection = new RuleEvaluationResult.Builder("1₃ₛ").violated(true).severity("REJECTION")
                 .message("single result exceeds 3SD").build();
         QCRuleViolation rejectionViolation = qcRuleViolationService.createViolation(rejection, triggeringResult);
         assertNotNull(rejectionViolation);
-        NcEvent nce = ncEventService.findByTriggerSource(QcViolationNceServiceImpl.TRIGGER_SOURCE_QC_VIOLATION,
-                rejectionViolation.getId());
+        NcEvent nce = nceForViolation(rejectionViolation.getId());
         assertNotNull("REJECTION violations must auto-create an NCE", nce);
         assertEquals("CRITICAL", nce.getSeverity());
     }
@@ -216,5 +222,34 @@ public class QcViolationNceServiceTest extends BaseWebContextSensitiveTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    /**
+     * Scenario C: 51 analyses on analyzer 503, ten minutes apart and all inside the
+     * 24h floor, so the newest fifty are linked and the oldest is dropped.
+     * Generated here rather than declared in the dataset — the rows differ only by
+     * id and timestamp, and only this one test reads them.
+     */
+    private void seedFiftyOneInWindowAnalyses() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (int i = 0; i <= 50; i++) {
+            int sampleItemId = 900 + i;
+            Timestamp completedAt = Timestamp.valueOf(LocalDateTime.of(2025, 6, 9, 13, 0).plusMinutes(10L * i));
+            jdbc.update(
+                    "INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, collection_date,"
+                            + " lastupdated) VALUES (?, 701, ?, 1, '2025-06-09 12:00:00', ?)",
+                    sampleItemId, sampleItemId, completedAt);
+            jdbc.update("INSERT INTO clinlims.analysis (id, sampitem_id, test_id, revision, status_id, started_date,"
+                    + " completed_date, analyzer_id, analysis_type, type_of_sample_name, corrected, reflex_trigger,"
+                    + " result_calculated, fhir_uuid, lastupdated) VALUES (?, ?, 601, '1', 1,"
+                    + " '2025-06-09 12:30:00', ?, 503, 'ROUTINE', 'Blood', false, false, false, ?, ?)", 9100 + i,
+                    sampleItemId, completedAt, UUID.randomUUID(), completedAt);
+        }
+    }
+
+    /** The non-conformity this Westgard violation raised, or null. */
+    private NcEvent nceForViolation(String violationId) {
+        return ncEventService.getMatch(Map.of("triggerSourceType",
+                QcViolationNceServiceImpl.TRIGGER_SOURCE_QC_VIOLATION, "triggerSourceId", violationId)).orElse(null);
     }
 }

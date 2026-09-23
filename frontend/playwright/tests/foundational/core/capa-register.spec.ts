@@ -1,34 +1,29 @@
-import { test, expect, Page } from "../../../helpers/test-base";
+import { Page } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import { withAuthedPage } from "../../../helpers/api-session";
 import { seedCapa } from "../../../helpers/seed-capa-data";
 
 /**
  * CAPA Register (OGC-707) — cross-NCE corrective/preventive action view at
  * /qa/qms/capa-register. Folds the manual UAT into E2E: seed CAPAs across every
- * derived state via the real REST write path, then assert the endpoint join,
- * client-derived status tags, the four summary tiles, and the status/assignee
- * filters + empty state.
+ * derived state via the real REST write path, then assert the rendered rows,
+ * the client-derived status tags, the four summary tiles, and the
+ * status/assignee filters + empty state.
  *
  * Completion status is asserted (green tag + Completed filter); the parent-NCE
  * date_completed does not round-trip through the legacy resolve endpoint, so
  * the Completed(90d) tile is asserted only as rendering a number, not a count.
  */
 
-const REGISTER_API = "/api/OpenELIS-Global/rest/nce/capa-register";
 const REGISTER_URL = "/qa/qms/capa-register";
 
 // Unique per run so seeded rows are isolable from any pre-existing data.
 const RUN = Date.now().toString(36);
 const TAG = `E2E-${RUN}`;
 
-function iso(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
-}
+/** yyyy-MM-dd, `days` away from today. */
 function shift(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return iso(d);
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 const SEEDS = {
@@ -76,61 +71,35 @@ async function tileValue(page: Page, title: string): Promise<number> {
   return parseInt((await value.textContent())?.trim() || "", 10);
 }
 
-/** Filter the register to a substring of person_responsible. */
-async function filterByAssignee(page: Page, text: string): Promise<void> {
-  await page.fill("#capa-assignee-filter", text);
-}
-
 async function selectStatus(page: Page, label: string): Promise<void> {
-  await page.locator("#capa-status-filter").click();
+  await page.getByRole("combobox", { name: "Status" }).click();
   await page.getByRole("option", { name: label, exact: true }).click();
 }
 
-test.describe.serial("CAPA Register (OGC-707)", () => {
+test.describe("CAPA Register (OGC-707)", () => {
   test.beforeAll(async ({ browser }) => {
-    const ctx = await browser.newContext({
-      storageState: "playwright/.auth/user.json",
+    await withAuthedPage(browser, async (page) => {
+      for (const seed of Object.values(SEEDS)) {
+        await seedCapa(page, seed);
+      }
     });
-    const page = await ctx.newPage();
-    // A page context is needed so seedCapa can read the CSRF token from auth state.
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 });
-    for (const seed of Object.values(SEEDS)) {
-      await seedCapa(page, seed);
-    }
-    await ctx.close();
   });
 
-  test("endpoint returns seeded CAPAs joined to their NCEs", async ({
-    page,
-  }) => {
-    const res = await page.request.get(REGISTER_API);
-    expect(res.status(), "register is gated on qa.view.qms; admin passes").toBe(
-      200,
-    );
-    const rows = await res.json();
-    expect(Array.isArray(rows)).toBe(true);
-
-    for (const seed of Object.values(SEEDS)) {
-      const row = rows.find(
-        (r: { nceNumber: string }) => r.nceNumber === seed.nceNumber,
-      );
-      expect(row, `${seed.nceNumber} must appear in the register`).toBeTruthy();
-      expect(row.correctiveAction).toBe(seed.correctiveAction);
-      expect(row.personResponsible).toBe(seed.personResponsible);
-      expect(row.dueDate).toBe(seed.dueDate); // additive due_date column round-trips
-      expect(row.nceEventId).toBeGreaterThan(0); // cross-NCE join populated
-    }
+  test.beforeEach(async ({ page }) => {
+    await page.goto(REGISTER_URL, { waitUntil: "domcontentloaded" });
   });
 
   test("rows render with client-derived status tags", async ({ page }) => {
-    await page.goto(REGISTER_URL, { waitUntil: "domcontentloaded" });
-    await filterByAssignee(page, TAG);
+    await page.getByLabel("Assignee", { exact: true }).fill(TAG);
 
-    const overdue = page.locator("tr", { hasText: SEEDS.overdue.nceNumber });
-    const week = page.locator("tr", { hasText: SEEDS.week.nceNumber });
-    const future = page.locator("tr", { hasText: SEEDS.future.nceNumber });
-    const done = page.locator("tr", { hasText: SEEDS.done.nceNumber });
+    const overdue = page.getByRole("row", { name: SEEDS.overdue.nceNumber });
+    const week = page.getByRole("row", { name: SEEDS.week.nceNumber });
+    const future = page.getByRole("row", { name: SEEDS.future.nceNumber });
+    const done = page.getByRole("row", { name: SEEDS.done.nceNumber });
 
+    // The cross-NCE join: each seeded action log is rendered against its parent
+    // event, with the additive due_date column driving the derived tag.
+    await expect(overdue).toContainText(SEEDS.overdue.correctiveAction);
     await expect(overdue).toContainText("Overdue");
     await expect(week).toContainText("Open");
     await expect(future).toContainText("Open");
@@ -138,7 +107,6 @@ test.describe.serial("CAPA Register (OGC-707)", () => {
   });
 
   test("summary tiles reflect the seeded states", async ({ page }) => {
-    await page.goto(REGISTER_URL, { waitUntil: "domcontentloaded" });
     // Tiles are global (not filtered), so assert >= the seeded contribution to
     // stay robust against any pre-existing register data.
     expect(await tileValue(page, "Open")).toBeGreaterThanOrEqual(3);
@@ -150,34 +118,29 @@ test.describe.serial("CAPA Register (OGC-707)", () => {
   });
 
   test("status filter narrows to a single derived state", async ({ page }) => {
-    await page.goto(REGISTER_URL, { waitUntil: "domcontentloaded" });
-    await filterByAssignee(page, TAG);
+    const rows = page.locator("table tbody tr");
+    await page.getByLabel("Assignee", { exact: true }).fill(TAG);
 
     await selectStatus(page, "Overdue");
-    await expect(page.locator("table tbody tr")).toHaveCount(1);
-    await expect(page.locator("table tbody tr")).toContainText(
-      SEEDS.overdue.nceNumber,
-    );
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText(SEEDS.overdue.nceNumber);
 
     await selectStatus(page, "Completed");
-    await expect(page.locator("table tbody tr")).toHaveCount(1);
-    await expect(page.locator("table tbody tr")).toContainText(
-      SEEDS.done.nceNumber,
-    );
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText(SEEDS.done.nceNumber);
   });
 
   test("assignee filter isolates a row and empties on no match", async ({
     page,
   }) => {
-    await page.goto(REGISTER_URL, { waitUntil: "domcontentloaded" });
+    const rows = page.locator("table tbody tr");
+    const assignee = page.getByLabel("Assignee", { exact: true });
 
-    await filterByAssignee(page, SEEDS.week.personResponsible);
-    await expect(page.locator("table tbody tr")).toHaveCount(1);
-    await expect(page.locator("table tbody tr")).toContainText(
-      SEEDS.week.nceNumber,
-    );
+    await assignee.fill(SEEDS.week.personResponsible);
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText(SEEDS.week.nceNumber);
 
-    await filterByAssignee(page, `no-such-owner-${RUN}`);
+    await assignee.fill(`no-such-owner-${RUN}`);
     await expect(page.locator(".qa-empty")).toBeVisible();
   });
 });

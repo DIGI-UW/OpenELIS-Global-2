@@ -3,43 +3,13 @@
  *
  * The callback flow needs a test with configured critical bounds, and
  * ResultLimit has NO REST create/update path — bounds are settable only in
- * the DB. So this seeds via `docker exec psql`, the same pattern as
- * `seed-qc-sigma-data.ts`: borrow the target test's existing result_limits
- * rows (or insert a sentinel default row when none exist) and restore on
- * teardown.
+ * the DB. So this seeds via `docker exec psql`: borrow the target test's
+ * existing result_limits rows (or insert a sentinel default row when none
+ * exist) and restore on teardown.
  */
-import { execFileSync } from "child_process";
-import { resolveDbContainer } from "./db-container";
+import { SCHEMA, asInt, psql } from "./db-container";
 
-const SCHEMA = "clinlims";
 const SENTINEL_LIMIT_ID = 990914; // high range to avoid fixture collisions
-
-function psql(sql: string): string {
-  const container = resolveDbContainer();
-  return execFileSync(
-    "docker",
-    [
-      "exec",
-      "-i",
-      container,
-      "psql",
-      "-U",
-      "clinlims",
-      "-d",
-      "clinlims",
-      "-tAc",
-      sql,
-    ],
-    { encoding: "utf8" },
-  ).trim();
-}
-
-function asNumber(value: number, label: string): number {
-  if (!Number.isFinite(value)) {
-    throw new Error(`Expected finite number for ${label}, got: ${value}`);
-  }
-  return value;
-}
 
 export interface CriticalBandSeed {
   /** Put the borrowed rows' original critical bounds back (or drop the sentinel). */
@@ -56,10 +26,6 @@ export function seedCriticalBand(
   low: number,
   high: number,
 ): CriticalBandSeed {
-  asNumber(testId, "testId");
-  asNumber(low, "low");
-  asNumber(high, "high");
-
   const existing = psql(
     `SELECT id || '|' || COALESCE(low_critical::text, 'NULL') || '|' ||` +
       ` COALESCE(high_critical::text, 'NULL')` +
@@ -69,10 +35,7 @@ export function seedCriticalBand(
   if (existing) {
     const originals = existing.split("\n").map((line) => {
       const [id, lo, hi] = line.split("|");
-      if (!/^\d+$/.test(id)) {
-        throw new Error(`Unexpected result_limits id: ${JSON.stringify(id)}`);
-      }
-      return { id, lo, hi };
+      return { id: asInt(id, "result_limits id"), lo, hi };
     });
     psql(
       `UPDATE ${SCHEMA}.result_limits SET low_critical = ${low},` +

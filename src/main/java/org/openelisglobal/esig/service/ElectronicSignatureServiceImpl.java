@@ -40,6 +40,12 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
     @Autowired
     private CredentialVerificationService credentialVerificationService;
 
+    // Injected rather than ConfigurationProperties.getInstance(): the static path
+    // routes through SpringContext's static holder, which test slices must not
+    // touch (mirrors the controller).
+    @Autowired
+    private ConfigurationProperties configurationProperties;
+
     /**
      * In-memory session tracking. Key: username, Value: session signing info. Note:
      * For distributed deployments, this should be replaced with Redis or similar.
@@ -294,7 +300,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     public boolean isEsigEnabled() {
-        String enabled = ConfigurationProperties.getInstance().getPropertyValue(Property.ELECTRONIC_SIGNATURE_ENABLED);
+        String enabled = configurationProperties.getPropertyValue(Property.ELECTRONIC_SIGNATURE_ENABLED);
         return "true".equalsIgnoreCase(enabled);
     }
 
@@ -393,7 +399,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
      * industry standard for 21 CFR Part 11 compliance.
      */
     private long getSessionTimeoutMinutes() {
-        String value = ConfigurationProperties.getInstance().getPropertyValue(Property.ESIG_SESSION_TIMEOUT_MINUTES);
+        String value = configurationProperties.getPropertyValue(Property.ESIG_SESSION_TIMEOUT_MINUTES);
         if (value != null && !value.isEmpty()) {
             try {
                 long minutes = Long.parseLong(value);

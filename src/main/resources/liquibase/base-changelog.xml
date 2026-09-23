@@ -40,18 +40,11 @@
   <!-- OGC-1147 Manual & RDT QC persistence -->
   <include file="liquibase/qc/010-manual-rdt-qc.xml" />
 
-  <!-- QA top-level menu (OGC-688) -->
+  <!-- QA menu tree, every row of it (OGC-688) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
 
-  <!-- QA dashboards: QI menu, amendment report module, permission model -->
-  <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
-  <include file="liquibase/qa/003-add-amendment-report-module.xml" />
+  <!-- QA permission registry and the QA Officer role -->
   <include file="liquibase/qa/004-add-qa-permission-model.xml" />
-
-  <!-- Electronic Signature Log (OGC-702) -->
-  <include file="liquibase/qa/005-add-esig-log-menu.xml" />
-
-  <include file="liquibase/qa/006-add-capa-register-menu.xml" />
 
   <!-- QI configuration and its indicator defaults (OGC-709/710/714) -->
   <include file="liquibase/qa/007-create-qi-config-table.xml" />
@@ -61,12 +54,8 @@
 
   <!-- Indexes for the QI cohort queries: started_date (rejection) and
        released_date (amendment, TAT, callback — polled by the evaluator) -->
-  <include file="liquibase/qa/011-analysis-started-date-index.xml" />
-  <include file="liquibase/qa/012-analysis-released-date-index.xml" />
+  <include file="liquibase/qa/011-analysis-date-indexes.xml" />
 
   <!-- OGC-686: accrediting bodies + per-test accreditation -->
   <include file="liquibase/qa/013-create-accreditation-tables.xml" />
-
-  <!-- OGC-686: accreditation page menu row -->
-  <include file="liquibase/qa/014-add-accreditation-menu.xml" />
 </databaseChangeLog>

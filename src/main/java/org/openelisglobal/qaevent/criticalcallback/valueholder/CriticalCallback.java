@@ -38,11 +38,6 @@ public class CriticalCallback extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
-    /** Callback outcomes; DB CHECK constraint mirrors this set. */
-    public enum Status {
-        CONFIRMED, REACHED_NO_READBACK, UNABLE_TO_REACH
-    }
-
     @Id
     @Column(name = "id", length = 36)
     private String id;
@@ -68,6 +63,9 @@ public class CriticalCallback extends BaseObject<String> {
     @Column(name = "recipient_name", nullable = false, length = 255)
     private String recipientName;
 
+    /**
+     * CONFIRMED, REACHED_NO_READBACK or UNABLE_TO_REACH; a DB CHECK enforces it.
+     */
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 

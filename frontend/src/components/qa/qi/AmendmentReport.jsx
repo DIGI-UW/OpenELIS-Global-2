@@ -1,25 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  DataTableSkeleton,
-  DatePicker,
-  DatePickerInput,
-  Dropdown,
-  Pagination,
-  Tag,
-} from "@carbon/react";
+import React, { useState } from "react";
 import { LineChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  getFromOpenElisServer,
-  toLocalIsoDate,
-  toLocalIsoDateTime,
-} from "../../utils/Utils";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { toLocalIsoDateTime } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
 import QASimpleTable from "../common/QASimpleTable";
-import QAEmptyState from "../common/QAEmptyState";
+import { formatMinutes } from "../common/qaDates";
 import { chartThresholds, rateTone } from "./qiThresholds";
-import "./QIDashboard.css";
+import QIReportPage, {
+  QIRateHeader,
+  QITrendInterval,
+  rateChartOptions,
+} from "./QIReportPage";
 
 /**
  * Amendment Rate detail page (OGC-698, full visuals OGC-710) at
@@ -38,8 +30,8 @@ const breadcrumbs = [
 
 const HEADERS = [
   { key: "amendedAt", labelKey: "qa.qi.amendment.column.amendedAt" },
-  { key: "labNumber", labelKey: "qa.qi.amendment.column.labNumber" },
-  { key: "testName", labelKey: "qa.qi.amendment.column.test" },
+  { key: "labNumber", labelKey: "common.labNumber" },
+  { key: "testName", labelKey: "common.test" },
   { key: "priorValue", labelKey: "qa.qi.amendment.column.priorValue" },
   { key: "currentValue", labelKey: "qa.qi.amendment.column.currentValue" },
   { key: "amendedBy", labelKey: "qa.qi.amendment.column.amendedBy" },
@@ -48,157 +40,17 @@ const HEADERS = [
 ];
 
 const BREAKDOWN_HEADERS = [
-  { key: "testName", labelKey: "qa.qi.amendment.breakdown.column.test" },
-  { key: "amendedCount", labelKey: "qa.qi.amendment.breakdown.column.amended" },
+  { key: "testName", labelKey: "common.test" },
+  { key: "amendedCount", labelKey: "microbiology.enum.AMENDED" },
   {
     key: "releasedCount",
-    labelKey: "qa.qi.amendment.breakdown.column.released",
+    labelKey: "microbiology.enum.RELEASED",
   },
   { key: "ratePercent", labelKey: "qa.qi.amendment.breakdown.column.rate" },
 ];
 
-const INTERVALS = [
-  { id: "DAILY", labelKey: "reports.tat.daily" },
-  { id: "WEEKLY", labelKey: "reports.tat.weekly" },
-  { id: "MONTHLY", labelKey: "reports.tat.monthly" },
-];
-
-function defaultRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
-  return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
-}
-
-function formatMinutes(minutes) {
-  if (minutes == null) {
-    return "—";
-  }
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ${minutes % 60}m`;
-  }
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-}
-
-const AmendmentReport = () => {
-  const intl = useIntl();
-  const [range, setRange] = useState(defaultRange);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
-  // undefined = loading, null = fetch yielded no data
-  const [detail, setDetail] = useState();
-  const [trend, setTrend] = useState();
-  const [breakdown, setBreakdown] = useState();
-  const [interval, setInterval] = useState("DAILY");
-  // fail-open like QIDashboard/QIEnabledRoute: no config -> plain gray tag
-  const [config, setConfig] = useState(null);
-
-  const fetchDetail = useCallback(() => {
-    setDetail(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/amendment/detail?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`,
-      (res) => setDetail(res ?? null),
-    );
-  }, [range, page, pageSize]);
-
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
-
-  useEffect(() => {
-    setTrend(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/amendment/trend?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}&interval=${interval}`,
-      (res) => setTrend(res ?? null),
-    );
-  }, [range, interval]);
-
-  useEffect(() => {
-    setBreakdown(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/amendment/breakdown?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}`,
-      (res) => setBreakdown(res ?? null),
-    );
-  }, [range]);
-
-  useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/qi-config/resolve?indicator=AMENDMENT",
-      (res) => setConfig(res ?? null),
-    );
-  }, []);
-
-  const handleDates = (dates) => {
-    if (dates.length === 2) {
-      setPage(0);
-      setRange({
-        fromDate: toLocalIsoDate(dates[0]),
-        toDate: toLocalIsoDate(dates[1]),
-      });
-    }
-  };
-
-  // Window totals derive from the trend buckets — same SQL predicates as the
-  // summary endpoint, just grouped; no separate summary fetch needed.
-  const points = trend?.points || [];
-  const totalAmended = points.reduce((sum, p) => sum + p.amendedCount, 0);
-  const totalReleased = points.reduce((sum, p) => sum + p.releasedCount, 0);
-  const windowRate =
-    totalReleased > 0
-      ? Math.round((totalAmended * 10000) / totalReleased) / 100 // 2dp, like the backend
-      : null;
-
-  const tone = rateTone(windowRate, config);
-
-  const chartData = points
-    .filter((p) => p.ratePercent != null)
-    .map((p) => ({
-      period: p.period,
-      value: p.ratePercent,
-      group: intl.formatMessage({ id: "qa.qi.amendment.trend.series" }),
-    }));
-
-  const thresholds = chartThresholds(
-    config,
-    intl.formatMessage({ id: "qa.qi.amendment.threshold.target" }),
-    intl.formatMessage({ id: "qa.qi.amendment.threshold.action" }),
-  );
-
-  const chartOptions = {
-    title: "",
-    height: "320px",
-    axes: {
-      bottom: { mapsTo: "period", scaleType: "labels" },
-      left: {
-        title: "%",
-        mapsTo: "value",
-        scaleType: "linear",
-        includeZero: true,
-        thresholds,
-      },
-    },
-    curve: "curveMonotoneX",
-    points: { radius: 3, filled: true },
-    legend: { enabled: false },
-  };
-
-  const breakdownRows = (breakdown?.rows || []).map((row, index) => ({
-    id: `${row.testName}-${index}`,
-    testName: row.testName,
-    amendedCount: row.amendedCount,
-    releasedCount: row.releasedCount,
-    ratePercent:
-      row.ratePercent != null ? `${row.ratePercent.toFixed(2)}%` : "—",
-  }));
-
-  const rows = (detail?.items || []).map((item, index) => ({
+const toRows = (detail) =>
+  (detail.items || []).map((item, index) => ({
     id: `${item.analysisId}-${index}`,
     amendedAt: toLocalIsoDateTime(item.amendedAt),
     labNumber: item.labNumber || "—",
@@ -210,81 +62,83 @@ const AmendmentReport = () => {
     timeToAmend: formatMinutes(item.minutesToAmend),
   }));
 
-  return (
-    <div className="pageContent qi-dashboard">
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <h2>
-        <FormattedMessage id="qa.qi.amendment.title" />
-      </h2>
-      <p className="qi-dashboard__subtitle">
-        <FormattedMessage id="qa.qi.amendment.subtitle" />
-      </p>
-      <DatePicker
-        datePickerType="range"
-        dateFormat="Y-m-d"
-        value={[range.fromDate, range.toDate]}
-        onChange={handleDates}
-      >
-        <DatePickerInput
-          id="amendment-from"
-          labelText={intl.formatMessage({
-            id: "qa.qi.amendment.filter.from",
-          })}
-          placeholder="yyyy-mm-dd"
-        />
-        <DatePickerInput
-          id="amendment-to"
-          labelText={intl.formatMessage({ id: "qa.qi.amendment.filter.to" })}
-          placeholder="yyyy-mm-dd"
-        />
-      </DatePicker>
+/** Trend chart + window rate + per-test breakdown for the selected range. */
+const AmendmentSections = ({ range, config }) => {
+  const intl = useIntl();
+  const [interval, setInterval] = useState("DAILY");
+  const trendQuery = useServerData(
+    `/rest/reports/amendment/trend?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}&interval=${interval}`,
+  );
+  const breakdownQuery = useServerData(
+    `/rest/reports/amendment/breakdown?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}`,
+  );
 
-      {trend === null ? (
+  // Window totals derive from the trend buckets — same SQL predicates as the
+  // summary endpoint, just grouped; no separate summary fetch needed.
+  const points = trendQuery.data?.points || [];
+  const totalAmended = points.reduce((sum, p) => sum + p.amendedCount, 0);
+  const totalReleased = points.reduce((sum, p) => sum + p.releasedCount, 0);
+  const windowRate =
+    totalReleased > 0
+      ? Math.round((totalAmended * 10000) / totalReleased) / 100 // 2dp, like the backend
+      : null;
+
+  const chartData = points
+    .filter((p) => p.ratePercent != null)
+    .map((p) => ({
+      period: p.period,
+      value: p.ratePercent,
+      group: intl.formatMessage({ id: "qa.qi.amendment.rate.label" }),
+    }));
+
+  const chartOptions = rateChartOptions(
+    chartThresholds(
+      config,
+      intl.formatMessage({ id: "qa.qiConfig.field.target" }),
+      intl.formatMessage({ id: "common.action" }),
+    ),
+  );
+
+  const breakdownRows = (breakdownQuery.data?.rows || []).map((row, index) => ({
+    id: `${row.testName}-${index}`,
+    testName: row.testName,
+    amendedCount: row.amendedCount,
+    releasedCount: row.releasedCount,
+    ratePercent:
+      row.ratePercent != null ? `${row.ratePercent.toFixed(2)}%` : "—",
+  }));
+
+  return (
+    <>
+      {trendQuery.isError ? (
         <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.amendment.error" />
+          <FormattedMessage id="qa.qi.dashboard.tile.amendment.error" />
         </p>
       ) : (
-        trend !== undefined && (
+        trendQuery.data && (
           <>
-            <div className="amendment-rate-header">
-              <span className="qi-tile__title">
-                <FormattedMessage id="qa.qi.amendment.rate.label" />
-              </span>
-              <Tag
-                type={tone === "amber" ? "gray" : tone}
-                className={
-                  tone === "amber"
-                    ? "amendment-rate-tag qi-rate-tag--amber"
-                    : "amendment-rate-tag"
-                }
-              >
-                {windowRate != null ? `${windowRate.toFixed(2)}%` : "—"}
-              </Tag>
-              <span className="qi-tile__secondary">
+            <QIRateHeader
+              label={<FormattedMessage id="qa.qi.amendment.rate.label" />}
+              value={windowRate}
+              tone={rateTone(windowRate, config)}
+              secondary={
                 <FormattedMessage
                   id="qa.qi.dashboard.tile.amendment.secondary"
                   values={{ amended: totalAmended, released: totalReleased }}
                 />
-              </span>
-            </div>
+              }
+            />
 
             <h4 className="amendment-section__title">
-              <FormattedMessage id="qa.qi.amendment.trend.title" />
+              <FormattedMessage id="reports.tat.trend" />
             </h4>
-            <Dropdown
+            <QITrendInterval
               id="amendment-trend-interval"
-              size="sm"
-              className="amendment-trend-interval"
-              titleText={intl.formatMessage({
-                id: "qa.qi.amendment.trend.interval",
-              })}
-              label=""
-              items={INTERVALS}
-              itemToString={(item) =>
-                item ? intl.formatMessage({ id: item.labelKey }) : ""
-              }
-              selectedItem={INTERVALS.find((i) => i.id === interval)}
-              onChange={({ selectedItem }) => setInterval(selectedItem.id)}
+              titleKey="reports.tat.aggregation"
+              interval={interval}
+              onChange={setInterval}
             />
             {chartData.length === 0 ? (
               <p className="qi-tile__message">
@@ -305,38 +159,32 @@ const AmendmentReport = () => {
           <QASimpleTable rows={breakdownRows} headers={BREAKDOWN_HEADERS} />
         </>
       )}
-
-      {detail === undefined ? (
-        <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
-      ) : detail === null ? (
-        <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.amendment.error" />
-        </p>
-      ) : rows.length === 0 ? (
-        <QAEmptyState
-          titleKey="qa.empty.amendment.title"
-          subheadKey="qa.empty.amendment.subhead"
-        />
-      ) : (
-        <>
-          <h4 className="amendment-section__title">
-            <FormattedMessage id="qa.qi.amendment.list.title" />
-          </h4>
-          <QASimpleTable rows={rows} headers={HEADERS} />
-          <Pagination
-            page={page + 1}
-            pageSize={pageSize}
-            pageSizes={[25, 50, 100]}
-            totalItems={detail.totalCount}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage - 1);
-              setPageSize(newPageSize);
-            }}
-          />
-        </>
-      )}
-    </div>
+    </>
   );
 };
+
+const AmendmentReport = () => (
+  <QIReportPage
+    indicator="AMENDMENT"
+    breadcrumbs={breadcrumbs}
+    titleKey="qa.qi.amendment.title"
+    subtitleKey="qa.qi.amendment.subtitle"
+    errorKey="qa.qi.dashboard.tile.amendment.error"
+    idPrefix="amendment"
+    fromLabelKey="common.from"
+    toLabelKey="to.title"
+    detailUrl={(range, page, pageSize) =>
+      `/rest/reports/amendment/detail?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`
+    }
+    headers={HEADERS}
+    toRows={toRows}
+    listTitleKey="qa.qi.amendment.list.title"
+    emptyTitleKey="qa.empty.amendment.title"
+    emptySubheadKey="qa.empty.amendment.subhead"
+  >
+    {({ range, config }) => <AmendmentSections range={range} config={config} />}
+  </QIReportPage>
+);
 
 export default AmendmentReport;

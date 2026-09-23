@@ -148,10 +148,8 @@ public class QCChartDataRestController {
             point.setHasViolation(!violatedRules.isEmpty());
 
             // Determine severity (highest among violations)
-            String severity = violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId()))
-                    .map(QCRuleViolation::getSeverity).filter(s -> "REJECTION".equals(s)).findFirst()
-                    .orElse(violatedRules.isEmpty() ? null : "WARNING");
-            point.setSeverity(severity);
+            point.setSeverity(QCRuleViolation.worstSeverity(
+                    violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId())).toList()));
 
             dataPoints.add(point);
         }

@@ -1,13 +1,13 @@
 /**
  * Shared qi_config threshold semantics (OGC-710) for the QI Dashboard tiles
  * and the per-indicator detail pages — one place so the surfaces can't drift,
- * mirroring the useQiEnabled consolidation.
+ * mirroring the useQiConfig consolidation.
  */
 
 /**
  * Tone of a metric value against a resolved config: "green" at/inside target,
  * "red" at/past action, "amber" between, "gray" when unjudgeable (no value,
- * disabled, or thresholds missing — fail-open like useQiEnabled).
+ * disabled, or thresholds missing — fail-open like useQiConfig).
  */
 export function rateTone(value, config) {
   if (

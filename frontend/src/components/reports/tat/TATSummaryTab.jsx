@@ -171,12 +171,10 @@ function TATSummaryTab({ data, loading, filters }) {
       )}
 
       {/* Breakdown: full table at 3+ categories, labeled list when sparse */}
-      {data.breakdown && data.breakdown.length >= 3 && (
-        <TATBreakdownTable breakdown={data.breakdown} />
-      )}
-      {data.breakdown &&
-        data.breakdown.length > 0 &&
-        data.breakdown.length < 3 && (
+      {data.breakdown?.length > 0 &&
+        (data.breakdown.length >= 3 ? (
+          <TATBreakdownTable breakdown={data.breakdown} />
+        ) : (
           <QASparseList
             headlineKey="qa.empty.sparse.labUnits"
             headlineValues={{ count: data.breakdown.length }}
@@ -185,7 +183,7 @@ function TATSummaryTab({ data, loading, filters }) {
               value: formatTat(b.mean),
             }))}
           />
-        )}
+        ))}
     </div>
   );
 }

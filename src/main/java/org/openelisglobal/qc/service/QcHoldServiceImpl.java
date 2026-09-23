@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -34,7 +35,8 @@ public class QcHoldServiceImpl implements QcHoldService {
             return Set.of();
         }
         // The DAO already short-circuits an empty collection, so no second guard here.
-        Set<Integer> numeric = analysisIds.stream().map(QcHoldServiceImpl::toInteger).filter(Objects::nonNull)
+        // Ids are positive sequence values, so 0 doubles as "not a number".
+        Set<Integer> numeric = analysisIds.stream().map(id -> NumberUtils.toInt(id, 0)).filter(id -> id > 0)
                 .collect(Collectors.toSet());
         return nceSpecimenService.findAnalysisIdsWithOpenQcHold(numeric).stream().map(String::valueOf)
                 .collect(Collectors.toSet());
@@ -63,13 +65,5 @@ public class QcHoldServiceImpl implements QcHoldService {
     @Override
     public boolean blocksRelease() {
         return ConfigurationProperties.getInstance().isPropertyValueEqual(Property.QC_FAIL_BLOCKS_VALIDATION, "true");
-    }
-
-    private static Integer toInteger(String value) {
-        try {
-            return value == null ? null : Integer.valueOf(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

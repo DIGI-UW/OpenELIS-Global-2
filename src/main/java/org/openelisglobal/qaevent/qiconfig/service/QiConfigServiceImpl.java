@@ -89,7 +89,7 @@ public class QiConfigServiceImpl extends AuditableBaseObjectServiceImpl<QiConfig
         if (def == null) {
             throw new IllegalArgumentException("No default config for indicator: " + ind.name());
         }
-        String direction = ind.getDirection().name();
+        QiIndicator.Direction direction = ind.getDirection();
         // Disabled default short-circuits: never consult an override (711 contract).
         if (!Boolean.TRUE.equals(def.getEnabled())) {
             return new ResolvedConfig(ind.name(), false, def.getTargetThreshold(), def.getActionThreshold(), direction);
@@ -124,9 +124,8 @@ public class QiConfigServiceImpl extends AuditableBaseObjectServiceImpl<QiConfig
             applyAndSave(baseObjectDAO.getOverride(ind.name(), o.getTestCategoryId()), ind.name(),
                     o.getTestCategoryId(), Boolean.TRUE, o.getTarget(), o.getAction(), sysUserId);
         }
-        for (QiConfig row : baseObjectDAO.getAllOrderedByIndicator()) {
-            if (ind.name().equals(row.getIndicatorKey()) && row.getTestCategoryId() != null
-                    && !keep.contains(row.getTestCategoryId())) {
+        for (QiConfig row : getAllMatching("indicatorKey", ind.name())) {
+            if (row.getTestCategoryId() != null && !keep.contains(row.getTestCategoryId())) {
                 row.setSysUserId(sysUserId);
                 delete(row);
             }

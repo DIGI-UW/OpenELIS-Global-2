@@ -6,32 +6,15 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-714 Critical Callback capture — the write side of Critical
-    Callback Compliance.
-
-    One row documents one manual phone-callback attempt for a critical result
-    (TJC NPSG.02.03.01 / CLSI GP47 read-back). The callback act is manual;
-    this table only records that it happened. Result-grain: the callback
-    anchors to a PERSISTED result (result_id), and result_value snapshots
-    the value as
-    communicated — immune to later edits/amendments. analysis_id is derived
-    from the result server-side and kept for one-hop compliance joins.
-
-    Rows are write-once and are themselves the record, so the table is NOT
-    registered for generic audit history and uses a UUID id (audited tables
-    need numeric ids — history.reference_id is numeric). Repeat POSTs for the
-    same result are new rows: multiplicity is the attempt log. Criticality is
-    never persisted here — it is derived from result_limits critical bounds
-    (validated server-side at log time, recomputed by the compliance read
-    side). The DB-filled `lastupdated` (DEFAULT now()) and the BaseObject
-    @Version column `last_updated` are two distinct columns by OpenELIS
-    convention — do not collapse them.
-
-    Convergence note (grep anchor: critical_notification): OGC-811 §F's GP47
-    read-back form and M-11's polymorphic critical_notification (OGC-785/886,
-    micro_critical_communication on the micro branches) describe this same
-    record. Extend THIS table (e.g. nullable alerts_ack_id at R3, or
-    target_type/target_id per OGC-886) rather than creating a parallel store.
+    OGC-714 Critical Callback capture. One row documents one manual phone-callback
+    attempt for a critical result (TJC NPSG.02.03.01 / CLSI GP47 read-back); the
+    call itself is manual, this table only records that it happened, and repeat
+    attempts for the same result are new rows. Rows are write-once and are
+    themselves the record, so the table is not registered for generic audit history
+    and can use a UUID id. Criticality is never persisted here - it is derived from
+    the result_limits critical bounds. A later read-back form or polymorphic
+    critical notification (OGC-785/886) should extend this table rather than add a
+    parallel store.
     -->
 
     <changeSet author="openelisglobal" id="critical-callback-001-create-table">

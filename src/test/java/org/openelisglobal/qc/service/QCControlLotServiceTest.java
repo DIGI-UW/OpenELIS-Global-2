@@ -180,9 +180,10 @@ public class QCControlLotServiceTest {
         when(statisticsDAO.findLatestByControlLot("self-lot"))
                 .thenReturn(new org.openelisglobal.qc.valueholder.QCStatistics());
 
-        QCControlLot result = controlLotService.createControlLot(lot);
+        controlLotService.createControlLot(lot);
 
-        assertNotNull("Save must succeed when the only key match is the lot itself", result);
+        // The write going through is the claim; the returned lot is the one this
+        // test handed the stubbed DAO, so it says nothing.
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
     }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Button,
   ComposedModal,
@@ -12,15 +12,18 @@ import {
   ModalHeader,
   NumberInput,
   Section,
+  Stack,
   Toggle,
 } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  getFromOpenElisServer,
-  putToOpenElisServerFullResponse,
-} from "../../utils/Utils";
+import { putToOpenElisServerFullResponse } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
 import { unitFor } from "./qiThresholds";
+import "../common/QAStyles.css";
+
+// The lab's active test sections, the same list every other selector reads.
+const TEST_SECTIONS_ENDPOINT = "/rest/displayList/TEST_SECTION_ACTIVE";
 
 /**
  * OGC-709 — two-level editor for one indicator: the lab-wide default
@@ -66,16 +69,12 @@ function QIConfigEditor({ indicator, onClose }) {
       action: o.action ?? "",
     })),
   );
-  const [sections, setSections] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
 
-  useEffect(() => {
-    getFromOpenElisServer("/rest/qi-config/test-sections", (res) =>
-      setSections(Array.isArray(res) ? res : []),
-    );
-  }, []);
+  const sectionsQuery = useServerData(TEST_SECTIONS_ENDPOINT);
+  const sections = Array.isArray(sectionsQuery.data) ? sectionsQuery.data : [];
 
   const sectionName = (id) => {
     const match = sections.find((s) => String(s.id) === String(id));
@@ -214,141 +213,136 @@ function QIConfigEditor({ indicator, onClose }) {
               title={error}
               lowContrast
               onCloseButtonClick={() => setError(null)}
-              style={{ marginBottom: "1rem" }}
             />
           )}
           <Form>
-            <Section>
-              <Heading>
-                <FormattedMessage id="qa.qiConfig.editor.defaults" />
-              </Heading>
-              <Toggle
-                id="qi-config-enabled"
-                labelText={intl.formatMessage({
-                  id: "qa.qiConfig.field.enabled",
-                })}
-                labelA={intl.formatMessage({ id: "label.no" })}
-                labelB={intl.formatMessage({ id: "label.yes" })}
-                toggled={enabled}
-                onToggle={handleToggle}
-              />
-              <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                <NumberInput
-                  id="qi-config-target"
-                  label={withUnit("qa.qiConfig.field.target")}
-                  value={target}
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  onChange={(e, { value }) => setTarget(value)}
+            <Stack gap={6}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="qa.qiConfig.editor.defaults" />
+                </Heading>
+                <Toggle
+                  id="qi-config-enabled"
+                  labelText={intl.formatMessage({
+                    id: "qa.qiConfig.field.enabled",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={enabled}
+                  onToggle={handleToggle}
                 />
-                <NumberInput
-                  id="qi-config-action"
-                  label={withUnit("qa.qiConfig.field.action")}
-                  value={action}
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  onChange={(e, { value }) => setAction(value)}
-                />
-              </div>
-              {thresholdsRequired(key) && (
-                <p
-                  className="qi-dashboard__subtitle"
-                  style={{ marginTop: "0.75rem" }}
+                <Stack
+                  orientation="horizontal"
+                  gap={5}
+                  className="qi-config-row"
                 >
-                  <FormattedMessage id="qa.qiConfig.editor.autoNce" />
-                </p>
-              )}
-            </Section>
-
-            <Section style={{ marginTop: "1.5rem" }}>
-              <Heading>
-                <FormattedMessage id="qa.qiConfig.editor.overrides" />
-              </Heading>
-              <p
-                className="qi-dashboard__subtitle"
-                style={{ marginTop: "0.25rem" }}
-              >
-                <FormattedMessage id="qa.qiConfig.editor.usesDefault" />
-              </p>
-              {overrides.length === 0 && (
-                <p style={{ margin: "0.5rem 0" }}>
-                  <FormattedMessage id="qa.qiConfig.editor.noOverrides" />
-                </p>
-              )}
-              {overrides.map((o, idx) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    alignItems: "flex-end",
-                    marginTop: "0.75rem",
-                  }}
-                >
-                  <Dropdown
-                    id={`qi-config-override-section-${idx}`}
-                    titleText={intl.formatMessage({
-                      id: "qa.qiConfig.field.category",
-                    })}
-                    label={intl.formatMessage({
-                      id: "qa.qiConfig.field.category",
-                    })}
-                    items={sections.map((s) => String(s.id))}
-                    selectedItem={
-                      o.testCategoryId ? String(o.testCategoryId) : null
-                    }
-                    itemToString={(id) => (id ? sectionName(id) : "")}
-                    onChange={({ selectedItem }) =>
-                      setOverrideField(idx, "testCategoryId", selectedItem)
-                    }
-                  />
                   <NumberInput
-                    id={`qi-config-override-target-${idx}`}
+                    id="qi-config-target"
                     label={withUnit("qa.qiConfig.field.target")}
-                    value={o.target}
+                    value={target}
                     min={0}
                     max={100}
                     step={0.5}
-                    onChange={(e, { value }) =>
-                      setOverrideField(idx, "target", value)
-                    }
+                    onChange={(e, { value }) => setTarget(value)}
                   />
                   <NumberInput
-                    id={`qi-config-override-action-${idx}`}
+                    id="qi-config-action"
                     label={withUnit("qa.qiConfig.field.action")}
-                    value={o.action}
+                    value={action}
                     min={0}
                     max={100}
                     step={0.5}
-                    onChange={(e, { value }) =>
-                      setOverrideField(idx, "action", value)
-                    }
+                    onChange={(e, { value }) => setAction(value)}
                   />
-                  <Button
-                    kind="danger--ghost"
-                    size="md"
-                    renderIcon={TrashCan}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "label.button.delete",
-                    })}
-                    onClick={() => removeOverride(idx)}
-                  />
-                </div>
-              ))}
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={Add}
-                style={{ marginTop: "1rem" }}
-                onClick={addOverride}
-              >
-                <FormattedMessage id="qa.qiConfig.editor.addOverride" />
-              </Button>
-            </Section>
+                </Stack>
+                {thresholdsRequired(key) && (
+                  <p className="qi-dashboard__subtitle">
+                    <FormattedMessage id="qa.qiConfig.editor.autoNce" />
+                  </p>
+                )}
+              </Section>
+
+              <Section>
+                <Heading>
+                  <FormattedMessage id="qa.qiConfig.editor.overrides" />
+                </Heading>
+                <p className="qi-dashboard__subtitle">
+                  <FormattedMessage id="qa.qiConfig.editor.usesDefault" />
+                </p>
+                {overrides.length === 0 && (
+                  <p>
+                    <FormattedMessage id="qa.qiConfig.editor.noOverrides" />
+                  </p>
+                )}
+                {overrides.map((o, idx) => (
+                  <Stack
+                    orientation="horizontal"
+                    gap={5}
+                    className="qi-config-row"
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={idx}
+                  >
+                    <Dropdown
+                      id={`qi-config-override-section-${idx}`}
+                      titleText={intl.formatMessage({
+                        id: "qa.qiConfig.field.category",
+                      })}
+                      label={intl.formatMessage({
+                        id: "qa.qiConfig.field.category",
+                      })}
+                      items={sections.map((s) => String(s.id))}
+                      selectedItem={
+                        o.testCategoryId ? String(o.testCategoryId) : null
+                      }
+                      itemToString={(id) => (id ? sectionName(id) : "")}
+                      onChange={({ selectedItem }) =>
+                        setOverrideField(idx, "testCategoryId", selectedItem)
+                      }
+                    />
+                    <NumberInput
+                      id={`qi-config-override-target-${idx}`}
+                      label={withUnit("qa.qiConfig.field.target")}
+                      value={o.target}
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      onChange={(e, { value }) =>
+                        setOverrideField(idx, "target", value)
+                      }
+                    />
+                    <NumberInput
+                      id={`qi-config-override-action-${idx}`}
+                      label={withUnit("qa.qiConfig.field.action")}
+                      value={o.action}
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      onChange={(e, { value }) =>
+                        setOverrideField(idx, "action", value)
+                      }
+                    />
+                    <Button
+                      kind="danger--ghost"
+                      size="md"
+                      renderIcon={TrashCan}
+                      hasIconOnly
+                      iconDescription={intl.formatMessage({
+                        id: "label.button.delete",
+                      })}
+                      onClick={() => removeOverride(idx)}
+                    />
+                  </Stack>
+                ))}
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  renderIcon={Add}
+                  onClick={addOverride}
+                >
+                  <FormattedMessage id="qa.qiConfig.editor.addOverride" />
+                </Button>
+              </Section>
+            </Stack>
           </Form>
         </ModalBody>
         <ModalFooter>

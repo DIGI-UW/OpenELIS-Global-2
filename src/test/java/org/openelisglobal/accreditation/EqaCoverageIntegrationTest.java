@@ -5,17 +5,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.util.List;
-import javax.sql.DataSource;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.accreditation.dto.EqaCoverageView;
-import org.openelisglobal.accreditation.service.AccreditingBodyService;
-import org.openelisglobal.accreditation.service.TestAccreditationService;
-import org.openelisglobal.accreditation.valueholder.AccreditingBody;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * OGC-686 — accredited scope vs. live EQA cover, against a real DB.
@@ -27,11 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <em>panel</em> is covered, and a test whose EQA enrollment has been
  * deactivated is not.
  */
-public class EqaCoverageIntegrationTest extends BaseWebContextSensitiveTest {
-
-    private static final String TEST_GLUCOSE = "9101";
-    private static final String TEST_SODIUM = "9102";
-    private static final String USER = "1";
+public class EqaCoverageIntegrationTest extends AccreditationIntegrationTestBase {
 
     private static final long EQA_ENROLLMENT_ID = 9901L;
     private static final long EQA_MAP_ID = 9911L;
@@ -39,34 +26,10 @@ public class EqaCoverageIntegrationTest extends BaseWebContextSensitiveTest {
     private static final long PANEL_ITEM_ID = 9931L;
     private static final long LOCALIZATION_ID = 9941L;
 
-    @Autowired
-    private AccreditingBodyService accreditingBodyService;
-
-    @Autowired
-    private TestAccreditationService testAccreditationService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbc;
-
-    @Before
+    /** This suite also seeds the EQA enrollment the coverage join reads. */
     @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
-        executeDataSetWithStateManagement("testdata/accreditation.xml");
-        clean();
-    }
-
-    @After
-    public void tearDown() {
-        clean();
-    }
-
-    private void clean() {
-        jdbc.update("DELETE FROM clinlims.test_accreditation");
-        jdbc.update("DELETE FROM clinlims.accrediting_body");
+    protected void clean() {
+        super.clean();
         jdbc.update("DELETE FROM clinlims.eqa_lab_enrollment_test_map WHERE id = ?", EQA_MAP_ID);
         jdbc.update("DELETE FROM clinlims.eqa_lab_program_enrollment WHERE id = ?", EQA_ENROLLMENT_ID);
         jdbc.update("DELETE FROM clinlims.panel_item WHERE id = ?", PANEL_ITEM_ID);
@@ -173,11 +136,4 @@ public class EqaCoverageIntegrationTest extends BaseWebContextSensitiveTest {
                 EQA_MAP_ID, EQA_ENROLLMENT_ID, PANEL_ID, USER);
     }
 
-    private AccreditingBody body(String code, String name, LocalDate expiresOn) {
-        AccreditingBody b = new AccreditingBody();
-        b.setCode(code);
-        b.setName(name);
-        b.setExpiresOn(expiresOn);
-        return b;
-    }
 }

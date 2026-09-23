@@ -1,4 +1,5 @@
 import config from "../../config.json";
+import { format } from "date-fns";
 import type { IntlShape } from "react-intl";
 
 // This utility is the compatibility boundary for hundreds of legacy JavaScript
@@ -26,6 +27,7 @@ export interface ApiMessagePayload {
 
 interface UserSessionDetails {
   roles?: string[];
+  permissions?: string[];
 }
 
 const csrfToken = (): string => localStorage.getItem("CSRF") as string;
@@ -97,18 +99,35 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+const DATE_FMT = "yyyy-MM-dd";
+
 /**
  * Format a Date as a local `yyyy-MM-dd` string. Unlike `Date.toISOString()`,
  * this reads the browser's LOCAL date components, so a date-only value picked in
  * a UTC+ timezone is not rolled back a day when sent to the server. Non-Date
  * input is returned as-is (or "" for null/undefined).
  */
-export const toLocalIsoDate = (d: Date | string | null | undefined): string => {
-  if (!(d instanceof Date)) return d || "";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export const toLocalIsoDate = (d: Date | string | null | undefined): string =>
+  !(d instanceof Date)
+    ? d || ""
+    : isNaN(d.getTime())
+      ? ""
+      : format(d, DATE_FMT);
+
+/**
+ * Turn a date string as CustomDatePicker renders it (`MM/dd/yyyy`, or
+ * `dd/MM/yyyy` under the French locale) back into the `yyyy-MM-dd` the server
+ * reads. Returns "" for anything that is not a three-part date.
+ */
+export const displayDateToIso = (
+  displayed: string | null | undefined,
+  dateLocale?: string,
+): string => {
+  const parts = (displayed || "").split("/");
+  if (parts.length !== 3) return "";
+  const [month, day] =
+    dateLocale === "fr-FR" ? [parts[1], parts[0]] : [parts[0], parts[1]];
+  return `${parts[2]}-${month}-${day}`;
 };
 
 /**
@@ -120,13 +139,8 @@ export const toLocalIsoDate = (d: Date | string | null | undefined): string => {
 export const toLocalIsoDateTime = (
   value: Date | string | number | null | undefined,
 ): string => {
-  if (!value) {
-    return "—";
-  }
-  const d = new Date(value);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${toLocalIsoDate(d)} ${hh}:${mm}`;
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
 };
 
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
@@ -693,6 +707,25 @@ export const hasRole = (
   }
   return userSessionDetails.roles.includes(role);
 };
+
+/** True when the session carries the named permission. */
+export const hasPermission = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string | null | undefined,
+): boolean =>
+  !!permission && !!userSessionDetails?.permissions?.includes(permission);
+
+/**
+ * The gate feature entry points use: the named permission, or the global
+ * administrator role, which is allowed everything. Server-side @PreAuthorize is
+ * still the real check — this only decides whether to show the entry point.
+ */
+export const hasPermissionOrGlobalAdmin = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string,
+): boolean =>
+  hasPermission(userSessionDetails, permission) ||
+  hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers

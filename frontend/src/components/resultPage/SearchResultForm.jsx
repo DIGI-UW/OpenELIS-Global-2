@@ -2858,6 +2858,14 @@ export function SearchResults(props) {
     setPage(1);
   }, [poolLotFilter, poolIdFilter]);
 
+  // Saved criticals with no callback logged this session (OGC-714).
+  const needsCallback = allRows.filter(
+    (row) =>
+      validationState[row.id]?.isCritical &&
+      row.resultId &&
+      !loggedCallbackRows[row.id],
+  );
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -2882,51 +2890,41 @@ export function SearchResults(props) {
             </Column>
           </Grid>
         )}
-        {/* Persistent needs-callback banner (OGC-714): recomputed from the
-            loaded rows on every render — saved criticals with no callback
-            logged this session. The v4 Results Entry design reserves
-            a banner for exactly this; this is the legacy-page bridge. */}
-        {(() => {
-          const needsCallback = (props.results?.testResult || []).filter(
-            (row) =>
-              validationState[row.id]?.isCritical &&
-              row.resultId &&
-              !loggedCallbackRows[row.id],
-          );
-          if (needsCallback.length === 0) return null;
-          return (
-            <ActionableNotification
-              kind="warning"
-              lowContrast
-              inline
-              hideCloseButton
-              // status, not the alertdialog default: Carbon's alertdialog
-              // grabs focus back to the banner on every render, making the
-              // callback modal (and the results grid) untypeable while the
-              // banner is visible.
-              role="status"
-              data-testid="callback-banner"
-              style={{ maxWidth: "none", marginBottom: "0.5rem" }}
-              title={intl.formatMessage({
-                id: "qa.qi.callback.banner.title",
-              })}
-              subtitle={intl.formatMessage(
-                { id: "qa.qi.callback.banner.subtitle" },
-                { count: needsCallback.length },
-              )}
-              actionButtonLabel={intl.formatMessage({
-                id: "qa.qi.callback.button",
-              })}
-              onActionButtonClick={() => {
-                const first = needsCallback[0];
-                document
-                  .getElementById("ResultValue" + first.id)
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                setCallbackModalRow(first.id);
-              }}
-            />
-          );
-        })()}
+        {/* Persistent needs-callback banner (OGC-714). The v4 Results Entry
+            design reserves a banner for exactly this; this is the legacy-page
+            bridge. */}
+        {needsCallback.length > 0 && (
+          <ActionableNotification
+            kind="warning"
+            lowContrast
+            inline
+            hideCloseButton
+            // status, not the alertdialog default: Carbon's alertdialog
+            // grabs focus back to the banner on every render, making the
+            // callback modal (and the results grid) untypeable while the
+            // banner is visible.
+            role="status"
+            data-testid="callback-banner"
+            style={{ maxWidth: "none", marginBottom: "0.5rem" }}
+            title={intl.formatMessage({
+              id: "qa.qi.callback.banner.title",
+            })}
+            subtitle={intl.formatMessage(
+              { id: "qa.qi.callback.banner.subtitle" },
+              { count: needsCallback.length },
+            )}
+            actionButtonLabel={intl.formatMessage({
+              id: "qa.qi.callback.button",
+            })}
+            onActionButtonClick={() => {
+              const first = needsCallback[0];
+              document
+                .getElementById("ResultValue" + first.id)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setCallbackModalRow(first.id);
+            }}
+          />
+        )}
         <CriticalCallbackModal
           open={callbackModalRow != null}
           resultRow={(props.results?.testResult || []).find(

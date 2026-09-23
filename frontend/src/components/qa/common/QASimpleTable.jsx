@@ -16,7 +16,7 @@ import { useIntl } from "react-intl";
  * rows carry already-formatted cell values. Shared so the QI and QMS pages
  * do not each keep their own copy of the same table markup.
  */
-const QASimpleTable = ({ rows, headers, size = "sm" }) => {
+const QASimpleTable = ({ rows, headers, size = "sm", rowTestIdPrefix }) => {
   const intl = useIntl();
   return (
     <DataTable
@@ -45,7 +45,13 @@ const QASimpleTable = ({ rows, headers, size = "sm" }) => {
             </TableHead>
             <TableBody>
               {tableRows.map((row) => (
-                <TableRow {...getRowProps({ row })} key={row.id}>
+                <TableRow
+                  {...getRowProps({ row })}
+                  key={row.id}
+                  data-testid={
+                    rowTestIdPrefix ? `${rowTestIdPrefix}-${row.id}` : undefined
+                  }
+                >
                   {row.cells.map((cell) => (
                     <TableCell key={cell.id}>{cell.value}</TableCell>
                   ))}

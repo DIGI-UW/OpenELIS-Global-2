@@ -329,7 +329,15 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     @Transactional(readOnly = true)
     public TestSection getTestSection(Analysis analysis) {
-        return analysis == null ? null : analysis.getTestSection();
+        if (analysis == null) {
+            return null;
+        }
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection();
+        }
+        // Legacy and imported analyses often carry no section of their own; the
+        // test's home section is the bench that actually ran the work.
+        return analysis.getTest() == null ? null : analysis.getTest().getTestSection();
     }
 
     @Override

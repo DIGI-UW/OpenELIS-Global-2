@@ -5,7 +5,6 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -512,11 +511,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
-        // When the lab has opted into blocking, results covered by an open QC
-        // failure cannot be released here. Re-resolved from the database rather than
-        // trusted from the submitted rows — the hold is a safety control, and a client
-        // could otherwise clear it by posting qcHold=false.
-        Set<String> blocked = qcHoldService.analysisIdsBlockedFromRelease(analysisIdsOf(analysisItems));
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
 
         List<String> analysisIdList = new ArrayList<>();
         Set<String> withheldAccessions = new LinkedHashSet<>();
@@ -1341,10 +1336,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             LogEvent.logError(this.getClass().getName(), "markQcHolds",
                     "Could not resolve QC holds for the validation list: " + e.getMessage());
         }
-    }
-
-    private List<String> analysisIdsOf(List<AnalysisItem> items) {
-        return items.stream().map(AnalysisItem::getAnalysisId).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     private boolean areResults(AnalysisItem item) {

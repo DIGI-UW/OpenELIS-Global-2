@@ -9,6 +9,7 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // Rendering with the real en.json also fails loudly if a referenced i18n key is
@@ -70,8 +71,8 @@ describe("BenchQcTab", () => {
     expect(await screen.findByText("Haematology")).toBeInTheDocument();
     expect(screen.getByText("Bench Haemoglobin")).toBeInTheDocument();
     expect(screen.getByText("MANUAL")).toBeInTheDocument();
-    // The T separator is not something a lab tech should have to read.
-    expect(screen.getByText("2025-06-10 09:00:00")).toBeInTheDocument();
+    // The raw ISO string is not something a lab tech should have to read.
+    expect(screen.getByText(/06\/10\/2025/)).toBeInTheDocument();
   });
 
   test("an RDT failure is visible here — the only QC surface it reaches", async () => {
@@ -132,7 +133,9 @@ describe("BenchQcTab", () => {
     ]);
     renderTab();
 
-    // Lab unit, test name and last run all fall back rather than rendering blank.
-    expect(await screen.findAllByText("-")).toHaveLength(3);
+    // Lab unit and test name fall back rather than rendering blank; an absent
+    // last run renders the shared formatter's placeholder.
+    expect(await screen.findAllByText("-")).toHaveLength(2);
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 });

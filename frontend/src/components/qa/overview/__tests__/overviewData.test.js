@@ -4,8 +4,8 @@ import {
   ncesResolvedThisWeek,
   newNcesThisWeek,
   severityBreakdown,
-  weekStart,
 } from "../overviewData";
+import { weekStart } from "../../common/qaDates";
 
 // Fixed boundary: the week began Monday 2026-07-06 (server-provided in prod;
 // these tests pass it explicitly the way ThisWeek.jsx does).

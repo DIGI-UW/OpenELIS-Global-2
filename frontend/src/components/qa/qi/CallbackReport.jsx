@@ -1,9 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import {
-  DataTableSkeleton,
-  DatePicker,
-  DatePickerInput,
-  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -14,12 +10,11 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
-import QASimpleTable from "../common/QASimpleTable";
-import QAEmptyState from "../common/QAEmptyState";
+import { toLocalIsoDateTime } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
+import { formatMinutes } from "../common/qaDates";
 import { rateTone } from "./qiThresholds";
-import "./QIDashboard.css";
+import QIReportPage, { QIRateHeader } from "./QIReportPage";
 
 /**
  * Critical Callback Compliance detail page (OGC-715) at /qa/qi/callback:
@@ -38,14 +33,14 @@ const breadcrumbs = [
 ];
 
 const HEADERS = [
-  { key: "releasedAt", labelKey: "qa.qi.callback.column.releasedAt" },
-  { key: "labNumber", labelKey: "qa.qi.callback.column.labNumber" },
-  { key: "testName", labelKey: "qa.qi.callback.column.test" },
-  { key: "resultValue", labelKey: "qa.qi.callback.column.resultValue" },
-  { key: "criticalRange", labelKey: "qa.qi.callback.column.criticalRange" },
+  { key: "releasedAt", labelKey: "microbiology.enum.RELEASED" },
+  { key: "labNumber", labelKey: "common.labNumber" },
+  { key: "testName", labelKey: "common.test" },
+  { key: "resultValue", labelKey: "common.result" },
+  { key: "criticalRange", labelKey: "label.critical.range" },
   { key: "status", labelKey: "qa.qi.callback.column.status" },
   { key: "timeToCallback", labelKey: "qa.qi.callback.column.timeToCallback" },
-  { key: "recipientName", labelKey: "qa.qi.callback.column.recipient" },
+  { key: "recipientName", labelKey: "qa.qi.callback.field.recipientName" },
   { key: "loggedBy", labelKey: "qa.qi.callback.column.loggedBy" },
 ];
 
@@ -74,99 +69,10 @@ const FAILURE_REASONS = [
   "noCallback",
 ];
 
-function defaultRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
-  return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
-}
-
-function formatTimestamp(value) {
-  return value ? new Date(value).toLocaleString() : "—";
-}
-
-function formatMinutes(minutes) {
-  if (minutes == null) {
-    return "—";
-  }
-  // negative = called before release (compliant)
-  const sign = minutes < 0 ? "−" : "";
-  const abs = Math.abs(minutes);
-  if (abs < 60) {
-    return `${sign}${abs}m`;
-  }
-  const hours = Math.floor(abs / 60);
-  if (hours < 24) {
-    return `${sign}${hours}h ${abs % 60}m`;
-  }
-  return `${sign}${Math.floor(hours / 24)}d ${hours % 24}h`;
-}
-
-const CallbackReport = () => {
-  const intl = useIntl();
-  const [range, setRange] = useState(defaultRange);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
-  // undefined = loading, null = fetch yielded no data
-  const [detail, setDetail] = useState();
-  const [summary, setSummary] = useState();
-  // fail-open like QIDashboard/QIEnabledRoute: no config -> plain gray tag
-  const [config, setConfig] = useState(null);
-
-  const fetchDetail = useCallback(() => {
-    setDetail(undefined);
-    getFromOpenElisServer(
-      `/rest/critical-callback/detail?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`,
-      (res) => setDetail(res ?? null),
-    );
-  }, [range, page, pageSize]);
-
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
-
-  useEffect(() => {
-    setSummary(undefined);
-    getFromOpenElisServer(
-      `/rest/critical-callback/summary?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}`,
-      (res) => setSummary(res ?? null),
-    );
-  }, [range]);
-
-  useEffect(() => {
-    getFromOpenElisServer("/rest/qi-config/resolve?indicator=CALLBACK", (res) =>
-      setConfig(res ?? null),
-    );
-  }, []);
-
-  const handleDates = (dates) => {
-    if (dates.length === 2) {
-      setPage(0);
-      setRange({
-        fromDate: toLocalIsoDate(dates[0]),
-        toDate: toLocalIsoDate(dates[1]),
-      });
-    }
-  };
-
-  const tone = rateTone(summary?.compliancePercent, config);
-
-  const distribution = detail?.ackDistribution;
-  const maxBucket = distribution
-    ? Math.max(1, ...DISTRIBUTION_BUCKETS.map((b) => distribution[b.key] || 0))
-    : 1;
-  const failureTotal = detail?.failureCounts
-    ? FAILURE_REASONS.reduce(
-        (sum, reason) => sum + (detail.failureCounts[reason] || 0),
-        0,
-      )
-    : 0;
-
-  const rows = (detail?.items || []).map((item, index) => ({
+const toRows = (detail, intl) =>
+  (detail.items || []).map((item, index) => ({
     id: `${item.analysisId}-${index}`,
-    releasedAt: formatTimestamp(item.releasedAt),
+    releasedAt: toLocalIsoDateTime(item.releasedAt),
     labNumber: item.labNumber || "—",
     testName: item.testName || "—",
     resultValue: item.resultValue ?? "—",
@@ -191,57 +97,43 @@ const CallbackReport = () => {
     loggedBy: item.loggedBy || "—",
   }));
 
-  return (
-    <div className="adminPageContent qi-dashboard">
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <h2>
-        <FormattedMessage id="qa.qi.callback.title" />
-      </h2>
-      <p className="qi-dashboard__subtitle">
-        <FormattedMessage id="qa.qi.callback.subtitle" />
-      </p>
-      <DatePicker
-        datePickerType="range"
-        dateFormat="Y-m-d"
-        value={[range.fromDate, range.toDate]}
-        onChange={handleDates}
-      >
-        <DatePickerInput
-          id="callback-from"
-          labelText={intl.formatMessage({
-            id: "qa.qi.amendment.filter.from",
-          })}
-          placeholder="yyyy-mm-dd"
-        />
-        <DatePickerInput
-          id="callback-to"
-          labelText={intl.formatMessage({ id: "qa.qi.amendment.filter.to" })}
-          placeholder="yyyy-mm-dd"
-        />
-      </DatePicker>
+/** Compliance header, time-to-acknowledge histogram and failure reasons. */
+const CallbackSections = ({ range, config, detail }) => {
+  const intl = useIntl();
+  const summaryQuery = useServerData(
+    `/rest/critical-callback/summary?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}`,
+  );
+  const summary = summaryQuery.data;
 
+  const distribution = detail?.ackDistribution;
+  const maxBucket = distribution
+    ? Math.max(1, ...DISTRIBUTION_BUCKETS.map((b) => distribution[b.key] || 0))
+    : 1;
+  const failureTotal = detail?.failureCounts
+    ? FAILURE_REASONS.reduce(
+        (sum, reason) => sum + (detail.failureCounts[reason] || 0),
+        0,
+      )
+    : 0;
+  // The sections below describe the list; with no rows the empty state speaks
+  // for the window instead.
+  const hasRows = (detail?.items || []).length > 0;
+
+  return (
+    <>
       {summary && (
-        <div className="amendment-rate-header">
-          <span className="qi-tile__title">
+        <QIRateHeader
+          label={
             <FormattedMessage
               id="qa.qi.callback.rate.label"
               values={{ minutes: summary.slaMinutes }}
             />
-          </span>
-          <Tag
-            type={tone === "amber" ? "gray" : tone}
-            className={
-              tone === "amber"
-                ? "amendment-rate-tag qi-rate-tag--amber"
-                : "amendment-rate-tag"
-            }
-            data-testid="callback-rate-tag"
-          >
-            {summary.compliancePercent != null
-              ? `${summary.compliancePercent.toFixed(2)}%`
-              : "—"}
-          </Tag>
-          <span className="qi-tile__secondary">
+          }
+          value={summary.compliancePercent}
+          tone={rateTone(summary.compliancePercent, config)}
+          testId="callback-rate-tag"
+          secondary={
             <FormattedMessage
               id="qa.qi.dashboard.tile.callback.secondary"
               values={{
@@ -249,113 +141,117 @@ const CallbackReport = () => {
                 critical: summary.criticalCount,
               }}
             />
-          </span>
-        </div>
+          }
+        />
       )}
 
-      {detail === undefined ? (
-        <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
-      ) : detail === null ? (
-        <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.callback.error" />
-        </p>
-      ) : rows.length === 0 ? (
-        <QAEmptyState
-          titleKey="qa.empty.callback.title"
-          subheadKey="qa.empty.callback.subhead"
-        />
-      ) : (
+      {hasRows && distribution && (
         <>
-          {distribution && (
-            <>
-              <h4 className="amendment-section__title">
-                <FormattedMessage id="qa.qi.callback.distribution.title" />
-              </h4>
-              <div className="qi-barlist" data-testid="callback-distribution">
-                {DISTRIBUTION_BUCKETS.map((bucket) => (
-                  <div className="qi-barlist__row" key={bucket.key}>
-                    <span className="qi-barlist__label">
-                      {intl.formatMessage({
-                        id: `qa.qi.callback.distribution.${bucket.key}`,
-                      })}
-                    </span>
-                    <span className="qi-barlist__track">
-                      <span
-                        className={`qi-barlist__fill${
-                          bucket.red ? " qi-barlist__fill--red" : ""
-                        }`}
-                        style={{
-                          width: `${((distribution[bucket.key] || 0) / maxBucket) * 100}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="qi-barlist__count">
-                      {distribution[bucket.key] || 0}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {failureTotal > 0 && (
-            <>
-              <h4 className="amendment-section__title">
-                <FormattedMessage
-                  id="qa.qi.callback.failures.title"
-                  values={{ count: failureTotal }}
-                />
-              </h4>
-              <TableContainer>
-                <Table size="sm" data-testid="callback-failures">
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>
-                        {intl.formatMessage({
-                          id: "qa.qi.callback.failures.column.reason",
-                        })}
-                      </TableHeader>
-                      <TableHeader>
-                        {intl.formatMessage({
-                          id: "qa.qi.callback.failures.column.count",
-                        })}
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {FAILURE_REASONS.filter(
-                      (reason) => (detail.failureCounts[reason] || 0) > 0,
-                    ).map((reason) => (
-                      <TableRow key={reason}>
-                        <TableCell>
-                          {intl.formatMessage({
-                            id: `qa.qi.callback.failures.${reason}`,
-                          })}
-                        </TableCell>
-                        <TableCell>{detail.failureCounts[reason]}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          )}
           <h4 className="amendment-section__title">
-            <FormattedMessage id="qa.qi.callback.list.title" />
+            <FormattedMessage id="qa.qi.callback.distribution.title" />
           </h4>
-          <QASimpleTable rows={rows} headers={HEADERS} />
-          <Pagination
-            page={page + 1}
-            pageSize={pageSize}
-            pageSizes={[25, 50, 100]}
-            totalItems={detail.totalCount}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage - 1);
-              setPageSize(newPageSize);
-            }}
-          />
+          <div className="qi-barlist" data-testid="callback-distribution">
+            {DISTRIBUTION_BUCKETS.map((bucket) => (
+              <div className="qi-barlist__row" key={bucket.key}>
+                <span className="qi-barlist__label">
+                  {intl.formatMessage({
+                    id: `qa.qi.callback.distribution.${bucket.key}`,
+                  })}
+                </span>
+                <span className="qi-barlist__track">
+                  <span
+                    className={`qi-barlist__fill${
+                      bucket.red ? " qi-barlist__fill--red" : ""
+                    }`}
+                    style={{
+                      width: `${((distribution[bucket.key] || 0) / maxBucket) * 100}%`,
+                    }}
+                  />
+                </span>
+                <span className="qi-barlist__count">
+                  {distribution[bucket.key] || 0}
+                </span>
+              </div>
+            ))}
+          </div>
         </>
       )}
-    </div>
+
+      {hasRows && failureTotal > 0 && (
+        <>
+          <h4 className="amendment-section__title">
+            <FormattedMessage
+              id="qa.qi.callback.failures.title"
+              values={{ count: failureTotal }}
+            />
+          </h4>
+          <TableContainer>
+            <Table size="sm" data-testid="callback-failures">
+              <TableHead>
+                <TableRow>
+                  <TableHeader>
+                    {intl.formatMessage({
+                      id: "storage.audit.reason",
+                    })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({
+                      id: "reports.tat.column.count",
+                    })}
+                  </TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {FAILURE_REASONS.filter(
+                  (reason) => (detail.failureCounts[reason] || 0) > 0,
+                ).map((reason) => (
+                  <TableRow key={reason}>
+                    <TableCell>
+                      {intl.formatMessage({
+                        id: `qa.qi.callback.failures.${reason}`,
+                      })}
+                    </TableCell>
+                    <TableCell>{detail.failureCounts[reason]}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+    </>
+  );
+};
+
+const CallbackReport = () => {
+  const intl = useIntl();
+  return (
+    <QIReportPage
+      indicator="CALLBACK"
+      breadcrumbs={breadcrumbs}
+      titleKey="qa.qi.callback.title"
+      subtitleKey="qa.qi.callback.subtitle"
+      errorKey="qa.qi.dashboard.tile.callback.error"
+      idPrefix="callback"
+      // The callback page has never had filter labels of its own; the
+      // amendment pair is the same "From"/"To".
+      fromLabelKey="common.from"
+      toLabelKey="to.title"
+      className="adminPageContent qi-dashboard"
+      detailUrl={(range, page, pageSize) =>
+        `/rest/critical-callback/detail?fromDate=${range.fromDate}` +
+        `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`
+      }
+      headers={HEADERS}
+      toRows={(detail) => toRows(detail, intl)}
+      listTitleKey="qa.qi.callback.list.title"
+      emptyTitleKey="qa.empty.callback.title"
+      emptySubheadKey="qa.empty.callback.subhead"
+    >
+      {({ range, config, detail }) => (
+        <CallbackSections range={range} config={config} detail={detail} />
+      )}
+    </QIReportPage>
   );
 };
 

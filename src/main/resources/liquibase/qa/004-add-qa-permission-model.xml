@@ -21,80 +21,26 @@
          qa.view.qc starts QA Officer + Global Administrator only — the
          /qa/qc/* routes were never intentionally granted to anyone else. -->
 
-    <changeSet author="openelisglobal" id="qa-021-add-qa-permission-modules">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
+    <!-- qa.manage.accreditation is its own key rather than hasRole('ADMIN'):
+         the /admin shell is GLOBAL_ADMIN-only, which would lock out the QA
+         Officer the feature is written for. Reads ride qa.view.qms. -->
+    <changeSet author="openelisglobal" id="qa-036-register-qa-permission-modules">
         <comment>Register the qa.* permission keys as system modules</comment>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.view.overview"/>
-            <column name="description" value="Visibility of the Quality Assurance sidenav node and QA Overview page"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.view.qc"/>
-            <column name="description" value="Visibility of the Statistical QC pillar (QC Dashboard, Alerts, config pages)"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.view.eqa"/>
-            <column name="description" value="Visibility of the EQA pillar and EQA pages"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.view.qi"/>
-            <column name="description" value="Visibility of the Quality Indicators pillar and QI Dashboard"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.view.qms"/>
-            <column name="description" value="Visibility of the QMS pillar (NCE Register, Audit Trail)"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.manage.qi"/>
-            <column name="description" value="Manage the Quality Indicator configuration (thresholds, enable/disable)"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
-        <!-- OGC-686: Accreditation Status lives in the QMS pillar, so READS ride
-             qa.view.qms. Editing accrediting bodies and test enrollments is a
-             distinct, narrower right, so it gets its own key rather than reusing
-             hasRole('ADMIN'): the /admin shell is GLOBAL_ADMIN-only, which would
-             lock out the QA Officer the feature is written for. -->
-        <insert tableName="system_module" schemaName="clinlims">
-            <column name="id" valueSequenceNext="system_module_seq"/>
-            <column name="name" value="qa.manage.accreditation"/>
-            <column name="description" value="Manage accrediting bodies and per-test accreditation enrollment (Accreditation Status)"/>
-            <column name="has_select_flag" value="Y"/>
-            <column name="has_add_flag" value="N"/>
-            <column name="has_update_flag" value="N"/>
-            <column name="has_delete_flag" value="N"/>
-        </insert>
+        <sql>
+            INSERT INTO clinlims.system_module
+                (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag)
+            SELECT nextval('clinlims.system_module_seq'), v.name, v.description, 'Y', 'N', 'N', 'N'
+            FROM (VALUES
+                ('qa.view.overview',        'Visibility of the Quality Assurance sidenav node and QA Overview page'),
+                ('qa.view.qc',              'Visibility of the Statistical QC pillar (QC Dashboard, Alerts, config pages)'),
+                ('qa.view.eqa',             'Visibility of the EQA pillar and EQA pages'),
+                ('qa.view.qi',              'Visibility of the Quality Indicators pillar and QI Dashboard'),
+                ('qa.view.qms',             'Visibility of the QMS pillar (NCE Register, Audit Trail)'),
+                ('qa.manage.qi',            'Manage the Quality Indicator configuration (thresholds, enable/disable)'),
+                ('qa.manage.accreditation', 'Manage accrediting bodies and per-test accreditation enrollment (Accreditation Status)')
+            ) AS v(name, description)
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module m WHERE m.name = v.name);
+        </sql>
         <rollback>
             <delete tableName="system_module" schemaName="clinlims">
                 <where>name LIKE 'qa.%'</where>
@@ -125,124 +71,33 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelisglobal" id="qa-023-grant-qa-officer-permissions">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_role_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'QA Officer'</sqlCheck>
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
-        <comment>QA Officer bundles qa.view.overview, all four pillar permissions, and the QA manage rights</comment>
+    <!-- Default grants. QA Officer and Global Administrator hold every qa.* key;
+         the other three preserve the pre-registry audience of each surface, so no
+         one loses a page they could already reach. A role absent from this install
+         simply drops out of the join, and an existing grant is never duplicated. -->
+    <changeSet author="openelisglobal" id="qa-037-grant-qa-permissions">
+        <comment>Grant the qa.* permissions to QA Officer, Global Administrator and the compat roles</comment>
         <sql>
             INSERT INTO clinlims.system_role_module
                 (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
-            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N',
-                   (SELECT id FROM clinlims.system_role WHERE name = 'QA Officer'), m.id
-            FROM clinlims.system_module m
-            WHERE m.name IN ('qa.view.overview', 'qa.view.qc', 'qa.view.eqa', 'qa.view.qi', 'qa.view.qms',
-                              'qa.manage.qi', 'qa.manage.accreditation');
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM (VALUES
+                ('QA Officer',           ARRAY['qa.view.overview','qa.view.qc','qa.view.eqa','qa.view.qi','qa.view.qms','qa.manage.qi','qa.manage.accreditation']),
+                ('Global Administrator', ARRAY['qa.view.overview','qa.view.qc','qa.view.eqa','qa.view.qi','qa.view.qms','qa.manage.qi','qa.manage.accreditation']),
+                ('Reception',            ARRAY['qa.view.overview','qa.view.qi','qa.view.eqa','qa.view.qms']),
+                ('Results',              ARRAY['qa.view.overview','qa.view.qi','qa.view.eqa']),
+                ('Validation',           ARRAY['qa.view.overview','qa.view.qi','qa.view.qms'])
+            ) AS g(role_name, module_names)
+            JOIN clinlims.system_role r ON r.name = g.role_name
+            JOIN clinlims.system_module m ON m.name::text = ANY(g.module_names)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.system_role_module x
+                WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
         </sql>
         <rollback>
             <sql>
                 DELETE FROM clinlims.system_role_module
-                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'QA Officer')
-                  AND system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
-            </sql>
-        </rollback>
-    </changeSet>
-
-    <changeSet author="openelisglobal" id="qa-024-grant-global-admin-qa-permissions">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_role_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'Global Administrator'</sqlCheck>
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
-        <comment>Global Administrator holds every qa.* permission</comment>
-        <sql>
-            INSERT INTO clinlims.system_role_module
-                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
-            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N',
-                   (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator'), m.id
-            FROM clinlims.system_module m
-            WHERE m.name IN ('qa.view.overview', 'qa.view.qc', 'qa.view.eqa', 'qa.view.qi', 'qa.view.qms',
-                              'qa.manage.qi', 'qa.manage.accreditation');
-        </sql>
-        <rollback>
-            <sql>
-                DELETE FROM clinlims.system_role_module
-                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')
-                  AND system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
-            </sql>
-        </rollback>
-    </changeSet>
-
-    <changeSet author="openelisglobal" id="qa-025-grant-reception-qa-compat">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_role_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'Reception'</sqlCheck>
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
-        <comment>Compat: Reception keeps its pre-registry QA Overview / QI / EQA / QMS access</comment>
-        <sql>
-            INSERT INTO clinlims.system_role_module
-                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
-            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N',
-                   (SELECT id FROM clinlims.system_role WHERE name = 'Reception'), m.id
-            FROM clinlims.system_module m
-            WHERE m.name IN ('qa.view.overview', 'qa.view.qi', 'qa.view.eqa', 'qa.view.qms');
-        </sql>
-        <rollback>
-            <sql>
-                DELETE FROM clinlims.system_role_module
-                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Reception')
-                  AND system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
-            </sql>
-        </rollback>
-    </changeSet>
-
-    <changeSet author="openelisglobal" id="qa-026-grant-results-qa-compat">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_role_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'Results'</sqlCheck>
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
-        <comment>Compat: Results keeps its pre-registry QA Overview / QI / EQA access</comment>
-        <sql>
-            INSERT INTO clinlims.system_role_module
-                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
-            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N',
-                   (SELECT id FROM clinlims.system_role WHERE name = 'Results'), m.id
-            FROM clinlims.system_module m
-            WHERE m.name IN ('qa.view.overview', 'qa.view.qi', 'qa.view.eqa');
-        </sql>
-        <rollback>
-            <sql>
-                DELETE FROM clinlims.system_role_module
-                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
-                  AND system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
-            </sql>
-        </rollback>
-    </changeSet>
-
-    <changeSet author="openelisglobal" id="qa-027-grant-validation-qa-compat">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="system_role_module" schemaName="clinlims" />
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_role WHERE name = 'Validation'</sqlCheck>
-            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.view.overview'</sqlCheck>
-        </preConditions>
-        <comment>Compat: Validation keeps its pre-registry QA Overview / QI / QMS access</comment>
-        <sql>
-            INSERT INTO clinlims.system_role_module
-                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
-            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N',
-                   (SELECT id FROM clinlims.system_role WHERE name = 'Validation'), m.id
-            FROM clinlims.system_module m
-            WHERE m.name IN ('qa.view.overview', 'qa.view.qi', 'qa.view.qms');
-        </sql>
-        <rollback>
-            <sql>
-                DELETE FROM clinlims.system_role_module
-                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Validation')
-                  AND system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
+                WHERE system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
             </sql>
         </rollback>
     </changeSet>

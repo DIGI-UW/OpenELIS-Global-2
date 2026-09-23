@@ -42,18 +42,14 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
             BigDecimal resultValue, String unit, LocalDateTime timestamp) throws IllegalArgumentException;
 
     /**
-     * Most recent accepted (in-control) result for an instrument and test strictly
-     * before the given time; empty if none. Bounds the affected-samples window for
-     * Westgard auto-created NCEs (OGC-728). At most one element.
+     * Most recent accepted (in-control) result for a test strictly before the given
+     * time; empty if none. Scoped to an analyzer when {@code instrumentId} is
+     * given, otherwise to the lab unit named by {@code testSectionId}, where only
+     * bench-entered runs count because a manual or RDT control has no analyzer
+     * (OGC-1147). Bounds the affected-samples window for auto-created NCEs
+     * (OGC-728). At most one element.
      */
-    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before);
-
-    /**
-     * Bench counterpart of {@link #findLatestAcceptedBefore}, keyed by lab unit
-     * because a manual or RDT control has no analyzer (OGC-1147). At most one
-     * element.
-     */
-    List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before);
+    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testSectionId, String testId, Timestamp before);
 
     /**
      * Record a bench control run — an RDT control line or a manual quantitative

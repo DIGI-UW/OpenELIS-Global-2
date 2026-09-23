@@ -5,7 +5,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
-import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,10 +41,9 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
     private static final String RELEASED = "2026-01-15 08:00:00";
     private static final String RELEASED_OUTSIDE = "2026-03-10 08:00:00";
 
+    // The test, its critical band, the sample and the sample item all share this
+    // id; the analyses run on from it.
     private static final long TEST_ID = 95441L;
-    private static final long LIMIT_ID = 95441L;
-    private static final long SAMPLE_ID = 95441L;
-    private static final long SAMPLE_ITEM_ID = 95441L;
 
     private static final long ANALYSIS_IN_SLA = 95441L;
     private static final long ANALYSIS_LATE = 95442L;
@@ -61,13 +59,15 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
     private javax.sql.DataSource dataSource;
 
     private JdbcTemplate jdbc;
+    private CriticalResultFixture fixture;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        cleanup();
+        fixture = new CriticalResultFixture(jdbc, TEST_ID, ANALYSIS_IN_SLA, ANALYSIS_OUT_OF_WINDOW);
+        fixture.clean();
 
         // The base test harness truncates the shipped qi_config seed (and the
         // sibling QiConfigServiceIntegrationTest wipes the table), so self-seed
@@ -78,67 +78,27 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
                 + " action_threshold, last_updated) VALUES (nextval('clinlims.qi_config_id_seq'), 'CALLBACK',"
                 + " true, 100, 95, NOW())");
 
-        jdbc.update(
-                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
-                        + " VALUES (?, ?, ?, 'Y', ?, NOW())",
-                TEST_ID, "CallbackComputeIT", "CallbackComputeIT desc", UUID.randomUUID().toString());
-        // Default demographic row with a 10–90 critical band.
-        jdbc.update(
-                "INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
-                        + " low_critical, high_critical, lastupdated) VALUES (?, ?, 4, 0, ?, 10, 90, NOW())",
-                LIMIT_ID, TEST_ID, Double.POSITIVE_INFINITY);
-        jdbc.update("INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date, is_confirmation,"
-                + " lastupdated) VALUES (?, ?, NOW(), NOW(), false, NOW())", SAMPLE_ID, "CBCT" + SAMPLE_ID);
-        jdbc.update("INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, lastupdated)"
-                + " VALUES (?, ?, 1, 1, NOW())", SAMPLE_ITEM_ID, SAMPLE_ID);
+        fixture.seedTestWithCriticalBand("CallbackComputeIT", "CBCT");
 
-        seedAnalysis(ANALYSIS_IN_SLA, RELEASED, "95");
-        seedAnalysis(ANALYSIS_LATE, RELEASED, "96");
-        seedAnalysis(ANALYSIS_UNREACHED, RELEASED, "97");
-        seedAnalysis(ANALYSIS_UNLOGGED, RELEASED, "98");
-        seedAnalysis(ANALYSIS_NON_CRITICAL, RELEASED, "50");
-        seedAnalysis(ANALYSIS_OUT_OF_WINDOW, RELEASED_OUTSIDE, "99");
+        fixture.seedResult(ANALYSIS_IN_SLA, RELEASED, "95");
+        fixture.seedResult(ANALYSIS_LATE, RELEASED, "96");
+        fixture.seedResult(ANALYSIS_UNREACHED, RELEASED, "97");
+        fixture.seedResult(ANALYSIS_UNLOGGED, RELEASED, "98");
+        fixture.seedResult(ANALYSIS_NON_CRITICAL, RELEASED, "50");
+        fixture.seedResult(ANALYSIS_OUT_OF_WINDOW, RELEASED_OUTSIDE, "99");
 
-        seedCallback(ANALYSIS_IN_SLA, "CONFIRMED", "2026-01-15 08:30:00", "Dr. In-Sla");
-        seedCallback(ANALYSIS_LATE, "CONFIRMED", "2026-01-15 10:30:00", "Dr. Late");
-        seedCallback(ANALYSIS_UNREACHED, "UNABLE_TO_REACH", "2026-01-15 08:10:00", "Ward clerk");
+        fixture.seedCallback(ANALYSIS_IN_SLA, "CONFIRMED", "2026-01-15 08:30:00", "Dr. In-Sla");
+        fixture.seedCallback(ANALYSIS_LATE, "CONFIRMED", "2026-01-15 10:30:00", "Dr. Late");
+        fixture.seedCallback(ANALYSIS_UNREACHED, "UNABLE_TO_REACH", "2026-01-15 08:10:00", "Ward clerk");
         // the out-of-window analysis has an in-SLA CONFIRMED call — it must not
         // leak into the window's counts via the callback side of the join
-        seedCallback(ANALYSIS_OUT_OF_WINDOW, "CONFIRMED", "2026-03-10 08:20:00", "Dr. Outside");
+        fixture.seedCallback(ANALYSIS_OUT_OF_WINDOW, "CONFIRMED", "2026-03-10 08:20:00", "Dr. Outside");
     }
 
     @After
     public void tearDown() {
-        cleanup();
+        fixture.clean();
         jdbc.update("DELETE FROM clinlims.qi_config WHERE indicator_key = 'CALLBACK'");
-    }
-
-    private void seedAnalysis(long analysisId, String releasedAt, String value) {
-        jdbc.update(
-                "INSERT INTO clinlims.analysis (id, analysis_type, test_id, sampitem_id, released_date, lastupdated)"
-                        + " VALUES (?, 'MANUAL', ?, ?, CAST(? AS timestamp), NOW())",
-                analysisId, TEST_ID, SAMPLE_ITEM_ID, releasedAt);
-        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
-                + " VALUES (?, ?, ?, 'N', NOW())", analysisId, analysisId, value);
-    }
-
-    private void seedCallback(long analysisId, String status, String loggedAt, String recipient) {
-        jdbc.update(
-                "INSERT INTO clinlims.critical_callback (id, result_id, analysis_id, result_value, logged_by,"
-                        + " logged_at, recipient_name, status, last_updated)"
-                        + " VALUES (?, ?, ?, 'seeded', 1, CAST(? AS timestamp), ?, ?, NOW())",
-                UUID.randomUUID().toString(), analysisId, analysisId, loggedAt, recipient, status);
-    }
-
-    private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.critical_callback WHERE analysis_id BETWEEN ? AND ?", ANALYSIS_IN_SLA,
-                ANALYSIS_OUT_OF_WINDOW);
-        jdbc.update("DELETE FROM clinlims.result WHERE id BETWEEN ? AND ?", ANALYSIS_IN_SLA, ANALYSIS_OUT_OF_WINDOW);
-        jdbc.update("DELETE FROM clinlims.analysis WHERE id BETWEEN ? AND ?", ANALYSIS_IN_SLA, ANALYSIS_OUT_OF_WINDOW);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", SAMPLE_ITEM_ID);
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE_ID);
-        jdbc.update("DELETE FROM clinlims.result_limits WHERE id = ?", LIMIT_ID);
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
     }
 
     @Test
@@ -208,8 +168,8 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getSummary_callLoggedBeforeRelease_isCompliant() {
         // negative delta: the callback happened at result entry, release came after
-        jdbc.update("DELETE FROM clinlims.critical_callback WHERE analysis_id = ?", ANALYSIS_UNLOGGED);
-        seedCallback(ANALYSIS_UNLOGGED, "CONFIRMED", "2026-01-15 06:00:00", "Dr. Early");
+        fixture.deleteCallbacksFor(ANALYSIS_UNLOGGED);
+        fixture.seedCallback(ANALYSIS_UNLOGGED, "CONFIRMED", "2026-01-15 06:00:00", "Dr. Early");
 
         CallbackSummaryResponse summary = callbackService.getSummary(FROM, TO);
 
@@ -230,7 +190,7 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
         // never-logged critical sorts first — it is the actionable gap
         CallbackEvent unlogged = detail.getItems().get(0);
         assertEquals(String.valueOf(ANALYSIS_UNLOGGED), unlogged.getAnalysisId());
-        assertEquals("CBCT" + SAMPLE_ID, unlogged.getLabNumber());
+        assertEquals("CBCT" + TEST_ID, unlogged.getLabNumber());
         assertEquals("CallbackComputeIT", unlogged.getTestName());
         assertEquals("98", unlogged.getResultValue());
         assertEquals("≤ 10 / ≥ 90", unlogged.getCriticalRange());
@@ -274,7 +234,7 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getDetail_repeatAttempts_countOnceAndShowLatest() {
         // UNABLE at 08:10 then CONFIRMED at 08:40 — one denominator row, latest wins
-        seedCallback(ANALYSIS_UNREACHED, "CONFIRMED", "2026-01-15 08:40:00", "Dr. Retry");
+        fixture.seedCallback(ANALYSIS_UNREACHED, "CONFIRMED", "2026-01-15 08:40:00", "Dr. Retry");
 
         CallbackSummaryResponse summary = callbackService.getSummary(FROM, TO);
         assertEquals(4, summary.getCriticalCount());

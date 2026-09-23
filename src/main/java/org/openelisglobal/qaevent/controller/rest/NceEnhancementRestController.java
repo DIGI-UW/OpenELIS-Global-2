@@ -13,6 +13,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.openelisglobal.qaevent.bean.CapaRegisterItem;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
@@ -113,7 +114,7 @@ public class NceEnhancementRestController extends BaseRestController {
      * their parent NCE.
      */
     @GetMapping(value = "/capa-register", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public ResponseEntity<List<CapaRegisterItem>> getCapaRegister() {
         return ResponseEntity.ok(nceActionLogService.getCapaRegister(CAPA_REGISTER_LIMIT));
     }

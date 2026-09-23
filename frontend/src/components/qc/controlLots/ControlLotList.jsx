@@ -4,7 +4,7 @@
  * Lists all QC control lots with status filtering and navigation to create/edit.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   DataTable,
   TableContainer,
@@ -32,6 +32,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import LeveyJenningsChart from "../charts/LeveyJenningsChart";
+import { useControlLotChart } from "../charts/controlLotChart";
 
 const STATUS_TAG = {
   ESTABLISHMENT: "gray",
@@ -61,60 +62,19 @@ const ControlLotList = () => {
   // Lot-level Levey-Jennings chart. The lot-scoped endpoints existed
   // before this — the list just never linked to them.
   const [chartLot, setChartLot] = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [chartStatistics, setChartStatistics] = useState(null);
-  const [chartLoading, setChartLoading] = useState(false);
+  const {
+    chartData,
+    statistics: chartStatistics,
+    loading: chartLoading,
+    load: loadChart,
+  } = useControlLotChart();
 
-  // Guards against a stale response: reopening the modal for another lot bumps
-  // the sequence, and any response from a superseded request is dropped —
-  // otherwise lot A's slow chart data could render under lot B's heading.
-  const chartRequestSeq = useRef(0);
+  // A point with no z-score cannot be placed on a Levey-Jennings chart.
+  const plottablePoints = chartData.filter((pt) => pt.zScore != null);
 
   const openChart = (lot) => {
-    const seq = ++chartRequestSeq.current;
     setChartLot(lot);
-    setChartData([]);
-    setChartStatistics(null);
-    setChartLoading(true);
-
-    let completedCalls = 0;
-    const checkDone = () => {
-      completedCalls++;
-      if (completedCalls >= 2) {
-        setChartLoading(false);
-      }
-    };
-
-    getFromOpenElisServer(`/rest/qc/charts/${lot.id}`, (response) => {
-      if (seq !== chartRequestSeq.current) return;
-      const dataPoints =
-        response?.dataPoints || response?.data?.dataPoints || [];
-      setChartData(
-        dataPoints
-          .filter((pt) => (pt.zscore ?? pt.zScore) != null)
-          .map((pt) => ({
-            id: pt.resultId,
-            runDateTime: pt.timestamp,
-            resultValue: pt.value,
-            value: pt.value,
-            zScore: pt.zscore ?? pt.zScore,
-            violated: pt.hasViolation,
-            violations: (pt.violatedRules || []).map((rule) => ({
-              code: rule,
-            })),
-          })),
-      );
-      checkDone();
-    });
-
-    getFromOpenElisServer(
-      `/rest/qc/charts/${lot.id}/statistics`,
-      (response) => {
-        if (seq !== chartRequestSeq.current) return;
-        setChartStatistics(response && response.mean != null ? response : null);
-        checkDone();
-      },
-    );
+    loadChart(lot.id);
   };
 
   const statusOptions = [
@@ -214,7 +174,7 @@ const ControlLotList = () => {
           },
           {
             label: intl.formatMessage({ id: "qc.dashboard.title" }),
-            link: "/analyzers/qc/db",
+            link: "/qa/qc/dashboard",
           },
           {
             label: intl.formatMessage({ id: "qc.controlLots.title" }),
@@ -380,13 +340,13 @@ const ControlLotList = () => {
                 id: "qc.instrumentDetail.chart.loading",
               })}
             />
-          ) : chartData.length === 0 ? (
+          ) : plottablePoints.length === 0 ? (
             <p data-testid="control-lot-chart-empty">
               {intl.formatMessage({ id: "qc.instrumentDetail.chart.noData" })}
             </p>
           ) : (
             <LeveyJenningsChart
-              data={chartData}
+              data={plottablePoints}
               statistics={chartStatistics}
               height="350px"
               showLegend={true}

@@ -3,6 +3,7 @@ package org.openelisglobal.qc.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.qc.dao.QCResultDAO;
@@ -110,7 +111,9 @@ public class QCChartDataServiceImpl implements QCChartDataService {
             List<QCRuleViolation> violations = getViolationsForResults(resultIds);
             QCStatistics stats = statisticsService.getLatestStatistics(lot.getId());
             SigmaMetrics.SigmaResult sigma = computeSigmaForLot(lot, stats);
-            sections.add(new LotSection(lot, resolveTestName(lot.getTestId()), results, violations, stats, sigma));
+            String testName = testService.getLabelOrDefault(lot.getTestId(), Test::getLocalizedName,
+                    Objects.toString(lot.getTestId(), ""));
+            sections.add(new LotSection(lot, testName, results, violations, stats, sigma));
             totalRuns += results.size();
             totalViolations += violations.size();
             if (truncated) {
@@ -136,17 +139,5 @@ public class QCChartDataServiceImpl implements QCChartDataService {
         }
         return SigmaMetrics.compute(stats == null ? null : stats.getMean(),
                 stats == null ? null : stats.getStandardDeviation(), tea);
-    }
-
-    private String resolveTestName(String testId) {
-        if (testId == null) {
-            return "";
-        }
-        Test test = testService.getTestById(testId);
-        if (test == null) {
-            return testId;
-        }
-        String name = test.getLocalizedName();
-        return (name == null || name.isBlank()) ? testId : name;
     }
 }

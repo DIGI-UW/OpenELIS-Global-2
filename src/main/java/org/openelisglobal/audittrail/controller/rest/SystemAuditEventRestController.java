@@ -30,14 +30,13 @@ import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
 import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,9 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SystemAuditEventRestController {
 
-    private static final int MAX_EXPORT_ROWS = 10000;
-
-    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = HistoryService.SYSTEM_AUDIT_ENTITY_TABLES;
+    private static final int MAX_EXPORT_ROWS = PdfExportSupport.MAX_EXPORT_ROWS;
 
     private static final String PATIENT_ENTITY_NAME = "PATIENT";
     private static final String PERSON_ENTITY_NAME = "PERSON";
@@ -62,9 +59,6 @@ public class SystemAuditEventRestController {
 
     @Autowired
     private HistoryService historyService;
-
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -81,16 +75,9 @@ public class SystemAuditEventRestController {
 
     @PostConstruct
     private void initRefTableCache() {
-        Map<String, String> nameToId = new HashMap<>();
+        this.refTableNameToId = historyService.getSystemAuditReferenceTableIds();
         Map<String, String> idToName = new HashMap<>();
-        for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
-            if (rt != null) {
-                nameToId.put(tableName, rt.getId());
-                idToName.put(rt.getId(), tableName);
-            }
-        }
-        this.refTableNameToId = Collections.unmodifiableMap(nameToId);
+        this.refTableNameToId.forEach((name, id) -> idToName.put(id, name));
         this.refTableIdToName = Collections.unmodifiableMap(idToName);
     }
 
