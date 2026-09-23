@@ -36,7 +36,44 @@ jobs:
       transfer_mode: ${{ steps.context.outputs.transfer_mode }}
       artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
       checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
+      skip: ${{ steps.scope.outputs.skip }}
     steps:
+      # workflow_run always runs from the default branch, so this is the
+      # default branch's copy of the scope rules, not the pull request's.
+      - name: Checkout scope script
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Decide E2E scope
+        id: scope
+        uses: actions/github-script@v8
+        env:
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          script: |
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            let skip = false;
+            if (process.env.RUN_EVENT === 'pull_request') {
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+              const pull = await scope.findPullRequest({ github, owner, repo,
+                headOwner: process.env.HEAD_OWNER, headBranch: process.env.HEAD_BRANCH,
+                headSha: process.env.HEAD_SHA });
+              if (pull) {
+                const files = await scope.listPullRequestFiles({ github, owner, repo, pullNumber: pull.number });
+                skip = !scope.requiresE2E(files);
+                core.info(`PR #${pull.number}: ${files.length} changed file(s); E2E ${skip ? 'skipped: documentation only' : 'required'}`);
+              } else {
+                core.info('No open pull request matches this head; running E2E.');
+              }
+            }
+            core.setOutput('skip', skip ? 'true' : 'false');
+
       - name: Download early build context artifact
         id: download_context
         uses: actions/download-artifact@v6
@@ -60,6 +97,20 @@ jobs:
       - name: Parse build context
         id: context
         run: |
+          if [ "${{ steps.scope.outputs.skip }}" = "true" ]; then
+            echo "Documentation-only pull request; E2E suites are skipped."
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "checkout_ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "status_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_source_mode=skipped" >> "$GITHUB_OUTPUT"
+            echo "transfer_mode=none" >> "$GITHUB_OUTPUT"
+            echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+            echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ "${{ steps.download_context.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
             echo "No build context artifact — build likely failed."
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
@@ -313,7 +364,7 @@ jobs:
   missing-image-transfer:
     name: Missing Image Transfer
     needs: setup
-    if: needs.setup.result == 'success' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
+    if: needs.setup.result == 'success' && needs.setup.outputs.skip != 'true' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
     runs-on: ubuntu-latest
     steps:
       - name: Report missing transfer
@@ -340,6 +391,11 @@ jobs:
         run: |
           IS_FORK="${{ needs.setup.outputs.is_fork }}"
           ARTIFACT_MODE="${{ needs.setup.outputs.artifact_source_mode }}"
+
+          if [[ "${{ needs.setup.result }}" == "success" && "${{ needs.setup.outputs.skip }}" == "true" ]]; then
+            echo "E2E gate passed: documentation-only pull request, suites skipped."
+            exit 0
+          fi
 
           if [[ "$IS_FORK" == "true" ]]; then
             # Fork path: when same_run publication is required, fork image publish
@@ -392,6 +448,9 @@ jobs:
             if (gateResult === 'cancelled') {
               state = 'error';
               description = 'E2E run was cancelled';
+            } else if (artifactSourceMode === 'skipped' && gateResult === 'success') {
+              state = 'success';
+              description = 'Documentation-only change; E2E suites skipped';
             } else if (artifactSourceMode === 'none' && !isFork) {
               state = 'failure';
               description = 'E2E build failed - no Docker images were produced';
