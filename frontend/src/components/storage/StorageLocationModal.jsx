@@ -338,7 +338,7 @@ const StorageLocationModal = ({
         payload.port = formData.port ? parseInt(formData.port, 10) : null;
         payload.communicationProtocol =
           formData.communicationProtocol?.trim() || "BACnet";
-        if (mode === "create" && selectedParentRoomId) {
+        if (selectedParentRoomId) {
           payload.parentRoomId = selectedParentRoomId;
         }
       } else if (locationType === "shelf") {
@@ -348,14 +348,14 @@ const StorageLocationModal = ({
           ? parseInt(formData.capacityLimit, 10)
           : null;
         payload.active = formData.active;
-        if (mode === "create" && selectedParentDeviceId) {
+        if (selectedParentDeviceId) {
           payload.parentDeviceId = selectedParentDeviceId;
         }
       } else if (locationType === "rack") {
         payload.label = formData.label.trim();
         payload.code = formData.code?.trim() || null;
         payload.active = formData.active;
-        if (mode === "create" && selectedParentShelfId) {
+        if (selectedParentShelfId) {
           payload.parentShelfId = selectedParentShelfId;
         }
       }
