@@ -17,6 +17,7 @@ import {
   TableBody,
   TableCell,
   Tile,
+  ClickableTile,
   Loading,
   Pagination,
 } from "@carbon/react";
@@ -218,6 +219,10 @@ function PathologyDashboard() {
     return selectedValue;
   };
 
+  const selectStatusFilter = (statusId) => {
+    setFilters({ ...filters, statuses: [{ id: statusId }] });
+  };
+
   const filtersToParameters = () => {
     return (
       "statuses=" +
@@ -325,6 +330,7 @@ function PathologyDashboard() {
     {
       title: <FormattedMessage id="pathology.label.review" />,
       count: counts.awaitingReview,
+      onClick: () => selectStatusFilter("READY_PATHOLOGIST"),
     },
     {
       title: <FormattedMessage id="pathology.label.requests" />,
@@ -371,12 +377,20 @@ function PathologyDashboard() {
         </Column>
       </Grid>
       <div className="dashboard-container">
-        {tileList.map((tile, index) => (
-          <Tile key={index} className="dashboard-tile">
-            <h3 className="tile-title">{tile.title}</h3>
-            <p className="tile-value">{tile.count}</p>
-          </Tile>
-        ))}
+        {tileList.map((tile, index) => {
+          const DashboardTile = tile.onClick ? ClickableTile : Tile;
+
+          return (
+            <DashboardTile
+              key={index}
+              className="dashboard-tile"
+              onClick={tile.onClick}
+            >
+              <h3 className="tile-title">{tile.title}</h3>
+              <p className="tile-value">{tile.count}</p>
+            </DashboardTile>
+          );
+        })}
       </div>
       <div className="orderLegendBody">
         <Grid fullWidth={true} className="gridBoundary">
