@@ -208,6 +208,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
                     isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
             roleService.update(existingRole);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Updated role: " + name);
             return existingRole;
         } else {
             // Create new role
