@@ -35,6 +35,7 @@ import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SampleEntryTestsForTypeProviderRestControllerTest {
@@ -64,6 +65,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     @Mock
     private MicrobiologyReferenceService microbiologyReferenceService;
     @Mock
+    private TypeOfSampleTestService typeOfSampleTestService;
+    @Mock
     private HttpServletRequest request;
 
     private SampleEntryTestsForTypeProviderRestController controller;
@@ -72,7 +75,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     public void setUp() {
         controller = new SampleEntryTestsForTypeProviderRestController(panelService, testSectionService,
                 samplePanelService, panelItemService, typeOfSampleService, userService, roleService, programService,
-                testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService);
+                testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService,
+                typeOfSampleTestService);
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(17);
         when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(userSessionData);
