@@ -806,6 +806,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     candidate={candidate}
                     onCandidateChange={setCandidate}
                     onClose={onClose}
+                    onVerifyMappings={() => editStep("verify")}
                   />
                 ) : (
                   <Loading

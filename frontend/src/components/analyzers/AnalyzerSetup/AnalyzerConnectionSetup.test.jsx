@@ -174,6 +174,7 @@ const candidate = {
 const renderConnection = ({
   onCandidateChange = vi.fn(),
   onClose = vi.fn(),
+  onVerifyMappings,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -187,6 +188,7 @@ const renderConnection = ({
           candidate={candidate}
           onCandidateChange={onCandidateChange}
           onClose={onClose}
+          onVerifyMappings={onVerifyMappings}
         />
       </IntlProvider>
     </Router>,
@@ -502,6 +504,42 @@ describe("AnalyzerConnectionSetup", () => {
       expect(
         screen.getByText("The Bridge reached the analyzer at 10.1.2.3."),
       ).toBeVisible();
+    });
+  });
+
+  describe("when activation is blocked", () => {
+    const blockedBy = (...codes) =>
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          status: "SETUP",
+          ready: false,
+          activated: false,
+          blockers: codes.map((code) => ({ code, args: {} })),
+        }),
+      );
+
+    it("offers to verify mappings when the pinned mappings are stale", async () => {
+      blockedBy("analyzer.activation.blocker.recognition");
+      const onVerifyMappings = vi.fn();
+      renderConnection({ onVerifyMappings });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Verify mappings" }),
+      );
+      expect(onVerifyMappings).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not offer mapping verification for unrelated blockers", async () => {
+      blockedBy("analyzer.activation.blocker.labUnit");
+      renderConnection({ onVerifyMappings: vi.fn() });
+
+      expect(
+        await screen.findByText("Assign at least one active lab unit."),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "Verify mappings" }),
+      ).not.toBeInTheDocument();
     });
   });
 
