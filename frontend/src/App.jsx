@@ -30,46 +30,7 @@ import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import ReferenceLabResults from "./components/referenceLabResults";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
-
-/**
- * Wraps `React.lazy` with retry-on-failure semantics for the dynamic
- * `import()` factory. Handles transient chunk-fetch failures — e.g.
- * Chrome's `ERR_NETWORK_CHANGED` when the browser's network state
- * flickers during a chunk request, or any single failed resource fetch
- * that leaves the lazy component permanently broken until page reload.
- *
- * Without retry, a single chunk-fetch blip crashes the route and
- * surfaces as an E2E failure: the RouteErrorBoundary catches the
- * `TypeError: Failed to fetch dynamically imported module` and shows
- * its "module could not be loaded" fallback. Seen as a recurring
- * develop-CI flake on route chunk fetch; the retry wrapper
- * gives the browser three chances with backoff before giving up.
- *
- * Backoff is intentionally short (0.5s/1s/1.5s): the real failures
- * are transient TCP / Docker-network conditions that resolve in
- * milliseconds. Longer waits would harm real error reporting when the
- * chunk is genuinely missing (e.g., deploy mismatch).
- */
-function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
-  // This helper is the one legitimate wrapper around React.lazy.
-  // eslint-disable-next-line local/no-raw-react-lazy
-  return React.lazy(async () => {
-    let lastError;
-    for (let attempt = 0; attempt < retries; attempt += 1) {
-      try {
-        return await factory();
-      } catch (err) {
-        lastError = err;
-        if (attempt < retries - 1) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, backoffMs * (attempt + 1)),
-          );
-        }
-      }
-    }
-    throw lastError;
-  });
-}
+import lazyWithRetry from "./components/common/lazyWithRetry";
 
 const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
 const AnalyzerTypesPage = lazyWithRetry(
