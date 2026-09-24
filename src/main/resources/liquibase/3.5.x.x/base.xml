@@ -597,4 +597,7 @@
   <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
   <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
 
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="112-analyzer-delivery-action.xml"/>
+
 </databaseChangeLog>

@@ -19,10 +19,13 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
 
     private final BridgeOutboxClient outboxClient;
     private final AnalyzerService analyzerService;
+    private final AnalyzerDeliveryActionService deliveryActionService;
 
-    public AnalyzerDeliveryIssueServiceImpl(BridgeOutboxClient outboxClient, AnalyzerService analyzerService) {
+    public AnalyzerDeliveryIssueServiceImpl(BridgeOutboxClient outboxClient, AnalyzerService analyzerService,
+            AnalyzerDeliveryActionService deliveryActionService) {
         this.outboxClient = outboxClient;
         this.analyzerService = analyzerService;
+        this.deliveryActionService = deliveryActionService;
     }
 
     @Override
@@ -39,18 +42,51 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
 
     @Override
     public void retry(String outboxEntryId, String actor) {
+        // Resolved before the action: a retried entry leaves the dead-lettered
+        // listing, so it is no longer resolvable afterwards.
+        String analyzerId = resolveAnalyzerId(outboxEntryId);
         outboxClient.retry(outboxEntryId);
         // The Bridge records only OpenELIS's service account, so the person who asked
         // is recorded here.
+        deliveryActionService.retain(outboxEntryId, AnalyzerDeliveryActionService.RETRY, analyzerId, actor);
         LogEvent.logInfo(getClass().getSimpleName(), "retry",
                 "Analyzer delivery " + outboxEntryId + " retried by user " + actor);
     }
 
     @Override
     public void dismiss(String outboxEntryId, String actor) {
+        String analyzerId = resolveAnalyzerId(outboxEntryId);
         outboxClient.dismiss(outboxEntryId);
+        deliveryActionService.retain(outboxEntryId, AnalyzerDeliveryActionService.DISMISS, analyzerId, actor);
         LogEvent.logInfo(getClass().getSimpleName(), "dismiss",
                 "Analyzer delivery " + outboxEntryId + " dismissed by user " + actor);
+    }
+
+    /**
+     * The Bridge action endpoints do not echo the entry, so the analyzer is read
+     * from the dead-lettered listing that made the action available. Attribution of
+     * the actor does not depend on this, so a listing failure leaves the analyzer
+     * unresolved rather than blocking the action.
+     */
+    private String resolveAnalyzerId(String outboxEntryId) {
+        if (outboxEntryId == null) {
+            return null;
+        }
+        try {
+            Map<String, Analyzer> byConnection = analyzerService.getAllWithBindings().stream()
+                    .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(Collectors
+                            .toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));
+            for (JsonNode row : outboxClient.list(DEAD_LETTERED)) {
+                if (outboxEntryId.equals(text(row, "id"))) {
+                    Analyzer analyzer = byConnection.get(text(row, "connectionId"));
+                    return analyzer == null ? null : analyzer.getId();
+                }
+            }
+        } catch (RuntimeException exception) {
+            LogEvent.logWarn(getClass().getSimpleName(), "resolveAnalyzerId",
+                    "Cannot resolve the analyzer for delivery " + outboxEntryId + ": " + exception.getMessage());
+        }
+        return null;
     }
 
     private static AnalyzerDeliveryIssue toIssue(JsonNode row, Map<String, Analyzer> byConnection) {
