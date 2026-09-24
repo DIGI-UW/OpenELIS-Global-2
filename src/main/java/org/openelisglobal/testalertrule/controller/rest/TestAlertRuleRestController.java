@@ -12,6 +12,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testalertrule.service.TestAlertRuleService;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,19 +53,64 @@ public class TestAlertRuleRestController extends BaseRestController {
 
     private final RoleService roleService;
 
+    private final TestResultComponentService testResultComponentService;
+
+    private final TypeOfSampleService typeOfSampleService;
+
     public TestAlertRuleRestController(TestAlertRuleService alertRuleService, TestService testService,
-            RoleService roleService) {
+            RoleService roleService, TestResultComponentService testResultComponentService,
+            TypeOfSampleService typeOfSampleService) {
         this.alertRuleService = alertRuleService;
         this.testService = testService;
         this.roleService = roleService;
+        this.testResultComponentService = testResultComponentService;
+        this.typeOfSampleService = typeOfSampleService;
     }
 
-    /** Create/update payload for an alert rule. */
+    /**
+     * The components a rule on this test may name, so the editor can offer them. A
+     * single-component test returns its one component and the UI can stay simple; a
+     * multi-component test has to be explicit about which measurement the rule is
+     * about.
+     */
+    @GetMapping(value = "/components", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdValuePair> components(@PathVariable String testId) {
+        requireTest(testId);
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .map(c -> new IdValuePair(c.getId(), c.getLabel() == null ? c.getCode() : c.getLabel()))
+                .collect(Collectors.toList());
+    }
+
+    /** The specimens this test runs on, for the rule's specimen scope. */
+    @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdValuePair> sampleTypes(@PathVariable String testId) {
+        requireTest(testId);
+        return typeOfSampleService.getTypeOfSampleForTest(testId).stream()
+                .map(t -> new IdValuePair(t.getId(), t.getLocalizedName())).collect(Collectors.toList());
+    }
+
+    /**
+     * Create/update payload for an alert rule.
+     *
+     * <p>
+     * {@code id}, {@code testId} and {@code lastupdated} are server-managed but
+     * deliberately declared so a client may round-trip the representation GET
+     * returns (the REST norm for PUT). Their values are ignored on write — identity
+     * comes from the path and the version from the database. Truly unknown fields
+     * still fail deserialization: the contract stays explicit.
+     */
     public static class AlertRuleRequest {
+        public String id;
+        public String testId;
+        public java.sql.Timestamp lastupdated;
         public String name;
         public Boolean enabled;
         public String triggerType;
         public String triggerValue;
+        /** Result component the rule watches; null watches every component. */
+        public String componentId;
+        /** Specimen the rule watches; null watches every specimen. */
+        public String sampleTypeId;
         public Boolean notifySms;
         public Boolean notifyEmail;
         public Boolean notifyOrderingPhysician;
@@ -75,10 +122,57 @@ public class TestAlertRuleRestController extends BaseRestController {
         public Boolean acknowledgmentRequired;
     }
 
+    /**
+     * Response shape for an alert rule — a plain DTO like every other catalog
+     * section, never the Hibernate entity (which leaks {@code lastupdated} /
+     * {@code sysUserId} and made the GET representation un-PUT-able).
+     */
+    public static class AlertRuleDto {
+        public String id;
+        public String testId;
+        public String name;
+        public Boolean enabled;
+        public String triggerType;
+        public String triggerValue;
+        public String componentId;
+        public String sampleTypeId;
+        public Boolean notifySms;
+        public Boolean notifyEmail;
+        public Boolean notifyOrderingPhysician;
+        public Boolean notifyPatient;
+        public Boolean notifyReferringFacility;
+        public String notifyCustomPhone;
+        public String notifyCustomEmail;
+        public String notifyRoleId;
+        public Boolean acknowledgmentRequired;
+
+        static AlertRuleDto of(TestAlertRule rule) {
+            AlertRuleDto dto = new AlertRuleDto();
+            dto.id = rule.getId();
+            dto.testId = rule.getTestId();
+            dto.name = rule.getName();
+            dto.enabled = rule.getEnabled();
+            dto.triggerType = rule.getTriggerType();
+            dto.triggerValue = rule.getTriggerValue();
+            dto.componentId = rule.getComponentId();
+            dto.sampleTypeId = rule.getSampleTypeId();
+            dto.notifySms = rule.getNotifySms();
+            dto.notifyEmail = rule.getNotifyEmail();
+            dto.notifyOrderingPhysician = rule.getNotifyOrderingPhysician();
+            dto.notifyPatient = rule.getNotifyPatient();
+            dto.notifyReferringFacility = rule.getNotifyReferringFacility();
+            dto.notifyCustomPhone = rule.getNotifyCustomPhone();
+            dto.notifyCustomEmail = rule.getNotifyCustomEmail();
+            dto.notifyRoleId = rule.getNotifyRoleId();
+            dto.acknowledgmentRequired = rule.getAcknowledgmentRequired();
+            return dto;
+        }
+    }
+
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<TestAlertRule> list(@PathVariable String testId) {
+    public List<AlertRuleDto> list(@PathVariable String testId) {
         requireTest(testId);
-        return alertRuleService.getByTestId(testId);
+        return alertRuleService.getByTestId(testId).stream().map(AlertRuleDto::of).collect(Collectors.toList());
     }
 
     /**
@@ -92,28 +186,30 @@ public class TestAlertRuleRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TestAlertRule> create(@PathVariable String testId, @RequestBody AlertRuleRequest body,
+    public ResponseEntity<AlertRuleDto> create(@PathVariable String testId, @RequestBody AlertRuleRequest body,
             HttpServletRequest request) {
         requireTest(testId);
         validate(body);
+        validateScope(testId, body);
 
         TestAlertRule rule = new TestAlertRule();
         rule.setTestId(testId);
         apply(rule, body);
         rule.setSysUserId(ControllerUtills.getSysUserId(request));
         alertRuleService.insert(rule);
-        return ResponseEntity.status(HttpStatus.CREATED).body(rule);
+        return ResponseEntity.status(HttpStatus.CREATED).body(AlertRuleDto.of(rule));
     }
 
     @PutMapping(value = "/{ruleId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public TestAlertRule update(@PathVariable String testId, @PathVariable String ruleId,
+    public AlertRuleDto update(@PathVariable String testId, @PathVariable String ruleId,
             @RequestBody AlertRuleRequest body, HttpServletRequest request) {
         TestAlertRule rule = requireRule(testId, ruleId);
         validate(body);
+        validateScope(testId, body);
         apply(rule, body);
         rule.setSysUserId(ControllerUtills.getSysUserId(request));
         alertRuleService.update(rule);
-        return rule;
+        return AlertRuleDto.of(rule);
     }
 
     @DeleteMapping(value = "/{ruleId}")
@@ -154,8 +250,34 @@ public class TestAlertRuleRestController extends BaseRestController {
         }
     }
 
+    /**
+     * A rule may only name a component of its own test and a specimen that test
+     * actually runs on. Without this the API accepts a rule that can never match
+     * anything — it looks configured and silently never fires.
+     */
+    private void validateScope(String testId, AlertRuleRequest body) {
+        if (body.componentId != null && !body.componentId.isBlank()) {
+            boolean belongs = testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                    .anyMatch(c -> body.componentId.equals(c.getId()));
+            if (!belongs) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "componentId is not an active component of this test: " + body.componentId);
+            }
+        }
+        if (body.sampleTypeId != null && !body.sampleTypeId.isBlank()) {
+            boolean runsOn = typeOfSampleService.getTypeOfSampleForTest(testId).stream()
+                    .anyMatch(t -> body.sampleTypeId.equals(t.getId()));
+            if (!runsOn) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "sampleTypeId is not a specimen this test runs on: " + body.sampleTypeId);
+            }
+        }
+    }
+
     private void apply(TestAlertRule rule, AlertRuleRequest body) {
         rule.setName(body.name);
+        rule.setComponentId(body.componentId == null || body.componentId.isBlank() ? null : body.componentId);
+        rule.setSampleTypeId(body.sampleTypeId == null || body.sampleTypeId.isBlank() ? null : body.sampleTypeId);
         rule.setEnabled(body.enabled == null ? Boolean.TRUE : body.enabled);
         rule.setTriggerType(body.triggerType);
         rule.setTriggerValue("SPECIFIC_VALUE".equals(body.triggerType) ? body.triggerValue : null);

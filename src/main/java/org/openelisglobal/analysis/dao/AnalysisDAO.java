@@ -18,6 +18,7 @@ package org.openelisglobal.analysis.dao;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -82,6 +83,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -125,6 +128,10 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
+    List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -160,10 +167,50 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) throws LIMSRuntimeException;
 
+    List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnRangeByStatusId(Date lowDate, Date highDate, String statusID)
             throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
+
+    /**
+     * Projected [sampleItemId, analysisId] pairs for patient analyses of a test
+     * completed on an analyzer within a window, newest first. Returns scalar ids —
+     * not managed entities — so the caller can dedupe result revisions to distinct
+     * samples and avoid loading version-locked rows that collide under concurrent
+     * NCE creation (OGC-728). Callers dedupe/cap by sample.
+     */
+    List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
+
+    /**
+     * The lab-unit-keyed counterpart of
+     * {@link #getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange}, for
+     * controls run at the bench (OGC-1147). A manual or RDT control has no
+     * analyzer, so its blast radius is every analysis of that test completed in the
+     * same lab unit inside the window. Same contract otherwise: {sampleItemId,
+     * analysisId} pairs, newest first, callers dedupe and cap by sample.
+     */
+    List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
+
+    /**
+     * Lab-unit-keyed counterpart of
+     * {@link #existsAnalysisCompletedBeforeByAnalyzerAndTest}, so a bench control's
+     * cap reason is as accurate as an analyzer's.
+     */
+    boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
+
+    /**
+     * Whether any patient analysis of a test completed on an analyzer strictly
+     * before the given time. Used to tell whether the 24h affected-samples floor
+     * actually excluded samples (OGC-728 cap-reason accuracy).
+     */
+    boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisEnteredAfterDate(Timestamp latestCollectionDate) throws LIMSRuntimeException;
 
@@ -200,16 +247,27 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList);
     // void updateData(Analysis analysis, boolean skipAuditTrail) throws
     // LIMSRuntimeException;
 
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> statusIdList,
+            boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList);
 
     int getCountAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber);
@@ -219,6 +277,19 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber, String upperRangeAccessionNumber, boolean doRange, boolean finished);
+
+    /**
+     * Pending analyses for the batch workplan, with every exclusion applied in the
+     * query so {@code maxResults} caps rows the caller will actually show. Capping
+     * first and filtering afterwards can return nothing while eligible rows exist.
+     *
+     * @param testIdList          tests the caller may see; empty means none
+     * @param excludedAnalysisIds analyses already held by an open batch
+     */
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) throws LIMSRuntimeException;
+
+    List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate);
@@ -235,11 +306,43 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
 
+    int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
+    int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 
     int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds);
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}.
+     */
+    int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}.
+     */
+    int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}.
+     */
+    int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds);
 
     List<Analysis> getAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
 

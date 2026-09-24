@@ -5,7 +5,10 @@ import ExistingOrder from "./ExistingOrder";
 import PrePrint from "./PrePrint";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "barcode.print.title", link: "/PrintBarcode" },
+];
 const PrintBarcode = () => {
   return (
     <div>

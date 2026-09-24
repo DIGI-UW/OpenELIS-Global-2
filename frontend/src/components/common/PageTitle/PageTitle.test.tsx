@@ -23,14 +23,14 @@ const renderWithIntl = (component: ReactElement) => {
 };
 
 describe("PageTitle Component", () => {
-  it("should render simple breadcrumb without back arrow", () => {
+  it("should render the current page name as the page heading", () => {
     renderWithIntl(<PageTitle breadcrumbs={[{ label: "Analyzers" }]} />);
 
-    expect(screen.getByText("Analyzers")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Analyzers" })).not.toBeNull();
     expect(screen.queryByTestId("page-title-back-button")).toBeNull();
   });
 
-  it("should render hierarchical breadcrumbs with separator", () => {
+  it("should render only the last segment, leaving the trail to the breadcrumb", () => {
     renderWithIntl(
       <PageTitle
         breadcrumbs={[
@@ -41,13 +41,12 @@ describe("PageTitle Component", () => {
       />,
     );
 
-    expect(screen.getByText("Analyzers")).not.toBeNull();
-    expect(screen.getByText("Field Mappings")).not.toBeNull();
-    expect(screen.getByText("Hematology Analyzer 1")).not.toBeNull();
-
-    // Check separators
-    const separators = screen.getAllByText(">");
-    expect(separators).toHaveLength(2);
+    expect(
+      screen.getByRole("heading", { name: "Hematology Analyzer 1", level: 1 }),
+    ).not.toBeNull();
+    expect(screen.queryByText("Analyzers")).toBeNull();
+    expect(screen.queryByText("Field Mappings")).toBeNull();
+    expect(screen.queryByText(">")).toBeNull();
   });
 
   it("should render back arrow when showBackArrow is true", () => {
@@ -62,22 +61,6 @@ describe("PageTitle Component", () => {
     );
 
     expect(screen.getByTestId("page-title-back-button")).not.toBeNull();
-  });
-
-  it("should render clickable breadcrumb links", async () => {
-    renderWithIntl(
-      <PageTitle
-        breadcrumbs={[
-          { label: "Analyzers", link: "/analyzers" },
-          { label: "Field Mappings" },
-        ]}
-      />,
-    );
-
-    const link = screen.getByTestId("breadcrumb-link-0");
-    expect(link).not.toBeNull();
-    await userEvent.click(link);
-    // Navigation verified by router (not tested here)
   });
 
   it("should render subtitle when provided", () => {

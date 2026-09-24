@@ -5,11 +5,15 @@ import {
   IbmWatsonDiscovery,
   IbmWatsonNaturalLanguageUnderstanding,
   Microscope,
+  Chemistry,
 } from "@carbon/icons-react";
 import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "routine.reports", link: "/RoutineReports" },
+];
 export const RoutineReportsMenu = {
   className: "resultSideNav",
   sideNavMenuItems: [
@@ -122,6 +126,16 @@ export const RoutineReportsMenu = {
         {
           link: "/RoutineReport?type=routine&report=CISampleRoutineExport",
           label: <FormattedMessage id="sideNav.label.exportcsvfile" />,
+        },
+      ],
+    },
+    {
+      title: <FormattedMessage id="sideNav.title.environmentalReports" defaultMessage="Environmental Reports" />,
+      icon: Chemistry,
+      SideNavMenuItem: [
+        {
+          link: "/LaporanHasil",
+          label: <FormattedMessage id="sideNav.label.laporanHasil" defaultMessage="Laporan Hasil (Compliance)" />,
         },
       ],
     },

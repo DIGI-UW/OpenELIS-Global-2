@@ -11,6 +11,7 @@ export interface TreeNode {
   flatName: string;
   subSets?: Array<TreeNode>;
   hasData?: true;
+  hiAbsolute?: number;
   hiCritical?: number;
   hiNormal?: number;
   lowAbsolute?: number;
@@ -19,6 +20,12 @@ export interface TreeNode {
   obs?: Array<ObservationData>;
   units?: string;
   range?: string;
+  // A leaf identifies one (test, sample type, component) series: `display` is
+  // the tree label, these three say what the series actually measures.
+  testName?: string;
+  sampleType?: string;
+  component?: string;
+  componentId?: string;
   [x: string]: any;
 }
 export interface FilterNodeProps {

@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
@@ -27,7 +26,7 @@ import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -59,7 +58,6 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
 
-        AccessionNumberValidatorFactory mockFactory = Mockito.mock(AccessionNumberValidatorFactory.class);
         IAccessionNumberValidator mockValidator = Mockito.mock(IAccessionNumberValidator.class);
         IAccessionNumberGenerator mockGenerator = Mockito.mock(IAccessionNumberGenerator.class);
 
@@ -72,12 +70,12 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
         Mockito.when(mockGenerator.getChangeableLength()).thenReturn(5);
         Mockito.when(mockGenerator.getInvarientLength()).thenReturn(5);
 
+        // AccessionNumberUtil resolves the factory from the Spring context on each
+        // call; AppTestConfig registers it as a Mockito mock. Stub that context
+        // bean rather than reflecting a (now removed) static field on the util.
+        AccessionNumberValidatorFactory mockFactory = SpringContext.getBean(AccessionNumberValidatorFactory.class);
         Mockito.when(mockFactory.getValidator(Mockito.any())).thenReturn(mockValidator);
         Mockito.when(mockFactory.getGenerator(Mockito.any())).thenReturn(mockGenerator);
-
-        Field field = AccessionNumberUtil.class.getDeclaredField("accessionNumberValidatorFactory");
-        field.setAccessible(true);
-        field.set(null, mockFactory);
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(serviceRequestProvider));

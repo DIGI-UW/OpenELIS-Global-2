@@ -64,6 +64,19 @@
   color: #da1e28;
 }
 
+/* The selected tile is the table's current filter, so it has to read as a
+   state rather than as a hover target. */
+.inventory-metric-tile--selected {
+  outline: 2px solid #0f62fe;
+  outline-offset: -2px;
+}
+
+/* Ties on specificity with the per-metric value colours above and wins by
+   coming after them; moved higher, a selected tile keeps its old colour. */
+.inventory-metric-tile.inventory-metric-tile--selected .metric-value {
+  color: #0f62fe;
+}
+
 /* Ensure proper spacing for toolbar items */
 .cds--toolbar-content {
   gap: 1rem;

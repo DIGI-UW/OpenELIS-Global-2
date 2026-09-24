@@ -60,7 +60,7 @@ public class ReferralServiceTest extends BaseWebContextSensitiveTest {
         List<Referral> referrals = rService.getSentReferrals();
 
         Assert.assertEquals(1, referrals.size());
-        Assert.assertEquals("African Health Org", referrals.get(0).getOrganizationName());
+        Assert.assertEquals("Health Corporations Ltd", referrals.get(0).getOrganizationName());
     }
 
     @Test
@@ -68,7 +68,7 @@ public class ReferralServiceTest extends BaseWebContextSensitiveTest {
         List<UUID> referrals = rService.getSentReferralUuids();
 
         Assert.assertEquals(1, referrals.size());
-        Assert.assertEquals("436a353f-8ac9-4a30-86db-bb6eda979b57", referrals.get(0).toString());
+        Assert.assertEquals("386e3e0c-013b-425b-ab5f-46f40278c5d3", referrals.get(0).toString());
     }
 
     @Test

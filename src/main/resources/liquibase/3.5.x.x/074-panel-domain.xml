@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-224 (Panel Management Domain Upgrade v2.2) - every panel carries a
+    single required domain, mirroring OGC-936's test.domain. Existing panels
+    backfill to CLINICAL (the launch scope); ENVIRONMENTAL / VECTOR unlock in
+    a later phase. The membership picker is domain-guarded so a panel never
+    mixes domains.
+    -->
+    <changeSet id="OGC-224-panel-domain-column" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="panel" columnName="domain"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="panel">
+            <column name="domain" type="VARCHAR(20)" defaultValue="CLINICAL">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.panel
+            ADD CONSTRAINT panel_domain_chk
+            CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.panel DROP CONSTRAINT panel_domain_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="panel" columnName="domain"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -102,6 +102,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setLod(d.getLod());
+                match.setLoq(d.getLoq());
                 match.setSysUserId(sysUserId);
                 update(match);
                 keptIds.add(match.getId());
@@ -122,6 +124,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setLod(d.getLod());
+                    slot.setLoq(d.getLoq());
                     slot.setIsActive("Y");
                     slot.setSysUserId(sysUserId);
                     update(slot);
@@ -451,6 +455,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setSignificantDigits(src.getSignificantDigits());
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
+            copy.setLod(src.getLod());
+            copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
             copy.setIsActive("Y");

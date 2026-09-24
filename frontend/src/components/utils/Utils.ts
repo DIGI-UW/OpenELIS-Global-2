@@ -1,4 +1,5 @@
 import config from "../../config.json";
+import { format } from "date-fns";
 import type { IntlShape } from "react-intl";
 
 // This utility is the compatibility boundary for hundreds of legacy JavaScript
@@ -26,6 +27,7 @@ export interface ApiMessagePayload {
 
 interface UserSessionDetails {
   roles?: string[];
+  permissions?: string[];
 }
 
 const csrfToken = (): string => localStorage.getItem("CSRF") as string;
@@ -97,6 +99,50 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+const DATE_FMT = "yyyy-MM-dd";
+
+/**
+ * Format a Date as a local `yyyy-MM-dd` string. Unlike `Date.toISOString()`,
+ * this reads the browser's LOCAL date components, so a date-only value picked in
+ * a UTC+ timezone is not rolled back a day when sent to the server. Non-Date
+ * input is returned as-is (or "" for null/undefined).
+ */
+export const toLocalIsoDate = (d: Date | string | null | undefined): string =>
+  !(d instanceof Date)
+    ? d || ""
+    : isNaN(d.getTime())
+      ? ""
+      : format(d, DATE_FMT);
+
+/**
+ * Turn a date string as CustomDatePicker renders it (`MM/dd/yyyy`, or
+ * `dd/MM/yyyy` under the French locale) back into the `yyyy-MM-dd` the server
+ * reads. Returns "" for anything that is not a three-part date.
+ */
+export const displayDateToIso = (
+  displayed: string | null | undefined,
+  dateLocale?: string,
+): string => {
+  const parts = (displayed || "").split("/");
+  if (parts.length !== 3) return "";
+  const [month, day] =
+    dateLocale === "fr-FR" ? [parts[1], parts[0]] : [parts[0], parts[1]];
+  return `${parts[2]}-${month}-${day}`;
+};
+
+/**
+ * Format a timestamp (epoch millis / ISO string / Date) as local
+ * `yyyy-MM-dd HH:mm`, or "—" when absent. Companion to toLocalIsoDate for
+ * date-time display columns. (Distinct from the legacy `formatTimestamp`
+ * below, which takes Unix SECONDS and renders a UTC AM/PM string.)
+ */
+export const toLocalIsoDateTime = (
+  value: Date | string | number | null | undefined,
+): string => {
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
+};
+
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
   endPoint: string,
   callback: (response: T | undefined) => void,
@@ -120,6 +166,14 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       // if (response.url.includes("LoginPage")) {
       //     throw "No Login Session";
       // }
+      // An error response carries a JSON body too. Handing that body to the
+      // caller as if it were data turns a 500 into a render-time crash, so a
+      // failed request reports nothing instead.
+      if (!response.ok) {
+        console.error(`GET ${endPoint} failed: HTTP ${response.status}`);
+        callback(undefined);
+        return;
+      }
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json().then((jsonResp) => {
@@ -130,12 +184,46 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       }
     })
     .catch((error) => {
-      if (error.name === "AbortError") {
+      if (error.name === "AbortError" || signal?.aborted) {
         return; // Component is unmounting — don't call callback
       }
       console.error(error);
       callback(undefined);
     });
+};
+
+/**
+ * Promise-based GET for the query layer.
+ *
+ * Legacy callers intentionally keep the callback contract above: many of
+ * them interpret an application error body as part of their existing flow.
+ * Cached reads need a different contract. A non-success HTTP response must
+ * reject so TanStack Query can put the screen in its error state instead of
+ * treating an error payload as usable data.
+ */
+export const fetchFromOpenElisServer = async <T>(
+  endPoint: string,
+  signal?: AbortSignal,
+): Promise<T> => {
+  const response = await fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "GET",
+    signal,
+    headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status}): ${endPoint}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error(`Expected a JSON response: ${endPoint}`);
+  }
+
+  return (await response.json()) as T;
 };
 
 export const postToOpenElisServer = <TExtra = unknown>(
@@ -229,6 +317,59 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     });
 };
 
+/**
+ * Posts a multipart form and hands back the parsed JSON body, for endpoints
+ * that answer an upload with a result rather than a bare status (the catalog
+ * import's preview and apply). A non-2xx answer still resolves, carrying the
+ * status, so callers can show the server's own message.
+ */
+export const postToOpenElisServerFormDataJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  formData: FormData,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: formData,
+  })
+    .then(handleSessionError)
+    .then((response) =>
+      response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}))
+        .then((parsed) =>
+          response.ok
+            ? parsed
+            : {
+                ...parsed,
+                status: response.status,
+                statusCode: response.status,
+              },
+        )
+        .catch(() => ({
+          error: `Request failed (HTTP ${response.status})`,
+          status: response.status,
+          statusCode: response.status,
+        })),
+    )
+    .then((body) => {
+      callback(body as T, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+      callback(undefined, extraParams);
+    });
+};
+
 export const postToOpenElisServerJsonResponse = <
   T = LegacyApiResponse,
   TExtra = unknown,
@@ -257,16 +398,28 @@ export const postToOpenElisServerJsonResponse = <
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        return response.json().then((errorJson) => {
-          // Include status code in error response for better error handling
-          return {
-            ...errorJson,
+        // For error responses, try to parse JSON. If the body is empty
+        // (older endpoints return .build() with no payload) the parse will
+        // fail — preserve the HTTP status so callers can still distinguish
+        // a 409 from a network error.
+        return response
+          .text()
+          .then((raw) => {
+            const parsed = raw ? JSON.parse(raw) : {};
+            return {
+              ...parsed,
+              status: response.status,
+              statusCode: response.status,
+              statusText: response.statusText,
+            };
+          })
+          .catch(() => ({
+            error: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
+            message: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
-          };
-        });
+          }));
       }
       // For successful responses, parse JSON normally
       return response.json();
@@ -309,6 +462,35 @@ export const postToOpenElisServerForBlob = (
       body: payLoad as BodyInit,
     },
   )
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
+};
+
+export const getFromOpenElisServerForBlob = (
+  endPoint: string,
+  callback: (blob: Blob, response: Response) => void,
+  errorCallback?: (error: Error) => void,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+  })
     .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
@@ -398,6 +580,51 @@ export const putToOpenElisServer = (
     });
 };
 
+export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (json: any, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: payLoad,
+  })
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorJson) => ({
+          ...errorJson,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        }));
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error("putToOpenElisServerJsonResponse error:", error);
+      callback(
+        {
+          error: error.message || "Network error",
+          message: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
+    });
+};
+
 export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   endPoint: string,
   payLoad: RequestPayload,
@@ -480,6 +707,25 @@ export const hasRole = (
   }
   return userSessionDetails.roles.includes(role);
 };
+
+/** True when the session carries the named permission. */
+export const hasPermission = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string | null | undefined,
+): boolean =>
+  !!permission && !!userSessionDetails?.permissions?.includes(permission);
+
+/**
+ * The gate feature entry points use: the named permission, or the global
+ * administrator role, which is allowed everything. Server-side @PreAuthorize is
+ * still the real check — this only decides whether to show the entry point.
+ */
+export const hasPermissionOrGlobalAdmin = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string,
+): boolean =>
+  hasPermission(userSessionDetails, permission) ||
+  hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers

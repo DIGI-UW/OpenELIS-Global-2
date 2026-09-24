@@ -46,6 +46,44 @@ This allows you to:
 - `org.openelisglobal.configuration.autocreate` - Enable/disable
   auto-initialization (default: `true`)
 
+## Test Catalog Domains
+
+The catalog is authored as CSV, one domain per subdirectory. They load in this
+order, so a file may refer to anything an earlier domain created:
+
+| Order | Domain               | One row is                                | Key columns                                                                                                                                                          |
+| ----- | -------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 100   | `test-sections/`     | a lab unit                                | `testSectionName` (max 20 chars)                                                                                                                                     |
+| 100   | `sample-types/`      | a specimen                                | `description` (max 40), `localAbbreviation` (max 10)                                                                                                                 |
+| 200   | `tests/`             | a test, linked to every specimen it lists | `testName`, `testSection`, `sampleType` (`\|`-separated), `loinc`, `localCode`, `reportingName`, `domain`, `amr`, `isReportable`, `notifyResults`, `localization:xx` |
+| 210   | `result-components/` | one result of a test                      | `testName`, `code`, `label`, `resultType`, `unitOfMeasure`, `significantDigits`, `isPrimary`                                                                         |
+| 300   | `panels/`            | a panel and its members                   | `panelName`, `sampleTypes`, `tests`                                                                                                                                  |
+| 310   | `test-results/`      | a select-list option                      | `testName`, `resultType`, `resultValue`                                                                                                                              |
+| 320   | `result-limits/`     | a numeric reference range                 | `testName`, `sampleType`, `componentCode`, `gender`, `minAge`, `maxAge`, `lowNormal`, `highNormal`, `lowCritical`, `highCritical`                                    |
+| 320   | `terminology/`       | a standard code for a test                | `testName`, `source` (LOINC/SNOMED/CIEL/OCL), `code`, `relationship`, `displayName`                                                                                  |
+| 320   | `sample-handling/`   | a test's storage and disposal rules       | `testName`, `storageCondition`, `storageDuration`, `disposalMethod`                                                                                                  |
+| 330   | `reflex-rules/`      | one condition and action of a rule        | `ruleName`, `overall`, `conditionTest`, `relation`, `value`, `reflexTest`                                                                                            |
+
+Every catalog row is loaded in its own transaction: a row the database rejects
+is skipped with its line number and the reason, and the rest of the file still
+loads. Each file ends with a line you can grep for:
+
+```
+SUMMARY file=tests-cphl.csv domain=tests created=21 updated=3 skipped=1
+```
+
+A name a file uses for a lab unit, specimen or test that the catalog does not
+know is not silently dropped: it waits in **Admin → Import Catalog (CSV) → Needs
+your decision**, where it can be pointed at the right record. Choosing "Remember
+this name" keeps the spelling, so later imports resolve it by themselves.
+
+Files can also be uploaded from that page. Preview evaluates each row against
+the catalog as it stands and keeps nothing, so on a first load a row that needs
+a lab unit, specimen or test another file of the same upload creates is listed
+as skipped with that reason; Apply writes the files into this directory and
+loads them in the order above, which resolves them. Start-up and the page stay
+one mechanism.
+
 ## Adding New Domains
 
 To add support for a new domain:

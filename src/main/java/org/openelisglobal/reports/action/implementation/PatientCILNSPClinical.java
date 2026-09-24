@@ -191,7 +191,7 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 copyParentData(data, parentData);
 
                 data.setResult(reportReferralResultValue);
-                data.setNote(note);
+                data.setNote(noteWithReferralAttribution(note, referral));
                 data.setSampleType(parentData.getSampleType());
                 data.setSampleId(parentData.getSampleId());
                 String testId = referralResult.getTestId();

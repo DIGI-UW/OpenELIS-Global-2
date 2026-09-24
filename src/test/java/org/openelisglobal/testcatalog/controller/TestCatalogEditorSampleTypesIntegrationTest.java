@@ -57,8 +57,6 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -85,8 +83,7 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         // create-in-place is field-injected (optional) in production; wire it here so
         // the createTest endpoint is exercisable.
         org.springframework.test.util.ReflectionTestUtils.setField(controller, "testCatalogCreationService",
@@ -125,6 +122,8 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
         jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR name = 'SampleTypesCreateIT'", TEST_ID);
         jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id IN (?, ?, ?, ?)", HUMAN_TYPE_A, HUMAN_TYPE_B,
                 ENV_TYPE, NULL_DOMAIN_TYPE);
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id IN (?, ?, ?, ?)", HUMAN_TYPE_A,
+                HUMAN_TYPE_B, ENV_TYPE, NULL_DOMAIN_TYPE);
         jdbc.update("DELETE FROM clinlims.localization WHERE id IN (?, ?, ?, ?)", HUMAN_TYPE_A, HUMAN_TYPE_B, ENV_TYPE,
                 NULL_DOMAIN_TYPE);
         typeOfSampleService.clearCache();
@@ -231,6 +230,25 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
         badDomain.domain = "CLINICAL";
         badDomain.sampleTypeIds = List.of(String.valueOf(ENV_TYPE));
         assertEquals(422, controller.createTest(badDomain, authedRequest()).getStatusCode().value());
+    }
+
+    @org.junit.Test
+    public void listSampleTypes_labelsByLocalizedName_notDescription() {
+        // The stock "Variable" row's description is a whole sentence ("Actual type
+        // will be selected by user"), so labelling by description makes the picker
+        // unreadable. Seed a distinct english localization value here and prove
+        // the endpoint returns the name, not the description.
+        long localizationValueId = HUMAN_TYPE_A * 10L + 1L;
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', 'Human A Localized', NOW())", localizationValueId, HUMAN_TYPE_A);
+        typeOfSampleService.clearCache();
+
+        List<TestCatalogEditorRestController.SampleTypeOption> options = controller.listSampleTypes(null);
+        TestCatalogEditorRestController.SampleTypeOption humanA = options.stream()
+                .filter(o -> String.valueOf(HUMAN_TYPE_A).equals(o.id)).findFirst().orElseThrow();
+        assertEquals("the picker labels by the localized name, not the description", "Human A Localized", humanA.name);
+
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE id = ?", localizationValueId);
     }
 
     @org.junit.Test

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
@@ -47,8 +48,8 @@ public class SampleTypeManagementRestController extends BaseRestController {
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
     // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
-    private static final Set<String> TERM_SOURCES = new HashSet<>(
-            Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL", "WHONET"));
+    private static final Set<String> TERM_SOURCES = new HashSet<>(Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL"));
+    private static final String LEGACY_WHONET_SOURCE = "WHONET";
     private static final Set<String> TERM_RELATIONSHIPS = new HashSet<>(
             Arrays.asList("SAME_AS", "BROADER_THAN", "NARROWER_THAN"));
 
@@ -371,6 +372,12 @@ public class SampleTypeManagementRestController extends BaseRestController {
             SampleTypeManagementDTO responseDTO = new SampleTypeManagementDTO(existingTypeOfSample);
             return ResponseEntity.ok(new ApiResponse<>(true, "Sample type updated successfully", responseDTO));
 
+        } catch (org.openelisglobal.common.exception.LIMSDuplicateRecordException e) {
+            // duplicate name/description is a client-correctable conflict, not
+            // a server fault — it used to surface as a blank 500
+            LogEvent.logError("SampleTypeManagementRestController", "updateSampleType", e.getMessage());
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, "A sample type with this name/description already exists", null));
         } catch (Exception e) {
             LogEvent.logError("SampleTypeManagementRestController", "updateSampleType", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -401,6 +408,45 @@ public class SampleTypeManagementRestController extends BaseRestController {
         public List<TerminologyMappingDto> mappings = new ArrayList<>();
     }
 
+    // ── Localization ──────────────────────────────────────────────────────────
+    // A sample type's display name lives in the generic localization tables and it
+    // already FK-links to its row there — the same arrangement a test has. So this
+    // only bridges sampleTypeId → the backing localization id, and the editor's
+    // Localization section reads and writes per-locale values through the existing
+    // /rest/localizations/{id} endpoints. Names loaded from a sample-types
+    // configuration file land in those same tables, so what the file configured is
+    // what the editor shows.
+
+    public static class LocalizationFieldRef {
+        public String field;
+        public String localizationId;
+
+        public LocalizationFieldRef(String field, String localizationId) {
+            this.field = field;
+            this.localizationId = localizationId;
+        }
+    }
+
+    public static class LocalizationRefs {
+        public String sampleTypeId;
+        public List<LocalizationFieldRef> fields = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/sample-types/{sampleTypeId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String sampleTypeId) {
+        TypeOfSample sampleType = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
+        if (sampleType == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.sampleTypeId = sampleTypeId;
+        Localization localization = sampleType.getLocalization();
+        if (localization != null && localization.getId() != null) {
+            refs.fields.add(new LocalizationFieldRef("name", localization.getId()));
+        }
+        return ResponseEntity.ok(refs);
+    }
+
     @GetMapping(value = "/sample-types/{sampleTypeId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TerminologyResponse> getTerminology(@PathVariable String sampleTypeId) {
         if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
@@ -417,13 +463,15 @@ public class SampleTypeManagementRestController extends BaseRestController {
         }
         // (source, code) unique within the request — the DB enforces it per sample
         // type, but reject early + cleanly rather than surfacing a raw 500.
+        List<SampleTypeTerminologyMapping> activeMappings = terminologyService.getActiveBySampleTypeId(sampleTypeId);
         Set<String> seen = new HashSet<>();
         List<SampleTypeTerminologyMapping> desired = new ArrayList<>();
         for (TerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            if (isBlank(m.source) || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+            boolean unchangedLegacyWhonet = isUnchangedLegacyWhonetMapping(m, activeMappings);
+            if ((!TERM_SOURCES.contains(m.source) || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!seen.add(m.source + " " + m.code)) {
@@ -446,6 +494,29 @@ public class SampleTypeManagementRestController extends BaseRestController {
             resp.mappings.add(new TerminologyMappingDto(m));
         }
         return resp;
+    }
+
+    private static boolean isValidRelationship(String relationship) {
+        return isBlank(relationship) || TERM_RELATIONSHIPS.contains(relationship);
+    }
+
+    private static boolean isUnchangedLegacyWhonetMapping(TerminologyMappingDto requested,
+            List<SampleTypeTerminologyMapping> activeMappings) {
+        if (!LEGACY_WHONET_SOURCE.equals(requested.source) || activeMappings == null) {
+            return false;
+        }
+        for (SampleTypeTerminologyMapping existing : activeMappings) {
+            if (LEGACY_WHONET_SOURCE.equals(existing.getSource()) && Objects.equals(requested.code, existing.getCode())
+                    && Objects.equals(normalizeRelationship(requested.relationship),
+                            normalizeRelationship(existing.getRelationship()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeRelationship(String relationship) {
+        return isBlank(relationship) ? null : relationship;
     }
 
     private static boolean isBlank(String s) {

@@ -9,7 +9,13 @@
  * Auto-refreshes every 5 minutes.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
 import {
   Loading,
   InlineNotification,
@@ -20,18 +26,26 @@ import {
   TabPanels,
   TabPanel,
 } from "@carbon/react";
-import { Renew } from "@carbon/icons-react";
+import { Renew, Download } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasPermissionOrGlobalAdmin,
+} from "../../utils/Utils";
+import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
 import AlertsTab from "./AlertsTab";
+import BenchQcTab from "./BenchQcTab";
+import QCExportModal from "./QCExportModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./QCDashboard.css";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-const QCDashboard = () => {
+const QCDashboard = ({ initialTab = 0 }) => {
   const intl = useIntl();
   const intlRef = useRef(intl);
   intlRef.current = intl;
@@ -41,6 +55,15 @@ const QCDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // The real gate is the backend @PreAuthorize(qa.view.qc); this only hides the
+  // entry point from users who would get a 403 anyway.
+  const canExport = hasPermissionOrGlobalAdmin(
+    userSessionDetails,
+    "qa.view.qc",
+  );
 
   const loadDashboardData = useCallback(() => {
     setLoading(true);
@@ -130,6 +153,13 @@ const QCDashboard = () => {
       {/* Header */}
       <div className="qc-dashboard-header" data-testid="qc-dashboard-header">
         <div className="qc-dashboard-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+              { label: "qc.dashboard.title", link: "" },
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {
@@ -153,6 +183,17 @@ const QCDashboard = () => {
             {intl.formatMessage({ id: "qc.dashboard.lastUpdated" })}:{" "}
             {formatLastUpdated()}
           </span>
+          {canExport && (
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Download}
+              onClick={() => setShowExport(true)}
+              data-testid="qc-dashboard-export-button"
+            >
+              {intl.formatMessage({ id: "reports.export" })}
+            </Button>
+          )}
           <Button
             kind="ghost"
             size="sm"
@@ -179,17 +220,23 @@ const QCDashboard = () => {
         />
       )}
 
+      {/* Active Violations Banner */}
+      <ActiveViolationsBanner refreshSignal={lastUpdated} />
+
       {/* Summary Tiles */}
       <QCSummaryTiles summary={summary || {}} loading={loading} />
 
       {/* Tabbed Content */}
-      <Tabs>
+      <Tabs defaultSelectedIndex={initialTab}>
         <TabList contained aria-label="QC Dashboard tabs">
           <Tab data-testid="qc-tab-instruments">
             {intl.formatMessage({ id: "qc.dashboard.tab.instruments" })}
           </Tab>
           <Tab data-testid="qc-tab-alerts">
             {intl.formatMessage({ id: "qc.dashboard.tab.alerts" })}
+          </Tab>
+          <Tab data-testid="qc-tab-bench">
+            {intl.formatMessage({ id: "qc.dashboard.tab.bench" })}
           </Tab>
         </TabList>
         <TabPanels>
@@ -199,8 +246,17 @@ const QCDashboard = () => {
           <TabPanel>
             <AlertsTab />
           </TabPanel>
+          <TabPanel>
+            <BenchQcTab />
+          </TabPanel>
         </TabPanels>
       </Tabs>
+
+      <QCExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        instruments={instruments}
+      />
     </div>
   );
 };

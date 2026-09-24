@@ -1,0 +1,263 @@
+.reference-lab-results {
+  padding: 1rem;
+}
+
+.reference-lab-results__title {
+  font-size: 1.75rem;
+  font-weight: 400;
+  margin: 0.5rem 0 1.5rem 0;
+}
+
+.reference-lab-results__metrics {
+  margin-bottom: 1.5rem;
+}
+
+.reference-lab-results__aging-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.reference-lab-results__aging-banner .cds--inline-notification {
+  flex: 1;
+  margin: 0;
+  max-width: none;
+}
+
+.reference-lab-results__metric {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-left: 6px solid #e0e0e0;
+  padding: 1.25rem 1rem;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.1s ease;
+}
+
+.reference-lab-results__metric:hover {
+  background: #f4f4f4;
+}
+
+.reference-lab-results__metric--active {
+  background: #f4f4f4;
+}
+
+.reference-lab-results__metric-count {
+  font-size: 2.5rem;
+  font-weight: 300;
+  line-height: 1;
+  color: #161616;
+}
+
+.reference-lab-results__metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #525252;
+  margin-top: 0.5rem;
+}
+
+.reference-lab-results__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.reference-lab-results__chip {
+  background: #ffffff;
+  color: #161616;
+  border: 1px solid #8d8d8d;
+  border-radius: 999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.reference-lab-results__chip--active {
+  background: #0f62fe;
+  color: #ffffff;
+  border-color: #0f62fe;
+}
+
+.reference-lab-results__filters {
+  background: #f4f4f4;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Date-range: the two inputs default to a fixed 200px (via an unclassed wrapper
+   span + input max-width) and overflow/overlap inside the narrow filter column.
+   Let the container, wrapper, span and input all fill the column, and add a gap. */
+.reference-lab-results__filters .cds--date-picker--range {
+  gap: 0.5rem;
+}
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-container {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-input__wrapper,
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker-input__wrapper
+  > span {
+  width: 100%;
+  min-width: 0;
+}
+.reference-lab-results__filters
+  .cds--date-picker--range
+  .cds--date-picker__input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.reference-lab-results__clear {
+  padding-top: 1.5rem;
+}
+
+.reference-lab-results__empty {
+  text-align: center;
+  padding: 2rem;
+  color: #525252;
+}
+
+.reference-lab-results__enter-result {
+  width: 88px;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.reference-lab-results__expand {
+  padding: 1.5rem;
+  background: #f4f4f4;
+}
+
+.reference-lab-results__expand-heading {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #525252;
+}
+
+.reference-lab-results__expand-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.reference-lab-results__expand-hint {
+  font-size: 0.875rem;
+  color: #525252;
+  margin: 0 0 0.5rem 0;
+}
+
+.reference-lab-results__detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.875rem;
+  gap: 1rem;
+}
+
+.reference-lab-results__detail-label {
+  color: #525252;
+  flex-shrink: 0;
+}
+
+.reference-lab-results__detail-value {
+  text-align: right;
+  word-break: break-word;
+}
+
+.reference-lab-results__code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  background: #ffffff;
+  padding: 2px 4px;
+  border: 1px solid #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .reference-lab-results__filters .cds--dropdown,
+  .reference-lab-results__filters .cds--multi-select,
+  .reference-lab-results__filters .cds--date-picker {
+    width: 100%;
+  }
+}
+
+/* OGC-802: returned-view result cards + summary/actions cells */
+.reference-lab-results__result-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.reference-lab-results__result-card {
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #0f62fe;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  max-width: 22rem;
+}
+
+.reference-lab-results__result-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.reference-lab-results__result-test {
+  font-weight: 600;
+}
+
+.reference-lab-results__result-value {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0.25rem 0;
+}
+
+.reference-lab-results__result-range,
+.reference-lab-results__result-note {
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.reference-lab-results__result-note {
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+.reference-lab-results__result-entry-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+}
+
+.reference-lab-results__row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.reference-lab-results__summary-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}

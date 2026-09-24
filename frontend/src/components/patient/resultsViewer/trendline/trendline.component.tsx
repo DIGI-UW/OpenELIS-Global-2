@@ -1,14 +1,10 @@
 import React, { useState, useCallback, useMemo, useLayoutEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Button, InlineLoading, SkeletonText } from "@carbon/react";
 import { ArrowLeft } from "@carbon/react/icons";
 import { LineChart } from "@carbon/charts-react";
-import {
-  formatDate,
-  formatTime,
-  parseDate,
-  ConfigurableLink,
-} from "../commons";
+import { formatDate, formatTime, parseDate } from "../commons";
+import { TrendKey } from "./trendKey";
 import { EmptyState, OBSERVATION_INTERPRETATION } from "../commons";
 import { useObstreeData } from "./trendline-resource";
 import CommonDataTable from "../overview/common-datatable.component";
@@ -16,6 +12,7 @@ import RangeSelector from "./range-selector.component";
 //import styles from './trendline.scss';
 import "./trendline.scss";
 
+import { normalizeScientificNotation } from "../../../resultPage/scientificNotation";
 enum ScaleTypes {
   TIME = "time",
   LINEAR = "linear",
@@ -36,28 +33,35 @@ const TrendLineBackground = ({ ...props }) => (
 const TrendlineHeader = ({
   patientUuid,
   title,
+  context,
   referenceRange,
   isValidating,
   showBackToTimelineButton,
+  onBackToTimeline,
 }) => {
-  const { t } = useTranslation();
+  const intl = useIntl();
   return (
     <div className="header">
       <div className="backButton">
         {showBackToTimelineButton && (
-          <ConfigurableLink to="#groupedtimeline">
-            <Button
-              kind="ghost"
-              renderIcon={(props) => <ArrowLeft {...props} size={24} />}
-              iconDescription={t("returnToTimeline", "Return to timeline")}
-            >
-              <span>{t("backToTimeline", "Back to timeline")}</span>
-            </Button>
-          </ConfigurableLink>
+          <Button
+            kind="ghost"
+            renderIcon={(props) => <ArrowLeft {...props} size={24} />}
+            iconDescription={intl.formatMessage({
+              id: "label.patientHistory.returnToTimeline",
+            })}
+            onClick={onBackToTimeline}
+            data-testid="back-to-timeline"
+          >
+            <span>
+              <FormattedMessage id="label.patientHistory.backToTimeline" />
+            </span>
+          </Button>
         )}
       </div>
       <div className="content">
         <span className="title">{title}</span>
+        {context && <span className="trendlineContext">{context}</span>}
         <span className="referenceange">{referenceRange}</span>
       </div>
       <div>{isValidating && <InlineLoading className="inlineLoader" />}</div>
@@ -67,33 +71,45 @@ const TrendlineHeader = ({
 
 interface TrendlineProps {
   patientUuid: string;
-  conceptUuid: string;
+  /** The (test, specimen, component) series being graphed. */
+  trendKey: TrendKey;
   basePath: string;
   hideTrendlineHeader?: boolean;
   showBackToTimelineButton?: boolean;
+  onBackToTimeline?: () => void;
 }
 
 const Trendline: React.FC<TrendlineProps> = ({
   patientUuid,
-  conceptUuid,
+  trendKey,
   basePath,
   hideTrendlineHeader = false,
   showBackToTimelineButton = false,
+  onBackToTimeline,
 }) => {
   const { trendlineData, isLoading, isValidating } = useObstreeData(
     patientUuid,
-    conceptUuid,
+    trendKey,
   );
-  const { t } = useTranslation();
+  const intl = useIntl();
   const {
     obs,
-    display: chartTitle,
+    testName,
+    display,
+    sampleType,
+    component,
     hiNormal,
     lowNormal,
     units: leftAxisTitle,
     range: referenceRange,
   } = trendlineData;
-  const bottomAxisTitle = t("date", "Date");
+  // The heading has to name the series, not just the test: the same test can
+  // be graphed once per specimen and component.
+  const chartTitle = testName || display;
+  const chartContext = [sampleType, component].filter(Boolean).join(" · ");
+  const bottomAxisTitle = intl.formatMessage({
+    id: "label.patientHistory.date",
+  });
   const [range, setRange] = useState<[Date, Date]>();
 
   const [upperRange, lowerRange] = useMemo(() => {
@@ -158,7 +174,7 @@ const Trendline: React.FC<TrendlineProps> = ({
 
     data.push({
       date: new Date(Date.parse(obs.obsDatetime)),
-      value: parseFloat(obs.value),
+      value: parseFloat(normalizeScientificNotation(obs.value)),
       group: chartTitle,
       ...range,
     });
@@ -168,7 +184,7 @@ const Trendline: React.FC<TrendlineProps> = ({
       date: formatDate(parseDate(obs.obsDatetime)),
       time: formatTime(parseDate(obs.obsDatetime)),
       value: {
-        value: parseFloat(obs.value),
+        value: parseFloat(normalizeScientificNotation(obs.value)),
         interpretation: obs.interpretation,
       },
     });
@@ -224,19 +240,21 @@ const Trendline: React.FC<TrendlineProps> = ({
   const tableHeaderData = useMemo(
     () => [
       {
-        header: t("date", "Date"),
+        header: intl.formatMessage({ id: "label.patientHistory.date" }),
         key: "date",
       },
       {
-        header: t("timeOfTest", "Time of Test"),
+        header: intl.formatMessage({
+          id: "label.patientHistory.timeOfTest",
+        }),
         key: "time",
       },
       {
-        header: `${t("value", "Value")} (${leftAxisTitle})`,
+        header: `${intl.formatMessage({ id: "label.results.result" })} (${leftAxisTitle})`,
         key: "value",
       },
     ],
-    [leftAxisTitle, t],
+    [leftAxisTitle, intl],
   );
 
   if (isLoading) {
@@ -246,7 +264,9 @@ const Trendline: React.FC<TrendlineProps> = ({
   if (obs.length === 0) {
     return (
       <EmptyState
-        displayText={t("observationsDisplayText", "observations")}
+        displayText={intl.formatMessage({
+          id: "label.patientHistory.observations",
+        })}
         headerTitle={chartTitle}
       />
     );
@@ -257,9 +277,11 @@ const Trendline: React.FC<TrendlineProps> = ({
       {!hideTrendlineHeader && (
         <TrendlineHeader
           showBackToTimelineButton={showBackToTimelineButton}
+          onBackToTimeline={onBackToTimeline}
           isValidating={isValidating}
           patientUuid={patientUuid}
           title={dataset}
+          context={chartContext}
           referenceRange={referenceRange}
         />
       )}

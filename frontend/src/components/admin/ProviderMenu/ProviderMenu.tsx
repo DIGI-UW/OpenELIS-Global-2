@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
 import {
   Heading,
@@ -17,7 +17,10 @@ import {
   TableContainer,
   Pagination,
   Search,
+  InlineNotification,
   Modal,
+  Select,
+  SelectItem,
   TextInput,
   Dropdown,
 } from "@carbon/react";
@@ -25,6 +28,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -33,9 +40,11 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { looksLikeATitle } from "../../provider/providerDisplayName";
 import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 interface ProviderPerson {
+  titleCode?: string;
   lastName: string;
   firstName: string;
   workPhone?: string;
@@ -60,6 +69,7 @@ interface ProviderMenuResponse {
 interface ProviderTableRow {
   id: string;
   fhirUuid: string;
+  titleCode?: string;
   lastName: string;
   firstName: string;
   active: boolean;
@@ -121,7 +131,6 @@ function ProviderMenu() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [modifyButton, setModifyButton] = useState(true);
@@ -131,8 +140,6 @@ function ProviderMenu() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
-  const [providerMenuList, setProviderMenuList] =
-    useState<ProviderMenuResponse>({});
   const [providerMenuListShow, setProviderMenuListShow] = useState<
     ProviderTableRow[]
   >([]);
@@ -144,6 +151,11 @@ function ProviderMenu() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [currentProvider, setCurrentProvider] =
     useState<ProviderTableRow | null>(null);
+  const [titleCode, setTitleCode] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
+  const [providerTitles, setProviderTitles] = useState<
+    { code: string; label: string }[]
+  >([]);
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [telephone, setTelephone] = useState<string | undefined>("");
@@ -169,46 +181,38 @@ function ProviderMenu() {
     { id: "no", value: "No" },
   ];
 
-  const handleMenuItems = (res?: ProviderMenuResponse) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setProviderMenuList(res);
-    }
-  };
+  // Browsing and searching are the same list from two endpoints, so which one
+  // is read follows the search box rather than both being read at once.
+  // The title is a filter, never a search term: typing "Dr" in the search box
+  // must not return every doctor (OGC-1223, FR-9).
+  const titleParam = titleFilter
+    ? `&titleCode=${encodeURIComponent(titleFilter)}`
+    : "";
+  const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
+    panelSearchTerm
+      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}${titleParam}`
+      : `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}${titleParam}`,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      handleMenuItems,
-    );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [paging, startingRecNo]);
-
-  const handleSearchedProviderMenuList = (res?: ProviderMenuResponse) => {
-    if (res) {
-      setProviderMenuList(res);
-    }
-  };
-
+  // The titles a provider may be given. An inactive one already on a record
+  // is still shown, so the dropdown adds it when editing (OGC-1223).
   useEffect(() => {
     getFromOpenElisServer(
-      `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
-      handleSearchedProviderMenuList,
+      "/rest/dictionary/categories/providerTitle/entries",
+      (response: { code: string; label: string }[] | undefined) => {
+        setProviderTitles(Array.isArray(response) ? response : []);
+      },
     );
-  }, [panelSearchTerm]);
+  }, []);
 
   useEffect(() => {
-    if (providerMenuList.providers) {
+    if (providerMenuList?.providers) {
       const newProviderMenuList = providerMenuList.providers.map((item) => {
         return {
           id: item.id,
           fhirUuid: item.fhirUuid,
+          titleCode: item.person.titleCode,
           lastName: item.person.lastName,
           firstName: item.person.firstName,
           active: item.active,
@@ -253,6 +257,10 @@ function ProviderMenu() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
+      invalidateServerData();
+      // The row a success just acted on may no longer be in the next read
+      // (a deactivation), so Modify/Deactivate must stop pointing at it.
+      setSelectedRowIds([]);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -269,10 +277,7 @@ function ProviderMenu() {
     postToOpenElisServerFullResponse(
       `/rest/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
       providerMenuListShow,
-      setLoading(false),
-      setTimeout(() => {
-        window.location.reload();
-      }, 1),
+      displayStatus,
     );
   }
 
@@ -310,6 +315,7 @@ function ProviderMenu() {
   };
 
   const openAddModal = () => {
+    setTitleCode("");
     setLastName("");
     setFirstName("");
     setTelephone("");
@@ -326,6 +332,7 @@ function ProviderMenu() {
   const openUpdateModal = (providerId: string) => {
     const provider = providerMenuListShow.find((p) => p.id === providerId)!;
     setCurrentProvider(provider);
+    setTitleCode(provider.titleCode || "");
     setLastName(provider.lastName);
     setFirstName(provider.firstName);
     setTelephone(provider.telephone);
@@ -344,6 +351,7 @@ function ProviderMenu() {
   const handleAddProvider = () => {
     const newProvider = {
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -359,13 +367,13 @@ function ProviderMenu() {
     );
 
     closeAddModal();
-    window.location.reload();
   };
 
   const handleUpdateProvider = () => {
     const updatedProvider = {
       fhirUuid: currentProvider!.fhirUuid,
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -381,7 +389,6 @@ function ProviderMenu() {
     );
 
     closeUpdateModal();
-    window.location.reload();
   };
 
   const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -483,6 +490,30 @@ function ProviderMenu() {
           </Column>
         </Grid>
         <br />
+        {providerTitles.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="providerTitleFilter"
+                labelText={intl.formatMessage({ id: "provider.title.filter" })}
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "provider.title.filter.all" })}
+                />
+                {providerTitles.map((option) => (
+                  <SelectItem
+                    key={option.code}
+                    value={option.code}
+                    text={option.label}
+                  />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+        )}
         <ActionPaginationButtonType
           selectedRowIds={selectedRowIds}
           modifyButton={modifyButton}
@@ -510,6 +541,32 @@ function ProviderMenu() {
           onRequestSubmit={handleAddProvider}
           onRequestClose={closeAddModal}
         >
+          <Select
+            id="providerTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -582,6 +639,32 @@ function ProviderMenu() {
           onRequestSubmit={handleUpdateProvider}
           onRequestClose={closeUpdateModal}
         >
+          <Select
+            id="updateProviderTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -676,6 +759,12 @@ function ProviderMenu() {
                       key: "select",
                       header: intl.formatMessage({
                         id: "provider.select",
+                      }),
+                    },
+                    {
+                      key: "titleCode",
+                      header: intl.formatMessage({
+                        id: "provider.title.field",
                       }),
                     },
                     {

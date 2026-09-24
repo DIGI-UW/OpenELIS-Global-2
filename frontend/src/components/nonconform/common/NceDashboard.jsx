@@ -34,7 +34,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
+import { formatActionType } from "./actionTypes";
 import "./NceDashboard.css";
 
 const STATUS_CONFIG = {
@@ -44,15 +45,15 @@ const STATUS_CONFIG = {
     icon: InProgress,
     labelKey: "nce.status.underInvestigation",
   },
-  "Corrective Action": {
+  CAPA: {
     type: "purple",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.correctiveAction",
+    labelKey: "nce.tab.capa",
   },
-  Closed: {
+  Completed: {
     type: "gray",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.closed",
+    labelKey: "common.completed",
   },
 };
 
@@ -68,11 +69,17 @@ export const NceDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [expandedRows, setExpandedRows] = useState({});
 
-  // Filters
+  // Filters — status/severity seed once from URL params so overview tiles
+  // can deep-link a pre-filtered register (e.g. ?severity=CRITICAL&status=Pending)
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(
+    () => new URLSearchParams(location.search).get("status") || "",
+  );
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState(
+    () => new URLSearchParams(location.search).get("severity") || "",
+  );
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -155,8 +162,8 @@ export const NceDashboard = () => {
       else if (nce.severity === "MINOR" || nce.severity === "LOW")
         counts.minor++;
 
-      // Check if overdue (more than 7 days old and not closed)
-      if (nce.status !== "Closed" && nce.dateOfEvent) {
+      // Check if overdue (more than 7 days old and not completed)
+      if (nce.status !== "Completed" && nce.dateOfEvent) {
         const eventDate = new Date(nce.dateOfEvent);
         const daysDiff = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
         if (daysDiff > 7) counts.overdue++;
@@ -225,7 +232,7 @@ export const NceDashboard = () => {
 
   // Check if NCE is overdue
   const isOverdue = (nce) => {
-    if (nce.status === "Closed") return false;
+    if (nce.status === "Completed") return false;
     const days = getDaysSince(nce.dateOfEvent);
     return days !== null && days > 7;
   };
@@ -340,6 +347,88 @@ export const NceDashboard = () => {
             message: intl.formatMessage({
               id: "nce.assign.error",
               defaultMessage: "Failed to assign NCE",
+            }),
+          });
+        }
+      },
+    );
+  };
+
+  // Advance status: Under Investigation → Corrective Action
+  const handleStartCorrectiveAction = (nce) => {
+    const payload = {
+      nceId: Number(nce.id),
+      activity: "INVESTIGATION_STARTED",
+      description: "Investigation completed — moving to corrective action",
+    };
+    postToOpenElisServer(
+      "/rest/nce/history",
+      JSON.stringify(payload),
+      (status) => {
+        if (status >= 200 && status < 300) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "notification.success",
+              defaultMessage: "Success",
+            }),
+            message: intl.formatMessage({
+              id: "nce.correctiveAction.success",
+              defaultMessage: "NCE moved to Corrective Action",
+            }),
+          });
+          loadNceData();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "nce.correctiveAction.error",
+              defaultMessage: "Failed to advance NCE status",
+            }),
+          });
+        }
+      },
+    );
+  };
+
+  // Advance status: Corrective Action → Closed
+  const handleClose = (nce) => {
+    const payload = {
+      nceId: Number(nce.id),
+      activity: "CLOSED",
+      description: "NCE closed",
+    };
+    postToOpenElisServer(
+      "/rest/nce/history",
+      JSON.stringify(payload),
+      (status) => {
+        if (status >= 200 && status < 300) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "notification.success",
+              defaultMessage: "Success",
+            }),
+            message: intl.formatMessage({
+              id: "nce.close.success",
+              defaultMessage: "NCE closed successfully",
+            }),
+          });
+          loadNceData();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "nce.close.error",
+              defaultMessage: "Failed to close NCE",
             }),
           });
         }
@@ -604,10 +693,13 @@ export const NceDashboard = () => {
               defaultMessage: "All Status",
             })}
           />
-          <SelectItem value="Pending" text="Open" />
-          <SelectItem value="Under Investigation" text="Under Investigation" />
-          <SelectItem value="Corrective Action" text="Corrective Action" />
-          <SelectItem value="Closed" text="Closed" />
+          {Object.entries(STATUS_CONFIG).map(([value, { labelKey }]) => (
+            <SelectItem
+              key={value}
+              value={value}
+              text={intl.formatMessage({ id: labelKey })}
+            />
+          ))}
         </Select>
         <Select
           id="category-filter"
@@ -717,16 +809,20 @@ export const NceDashboard = () => {
                 <div className="nce-item-info">
                   <div className="nce-item-top">
                     <span className="nce-number">{nce.nceNumber}</span>
-                    {nce.linkedSpecimens && nce.linkedSpecimens.length > 0 && (
+                    {(nce.labOrderNumber ||
+                      (nce.linkedSpecimens &&
+                        nce.linkedSpecimens.length > 0)) && (
                       <span className="nce-linked-badge">
                         <DataBase size={14} />
-                        {nce.linkedSpecimens.map((spec, idx) => (
-                          <span key={idx} className="nce-linked-specimen">
-                            {spec.labOrderNumber}
-                            {spec.sampleType && ` (${spec.sampleType})`}
-                            {idx < nce.linkedSpecimens.length - 1 && ", "}
-                          </span>
-                        ))}
+                        {nce.linkedSpecimens && nce.linkedSpecimens.length > 0
+                          ? nce.linkedSpecimens.map((spec, idx) => (
+                              <span key={idx} className="nce-linked-specimen">
+                                {spec.labOrderNumber}
+                                {spec.sampleType && ` (${spec.sampleType})`}
+                                {idx < nce.linkedSpecimens.length - 1 && ", "}
+                              </span>
+                            ))
+                          : nce.labOrderNumber}
                       </span>
                     )}
                     <Tag
@@ -849,6 +945,22 @@ export const NceDashboard = () => {
                                 id="nce.field.linkedItems"
                                 defaultMessage="Linked Items"
                               />
+                              {(nce.affectedSamplesCapReason === "time_24h" ||
+                                nce.affectedSamplesCapReason ===
+                                  "count_50") && (
+                                <Tag
+                                  type="cool-gray"
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  {intl.formatMessage(
+                                    {
+                                      id: `nce.capReason.${nce.affectedSamplesCapReason}`,
+                                    },
+                                    { count: nce.linkedSpecimens.length },
+                                  )}
+                                </Tag>
+                              )}
                             </h4>
                             <div className="nce-linked-items">
                               {nce.linkedSpecimens.map((specimen, idx) => (
@@ -1021,12 +1133,65 @@ export const NceDashboard = () => {
 
                     {/* CAPA Tab */}
                     <TabPanel>
-                      <p>
-                        <FormattedMessage
-                          id="nce.capa.noItems"
-                          defaultMessage="No corrective/preventive actions recorded yet."
-                        />
-                      </p>
+                      <div style={{ marginBottom: "1rem" }}>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={Add}
+                          onClick={() =>
+                            history.push(
+                              `/NCECorrectiveAction?nceNumber=${encodeURIComponent(
+                                nce.nceNumber,
+                              )}`,
+                            )
+                          }
+                        >
+                          <FormattedMessage id="label.button.add" />
+                        </Button>
+                      </div>
+                      {nce.actionLogs && nce.actionLogs.length > 0 ? (
+                        <div className="nce-capa-list">
+                          {nce.actionLogs.map((log, idx) => (
+                            <div
+                              key={log.id || idx}
+                              className="nce-detail-section"
+                            >
+                              <h4>
+                                {formatActionType(log.actionType, intl) ||
+                                  intl.formatMessage({ id: "nce.tab.capa" })}
+                              </h4>
+                              <p>{log.correctiveAction || "-"}</p>
+                              <div className="nce-item-meta">
+                                {log.personResponsible && (
+                                  <span>
+                                    <FormattedMessage id="qa.qms.capaRegister.column.assignee" />
+                                    : {log.personResponsible}
+                                  </span>
+                                )}
+                                {log.dueDate && (
+                                  <span>
+                                    <FormattedMessage id="nce.capa.dueDate" />:{" "}
+                                    {log.dueDate}
+                                  </span>
+                                )}
+                                {log.dateCompleted && (
+                                  <span>
+                                    <FormattedMessage id="common.completed" />:{" "}
+                                    {log.dateCompleted}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>
+                          <FormattedMessage
+                            id="nce.capa.noItems"
+                            defaultMessage="No corrective/preventive actions recorded yet."
+                          />
+                        </p>
+                      )}
                     </TabPanel>
 
                     {/* History Tab */}
@@ -1077,38 +1242,70 @@ export const NceDashboard = () => {
 
                 {/* Action buttons */}
                 <div className="nce-detail-actions">
-                  <Button
-                    kind="primary"
-                    size="sm"
-                    onClick={() => handleAcknowledge(nce)}
-                  >
-                    <FormattedMessage
-                      id="nce.action.acknowledge"
-                      defaultMessage="Acknowledge"
-                    />
-                  </Button>
-                  <Button
-                    kind={assignFormOpen === nce.id ? "secondary" : "tertiary"}
-                    size="sm"
-                    renderIcon={UserFollow}
-                    onClick={() => handleAssign(nce)}
-                  >
-                    <FormattedMessage
-                      id="nce.action.assignTo"
-                      defaultMessage="Assign To"
-                    />
-                  </Button>
-                  <Button
-                    kind={noteFormOpen === nce.id ? "secondary" : "ghost"}
-                    size="sm"
-                    renderIcon={DocumentAdd}
-                    onClick={() => handleAddNote(nce)}
-                  >
-                    <FormattedMessage
-                      id="nce.action.addNote"
-                      defaultMessage="Add Note"
-                    />
-                  </Button>
+                  {nce.status === "Pending" && (
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      onClick={() => handleAcknowledge(nce)}
+                    >
+                      <FormattedMessage
+                        id="nce.action.acknowledge"
+                        defaultMessage="Acknowledge"
+                      />
+                    </Button>
+                  )}
+                  {nce.status === "Under Investigation" && (
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      onClick={() => handleStartCorrectiveAction(nce)}
+                    >
+                      <FormattedMessage
+                        id="nce.action.startCorrectiveAction"
+                        defaultMessage="Start Corrective Action"
+                      />
+                    </Button>
+                  )}
+                  {nce.status === "Corrective Action" && (
+                    <Button
+                      kind="danger"
+                      size="sm"
+                      onClick={() => handleClose(nce)}
+                    >
+                      <FormattedMessage
+                        id="nce.action.close"
+                        defaultMessage="Close NCE"
+                      />
+                    </Button>
+                  )}
+                  {nce.status !== "Closed" && (
+                    <>
+                      <Button
+                        kind={
+                          assignFormOpen === nce.id ? "secondary" : "tertiary"
+                        }
+                        size="sm"
+                        renderIcon={UserFollow}
+                        onClick={() => handleAssign(nce)}
+                      >
+                        <FormattedMessage
+                          id="nce.action.assignTo"
+                          defaultMessage="Assign To"
+                        />
+                      </Button>
+                      <Button
+                        kind={noteFormOpen === nce.id ? "secondary" : "ghost"}
+                        size="sm"
+                        renderIcon={DocumentAdd}
+                        onClick={() => handleAddNote(nce)}
+                      >
+                        <FormattedMessage
+                          id="nce.action.addNote"
+                          defaultMessage="Add Note"
+                        />
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 {/* Inline assign form */}

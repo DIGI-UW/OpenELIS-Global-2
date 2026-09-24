@@ -10,7 +10,7 @@
  * mid-request) permanently breaks the route until full page reload,
  * falling through to the `RouteErrorBoundary` fallback. This
  * surfaced as a recurring develop-CI flake on the AnalyzerForm
- * chunk fetch; the `lazyWithRetry` helper (App.jsx) wraps the
+ * chunk fetch; the `lazyWithRetry` helper (components/common) wraps the
  * dynamic-import factory in a bounded retry loop.
  *
  * If the replacement helper is genuinely unavailable at the call

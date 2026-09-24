@@ -64,9 +64,6 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
 
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -84,6 +81,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
+    /**
+     * Ranges take their ids from {@code result_limits_seq}; sibling classes seed
+     * limits with explicit ids without advancing it, so depending on class order a
+     * save collided with a seeded row. Resync before writing.
+     */
     @Before
     @Override
     public void setUp() throws Exception {
@@ -91,9 +93,9 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
+        resyncSequence("result_limits_seq", "clinlims.result_limits");
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'N', ?, NOW())",
@@ -107,7 +109,41 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_test_result WHERE id = ?", DICTIONARY_RESULT_TYPE_ID);
+    }
+
+    private static final long DICTIONARY_RESULT_TYPE_ID = 95456L;
+
+    /**
+     * Sibling classes' datasets replace {@code type_of_test_result} with their own
+     * rows, not all of which include a dictionary type, so the id is taken from
+     * whatever row exists and one is seeded only when none does.
+     */
+    private Long ensureDictionaryResultType() {
+        java.util.List<Long> existing = jdbc.queryForList(
+                "SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D' ORDER BY id LIMIT 1",
+                Long.class);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_test_result (id, test_result_type, description, hl7_value, lastupdated)"
+                        + " VALUES (?, 'D', 'Dictionary', 'CE', NOW())",
+                DICTIONARY_RESULT_TYPE_ID);
+        return DICTIONARY_RESULT_TYPE_ID;
+    }
+
+    private String seedPrimaryComponent() {
+        String componentId = UUID.randomUUID().toString();
+        jdbc.update(
+                "INSERT INTO clinlims.test_result_component"
+                        + " (id, test_id, code, label, display_order, result_type, allow_multiple_readings,"
+                        + " is_primary, show_on_report, is_active, lastupdated)"
+                        + " VALUES (?, ?, 'PRIMARY', 'Result', 0, 'N', false, true, true, 'Y', NOW())",
+                componentId, TEST_ID);
+        return componentId;
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -179,6 +215,30 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         assertEquals(Double.valueOf(20d), loaded.highValid);
     }
 
+    /**
+     * FR-19 (OGC-1119): the component a range constrains is written and read back.
+     */
+    @org.junit.Test
+    public void saveRanges_componentAssociationRoundTrips() {
+        String componentId = seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = componentId;
+        assertEquals(200, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+
+        RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(componentId, loaded.componentId);
+    }
+
+    /** A range may only constrain one of the test's own components (OGC-1119). */
+    @org.junit.Test
+    public void saveRanges_rejectsAComponentThatIsNotTheTests() {
+        seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = UUID.randomUUID().toString();
+        assertEquals(422, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+        assertTrue("a rejected save must write nothing", controller.getRanges(testId()).getBody().ranges.isEmpty());
+    }
+
     @org.junit.Test
     public void saveRanges_openEndedMaxAgeRoundTripsAsNull_andCoversToInfinity() {
         // maxAge null → open-ended; a single 0..∞ all-sex range fully covers both.
@@ -247,8 +307,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
-        Long dictTypeId = jdbc
-                .queryForObject("SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D'", Long.class);
+        Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());
         dict.setResultTypeId(String.valueOf(dictTypeId));
@@ -293,5 +352,43 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         // Negative minAge.
         assertEquals(422, controller.saveRanges(testId(), body(range(null, "M", -1d, 30d)), authedRequest())
                 .getStatusCode().value());
+    }
+
+    /**
+     * Regression (bug family of the alert-rule 400): the GET representation must be
+     * PUT-able verbatim over HTTP, exercised through MockMvc so Jackson binding is
+     * actually in play (direct controller calls bypass it). Guards against any
+     * future GET-only field (a derived getter on RangesResponse or its children)
+     * silently making every editor save 400.
+     */
+    @org.junit.Test
+    public void http_rangesGetRepresentation_isPutableVerbatim() throws Exception {
+        RangesResponse put = new RangesResponse();
+        RangeDto range = new RangeDto();
+        range.gender = "M";
+        range.minAge = 0.0;
+        range.maxAge = 130.0;
+        range.lowNormal = 1.0;
+        range.highNormal = 5.0;
+        put.ranges = java.util.List.of(range);
+        controller.saveRanges(testId(), put, authedRequest());
+
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        org.springframework.mock.web.MockHttpSession httpSession = new org.springframework.mock.web.MockHttpSession();
+        httpSession.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+
+        org.springframework.test.web.servlet.MvcResult getResult = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/rest/test-catalog/tests/" + testId() + "/ranges").session(httpSession))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn();
+        String getBody = getResult.getResponse().getContentAsString();
+        org.junit.Assert.assertTrue("coverage rides the GET representation", getBody.contains("coverage"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/tests/" + testId() + "/ranges")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(getBody).session(httpSession))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
     }
 }

@@ -32,7 +32,8 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@Order(Ordered.HIGHEST_PRECEDENCE)
+// Leaves HIGHEST_PRECEDENCE free for a package-scoped @ControllerAdvice.
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @ControllerAdvice
 public class ControllerSetup extends ResponseEntityExceptionHandler {
 
@@ -48,16 +49,15 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * {@code AccessDeniedException} is a RuntimeException, so the catch-all below
-     * reported every {@code @PreAuthorize} denial the interceptor does not cover
-     * (any endpoint carrying a path variable) as 500. 401 matches the status the
-     * interceptor already returns for a denied REST call.
+     * Keeps @PreAuthorize denials on 403: handleRuntimeException would otherwise
+     * claim them, since AccessDeniedException is a RuntimeException. Debug-level,
+     * because a refusal is the authorization layer working.
      */
     @ExceptionHandler(value = { AccessDeniedException.class })
-    protected ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "handleAccessDeniedException", ex.getMessage());
-        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.UNAUTHORIZED), new HttpHeaders(),
-                HttpStatus.UNAUTHORIZED);
+    protected ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
+                HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })

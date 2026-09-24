@@ -1,0 +1,319 @@
+/**
+ * PanelEditor + PanelBasicInfoSection — OGC-224 C2 (FRS v2.2).
+ *
+ * - the editor shell shows the PANEL badge, name, domain tag and LOINC;
+ * - create mode ("new") titles "New panel" and skips the envelope fetch;
+ * - Basic Info: every domain is selectable (a panel's domain is set on the
+ *   panel, OGC-1209), sample types render read-only (derived), the Active toggle is
+ *   disabled with helper text while the panel has zero tests (activation
+ *   rule), and Save PUTs the basic-info payload;
+ * - create flow: POST {name, active:false} then basic-info PUT.
+ */
+
+// ========== MOCKS (before imports) ==========
+const mockHistory = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  location: {
+    pathname: "/MasterListsPage/TestCatalogEditor/panel/1/basic-info",
+    search: "",
+  },
+};
+let mockParams = { panelId: "1", section: "basic-info" };
+
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useHistory: () => mockHistory,
+    useParams: () => mockParams,
+  };
+});
+
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
+}));
+
+vi.mock("../../common/PageBreadCrumb", () => ({ default: () => null }));
+
+// ========== IMPORTS ==========
+import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { BrowserRouter } from "react-router-dom";
+import PanelEditor from "./PanelEditor";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+  putToOpenElisServerFullResponse,
+} from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import messages from "../../../languages/en.json";
+
+const PANEL = {
+  id: "1",
+  name: "Bilan Biochimique",
+  description: "Bilan Biochimique",
+  loinc: "24323-8",
+  domain: "CLINICAL",
+  active: true,
+  testCount: 9,
+  sampleTypes: ["Serum", "Plasma"],
+};
+
+const notification = {
+  addNotification: vi.fn(),
+  setNotificationVisible: vi.fn(),
+  notificationVisible: false,
+};
+
+const wrap = () =>
+  render(
+    <BrowserRouter>
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={notification}>
+          <PanelEditor />
+        </NotificationContext.Provider>
+      </IntlProvider>
+    </BrowserRouter>,
+  );
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockParams = { panelId: "1", section: "basic-info" };
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url.startsWith("/rest/test-catalog/panels/1")) {
+      cb(PANEL);
+    } else {
+      cb(undefined);
+    }
+  });
+});
+
+describe("PanelEditor shell (OGC-224 C2)", () => {
+  it("shows the PANEL badge, name, domain tag and LOINC", async () => {
+    wrap();
+    expect(await screen.findByTestId("panel-editor-title")).toHaveTextContent(
+      "Bilan Biochimique",
+    );
+    expect(screen.getByText("PANEL")).toBeInTheDocument();
+    expect(screen.getAllByText("Clinical").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("panel-editor-loinc")).toHaveTextContent(
+      "24323-8",
+    );
+  });
+
+  it("create mode titles New panel and skips the envelope fetch", async () => {
+    mockParams = { panelId: "new", section: "basic-info" };
+    wrap();
+    expect(await screen.findByTestId("panel-editor-title")).toHaveTextContent(
+      "New panel",
+    );
+    expect(
+      getFromOpenElisServer.mock.calls.every(
+        ([url]) => !url.startsWith("/rest/test-catalog/panels/new"),
+      ),
+    ).toBe(true);
+  });
+
+  it("renders the notification dialog so the sections' messages reach the operator (OGC-1232)", async () => {
+    // Without this the panel editor raised every message — refusals included —
+    // into a dialog no screen rendered, so they were invisible.
+    const { unmount } = wrap();
+    await screen.findByTestId("panel-editor-title");
+    expect(document.querySelector(".cds--toast-notification")).toBeNull();
+    unmount();
+
+    render(
+      <BrowserRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{
+              ...notification,
+              notificationVisible: true,
+              notifications: [
+                {
+                  kind: "error",
+                  title: "Notification",
+                  message: messages["error.panel.nameRequired"],
+                },
+              ],
+              removeNotification: vi.fn(),
+            }}
+          >
+            <PanelEditor />
+          </NotificationContext.Provider>
+        </IntlProvider>
+      </BrowserRouter>,
+    );
+    expect(
+      await screen.findByText(messages["error.panel.nameRequired"]),
+    ).toBeInTheDocument();
+  });
+
+  it("canonicalizes an unknown section to basic-info", async () => {
+    mockParams = { panelId: "1", section: "bogus" };
+    wrap();
+    await waitFor(() =>
+      expect(mockHistory.replace).toHaveBeenCalledWith(
+        "/MasterListsPage/TestCatalogEditor/panel/1/basic-info",
+      ),
+    );
+  });
+});
+
+describe("PanelBasicInfoSection (FRS rules)", () => {
+  it("every domain can be chosen, because a panel's domain is set on the panel (OGC-1209)", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    expect(screen.getByLabelText("Clinical")).toBeEnabled();
+    expect(screen.getByLabelText("Environmental")).toBeEnabled();
+    expect(screen.getByLabelText("Vector")).toBeEnabled();
+  });
+
+  it("derived sample types render read-only", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    const tile = screen.getByTestId("panel-derived-sample-types");
+    expect(tile).toHaveTextContent("Serum");
+    expect(tile).toHaveTextContent("Plasma");
+    expect(
+      screen.getByText(messages["note.panel.sampleTypesDerived"]),
+    ).toBeInTheDocument();
+  });
+
+  it("the Active toggle is disabled with helper text while the panel has zero tests", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ ...PANEL, testCount: 0, active: false, sampleTypes: [] }),
+    );
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    expect(document.querySelector("#panel-active")).toBeDisabled();
+    expect(screen.getByTestId("panel-needs-test-helper")).toHaveTextContent(
+      messages["helper.panel.needsTest"],
+    );
+  });
+
+  it("Save PUTs the basic-info payload", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.change(document.querySelector("#panel-description"), {
+      target: { value: "Chem bundle" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledWith(
+      "/rest/test-catalog/panels/1/basic-info",
+      JSON.stringify({
+        name: "Bilan Biochimique",
+        description: "Chem bundle",
+        domain: "CLINICAL",
+        active: true,
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it("a refused domain change names the tests standing in the way (OGC-1232)", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            id: "1",
+            name: "Bilan Biochimique",
+            domain: "CLINICAL",
+            domainConflict: {
+              domain: "ENVIRONMENTAL",
+              tests: [
+                { testId: "5", name: "Glucose (Serum)", domain: "CLINICAL" },
+                { testId: "6", name: "Urea (Serum)", domain: "CLINICAL" },
+              ],
+            },
+          }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    const explanation = await screen.findByTestId("panel-domain-conflict");
+    expect(explanation).toHaveTextContent(
+      "This panel cannot be filed under Environmental: 2 of its tests belong to another domain (Glucose (Serum) (Clinical), Urea (Serum) (Clinical)).",
+    );
+    expect(explanation).toHaveTextContent(
+      messages["helper.panel.domainConflict.remedy"],
+    );
+    expect(notification.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("Glucose (Serum)"),
+      }),
+    );
+
+    // choosing a domain again starts over: the explanation belongs to the
+    // refused choice, not to the form
+    fireEvent.click(screen.getByLabelText("Clinical"));
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("a named refusal tells the operator which rule refused the save", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ ...PANEL, refusal: "name.tooLong" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.nameTooLong"],
+        }),
+      ),
+    );
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("a refusal without a domain conflict keeps the generic message", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({ ok: false, status: 422, json: () => Promise.reject(new Error()) }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.save"],
+        }),
+      ),
+    );
+    expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("create flow POSTs {name, active:false} first (never active with zero tests)", async () => {
+    mockParams = { panelId: "new", section: "basic-info" };
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.change(document.querySelector("#panel-name"), {
+      target: { value: "Anemia Workup" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+      "/rest/test-catalog/panels",
+      JSON.stringify({ name: "Anemia Workup", active: false }),
+      expect.any(Function),
+    );
+  });
+});

@@ -356,6 +356,10 @@ public abstract class Label {
         return labelInfo;
     }
 
+    public void setLabelInfo(BarcodeLabelInfo labelInfo) {
+        this.labelInfo = labelInfo;
+    }
+
     public void incrementNumPrinted() {
         if (labelInfo != null) {
             labelInfo.incrementNumPrinted();

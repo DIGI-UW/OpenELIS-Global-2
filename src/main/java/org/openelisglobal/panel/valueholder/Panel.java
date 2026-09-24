@@ -29,6 +29,14 @@ public class Panel extends EnumValueItemImpl {
     private String description;
     private String loinc;
 
+    /**
+     * OGC-224 — the panel's single required domain (CLINICAL / ENVIRONMENTAL /
+     * VECTOR), mirroring test.domain (OGC-936). Membership is domain-guarded: a
+     * panel never mixes tests from different domains. Existing rows backfill to
+     * CLINICAL.
+     */
+    private String domain = "CLINICAL";
+
     private int sortOrderInt;
     private ValueHolder localization = new ValueHolder();
 
@@ -68,6 +76,14 @@ public class Panel extends EnumValueItemImpl {
 
     public void setLoinc(String loinc) {
         this.loinc = loinc;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 
     @Override

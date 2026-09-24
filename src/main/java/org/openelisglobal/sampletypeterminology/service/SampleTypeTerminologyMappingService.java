@@ -19,4 +19,21 @@ public interface SampleTypeTerminologyMappingService extends BaseObjectService<S
      * soft-deleted ({@code is_active = 'N'}).
      */
     void saveMappingsForSampleType(String sampleTypeId, List<SampleTypeTerminologyMapping> desired, String sysUserId);
+
+    /**
+     * Reconcile a configured LOINC code into a sample type's terminology mappings,
+     * so a {@code loinc} column in a sample-types configuration file shows up in
+     * the Sample Type Editor as LOINC / SAME_AS.
+     *
+     * <p>
+     * Narrower than {@link #saveMappingsForSampleType}, deliberately: a
+     * configuration import knows about one code and must not disturb mappings an
+     * administrator added by hand for other systems. A non-blank code upserts its
+     * LOINC mapping — reactivating rather than re-inserting, since
+     * {@code (sample_type_id, source, code)} is unique — and soft-deletes any other
+     * active LOINC mapping carrying a different code. A blank code leaves
+     * everything alone: an import that omits the column is saying nothing about
+     * LOINC, not asking for it to be cleared.
+     */
+    void syncConfiguredLoinc(String sampleTypeId, String loinc, String sysUserId);
 }

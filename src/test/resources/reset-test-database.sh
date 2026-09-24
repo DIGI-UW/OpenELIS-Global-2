@@ -45,60 +45,55 @@ fi
 RESET_SQL="
 -- Reset test data ranges (preserves production data)
 -- Delete in correct order to respect foreign key constraints
+BEGIN;
+
+CREATE TEMP TABLE tmp_e2e_patient_ids ON COMMIT DROP AS
+SELECT id FROM patient WHERE external_id LIKE 'E2E-%';
+
+CREATE TEMP TABLE tmp_e2e_person_ids ON COMMIT DROP AS
+SELECT DISTINCT person_id FROM patient WHERE id IN (SELECT id FROM tmp_e2e_patient_ids);
+
+CREATE TEMP TABLE tmp_e2e_sample_ids ON COMMIT DROP AS
+SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
+UNION
+SELECT samp_id FROM sample_human WHERE patient_id IN (SELECT id FROM tmp_e2e_patient_ids);
 
 -- E2E test data (patients, samples, sample items, assignments, analyses, results)
 DELETE FROM result WHERE analysis_id IN (
   SELECT id FROM analysis WHERE sampitem_id IN (
-    SELECT id FROM sample_item WHERE samp_id IN (
-      SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-    )
+    SELECT id FROM sample_item WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids)
   )
 );
 
 DELETE FROM analysis WHERE sampitem_id IN (
-  SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-  )
+  SELECT id FROM sample_item WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids)
 );
 
 DELETE FROM sample_storage_movement WHERE sample_item_id IN (
-  SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-  )
+  SELECT id FROM sample_item WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids)
 );
 
 DELETE FROM sample_storage_assignment WHERE sample_item_id IN (
-  SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-  )
+  SELECT id FROM sample_item WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids)
 );
 
-DELETE FROM sample_item WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-);
+DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids);
 
-DELETE FROM sample_human WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
-);
+DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM tmp_e2e_sample_ids);
 
-DELETE FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%';
-
--- Capture E2E person IDs before deleting patient rows (patient -> person FK)
-CREATE TEMP TABLE tmp_e2e_person_ids AS
-SELECT DISTINCT person_id FROM patient WHERE external_id LIKE 'E2E-%';
+DELETE FROM sample WHERE id IN (SELECT id FROM tmp_e2e_sample_ids);
 
 DELETE FROM patient_identity WHERE patient_id IN (
-  SELECT id FROM patient WHERE external_id LIKE 'E2E-%'
+  SELECT id FROM tmp_e2e_patient_ids
 );
 
-DELETE FROM patient WHERE external_id LIKE 'E2E-%';
+DELETE FROM patient WHERE id IN (SELECT id FROM tmp_e2e_patient_ids);
 
 DELETE FROM person WHERE id IN (SELECT person_id FROM tmp_e2e_person_ids);
-DROP TABLE tmp_e2e_person_ids;
 
 -- Storage test-created data (preserve Liquibase foundation rows)
-DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%';
-DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%';
+DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%';
+DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%';
 DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%';
 DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%';
 DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%';
@@ -120,11 +115,12 @@ SELECT setval('sample_human_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM 
 SELECT setval('sample_item_seq', CAST((SELECT COALESCE(MAX(id), 10100) + 1 FROM sample_item) AS BIGINT), false);
 SELECT setval('analysis_seq', CAST((SELECT COALESCE(MAX(id), 20000) + 1 FROM analysis) AS BIGINT), false);
 SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM result) AS BIGINT), false);
+COMMIT;
 "
 
 if [ "$USE_DOCKER" = true ]; then
     echo "Resetting test data via Docker..."
-    echo "$RESET_SQL" | docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims
+    echo "$RESET_SQL" | docker exec -i "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -U clinlims -d clinlims
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -158,7 +154,7 @@ else
     echo "Resetting test data..."
     echo ""
 
-    echo "$RESET_SQL" | psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT"
+    echo "$RESET_SQL" | psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT"
 
     if [ $? -eq 0 ]; then
         echo ""

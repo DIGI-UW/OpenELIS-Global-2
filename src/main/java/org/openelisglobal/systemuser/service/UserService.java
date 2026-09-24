@@ -32,11 +32,25 @@ public interface UserService {
     List<AnalysisItem> filterAnalysisResultsByLabUnitRoles(String SystemUserId, List<AnalysisItem> results,
             String roleName);
 
+    /**
+     * Ids of every test in the lab units this user holds the given role for. The
+     * predicate behind {@link #filterAnalysesByLabUnitRoles}, exposed separately so
+     * a caller that pages or caps its query can push the same scope into SQL
+     * instead of discarding rows after the fact.
+     */
+    List<String> getUserTestIdsForLabUnitRoles(String systemUserId, String roleName);
+
     List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName);
 
     List<TestResultItem> filterResultsByLabUnitRoles(String SystemUserId, List<TestResultItem> results,
             String roleName);
 
+    /**
+     * The programs this user may order under. Read from the cached display list,
+     * which is rebuilt only when a program is saved: a program deleted straight
+     * from the database therefore lingers there until the next restart, so an id
+     * that no longer resolves to a record is dropped rather than dereferenced.
+     */
     List<IdValuePair> getUserPrograms(String systemUserId, String userRole);
 
     List<IdValuePair> getUserSampleTypes(String systemUserId, String roleName, String testSectionName);

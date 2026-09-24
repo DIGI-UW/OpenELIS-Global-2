@@ -1,24 +1,31 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Count;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.Offset;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.SortSpec;
+import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
@@ -26,16 +33,15 @@ import java.util.UUID;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.OperationOutcome;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.fhir.search.searchparams.PatientSearchParams;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
@@ -44,6 +50,7 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
+import org.openelisglobal.search.service.PatientSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindException;
@@ -70,6 +77,9 @@ public class PatientProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
+    @Autowired
+    private PatientSearchService patientSearchService;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -104,6 +114,9 @@ public class PatientProvider implements IResourceProvider {
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Patient: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Patient", e);
@@ -148,8 +161,7 @@ public class PatientProvider implements IResourceProvider {
                     LogEvent.logError(this.getClass().getSimpleName(), method,
                             "Validation error: " + error.getDefaultMessage());
                 }
-                outcome.setOperationOutcome(operationOutcome);
-                return outcome;
+                throw new UnprocessableEntityException("Patient failed validation", operationOutcome);
             }
 
             Patient patient = new Patient();
@@ -198,43 +210,58 @@ public class PatientProvider implements IResourceProvider {
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Patient creation completed successfully: " + patient.getId());
 
+        } catch (BaseServerResponseException e) {
+            throw e;
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Exception during patient creation: " + e.getMessage());
-
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
-
-            outcome.setOperationOutcome(operationOutcome);
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
+            throw new InternalErrorException("Unexpected server error while creating Patient", e);
         }
 
         return outcome;
     }
 
     @Search
-    public Bundle searchPatientBundle(
+    public IBundleProvider searchPatients(
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_RES_ID) TokenAndListParam id,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_NAME) StringAndListParam name,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GIVEN) StringAndListParam given,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_FAMILY) StringAndListParam family,
-            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_NAME) StringAndListParam name,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_BIRTHDATE) DateRangeParam birthdate,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GENDER) TokenAndListParam gender,
-            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_RES_ID) TokenAndListParam id,
-            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PATIENT,
-                    "ServiceRequest:" + ServiceRequest.SP_SUBJECT, }) HashSet<Include> revIncludes,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
+            @Offset Integer offset, @Count Integer count,
+            @IncludeParam(reverse = true, allow = { FhirConstants.SERVICE_REQUEST_PATIENT_REV_INCLUDE,
+                    FhirConstants.SERVICE_REQUEST_SUBJECT_REV_INCLUDE, FhirConstants.SPECIMEN_PATIENT_REV_INCLUDE,
+                    FhirConstants.SPECIMEN_SUBJECT_REV_INCLUDE, FhirConstants.OBSERVATION_PATIENT_REV_INCLUDE,
+                    FhirConstants.OBSERVATION_SUBJECT_REV_INCLUDE, FhirConstants.DIAGNOSTIC_REPORT_PATIENT_REV_INCLUDE,
+                    FhirConstants.DIAGNOSTIC_REPORT_SUBJECT_REV_INCLUDE }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
 
-        String methodName = "searchPatientBundle";
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Patients (returning Bundle)");
+        String methodName = "searchPatients";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Patients");
 
         try {
-
-            Bundle bundle = util.forwardSearchToFhirStore(request);
-
-            return bundle;
-
+            PatientSearchParams params = new PatientSearchParams(id, identifier, name, given, family, birthdate, gender,
+                    lastUpdated, sort, revIncludes);
+            return FhirProviderUtils.withPaging(patientSearchService.searchPatients(params), offset, count);
+        } catch (InvalidRequestException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Invalid Patient search parameter: " + e.getMessage());
+            throw new InvalidRequestException("Invalid Patient search parameter: " + e.getMessage(), e);
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
                     "Error searching Patients: " + e.getMessage());
             throw new InternalErrorException("Error searching Patients", e);
@@ -344,6 +371,9 @@ public class PatientProvider implements IResourceProvider {
             throw new ResourceVersionConflictException("Patient was modified by another user");
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
             throw new InternalErrorException("Update failed: " + e.getMessage(), e);
         }
     }
@@ -383,6 +413,9 @@ public class PatientProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Patient", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Patient: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while deleting Patient", e);

@@ -28,6 +28,20 @@ public class OrderAttachment extends BaseObject<Integer> {
     @Column(name = "sample_id", nullable = false)
     private Long sampleId;
 
+    /**
+     * OGC-811: analysis this attachment documents; null for order-level attachments
+     * captured at order entry.
+     */
+    @Column(name = "analysis_id")
+    private Long analysisId;
+
+    /**
+     * OGC-811: result component within the analysis (multi-component tests); null
+     * when the attachment applies to the whole analysis or order.
+     */
+    @Column(name = "test_result_component_id", length = 36)
+    private String testResultComponentId;
+
     @Column(name = "original_file_name", nullable = false, length = 255)
     private String originalFileName;
 
@@ -70,6 +84,22 @@ public class OrderAttachment extends BaseObject<Integer> {
 
     public void setSampleId(Long sampleId) {
         this.sampleId = sampleId;
+    }
+
+    public Long getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(Long analysisId) {
+        this.analysisId = analysisId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public String getOriginalFileName() {

@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  useContext,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -15,9 +9,13 @@ import {
   languages as defaultLanguages,
   buildLanguagesFromConfig,
 } from "../../languages";
+import TranslationOverrideProvider from "../../languages/TranslationOverrideProvider";
+import { ConfigurationContext, NotificationContext } from "./contexts";
 
-export const ConfigurationContext = createContext(null);
-export const NotificationContext = createContext(null);
+// Declared in ./contexts so a component Layout renders can read one without
+// importing Layout back; re-exported here because this is where the rest of the
+// app has always imported them from.
+export { ConfigurationContext, NotificationContext };
 
 const isAdminNavRoute = (pathname) =>
   pathname === "/admin" ||
@@ -59,7 +57,6 @@ function useIsDesktop() {
 
   return isDesktop;
 }
-
 export default function Layout(props) {
   const { children } = props;
   const location = useLocation();
@@ -71,25 +68,8 @@ export default function Layout(props) {
   const [supportedLocales, setSupportedLocales] = useState([]);
   const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
-  // Determine layout config from props or route-based fallbacks
-  const isStorageContext =
-    location.pathname.startsWith("/Storage") ||
-    location.pathname.startsWith("/FreezerMonitoring");
-
-  const isAnalyzerContext =
-    location.pathname.startsWith("/analyzers") ||
-    location.pathname.startsWith("/AnalyzerManagement");
   const isAdminContext = isAdminNavRoute(location.pathname);
   const navContext = isAdminContext ? "admin" : "main";
-
-  // Used by Header to persist per-context menu expansion state
-  const storageKeyPrefix = isAdminContext
-    ? "admin"
-    : isStorageContext
-      ? "storage"
-      : isAnalyzerContext
-        ? "analyzer"
-        : "main";
 
   // Nav on desktop: pinned (default) renders it persistently and pushes
   // content; unpinned turns it into the same hamburger-opened overlay drawer
@@ -119,7 +99,7 @@ export default function Layout(props) {
 
   useEffect(() => {
     closeSideNav();
-  }, [location.pathname, closeSideNav]);
+  }, [location.pathname, location.search, closeSideNav]);
 
   // Credential-change screens are login-adjacent and render focused (no sidenav),
   // matching /login regardless of auth state.
@@ -202,44 +182,45 @@ export default function Layout(props) {
         enabledLanguages: enabledLanguages,
       }}
     >
-      <NotificationContext.Provider
-        value={{
-          notificationVisible,
-          setNotificationVisible,
-          notifications,
-          addNotification,
-          removeNotification,
-        }}
-      >
-        <div className="d-flex flex-column min-vh-100">
-          <Header
-            onChangeLanguage={props.onChangeLanguage}
-            navOpen={navOpen}
-            isDesktop={isDesktop}
-            navPinned={navPinned}
-            navPersistent={navPersistent}
-            toggleNavPinned={toggleNavPinned}
-            toggleSideNav={() => setDrawerOpen((open) => !open)}
-            closeSideNav={closeSideNav}
-            storageKeyPrefix={storageKeyPrefix}
-            navContext={navContext}
-            showSideNav={!isFocusedAuthRoute}
-          />
-          {/* Theme wrapper creates white theme zone for content area */}
-          {/* Global SCSS theme = blue header/nav, this = light content */}
-          <Theme theme="white">
-            <Content
-              data-testid="content-wrapper"
-              className={`${isLocked ? "content-nav-locked" : ""}${
-                isAdminContext ? " content-admin-context" : ""
-              }`.trim()}
-            >
-              {children}
-            </Content>
-          </Theme>
-          <Footer />
-        </div>
-      </NotificationContext.Provider>
+      <TranslationOverrideProvider>
+        <NotificationContext.Provider
+          value={{
+            notificationVisible,
+            setNotificationVisible,
+            notifications,
+            addNotification,
+            removeNotification,
+          }}
+        >
+          <div className="d-flex flex-column min-vh-100">
+            <Header
+              onChangeLanguage={props.onChangeLanguage}
+              navOpen={navOpen}
+              isDesktop={isDesktop}
+              navPinned={navPinned}
+              navPersistent={navPersistent}
+              toggleNavPinned={toggleNavPinned}
+              toggleSideNav={() => setDrawerOpen((open) => !open)}
+              closeSideNav={closeSideNav}
+              navContext={navContext}
+              showSideNav={!isFocusedAuthRoute}
+            />
+            {/* Theme wrapper creates white theme zone for content area */}
+            {/* Global SCSS theme = blue header/nav, this = light content */}
+            <Theme theme="white">
+              <Content
+                data-testid="content-wrapper"
+                className={`${isLocked ? "content-nav-locked" : ""}${
+                  isAdminContext ? " content-admin-context" : ""
+                }`.trim()}
+              >
+                {children}
+              </Content>
+            </Theme>
+            <Footer />
+          </div>
+        </NotificationContext.Provider>
+      </TranslationOverrideProvider>
     </ConfigurationContext.Provider>
   );
 }

@@ -46,6 +46,7 @@ let breadcrumbs = [
     label: "immunohistochemistry.label.dashboard",
     link: "/ImmunohistochemistryDashboard",
   },
+  { label: "breadcrumb.caseView", link: "" },
 ];
 
 function ImmunohistochemistryCaseView() {

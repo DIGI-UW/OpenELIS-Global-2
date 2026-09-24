@@ -72,10 +72,12 @@ const SampleActionsOverflowMenu = ({
   return (
     <div className="sample-actions-overflow-menu">
       <OverflowMenu
-        ariaLabel={intl.formatMessage({
+        flipped
+        aria-label={intl.formatMessage({
           id: "storage.sample.actions",
           defaultMessage: "Sample actions",
         })}
+        menuOptionsClass="sample-actions-overflow-menu__options"
         data-testid="sample-actions-overflow-menu"
       >
         <OverflowMenuItem

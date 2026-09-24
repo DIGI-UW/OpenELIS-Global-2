@@ -1,5 +1,13 @@
 # Implementation Plan: Westgard QC Rules Dashboard
 
+> **Superseded analyzer-identification plan:** The operational-QC portions of
+> this plan remain historical implementation context. Any task, component, or
+> data model involving `AnalyzerQcRule`, OpenELIS-pushed classifiers, or
+> profile-to-rule copying is superseded by the
+> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+> and must not be executed or extended. Git history preserves the original
+> plan; this notice is the current direction.
+
 **Branch**: `feat/qc_westgard_rules` | **Date**: 2026-04-13 | **Spec**:
 [spec.md](spec.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) | **Design**:
@@ -7,12 +15,13 @@
 
 ## Summary
 
-Implement a Westgard-rules-based quality control system for laboratory analyzer
-instruments, covering automated QC sample identification, statistical evaluation
-of 8 standard rules, a real-time compliance dashboard with Levey-Jennings
-charts, and configurable alerting. The full scope spans the design spec's
-FR1-FR13 across 5 milestones, with M1 delivering the MVP already implemented in
-PR #3390 + Bridge #33.
+Implement a Westgard-rules-based operational quality control system for
+laboratory instruments, covering control lots and results, statistical
+evaluation of 8 standard rules, a real-time compliance dashboard with
+Levey-Jennings charts, and configurable alerting. Bridge profile-owned
+control-result recognition is an external input boundary governed by OGC-1054,
+not configurable operational-QC state in this plan. OpenELIS does not send a
+classifier to Bridge, and operational QC does not gate analyzer activation.
 
 ## Technical Context
 
@@ -28,8 +37,9 @@ analyzer ingestion pipeline (async); all QC data immutable for audit
 
 ## Constitution Check
 
-- [x] **Configuration-Driven**: No country-specific code branches; QC rules come
-      from analyzer profiles (per-instrument, not per-country)
+- [x] **Configuration-Driven**: No country-specific code branches;
+      control-result recognition comes from published Bridge profiles and
+      operational Westgard settings come from OpenELIS application data
 - [x] **Carbon Design System**: All QC UI uses @carbon/react (dashboard tiles,
       charts via Carbon Charts, forms, tables)
 - [x] **FHIR/IHE Compliance**: QC observations tagged via FHIR R4 meta.tag;
@@ -37,14 +47,14 @@ analyzer ingestion pipeline (async); all QC data immutable for audit
 - [x] **Layered Architecture**: 5-layer pattern followed — QCControlLot
       (Valueholder) → QCControlLotDAO → QCControlLotService → QCRestController →
       QCControlLotForm. @Transactional in services only.
-- [x] **Test Coverage**: ~285 backend+bridge tests exist (~233 QC module + ~26
-      analyzer-QC + ~26 bridge-QC @Test methods); frontend 0 tests and E2E 0
-      tests are the M1 completion gap
-- [x] **Schema Management**: Liquibase for all tables; runtime metadata (QC
-      rules) comes from profiles, not seed data
-- [x] **Internationalization**: All QC UI strings use React Intl; ~923 new
-      en.json keys added vs develop (QC dashboard, charts, rule config, control
-      lot setup, alerts, per-analyzer QC rules)
+- [x] **Test Strategy**: OpenELIS unit/integration tests, Bridge and
+      analyzer-mock contracts, RTL with a real router, and visible-only
+      Playwright stories provide current evidence at their owning layers
+- [x] **Schema Management**: Liquibase for OpenELIS operational-QC tables;
+      recognition remains in immutable Bridge profile revisions rather than an
+      OpenELIS classifier table or seed data
+- [x] **Internationalization**: All QC UI strings use React Intl (QC dashboard,
+      charts, Westgard configuration, control-lot setup, and alerts)
 - [x] **Security & Compliance**: RBAC (GLOBAL_ADMIN + LAB_SUPERVISOR),
       sys_user_id audit trail on all entities, violations immutable
 
@@ -52,22 +62,21 @@ analyzer ingestion pipeline (async); all QC data immutable for audit
 
 ### Current State
 
-**Implementation**: PR #3390 (OE) + Bridge #33 implement all M1 backend, bridge,
-and frontend code. The code is stacked on the Madagascar FILE analyzer PR #3372,
-builds pass in CI, and the local harness runs with 10 seeded analyzers and
-profile-driven QC rules (all 7 FILE profiles and 6 ASTM profiles verified
-populated).
+**Implementation**: PR #3390 supplied the OpenELIS operational-QC foundation.
+Its OpenELIS-owned analyzer classifier and Bridge-pulled rule path are
+superseded and removed by OGC-1054; they are not evidence for this plan.
 
-**Remaining before M1 is deploy-ready**: (1) end-to-end flow validation (M1.1 —
-create lot → mock QC → violation → dashboard), (2) REST controller integration
-tests (M1.2), (3) one Playwright smoke test (M1.3), (4) cleanup + CI green
-(M1.4). These are test-coverage and validation gaps, not new feature work.
+**Acceptance path**: service and integration tests prove OpenELIS operational
+QC; Bridge contracts and analyzer-mock traffic prove profile-owned recognition;
+RTL proves Carbon and routed interaction; Playwright proves only assembled,
+visible user stories. The OGC-1054 M3, M4, and G0 checkpoints own linked-QC,
+traffic, deployment, and human acceptance.
 
 ### Milestone Table
 
 | ID         | Branch Suffix         | Scope                                                                                                        | User Stories   | Verification                                                                                                         | Depends On |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
-| **M1**     | m1-mvp                | QC pipeline + dashboard + charts + alerts + rule config + bridge QC identification                           | US1-7 (all)    | Backend tests pass, 1 Playwright smoke test, controller tests, local harness flow validated                          | -          |
+| **M1**     | m1-mvp                | QC pipeline + dashboard + charts + alerts + Westgard config + profile-owned recognition boundary             | US1-7 (all)    | OpenELIS tests, Bridge contracts, RTL, and a visible local harness story pass                                        | -          |
 | **M2**     | m2-corrective-actions | Corrective action workflow: entity, service, UI (recalibration, maintenance, repeat control, reagent change) | FR7            | Corrective action CRUD + link to violations; violation cannot close without corrective action for REJECTION severity | M1         |
 | **[P] M3** | m3-email-alerts       | Email notification transport + per-user notification preferences                                             | FR11.2-11.7    | Email sent on violation; user can configure which severities trigger email                                           | M1         |
 | **[P] M4** | m4-trend-reporting    | Trend analysis charts + reporting (PDF/CSV export) + violation history log                                   | FR10, FR12     | Trend graph renders; PDF export works; violation log filterable                                                      | M1         |
@@ -77,7 +86,7 @@ tests (M1.2), (3) one Playwright smoke test (M1.3), (4) cleanup + CI green
 
 ```mermaid
 graph LR
-    M1[M1: MVP Release] --> M2[M2: Corrective Actions]
+    M1[M1: Operational-QC Foundation] --> M2[M2: Corrective Actions]
     M1 --> M3["[P] M3: Email Alerts"]
     M1 --> M4["[P] M4: Trend + Reporting"]
     M2 --> M5[M5: Advanced Charts + Re-eval]
@@ -95,9 +104,11 @@ graph LR
 
 ---
 
-## M1: MVP Release — Completion Plan
+## M1: Operational-QC Foundation — Acceptance Plan
 
-M1 is 95% implemented. The remaining work is test coverage and validation:
+The historical implementation supplies a foundation. Acceptance requires the
+current code and the amended architecture boundary to pass the following
+coverage and validation work:
 
 ### M1.1 End-to-end flow validation (local harness)
 
@@ -271,13 +282,6 @@ src/main/java/org/openelisglobal/qc/
 ├── form/                # QCControlLotForm, WestgardRuleConfigForm
 └── valueholder/         # QCControlLot, QCResult, QCStatistics, QCRuleViolation, QCAlert
 
-# Backend (analyzer QC rules)
-src/main/java/org/openelisglobal/analyzer/
-├── controller/          # AnalyzerQcRuleRestController
-├── dao/                 # AnalyzerQcRuleDAO
-├── service/             # AnalyzerQcRuleService, QcRuleDto
-└── valueholder/         # AnalyzerQcRule
-
 # Frontend (QC components)
 frontend/src/components/qc/
 ├── dashboard/           # QCDashboard, QCSummaryTiles, InstrumentsTab, AlertsTab, InstrumentDetailPage
@@ -286,26 +290,17 @@ frontend/src/components/qc/
 ├── ruleConfig/          # RuleConfigPanel, RuleConfigFormModal
 └── index.js             # Module exports
 
-# Frontend (analyzer QC rules page)
-frontend/src/components/analyzers/QcRules/
-├── QcRuleBuilderModal.jsx  # Now a routed page at /analyzers/:id/qc-rules
-└── QcRuleRow.jsx
+# OpenELIS analyzer integration
+src/main/java/org/openelisglobal/analyzer/
+└── ...                  # Analyzer-to-QC context link only; no recognition classifier
 
-# Analyzer profiles (QC rules source of truth)
-projects/analyzer-profiles/
-├── astm/                # 6 ASTM profiles with FIELD_EQUALS O.12=Q
-└── file/                # 7 FILE profiles with instrument-specific QC rules
+# Analyzer Bridge repository
+src/main/java/org/itech/ahb/profile/
+├── ...                  # Profile validation, immutable revisions, recognition evaluation
+└── ...                  # Human-readable recognition authoring and summaries
 
-# Bridge (QC rule evaluation engine)
-tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/
-├── qc/                  # QcRule, QcRuleEvaluator
-├── fhir/                # ASTMResultParser, FileResultParser, HL7ResultParser (rule-driven isControl)
-└── startup/             # AnalyzerRegistryBootstrap (pulls qcRules from OE)
-
-# Liquibase — QC changesets split across two directories
+# Liquibase — OpenELIS operational QC only
 src/main/resources/liquibase/
-├── analyzer/            # 004-012-create-analyzer-qc-rule.xml (table)
-│                        # 004-013-seed-default-qc-rules.xml (no-op; rules come from profiles via validCheckSum ANY)
 └── qc/                  # 001-create-qc-tables.xml (control lot, result, statistics)
                          # 002-create-westgard-rule-config.xml
                          # 003-create-qc-violation-tables.xml
@@ -318,35 +313,36 @@ src/main/resources/liquibase/
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
-and [Playwright best practices](.specify/guides/playwright-best-practices.md)
+**Reference**:
+[OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md) and
+[Playwright best practices](../../.specify/guides/playwright-best-practices.md)
 
-**Note**: This project has deprecated Cypress E2E (per CLAUDE.md). All new E2E
-tests use **Playwright** with the harness-foundational / harness-demo project
-structure. Use `/plan-record-playwright`, `/write-playwright-test`,
+**Note**: This project has deprecated Cypress E2E (per CLAUDE.md). Visible
+operational-QC stories use the Playwright `harness-demo` project; domain and
+persistence behavior stays in owning backend tests. Use `/plan-record-playwright`, `/write-playwright-test`,
 `/audit-playwright`, `/debug-playwright` skills for E2E work.
 
 ### Coverage Goals
 
-- **Backend**: >80% code coverage for QC module (~285 unit+integration+DAO tests
-  across OE and bridge exist; controller tests are the gap)
-- **Frontend**: >70% coverage target (currently 0%; M1 adds smoke test, M2+ adds
-  component tests)
+- **Backend**: >80% code coverage for new OpenELIS operational-QC behavior
+- **Frontend**: >70% coverage for new routed QC components and interactions
 - **Critical Paths**: 100% coverage for z-score calculation, rule evaluation
   logic, and violation creation
 
 ### Test Types
 
-- [x] **Unit Tests**: 233 tests covering services, evaluators, calculators,
-      event listener (JUnit 4 + Mockito)
-- [x] **DAO Tests**: 7 integration tests for QCControlLotDAO
+- [ ] **Unit Tests**: cover services, evaluators, calculators, and event
+      listeners with current passing evidence
+- [ ] **DAO Tests**: cover control-lot, result, violation, and alert persistence
 - [ ] **Controller Tests**: QCRestController, QCChartDataRestController,
       QCViolationRestController — M1 completion target
-- [x] **ORM Validation Tests**: QCHibernateMappingValidationTest (2 tests)
-- [x] **Bridge Tests**: 56 tests across 4 files (parser QC rules + evaluator)
-- [ ] **Frontend Unit Tests**: 0 — M2+ target
-- [ ] **E2E Tests (Playwright)**: 0 — M1 adds 1 smoke test; M2+ adds workflow
-      tests
+- [ ] **ORM Validation Tests**: validate all retained operational-QC mappings
+- [ ] **Bridge Tests**: prove pinned-profile recognition, explicit `NONE`, and
+      absence of OpenELIS-pushed or hard-coded fallback classifiers
+- [ ] **Frontend Unit Tests**: use RTL with a real router for Carbon behavior,
+      URL state, headings, and breadcrumbs
+- [ ] **E2E Tests (Playwright)**: exercise visible user stories only, with no
+      API assertions, backend polling, forced controls, or arbitrary waits
 
 ### Test Data Management
 
@@ -354,13 +350,14 @@ structure. Use `/plan-record-playwright`, `/write-playwright-test`,
   for consistent fixture generation
 - **Backend integration**: DBUnit XML fixtures
   (`src/test/resources/testdata/ qc-*.xml`) with transaction rollback
-- **E2E**: `seed-analyzers.sh` creates 10 analyzers with profile-driven QC
-  rules; manual control lot creation via REST API in test setup
+- **E2E**: a deterministic fixture loader may establish preconditions; all
+  acceptance actions and assertions occur through visible UI
 
-### Checkpoint Validations
+### Required Validations
 
-- [x] **After Phase 1 (Entities)**: ORM validation tests pass ✓
-- [x] **After Phase 2 (Services)**: 233 backend unit tests pass ✓
-- [ ] **After Phase 3 (Controllers)**: Controller integration tests pass (M1
-      completion)
-- [ ] **After Phase 4 (Frontend)**: Playwright smoke test pass (M1 completion)
+- **Entities**: current ORM validation tests pass.
+- **Services**: current operational-QC service and evaluator tests pass.
+- **Controllers**: current controller integration tests pass.
+- **Frontend**: focused RTL and the visible Playwright QC story pass.
+- **Boundary**: Bridge and analyzer-mock contracts prove pinned-profile
+  recognition and the OpenELIS removal guard passes.

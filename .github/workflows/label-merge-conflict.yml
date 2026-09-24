@@ -16,7 +16,16 @@ jobs:
     if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
     runs-on: ubuntu-latest
     steps:
+      # Advisory only: this labels and comments on conflicting PRs, it gates
+      # nothing. A push to develop makes GitHub recompute mergeability for every
+      # open PR against it, and with enough of them open some are still
+      # unresolved when the retries run out — the action then errors with
+      # "Could not determine mergeable status for: #x, #y". That turned develop
+      # red on every merge while saying nothing about the merge itself, so the
+      # step is allowed to fail: the next push or PR update labels whatever it
+      # could not reach this time.
       - uses: prince-chrismc/label-merge-conflicts-action@v2
+        continue-on-error: true
         with:
           conflict_label_name: "merge conflict"
           github_token: ${{ secrets.GITHUB_TOKEN }}

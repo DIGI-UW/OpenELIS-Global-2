@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,13 +20,17 @@ import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.dto.AnalyteDetail;
+import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.qc.valueholder.QCSource;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,11 +48,10 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     private static final String COLOR_GREEN = "GREEN";
     private static final String COLOR_YELLOW = "YELLOW";
     private static final String COLOR_RED = "RED";
+    private static final String COLOR_NOT_CONFIGURED = "NOT_CONFIGURED";
 
     private static final String SEVERITY_REJECTION = "REJECTION";
     private static final String SEVERITY_WARNING = "WARNING";
-
-    private static final String STATUS_UNRESOLVED = "UNRESOLVED";
 
     private static final int DEFAULT_WINDOW_DAYS = 30;
 
@@ -65,6 +69,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     private Timestamp[] defaultDateRange() {
         Instant now = Instant.now();
@@ -104,7 +111,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         Map<String, Analyzer> analyzerCache = new HashMap<>();
         for (String id : instrumentIds) {
             try {
-                Optional<Analyzer> analyzer = analyzerService.getWithType(id);
+                Optional<Analyzer> analyzer = analyzerService.getWithBinding(id);
                 analyzer.ifPresent(a -> analyzerCache.put(id, a));
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
@@ -149,7 +156,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             Timestamp endDate) {
         Analyzer analyzer = null;
         try {
-            Optional<Analyzer> opt = analyzerService.getWithType(String.valueOf(instrumentId));
+            Optional<Analyzer> opt = analyzerService.getWithBinding(String.valueOf(instrumentId));
             analyzer = opt.orElse(null);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "getInstrumentComplianceStatus",
@@ -207,6 +214,37 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         return summary;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<BenchQcSummaryRow> getBenchQcSummary(Timestamp startDate, Timestamp endDate, QCSource source) {
+        List<Object[]> rows = resultDAO.summariseBenchQc(startDate, endDate, source);
+        List<BenchQcSummaryRow> summary = new ArrayList<>();
+        for (Object[] row : rows) {
+            String testSectionId = Objects.toString(row[0], null);
+            String testId = Objects.toString(row[1], null);
+            summary.add(new BenchQcSummaryRow(testSectionId, resolveTestSectionName(testSectionId), testId,
+                    testService.getLabelOrDefault(testId, Test::getName, null), Objects.toString(row[2], null),
+                    row[3] == null ? 0L : ((Number) row[3]).longValue(),
+                    row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5]));
+        }
+        return summary;
+    }
+
+    /** Names are context, never a reason to fail the listing. */
+    private String resolveTestSectionName(String testSectionId) {
+        if (testSectionId == null) {
+            return null;
+        }
+        try {
+            TestSection section = testSectionService.get(testSectionId);
+            return section == null ? null : section.getLocalizedName();
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "resolveTestSectionName",
+                    "Could not resolve lab unit name for " + testSectionId);
+            return null;
+        }
+    }
+
     /**
      * Build the compliance status for a specific instrument within a date range.
      * Loads violations and results for the instrument within the window.
@@ -239,11 +277,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         // Populate instrument metadata from Analyzer
         if (analyzer != null) {
             status.setInstrumentName(analyzer.getName());
-            status.setInstrumentLocation(analyzer.getLocation());
-            if (analyzer.getAnalyzerType() != null) {
-                status.setInstrumentType(analyzer.getAnalyzerType().getName());
-            } else {
-                status.setInstrumentType(analyzer.getType());
+            status.setInstrumentLocation(resolveLabUnitNames(analyzer.getTestUnitIds()));
+            if (analyzer.getPinnedProfileBinding() != null) {
+                status.setInstrumentType(analyzer.getPinnedProfileBinding().getProfileId());
             }
         } else {
             status.setInstrumentName("Instrument " + instrumentId);
@@ -319,17 +355,34 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         status.setLastResultTime(lastResultTime);
 
         // Count active control lots for this instrument
+        int activeControlLots = 0;
         try {
             long activeCount = controlLotDAO.countActiveByInstrument(instrumentId);
-            status.setActiveControlLots((int) activeCount);
+            activeControlLots = (int) activeCount;
+            status.setActiveControlLots(activeControlLots);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "buildInstrumentStatus",
                     "Could not count active control lots for instrument " + instrumentId + ": " + e.getMessage());
         }
 
-        status.setComplianceColor(calculateComplianceColor(rejections, warnings));
+        boolean hasOperationalQc = activeControlLots > 0 || !resultsInRange.isEmpty();
+        status.setComplianceColor(calculateComplianceColor(rejections, warnings, hasOperationalQc));
 
         return status;
+    }
+
+    private String resolveLabUnitNames(List<String> labUnitIds) {
+        if (labUnitIds == null || labUnitIds.isEmpty()) {
+            return null;
+        }
+        List<String> names = new ArrayList<>();
+        for (String labUnitId : labUnitIds) {
+            TestSection labUnit = testSectionService.getTestSectionById(labUnitId);
+            if (labUnit != null) {
+                names.add(testSectionService.getUserLocalizedTesSectionName(labUnit));
+            }
+        }
+        return names.isEmpty() ? null : String.join(", ", names);
     }
 
     /**
@@ -339,18 +392,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         AnalyteDetail detail = new AnalyteDetail();
         detail.setTestId(testId);
 
-        try {
-            Test test = testService.getTestById(String.valueOf(testId));
-            if (test != null) {
-                detail.setTestName(test.getDescription() != null ? test.getDescription() : "Test " + testId);
-            } else {
-                detail.setTestName("Test " + testId);
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "buildAnalyteDetail",
-                    "Could not load test " + testId + ": " + e.getMessage());
-            detail.setTestName("Test " + testId);
-        }
+        detail.setTestName(testService.getLabelOrDefault(testId, Test::getDescription, "Test " + testId));
 
         if (latestResult != null) {
             detail.setLatestZScore(latestResult.getZScore());
@@ -364,14 +406,17 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
     /**
      * Calculate compliance color based on violation counts. RED: Any unresolved
-     * REJECTION violations YELLOW: Only WARNING violations (no rejections) GREEN:
-     * No unresolved violations
+     * REJECTION violations YELLOW: Only WARNING violations (no rejections)
+     * NOT_CONFIGURED: No active control lot or QC result GREEN: No unresolved
+     * violations and operational QC exists
      */
-    private String calculateComplianceColor(int rejections, int warnings) {
+    private String calculateComplianceColor(int rejections, int warnings, boolean hasOperationalQc) {
         if (rejections > 0) {
             return COLOR_RED;
         } else if (warnings > 0) {
             return COLOR_YELLOW;
+        } else if (!hasOperationalQc) {
+            return COLOR_NOT_CONFIGURED;
         } else {
             return COLOR_GREEN;
         }

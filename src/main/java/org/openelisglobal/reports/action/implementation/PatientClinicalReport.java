@@ -149,7 +149,7 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
                 copyParentData(data, parentData);
 
                 data.setResult(reportReferralResultValue);
-                data.setNote(note);
+                data.setNote(noteWithReferralAttribution(note, referral));
                 String testId = referralResult.getTestId();
                 if (!GenericValidator.isBlankOrNull(testId)) {
                     Test test = new Test();

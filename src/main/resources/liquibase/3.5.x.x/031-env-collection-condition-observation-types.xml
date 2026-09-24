@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0.0-add-env-water-temp" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envWaterTemp'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envWaterTemp"/>
+      <column name="description" value="Water temperature at collection site (°C)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-add-env-ambient-temp" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envAmbientTemp'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envAmbientTemp"/>
+      <column name="description" value="Ambient air temperature at collection site (°C)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-add-env-weather" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envWeather'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envWeather"/>
+      <column name="description" value="Weather conditions at time of collection (from Env Weather dictionary)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-add-env-preservation-method" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envPreservationMethod'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envPreservationMethod"/>
+      <column name="description" value="Sample preservation method used (e.g. HNO3 acidification, 4°C cooler)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-add-env-field-notes" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envFieldNotes'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envFieldNotes"/>
+      <column name="description" value="Free-text field observations recorded at time of collection"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>
