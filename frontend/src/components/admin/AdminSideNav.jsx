@@ -623,9 +623,9 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       <SideNavLink
         data-cy="programEntry"
         renderIcon={ChartBubble}
-        {...navProps(`${path}/programV2`)}
+        {...navProps(`${path}/program`)}
       >
-        <FormattedMessage id="sidenav.label.admin.program" />
+        <FormattedMessage id="admin.programs.title" />
       </SideNavLink>
       <SideNavMenu
         renderIcon={CicsSystemGroup}

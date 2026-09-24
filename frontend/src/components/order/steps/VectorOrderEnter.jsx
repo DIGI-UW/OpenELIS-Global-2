@@ -352,6 +352,7 @@ const VectorOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="VECTOR"
         />
 
         {/* Sample & Test Selection */}

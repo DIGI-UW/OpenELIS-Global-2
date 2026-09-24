@@ -5,7 +5,6 @@ import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import CalendarManagement from "./calendarManagement";
 import ProgramManagement from "./program/ProgramManagement";
-import ProgramManagementV2 from "./program/ProgramManagementV2";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
   GlobalMenuManagement,
@@ -122,7 +121,9 @@ function Admin() {
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
-      <Route path={`${path}/programV2`} component={ProgramManagementV2} />
+      {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
+          and deep links survive; /programV2 was its pre-release alias. */}
+      <Redirect from={`${path}/programV2`} to={`${path}/program`} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
       <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />

@@ -30,15 +30,22 @@ import {
  * - Program-specific additional fields (VL, EID, TB, etc.)
  */
 
+/**
+ * `domain` is the order's domain (CLINICAL / ENVIRONMENTAL / VECTOR). When it
+ * is given the picker only offers active programs of that domain (OGC-781
+ * FR-6); without it every active program is offered.
+ */
 const ProgramSection = ({
   orderData,
   setOrderData,
   samples = [],
   isReadOnly,
+  domain,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const questionnaireProgramIdRef = useRef(null);
+  const appendedProgramIdRef = useRef(null);
 
   const [programs, setPrograms] = useState([]);
   const [programsLoaded, setProgramsLoaded] = useState(false);
@@ -101,7 +108,10 @@ const ProgramSection = ({
   // Fetch programs on mount
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/user-programs", (response) => {
+    const url = domain
+      ? `/rest/user-programs?domain=${encodeURIComponent(domain)}`
+      : "/rest/user-programs";
+    getFromOpenElisServer(url, (response) => {
       if (!componentMounted.current) {
         return;
       }
@@ -113,7 +123,44 @@ const ProgramSection = ({
     return () => {
       componentMounted.current = false;
     };
-  }, []);
+  }, [domain]);
+
+  // An order already filed under a program the picker no longer offers (it
+  // was deactivated, or belongs to another domain) must still show that
+  // program instead of a blank picker.
+  useEffect(() => {
+    if (!programsLoaded || !currentProgramId) {
+      return;
+    }
+    const known = programs.some(
+      (program) => String(program.id) === String(currentProgramId),
+    );
+    if (known || appendedProgramIdRef.current === String(currentProgramId)) {
+      return;
+    }
+    appendedProgramIdRef.current = String(currentProgramId);
+    getFromOpenElisServer(`/rest/program/${currentProgramId}`, (response) => {
+      if (!componentMounted.current || !response?.program?.programName) {
+        return;
+      }
+      setPrograms((previous) =>
+        previous.some(
+          (program) => String(program.id) === String(currentProgramId),
+        )
+          ? previous
+          : [
+              ...previous,
+              {
+                id: String(response.program.id || currentProgramId),
+                value: response.program.programName,
+                code: response.program.code,
+                domain: response.domain,
+                active: response.active,
+              },
+            ],
+      );
+    });
+  }, [programsLoaded, programs, currentProgramId]);
 
   useEffect(() => {
     if (!hasCultureWorkflow || !microbiologyProgram) {
@@ -640,6 +687,26 @@ const ProgramSection = ({
           </p>
         </Column>
       </Grid>
+
+      {programsLoaded && programs.length === 0 && !hasCultureWorkflow && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={
+            domain
+              ? intl.formatMessage(
+                  { id: "orderEntry.programPicker.empty.domain" },
+                  {
+                    domain: intl.formatMessage({
+                      id: `label.domain.${domain}`,
+                    }),
+                  },
+                )
+              : intl.formatMessage({ id: "orderEntry.programPicker.empty" })
+          }
+        />
+      )}
 
       {hasCultureWorkflow && programsLoaded && !microbiologyProgram && (
         <InlineNotification

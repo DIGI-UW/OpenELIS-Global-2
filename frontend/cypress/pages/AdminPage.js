@@ -2,7 +2,6 @@
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import MenuConfigPage from "./MenuConfigPage";
 import BarcodeConfigPage from "./BarcodeConfigPage";
-import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import OrganizationManagementPage from "./OrganizationManagementPage";
 import UserManagementPage from "./UserManagementPage";
@@ -158,15 +157,6 @@ class AdminPage {
       .should("exist")
       .click({ force: true });
     return new BarcodeConfigPage();
-  }
-
-  goToProgramEntry() {
-    // Sidebar's data-cy="programEntry" now points at the new Programs V2
-    // workflow; the legacy /program page is still registered as a route but
-    // no longer surfaced in the sidenav. This deprecated Cypress spec targets
-    // the legacy UI, so navigate directly.
-    cy.visit("/MasterListsPage/program");
-    return new ProgramEntryPage();
   }
 
   goToDictionaryMenuPage() {
