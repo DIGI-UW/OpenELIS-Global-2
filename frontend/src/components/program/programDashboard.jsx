@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import {
@@ -52,6 +52,8 @@ const ProgramDashboard = () => {
   const [serverPageSize, setServerPageSize] = useState();
   const [searchTerm, setSearchTerm] = useState("");
   const intl = useIntl();
+  // Identifies the load in flight, so a late answer never replaces a newer page.
+  const latestRequest = useRef(0);
 
   /** Applies one server page and its page announcement to the table. */
   const applyPage = (response) => {
@@ -94,14 +96,20 @@ const ProgramDashboard = () => {
     const url = filter
       ? `${programDashboardUrl}?filter=${encodeURIComponent(filter)}`
       : programDashboardUrl;
-    getFromOpenElisServer(url, applyPage);
+    const requestId = ++latestRequest.current;
+    getFromOpenElisServer(url, (response) => {
+      if (requestId === latestRequest.current) applyPage(response);
+    });
   };
 
   /** One server page of the last search, the same request for the arrows and for Carbon. */
   const loadPage = (pageNumber) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
       `${programDashboardUrl}?page=${pageNumber}`,
-      applyPage,
+      (response) => {
+        if (requestId === latestRequest.current) applyPage(response);
+      },
     );
   };
 

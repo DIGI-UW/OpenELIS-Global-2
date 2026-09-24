@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { act, render, screen, within, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -174,4 +174,74 @@ it("issues a request scoped to COMPLETED only when the Completed stage is chosen
 
     expect(matchingCall).toBeDefined();
   });
+});
+
+it("keeps the page the user moved to when an earlier search answers late", async () => {
+  // The search runs more than once while the stage list and filters settle; a
+  // slow duplicate must not pull the view back to page 1.
+  const pending = [];
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url.startsWith("/rest/displayList/PATHOLOGY_STATUS")) {
+      return callback(PATHOLOGY_STATUS_LIST);
+    }
+    if (url.startsWith("/rest/pathology/dashboard/count")) {
+      return callback(DASHBOARD_COUNTS);
+    }
+    if (url.startsWith("/rest/pathology/dashboard?")) {
+      pending.push({ url, callback });
+      return;
+    }
+    return callback([]);
+  });
+  const pageOne = {
+    items: [
+      DASHBOARD_ENTRIES[0],
+      {
+        pathologySampleId: 10,
+        labNumber: "ACC10",
+        firstName: "C",
+        lastName: "D",
+        status: "GROSSING",
+        requestDate: "2026-09-01",
+      },
+    ],
+    paging: { currentPage: "1", totalPages: "2" },
+  };
+  const pageTwo = {
+    items: [
+      {
+        pathologySampleId: 11,
+        labNumber: "ACC11",
+        firstName: "E",
+        lastName: "F",
+        status: "STAINING",
+        requestDate: "2026-09-01",
+      },
+    ],
+    paging: { currentPage: "2", totalPages: "2" },
+  };
+  renderDashboard();
+
+  await waitFor(() => {
+    expect(
+      pending.filter((p) => !p.url.includes("page=")).length,
+    ).toBeGreaterThan(0);
+  });
+  const searches = pending.filter((p) => !p.url.includes("page="));
+  act(() => searches[searches.length - 1].callback(pageOne));
+  await screen.findByText("ACC9");
+
+  fireEvent.click(document.getElementById("loadnextresults"));
+  await waitFor(() => {
+    expect(pending.some((p) => p.url.includes("page=2"))).toBe(true);
+  });
+  act(() => pending.find((p) => p.url.includes("page=2")).callback(pageTwo));
+  await screen.findByText("ACC11");
+  expect(screen.getByText("2 / 2")).toBeInTheDocument();
+
+  act(() => searches[0].callback(pageOne));
+
+  expect(screen.getByText("ACC11")).toBeInTheDocument();
+  expect(screen.queryByText("ACC9")).toBeNull();
+  expect(screen.getByText("2 / 2")).toBeInTheDocument();
 });

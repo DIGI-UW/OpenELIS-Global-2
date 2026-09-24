@@ -57,6 +57,9 @@ function PathologyDashboard() {
   // Carbon's page is the server's page.
   const [paging, setPaging] = useState();
   const [serverPageSize, setServerPageSize] = useState();
+  // Identifies the load in flight: the search runs more than once while the
+  // filters settle, and a late answer must not pull the page back to 1.
+  const latestRequest = useRef(0);
   const [filters, setFilters] = useState({
     searchTerm: "",
     myCases: false,
@@ -230,9 +233,14 @@ function PathologyDashboard() {
 
   /** One server page of the last search, the same request for the arrows and for Carbon. */
   const loadPage = (pageNumber) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
       "/rest/pathology/dashboard?page=" + pageNumber,
-      setPathologyEntriesWithIds,
+      (response) => {
+        if (requestId === latestRequest.current) {
+          setPathologyEntriesWithIds(response);
+        }
+      },
     );
   };
 
@@ -241,9 +249,13 @@ function PathologyDashboard() {
    * (an assignment changes a row, not the list) as long as it still exists.
    */
   const refreshItems = (pageToReopen) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
       "/rest/pathology/dashboard?" + filtersToParameters(),
       (response) => {
+        if (requestId !== latestRequest.current) {
+          return;
+        }
         setPathologyEntriesWithIds(response);
         const reopen = Number(pageToReopen) || 1;
         if (

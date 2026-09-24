@@ -73,6 +73,9 @@ function ImmunohistochemistryDashboard() {
   // Carbon's page is the server's page.
   const [paging, setPaging] = useState();
   const [serverPageSize, setServerPageSize] = useState();
+  // Identifies the load in flight: the search runs more than once while the
+  // filters settle, and a late answer must not pull the page back to 1.
+  const latestRequest = useRef(0);
 
   function formatDateToDDMMYYYY(date) {
     var day = date.getDate();
@@ -239,9 +242,14 @@ function ImmunohistochemistryDashboard() {
 
   /** One server page of the last search, the same request for the arrows and for Carbon. */
   const loadPage = (pageNumber) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
       "/rest/immunohistochemistry/dashboard?page=" + pageNumber,
-      setImmunohistochemistryEntriesWithIds,
+      (response) => {
+        if (requestId === latestRequest.current) {
+          setImmunohistochemistryEntriesWithIds(response);
+        }
+      },
     );
   };
 
@@ -250,9 +258,13 @@ function ImmunohistochemistryDashboard() {
    * (an assignment changes a row, not the list) as long as it still exists.
    */
   const refreshItems = (pageToReopen) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
       "/rest/immunohistochemistry/dashboard?" + filtersToParameters(),
       (response) => {
+        if (requestId !== latestRequest.current) {
+          return;
+        }
         setImmunohistochemistryEntriesWithIds(response);
         const reopen = Number(pageToReopen) || 1;
         if (
