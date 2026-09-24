@@ -11,6 +11,9 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  *   as an error and say what a copy did.
  * - Sample Type create with markup in the name is refused (400), not reported
  *   as saved.
+ * - Sample Types whose names share their first ten characters are all created
+ *   with distinct abbreviations; a name already taken is refused (409) on the
+ *   name field.
  * - A panel description may repeat another panel's; a rename onto another
  *   panel's name is refused by name.
  *
@@ -335,6 +338,92 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
     expect(body.fieldErrors.map((f: { field: string }) => f.field)).toContain(
       "sampleTypeEnglishName",
     );
+  });
+
+  test("Sample Types sharing a ten-character prefix are both created; a taken name is refused on the name field", async ({
+    page,
+  }) => {
+    const headers = { "X-CSRF-Token": await csrfToken(page) };
+    const first = `E2ESTP${run} Venous`;
+    const second = `E2ESTP${run} Arterial`;
+
+    const created = await page.request.post(`${API}/rest/SampleTypeCreate`, {
+      headers,
+      data: {
+        sampleTypeEnglishName: first,
+        sampleTypeFrenchName: first,
+        domain: "CLINICAL",
+      },
+    });
+    expect(created.status()).toBe(200);
+
+    const createInUi = async (name: string) => {
+      await page.goto("/MasterListsPage/SampleTypeEditor/new/basic-info", {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator("#st-name")).toBeVisible({
+        timeout: NAV_TIMEOUT,
+      });
+      await page.locator("#st-name").fill(name);
+      await page.locator("#st-description").fill(name);
+      const posted = page.waitForResponse(
+        (r) =>
+          r.url().endsWith("/rest/SampleTypeCreate") &&
+          r.request().method() === "POST",
+      );
+      await page.getByRole("button", { name: "Create Sample Type" }).click();
+      await posted;
+    };
+
+    await createInUi(second);
+    await expect(page).toHaveURL(/SampleTypeEditor\/\d+\/basic-info/, {
+      timeout: UI_TIMEOUT,
+    });
+    await expect(page.locator("#st-name")).toHaveValue(second);
+
+    await page.goto("/MasterListsPage/SampleTypeEditor/new/basic-info", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("#st-name")).toBeVisible({
+      timeout: NAV_TIMEOUT,
+    });
+    const third = `E2ESTP${run} Capillary`;
+    await page.locator("#st-name").fill(third);
+    await page.locator("#st-description").fill(third);
+    const raced = await page.request.post(`${API}/rest/SampleTypeCreate`, {
+      headers,
+      data: {
+        sampleTypeEnglishName: third,
+        sampleTypeFrenchName: third,
+        domain: "CLINICAL",
+      },
+    });
+    expect(raced.status()).toBe(200);
+    const refused = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/rest/SampleTypeCreate") &&
+        r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Create Sample Type" }).click();
+    await refused;
+    await expect(page.locator("#st-name")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(
+      page.getByText("A sample type with this name already exists.").first(),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page).toHaveURL(/SampleTypeEditor\/new\/basic-info/);
+
+    const list = await page.request.get(`${API}/rest/sample-types`);
+    const rows = (
+      (await list.json()).data as {
+        description: string;
+        abbreviation: string;
+      }[]
+    ).filter((row) => row.description.startsWith(`E2ESTP${run}`));
+    expect(rows).toHaveLength(3);
+    expect(new Set(rows.map((row) => row.abbreviation)).size).toBe(3);
   });
 
   test("a panel description may repeat another's; a rename onto another panel's name is refused", async ({

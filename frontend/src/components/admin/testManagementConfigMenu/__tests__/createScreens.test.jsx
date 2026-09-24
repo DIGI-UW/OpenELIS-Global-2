@@ -200,61 +200,73 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, read, fill }) => {
  * refused by bean validation) used to be read as a successful create.
  */
 describe("SampleTypeCreate refusal", () => {
-  it("reports a refused create (400) as an error and keeps the entry", async () => {
-    const addNotification = vi.fn();
-    getFromOpenElisServer.mockReset();
-    getFromOpenElisServer.mockImplementation((url, callback) =>
-      callback({
-        existingSampleTypeList: [{ value: "Blood" }],
-        inactiveSampleTypeList: [],
-      }),
-    );
-    postToOpenElisServerJsonResponse.mockReset();
-    postToOpenElisServerJsonResponse.mockImplementation(
-      (url, payload, callback) =>
+  it.each([
+    [
+      400,
+      {
+        error: "validation",
+        fieldErrors: [{ field: "sampleTypeEnglishName" }],
+      },
+      "error.sampleType.create.invalidName",
+    ],
+    [
+      409,
+      { error: "duplicate", field: "sampleTypeEnglishName" },
+      "configuration.sampleType.create.duplicate",
+    ],
+  ])(
+    "reports a refused create (%i) as that refusal and keeps the entry",
+    async (status, body, messageKey) => {
+      const addNotification = vi.fn();
+      getFromOpenElisServer.mockReset();
+      getFromOpenElisServer.mockImplementation((url, callback) =>
         callback({
-          error: "validation",
-          fieldErrors: [{ field: "sampleTypeEnglishName" }],
-          status: 400,
+          existingSampleTypeList: [{ value: "Blood" }],
+          inactiveSampleTypeList: [],
         }),
-    );
-    render(
-      <MemoryRouter>
-        <IntlProvider locale="en" messages={messages}>
-          <QueryClientProvider client={createQueryClient()}>
-            <NotificationContext.Provider
-              value={{
-                notificationVisible: false,
-                setNotificationVisible: vi.fn(),
-                addNotification,
-              }}
-            >
-              <SampleTypeCreate />
-            </NotificationContext.Provider>
-          </QueryClientProvider>
-        </IntlProvider>
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText("Blood")).toBeInTheDocument();
+      );
+      postToOpenElisServerJsonResponse.mockReset();
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) => callback({ ...body, status }),
+      );
+      render(
+        <MemoryRouter>
+          <IntlProvider locale="en" messages={messages}>
+            <QueryClientProvider client={createQueryClient()}>
+              <NotificationContext.Provider
+                value={{
+                  notificationVisible: false,
+                  setNotificationVisible: vi.fn(),
+                  addNotification,
+                }}
+              >
+                <SampleTypeCreate />
+              </NotificationContext.Provider>
+            </QueryClientProvider>
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+      expect(await screen.findByText("Blood")).toBeInTheDocument();
 
-    await type("eng", "QA<b>RV</b>");
-    await type("fr", "QA<b>RV</b>");
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+      await type("eng", "QA<b>RV</b>");
+      await type("fr", "QA<b>RV</b>");
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+      await userEvent.click(screen.getByRole("button", { name: "Accept" }));
 
-    await waitFor(() =>
-      expect(addNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: "error",
-          message: messages["error.sampleType.create.invalidName"],
-        }),
-      ),
-    );
-    expect(addNotification).not.toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "success" }),
-    );
-    expect(document.getElementById("eng")).toHaveValue("QA<b>RV</b>");
-  });
+      await waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "error",
+            message: messages[messageKey],
+          }),
+        ),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(document.getElementById("eng")).toHaveValue("QA<b>RV</b>");
+    },
+  );
 });
 
 /**

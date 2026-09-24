@@ -94,7 +94,9 @@ function SampleTypeCreate() {
           id:
             res && res.status === 400
               ? "error.sampleType.create.invalidName"
-              : "server.error.msg",
+              : res && res.status === 409
+                ? "configuration.sampleType.create.duplicate"
+                : "server.error.msg",
         }),
       });
       setNotificationVisible(true);
