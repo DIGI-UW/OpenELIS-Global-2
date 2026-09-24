@@ -438,7 +438,9 @@ test.describe("microbiology order entry on the supported workflow", () => {
     });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(page.getByLabel(cultureTestName)).toBeChecked();
+    await expect(
+      page.getByLabel(cultureTestName, { exact: true }),
+    ).toBeChecked();
     await expect(page.getByLabel("Clinical History")).toHaveValue(
       "Persistent fever after antibiotics",
     );

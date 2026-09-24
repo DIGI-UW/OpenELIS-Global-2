@@ -486,6 +486,15 @@ const SampleTestSection = ({
     return panelCount + testCount;
   };
 
+  // Carbon labels a tag's close button from title, and falls back to
+  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
+  // both have to be given or the button reads Carbon's English "Dismiss".
+  const removeLabel = (name) =>
+    intl.formatMessage(
+      { id: "common.removeSelection", defaultMessage: "Remove {name}" },
+      { name },
+    );
+
   // Shared test/panel picker — rendered below a row when expanded
   const renderTestPanelPicker = (sampleIndex) => {
     const sample = samples[sampleIndex];
@@ -509,13 +518,8 @@ const SampleTestSection = ({
                   text={panel.name}
                   onClose={() => handleRemovePanel(sampleIndex, panel.id)}
                   disabled={isReadOnly}
-                  dismissTooltipLabel={intl.formatMessage(
-                    {
-                      id: "common.removeSelection",
-                      defaultMessage: "Remove {name}",
-                    },
-                    { name: panel.name },
-                  )}
+                  title={removeLabel(panel.name)}
+                  dismissTooltipLabel={removeLabel(panel.name)}
                 />
               ))}
             </div>
@@ -586,13 +590,8 @@ const SampleTestSection = ({
                   text={test.name}
                   onClose={() => handleRemoveTest(sampleIndex, test.id)}
                   disabled={isReadOnly}
-                  dismissTooltipLabel={intl.formatMessage(
-                    {
-                      id: "common.removeSelection",
-                      defaultMessage: "Remove {name}",
-                    },
-                    { name: test.name },
-                  )}
+                  title={removeLabel(test.name)}
+                  dismissTooltipLabel={removeLabel(test.name)}
                 />
               ))}
             </div>
@@ -1590,13 +1589,8 @@ const SampleTestSection = ({
                             handleRemovePanel(sampleIndex, panel.id)
                           }
                           disabled={isReadOnly}
-                          dismissTooltipLabel={intl.formatMessage(
-                            {
-                              id: "common.removeSelection",
-                              defaultMessage: "Remove {name}",
-                            },
-                            { name: panel.name },
-                          )}
+                          title={removeLabel(panel.name)}
+                          dismissTooltipLabel={removeLabel(panel.name)}
                         />
                       ))}
                     </div>
@@ -1665,13 +1659,8 @@ const SampleTestSection = ({
                           text={test.name}
                           onClose={() => handleRemoveTest(sampleIndex, test.id)}
                           disabled={isReadOnly}
-                          dismissTooltipLabel={intl.formatMessage(
-                            {
-                              id: "common.removeSelection",
-                              defaultMessage: "Remove {name}",
-                            },
-                            { name: test.name },
-                          )}
+                          title={removeLabel(test.name)}
+                          dismissTooltipLabel={removeLabel(test.name)}
                         />
                       ))}
                     </div>
