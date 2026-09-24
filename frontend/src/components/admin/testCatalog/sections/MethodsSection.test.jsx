@@ -404,7 +404,7 @@ describe("MethodsSection", () => {
     await copyFromOtherTest(container);
 
     expect(
-      screen.getByText("1 method copied from Other Test."),
+      screen.getByText("From Other Test: 1 method copied."),
     ).toBeInTheDocument();
     expect(screen.getByText("MIC01")).toBeInTheDocument();
   });

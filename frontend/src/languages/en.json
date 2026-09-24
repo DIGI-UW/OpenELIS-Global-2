@@ -7872,7 +7872,7 @@
   "admin.testCatalog.methods.error.server": "The server could not complete the request. Try again.",
   "admin.testCatalog.methods.linked": "Method linked.",
   "admin.testCatalog.methods.created": "Method created and linked.",
-  "admin.testCatalog.methods.copied": "{count, plural, one {# method} other {# methods}} copied from {source}.",
+  "admin.testCatalog.methods.copied": "From {source}: {count, plural, one {# method} other {# methods}} copied.",
   "admin.testCatalog.methods.copyNothing": "No methods copied: {source} has no methods that are not already linked to this test.",
   "admin.testCatalog.methods.empty": "No methods linked. Use '+ Link Method' or '+ Create New Method' to add one.",
   "testnotification.bcc": "BCC",
