@@ -1,0 +1,1 @@
+const https = require('https'); https.get('https://api.github.com/repos/DIGI-UW/OpenELIS-Global-2/issues?state=open&per_page=30', {headers:{'User-Agent':'node'}}, res => { let d=''; res.on('data', c=>d+=c); res.on('end', () => console.log(JSON.parse(d).filter(i=>!i.pull_request).map(i=>i.number+': '+i.title).slice(0, 15).join('\n'))); });

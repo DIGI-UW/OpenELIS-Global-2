@@ -69,8 +69,7 @@ and documented the architecture decision.
 - `test_method` exists and supports a default Method per test.
 - Result components exist and include `allow_multiple_readings`, but AST
   storage must still be proven against result-entry/reporting behavior.
-- Existing WHONET export services exist and should be extended before building
-  a parallel exporter.
+- The legacy Reports-based WHONET export path was removed (OGC-782 M4 follow-up); the canonical Microbiology WHONET exporter is now authoritative.
 - Generic `Alert` infrastructure exists, but M-11 clinical call/read-back
   logging may still need its own audited log model.
 
@@ -83,7 +82,7 @@ and documented the architecture decision.
 | Culture protocol | Use test default Method plus micro-specific method metadata | The selected test provides a default culture setup recipe |
 | AST storage | Use AST run/header plus existing result rows/components if proven feasible | Users enter AST readings and see interpretations with override history |
 | Critical communications | Use clinical critical log plus existing alerts surface | Critical communications are logged and surfaced in the existing operational alert workflow |
-| WHONET | Extend existing WHONET services and Test Catalog mapping data | Finalized microbiology cases can be exported for surveillance |
+| WHONET | Use canonical Microbiology WHONET export service (M4); legacy path removed | Finalized microbiology cases can be exported for surveillance |
 
 ### Microbiology Implementation Readiness Gate
 

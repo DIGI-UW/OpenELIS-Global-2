@@ -187,11 +187,6 @@ class StudyReportPage {
     this.clickNavLink("#menu_reports_auditTrail\\.study");
   }
 
-  visitWhonetPage() {
-    this.ensureSidenavMenuExpanded("#menu_reports");
-    this.clickNavLink("#menu_reports_whonet_export");
-  }
-
   // --- NC Reports ---
 
   selectNCReports() {
@@ -478,16 +473,6 @@ class StudyReportPage {
     this.typeInDate("#startDate", "01/02/2023");
     this.verifyButtonVisible();
   }
-
-  visitWhonetReport() {
-    this.visitWhonetPage();
-    this.verifyHeaderText("h1", "Export a CSV File by Date");
-    this.verifyButtonDisabled();
-    this.typeInDate("#startDate", "01/02/2023");
-    this.typeEndDate("#endDate", "02/02/2023");
-    this.verifyButtonVisible();
-  }
-
   visitGeneralReportInExportByDate() {
     //this.visitStudyReports();
     this.selectExportByDate();
