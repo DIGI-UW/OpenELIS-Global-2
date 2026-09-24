@@ -136,7 +136,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   // Importing a catalog file edits no single record, so the menu offers its
   // entity links and nothing else: a greyed list of test sections under
   // "Click a test to edit its sections" would be an instruction the page
-  // cannot honour.
+  // cannot honour. The menu itself stays as the reader left it.
   const inCatalogImport = /\/CatalogImport(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
@@ -240,7 +240,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     !!editorSampleTypeId ||
     !!editorPanelId ||
     !!editorLabUnitId ||
-    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement)(\/|$)/.test(
+    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement|CatalogImport)(\/|$)/.test(
       location.pathname,
     );
 
@@ -347,7 +347,9 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       {/* key flips on entering/leaving the Test Catalog area to force a
           remount — Carbon SideNavMenu reads defaultExpanded only at mount.
           Within the area the key is stable, so navigating between the lists
-          and either editor never collapses the menu. */}
+          and either editor never collapses the menu, catalog import included:
+          opening it hides the sections but leaves the menu as the reader had
+          it. */}
       <SideNavMenu
         key={inTestCatalogArea ? "testcatalog-area" : "testcatalog"}
         data-cy="testCatalogManagement"
