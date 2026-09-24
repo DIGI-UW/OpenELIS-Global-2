@@ -87,9 +87,9 @@ describe("Admin", () => {
     );
   });
 
-  test("the stuck analyzer events tile leads out of the admin route family", () => {
-    // The Admin menu is a single link to this dashboard, so the analyzer's
-    // import issues are reachable only from here.
+  test("the stuck analyzer events tile stays inside the admin route family", () => {
+    // Opening it from the admin shell must not drop the reader back to the
+    // main navigation, so it has an admin route of its own.
     render(
       <MemoryRouter initialEntries={["/MasterListsPage"]}>
         <IntlProvider locale="en" messages={messages}>
@@ -97,9 +97,7 @@ describe("Admin", () => {
           <Route
             path="*"
             render={({ location }) => (
-              <span data-testid="current-path">
-                {location.pathname + location.search}
-              </span>
+              <span data-testid="current-path">{location.pathname}</span>
             )}
           />
         </IntlProvider>
@@ -109,12 +107,15 @@ describe("Admin", () => {
     const tile = screen
       .getByText(messages["analyzer.importIssues.events.title"])
       .closest("a");
-    expect(tile).toHaveAttribute("href", "/AnalyzerResults?view=import-issues");
+    expect(tile).toHaveAttribute(
+      "href",
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
 
     fireEvent.click(tile);
 
     expect(screen.getByTestId("current-path")).toHaveTextContent(
-      "/AnalyzerResults?view=import-issues",
+      "/MasterListsPage/stuckAnalyzerEvents",
     );
   });
 });
