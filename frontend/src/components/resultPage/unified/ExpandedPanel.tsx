@@ -36,6 +36,8 @@ import ReferralAction, {
 // @ts-ignore
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
+import { resultFlagFor } from "./resultFlagFor";
+import SampleKindTag from "../SampleKindTag";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
@@ -256,6 +258,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
 
+  const flag = resultFlagFor(row);
+
   return (
     <div className="unifiedExpandedPanel" data-testid={`panel-${rowKey}`}>
       {/* Context strip (FR-C2) — one compact line, no decorative icon */}
@@ -288,16 +292,14 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="cds--label">
               <FormattedMessage id="label.results.result" />
             </div>
-            <div
-              className={`unifiedWorkZoneValue ${accentClass(row.resultFlag)}`}
-            >
+            <div className={`unifiedWorkZoneValue ${accentClass(flag)}`}>
               <PolymorphicResultCell
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
-              <FlagChip flag={row.resultFlag} />
+              <FlagChip flag={flag} />
             </div>
             {row.normalRange && (
               <div className="unifiedWorkZoneRange">
@@ -666,7 +668,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       )}
 
       {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
-      {row.resultFlag === "CRITICAL" && (
+      {flag === "CRITICAL" && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}

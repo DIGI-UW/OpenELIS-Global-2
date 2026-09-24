@@ -72,6 +72,7 @@ import { ReferralDraft } from "./ReferralAction";
 import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
+import { resultFlagFor } from "./resultFlagFor";
 import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -1308,6 +1309,7 @@ const UnifiedResults: React.FC = () => {
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   const isExpanded = expandedRowKey === key;
+                  const flag = resultFlagFor(row);
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
@@ -1380,7 +1382,7 @@ const UnifiedResults: React.FC = () => {
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
                         </TableCell>
                         <TableCell className="unifiedResultsValueCell">
-                          <span className={accentClass(row.resultFlag)}>
+                          <span className={accentClass(flag)}>
                             <PolymorphicResultCell
                               row={row}
                               editable={isRowEditable(state)}
@@ -1403,7 +1405,7 @@ const UnifiedResults: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <FlagChip flag={row.resultFlag} />
+                          <FlagChip flag={flag} />
                         </TableCell>
                         <TableCell>
                           {showEdit(state) && (
