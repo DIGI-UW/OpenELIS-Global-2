@@ -391,6 +391,120 @@ describe("AnalyzerConnectionSetup", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("when the analyzer dials the Bridge", () => {
+    const serverProbe = (status, checks) => ({
+      schemaVersion: "1.0",
+      requestId: "probe-server-1",
+      connectionId: connection.connectionId,
+      profileRef,
+      configRevision: connection.configRevision,
+      configFingerprint: connection.configFingerprint,
+      nonMutating: true,
+      status,
+      startedAt: "2026-09-23T00:01:00Z",
+      completedAt: "2026-09-23T00:01:01Z",
+      checks,
+    });
+    const listenerReady = {
+      key: "listener",
+      status: "PASSED",
+      messageKey: "listener.ready",
+      durationMillis: 2,
+      details: { port: 55000 },
+    };
+
+    const probeWith = async (result) => {
+      testConnection.mockImplementation((_id, callback) => callback(result));
+      renderConnection();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Test connection" }),
+      );
+    };
+
+    it("explains an unchecked analyzer without reporting a failure", async () => {
+      await probeWith(
+        serverProbe("SUCCEEDED", [
+          listenerReady,
+          {
+            key: "analyzer",
+            status: "SKIPPED",
+            messageKey: "analyzer.address.missing",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(await screen.findByText("Connection ready")).toBeVisible();
+      expect(screen.getByText("Analyzer (for information)")).toBeVisible();
+      expect(
+        screen.getByText(
+          "No analyzer address is saved, so the analyzer was not checked. Results arriving from the analyzer prove the connection works.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains an unreachable analyzer without reporting a failure", async () => {
+      await probeWith(
+        serverProbe("SUCCEEDED", [
+          listenerReady,
+          {
+            key: "analyzer",
+            status: "FAILED",
+            messageKey: "analyzer.unreachable",
+            durationMillis: 1500,
+            details: { host: "10.1.2.3" },
+          },
+        ]),
+      );
+
+      expect(await screen.findByText("Connection ready")).toBeVisible();
+      expect(
+        screen.getByText(
+          "The Bridge could not reach the analyzer at 10.1.2.3. Analyzers that connect to the Bridge often cannot be reached from it (a firewall, NAT, or a hosted server). Results arriving from the analyzer prove the connection works.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Connection failed")).not.toBeInTheDocument();
+    });
+
+    it("reports a listener failure as an error", async () => {
+      await probeWith(
+        serverProbe("FAILED", [
+          {
+            key: "listener",
+            status: "FAILED",
+            messageKey: "listener.not.listening",
+            durationMillis: 2,
+            details: { port: 55000 },
+          },
+          {
+            key: "analyzer",
+            status: "PASSED",
+            messageKey: "analyzer.reachable",
+            durationMillis: 4,
+            details: { host: "10.1.2.3" },
+          },
+        ]),
+      );
+
+      const outcome = await screen.findByText("Connection failed");
+      expect(outcome.closest(".cds--inline-notification")).toHaveClass(
+        "cds--inline-notification--error",
+      );
+      expect(
+        screen.getByText("The Bridge listener is not accepting connections."),
+      ).toBeVisible();
+      expect(
+        screen.getByText("The Bridge reached the analyzer at 10.1.2.3."),
+      ).toBeVisible();
+    });
+  });
+
   it("does not resend a masked secret unless the user replaces it", async () => {
     renderConnection();
 
