@@ -243,9 +243,7 @@ describe("ProgramManagement", () => {
     );
     await screen.findByDisplayValue("Nature of Specimen");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete option" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete option" }));
     await screen.findByText(
       "No options yet — add at least one so reception can pick a value.",
     );
