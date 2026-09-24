@@ -11,6 +11,10 @@ import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
+import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,17 +30,27 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAProgramRestController extends ControllerUtills {
 
-    @Autowired
-    private EQAProgramService programService;
+    private final EQAProgramService programService;
 
+    private final EQAProgramEnrollmentService enrollmentService;
+
+    private final SystemUserService systemUserService;
+
+    // Constructor injection so the integration suite can drive this controller
+    // with the real services, the way EQACycleRestController is exercised.
     @Autowired
-    private EQAProgramEnrollmentService enrollmentService;
+    public EQAProgramRestController(EQAProgramService programService, EQAProgramEnrollmentService enrollmentService,
+            SystemUserService systemUserService) {
+        this.programService = programService;
+        this.enrollmentService = enrollmentService;
+        this.systemUserService = systemUserService;
+    }
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
@@ -46,12 +60,21 @@ public class EQAProgramRestController extends ControllerUtills {
                 return ResponseEntity.badRequest().body(Map.of("error", "Program name is required"));
             }
 
-            String provider = (String) body.get("provider");
+            String schemeType = body.get("schemeType") == null ? "" : String.valueOf(body.get("schemeType")).trim();
+            if (schemeType.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Scheme type is required"));
+            }
 
             EQAProgram program = new EQAProgram();
             program.setName(name);
             program.setDescription(description);
-            program.setProvider(provider);
+            program.setSchemeType(schemeTypeOf(schemeType));
+            program.setProvider(blankToNull((String) body.get("provider")));
+            program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
+            // The review gate. Read at three layers — the auto-submit sweep,
+            // the cycle DTO and My Cycles — and until now written nowhere, so outside
+            // the test suite it could only ever be its column default of false.
+            program.setRequiresCycleReview(Boolean.TRUE.equals(body.get("requiresCycleReview")));
             program.setIsActive(true);
             program.setSysUserId(getSysUserId(request));
 
@@ -88,7 +111,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> updateProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -108,12 +131,28 @@ public class EQAProgramRestController extends ControllerUtills {
             }
 
             if (body.containsKey("provider")) {
-                program.setProvider((String) body.get("provider"));
+                program.setProvider(blankToNull((String) body.get("provider")));
+            }
+
+            if (body.containsKey("schemeType")) {
+                String schemeType = body.get("schemeType") == null ? "" : String.valueOf(body.get("schemeType")).trim();
+                if (schemeType.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Scheme type cannot be empty"));
+                }
+                program.setSchemeType(schemeTypeOf(schemeType));
             }
 
             if (body.containsKey("isActive")) {
                 Boolean isActive = (Boolean) body.get("isActive");
                 program.setIsActive(Boolean.TRUE.equals(isActive));
+            }
+
+            if (body.containsKey("perAnalyst")) {
+                program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
+            }
+
+            if (body.containsKey("requiresCycleReview")) {
+                program.setRequiresCycleReview(Boolean.TRUE.equals(body.get("requiresCycleReview")));
             }
 
             program = programService.update(program);
@@ -141,7 +180,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> updateTestAssignments(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             programService.get(id);
@@ -173,13 +212,95 @@ public class EQAProgramRestController extends ControllerUtills {
         }
     }
 
+    /**
+     * The scheme's analyst roster, with the display names the wizard's assignment
+     * step shows. Rows come back even for a user since deactivated — hiding them
+     * would silently drop an assignment already made.
+     */
+    @GetMapping(value = "/{id}/analysts", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getAnalysts(@PathVariable Long id) {
+        try {
+            programService.get(id);
+            return ResponseEntity
+                    .ok(programService.getAnalysts(id).stream().map(this::toAnalystDto).collect(Collectors.toList()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping(value = "/{id}/analysts", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public ResponseEntity<?> updateAnalysts(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            programService.get(id);
+
+            if (!(body.get("systemUserIds") instanceof List<?> rows)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "systemUserIds list is required"));
+            }
+            // Ids arrive as numbers or strings depending on the caller; reading each
+            // through String.valueOf is what keeps a JSON type mismatch from 500ing
+            // (the same cast bug qa fixed on enrollment).
+            List<Long> systemUserIds = rows.stream().filter(row -> row != null)
+                    .map(row -> Long.valueOf(String.valueOf(row).trim())).collect(Collectors.toList());
+
+            return ResponseEntity.ok(programService.setAnalysts(id, systemUserIds, getSysUserId(request)).stream()
+                    .map(this::toAnalystDto).collect(Collectors.toList()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private Map<String, Object> toAnalystDto(EQASchemeAnalyst analyst) {
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", analyst.getId());
+        dto.put("systemUserId", analyst.getSystemUserId());
+        SystemUser user = systemUserService.get(String.valueOf(analyst.getSystemUserId()));
+        dto.put("displayName", user == null ? String.valueOf(analyst.getSystemUserId())
+                : (user.getFirstName() == null ? "" : user.getFirstName() + " ") + user.getLastName());
+        return dto;
+    }
+
+    /**
+     * The arrangement type is a user decision, not a default: an in-house scheme is
+     * unreachable from the UI while the endpoint ignores it, and a regional or
+     * split-sample scheme created without it is silently filed as international. An
+     * unknown value is refused by name rather than falling back.
+     */
+    private EQASchemeType schemeTypeOf(String value) {
+        try {
+            return EQASchemeType.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown scheme type: " + value);
+        }
+    }
+
+    /**
+     * A blank provider is stored as NULL, so the provider-required check and every
+     * reader see "no provider" as one value instead of two.
+     */
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private Map<String, Object> toProgramDto(EQAProgram program) {
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", program.getId());
         dto.put("name", program.getName());
         dto.put("description", program.getDescription());
         dto.put("provider", program.getProvider());
+        // G1's alter-in-place: scheme_type lives on eqa_program, and the in-house
+        // wizard filters on it, so it has to reach the client.
+        dto.put("schemeType", program.getSchemeType() == null ? null : program.getSchemeType().name());
         dto.put("isActive", program.getIsActive());
+        // Result entry reads this to decide whether to show the
+        // Analyst column, so the scheme list has to carry it.
+        dto.put("perAnalyst", Boolean.TRUE.equals(program.getPerAnalyst()));
+        // With this on, a participant's cycle holds at ready-to-submit
+        // for a human to review rather than submitting itself.
+        dto.put("requiresCycleReview", Boolean.TRUE.equals(program.getRequiresCycleReview()));
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
         dto.put("participantCount", enrollmentService.countActiveEnrollments(program.getId()));
         return dto;

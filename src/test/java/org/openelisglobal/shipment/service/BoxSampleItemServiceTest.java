@@ -109,6 +109,27 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Arrived in good condition", received.getReceptionNotes());
     }
 
+    /**
+     * The whole add path against a real DB — this is the call that used to die on
+     * every use, because the referral lookup inside it bound an Integer to
+     * SampleItem.id (a String property), which throws before the query runs even
+     * when the sample item has no referrals at all.
+     */
+    @Test
+    public void addSampleItemToBox_shouldCreateContentsRowForSampleItemWithoutReferrals() {
+        BoxSampleItem added = boxSampleItemService.addSampleItemToBox(2, "3", 1);
+
+        Assert.assertNotNull(added.getId());
+        Assert.assertEquals(Integer.valueOf(2), added.getShippingBox().getId());
+        Assert.assertEquals("3", added.getSampleItem().getId());
+        Assert.assertEquals(ReceptionStatus.PENDING, added.getReceptionStatus());
+        Assert.assertTrue(boxSampleItemService.isSampleItemInBox("3"));
+
+        // removal is the same referral lookup on the way out
+        boxSampleItemService.removeSampleItemFromBox(added.getId(), 1);
+        Assert.assertFalse(boxSampleItemService.isSampleItemInBox("3"));
+    }
+
     @Test
     public void isSampleItemInBox_shouldReturnTrueForAssignedItem() {
         Assert.assertTrue(boxSampleItemService.isSampleItemInBox("1"));

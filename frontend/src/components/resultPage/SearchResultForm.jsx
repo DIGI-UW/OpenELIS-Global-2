@@ -15,19 +15,20 @@ import {
   Roles,
 } from "../utils/Utils";
 import {
-  Form,
-  TextInput,
-  TextArea,
-  Checkbox,
+  ActionableNotification,
   Button,
-  Grid,
+  Checkbox,
   Column,
-  Stack,
+  Form,
+  Grid,
+  Loading,
   Pagination,
   Select,
   SelectItem,
-  Loading,
-  ActionableNotification,
+  Stack,
+  TextArea,
+  TextInput,
+  Tooltip,
   Tag,
 } from "@carbon/react";
 import ServerPageArrows from "../common/ServerPageArrows";
@@ -1105,6 +1106,9 @@ export function SearchResults(props) {
   // banner: seeded from the durable record (/rest/critical-callback/
   // logged-results) when results load, updated in place on a new log.
   const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
+  // Eligible analysts per EQA scheme on this page. Keyed by scheme because one
+  // grid can show samples from two schemes with different lists.
+  const [eqaAnalysts, setEqaAnalysts] = useState({});
 
   const componentMounted = useRef(false);
   const holdingTimeNotifiedRows = useRef(new Set());
@@ -1231,6 +1235,31 @@ export function SearchResults(props) {
         }
       },
     );
+  }, [props.results]);
+
+  // One fetch per scheme present, and only when a row asks for the column. The
+  // server decides what "eligible" means: an opt-in list where the scheme has
+  // one, every active user where it does not.
+  useEffect(() => {
+    const schemeIds = [
+      ...new Set(
+        (props.results?.testResult || [])
+          .filter((row) => row.eqaPerAnalyst && row.eqaSchemeId)
+          .map((row) => row.eqaSchemeId),
+      ),
+    ];
+    schemeIds
+      .filter((schemeId) => !(schemeId in eqaAnalysts))
+      .forEach((schemeId) => {
+        getFromOpenElisServer(
+          `/rest/eqa/schemes/${schemeId}/eligible-analysts`,
+          (list) => {
+            if (componentMounted.current) {
+              setEqaAnalysts((known) => ({ ...known, [schemeId]: list || [] }));
+            }
+          },
+        );
+      });
   }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
@@ -1553,6 +1582,39 @@ export function SearchResults(props) {
     },
   ];
 
+  // The Analyst column exists only when a scheme on this page asks
+  // for it. Rendering it for every grid would leak the EQA flag to a bench tech
+  // looking at neighbouring patient samples.
+  if (props.results?.testResult?.some((row) => row.eqaPerAnalyst)) {
+    columns.push({
+      id: "eqaAnalyst",
+      // A help Tooltip on the header: the column appears
+      // only for EQA rows, and a bench tech seeing it arrive unannounced has no
+      // other way to know why.
+      name: (
+        <Tooltip
+          align="bottom"
+          label={intl.formatMessage({
+            id: "eqa.result.analyst.tooltip",
+            defaultMessage:
+              "Shown because this run includes an EQA sample whose scheme records who ran each sample. Choose the OpenELIS user who ran the sample, from the scheme's analyst roster — that is a separate record from whoever enters this result and whoever validates it. Non-EQA rows take no input.",
+          })}
+        >
+          <span>
+            {intl.formatMessage({
+              id: "eqa.result.analyst",
+              defaultMessage: "Analyst (EQA)",
+            })}
+          </span>
+        </Tooltip>
+      ),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "12rem",
+    });
+  }
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const fullTestName = row.testName;
@@ -1600,7 +1662,7 @@ export function SearchResults(props) {
                 (row.vectorPoolId
                   ? row.vectorPoolLabel || ""
                   : "-" + row.sequenceNumber)}
-              {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
+              {row.eqaSample && <EQABadge priority={row.eqaPriority} />}
               {/* Pool-anchored result rows carry the pool size + animal so a
                   reviewer scanning the table sees that multiple test rows
                   belong to one pool. Rows already cluster by accession+sequence,
@@ -1754,6 +1816,45 @@ export function SearchResults(props) {
               </div>
             </div>
           </>
+        );
+
+      // Who ran this EQA sample. Non-EQA rows in a mixed grid keep
+      // the column's shape but take no input, so the bench sees one table
+      // rather than a ragged one that hints at which samples are PT.
+      case "eqaAnalyst":
+        if (!row.eqaPerAnalyst) {
+          return <span className="cds--label">—</span>;
+        }
+        return (
+          <Select
+            id={"eqaAnalyst" + row.id}
+            name={"testResult[" + row.id + "].eqaAnalystId"}
+            labelText=""
+            noLabel={true}
+            invalid={!row.eqaAnalystId}
+            invalidText={intl.formatMessage({
+              id: "eqa.result.analystRequired",
+              defaultMessage:
+                "This EQA scheme records who ran each sample. Choose an analyst before saving.",
+            })}
+            value={row.eqaAnalystId || ""}
+            onChange={(e) => handleChange(e, row.id)}
+          >
+            <SelectItem
+              text={intl.formatMessage({
+                id: "eqa.result.analystChoose",
+                defaultMessage: "Choose analyst",
+              })}
+              value=""
+            />
+            {(eqaAnalysts[row.eqaSchemeId] || []).map((analyst) => (
+              <SelectItem
+                text={analyst.displayName}
+                value={analyst.id}
+                key={analyst.id}
+              />
+            ))}
+          </Select>
         );
 
       case "result": {

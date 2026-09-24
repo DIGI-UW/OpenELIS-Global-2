@@ -53,6 +53,12 @@ public class EQAResult extends BaseObject<Long> {
     @Column(name = "result_value", precision = 15, scale = 5)
     private BigDecimal resultValue;
 
+    /**
+     * A qualitative reported value ("Reactive"); filled when result_value is not.
+     */
+    @Column(name = "result_text", length = 255)
+    private String resultText;
+
     @Column(name = "target_value", precision = 15, scale = 5)
     private BigDecimal targetValue;
 

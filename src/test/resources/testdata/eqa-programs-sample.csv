@@ -1,0 +1,7 @@
+name,description,provider,schemeType,frequency,testSection,active
+CPHL National HIV Serology EQA,Proficiency testing for HIV rapid/serology testing sites (national programme),"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Serology,Y
+CPHL National HIV Viral Load EQA,Proficiency testing for HIV viral load testing laboratories,"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Molecular Biology,Y
+CPHL National EID EQA,Proficiency testing for early infant diagnosis (HIV DNA PCR) laboratories,"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Molecular Biology,Y
+CPHL National HIV Recency EQA,Proficiency testing for HIV recency (RTRI) testing sites,"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Serology,Y
+CPHL National COVID-19 Molecular EQA,Proficiency testing for SARS-CoV-2 molecular testing laboratories,"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Molecular Biology,Y
+CPHL National TB Microscopy EQA,Proficiency testing for tuberculosis smear microscopy sites,"Central Public Health Laboratory (CPHL), Port Moresby",REGIONAL_PT,Quarterly,Microbiology,Y

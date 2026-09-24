@@ -307,6 +307,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
+        // The lowest id, not a bare lookup by code: the Testcontainer is shared across
+        // the suite, and a fixture that remaps this vocabulary to ids of its own
+        // (result-limit.xml loads Dictionary as id 203) leaves the canonical seed row
+        // alongside the fixture's. The canonical seed always holds the lower id, and
+        // it is the row ResultLimitServiceImpl cached at startup.
         Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());

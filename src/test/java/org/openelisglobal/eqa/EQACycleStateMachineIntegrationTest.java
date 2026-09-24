@@ -1,0 +1,605 @@
+package org.openelisglobal.eqa;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
+import java.sql.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
+import org.openelisglobal.eqa.dao.EQAParticipantFollowupDAO;
+import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
+import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
+import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQAFollowupStatus;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
+import org.openelisglobal.eqa.valueholder.EQAParticipantFollowup;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.EQARound;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.eqa.valueholder.EQAStateMachine;
+import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
+import org.openelisglobal.eqa.valueholder.EQATriggerType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+/**
+ * OGC-609 [EQA V2.1] — the two cycle state machines, their audit trail, and the
+ * derived per-lab participant state, against a real DB.
+ */
+public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
+
+    private static final long ENROLLMENT_ID = 9905L;
+    private static final long OTHER_ENROLLMENT_ID = 9906L;
+    private static final long ANALYTE_HIV_VL = 9802L;
+    /**
+     * Follow-up rows reference a real organisation, one per row: the table is
+     * unique on (cycle, org).
+     */
+    private static final long FIRST_FOLLOWUP_ORG = 9940L;
+
+    @Autowired
+    private EQACycleService cycleService;
+    @Autowired
+    private EQAPanelSampleDAO eqaPanelSampleDAO;
+    @Autowired
+    private EQAParticipantFollowupDAO eqaParticipantFollowupDAO;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        seedEnrollment(ENROLLMENT_ID, "Cycle machine enrollment");
+        seedEnrollment(OTHER_ENROLLMENT_ID, "Second lab enrollment");
+        for (long id = FIRST_FOLLOWUP_ORG; id < FIRST_FOLLOWUP_ORG + 3; id++) {
+            jdbc.update(
+                    "INSERT INTO clinlims.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)"
+                            + " VALUES (?, ?, 'N', 'Y', now()) ON CONFLICT (id) DO NOTHING",
+                    id, "Close gate lab " + id);
+        }
+        followups = FIRST_FOLLOWUP_ORG;
+    }
+
+    // ---: legal and illegal edges ----
+
+    @Test
+    public void participantCycleWalksItsHappyPathAndAuditsEveryStep() {
+        EQACycle cycle = newCycle();
+
+        EQACycleStatus[] path = { EQACycleStatus.PANEL_RECEIVED, EQACycleStatus.TESTING, EQACycleStatus.READY_TO_SUBMIT,
+                EQACycleStatus.SUBMITTED, EQACycleStatus.SCORED, EQACycleStatus.CLOSED };
+        for (EQACycleStatus next : path) {
+            cycleService.transition(cycle.getId(), next, EQAStateMachine.PARTICIPANT, EQATriggerType.AUTO,
+                    EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+        }
+
+        assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
+
+        List<EQACycleStateTransition> audit = cycleService.getTransitions(cycle.getId());
+        assertEquals("one audit row per transition", path.length, audit.size());
+        assertEquals("PLANNED", audit.get(0).getPriorState());
+        assertEquals("PANEL_RECEIVED", audit.get(0).getNewState());
+        assertEquals("CLOSED", audit.get(audit.size() - 1).getNewState());
+        assertEquals(EQAStateMachine.PARTICIPANT, audit.get(0).getStateMachine());
+        assertEquals(EQATriggerType.AUTO, audit.get(0).getTriggerType());
+        assertNull("an automatic transition has no actor", audit.get(0).getTriggeredBy());
+    }
+
+    @Test
+    public void providerCycleWalksItsOwnLongerPath() {
+        EQACycle cycle = newCycle();
+        // A QC-passed panel is a precondition of ready_to_ship, so the happy path
+        // has to seed one — walking this edge with no panel is the bug below.
+        insertQcPanel(cycle, true);
+
+        EQACycleStatus[] path = { EQACycleStatus.PREP_IN_PROGRESS, EQACycleStatus.READY_TO_SHIP, EQACycleStatus.SHIPPED,
+                EQACycleStatus.DELIVERED, EQACycleStatus.SUBMISSIONS_OPEN, EQACycleStatus.SUBMISSIONS_CLOSED,
+                EQACycleStatus.SCORING, EQACycleStatus.SCORED, EQACycleStatus.CLOSED };
+        for (EQACycleStatus next : path) {
+            cycleService.transition(cycle.getId(), next, EQAStateMachine.PROVIDER, EQATriggerType.AUTO,
+                    EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+        }
+
+        assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
+        assertEquals(path.length, cycleService.getTransitions(cycle.getId()).size());
+    }
+
+    /**
+     * A cycle records when it actually ran, not only when it was planned to.
+     * Nothing had ever written either column, so a scored cycle carried no scoring
+     * date and anything wanting to print one had nothing to read.
+     */
+    @Test
+    public void aCycleRecordsWhenItStartedAndWhenItWasScored() {
+        EQACycle cycle = newCycle();
+        assertNull("a planned cycle has not started", readBack(cycle.getId()).getActualStartDate());
+        assertNull("nor been scored", readBack(cycle.getId()).getActualEndDate());
+
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.AUTO, EQATriggerEvent.PANEL_RECEIPT, null, null, USER);
+
+        Date started = readBack(cycle.getId()).getActualStartDate();
+        assertNotNull("leaving PLANNED is when it started", started);
+        assertNull("and it is not scored yet", readBack(cycle.getId()).getActualEndDate());
+
+        for (EQACycleStatus next : new EQACycleStatus[] { EQACycleStatus.TESTING, EQACycleStatus.READY_TO_SUBMIT,
+                EQACycleStatus.SUBMITTED, EQACycleStatus.SCORED }) {
+            cycleService.transition(cycle.getId(), next, EQAStateMachine.PARTICIPANT, EQATriggerType.AUTO,
+                    EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+        }
+
+        EQACycle scored = readBack(cycle.getId());
+        assertNotNull("reaching SCORED is when it was judged", scored.getActualEndDate());
+        assertEquals("and the start date is not moved by later transitions", started.toString(),
+                scored.getActualStartDate().toString());
+
+        // Closing it afterwards must not restamp either date: they record when the
+        // cycle ran, not when it was last touched.
+        cycleService.transition(cycle.getId(), EQACycleStatus.CLOSED, EQAStateMachine.PARTICIPANT, EQATriggerType.AUTO,
+                EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+        EQACycle closed = readBack(cycle.getId());
+        assertEquals(scored.getActualEndDate().toString(), closed.getActualEndDate().toString());
+        assertEquals(started.toString(), closed.getActualStartDate().toString());
+    }
+
+    @Test
+    public void skippingAStateIsRefusedAndWritesNoAudit() {
+        // Planned -> testing skips panel_received.
+        EQACycle cycle = newCycle();
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.TESTING, EQAStateMachine.PARTICIPANT,
+                    EQATriggerType.AUTO, EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+            fail("planned -> testing is not an edge in the participant machine");
+        } catch (EQAInvalidTransitionException expected) {
+            assertEquals(EQACycleStatus.PLANNED, expected.getPriorState());
+            assertEquals(EQACycleStatus.TESTING, expected.getAttemptedState());
+        }
+
+        assertEquals("the cycle must not have moved", EQACycleStatus.PLANNED, readBack(cycle.getId()).getStatus());
+        assertTrue("a refused transition writes no audit row", cycleService.getTransitions(cycle.getId()).isEmpty());
+    }
+
+    @Test
+    public void aProviderEdgeIsNotAvailableToAParticipant() {
+        // The same row, read through the other machine, has different edges.
+        EQACycle cycle = newCycle();
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.PREP_IN_PROGRESS, EQAStateMachine.PARTICIPANT,
+                    EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+            fail("prep_in_progress belongs to the provider machine only");
+        } catch (EQAInvalidTransitionException expected) {
+            assertEquals(EQACycleStatus.PLANNED, expected.getPriorState());
+        }
+    }
+
+    @Test
+    public void closedIsFinalOnBothMachines() {
+        EQACycle cycle = newCycle();
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+        for (EQAStateMachine machine : EQAStateMachine.values()) {
+            try {
+                cycleService.transition(cycle.getId(), EQACycleStatus.SCORED, machine, EQATriggerType.MANUAL,
+                        EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID, "reopen", USER);
+                fail("a closed cycle has no outgoing edges on the " + machine + " machine");
+            } catch (EQAInvalidTransitionException expected) {
+                assertEquals(EQACycleStatus.CLOSED, expected.getPriorState());
+            }
+        }
+    }
+
+    // ---: the prep -> ready_to_ship gate ----
+
+    @Test
+    public void aPanelThatFailedHomogeneityQcCannotBeShipped() {
+        // The ISO 17043 supervisor gate. Without it a failed panel is marked
+        // shippable and the audit row recording it looks entirely legitimate.
+        EQACycle cycle = newCycle();
+        insertQcPanel(cycle, false);
+        cycleService.transition(cycle.getId(), EQACycleStatus.PREP_IN_PROGRESS, EQAStateMachine.PROVIDER,
+                EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.READY_TO_SHIP, EQAStateMachine.PROVIDER,
+                    EQATriggerType.AUTO, EQATriggerEvent.HOMOGENEITY_QC_PASSED, null, null, USER);
+            fail("homogeneity_qc_passed = false must block ready_to_ship");
+        } catch (EQAInvalidTransitionException expected) {
+            assertEquals(EQACycleStatus.PREP_IN_PROGRESS, expected.getPriorState());
+            assertTrue(expected.getMessage().contains("homogeneity"));
+        }
+        assertEquals("the cycle must not have moved", EQACycleStatus.PREP_IN_PROGRESS,
+                readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void aCycleWithNoPanelCannotBeShipped() {
+        EQACycle cycle = newCycle();
+        cycleService.transition(cycle.getId(), EQACycleStatus.PREP_IN_PROGRESS, EQAStateMachine.PROVIDER,
+                EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.READY_TO_SHIP, EQAStateMachine.PROVIDER,
+                    EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
+            fail("there is nothing to ship");
+        } catch (EQAInvalidTransitionException expected) {
+            // The refusal quotes the gate's own blockers, one vocabulary for the
+            // transition and the prep workbench alike.
+            assertTrue(expected.getMessage(), expected.getMessage().contains("No panel has been prepared"));
+        }
+        assertEquals("the cycle must not have moved", EQACycleStatus.PREP_IN_PROGRESS,
+                readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void theGateOnlyAppliesToThatOneProviderEdge() {
+        // A participant cycle with a failed panel is unaffected — the gate must not
+        // leak onto edges the provider machine does not name.
+        EQACycle cycle = newCycle();
+        insertQcPanel(cycle, false);
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.AUTO, EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+        assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycle.getId()).getStatus());
+    }
+
+    // ---: manual transitions carry a reason and an actor ----
+
+    @Test
+    public void anAutomaticTransitionDiscardsAnyActorHandedToIt() {
+        // The service stores triggeredBy only for MANUAL rows. Passing null with
+        // AUTO — as every other test does — cannot tell that ternary from one that
+        // stores the actor unconditionally, so this hands AUTO a real user id and
+        // asserts it is dropped. An AUTO row naming a person would misattribute a
+        // system event to them, permanently.
+        EQACycle cycle = newCycle();
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.AUTO, EQATriggerEvent.LAST_VALIDATED_RESULT, ADMIN_USER_ID, null, USER);
+
+        EQACycleStateTransition audit = cycleService.getTransitions(cycle.getId()).get(0);
+        assertEquals(EQATriggerType.AUTO, audit.getTriggerType());
+        assertNull("an automatic transition must not name a person, even when handed one", audit.getTriggeredBy());
+    }
+
+    @Test
+    public void aManualTransitionRecordsWhoAndWhy() {
+        EQACycle cycle = newCycle();
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID, "Courier delivered early", USER);
+
+        EQACycleStateTransition audit = cycleService.getTransitions(cycle.getId()).get(0);
+        assertEquals(EQATriggerType.MANUAL, audit.getTriggerType());
+        assertEquals(Long.valueOf(ADMIN_USER_ID), audit.getTriggeredBy());
+        assertEquals("Courier delivered early", audit.getReason());
+    }
+
+    @Test
+    public void theTransitionsEndpointNamesTheActorRatherThanNumberingThem() {
+        // The timeline shows "timestamp + actor". A bare user
+        // id is not an actor to the person reading the page, so the endpoint
+        // resolves it; AUTO rows carry no user and resolve to null, which the
+        // client renders as the system actor.
+        long actorId = 9955L;
+        jdbc.update("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name,"
+                + " initials, is_active, is_employee, lastupdated)"
+                + " SELECT ?, 'EQA_T35', 'eqa_t35_actor', 'Achieng', 'Grace', 'GA', 'Y', 'Y', now()"
+                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_user WHERE id = ?)", actorId, actorId);
+
+        EQACycle cycle = newCycle();
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, actorId, "Courier delivered early", USER);
+        cycleService.transition(cycle.getId(), EQACycleStatus.TESTING, EQAStateMachine.PARTICIPANT, EQATriggerType.AUTO,
+                EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+
+        // AppTestConfig excludes eqa.controller.* from the scan, so the endpoint
+        // is exercised as a plain object over the real services it composes.
+        EQACycleRestController controller = new EQACycleRestController(cycleService, null, null, null, null, null, null,
+                systemUserService, null);
+        List<Map<String, Object>> rows = controller.transitions(cycle.getId());
+        assertEquals("Grace Achieng", rows.get(0).get("triggeredByName"));
+        assertNull("an automatic transition resolves to no actor name", rows.get(1).get("triggeredByName"));
+    }
+
+    @Test
+    public void aManualTransitionWithoutAReasonIsRefused() {
+        // A reason is required even on a happy-path manual move, which is
+        // stricter than the specification's "off the happy path" wording.
+        EQACycle cycle = newCycle();
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                    EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID, "   ", USER);
+            fail("a manual transition needs a reason");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("reason"));
+        }
+        assertEquals(EQACycleStatus.PLANNED, readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void aManualTransitionWithoutAnActorIsRefused() {
+        // An unattributed manual override is worse than no audit row, because it
+        // still looks like one. AUTO rows legitimately have no actor; MANUAL never.
+        EQACycle cycle = newCycle();
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                    EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, null, "no actor supplied", USER);
+            fail("a manual transition must name the person who made it");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("acting user"));
+        }
+        assertTrue("nothing is audited when the actor is unknown",
+                cycleService.getTransitions(cycle.getId()).isEmpty());
+    }
+
+    @Test
+    public void theTransitionGuardNamesAPermissionThatActuallyExists() throws Exception {
+        // A @PreAuthorize referencing an authority no migration creates fails
+        // closed and silently locks out every user, which looks identical to a
+        // working guard until someone tries to use the feature. This ties the
+        // annotation to the migration so the two cannot drift apart.
+        //
+        // Deliberately NOT asserted against system_module rows: five dbUnit
+        // fixtures declare that table, and loading any of them truncates it
+        // (BaseWebContextSensitiveTest wipes every table a dataset names), so a
+        // row-count assertion is a coin flip on suite order — green under
+        // -Dtest='EQA*', red in full-suite CI. The migration source plus its
+        // databasechangelog execution record survive any fixture load.
+        Method handler = EQACycleRestController.class.getMethod("transition", HttpServletRequest.class, Long.class,
+                Map.class);
+        PreAuthorize guard = handler.getAnnotation(PreAuthorize.class);
+        assertNotNull("advancing a cycle must carry a write guard, not the class-level read roles", guard);
+
+        Matcher authority = Pattern.compile("hasAuthority\\('([^']+)'\\)").matcher(guard.value());
+        assertTrue("the guard should name an authority: " + guard.value(), authority.find());
+        String permission = authority.group(1);
+
+        String changeset;
+        try (java.io.InputStream in = getClass().getClassLoader()
+                .getResourceAsStream("liquibase/qa/023-add-eqa-manage-permission.xml")) {
+            assertNotNull("the permission migration must exist on the classpath", in);
+            changeset = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        assertTrue("the guard names '" + permission + "' but qa/023 does not register it",
+                changeset.contains("<column name=\"name\" value=\"" + permission + "\"/>"));
+        assertTrue("qa/023 must also grant '" + permission + "' to at least one role",
+                changeset.contains("m.name = '" + permission + "'"));
+
+        assertEquals("qa/023's register+grant changesets must have executed against this schema", Integer.valueOf(2),
+                jdbc.queryForObject("SELECT count(*) FROM databasechangelog WHERE id IN"
+                        + " ('qa-035-add-qa-manage-eqa-module', 'qa-036-grant-qa-manage-eqa')"
+                        + " AND exectype IN ('EXECUTED', 'RERAN')", Integer.class));
+    }
+
+    // ---: the derivation table ----
+
+    @Test
+    public void participantStateIsDerivedFromReceiptsAndResults() {
+        EQACycle cycle = newCycle();
+
+        assertEquals("no receipt yet", EQACycleStatus.PLANNED,
+                cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+
+        insertReceipt(cycle, ENROLLMENT_ID);
+        assertEquals("receipt but no results", EQACycleStatus.PANEL_RECEIVED,
+                cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+
+        EQARound round = eqaRoundDAO.get(insertRound(cycle, 1, "OPEN")).orElseThrow(AssertionError::new);
+        Long draftId = insertParticipantResult(cycle, round, ENROLLMENT_ID, ANALYTE_HIV_VL, EQASubmissionStatus.DRAFT,
+                null);
+        assertEquals("a draft result means testing", EQACycleStatus.TESTING,
+                cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+
+        setResultStatus(draftId, EQASubmissionStatus.VALIDATED_PARTIAL);
+        assertEquals("all validated, none submitted", EQACycleStatus.READY_TO_SUBMIT,
+                cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+
+        setResultStatus(draftId, EQASubmissionStatus.SUBMITTED);
+        assertEquals(EQACycleStatus.SUBMITTED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+
+        setResultStatus(draftId, EQASubmissionStatus.SCORED);
+        assertEquals(EQACycleStatus.SCORED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+    }
+
+    @Test
+    public void theMostAdvancedResultWinsWhenRowsDisagree() {
+        // The specification table's rows overlap and it never states precedence; a lab
+        // that
+        // has been scored is scored even while another analyte sits in draft.
+        EQACycle cycle = newCycle();
+        insertReceipt(cycle, ENROLLMENT_ID);
+        EQARound round = eqaRoundDAO.get(insertRound(cycle, 1, "OPEN")).orElseThrow(AssertionError::new);
+        insertParticipantResult(cycle, round, ENROLLMENT_ID, ANALYTE_HIV_VL, EQASubmissionStatus.DRAFT, null);
+        insertParticipantResult(cycle, round, ENROLLMENT_ID, 9801L, EQASubmissionStatus.SCORED, null);
+
+        assertEquals(EQACycleStatus.SCORED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+    }
+
+    @Test
+    public void oneLabsProgressDoesNotLeakIntoAnother() {
+        EQACycle cycle = newCycle();
+        insertReceipt(cycle, ENROLLMENT_ID);
+
+        assertEquals(EQACycleStatus.PANEL_RECEIVED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+        assertEquals("the second lab has not received anything", EQACycleStatus.PLANNED,
+                cycleService.deriveParticipantState(cycle.getId(), OTHER_ENROLLMENT_ID));
+    }
+
+    @Test
+    public void aClosedCycleReadsClosedForEveryLab() {
+        EQACycle cycle = newCycle();
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+        assertEquals(EQACycleStatus.CLOSED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
+    }
+
+    // ---: closing refuses while work is still hanging off the cycle ----
+
+    @Test
+    public void closingRefusesWhileAFollowUpIsStillOpen() {
+        EQACycle cycle = scoredCycle();
+        insertFollowup(cycle, EQAFollowupStatus.UNDER_INVESTIGATION);
+
+        try {
+            close(cycle);
+            fail("a cycle with an unresolved follow-up is not finished");
+        } catch (EQAInvalidTransitionException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("1 follow-up still open"));
+        }
+        assertEquals("and the cycle is left where it was", EQACycleStatus.SCORED, readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void closingRefusesWhileAMissedDeadlineResultIsUnanswered() {
+        EQACycle cycle = scoredCycle();
+        missedResultOnAPanelSample(cycle);
+
+        try {
+            close(cycle);
+            fail("the late-score sweep is still watching that row for an answer");
+        } catch (EQAInvalidTransitionException expected) {
+            assertTrue(expected.getMessage(),
+                    expected.getMessage().contains("1 missed-deadline result still waiting on an answer"));
+        }
+    }
+
+    @Test
+    public void closingNamesEveryBlockerAtOnce() {
+        EQACycle cycle = scoredCycle();
+        insertFollowup(cycle, EQAFollowupStatus.NOTIFIED);
+        insertFollowup(cycle, EQAFollowupStatus.ESCALATED);
+        missedResultOnAPanelSample(cycle);
+
+        try {
+            close(cycle);
+            fail("both kinds of outstanding work block a close");
+        } catch (EQAInvalidTransitionException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("2 follow-ups still open"));
+            assertTrue(
+                    "one refusal lists everything, so the operator does not clear them one round trip at a time: "
+                            + expected.getMessage(),
+                    expected.getMessage().contains("1 missed-deadline result still waiting on an answer"));
+        }
+    }
+
+    @Test
+    public void closingSucceedsOnceTheWorkIsDone() {
+        // The control. Without it the refusals above cannot be told apart from
+        // "closing never works".
+        EQACycle cycle = scoredCycle();
+        insertFollowup(cycle, EQAFollowupStatus.RESOLVED);
+        insertFollowup(cycle, EQAFollowupStatus.REMOVED_FROM_PROGRAM);
+        Long answered = missedResultOnAPanelSample(cycle);
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET performance_status = 'ACCEPTABLE' WHERE id = ?",
+                answered);
+
+        close(cycle);
+
+        assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void anExternalMissedRowDoesNotBlockCloseForEver() {
+        // No panel sample means no sealed target, and scoreLateResults skips the row,
+        // so nothing will ever give it a verdict. Blocking on it would make the cycle
+        // uncloseable permanently rather than until the work is done.
+        EQACycle cycle = scoredCycle();
+        insertParticipantResult(cycle, roundFor(cycle), ENROLLMENT_ID, ANALYTE_HIV_VL,
+                EQASubmissionStatus.MISSED_DEADLINE, null);
+
+        close(cycle);
+
+        assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
+    }
+
+    @Override
+    protected void cleanEqaTables() {
+        if (jdbc != null) {
+            // A participant result's panel_sample_id outlives the base order, which
+            // clears panel samples before results.
+            jdbc.update("UPDATE clinlims.eqa_participant_result SET panel_sample_id = NULL");
+        }
+        super.cleanEqaTables();
+        if (jdbc != null) {
+            jdbc.update("DELETE FROM clinlims.organization WHERE id BETWEEN ? AND ?", FIRST_FOLLOWUP_ORG,
+                    FIRST_FOLLOWUP_ORG + 3);
+        }
+    }
+
+    // ---- helpers ----
+
+    private long followups = FIRST_FOLLOWUP_ORG;
+
+    private EQARound roundFor(EQACycle cycle) {
+        return eqaRoundDAO.get(insertRound(cycle, 1, "OPEN")).orElseThrow(AssertionError::new);
+    }
+
+    private EQACycle scoredCycle() {
+        EQACycle cycle = newCycle();
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'SCORED' WHERE id = ?", cycle.getId());
+        return readBack(cycle.getId());
+    }
+
+    private void close(EQACycle cycle) {
+        cycleService.transition(cycle.getId(), EQACycleStatus.CLOSED, EQAStateMachine.PROVIDER, EQATriggerType.MANUAL,
+                EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID, "Round finished", USER);
+    }
+
+    private void insertFollowup(EQACycle cycle, EQAFollowupStatus status) {
+        EQAParticipantFollowup followup = new EQAParticipantFollowup();
+        followup.setScheme(cycle.getScheme());
+        followup.setCycle(cycle);
+        // One row per cycle per organisation is a unique constraint, so each call
+        // needs its own organisation for the two-blocker case to be reachable.
+        followup.setParticipantOrgId(followups++);
+        followup.setFollowupStatus(status);
+        followup.setSysUserId(USER);
+        eqaParticipantFollowupDAO.insert(followup);
+    }
+
+    /**
+     * A missed row the late-score sweep would still pick up: it carries a target.
+     */
+    private Long missedResultOnAPanelSample(EQACycle cycle) {
+        EQAPanel panel = insertPanel(cycle.getScheme(), p -> {
+            p.setCycle(cycle);
+            p.setPanelName("Close gate panel " + cycle.getId());
+        });
+        EQAPanelSample sample = new EQAPanelSample();
+        sample.setPanel(panel);
+        sample.setSampleCode("CG01");
+        sample.setAnalyteId(ANALYTE_HIV_VL);
+        sample.setSysUserId(USER);
+        Long sampleId = eqaPanelSampleDAO.insert(sample);
+        Long resultId = insertParticipantResult(cycle, roundFor(cycle), ENROLLMENT_ID, ANALYTE_HIV_VL,
+                EQASubmissionStatus.MISSED_DEADLINE, null);
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET panel_sample_id = ? WHERE id = ?", sampleId, resultId);
+        return resultId;
+    }
+
+    private EQACycle newCycle() {
+        EQAProgram scheme = insertScheme("Machine scheme " + System.nanoTime(), EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        return readBack(insertCycle(scheme, 1));
+    }
+
+    private void insertQcPanel(EQACycle cycle, boolean homogeneityPassed) {
+        insertPanel(cycle.getScheme(), p -> {
+            p.setCycle(cycle);
+            p.setPanelName("Panel for cycle " + cycle.getId());
+            p.setHomogeneityQcPassed(homogeneityPassed);
+        });
+    }
+
+    private void setResultStatus(Long resultId, EQASubmissionStatus status) {
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET submission_status = ? WHERE id = ?", status.name(),
+                resultId);
+    }
+}

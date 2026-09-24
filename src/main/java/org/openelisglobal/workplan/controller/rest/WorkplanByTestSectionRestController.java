@@ -152,6 +152,7 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
                 testResultItem = new TestResultItem();
                 testResultItem.setTestName(analysisService.getTestDisplayName(analysis));
                 testResultItem.setAccessionNumber(currentAccessionNumber);
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
                 testResultItem.setTestId(analysis.getTest().getId());

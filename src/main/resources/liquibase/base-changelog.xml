@@ -58,4 +58,101 @@
 
   <!-- OGC-686: accrediting bodies + per-test accreditation -->
   <include file="liquibase/qa/013-create-accreditation-tables.xml" />
+
+  <!-- A name for the point the EQA V2 set begins, so a rollback can say where to
+       stop rather than counting backwards through whatever core changesets sit
+       above it. Included here rather than in file order for that reason: the tag
+       has to be applied before the first EQA V2 changeset, not after the last. -->
+  <include file="liquibase/qa/040-eqa-v2-start-tag.xml" />
+
+  <!-- Clears an eqa-v2-start tag that an earlier version of qa/040 recorded without
+       applying. Only qa/040 writes that row, so this belongs directly under it. -->
+  <include file="liquibase/qa/041-clear-stale-eqa-v2-start-tag.xml" />
+
+  <!-- EQA V2.1 — OGC-609: cycle/round/state-transition-audit spine -->
+  <include file="liquibase/qa/015-create-eqa-cycle-tables.xml" />
+
+  <!-- EQA V2.1 — OGC-609: participant results, cycle links, scheme_type -->
+  <include file="liquibase/qa/016-create-eqa-participant-result.xml" />
+
+  <!-- EQA V2.1 — OGC-609: panels, sealed panel samples, eligible analysts -->
+  <include file="liquibase/qa/017-create-eqa-panel-tables.xml" />
+
+  <!-- EQA V2.1 — OGC-609: follow-ups, panel receipts, competency events -->
+  <include file="liquibase/qa/018-create-eqa-followup-receipt-competency.xml" />
+
+  <!-- EQA V2 — OGC-609: V2 three-lane menus + permission tiers -->
+  <include file="liquibase/qa/019-add-eqa-v2-menus-permissions.xml" />
+
+  <!-- EQA V2.5 — OGC-613: shipment.repeat_of_shipment_id for reprovisioning -->
+  <include file="liquibase/qa/020-add-shipment-repeat-of.xml" />
+
+  <!-- EQA V2.1 — OGC-609: write permission for cycle state changes -->
+  <include file="liquibase/qa/023-add-eqa-manage-permission.xml" />
+
+  <!-- EQA V2.1 — OGC-609: PANEL_RECEIPT trigger event for receipt-driven transitions -->
+  <include file="liquibase/qa/024-extend-eqa-trigger-event-check.xml" />
+
+  <!-- EQA V2.1 — OGC-610: optional cycle-review gate flag -->
+  <include file="liquibase/qa/025-add-eqa-scheme-review-gate.xml" />
+
+  <!-- EQA V2.1 — OGC-609: bench roles keep participant-lane writes as a grant -->
+  <include file="liquibase/qa/026-grant-eqa-participant-to-bench-roles.xml" />
+
+  <!-- EQA V2.4 — OGC-612: scoring verdict, per-aliquot result grain, unblind provenance -->
+  <include file="liquibase/qa/027-add-eqa-scoring-and-unblind-provenance.xml" />
+
+  <!-- EQA V2.5 — OGC-613: shipping_box.eqa_cycle_id + FIRST_SHIPMENT_SENT -->
+  <include file="liquibase/qa/028-eqa-shipment-workbench.xml" />
+
+  <!-- EQA V2 — OGC-610: point My Cycles at its real route, hide the rows with no page -->
+  <include file="liquibase/qa/029-fix-eqa-my-cycles-menu-url.xml" />
+
+  <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping -->
+  <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
+
+  <!-- EQA V2.4 — OGC-612: In-House Blinding menu row -->
+  <include file="liquibase/qa/031-add-eqa-in-house-menu.xml" />
+
+  <!-- EQA V2 — OGC-934: pre-approved interpretive comments for the performance report -->
+  <include file="liquibase/qa/032-eqa-report-comments.xml" />
+  <!-- EQA V2.3 — OGC-611: oversight menu rows, re-activated as their pages ship.
+       Must follow 029, which hid them. -->
+  <include file="liquibase/qa/033-eqa-oversight-menu-rows.xml" />
+
+  <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method (qa-064/065) -->
+  <include file="liquibase/qa/034-eqa-cycle-distribution-method.xml" />
+
+  <!-- EQA V2.5 — OGC-613: per-cycle participant roster; re-activates the provider
+       menu row qa/029 hid, now that its page exists. -->
+  <include file="liquibase/qa/035-eqa-cycle-participant.xml" />
+
+  <!-- EQA V2.5 — OGC-613: panel material as box contents (qa-068). Must follow
+       the shipment changelog that creates box_sample_item and qa/017's
+       eqa_panel_sample, both of which it references. -->
+  <include file="liquibase/qa/036-eqa-box-contents.xml" />
+
+  <!-- EQA V2.3 — OGC-611: per-analyst capture opt-in on a scheme (qa-070) -->
+  <include file="liquibase/qa/037-eqa-scheme-per-analyst.xml" />
+
+  <!-- EQA V2 — OGC-608: V1 absorption — synthetic cycles for legacy
+       distributions (qa-072). Must follow qa/028, whose trigger-event CHECK it
+       re-declares, and qa/035, whose eqa_cycle_participant its rollback reads. -->
+  <include file="liquibase/qa/022-backfill-v1-distribution-cycles.xml" />
+
+  <!-- EQA V2.2 — OGC-610: the imported consignment a panel receipt took delivery
+       of (qa-077). Must follow the shipment changelog that creates shipping_box. -->
+  <include file="liquibase/qa/038-eqa-panel-receipt-shipping-box.xml" />
+  <!-- EQA V2.5 — OGC-613: qualitative participant results on the provider side (qa-078) -->
+  <include file="liquibase/qa/039-eqa-result-text.xml" />
+  <!-- EQA V2.2 — OGC-935: lifecycle status on a laboratory's own enrolment (qa-081) -->
+  <include file="liquibase/qa/042-eqa-lab-enrollment-status.xml" />
+  <!-- EQA V2.5 — OGC-935: menu row for the provider's participant follow-up register (qa-082) -->
+  <include file="liquibase/qa/043-eqa-provider-followup-menu.xml" />
+  <!-- EQA V2 — OGC-935: retire the V1 Results & Analysis menu row (qa-083) -->
+  <include file="liquibase/qa/044-retire-v1-eqa-results-menu.xml" />
+
+  <!-- Restores the alert-type CHECK both lines rewrote independently. Last, so
+       it wins over every earlier definition of the same constraint. -->
+  <include file="liquibase/qa/045-alert-type-union.xml" />
 </databaseChangeLog>

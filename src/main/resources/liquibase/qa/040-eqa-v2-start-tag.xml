@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!--
+        A name for the point the EQA V2 set begins, so a rollback can say where to
+        stop instead of counting backwards.
+
+        Counting is what the rollback drill had to do, and the count is not a
+        property of the EQA set. Core changesets land above it as releases go by,
+        and reaching the first EQA changeset by count means passing through
+        whatever happens to sit above it that day. One of those, the panel-item
+        fix, is a deleteData with no inverse, so the count-based rollback cannot
+        reach a single EQA changeset without stopping on it.
+
+        With the tag: liquibase rollbackToTag eqa-v2-start.
+
+        The precondition is the honest part. A tag marks the last changeset
+        applied when it runs, so on a database that already carries the V2 set
+        this file would execute after it and tag the wrong end: a tag that rolls
+        back nothing, which is worse than no tag at all because an operator would
+        trust it. A database provisioned after this change gets the tag where it
+        belongs; a database that already carries the set gets no tag, and its
+        rollback route is the counted one documented in
+        docs/eqa/v1-distribution-absorption.md.
+
+        onFail is CONTINUE, not MARK_RAN, and the difference is the whole point.
+        MARK_RAN writes a changelog row, and Liquibase stamps the tag column on
+        that row from the tagDatabase change even though the change never
+        executed. That produces the tag this comment warns about: rollbackToTag
+        then finds the name, rolls back only what happens to sit above the row,
+        reports success, and removes no part of the V2 set. CONTINUE writes no
+        row, so the name does not exist and the command fails saying so.
+
+        CONTINUE costs one thing: the precondition is re-evaluated on every run,
+        so an upgraded database reports this changeset as pending for as long as
+        the V2 tables stand. That is accurate. The tag has not been applied, and
+        the row is the only place Liquibase could claim otherwise. Nor is it a new
+        kind of noise: "liquibase status" already lists three core changesets on
+        every running installation: two that are runAlways, and
+        2.6.x.x/update_roles.xml::202303248, which skips on a CONTINUE
+        precondition exactly as this one now does.
+
+        A tag cannot be repaired after the fact, which is why no changeset tries.
+        Placing one on the row below the V2 block would make rollbackToTag work
+        only where the set happens to be contiguous. It is contiguous on a
+        database that took the whole set in one upgrade, and not on one that
+        collected it across releases with core changesets interleaved, where no
+        single tag can name the set at all.
+    -->
+    <changeSet author="openelisglobal" id="qa-079-tag-eqa-v2-start">
+        <preConditions onFail="CONTINUE">
+            <not>
+                <tableExists schemaName="clinlims" tableName="eqa_cycle" />
+            </not>
+        </preConditions>
+        <!-- The schema makes tagDatabase an exclusive choice: a changeset holds
+             either a tag or ordinary changes, so this one cannot carry a
+             <comment> element alongside it. -->
+        <tagDatabase tag="eqa-v2-start" />
+    </changeSet>
+
+</databaseChangeLog>

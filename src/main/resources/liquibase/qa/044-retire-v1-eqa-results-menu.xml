@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2 (OGC-935): switch off the V1 "Results & Analysis" menu row.
+
+    The page it points at listed the same /rest/eqa/orders My Cycles reads, and
+    its statistics half had already been disconnected from it, so the row led to
+    a thinner copy of an existing screen under a name it did not earn. V2 splits
+    that ground three ways: My Cycles for a participant's own orders, the
+    provider workbench for scoring, and the participant performance report for
+    analysis.
+
+    Same treatment qa/022 gave the superseded Orders and Distribution rows: the
+    row goes inactive rather than being deleted, and the old URLs keep working
+    through redirects for one release. menu_eqa_mgmt keeps Programs and
+    Participants, so the group still earns its place.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-083-deactivate-eqa-mgmt-results-menu">
+        <comment>The V1 Results and Analysis row is superseded by My Cycles, provider
+            scoring and the participant performance report; its old URLs stay reachable
+            through redirects.</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false" />
+            <where>element_id = 'menu_eqa_mgmt_results'</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true" />
+                <where>element_id = 'menu_eqa_mgmt_results'</where>
+            </update>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

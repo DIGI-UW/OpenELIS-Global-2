@@ -377,6 +377,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
+            updateData.setEqaCycleId(sampleOrder.getEqaCycleId());
+            updateData.setEqaReceivedTempC(sampleOrder.getEqaReceivedTempC());
+            updateData.setEqaIntegrityOk(sampleOrder.getEqaIntegrityOk());
+            updateData.setEqaIntegrityNotes(sampleOrder.getEqaIntegrityNotes());
+            updateData.setEqaShippingBoxId(sampleOrder.getEqaShippingBoxId());
         }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);

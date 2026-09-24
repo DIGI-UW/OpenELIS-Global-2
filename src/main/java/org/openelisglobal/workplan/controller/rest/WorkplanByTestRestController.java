@@ -98,6 +98,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
                 testResultItem.setTestId(testType);
                 Sample sample = analysis.getSampleItem().getSample();
                 testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 boolean nonConforming = QAService.isAnalysisParentNonConforming(analysis);
                 if (FormFields.getInstance().useField(Field.QaEventsBySection)) {
@@ -157,6 +158,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
                 testResultItem = new TestResultItem();
                 testResultItem.setTestId(testType);
                 testResultItem.setAccessionNumber(currentAccessionNumber);
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(sample.getReceivedDateForDisplay());
                 testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
                 testResultItem.setNonconforming(QAService.isAnalysisParentNonConforming(analysis));

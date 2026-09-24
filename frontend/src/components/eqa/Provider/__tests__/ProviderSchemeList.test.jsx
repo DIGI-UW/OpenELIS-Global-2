@@ -1,0 +1,212 @@
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter, Route } from "react-router-dom";
+import messages from "../../../../languages/en.json";
+import ProviderSchemeList from "../ProviderSchemeList";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
+import { getFromOpenElisServer } from "../../../utils/Utils";
+
+// Keep the real hasQaPermission (incl. its Global Administrator fallback) —
+// mocking it would let the composition tests stay green while the production
+// predicate regresses. Same pattern as EQAParticipantsPage.test.jsx.
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getFromOpenElisServer: vi.fn(),
+}));
+
+vi.mock("../../../common/PageBreadCrumb", () => ({
+  default: function MockBreadCrumb() {
+    return <div data-testid="breadcrumb">breadcrumb</div>;
+  },
+}));
+
+/** Exactly the shape GET /rest/eqa/provider/schemes answers with. */
+const SCHEMES = [
+  {
+    id: 3,
+    name: "National HIV VL PT",
+    provider: "This lab",
+    schemeType: "REGIONAL_PT",
+    discipline: "Serology",
+    enrolledParticipantCount: 4,
+    activeCycleCount: 1,
+    lastDistribution: "2026-08-26 14:56:46.853",
+    cycles: [
+      {
+        id: 7,
+        cycleNumber: 2,
+        cycleName: "2026 Round 2",
+        status: "PREP_IN_PROGRESS",
+        participantCount: 3,
+        panelCount: 1,
+      },
+    ],
+  },
+];
+
+const KPIS = {
+  activeSchemes: 1,
+  openCycles: 1,
+  enrolledParticipants: 4,
+  followupsOpen: 0,
+};
+
+const renderList = (
+  schemes = SCHEMES,
+  kpis = KPIS,
+  permissions = ["qa.eqa.provider"],
+  roles = [],
+) => {
+  getFromOpenElisServer.mockImplementation((url, cb) =>
+    url === "/rest/eqa/provider/schemes" ? cb({ kpis, schemes }) : cb([]),
+  );
+  const history = [];
+  const view = render(
+    <IntlProvider locale="en" messages={messages}>
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+        }}
+      >
+        <MemoryRouter initialEntries={["/qa/eqa/provider/schemes"]}>
+          <Route path="/qa/eqa/provider/schemes" exact>
+            <ProviderSchemeList />
+          </Route>
+          <Route
+            path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
+            render={({ match }) => {
+              history.push(match.url);
+              return <div>wizard</div>;
+            }}
+          />
+        </MemoryRouter>
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>,
+  );
+  return { ...view, history };
+};
+
+describe("ProviderSchemeList", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("lists each provided scheme with its enrollment and cycle counts", () => {
+    renderList();
+
+    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
+    expect(screen.getByText("Regional PT")).toBeInTheDocument();
+    expect(screen.getByText("Serology")).toBeInTheDocument();
+    expect(screen.getByText("2026-08-26")).toBeInTheDocument();
+    // Enrollment count in the row; "4" also appears in the KPI tiles, so scope
+    // the assertion to the scheme row.
+    expect(
+      screen.getByText("National HIV VL PT").closest("tr"),
+    ).toHaveTextContent("4");
+  });
+
+  test("the KPI tiles render the counts the endpoint answers", () => {
+    renderList();
+
+    expect(screen.getByTestId("kpi-active-schemes")).toHaveTextContent("1");
+    expect(screen.getByTestId("kpi-open-cycles")).toHaveTextContent("1");
+    expect(screen.getByTestId("kpi-enrolled")).toHaveTextContent("4");
+    expect(screen.getByTestId("kpi-followups-open")).toHaveTextContent("0");
+  });
+
+  test("a scheme without a discipline or distribution renders placeholders", () => {
+    renderList([
+      { ...SCHEMES[0], discipline: null, lastDistribution: null, cycles: [] },
+    ]);
+
+    const row = screen.getByText("National HIV VL PT").closest("tr");
+    expect(row).toHaveTextContent("—");
+  });
+
+  test("expanding a scheme reveals its cycles", () => {
+    renderList();
+    // Carbon keeps the expanded row mounted and hides it with CSS, so the
+    // contract to assert is the expand state, not absence from the DOM.
+    const expander = screen.getByLabelText("Show cycles");
+    expect(expander).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(expander);
+
+    expect(expander).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("2026 Round 2")).toBeInTheDocument();
+    // The count comes from the cycle's own roster, not the scheme's enrollment.
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Prep in progress")).toBeInTheDocument();
+  });
+
+  test("an expanded cycle links into the prep and shipping workbench", () => {
+    renderList();
+    fireEvent.click(screen.getByLabelText("Show cycles"));
+
+    expect(screen.getByRole("link", { name: "2026 Round 2" })).toHaveAttribute(
+      "href",
+      "/qa/eqa/provider/cycles/7/workbench",
+    );
+  });
+
+  test("New cycle opens the wizard for that scheme", () => {
+    const { history } = renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "New cycle" }));
+
+    expect(history).toContain("/qa/eqa/provider/schemes/3/cycles/new");
+  });
+
+  test("a lab that provides nothing is told why the list is empty", () => {
+    renderList([]);
+
+    expect(screen.getByText("No schemes to provide yet")).toBeInTheDocument();
+  });
+
+  // Role-conditional composition
+  test("a participant-only viewer gets the participant links, not the provider table", () => {
+    renderList(SCHEMES, KPIS, ["qa.view.eqa"]);
+
+    expect(screen.getByText("Participant view only")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /My enrollments/ }),
+    ).toHaveAttribute("href", "/qa/eqa/my-programs");
+    expect(screen.getByRole("link", { name: /My Cycles/ })).toHaveAttribute(
+      "href",
+      "/qa/eqa/my-cycles",
+    );
+    // No provider surface, and no provider fetch either — the hiding is UI
+    // composition; the endpoint stays read-guarded like every
+    // provider GET (EQARestGuardMatrixTest).
+    expect(screen.queryByText("National HIV VL PT")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("kpi-active-schemes")).not.toBeInTheDocument();
+    expect(getFromOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  test("the provider grant renders the scheme table, not the participant hint", () => {
+    renderList();
+
+    expect(screen.queryByText("Participant view only")).not.toBeInTheDocument();
+    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
+  });
+
+  test("Global Administrator passes the gate without the explicit permission", () => {
+    renderList(SCHEMES, KPIS, [], ["Global Administrator"]);
+
+    expect(screen.queryByText("Participant view only")).not.toBeInTheDocument();
+    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
+  });
+
+  test("a scheme with no cycle yet says so instead of rendering an empty table", () => {
+    renderList([{ ...SCHEMES[0], cycles: [] }]);
+    fireEvent.click(screen.getByLabelText("Show cycles"));
+
+    expect(
+      screen.getByText(
+        "No cycles yet. Start one to define its panel and participants.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

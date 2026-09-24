@@ -52,6 +52,12 @@ public class EQAProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQAPr
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<EQAProgramEnrollment> findActiveByProgramId(Long programId) {
+        return enrollmentDAO.findByProgramIdAndStatus(programId, STATUS_ACTIVE);
+    }
+
+    @Override
     public EQAProgramEnrollment enrollOrganization(Long programId, Long organizationId, String sysUserId) {
         if (enrollmentDAO.existsActiveEnrollment(programId, organizationId)) {
             throw new IllegalArgumentException(
@@ -62,7 +68,7 @@ public class EQAProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQAPr
         enrollment.setEqaProgram(programService.get(programId));
         enrollment.setOrganizationId(organizationId);
         enrollment.setEnrollmentDate(new Date());
-        enrollment.setStatus("Active");
+        enrollment.setStatus(STATUS_ACTIVE);
         enrollment.setSysUserId(sysUserId);
 
         Long id = enrollmentDAO.insert(enrollment);
@@ -105,7 +111,7 @@ public class EQAProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQAPr
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getEligibleOrganizations(Long programId) {
         List<Organization> allOrgs = organizationService.getAll();
-        Set<Long> enrolledOrgIds = findByProgramIdAndStatus(programId, "Active").stream()
+        Set<Long> enrolledOrgIds = findActiveByProgramId(programId).stream()
                 .map(EQAProgramEnrollment::getOrganizationId).collect(Collectors.toSet());
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -124,17 +130,17 @@ public class EQAProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQAPr
     @Override
     @Transactional(readOnly = true)
     public long countActiveEnrollments(Long programId) {
-        return enrollmentDAO.findByProgramIdAndStatus(programId, "Active").size();
+        return findActiveByProgramId(programId).size();
     }
 
     private void validateStatusTransition(String currentStatus, String newStatus) {
         boolean valid = false;
         switch (currentStatus) {
-        case "Active":
+        case STATUS_ACTIVE:
             valid = "Suspended".equals(newStatus) || "Withdrawn".equals(newStatus);
             break;
         case "Suspended":
-            valid = "Active".equals(newStatus) || "Withdrawn".equals(newStatus);
+            valid = STATUS_ACTIVE.equals(newStatus) || "Withdrawn".equals(newStatus);
             break;
         case "Withdrawn":
             valid = false;

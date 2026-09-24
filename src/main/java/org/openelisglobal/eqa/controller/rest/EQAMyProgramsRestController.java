@@ -6,7 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.analyte.service.AnalyteService;
+import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
@@ -26,11 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/my-programs")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
-public class EQAMyProgramsRestController extends ControllerUtills {
+@PreAuthorize(EQAGuards.READ)
+public class EQAMyProgramsRestController extends BaseRestController {
 
     @Autowired
     private EQALabProgramEnrollmentService enrollmentService;
+
+    @Autowired
+    private AnalyteService analyteService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, Object>>> listMyPrograms() {
@@ -50,6 +54,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     }
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> createMyProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String programName = (String) body.get("programName");
@@ -74,7 +79,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
             List<Long> panelIds = toLongList(body.get("panelIds"));
 
             EQALabProgramEnrollment created = enrollmentService.createEnrollment(enrollment, labUnitIds, testIds,
-                    panelIds);
+                    panelIds, toLongMap(body.get("testAnalytes")));
             return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -82,6 +87,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> updateMyProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -99,15 +105,16 @@ public class EQAMyProgramsRestController extends ControllerUtills {
             updated.setProgramName(programName);
             updated.setProvider(provider);
             updated.setDescription((String) body.get("description"));
-            updated.setIsActive(body.get("isActive") != null ? (Boolean) body.get("isActive") : true);
             updated.setSysUserId(getSysUserId(request));
 
             List<Long> labUnitIds = toLongList(body.get("labUnitIds"));
             List<Long> testIds = toLongList(body.get("testIds"));
             List<Long> panelIds = toLongList(body.get("panelIds"));
 
+            // An absent testAnalytes leaves the stored map alone; an empty one clears it.
+            Object testAnalytes = body.get("testAnalytes");
             EQALabProgramEnrollment result = enrollmentService.updateEnrollment(id, updated, labUnitIds, testIds,
-                    panelIds);
+                    panelIds, testAnalytes == null ? null : toLongMap(testAnalytes));
             return ResponseEntity.ok(toDto(result));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -116,7 +123,21 @@ public class EQAMyProgramsRestController extends ControllerUtills {
         }
     }
 
+    @PutMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
+    public ResponseEntity<?> updateMyProgramStatus(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            EQALabProgramEnrollment updated = enrollmentService.updateStatus(id, stringField(body, "status"),
+                    stringField(body, "reason"), dateField(body, "effectiveDate"), getSysUserId(request));
+            return ResponseEntity.ok(toDto(updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping(value = "/{id}")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Void> deleteMyProgram(@PathVariable Long id) {
         try {
             enrollmentService.softDelete(id);
@@ -124,6 +145,24 @@ public class EQAMyProgramsRestController extends ControllerUtills {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * Analytes for the enrollment form's per-test selector, in the {id, value}
+     * shape the Carbon selects already consume. Served here rather than as a new
+     * DisplayListService type: that registry caches and refreshes in three places,
+     * and this list has one consumer.
+     */
+    @GetMapping(value = "/analytes", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map<String, Object>>> getAnalytes() {
+        List<Map<String, Object>> analytes = analyteService.getAll().stream().map(a -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", a.getId());
+            m.put("value", a.getAnalyteName());
+            return m;
+        }).sorted((left, right) -> String.valueOf(left.get("value"))
+                .compareToIgnoreCase(String.valueOf(right.get("value")))).collect(Collectors.toList());
+        return ResponseEntity.ok(analytes);
     }
 
     @GetMapping(value = "/providers", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -138,6 +177,10 @@ public class EQAMyProgramsRestController extends ControllerUtills {
         dto.put("provider", enrollment.getProvider());
         dto.put("description", enrollment.getDescription());
         dto.put("isActive", enrollment.getIsActive());
+        dto.put("status", enrollment.getStatus());
+        dto.put("statusReason", enrollment.getStatusReason());
+        dto.put("statusEffectiveDate", enrollment.getStatusEffectiveDate());
+        dto.put("statusChangedDate", enrollment.getStatusChangedDate());
         dto.put("createdDate", enrollment.getCreatedDate());
         dto.put("lastModified", enrollment.getLastModified());
 
@@ -154,6 +197,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
             if (tm.getTestId() != null) {
                 Map<String, Object> m = new HashMap<>();
                 m.put("id", tm.getTestId());
+                m.put("analyteId", tm.getAnalyteId());
                 tests.add(m);
             }
             if (tm.getPanelId() != null) {
@@ -166,6 +210,26 @@ public class EQAMyProgramsRestController extends ControllerUtills {
         dto.put("panels", panels);
 
         return dto;
+    }
+
+    /** {"testAnalytes": {"314": 9802}} — JSON object keys arrive as strings. */
+    private Map<Long, Long> toLongMap(Object obj) {
+        if (!(obj instanceof Map)) {
+            return Map.of();
+        }
+        Map<Long, Long> parsed = new HashMap<>();
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+            try {
+                parsed.put(Long.valueOf(String.valueOf(entry.getKey())),
+                        Long.valueOf(String.valueOf(entry.getValue())));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("testAnalytes must map test ids to analyte ids");
+            }
+        }
+        return parsed;
     }
 
     @SuppressWarnings("unchecked")

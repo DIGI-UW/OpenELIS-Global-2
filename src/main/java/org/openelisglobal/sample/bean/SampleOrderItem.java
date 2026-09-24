@@ -299,6 +299,14 @@ public class SampleOrderItem implements Serializable {
     private String eqaDeadline;
     private String eqaPriority;
 
+    // Panel receipt captured on the order form
+    private String eqaCycleId;
+    private String eqaReceivedTempC;
+    private Boolean eqaIntegrityOk;
+    private String eqaIntegrityNotes;
+    /** The imported consignment (shipping box) this receipt takes delivery of. */
+    private String eqaShippingBoxId;
+
     // Informed consent fields
     private Boolean consentGiven;
 
@@ -880,6 +888,46 @@ public class SampleOrderItem implements Serializable {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public String getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(String eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
+    }
+
+    public String getEqaReceivedTempC() {
+        return eqaReceivedTempC;
+    }
+
+    public void setEqaReceivedTempC(String eqaReceivedTempC) {
+        this.eqaReceivedTempC = eqaReceivedTempC;
+    }
+
+    public Boolean getEqaIntegrityOk() {
+        return eqaIntegrityOk;
+    }
+
+    public void setEqaIntegrityOk(Boolean eqaIntegrityOk) {
+        this.eqaIntegrityOk = eqaIntegrityOk;
+    }
+
+    public String getEqaIntegrityNotes() {
+        return eqaIntegrityNotes;
+    }
+
+    public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
+        this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
     }
 
     public Map<String, Object> getEnvironmentalFields() {

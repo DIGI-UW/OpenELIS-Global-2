@@ -4,14 +4,25 @@ import {
   Column,
   TextInput,
   TextArea,
-  Toggle,
   Button,
   FilterableMultiSelect,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { asList } from "./eqaApi";
 
-const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
+// The "my scheme is not on this list" option: an enrollment may name a provider
+// whose schemes this instance does not carry, so free text stays available.
+const NOT_LISTED = "__notListed__";
+
+const InlineEnrollmentForm = ({
+  enrollment,
+  enrollments = [],
+  onSave,
+  onCancel,
+}) => {
   const intl = useIntl();
   const isEdit = !!enrollment;
 
@@ -24,24 +35,45 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const [description, setDescription] = useState(
     enrollment ? enrollment.description || "" : "",
   );
-  const [isActive, setIsActive] = useState(
-    enrollment ? enrollment.isActive : true,
-  );
   const [selectedLabUnits, setSelectedLabUnits] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
+  // Which analyte each selected test reports for this scheme, keyed by test id.
+  // Automatic submission cannot name an analyte without this: a result row only
+  // carries one when the test has a test_analyte mapping, which most do not.
+  const [testAnalytes, setTestAnalytes] = useState({});
   const [dataReady, setDataReady] = useState(false);
+
+  // The schemes this instance carries, and this laboratory's cycles. The first
+  // is what the picker offers; the second is why the pair freezes — a renamed
+  // enrollment detaches from every cycle that matched it by name.
+  const [schemes, setSchemes] = useState([]);
+  const [myCycles, setMyCycles] = useState([]);
+  const [schemeChoice, setSchemeChoice] = useState(NOT_LISTED);
 
   const [labUnits, setLabUnits] = useState([]);
   const [tests, setTests] = useState([]);
   const [panels, setPanels] = useState([]);
+  const [analytes, setAnalytes] = useState([]);
 
   useEffect(() => {
     let loaded = 0;
     const checkReady = () => {
       loaded++;
-      if (loaded >= 3) setDataReady(true);
+      if (loaded >= 4) setDataReady(true);
     };
+
+    getFromOpenElisServer("/rest/eqa/programs", (data) => {
+      const items = asList(data).filter((scheme) => scheme.name);
+      setSchemes(items);
+      if (enrollment && items.some((s) => s.name === enrollment.programName)) {
+        setSchemeChoice(enrollment.programName);
+      }
+    });
+
+    getFromOpenElisServer("/rest/eqa/cycles/mine", (data) => {
+      setMyCycles(Array.isArray(data) ? data : []);
+    });
 
     getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (data) => {
       if (data) {
@@ -71,7 +103,19 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
             .map((t) => items.find((te) => te.id === String(t.id)))
             .filter(Boolean);
           setSelectedTests(selected);
+          const mapped = {};
+          (enrollment.tests || []).forEach((t) => {
+            if (t.analyteId) mapped[String(t.id)] = String(t.analyteId);
+          });
+          setTestAnalytes(mapped);
         }
+      }
+      checkReady();
+    });
+
+    getFromOpenElisServer("/rest/eqa/my-programs/analytes", (data) => {
+      if (data) {
+        setAnalytes(data.map((a) => ({ id: String(a.id), text: a.value })));
       }
       checkReady();
     });
@@ -97,12 +141,45 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
       programName,
       provider,
       description,
-      isActive,
       labUnitIds: selectedLabUnits.map((u) => Number(u.id)),
       testIds: selectedTests.map((t) => Number(t.id)),
       panelIds: selectedPanels.map((p) => Number(p.id)),
+      // Only for tests still selected, so deselecting one drops its analyte too.
+      testAnalytes: selectedTests.reduce((acc, t) => {
+        if (testAnalytes[t.id]) acc[Number(t.id)] = Number(testAnalytes[t.id]);
+        return acc;
+      }, {}),
     };
     onSave(payload);
+  };
+
+  // A scheme already enrolled is not on offer, deactivated enrollments included:
+  // reactivating one through Edit is the way back, not a second row for the same
+  // scheme. The enrollment being edited keeps its own scheme, or the picker would
+  // drop what it is showing.
+  const offeredSchemes = schemes.filter(
+    (scheme) =>
+      !enrollments.some(
+        (other) =>
+          other.id !== (enrollment ? enrollment.id : null) &&
+          (other.programName || "") === scheme.name,
+      ),
+  );
+
+  // Cycles are matched to an enrollment by programme name — there is no scheme
+  // foreign key — so renaming one silently detaches it from its own cycles.
+  const frozen =
+    isEdit &&
+    myCycles.some((cycle) => cycle.schemeName === enrollment.programName);
+
+  const pickScheme = (value) => {
+    setSchemeChoice(value);
+    if (value === NOT_LISTED) {
+      return;
+    }
+    const scheme = schemes.find((s) => s.name === value);
+    setProgramName(value);
+    setProvider(scheme && scheme.provider ? scheme.provider : "");
   };
 
   const isValid = programName.trim() !== "" && provider.trim() !== "";
@@ -126,12 +203,39 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
 
       <Grid condensed>
         <Column lg={5} md={4} sm={4}>
+          <Select
+            id="enrollment-scheme"
+            labelText={intl.formatMessage({ id: "eqa.enrollment.scheme" })}
+            helperText={intl.formatMessage({
+              id: frozen
+                ? "eqa.enrollment.scheme.frozen"
+                : "eqa.enrollment.scheme.helper",
+            })}
+            value={schemeChoice}
+            disabled={frozen}
+            onChange={(e) => pickScheme(e.target.value)}
+          >
+            {offeredSchemes.map((scheme) => (
+              <SelectItem
+                key={scheme.id}
+                value={scheme.name}
+                text={scheme.name}
+              />
+            ))}
+            <SelectItem
+              value={NOT_LISTED}
+              text={intl.formatMessage({ id: "eqa.enrollment.scheme.other" })}
+            />
+          </Select>
+        </Column>
+        <Column lg={5} md={4} sm={4}>
           <TextInput
             id="enrollment-program-name"
             labelText={intl.formatMessage({
               id: "eqa.enrollment.programName",
             })}
             value={programName}
+            disabled={frozen}
             onChange={(e) => setProgramName(e.target.value)}
             placeholder={intl.formatMessage({
               id: "eqa.enrollment.programName.placeholder",
@@ -143,6 +247,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
             id="enrollment-provider"
             labelText={intl.formatMessage({ id: "eqa.enrollment.provider" })}
             value={provider}
+            disabled={frozen}
             onChange={(e) => setProvider(e.target.value)}
             placeholder={intl.formatMessage({
               id: "eqa.enrollment.provider.placeholder",
@@ -207,27 +312,70 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
               placeholder={intl.formatMessage({
                 id: "eqa.enrollment.selectPanels",
               })}
+              helperText={intl.formatMessage({
+                id: "eqa.enrollment.panels.help",
+              })}
             />
           </Column>
+        </Grid>
+      )}
+
+      {dataReady && selectedTests.length > 0 && (
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <h6 style={{ marginBottom: "0.5rem" }}>
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes" })}
+            </h6>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                marginBottom: "0.75rem",
+                color: "#525252",
+              }}
+            >
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes.help" })}
+            </p>
+          </Column>
+          {selectedTests.map((test) => (
+            <Column lg={5} md={4} sm={4} key={test.id}>
+              <Select
+                id={`enrollment-analyte-${test.id}`}
+                labelText={test.text}
+                value={testAnalytes[test.id] || ""}
+                onChange={(e) =>
+                  setTestAnalytes({
+                    ...testAnalytes,
+                    [test.id]: e.target.value,
+                  })
+                }
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "eqa.enrollment.selectAnalyte",
+                  })}
+                />
+                {analytes.map((analyte) => (
+                  <SelectItem
+                    key={analyte.id}
+                    value={analyte.id}
+                    text={analyte.text}
+                  />
+                ))}
+              </Select>
+            </Column>
+          ))}
         </Grid>
       )}
 
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           alignItems: "center",
           marginTop: "1rem",
         }}
       >
-        <Toggle
-          id="enrollment-active-toggle"
-          labelText={intl.formatMessage({ id: "eqa.enrollment.status" })}
-          labelA={intl.formatMessage({ id: "eqa.status.inactive" })}
-          labelB={intl.formatMessage({ id: "eqa.status.active" })}
-          toggled={isActive}
-          onToggle={(checked) => setIsActive(checked)}
-        />
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button kind="secondary" size="sm" onClick={onCancel}>
             {intl.formatMessage({ id: "label.button.cancel" })}

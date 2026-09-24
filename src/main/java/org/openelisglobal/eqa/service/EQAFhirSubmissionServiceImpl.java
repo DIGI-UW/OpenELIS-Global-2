@@ -1,6 +1,7 @@
 package org.openelisglobal.eqa.service;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +18,25 @@ import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
+import org.hl7.fhir.r4.model.StringType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQADistributionDAO;
+import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQAResultDAO;
+import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQADistribution;
+import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAResult;
+import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.shipment.dao.ShippingBoxDAO;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,13 +56,31 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
     private EQAResultDAO resultDAO;
 
     @Autowired
+    private EQACycleDAO cycleDAO;
+
+    @Autowired
+    private EQAParticipantResultDAO participantResultDAO;
+
+    @Autowired
     private FhirPersistanceService fhirPersistanceService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Autowired
     private FhirConfig fhirConfig;
 
     @Autowired
     private SystemUserService systemUserService;
+
+    @Autowired
+    private ShippingBoxDAO shippingBoxDAO;
+
+    @Autowired
+    private FhirUtil fhirUtil;
+
+    @Autowired
+    private EQAPanelService eqaPanelService;
 
     @Override
     public Map<String, Object> submitResultsViaFhir(Long distributionId, Long organizationId) {
@@ -65,15 +95,7 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
                     "No results found for organization " + organizationId + " in distribution " + distributionId);
         }
 
-        Map<String, Resource> fhirResources = new HashMap<>();
-
-        DiagnosticReport report = buildDiagnosticReport(distribution, organizationId, results);
-        fhirResources.put(report.getId(), report);
-
-        for (EQAResult result : results) {
-            Observation observation = buildObservation(result, distribution);
-            fhirResources.put(observation.getId(), observation);
-        }
+        Map<String, Resource> fhirResources = scoreResources(distribution, organizationId, results);
 
         Map<String, Object> response = new HashMap<>();
         try {
@@ -94,6 +116,236 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         }
 
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Resource> scoreReturnResources(Long distributionId, Long organizationId) {
+        EQADistribution distribution = distributionDAO.get(distributionId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribution not found: " + distributionId));
+        List<EQAResult> results = resultDAO.findByDistributionId(distributionId).stream()
+                .filter(r -> r.getParticipantOrganizationId().equals(organizationId)).collect(Collectors.toList());
+        return scoreResources(distribution, organizationId, results);
+    }
+
+    private Map<String, Resource> scoreResources(EQADistribution distribution, Long organizationId,
+            List<EQAResult> results) {
+        Map<String, Resource> fhirResources = new HashMap<>();
+        DiagnosticReport report = buildDiagnosticReport(distribution, organizationId, results);
+        fhirResources.put(report.getId(), report);
+        for (EQAResult result : results) {
+            Observation observation = buildObservation(result, distribution);
+            fhirResources.put(observation.getId(), observation);
+        }
+        return fhirResources;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Resource> participantSubmissionResources(Long cycleId, Long labEnrollmentId) {
+        EQACycle cycle = cycleDAO.get(cycleId)
+                .orElseThrow(() -> new IllegalArgumentException("Cycle not found: " + cycleId));
+        List<EQAParticipantResult> results = submittableResults(cycleId, labEnrollmentId);
+        if (results.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No submittable result for cycle " + cycleId + " and enrollment " + labEnrollmentId);
+        }
+        Map<String, Resource> fhirResources = new HashMap<>();
+        DiagnosticReport report = buildCycleReport(cycle, labEnrollmentId, results);
+        fhirResources.put(report.getId(), report);
+        for (EQAParticipantResult result : results) {
+            Observation observation = buildParticipantObservation(result);
+            fhirResources.put(observation.getId(), observation);
+        }
+        return fhirResources;
+    }
+
+    @Override
+    public boolean submitCycleViaFhir(Long cycleId, Long labEnrollmentId) {
+        Map<String, Resource> fhirResources = participantSubmissionResources(cycleId, labEnrollmentId);
+
+        try {
+            Bundle responseBundle = fhirPersistanceService.createFhirResourcesInFhirStore(fhirResources);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "submitCycleViaFhir",
+                    "EQA cycle submission successful: cycle=" + cycleId + ", enrollment=" + labEnrollmentId
+                            + ", resources=" + fhirResources.size() + ", bundle=" + responseBundle.getId());
+            // The provider is another instance: the same bundle goes to every remote
+            // store this lab is configured to exchange with (the shipment loop's
+            // hub). A remote it cannot reach is a failed attempt, so the sweep's
+            // backoff and alert apply, exactly as for the local store.
+            return pushToRemoteStores(fhirResources, cycleId);
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            // Any transport or serialization failure is a failed attempt, not a
+            // crash: the caller counts it and retries under the submission backoff.
+            LogEvent.logError(this.getClass().getSimpleName(), "submitCycleViaFhir",
+                    "EQA cycle submission failed: cycle=" + cycleId + ", enrollment=" + labEnrollmentId + ": "
+                            + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean pushToRemoteStores(Map<String, Resource> fhirResources, Long cycleId) {
+        boolean allSent = true;
+        for (String remoteStorePath : remoteStorePaths()) {
+            try {
+                Bundle bundle = new Bundle();
+                bundle.setType(Bundle.BundleType.TRANSACTION);
+                for (Resource resource : fhirResources.values()) {
+                    String url = resource.fhirType() + "/" + resource.getIdElement().getIdPart();
+                    Bundle.BundleEntryComponent entry = bundle.addEntry();
+                    entry.setFullUrl(url);
+                    entry.setResource(resource);
+                    entry.getRequest().setMethod(Bundle.HTTPVerb.PUT).setUrl(url);
+                }
+                fhirUtil.getFhirClient(remoteStorePath).transaction().withBundle(bundle).execute();
+                LogEvent.logInfo(this.getClass().getSimpleName(), "pushToRemoteStores",
+                        "EQA cycle " + cycleId + " submission sent to " + remoteStorePath);
+            } catch (RuntimeException e) {
+                allSent = false;
+                LogEvent.logError(this.getClass().getSimpleName(), "pushToRemoteStores", "EQA cycle " + cycleId
+                        + " submission did not reach " + remoteStorePath + ": " + e.getMessage());
+            }
+        }
+        return allSent;
+    }
+
+    /** Remote stores other than this lab's own; empty when none is configured. */
+    private List<String> remoteStorePaths() {
+        List<String> remotes = new ArrayList<>();
+        if (fhirConfig.getRemoteStorePaths() == null) {
+            return remotes;
+        }
+        for (String path : fhirConfig.getRemoteStorePaths()) {
+            if (path != null && !path.isBlank() && !path.equals(fhirConfig.getLocalFhirStorePath())) {
+                remotes.add(path);
+            }
+        }
+        return remotes;
+    }
+
+    /**
+     * The consignment the participant's panel travelled in, by the SupplyDelivery
+     * uuid both instances hold: the provider exported it, the participant imported
+     * it, and either side can find its own box by it. Null when the cycle was not
+     * created from a consignment.
+     */
+    private String consignmentUuidFor(Long cycleId, Long participantOrganizationId) {
+        for (ShippingBox box : shippingBoxDAO.findByEqaCycleId(cycleId)) {
+            if (box.getFhirUuid() == null) {
+                continue;
+            }
+            if (participantOrganizationId == null || box.getDestinationFacility() == null
+                    || participantOrganizationId.toString().equals(box.getDestinationFacility().getId())) {
+                return box.getFhirUuid().toString();
+            }
+        }
+        return null;
+    }
+
+    private String analyteNameForTest(Long testId) {
+        return testId == null ? null
+                : eqaPanelService.analyteName(eqaPanelService.findAnalyteIdForTest(String.valueOf(testId)));
+    }
+
+    /**
+     * Everything this lab has validated but not yet had scored. SUBMITTED rows are
+     * included so a retry after a partial failure resends the whole set rather than
+     * a fragment the provider cannot reconcile.
+     */
+    private List<EQAParticipantResult> submittableResults(Long cycleId, Long labEnrollmentId) {
+        return participantResultDAO.getAllMatching(Map.of("cycle.id", cycleId, "labEnrollmentId", labEnrollmentId))
+                .stream().filter(r -> r.getSubmissionStatus() == EQASubmissionStatus.VALIDATED_PARTIAL
+                        || r.getSubmissionStatus() == EQASubmissionStatus.SUBMITTED)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * No subject reference: a participant self-enrollment
+     * (eqa_lab_program_enrollment) records a free-text provider and no
+     * organization, so an Organization/{id} reference would point at nothing. The
+     * cycle and enrollment identifiers carry the routing instead.
+     */
+    private DiagnosticReport buildCycleReport(EQACycle cycle, Long labEnrollmentId,
+            List<EQAParticipantResult> results) {
+        DiagnosticReport report = new DiagnosticReport();
+        String reportId = cycle.getFhirUuid().toString() + "-enrollment-" + labEnrollmentId;
+        report.setId(reportId);
+        report.addIdentifier(
+                createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/diagnostic_report", reportId));
+        report.addIdentifier(
+                createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/cycle_id", cycle.getId().toString()));
+        report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/lab_enrollment_id",
+                labEnrollmentId.toString()));
+        // Routing for a provider on another instance: the consignment the panel came
+        // in, and the scheme name + cycle number as the human-readable fallback.
+        String consignment = consignmentUuidFor(cycle.getId(), null);
+        if (consignment != null) {
+            report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + CONSIGNMENT_SUFFIX, consignment));
+        }
+        if (cycle.getScheme() != null && cycle.getScheme().getName() != null) {
+            report.addIdentifier(
+                    createIdentifier(fhirConfig.getOeFhirSystem() + SCHEME_NAME_SUFFIX, cycle.getScheme().getName()));
+        }
+        if (cycle.getCycleNumber() != null) {
+            report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + CYCLE_NUMBER_SUFFIX,
+                    cycle.getCycleNumber().toString()));
+        }
+        report.setStatus(DiagnosticReportStatus.FINAL);
+
+        CodeableConcept category = new CodeableConcept();
+        category.addCoding(new Coding("http://terminology.hl7.org/CodeSystem/v2-0074", "LAB", "Laboratory"));
+        report.addCategory(category);
+
+        CodeableConcept code = new CodeableConcept();
+        code.addCoding(new Coding(fhirConfig.getOeFhirSystem() + EQA_SYSTEM, "eqa-proficiency-test",
+                "EQA Proficiency Testing Results"));
+        code.setText("EQA Results: " + (cycle.getScheme() == null ? "" : cycle.getScheme().getName() + " ") + "cycle "
+                + cycle.getCycleNumber());
+        report.setCode(code);
+
+        for (EQAParticipantResult result : results) {
+            Reference obsRef = new Reference();
+            obsRef.setReference(ResourceType.Observation + "/" + result.getFhirUuid().toString());
+            report.addResult(obsRef);
+        }
+        return report;
+    }
+
+    /**
+     * A participant result value is free text on the wire: external PT covers
+     * qualitative analytes (HIV serology, blood-film ID) that have no numeric form,
+     * so it is sent as a Quantity only when it parses as one.
+     */
+    private Observation buildParticipantObservation(EQAParticipantResult result) {
+        Observation observation = new Observation();
+        observation.setId(result.getFhirUuid().toString());
+        observation
+                .addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/participant_result_uuid",
+                        result.getFhirUuid().toString()));
+        observation.setStatus(ObservationStatus.FINAL);
+
+        CodeableConcept code = new CodeableConcept();
+        code.addCoding(new Coding(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/analyte",
+                String.valueOf(result.getAnalyteId()), "EQA analyte " + result.getAnalyteId()));
+        // The analyte's name is what another instance can match on; ids differ per
+        // install.
+        code.setText(eqaPanelService.analyteName(result.getAnalyteId()));
+        observation.setCode(code);
+
+        String value = result.getResultValue();
+        if (value != null && !value.isBlank()) {
+            try {
+                Quantity quantity = new Quantity();
+                quantity.setValue(new java.math.BigDecimal(value.trim()));
+                if (result.getResultUnit() != null && !result.getResultUnit().isBlank()) {
+                    quantity.setUnit(result.getResultUnit());
+                }
+                observation.setValue(quantity);
+            } catch (NumberFormatException e) {
+                observation.setValue(new StringType(value.trim()));
+            }
+        }
+        return observation;
     }
 
     @Override
@@ -160,6 +412,15 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
         report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/distribution_id",
                 distribution.getId().toString()));
+        // Addressed to the participant by the consignment its panel travelled in, so
+        // the participant instance can search its provider's store for scores that
+        // are its own.
+        String consignment = distribution.getCycleId() == null ? null
+                : consignmentUuidFor(distribution.getCycleId(), organizationId);
+        if (consignment != null) {
+            report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + CONSIGNMENT_SUFFIX, consignment));
+            report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + SCORES_SUFFIX, consignment));
+        }
 
         report.setStatus(DiagnosticReportStatus.FINAL);
 
@@ -173,9 +434,12 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         code.setText("EQA Results: " + distribution.getDistributionName());
         report.setCode(code);
 
-        Reference orgRef = new Reference();
-        orgRef.setReference(ResourceType.Organization + "/" + organizationId);
-        report.setSubject(orgRef);
+        // Same rule as the observation below: an Organization is the report's
+        // performer, and DiagnosticReport.subject would refuse it.
+        Reference reportPerformer = organizationReference(organizationId);
+        if (reportPerformer != null) {
+            report.addPerformer(reportPerformer);
+        }
 
         for (EQAResult result : results) {
             Reference obsRef = new Reference();
@@ -184,6 +448,23 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         }
 
         return report;
+    }
+
+    /**
+     * The participating laboratory, referenced by its FHIR uuid. Referencing the
+     * OpenELIS numeric id makes the store try to auto-create a placeholder
+     * Organization under a numeric client-assigned id, which it refuses
+     * (HAPI-0960); an organization with no uuid yet is left unreferenced rather
+     * than sent as a broken link.
+     */
+    private Reference organizationReference(Long organizationId) {
+        Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
+        if (participant == null || participant.getFhirUuid() == null) {
+            return null;
+        }
+        Reference reference = new Reference();
+        reference.setReference(ResourceType.Organization + "/" + participant.getFhirUuid());
+        return reference;
     }
 
     private Observation buildObservation(EQAResult result, EQADistribution distribution) {
@@ -199,17 +480,25 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         CodeableConcept code = new CodeableConcept();
         code.addCoding(new Coding(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/test", result.getTestId().toString(),
                 "EQA Test " + result.getTestId()));
+        code.setText(analyteNameForTest(result.getTestId()));
         observation.setCode(code);
 
         if (result.getResultValue() != null) {
             Quantity quantity = new Quantity();
             quantity.setValue(result.getResultValue());
             observation.setValue(quantity);
+        } else if (result.getResultText() != null) {
+            observation.setValue(new StringType(result.getResultText()));
         }
 
-        Reference orgRef = new Reference();
-        orgRef.setReference(ResourceType.Organization + "/" + result.getParticipantOrganizationId());
-        observation.setSubject(orgRef);
+        // The participating laboratory is the performer, not the subject: FHIR R4
+        // restricts Observation.subject to Patient|Group|Device|Location, so a store
+        // refuses an Organization there with HTTP 422 (found returning scores over
+        // FHIR on the dev stack, 2026-08-24 — this path had no live caller before).
+        Reference performer = organizationReference(result.getParticipantOrganizationId());
+        if (performer != null) {
+            observation.addPerformer(performer);
+        }
 
         if (result.getZScore() != null) {
             Observation.ObservationComponentComponent zScoreComponent = new Observation.ObservationComponentComponent();

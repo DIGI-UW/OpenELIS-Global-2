@@ -115,6 +115,12 @@ const AlertsDashboard = () => {
               text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
             />
             <SelectItem
+              value="EQA_SUBMISSION_FAILED"
+              text={intl.formatMessage({
+                id: "alerts.type.eqa_submission_failed",
+              })}
+            />
+            <SelectItem
               value="REQUIRED_BY_DEADLINE"
               text={intl.formatMessage({
                 id: "alerts.type.required_by_deadline",

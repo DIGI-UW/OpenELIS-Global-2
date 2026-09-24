@@ -143,6 +143,27 @@ export const toLocalIsoDateTime = (
   return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
 };
 
+/**
+ * Render a date-of-record (deadline, due date) as `dd/MM/yyyy`. Such values are
+ * stored as an end-of-day timestamp, so reading LOCAL components rolls them to
+ * the next day for any browser east of the server; the UTC components give the
+ * calendar date that was actually entered. Returns "" for absent values.
+ */
+export const formatDateOnly = (
+  value: Date | string | number | null | undefined,
+): string => {
+  if (!value) {
+    return "";
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${d.getUTCFullYear()}`;
+};
+
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
   endPoint: string,
   callback: (response: T | undefined) => void,
@@ -258,27 +279,29 @@ export const postToOpenElisServer = <TExtra = unknown>(
     });
 };
 
-export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+/**
+ * The one body shared by every *FullResponse helper. The callback gets the raw
+ * Response, so a 4xx body — a state-machine refusal, a validation message — can
+ * be read and shown instead of being flattened into "it failed".
+ */
+const sendForFullResponse = <TExtra = unknown>(
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   endPoint: string,
-  payLoad: RequestPayload,
+  payLoad: RequestPayload | undefined,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
-        "Accept-Language": getAcceptLanguageHeader(),
-      },
-      body: payLoad as BodyInit,
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
-  )
+    ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
+  })
     .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
@@ -286,6 +309,14 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
       callback(undefined, extraParams);
     });
 };
+
+export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("POST", endPoint, payLoad, callback, extraParams);
 
 export const postToOpenElisServerFormData = <TExtra = unknown>(
   endPoint: string,
@@ -630,25 +661,19 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   payLoad: RequestPayload,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    //includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-    body: payLoad as BodyInit,
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void => sendForFullResponse("PUT", endPoint, payLoad, callback, extraParams);
+
+/**
+ * PATCH counterpart. The JSON-only PATCH variant discards the body on !ok, which
+ * is exactly what a state-machine refusal must not do.
+ */
+export const patchToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("PATCH", endPoint, payLoad, callback, extraParams);
 
 export const deleteFromOpenElisServer = (
   endPoint: string,
@@ -679,24 +704,8 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
   endPoint: string,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void =>
+  sendForFullResponse("DELETE", endPoint, undefined, callback, extraParams);
 
 export const hasRole = (
   userSessionDetails: UserSessionDetails | null | undefined,
@@ -831,9 +840,14 @@ export const convertAlphaNumLabNumForDisplay = (
       labNumberForDisplay +
       labNumberParts[0].slice(labNumberParts[0].length - 3);
   }
-  //re-add dash
+  // Re-add every remaining part, not just the first: keeping only one dropped
+  // the tail of anything with a second dash in it (an EQA blind code such as
+  // IH-2-04 rendered as IH-2, the same for every row on the page).
   if (isAnalysisLabNumber) {
-    labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
+    labNumberForDisplay = [
+      labNumberForDisplay,
+      ...labNumberParts.slice(1),
+    ].join("-");
   }
   return labNumberForDisplay.toUpperCase();
 };
@@ -929,6 +943,18 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
 } as const;
+
+/**
+ * True when the session holds a qa.* permission, with Global Administrator as
+ * the standing fallback. The real gate is @PreAuthorize on the endpoint; this
+ * only hides controls from callers who would get a 403 anyway.
+ */
+export const hasQaPermission = (
+  userSessionDetails: { permissions?: string[]; roles?: string[] } | undefined,
+  permission: string,
+): boolean =>
+  !!userSessionDetails?.permissions?.includes(permission) ||
+  !!userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN);
 
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {

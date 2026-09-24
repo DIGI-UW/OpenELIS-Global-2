@@ -1,5 +1,6 @@
 package org.openelisglobal.shipment.service;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.shipment.valueholder.Shipment;
 import org.openelisglobal.shipment.valueholder.ShipmentStatus;
@@ -45,6 +46,14 @@ public interface ShipmentService {
      * @return List of shipments
      */
     List<Shipment> getShipmentsByCourier(String courier);
+
+    /**
+     * Newest shipped date per EQA cycle
+     *
+     * @param eqaCycleIds EQA cycle ids
+     * @return rows of (eqaCycleId, max shippedDate) for cycles that shipped
+     */
+    List<Object[]> getLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds);
 
     /**
      * Create a new shipment

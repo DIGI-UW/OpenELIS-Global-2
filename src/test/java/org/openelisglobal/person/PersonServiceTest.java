@@ -135,6 +135,39 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(PERSON1_LASTNAME + ", " + PERSON1_FIRSTNAME, lastFirstName);
     }
 
+    /**
+     * A blinded external-quality-assessment order creates a patient carrying no
+     * name at all, and both name columns are nullable, so the persisted row has SQL
+     * NULL in each. Every screen that shows a sample's patient reads this one
+     * helper.
+     */
+    @Test
+    public void getLastFirstName_shouldReturnBlankWhenNeitherNameIsRecorded() {
+        Person nameless = insertPerson(null, null);
+
+        Assert.assertNull(personService.get(nameless.getId()).getLastName());
+        Assert.assertNull(personService.get(nameless.getId()).getFirstName());
+        Assert.assertEquals("", personService.getLastFirstName(personService.get(nameless.getId())));
+    }
+
+    @Test
+    public void getLastFirstName_shouldReturnTheOneNameRecordedWithNoSeparator() {
+        Person lastOnly = insertPerson(null, "Okello");
+        Person firstOnly = insertPerson("Grace", null);
+
+        Assert.assertEquals("Okello", personService.getLastFirstName(personService.get(lastOnly.getId())));
+        Assert.assertEquals("Grace", personService.getLastFirstName(personService.get(firstOnly.getId())));
+    }
+
+    private Person insertPerson(String firstName, String lastName) {
+        Person person = new Person();
+        person.setFirstName(firstName);
+        person.setLastName(lastName);
+        person.setSysUserId(TEST_SYS_USER_ID);
+        person.setId(personService.insert(person));
+        return person;
+    }
+
     @Test
     public void getWorkPhone_shouldReturnWorkPhone() throws Exception {
         Person person = personService.get("1");

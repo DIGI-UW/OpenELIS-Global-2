@@ -15,6 +15,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
@@ -22,6 +24,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +35,9 @@ public class WorkplanRestController extends BaseRestController {
 
     @Autowired
     protected TestService testService;
+
+    @Autowired
+    protected SampleEQAService sampleEQAService;
 
     protected static List<String> statusList;
     protected static boolean useReceptionTime = FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour);
@@ -117,6 +123,26 @@ public class WorkplanRestController extends BaseRestController {
 
         } else {
             return "";
+        }
+    }
+
+    /**
+     * Flag a workplan row that belongs to an EQA order, so the bench sees the same
+     * badge here that result entry shows. Every workplan variant builds its rows by
+     * hand, and none of them carried the flag, so the badge component was fed
+     * nothing on every one of them.
+     */
+    protected void markEqaSample(TestResultItem testResultItem, Sample sample) {
+        if (sample == null || sample.getId() == null) {
+            return;
+        }
+        SampleEQA sampleEQA = sampleEQAService.findBySampleId(Long.valueOf(sample.getId())).orElse(null);
+        if (sampleEQA == null || !Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+            return;
+        }
+        testResultItem.setEqaSample(true);
+        if (sampleEQA.getEqaPriority() != null) {
+            testResultItem.setEqaPriority(sampleEQA.getEqaPriority().name());
         }
     }
 

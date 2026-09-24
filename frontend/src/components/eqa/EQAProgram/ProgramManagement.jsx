@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -30,10 +30,10 @@ import {
   Settings,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
-import ParticipantsTab from "./ParticipantsTab";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
@@ -47,6 +47,8 @@ const breadcrumbs = [
 
 const ProgramManagement = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);
@@ -98,6 +100,10 @@ const ProgramManagement = () => {
       header: intl.formatMessage({ id: "eqa.admin.col.provider" }),
     },
     {
+      key: "schemeType",
+      header: intl.formatMessage({ id: "eqa.filter.schemeType" }),
+    },
+    {
       key: "participantCount",
       header: intl.formatMessage({ id: "eqa.admin.col.participants" }),
     },
@@ -114,7 +120,13 @@ const ProgramManagement = () => {
   const rows = programs.map((p) => ({
     id: String(p.id),
     name: p.name,
-    provider: p.provider || "",
+    provider: p.provider || "—",
+    schemeType: p.schemeType
+      ? intl.formatMessage({
+          id: `eqa.scheme.type.${p.schemeType.toLowerCase()}`,
+          defaultMessage: p.schemeType.replace(/_/g, " "),
+        })
+      : "—",
     participantCount: p.participantCount != null ? p.participantCount : 0,
     status: p.isActive
       ? intl.formatMessage({ id: "eqa.program.active" })
@@ -260,9 +272,6 @@ const ProgramManagement = () => {
             <Tab renderIcon={DataCheck}>
               {intl.formatMessage({ id: "eqa.admin.tab.programs" })}
             </Tab>
-            <Tab renderIcon={GroupPresentation}>
-              {intl.formatMessage({ id: "eqa.admin.tab.participants" })}
-            </Tab>
             <Tab renderIcon={Settings}>
               {intl.formatMessage({ id: "eqa.admin.tab.systemSettings" })}
             </Tab>
@@ -293,9 +302,11 @@ const ProgramManagement = () => {
                     {intl.formatMessage({ id: "eqa.admin.programs.subtitle" })}
                   </p>
                 </div>
-                <Button renderIcon={Add} onClick={handleCreate}>
-                  {intl.formatMessage({ id: "eqa.admin.addProgram" })}
-                </Button>
+                {canManage && (
+                  <Button renderIcon={Add} onClick={handleCreate}>
+                    {intl.formatMessage({ id: "eqa.admin.addProgram" })}
+                  </Button>
+                )}
               </div>
 
               {programs.length === 0 ? (
@@ -357,25 +368,31 @@ const ProgramManagement = () => {
                                           gap: "0.5rem",
                                         }}
                                       >
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.program.edit",
-                                          })}
-                                          renderIcon={Edit}
-                                          onClick={() => handleEdit(rawProgram)}
-                                        />
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.admin.delete",
-                                          })}
-                                          renderIcon={TrashCan}
-                                        />
+                                        {canManage && (
+                                          <>
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              hasIconOnly
+                                              iconDescription={intl.formatMessage(
+                                                { id: "eqa.program.edit" },
+                                              )}
+                                              renderIcon={Edit}
+                                              onClick={() =>
+                                                handleEdit(rawProgram)
+                                              }
+                                            />
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              hasIconOnly
+                                              iconDescription={intl.formatMessage(
+                                                { id: "eqa.admin.delete" },
+                                              )}
+                                              renderIcon={TrashCan}
+                                            />
+                                          </>
+                                        )}
                                       </div>
                                     </TableCell>
                                   );
@@ -394,11 +411,6 @@ const ProgramManagement = () => {
                   )}
                 </DataTable>
               )}
-            </TabPanel>
-
-            {/* Participants Tab */}
-            <TabPanel>
-              <ParticipantsTab programs={programs} />
             </TabPanel>
 
             {/* System Settings Tab */}

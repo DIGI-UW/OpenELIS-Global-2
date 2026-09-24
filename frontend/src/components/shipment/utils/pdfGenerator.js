@@ -2,7 +2,10 @@ import jsPDF from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
 import bwipjs from "bwip-js";
 
-// jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
+// jspdf-autotable 5 stopped patching jsPDF on import, so the bare side-effect
+// import left doc.autoTable undefined and every table-bearing PDF here threw
+// "doc.autoTable is not a function" — the manifest download included. Register
+// it once, so the existing doc.autoTable(...) call sites keep working.
 applyPlugin(jsPDF);
 
 /**
@@ -150,7 +153,11 @@ export const generateManifestPDF = async (manifestData, formatMessage) => {
         formatMessage({ id: "shipment.manifest.number" }) || "#",
         formatMessage({ id: "sample.label.accessionNumber" }) ||
           "Accession Number",
-        formatMessage({ id: "sample.label.typeOfSample" }) || "Type",
+        // What the middle column holds depends on the document: a specimen type
+        // for a patient consignment, the panel for EQA material.
+        manifestData.typeColumnLabel ||
+          formatMessage({ id: "sample.label.typeOfSample" }) ||
+          "Type",
         formatMessage({ id: "shipment.label.tests" }) || "Tests",
         formatMessage({ id: "sample.label.collectionDate" }) ||
           "Collection Date",

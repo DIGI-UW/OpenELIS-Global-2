@@ -117,13 +117,25 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertNotNull(findByAccession(dtos, "13333"));
     }
 
+    /**
+     * Whether a box row may hold nothing at all. Dropping the non-null on the
+     * sample item is only half the answer: the external-quality-assessment work
+     * that dropped it also added a CHECK requiring exactly one of a sample item or
+     * panel material, which puts the contentless row this test is about back out of
+     * reach.
+     */
     private boolean sampleItemIsNullable() {
         String nullable = jdbcTemplate
                 .queryForObject(
                         "SELECT is_nullable FROM information_schema.columns WHERE table_schema = 'clinlims'"
                                 + " AND table_name = 'box_sample_item' AND column_name = 'sample_item_id'",
                         String.class);
-        return "YES".equalsIgnoreCase(nullable);
+        if (!"YES".equalsIgnoreCase(nullable)) {
+            return false;
+        }
+        Integer contentCheck = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'box_sample_item_content_chk'", Integer.class);
+        return contentCheck != null && contentCheck == 0;
     }
 
     private Integer insertBox() {

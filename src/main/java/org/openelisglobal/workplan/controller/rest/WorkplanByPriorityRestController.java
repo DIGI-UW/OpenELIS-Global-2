@@ -85,6 +85,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
                 testResultItem.setTestId(analysis.getTest().getId());
                 Sample sample = analysis.getSampleItem().getSample();
                 testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 testResultItem.setTestName(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
                 boolean nonConforming = QAService.isAnalysisParentNonConforming(analysis);

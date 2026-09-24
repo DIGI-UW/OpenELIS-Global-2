@@ -29,7 +29,10 @@ public class EQALabProgramEnrollmentDAOImpl extends BaseDAOImpl<EQALabProgramEnr
     @Transactional(readOnly = true)
     public List<EQALabProgramEnrollment> findAll() {
         try {
-            String hql = "FROM EQALabProgramEnrollment e ORDER BY e.programName";
+            // Active enrollments first, so the page can group them under a heading
+            // and a laboratory reads what it is currently enrolled in without
+            // picking it out from among the ones it has left.
+            String hql = "FROM EQALabProgramEnrollment e ORDER BY e.isActive DESC, e.programName";
             Query<EQALabProgramEnrollment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     EQALabProgramEnrollment.class);
             return query.list();
