@@ -2,3 +2,4 @@
 analyzer-cutover
 analyzer-unmigrated
 pathology-stage-descriptions
+pathology-block-slide-identity
