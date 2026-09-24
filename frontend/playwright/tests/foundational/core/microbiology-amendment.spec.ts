@@ -52,7 +52,10 @@ test.describe("Microbiology final-report amendments", () => {
         page.getByRole("heading", { name: "Amendments" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(page.getByText("Final case is read-only")).toBeVisible();
-      const openButton = page.getByRole("button", { name: "Open amendment" });
+      const openButton = page.getByRole("button", {
+        name: "Open amendment",
+        exact: true,
+      });
       await expect(openButton).toBeDisabled();
       await page
         .getByLabel("Amendment reason")
