@@ -97,7 +97,7 @@ const MAPPING_BLOCKERS = new Set([
   "analyzer.activation.blocker.recognition",
 ]);
 
-const needsMappingVerification = (readiness) =>
+export const needsMappingVerification = (readiness) =>
   Boolean(
     readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
   );
@@ -120,6 +120,7 @@ const AnalyzerConnectionSetup = ({
   onCandidateChange,
   onClose,
   onVerifyMappings,
+  onReadinessChange,
 }) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
@@ -160,6 +161,10 @@ const AnalyzerConnectionSetup = ({
     }
     return () => controller.abort();
   }, [candidate?.id]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
 
   const refreshReadiness = (analyzerId = candidate.id) => {
     setReadinessLoading(true);
