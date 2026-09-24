@@ -616,7 +616,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         renderIcon={ChartBubble}
         {...navProps(`${path}/program`)}
       >
-        <FormattedMessage id="sidenav.label.admin.program" />
+        <FormattedMessage id="admin.programs.title" />
       </SideNavLink>
       <SideNavMenu
         renderIcon={CicsSystemGroup}

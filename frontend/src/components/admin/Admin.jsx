@@ -126,6 +126,9 @@ function Admin() {
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
+      {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
+          and deep links survive; /programV2 was its pre-release alias. */}
+      <Redirect from={`${path}/programV2`} to={`${path}/program`} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
       <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />

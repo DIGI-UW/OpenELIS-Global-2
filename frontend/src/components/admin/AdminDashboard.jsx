@@ -62,7 +62,7 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: ListDropdown,
   },
   {
-    messageId: "sidenav.label.admin.program",
+    messageId: "admin.programs.title",
     path: "program",
     icon: ChartBubble,
   },
