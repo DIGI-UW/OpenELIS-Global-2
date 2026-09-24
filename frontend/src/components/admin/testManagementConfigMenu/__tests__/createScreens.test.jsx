@@ -195,7 +195,7 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, read, fill }) => {
 });
 
 /**
- * OGC-1234 — a refusal never arrives as a falsy value: the post helper hands the
+ * OGC-1234: a refusal never arrives as a falsy value: the post helper hands the
  * callback an object carrying the HTTP status. A 400 (markup in the name,
  * refused by bean validation) used to be read as a successful create.
  */
@@ -270,7 +270,7 @@ describe("SampleTypeCreate refusal", () => {
 });
 
 /**
- * OGC-1234 — a refusal arrives as an object carrying its HTTP status, never as
+ * OGC-1234: a refusal arrives as an object carrying its HTTP status, never as
  * a falsy value; every create screen reports it as an error, not as a create.
  */
 describe.each(SCREENS)("$name refusal", ({ Screen, endPoint, read, fill }) => {

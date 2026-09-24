@@ -180,7 +180,7 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
     }
 
     /**
-     * OGC-1234 — an option removed in the Test Catalog editor stays as an inactive
+     * OGC-1234: an option removed in the Test Catalog editor stays as an inactive
      * row with the same value, and a re-added one is a new row beside it. A result
      * must resolve to the row the test offers now. When no active row exists (a
      * result entered before the option was removed) the most recent row is the

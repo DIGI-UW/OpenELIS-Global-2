@@ -841,7 +841,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     }
 
     /**
-     * OGC-1234 — a description may repeat another panel's (it used to fail the save
+     * OGC-1234: a description may repeat another panel's (it used to fail the save
      * with a blank 500), while a rename onto another panel's name, in any letter
      * case, is refused as name.duplicate and writes nothing, the display
      * localization included.

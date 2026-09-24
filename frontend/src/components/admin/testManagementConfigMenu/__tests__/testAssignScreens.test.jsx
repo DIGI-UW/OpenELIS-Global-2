@@ -141,7 +141,7 @@ describe.each(SCREENS)(
       });
     });
 
-    // OGC-1234 — a refusal arrives as an object carrying its HTTP status.
+    // OGC-1234: a refusal arrives as an object carrying its HTTP status.
     it("reports a refused move (500) as an error, never as saved", async () => {
       renderScreen();
       await pickGlucoseAndSerology();

@@ -121,7 +121,7 @@ describe("ResultSelectListAdd", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  // OGC-1234 — a refusal arrives as an object carrying its HTTP status.
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status.
   it("reports a refused save (500) as an error and keeps the entry", async () => {
     await nameTheListAndContinue();
     await userEvent.click(screen.getByLabelText("Culture"));

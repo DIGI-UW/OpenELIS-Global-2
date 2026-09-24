@@ -9,7 +9,6 @@ import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.panel.service.PanelService;
@@ -24,6 +23,7 @@ import org.openelisglobal.testconfiguration.action.PanelTests;
 import org.openelisglobal.testconfiguration.form.PanelTestAssignForm;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -126,13 +126,13 @@ public class PanelTestAssignRestController extends BaseController {
     }
 
     @PostMapping(value = "/PanelTestAssign")
-    public PanelTestAssignForm postPanelTestAssign(HttpServletRequest request,
+    public ResponseEntity<?> postPanelTestAssign(HttpServletRequest request,
             @RequestBody @Valid PanelTestAssignForm form, BindingResult result, RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String panelId = form.getPanelId();
@@ -153,7 +153,7 @@ public class PanelTestAssignRestController extends BaseController {
             try {
                 panelItemService.updatePanelItems(panelItems, panel, updatePanel, currentUser, newTests);
             } catch (LIMSRuntimeException e) {
-                LogEvent.logDebug(e);
+                return saveFailure(e);
             }
         }
 
@@ -162,7 +162,7 @@ public class PanelTestAssignRestController extends BaseController {
 
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     @Override

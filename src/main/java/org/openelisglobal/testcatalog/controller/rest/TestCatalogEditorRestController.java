@@ -2145,7 +2145,7 @@ public class TestCatalogEditorRestController {
      * elsewhere with a longer name stays editable here; the localization is only
      * rewritten on an actual rename.
      * <p>
-     * OGC-1234 — a rename onto another panel's name is refused as
+     * OGC-1234: a rename onto another panel's name is refused as
      * {@code name.duplicate} instead of failing with a 500; a description is free
      * text and may repeat another panel's.
      */

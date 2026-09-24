@@ -192,7 +192,7 @@ function ResultSelectListAdd() {
     );
   };
 
-  // OGC-1234 — Next can be pressed again (a refused save, or Cancel then
+  // OGC-1234: Next can be pressed again (a refused save, or Cancel then
   // Next): the new entry is the only item without an id, so it is replaced
   // rather than appended a second time, which saved it twice on each test.
   const enrichTestSelectListJson = (list, englishLangPost) => {

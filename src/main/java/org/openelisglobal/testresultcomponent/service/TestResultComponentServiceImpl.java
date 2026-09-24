@@ -189,7 +189,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     /**
-     * OGC-1234 — a select-list range names its normal value by dictionary id. Once
+     * OGC-1234: a select-list range names its normal value by dictionary id. Once
      * the component no longer offers that value (the option was removed, a "Copy
      * from test" replaced the options, or the component is no longer a select
      * list), no result can ever equal it, so every result would be judged abnormal

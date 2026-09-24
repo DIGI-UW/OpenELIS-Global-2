@@ -12,6 +12,7 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.testconfiguration.form.MethodRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -62,13 +63,13 @@ public class MethodRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/MethodRenameEntry")
-    public MethodRenameEntryForm updateMethodRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateMethodRenameEntry(HttpServletRequest request,
             @RequestBody @Valid MethodRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setMethodList(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String methodId = form.getMethodId();
@@ -79,7 +80,7 @@ public class MethodRenameEntryRestController extends BaseController {
         updateMethodNames(methodId, nameEnglish, nameFrench, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updateMethodNames(String methodId, String nameEnglish, String nameFrench, String userId) {

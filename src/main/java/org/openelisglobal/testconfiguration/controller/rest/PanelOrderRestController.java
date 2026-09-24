@@ -23,6 +23,7 @@ import org.openelisglobal.testconfiguration.action.SampleTypePanel;
 import org.openelisglobal.testconfiguration.form.PanelOrderForm;
 import org.openelisglobal.testconfiguration.validator.PanelOrderFormValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -97,14 +98,14 @@ public class PanelOrderRestController extends BaseController {
     }
 
     @PostMapping(value = "/PanelOrder")
-    public PanelOrderForm postPanelOrder(HttpServletRequest request, @RequestBody @Valid PanelOrderForm form,
+    public ResponseEntity<?> postPanelOrder(HttpServletRequest request, @RequestBody @Valid PanelOrderForm form,
             BindingResult result) throws ParseException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String changeList = form.getJsonChangeList();
@@ -125,7 +126,7 @@ public class PanelOrderRestController extends BaseController {
         try {
             panelService.updateAll(panels);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
@@ -133,7 +134,7 @@ public class PanelOrderRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_ACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private class ActivateSet {

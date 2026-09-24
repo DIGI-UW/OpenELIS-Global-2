@@ -82,7 +82,7 @@ const SCREENS = [
   },
 ];
 
-const renderScreen = (Screen) =>
+const renderScreen = (Screen, addNotification = vi.fn()) =>
   render(
     <MemoryRouter>
       <IntlProvider locale="en" messages={messages}>
@@ -91,7 +91,7 @@ const renderScreen = (Screen) =>
             value={{
               notificationVisible: false,
               setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
+              addNotification,
             }}
           >
             <Screen />
@@ -168,6 +168,33 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, listField, idField }) => {
       nameEnglish: "Serology",
       nameFrench: "Chimie",
     });
+  });
+
+  // OGC-1234: a refusal reaches the callback as an object carrying its HTTP
+  // status; it used to be reported as a saved rename.
+  it("reports a refused rename (400) as an error, never as saved", async () => {
+    const addNotification = vi.fn();
+    renderScreen(Screen, addNotification);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Chemistry" }),
+    );
+    await screen.findByDisplayValue("Chemistry");
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "validation", fieldErrors: [], status: 400 }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
   });
 
   it("reads the list again once a rename is accepted, without reloading", async () => {

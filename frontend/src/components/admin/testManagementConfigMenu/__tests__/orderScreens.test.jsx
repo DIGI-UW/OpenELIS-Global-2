@@ -243,7 +243,7 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, listField }) => {
 });
 
 /**
- * OGC-1234 — a refusal reaches the callback as an object carrying its HTTP
+ * OGC-1234: a refusal reaches the callback as an object carrying its HTTP
  * status, never as a falsy value; the screens used to read it as a save.
  */
 describe.each(SCREENS)(

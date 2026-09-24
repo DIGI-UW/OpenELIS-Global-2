@@ -581,7 +581,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     /**
-     * OGC-1234 — a removed option stays as an inactive row, and adding the same
+     * OGC-1234: a removed option stays as an inactive row, and adding the same
      * value back is a new row beside it. A result entered now must resolve to the
      * row the test offers, not to whichever row was inserted first.
      */
@@ -618,7 +618,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     /**
-     * OGC-1234 — a select-list range whose normal value the component no longer
+     * OGC-1234: a select-list range whose normal value the component no longer
      * offers can never match a result; it is removed on save. A range whose normal
      * value is still offered is kept, and one on a component that is no longer a
      * select list goes too.
@@ -682,7 +682,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     /**
-     * OGC-1234 — "Copy configuration from test" replaces. The editor stages the
+     * OGC-1234: "Copy configuration from test" replaces. The editor stages the
      * source's components with their ids dropped and the ordinary save commits
      * them, so a target that is already configured (the case the copy endpoint
      * skipped: 162 of 164 tests have a typed PRIMARY) ends up with exactly the

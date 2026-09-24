@@ -9,7 +9,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 
 /**
- * OGC-1234 — the select-list options a results screen offers are the test's
+ * OGC-1234: the select-list options a results screen offers are the test's
  * active options. A result entered before its option was removed in the Test
  * Catalog editor (by hand, or by "Copy from test" replacing the configuration)
  * still holds that dictionary value; without it in the list the screen showed

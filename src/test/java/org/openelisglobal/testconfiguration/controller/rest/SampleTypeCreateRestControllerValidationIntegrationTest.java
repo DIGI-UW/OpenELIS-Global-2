@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 /**
- * OGC-1234 — {@code POST /rest/SampleTypeCreate} with a form that bean
+ * OGC-1234: {@code POST /rest/SampleTypeCreate} with a form that bean
  * validation refuses (markup in the name, refused by {@code @SafeHtml}) used to
  * answer 200 with the form echoed back, so the Sample Type Editor reported
  * "saved successfully" for a sample type that was never created. It now answers

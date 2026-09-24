@@ -17,7 +17,7 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.result.valueholder.Result;
 
 /**
- * OGC-1234 — a result entered before its option was removed keeps showing by
+ * OGC-1234: a result entered before its option was removed keeps showing by
  * name: its value is appended to the offered options once, and only for a
  * select-list result.
  */

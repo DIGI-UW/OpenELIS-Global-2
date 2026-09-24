@@ -150,7 +150,7 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
     }
 
     /**
-     * OGC-1234 — method.name is VARCHAR(20): a longer English name used to fail the
+     * OGC-1234: method.name is VARCHAR(20): a longer English name used to fail the
      * insert with a 500. It is refused as 422 before anything is written, and a
      * 20-character name still goes through.
      */

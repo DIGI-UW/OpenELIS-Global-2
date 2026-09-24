@@ -33,7 +33,7 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 
 /**
- * OGC-1234 — the source test's components as unsaved rows of this test. Copy
+ * OGC-1234: the source test's components as unsaved rows of this test. Copy
  * replaces, it never merges: the save inserts what the source has and
  * soft-deletes every current component, option and interpretation it does
  * not. A source option whose value this test's component (same code) already
@@ -693,7 +693,7 @@ const SampleResultsSection = ({ testId }) => {
     });
   };
 
-  // OGC-1234 — Copy replaces this test's configuration with the source's.
+  // OGC-1234: Copy replaces this test's configuration with the source's.
   // Confirming only stages it in the editor; Save commits it.
   const confirmCopyFrom = () => {
     setCopyConfirmOpen(false);
