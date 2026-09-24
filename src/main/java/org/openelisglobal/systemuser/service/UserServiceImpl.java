@@ -431,18 +431,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName) {
+        List<String> allTestsIds = getUserTestIdsForLabUnitRoles(SystemUserId, roleName);
+        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getUserTestIdsForLabUnitRoles(String systemUserId, String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
+        List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
             testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
         List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
-                .collect(Collectors.toList());
+        testService.getTestsByTestSectionIds(testUnitIds).forEach(test -> allTestsIds.add(test.getId()));
+        return allTestsIds;
     }
 
     @Override
