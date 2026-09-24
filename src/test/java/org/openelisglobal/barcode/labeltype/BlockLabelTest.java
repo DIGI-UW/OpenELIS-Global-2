@@ -111,6 +111,22 @@ public class BlockLabelTest {
         assertTrue(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
     }
 
+    @Test
+    public void designation_isPrintedInsteadOfTheLegacyNumber() {
+        PathologySample pathologySample = new PathologySample();
+        pathologySample.setId(55);
+
+        PathologyBlock block = new PathologyBlock();
+        block.setBlockNumber(3);
+        block.setDesignation("A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), pathologySample, block, "ACC-1", "Biopsy");
+
+        List<LabelField> fields = collect(label.getAboveFields());
+        assertTrue(fields.stream().anyMatch(field -> "A1".equals(field.getValue())));
+        assertFalse(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
+    }
+
     private List<LabelField> collect(Iterable<LabelField> fields) {
         List<LabelField> list = new ArrayList<>();
         for (LabelField field : fields) {
