@@ -1374,7 +1374,7 @@ public class TestCatalogEditorRestController {
         for (TestResultComponent c : comps) {
             codeById.put(c.getId(), c.getCode());
         }
-        for (ResultLimit l : limits) {
+        for (ResultLimit l : resultLimitService.getNumericRangesForTest(testId)) {
             RangeDto d = new RangeDto();
             d.id = l.getId();
             d.componentId = l.getComponentId();

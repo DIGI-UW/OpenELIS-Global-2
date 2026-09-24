@@ -21,6 +21,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
 
+    /**
+     * The test's numeric reference ranges: the rows the Ranges editor lists and
+     * {@link #saveRangesForTest} manages. Dictionary (select-list) limits are left
+     * out, as that save never changes them.
+     */
+    List<ResultLimit> getNumericRangesForTest(String testId);
+
     /** OGC-949 M7: reference ranges scoped to a result component. */
     List<ResultLimit> getResultLimitsByComponentId(String componentId);
 
