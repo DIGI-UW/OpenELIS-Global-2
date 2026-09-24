@@ -193,6 +193,42 @@ describe("SampleTypeManagement", () => {
     );
   });
 
+  // OGC-1234: the editor has no abbreviation field, so a Basic Info save must
+  // send back the stored one; it used to send "" and wipe the lookup key.
+  test("a Basic Info save opened from the list keeps the stored abbreviation", async () => {
+    const user = userEvent.setup();
+    const stored = { ...sampleType, abbreviation: "BldCult", sortOrder: 7 };
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/sample-types") {
+        callback({ success: true, data: [stored] });
+      } else if (url === "/rest/sample-types/sample-type-2") {
+        callback({ success: true, data: stored });
+      } else if (url.startsWith("/rest/AllTestsForSampleTypeProvider")) {
+        callback({ tests: [] });
+      } else {
+        callback({});
+      }
+    });
+    renderPage();
+    await screen.findByText("Sample Type Editor");
+    fireEvent.click(
+      document
+        .querySelector('[data-cy^="sampleType-row-"]')
+        .querySelector("td"),
+    );
+
+    const description = await screen.findByLabelText(/Description/);
+    await user.clear(description);
+    await user.type(description, "Blood culture bottle");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(api.put).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(api.put.mock.calls[0][1])).toMatchObject({
+      abbreviation: "BldCult",
+      sortOrder: 7,
+    });
+  });
+
   // OGC-1234: a create refused by bean validation (400) must not read as a
   // successful save: the editor stays on the add form and names the field.
   test("a refused create (400) keeps the add form open and marks the name", async () => {

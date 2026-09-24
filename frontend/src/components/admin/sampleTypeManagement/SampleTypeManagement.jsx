@@ -210,6 +210,8 @@ function SampleTypeManagement({ intl }) {
               domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
+              abbreviation: item.abbreviation || "",
+              sortOrder: item.sortOrder || 0,
               whonetCode: item.whonetCode || "",
             }));
             setSampleTypes(sampleTypeData);
@@ -1350,7 +1352,7 @@ function SampleTypeManagement({ intl }) {
                                 id: "label.active",
                                 defaultMessage: "Active",
                               })}
-                              toggled={editingType?.active}
+                              toggled={!!editingType?.active}
                               onToggle={(checked) =>
                                 setEditingType((prev) => ({
                                   ...prev,

@@ -331,7 +331,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 existingTypeOfSample.setDomain(Domain.normalize(sampleTypeDTO.getDomain()));
             }
 
-            if (sampleTypeDTO.getAbbreviation() != null) {
+            if (sampleTypeDTO.getAbbreviation() != null && !sampleTypeDTO.getAbbreviation().trim().isEmpty()) {
                 existingTypeOfSample.setLocalAbbreviation(sampleTypeDTO.getAbbreviation().trim());
             }
 
@@ -405,11 +405,14 @@ public class SampleTypeManagementRestController extends BaseRestController {
      * entity. An abbreviation or WHONET code over its column width used to be
      * dropped silently while the save reported success; a name or abbreviation
      * another sample type of the domain already uses used to fail with a generic
-     * conflict message.
+     * conflict message. A blank abbreviation keeps the stored one: it is a lookup
+     * key (analyzer import, test variants) and the editor has no field for it, so a
+     * blank used to wipe it on every Basic Info save.
      */
     private ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refuseUpdate(TypeOfSample existing,
             SampleTypeManagementDTO requested) {
-        String abbreviation = requested.getAbbreviation() == null ? existing.getLocalAbbreviation()
+        String abbreviation = requested.getAbbreviation() == null || requested.getAbbreviation().trim().isEmpty()
+                ? existing.getLocalAbbreviation()
                 : requested.getAbbreviation().trim();
         if (abbreviation != null && abbreviation.length() > 10) {
             return ResponseEntity.badRequest()

@@ -136,6 +136,24 @@ public class SampleTypeDedupeIntegrationTest extends BaseWebContextSensitiveTest
                 .queryForObject("SELECT description FROM clinlims.type_of_sample WHERE id = ?", String.class, alphaId));
     }
 
+    @Test
+    public void aBlankAbbreviation_keepsTheStoredOne_evenWhenAnotherTypeHasNone() throws Exception {
+        create(PREFIX + " Keep", "CLINICAL").andExpect(status().isOk());
+        create(PREFIX + " Blank", "CLINICAL").andExpect(status().isOk());
+        jdbc.update("UPDATE clinlims.type_of_sample SET local_abbrev = '' WHERE description = ?", PREFIX + " Blank");
+        Long keepId = jdbc.queryForObject("SELECT id FROM clinlims.type_of_sample WHERE description = ?", Long.class,
+                PREFIX + " Keep");
+        String stored = jdbc.queryForObject("SELECT local_abbrev FROM clinlims.type_of_sample WHERE id = ?",
+                String.class, keepId);
+        typeOfSampleService.clearCache();
+
+        update(keepId, "{\"description\":\"" + PREFIX + " Keep renamed\",\"abbreviation\":\"\"}")
+                .andExpect(status().isOk());
+
+        assertEquals(stored, jdbc.queryForObject("SELECT local_abbrev FROM clinlims.type_of_sample WHERE id = ?",
+                String.class, keepId));
+    }
+
     private org.springframework.test.web.servlet.ResultActions create(String name, String domain) throws Exception {
         return mockMvc.perform(post("/rest/SampleTypeCreate")
                 .contentType(MediaType.APPLICATION_JSON).content("{\"sampleTypeEnglishName\":\"" + name
