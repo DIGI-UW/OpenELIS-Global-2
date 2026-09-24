@@ -7,6 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
@@ -109,6 +110,12 @@ public final class ValidationSignals {
      * empty limit (a null id) — no authored range matched this patient, so there is
      * no basis to call anything "normal". Shared by Results Entry and Validation
      * (OGC-1121) so the two screens can never disagree.
+     *
+     * <p>
+     * The value is normalized first, because callers hand this method the result as
+     * the technologist wrote it: a value in written scientific notation such as
+     * {@code 5×10¹} reaches the ranges as the number it denotes rather than failing
+     * to parse and carrying no flag at all.
      */
     public static String resultFlag(ResultLimit limit, String resultType, String value) {
         if (limit == null || GenericValidator.isBlankOrNull(limit.getId()) || !"N".equals(resultType)
@@ -116,7 +123,10 @@ public final class ValidationSignals {
             return null;
         }
         try {
-            double numeric = Double.parseDouble(value.trim());
+            double numeric = Double.parseDouble(StringUtil.normalizeScientificNotation(value.trim()));
+            if (!Double.isFinite(numeric)) {
+                return null;
+            }
             if (numeric < limit.getLowValid() || numeric > limit.getHighValid()) {
                 return FLAG_INVALID;
             }

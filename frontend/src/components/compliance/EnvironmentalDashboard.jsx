@@ -182,6 +182,7 @@ export default function EnvironmentalDashboard() {
         setLoadingComparison(false);
       },
     );
+    setExcPage(1);
     fetchExceedances(q, 0, excPageSize);
   }, [buildQuery, fetchExceedances, excPageSize]);
 

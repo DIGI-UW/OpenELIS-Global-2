@@ -23,6 +23,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -30,6 +31,8 @@ import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import LeveyJenningsChart from "../charts/LeveyJenningsChart";
+import { useControlLotChart } from "../charts/controlLotChart";
 
 const STATUS_TAG = {
   ESTABLISHMENT: "gray",
@@ -56,6 +59,23 @@ const ControlLotList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
+  // Lot-level Levey-Jennings chart. The lot-scoped endpoints existed
+  // before this — the list just never linked to them.
+  const [chartLot, setChartLot] = useState(null);
+  const {
+    chartData,
+    statistics: chartStatistics,
+    loading: chartLoading,
+    load: loadChart,
+  } = useControlLotChart();
+
+  // A point with no z-score cannot be placed on a Levey-Jennings chart.
+  const plottablePoints = chartData.filter((pt) => pt.zScore != null);
+
+  const openChart = (lot) => {
+    setChartLot(lot);
+    loadChart(lot.id);
+  };
 
   const statusOptions = [
     {
@@ -154,7 +174,7 @@ const ControlLotList = () => {
           },
           {
             label: intl.formatMessage({ id: "qc.dashboard.title" }),
-            link: "/analyzers/qc/db",
+            link: "/qa/qc/dashboard",
           },
           {
             label: intl.formatMessage({ id: "qc.controlLots.title" }),
@@ -272,6 +292,18 @@ const ControlLotList = () => {
                                     )
                                   }
                                 />
+                                <OverflowMenuItem
+                                  itemText={intl.formatMessage({
+                                    id: "qc.controlLot.viewChart",
+                                  })}
+                                  onClick={() =>
+                                    openChart(
+                                      filteredLots.find(
+                                        (lot) => lot.id === cell.value,
+                                      ),
+                                    )
+                                  }
+                                />
                               </OverflowMenu>
                             </TableCell>
                           );
@@ -288,6 +320,40 @@ const ControlLotList = () => {
           </TableContainer>
         )}
       </DataTable>
+
+      {chartLot && (
+        <Modal
+          open
+          passiveModal
+          size="lg"
+          modalHeading={`${chartLot.lotNumber || ""} — ${intl.formatMessage({
+            id: "qc.controlLot.viewChart",
+          })}`}
+          onRequestClose={() => setChartLot(null)}
+          data-testid="control-lot-chart-modal"
+        >
+          {chartLoading ? (
+            <Loading
+              withOverlay={false}
+              small
+              description={intl.formatMessage({
+                id: "qc.instrumentDetail.chart.loading",
+              })}
+            />
+          ) : plottablePoints.length === 0 ? (
+            <p data-testid="control-lot-chart-empty">
+              {intl.formatMessage({ id: "qc.instrumentDetail.chart.noData" })}
+            </p>
+          ) : (
+            <LeveyJenningsChart
+              data={plottablePoints}
+              statistics={chartStatistics}
+              height="350px"
+              showLegend={true}
+            />
+          )}
+        </Modal>
+      )}
     </div>
   );
 };

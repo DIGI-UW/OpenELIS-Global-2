@@ -91,6 +91,17 @@ const isProbeResult = (response, saved) => {
   );
 };
 
+// Blockers cleared by the Verify step: it pins the analyzer to the current shared mapping revision.
+const MAPPING_BLOCKERS = new Set([
+  "analyzer.activation.blocker.mappings",
+  "analyzer.activation.blocker.recognition",
+]);
+
+export const needsMappingVerification = (readiness) =>
+  Boolean(
+    readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
+  );
+
 const formatActivationBlocker = (intl, blocker) => {
   const id = blocker?.code;
   return intl.formatMessage(
@@ -104,7 +115,13 @@ const formatActivationBlocker = (intl, blocker) => {
   );
 };
 
-const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
+const AnalyzerConnectionSetup = ({
+  candidate,
+  onCandidateChange,
+  onClose,
+  onVerifyMappings,
+  onReadinessChange,
+}) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
   const [settings, setSettings] = useState(() =>
@@ -144,6 +161,10 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
     }
     return () => controller.abort();
   }, [candidate?.id]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
 
   const refreshReadiness = (analyzerId = candidate.id) => {
     setReadinessLoading(true);
@@ -372,6 +393,19 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
             title={formatActivationBlocker(intl, blocker)}
           />
         ))}
+        {onVerifyMappings && needsMappingVerification(readiness) && (
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            disabled={submitting}
+            onClick={onVerifyMappings}
+          >
+            {intl.formatMessage({
+              id: "analyzer.setup.connect.activation.verifyMappings",
+            })}
+          </Button>
+        )}
       </section>
 
       <div className="analyzer-setup__completion-actions">

@@ -475,3 +475,82 @@ describe("ProgramSection program-specific fields", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("ProgramSection domain filter (OGC-781)", () => {
+  const renderForDomain = (domain, programId) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={{
+            ...orderData,
+            sampleOrderItems: programId ? { programId } : {},
+          }}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          domain={domain}
+        />
+      </IntlProvider>,
+    );
+
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+  });
+
+  it("asks the server for the order domain's active programs only", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/user-programs")) {
+        callback([{ id: "7", value: "Water Quality", code: "WQ" }]);
+      } else {
+        callback({});
+      }
+    });
+
+    renderForDomain("ENVIRONMENTAL");
+
+    expect(
+      await screen.findByRole("combobox", { name: "Program" }),
+    ).toBeInTheDocument();
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/user-programs?domain=ENVIRONMENTAL",
+      expect.any(Function),
+    );
+  });
+
+  it("explains when no program of the order's domain is active", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      callback(url.startsWith("/rest/user-programs") ? [] : {});
+    });
+
+    renderForDomain("VECTOR");
+
+    expect(
+      await screen.findByText(/No Vector programs are currently active/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps showing the program an order already names when the picker no longer offers it", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/user-programs")) {
+        callback([{ id: "1", value: "Routine Testing", code: "ROUTINE" }]);
+      } else if (url === "/rest/program/9") {
+        callback({
+          program: { id: "9", programName: "Retired Survey", code: "RET" },
+          domain: "CLINICAL",
+          active: false,
+        });
+      } else {
+        callback({});
+      }
+    });
+
+    renderForDomain("CLINICAL", "9");
+
+    expect(
+      await screen.findByDisplayValue("Retired Survey"),
+    ).toBeInTheDocument();
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/program/9",
+      expect.any(Function),
+    );
+  });
+});

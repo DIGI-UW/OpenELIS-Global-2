@@ -10,5 +10,6 @@
   <include relativeToChangelogFile="true" file="004-backfill-referred-out.xml"/>
   <include relativeToChangelogFile="true" file="003-configurable-reporting.xml"/>
   <include relativeToChangelogFile="true" file="004-reporting-recovery.xml"/>
+  <include relativeToChangelogFile="true" file="005-menu-presentation.xml"/>
 
 </databaseChangeLog>

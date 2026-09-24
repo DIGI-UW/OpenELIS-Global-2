@@ -533,6 +533,44 @@ PY
   return 1
 }
 
+# The Bridge dead-letters a message whose sender matches no saved connection.
+# This one is posted from the machine running the seed, whose address no
+# connection claims; the order ID is unique per run because the Bridge
+# de-duplicates receipts by content.
+push_unrecognized_sender_traffic() {
+  local order_id="UNREG-$(date +%s)"
+  local message_file="$TMP_DIR/unrecognized-sender.astm"
+  local outbox_file="$TMP_DIR/unrecognized-sender-outbox.json"
+  local status
+
+  printf 'H|\\^&|||GeneXpert^6.4||||||LIS2-A2\rP|1\rO|1|%s||^^^MTB-RIF|R\rR|1|^^^MTB-RIF^MTB|MTB NOT DETECTED|||N||F\rL|1|N\r' \
+    "$order_id" > "$message_file"
+  curl -sk --connect-timeout 5 --max-time 30 -o /dev/null \
+    -u "$BRIDGE_USER:$BRIDGE_PASS" -H "Content-Type: application/x-astm" \
+    --data-binary "@$message_file" "$BRIDGE_ADMIN_URL/input" || true
+
+  for _ in $(seq 1 20); do
+    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$outbox_file" -w "%{http_code}" \
+      -u "$BRIDGE_USER:$BRIDGE_PASS" "$BRIDGE_ADMIN_URL/admin/outbox?state=DMQ&limit=200" || true)"
+    if [ "$status" = "200" ] && python3 - "$outbox_file" <<'PY'
+import json
+import sys
+
+rows = json.load(open(sys.argv[1], encoding="utf-8")).get("rows", [])
+held = [row for row in rows if row.get("failureReason") == "UNREGISTERED_SOURCE" and not row.get("dismissedAt")]
+raise SystemExit(0 if held else 1)
+PY
+    then
+      echo "  The Bridge is holding the message from the unrecognized sender"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: The Bridge did not dead-letter the unrecognized sender's message (outbox HTTP $status)" >&2
+  sed 's/^/  /' "$outbox_file" >&2 2>/dev/null || true
+  return 1
+}
+
 echo "Preparing current site mappings and active priority connections..."
 GENEXPERT_ID="$(analyzer_field "$GENEXPERT_NAME" id)"
 GENEXPERT_REVISION="$(analyzer_field "$GENEXPERT_NAME" profileRevision)"
@@ -560,5 +598,8 @@ reset_bridge_file_state "$FLUOROCYCLER_ID"
 echo "Sending real priority analyzer traffic through Bridge..."
 push_story_traffic
 wait_for_story_state "$GENEXPERT_ID" "$FLUOROCYCLER_ID"
+
+echo "Sending one message from a sender no analyzer connection claims..."
+push_unrecognized_sender_traffic
 
 echo "Done. The OGC-1054 MVP result-review story is ready in the visible UI."

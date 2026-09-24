@@ -323,7 +323,7 @@
   align-items: start;
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
 }
 
 .microbiology-isolate-details {
@@ -690,6 +690,12 @@
 @media (max-width: 66rem) {
   .microbiology-workbench {
     padding: 1rem;
+  }
+
+  .microbiology-workbench__hero {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
   }
 
   .microbiology-workbench__layout {

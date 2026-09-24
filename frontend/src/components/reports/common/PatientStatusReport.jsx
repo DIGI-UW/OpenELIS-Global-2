@@ -15,6 +15,7 @@ import {
   SelectItem,
   Accordion,
   AccordionItem,
+  Tag,
 } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import config from "../../../config.json";
@@ -24,6 +25,7 @@ import { ConfigurationContext } from "../../layout/Layout";
 import { Formik, Field } from "formik";
 import PatientStatusReportFormValues from "../../formModel/innitialValues/PatientStatusReportFormValues";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import "./patientStatusReport.css";
 
 import { encodeDate } from "../../utils/Utils";
 
@@ -53,11 +55,37 @@ function PatientStatusReport(props) {
   const [items, setItems] = useState(itemList[0].tag);
   const [siteNames, setSiteNames] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showPatientSearch, setShowPatientSearch] = useState(true);
+  // Remounts the search form, so choosing another patient starts from empty
+  // criteria instead of the ones that found the patient now selected.
+  const [searchInstance, setSearchInstance] = useState(0);
+
+  const patientDisplayName = (patient) =>
+    [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") +
+    (patient?.subjectNumber ? ` (${patient.subjectNumber})` : "");
 
   const getSelectedPatient = (patient) => {
+    setSelectedPatient(patient);
+    setShowPatientSearch(false);
     setReportFormValues({
       ...reportFormValues,
       selectedPatientId: patient.patientPK,
+    });
+  };
+
+  const selectAnotherPatient = () => {
+    setSearchInstance((instance) => instance + 1);
+    setShowPatientSearch(true);
+  };
+
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setSearchInstance((instance) => instance + 1);
+    setShowPatientSearch(true);
+    setReportFormValues({
+      ...reportFormValues,
+      selectedPatientId: "",
     });
   };
 
@@ -183,9 +211,47 @@ function PatientStatusReport(props) {
               title={intl.formatMessage({ id: "report.labe.byPatient" })}
             >
               <FormattedMessage id="report.enter.patient.headline.description" />
-              <SearchPatientForm
-                getSelectedPatient={getSelectedPatient}
-              ></SearchPatientForm>
+              <div className="patientStatusReportSelectedPatient">
+                <Tag
+                  type={selectedPatient ? "blue" : "gray"}
+                  data-testid="selected-patient"
+                >
+                  <FormattedMessage id="label.results.selectedPatient" />:{" "}
+                  {selectedPatient
+                    ? patientDisplayName(selectedPatient)
+                    : intl.formatMessage({
+                        id: "label.results.selectedPatient.none",
+                      })}
+                </Tag>
+                {selectedPatient && (
+                  <>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      data-cy="selectAnotherPatient"
+                      data-testid="select-another-patient"
+                      onClick={selectAnotherPatient}
+                    >
+                      <FormattedMessage id="label.results.selectAnotherPatient" />
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      data-cy="clearSelectedPatient"
+                      data-testid="clear-patient"
+                      onClick={clearPatient}
+                    >
+                      <FormattedMessage id="label.button.clear" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {showPatientSearch && (
+                <SearchPatientForm
+                  key={searchInstance}
+                  getSelectedPatient={getSelectedPatient}
+                ></SearchPatientForm>
+              )}
             </AccordionItem>
           </Accordion>
         </Column>
