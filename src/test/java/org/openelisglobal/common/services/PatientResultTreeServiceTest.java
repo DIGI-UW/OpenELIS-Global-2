@@ -302,10 +302,9 @@ public class PatientResultTreeServiceTest {
                 .thenReturn(false);
         when(userService.getTestIdsInUserLabUnits(scopedReader,
                 org.openelisglobal.common.constants.Constants.ROLE_RECEPTION))
-                        .thenReturn(new java.util.HashSet<>(Collections.singletonList(TEST_ID)));
+                .thenReturn(new java.util.HashSet<>(Collections.singletonList(TEST_ID)));
 
-        org.openelisglobal.test.valueholder.Test otherUnitTest = mock(
-                org.openelisglobal.test.valueholder.Test.class);
+        org.openelisglobal.test.valueholder.Test otherUnitTest = mock(org.openelisglobal.test.valueholder.Test.class);
         lenient().when(otherUnitTest.getId()).thenReturn("999");
         lenient().when(otherUnitTest.getLocalizedName()).thenReturn("Malaria Smear");
         TestSection otherSection = mock(TestSection.class);
