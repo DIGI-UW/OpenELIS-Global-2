@@ -183,8 +183,8 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
         testId: target.test.id,
         components: original.components.map((c) => ({
           ...c,
-          options: c.options.map(({ id, ...o }) => o),
-          interpretations: c.interpretations.map(({ id, ...i }) => i),
+          options: c.options.map(({ id: _id, ...o }) => o),
+          interpretations: c.interpretations.map(({ id: _id, ...i }) => i),
         })),
       };
       await page.request.put(

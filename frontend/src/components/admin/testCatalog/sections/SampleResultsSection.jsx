@@ -40,11 +40,11 @@ import { NotificationContext } from "../../../layout/Layout";
  * merges.
  */
 const stageCopiedComponents = (sourceComponents) =>
-  sourceComponents.map(({ id, ...component }) => ({
+  sourceComponents.map(({ id: _id, ...component }) => ({
     ...component,
-    options: (component.options || []).map(({ id, ...option }) => option),
+    options: (component.options || []).map(({ id: _id, ...option }) => option),
     interpretations: (component.interpretations || []).map(
-      ({ id, ...interpretation }) => interpretation,
+      ({ id: _id, ...interpretation }) => interpretation,
     ),
   }));
 
