@@ -30,12 +30,6 @@
             <column name="description" value="Edit existing orders"/>
             <column name="category" value="orders"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="order:cancel"/>
-            <column name="description" value="Cancel existing orders"/>
-            <column name="category" value="orders"/>
-        </insert>
-
         <!-- ==================== RESULTS ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="result:view"/>
@@ -62,12 +56,6 @@
             <column name="description" value="Pathologist sign-off on results"/>
             <column name="category" value="results"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="result:cytopathology-sign-off"/>
-            <column name="description" value="Cytopathologist sign-off on results"/>
-            <column name="category" value="results"/>
-        </insert>
-
         <!-- ==================== PATIENTS ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="patient:view"/>
@@ -113,12 +101,6 @@
             <column name="description" value="Edit non-conforming events and corrective actions"/>
             <column name="category" value="nce"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="nce:assign"/>
-            <column name="description" value="Assign non-conforming events to users"/>
-            <column name="category" value="nce"/>
-        </insert>
-
         <!-- ==================== ANALYZER ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="analyzer:import"/>
@@ -167,21 +149,10 @@
             <column name="category" value="shipment"/>
         </insert>
         <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="shipment:create"/>
-            <column name="description" value="Create new sample shipments"/>
-            <column name="category" value="shipment"/>
-        </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="shipment:edit"/>
             <column name="description" value="Edit existing sample shipments"/>
             <column name="category" value="shipment"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="shipment:delete"/>
-            <column name="description" value="Delete sample shipments"/>
-            <column name="category" value="shipment"/>
-        </insert>
-
         <!-- ==================== EQA ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="eqa:view"/>
@@ -340,11 +311,6 @@
 
         <!-- ==================== BRANDING ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="branding:view"/>
-            <column name="description" value="View site branding and logos"/>
-            <column name="category" value="branding"/>
-        </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="branding:manage"/>
             <column name="description" value="Manage site branding and upload logos"/>
             <column name="category" value="branding"/>
@@ -399,12 +365,6 @@
             <column name="description" value="View calculated test definitions"/>
             <column name="category" value="testcalc"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="testcalc:manage"/>
-            <column name="description" value="Manage calculated test definitions and formulas"/>
-            <column name="category" value="testcalc"/>
-        </insert>
-
         <!-- ==================== ROLE ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="role:view"/>
@@ -447,12 +407,6 @@
             <column name="description" value="View sample requester (clinician/organization who requested the sample)"/>
             <column name="category" value="sample_requester"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="sample_requester:manage"/>
-            <column name="description" value="Manage sample requester records"/>
-            <column name="category" value="sample_requester"/>
-        </insert>
-
         <!-- ==================== PANEL ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="panel:view"/>
@@ -471,24 +425,12 @@
             <column name="description" value="View analyte definitions (measurable substances)"/>
             <column name="category" value="analyte"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="analyte:manage"/>
-            <column name="description" value="Manage analyte definitions"/>
-            <column name="category" value="analyte"/>
-        </insert>
-
         <!-- ==================== METHOD ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="method:view"/>
             <column name="description" value="View testing method definitions"/>
             <column name="category" value="method"/>
         </insert>
-        <insert tableName="system_privilege" schemaName="clinlims">
-            <column name="name" value="method:manage"/>
-            <column name="description" value="Manage testing method definitions"/>
-            <column name="category" value="method"/>
-        </insert>
-
         <!-- ==================== SAMPLE TYPE ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="sample_type:view"/>

@@ -22,6 +22,12 @@ import {
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
+// Mirrors the system_role column widths: name is character(30), description is
+// varchar(80). Enforced server-side in RoleServiceImpl too; duplicated here so
+// the limit is visible while typing rather than only on submit.
+const MAX_NAME_LENGTH = 30;
+const MAX_DESCRIPTION_LENGTH = 80;
+
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -299,13 +305,28 @@ function RoleManagement() {
           })}
           onRequestClose={() => setCreateOpen(false)}
           onRequestSubmit={createRole}
-          primaryButtonDisabled={saving || !draft.name.trim()}
+          primaryButtonDisabled={
+            saving ||
+            !draft.name.trim() ||
+            draft.name.trim().length > MAX_NAME_LENGTH ||
+            draft.description.trim().length > MAX_DESCRIPTION_LENGTH
+          }
         >
           <Stack gap={4}>
             <TextInput
               id="role-name"
               labelText={intl.formatMessage({ id: "role.management.name" })}
               value={draft.name}
+              maxLength={MAX_NAME_LENGTH}
+              invalid={draft.name.trim().length > MAX_NAME_LENGTH}
+              invalidText={intl.formatMessage(
+                { id: "role.management.nameTooLong" },
+                { max: MAX_NAME_LENGTH },
+              )}
+              helperText={intl.formatMessage(
+                { id: "role.management.charsRemaining" },
+                { remaining: MAX_NAME_LENGTH - draft.name.length },
+              )}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
             <TextInput
@@ -314,6 +335,12 @@ function RoleManagement() {
                 id: "role.management.description",
               })}
               value={draft.description}
+              maxLength={MAX_DESCRIPTION_LENGTH}
+              invalid={draft.description.trim().length > MAX_DESCRIPTION_LENGTH}
+              invalidText={intl.formatMessage(
+                { id: "role.management.descriptionTooLong" },
+                { max: MAX_DESCRIPTION_LENGTH },
+              )}
               onChange={(e) =>
                 setDraft({ ...draft, description: e.target.value })
               }

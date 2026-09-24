@@ -156,10 +156,6 @@
             WHERE r.name = 'Reception' AND p.name = 'shipment:view'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
-            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
-            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'shipment:create'
-              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== RESULTS ==================== -->
@@ -243,10 +239,6 @@
             WHERE r.name = 'Validation' AND p.name = 'nce:edit'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
-            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
-            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'nce:assign'
-              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== PATHOLOGIST ==================== -->
@@ -294,10 +286,6 @@
             WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
-            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
-            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Cytopathologist' AND p.name = 'result:cytopathology-sign-off'
-              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p

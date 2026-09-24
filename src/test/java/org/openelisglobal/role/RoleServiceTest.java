@@ -19,6 +19,54 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/role.xml");
     }
 
+    /**
+     * system_role.name is character(30). Before this guard an over-long name
+     * reached Postgres, which rejected the insert ("value too long for type
+     * character(30)"); Hibernate wrapped that as a DataException and the caller got
+     * a bare 500 saying only that the role could not be created. A 31-character
+     * name — one over — was enough to trigger it, with nothing pointing at the
+     * name.
+     */
+    @Test
+    public void createAssignableRole_shouldRejectNameLongerThanColumn() {
+        String tooLong = "X".repeat(31);
+
+        IllegalArgumentException thrown = Assert.assertThrows(IllegalArgumentException.class,
+                () -> roleService.createAssignableRole(tooLong, "desc", null, "Global Roles", null, "1"));
+
+        Assert.assertTrue("message should name the limit and the actual length, got: " + thrown.getMessage(),
+                thrown.getMessage().contains("30") && thrown.getMessage().contains("31"));
+    }
+
+    @Test
+    public void createAssignableRole_shouldRejectDescriptionLongerThanColumn() {
+        IllegalArgumentException thrown = Assert.assertThrows(IllegalArgumentException.class, () -> roleService
+                .createAssignableRole("ZZ Len Probe", "Y".repeat(81), null, "Global Roles", null, "1"));
+
+        Assert.assertTrue("message should name the description limit, got: " + thrown.getMessage(),
+                thrown.getMessage().contains("80"));
+    }
+
+    /**
+     * Inversion test: the guard must reject only what the column cannot hold, so a
+     * name of exactly 30 characters has to get PAST the length check. It still
+     * fails afterwards on the grouping parent, because this fixture seeds no
+     * grouping roles — that is the point. Asserting the message is about the parent
+     * and not about length proves the boundary is {@code > 30} rather than
+     * {@code >= 30}; a bare assertThrows here would pass even if the guard were off
+     * by one.
+     */
+    @Test
+    public void createAssignableRole_shouldNotRejectNameExactlyAtColumnLimitForLength() {
+        String exact = "Z".repeat(30);
+
+        IllegalArgumentException thrown = Assert.assertThrows(IllegalArgumentException.class,
+                () -> roleService.createAssignableRole(exact, "at the limit", null, "Global Roles", null, "1"));
+
+        Assert.assertTrue("a 30-character name must clear the length guard, got: " + thrown.getMessage(),
+                thrown.getMessage().contains("grouping parent"));
+    }
+
     @Test
     public void getData_shouldReturncopiedPropertiesFromDatabase() {
         Role role = new Role();

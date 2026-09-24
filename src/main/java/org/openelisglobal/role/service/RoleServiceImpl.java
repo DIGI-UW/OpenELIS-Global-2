@@ -12,6 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Integer> implements RoleService {
+
+    /** Matches the system_role.name column width (character(30)). */
+    public static final int MAX_ROLE_NAME_LENGTH = 30;
+
+    /** Matches the system_role.description column width (varchar(80)). */
+    public static final int MAX_ROLE_DESCRIPTION_LENGTH = 80;
     @Autowired
     protected RoleDAO baseObjectDAO;
 
@@ -89,6 +95,19 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Intege
             throw new IllegalArgumentException("Role name is required");
         }
         String trimmed = name.trim();
+        // system_role.name is character(30) and description is varchar(80). Without
+        // these checks an over-long value reaches Postgres, which rejects the insert
+        // with "value too long for type character(30)"; that surfaces as a Hibernate
+        // DataException and then a generic 500, so the caller is told only that the
+        // role could not be created — never that the name is one character too long.
+        if (trimmed.length() > MAX_ROLE_NAME_LENGTH) {
+            throw new IllegalArgumentException("Role name must be " + MAX_ROLE_NAME_LENGTH
+                    + " characters or fewer (got " + trimmed.length() + ")");
+        }
+        if (description != null && description.trim().length() > MAX_ROLE_DESCRIPTION_LENGTH) {
+            throw new IllegalArgumentException("Role description must be " + MAX_ROLE_DESCRIPTION_LENGTH
+                    + " characters or fewer (got " + description.trim().length() + ")");
+        }
         Role existing = getRoleByName(trimmed);
         if (existing != null && !Integer.valueOf(-1).equals(existing.getId())) {
             throw new IllegalArgumentException("A role named '" + trimmed + "' already exists");
