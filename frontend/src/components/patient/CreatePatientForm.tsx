@@ -915,7 +915,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         handlePhotoChange(photo, setFieldValue)
                       }
                       required={false}
-                      disabled={!!props.disabled}
+                      disabled={!!props.disabled || isReadOnly}
                     />
                   </Column>
                   <Column lg={8} md={4} sm={4}>

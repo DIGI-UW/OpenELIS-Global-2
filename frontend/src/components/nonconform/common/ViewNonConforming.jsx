@@ -19,6 +19,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import {
   NotificationKinds,
   AlertDialog,
@@ -85,6 +86,19 @@ export const ViewNonConformingEvent = () => {
   const [nceTypes, setNceTypes] = useState([]);
   const [tData, setTData] = useState(null);
   const [selected, setSelected] = useState(null);
+
+  // Deep links (/ViewNonConformingEvent?nceNumber=...) — pushed by
+  // NceDashboard rows and the rejection report's NCE column — load the
+  // record directly instead of landing on the empty search form. Keyed on
+  // location.search (NCECorrectiveAction's pattern) so navigating between
+  // two NCE links re-fires even though the component stays mounted.
+  const location = useLocation();
+  useEffect(() => {
+    const nceNumber = new URLSearchParams(location.search).get("nceNumber");
+    if (nceNumber) {
+      setSelected(nceNumber);
+    }
+  }, [location.search]);
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -243,9 +257,10 @@ export const ViewNonConformingEvent = () => {
     if (selected) {
       try {
         getFromOpenElisServer(
-          `/rest/viewNonConformEvents?nceNumber=${selected}&labNumber=&status=Pending`,
+          // no status filter: a deep-linked NCE may have moved past Pending
+          `/rest/viewNonConformEvents?nceNumber=${selected}&labNumber=&status=`,
           (data) => {
-            if (!data.nceEventsSearchResults) {
+            if (!data?.nceEventsSearchResults?.length) {
               setReportFormValues({
                 ...reportFormValues,
                 error: intl.formatMessage({
@@ -406,11 +421,11 @@ export const ViewNonConformingEvent = () => {
                       </TableCell>
 
                       <TableCell data-cy="row_two" key={row.key + "2"}>
-                        {
-                          tData.reportingUnits.find(
-                            (obj) => parseInt(obj.id) === row.reportingUnitId,
-                          ).value
-                        }
+                        {/* system-created NCEs (QI breach, test rejection)
+                            may carry no reporting unit */}
+                        {tData.reportingUnits.find(
+                          (obj) => parseInt(obj.id) === row.reportingUnitId,
+                        )?.value ?? "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -465,10 +480,8 @@ export const ViewNonConformingEvent = () => {
               </span>
             </div>
             <div style={{ marginBottom: "10px" }}>
-              {
-                data.reportingUnits.find((obj) => obj.id == data.reportingUnit)
-                  .value
-              }
+              {data.reportingUnits.find((obj) => obj.id == data.reportingUnit)
+                ?.value ?? "—"}
             </div>
           </Column>
           <Column lg={4} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -500,9 +513,15 @@ export const ViewNonConformingEvent = () => {
                 <FormattedMessage id="nonconform.label.prescibernamesite" />
               </span>
             </div>
-            <div
-              style={{ marginBottom: "10px" }}
-            >{`${data.nceEventsSearchResults[0].prescriberName}-${data.nceEventsSearchResults[0].site}`}</div>
+            <div style={{ marginBottom: "10px" }}>
+              {/* system-created NCEs carry no prescriber/site */}
+              {[
+                data.nceEventsSearchResults[0].prescriberName,
+                data.nceEventsSearchResults[0].site,
+              ]
+                .filter(Boolean)
+                .join(" - ") || "—"}
+            </div>
           </Column>
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>

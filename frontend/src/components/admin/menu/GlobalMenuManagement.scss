@@ -1,0 +1,16 @@
+@use "@carbon/styles/scss/spacing";
+
+.menu-settings-form {
+  margin-block-start: spacing.$spacing-06;
+  max-width: 64rem;
+
+  .cds--accordion__content {
+    padding: spacing.$spacing-05;
+  }
+}
+
+.menu-settings-fields {
+  display: grid;
+  gap: spacing.$spacing-05;
+  max-width: 24rem;
+}

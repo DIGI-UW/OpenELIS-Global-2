@@ -119,8 +119,6 @@ public class ReportingCatalogService {
                 throw new IllegalArgumentException("reporting.definition.defaultsInvalid");
             }
         }
-        if (defaults.isEmpty() && requireNonEmpty)
-            throw new IllegalArgumentException("reporting.definition.defaultsInvalid");
         return List.copyOf(defaults);
     }
 

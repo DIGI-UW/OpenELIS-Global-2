@@ -76,14 +76,22 @@ public class OrderProgramsDashboardController extends BaseRestController {
         return ResponseEntity.ok(psdi);
     }
 
+    /**
+     * An environmental or vector order has no patient, and still belongs on the
+     * list.
+     */
     private OrderPrograms convertToOrderPrograms(ProgramSample ps) {
         Patient patient = sampleService.getPatient(ps.getSample());
         OrderPrograms item = new OrderPrograms();
         item.setProgramSampleId(ps.getId().toString());
-        item.setFirstName(patient.getPerson().getFirstName());
-        item.setLastName(patient.getPerson().getLastName());
-        item.setGender(patient.getGender());
-        item.setPatientPK(patient.getId());
+        if (patient != null) {
+            if (patient.getPerson() != null) {
+                item.setFirstName(patient.getPerson().getFirstName());
+                item.setLastName(patient.getPerson().getLastName());
+            }
+            item.setGender(patient.getGender());
+            item.setPatientPK(patient.getId());
+        }
         item.setProgramName(ps.getProgram().getProgramName());
         item.setProgramCode(ps.getProgram().getCode());
         item.setReceivedDate(ps.getSample().getReceivedDate());

@@ -156,6 +156,49 @@ describe("Logbook results refresh", () => {
     },
   );
 
+  it("asks the server for the page Carbon moves to, and reopens it after a save", async () => {
+    const pages = {
+      1: { testResult: [row(0)], paging: { totalPages: 2, currentPage: 1 } },
+      2: { testResult: [row(1)], paging: { totalPages: 2, currentPage: 2 } },
+    };
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (!url.startsWith("/rest/LogbookResults")) return callback([]);
+      const requested =
+        Number(new URL(url, "http://x").searchParams.get("page")) || 1;
+      queueMicrotask(() => callback(pages[requested]));
+    });
+    const pageUrls = () =>
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter(
+          (url) => url.includes("LogbookResults") && url.includes("page="),
+        );
+    renderScreen();
+    await screen.findByText(/ACC0/);
+    expect(screen.getByText("1 item on this page")).toBeInTheDocument();
+    expect(pageUrls()).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Page" }));
+
+    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
+    expect(screen.queryByText(/ACC0/)).toBeNull();
+    expect(pageUrls()).toEqual([expect.stringMatching(/&page=2$/)]);
+
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ status: "success" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(pageUrls()).toHaveLength(2));
+    expect(pageUrls()[1]).toMatch(/&page=2$/);
+    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
+    const posted = JSON.parse(
+      postToOpenElisServerJsonResponse.mock.calls[0][1],
+    );
+    expect(posted.paging.currentPage).toBe(2);
+    expect(posted.testResult.map((r) => r.accessionNumber)).toEqual(["ACC1"]);
+  });
+
   it("starts a fresh row-editing session when a saved queue replaces the old one", async () => {
     queue = { testResult: [row(0)] };
     renderScreen();

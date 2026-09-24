@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Column, Form, Grid, Section, Button, Link } from "@carbon/react";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { Column, Form, Grid, Section, Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import "../Style.css";
 import TestSectionSelectForm from "./TestSectionSelectForm";
@@ -14,11 +13,6 @@ export default function WorkplanSearchForm(props) {
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedLabel, setSelectedLabel] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
 
   let title = "";
@@ -57,56 +51,29 @@ export default function WorkplanSearchForm(props) {
   const getTestsList = (res) => {
     if (mounted.current) {
       props.createTestsList(res);
-      if (res.paging) {
-        var { totalPages, currentPage } = res.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
-      }
       setIsLoading(false);
     }
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, getTestsList);
+    getFromOpenElisServer(url + "&page=" + pageNumber, getTestsList);
   };
 
-  const loadPreviousResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, getTestsList);
-  };
+  useEffect(() => {
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerPageLoader]);
 
   useEffect(() => {
     mounted.current = true;
     setIsLoading(true);
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setUrl(urlToPost + selectedValue);
     getFromOpenElisServer(urlToPost + selectedValue, getTestsList);
     return () => {
       mounted.current = false;
     };
   }, [selectedValue]);
-
-  useEffect(() => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-  }, []);
 
   return (
     <>
@@ -162,45 +129,6 @@ export default function WorkplanSearchForm(props) {
           )}
         </Column>
       </Grid>
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
     </>
   );
 }

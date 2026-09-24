@@ -3,6 +3,11 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import {
   Form,
   TextInput,
   Button,
@@ -22,9 +27,9 @@ import {
   Loading,
   Toggle,
   Tag,
-  Link,
 } from "@carbon/react";
-import { Person, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import ServerPageArrows from "../common/ServerPageArrows";
+import { Person } from "@carbon/react/icons";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { patientSearchHeaderData } from "../data/PatientResultsTableHeaders";
 import { Formik, Field } from "formik";
@@ -50,6 +55,10 @@ interface SearchPatientFormProps {
   orderFormValues?: Record<string, unknown>;
   showPatientSearch?: boolean;
   patientSearchStatus?: boolean;
+  /** Prefix for every element id, so two search forms can share one page. */
+  idPrefix?: string;
+  /** Patients (by patientID) left out of the results, e.g. one already chosen elsewhere on the page. */
+  excludePatientIds?: string[];
   [key: string]: unknown;
 }
 
@@ -61,27 +70,33 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const fieldId = (name: string) =>
+    props.idPrefix ? `${props.idPrefix}-${name}` : name;
 
   const [dob, setDob] = useState("");
   const [patientSearchResults, setPatientSearchResults] = useState<
     PatientRecord[]
   >([]);
   const [importStatus, setImportStatus] = useState<ImportStatus>({});
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
-  const [nextPage, setNextPage] = useState<Nullable<string>>(null);
   const [isToggled, setIsToggled] = useState(false);
-  const [previousPage, setPreviousPage] = useState<Nullable<string>>(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState<Nullable<number>>(null);
-  const [totalApiPages, setTotalApiPages] = useState<Nullable<number>>(null);
   const [url, setUrl] = useState("");
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
   );
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
+  // Bumped by Clear: remounting the form is what empties the uncontrolled
+  // inputs and the gender radios along with Formik's values.
+  const [formInstance, setFormInstance] = useState(0);
   // When a lab-number deep link drives the search, auto-select the matched
   // patient once results arrive (so the user lands on the patient page, not the
   // search results). Manual searches leave this false and just list results.
@@ -163,10 +178,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   };
 
   const handleSubmit = (values: PatientSearchCriteria) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-    setPage(1);
     setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
@@ -201,18 +212,31 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setUrl(searchEndPoint);
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber: number | string | null) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, fetchPatientResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, fetchPatientResults);
   };
-
-  const loadPreviousResultsPage = () => {
-    setLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, fetchPatientResults);
-  };
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadResultsPage,
+  });
 
   const toggle = () => {
     setIsToggled((prev) => !prev);
+  };
+
+  /** Back to a blank search: every criterion, the date, the CR toggle and the results. */
+  const clearSearch = () => {
+    setSearchFormValues({ ...SearchPatientFormValues });
+    setFormInstance((instance) => instance + 1);
+    setDob("");
+    setIsToggled(false);
+    setPrevfirstName("");
+    setPrevlastName("");
+    setPatientSearchResults([]);
+    setPaging(undefined);
+    setUrl("");
   };
 
   const fetchPatientResults = (res: PatientSearchResponse) => {
@@ -249,27 +273,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       });
       setNotificationVisible(true);
     }
-    if (res.paging) {
-      const { totalPages, currentPage } = res.paging as {
-        totalPages: string;
-        currentPage: string;
-      };
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      }
-    }
+    setPaging(res.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(res.paging, patientsResults.length, previous),
+    );
     setLoading(false);
   };
 
@@ -317,24 +324,18 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setPrevlastName(event.target.value);
   }
 
-  const patientSelected = (e: React.MouseEvent<HTMLElement>) => {
-    const patientSelected = patientSearchResults.find((patient) => {
-      return patient.patientID == (e.target as HTMLElement).id;
-    });
-    const searchEndPoint =
-      "/rest/patient-details?patientID=" + patientSelected!.patientID;
+  const patientSelected = (patientId: string) => {
+    const searchEndPoint = "/rest/patient-details?patientID=" + patientId;
     getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
   };
 
-  const handlePageChange = (pageInfo: { page: number; pageSize: number }) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
+  const excludedPatientIds = props.excludePatientIds || [];
+  const visibleResults = excludedPatientIds.length
+    ? patientSearchResults.filter(
+        (patient) => !excludedPatientIds.includes(String(patient.patientID)),
+      )
+    : patientSearchResults;
 
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const patientId = params.get("patientId");
@@ -357,6 +358,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {loading && <Loading />}
       <Formik
+        key={formInstance}
         initialValues={searchFormValues}
         enableReinitialize={true}
         // validationSchema={}
@@ -380,7 +382,11 @@ function SearchPatientForm(props: SearchPatientFormProps) {
             <Grid>
               <Field name="guid">
                 {({ field }) => (
-                  <input type="hidden" name={field.name} id={field.name} />
+                  <input
+                    type="hidden"
+                    name={field.name}
+                    id={fieldId(field.name)}
+                  />
                 )}
               </Field>
               <Column lg={16} md={8} sm={4}>
@@ -400,7 +406,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.id",
                         defaultMessage: "Patient Id",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                     />
                   )}
                 </Field>
@@ -417,7 +423,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.prev.lab.no",
                         defaultMessage: "Previous Lab Number",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       value={values[field.name]}
                       onChange={(e, rawValue) => {
                         setFieldValue(field.name, rawValue);
@@ -442,7 +448,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.last.name",
                         defaultMessage: "Last Name",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
@@ -460,7 +466,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.first.name",
                         defaultMessage: "First Name",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
@@ -474,7 +480,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                 <Field name="dateOfBirth">
                   {({ field }) => (
                     <CustomDatePicker
-                      id={"date-picker-default-id"}
+                      id={fieldId("date-picker-default-id")}
                       labelText={intl.formatMessage({
                         id: "patient.dob",
                         defaultMessage: "Date of Birth",
@@ -498,10 +504,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         defaultMessage: "Gender",
                       })}
                       name={field.name}
-                      id="search_patient_gender"
+                      id={fieldId("search_patient_gender")}
                     >
                       <RadioButton
-                        id="search-radio-1"
+                        id={fieldId("search-radio-1")}
                         labelText={intl.formatMessage({
                           id: "patient.male",
                           defaultMessage: "Male",
@@ -509,7 +515,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         value="M"
                       />
                       <RadioButton
-                        id="search-radio-2"
+                        id={fieldId("search-radio-2")}
                         labelText={intl.formatMessage({
                           id: "patient.female",
                           defaultMessage: "Female",
@@ -526,7 +532,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
               </Column>
               <Column lg={4} md={4} sm={2}>
                 <Button
-                  id="local_search"
+                  id={fieldId("local_search")}
                   kind="tertiary"
                   type="submit"
                   data-cy="searchPatientButton"
@@ -537,7 +543,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
               </Column>
               <Column lg={4} md={4} sm={2}>
                 <Button
-                  id="external_search"
+                  id={fieldId("external_search")}
                   type="submit"
                   disabled={
                     configurationProperties.UseExternalPatientInfo === "false"
@@ -551,13 +557,24 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                   />
                 </Button>
               </Column>
+              <Column lg={4} md={4} sm={2}>
+                <Button
+                  id={fieldId("clear_search")}
+                  type="button"
+                  kind="ghost"
+                  data-cy="clearPatientSearchButton"
+                  onClick={clearSearch}
+                >
+                  <FormattedMessage id="label.button.clear" />
+                </Button>
+              </Column>
               {configurationProperties.ENABLE_CLIENT_REGISTRY === "true" && (
                 <Column lg={4} md={4} sm={2}>
                   <Toggle
                     labelText="Client Registry Search"
                     labelA="false"
                     labelB="true"
-                    id="toggle-cr"
+                    id={fieldId("toggle-cr")}
                     toggled={isToggled}
                     onClick={() => {
                       toggle();
@@ -575,54 +592,14 @@ function SearchPatientForm(props: SearchPatientFormProps) {
           </Form>
         )}
       </Formik>
-      {pagination && (
-        <Grid>
-          <Column lg={8}>
-            {" "}
-            <div></div>
-          </Column>
-          <Column lg={14} />
-          <Column
-            lg={2}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "10px",
-              width: "110%",
-            }}
-          >
-            <Link>
-              {currentApiPage} / {totalApiPages}
-            </Link>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Button
-                hasIconOnly
-                id="loadpreviousresults"
-                onClick={loadPreviousResultsPage}
-                disabled={previousPage != null ? false : true}
-                renderIcon={ArrowLeft}
-                iconDescription="previous"
-              ></Button>
-              <Button
-                hasIconOnly
-                id="loadnextresults"
-                onClick={loadNextResultsPage}
-                disabled={nextPage != null ? false : true}
-                renderIcon={ArrowRight}
-                iconDescription="next"
-              ></Button>
-            </div>
-          </Column>
-        </Grid>
-      )}
+      {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
-        rows={patientSearchResults}
+        rows={visibleResults}
         headers={patientSearchHeaderData}
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
-          <TableContainer title="Patient Results" data-cy="patientResultsTable">
+          <TableContainer data-cy="patientResultsTable">
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
@@ -638,156 +615,129 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows
-                  .slice((page - 1) * pageSize, page * pageSize)
-                  .map((row) => {
-                    const dataSourceName = row.cells.find(
-                      (cell) => cell.info.header === "dataSourceName",
-                    )?.value;
-                    const firstName =
-                      row.cells.find((cell) => cell.info.header === "firstName")
-                        ?.value || "";
-                    const lastName =
-                      row.cells.find((cell) => cell.info.header === "lastName")
-                        ?.value || "";
-                    const patientName =
-                      `${firstName} ${lastName}`.trim() || "Patient";
-                    const sourcePatient = patientSearchResults.find(
-                      (p) => p.patientID === row.id,
-                    );
-                    const isMerged = sourcePatient?.isMerged === true;
-                    const mergedIntoLabel =
-                      sourcePatient?.mergedIntoNationalId ||
-                      sourcePatient?.mergedIntoPatientId;
+                {rows.map((row) => {
+                  const dataSourceName = row.cells.find(
+                    (cell) => cell.info.header === "dataSourceName",
+                  )?.value;
+                  const firstName =
+                    row.cells.find((cell) => cell.info.header === "firstName")
+                      ?.value || "";
+                  const lastName =
+                    row.cells.find((cell) => cell.info.header === "lastName")
+                      ?.value || "";
+                  const patientName =
+                    `${firstName} ${lastName}`.trim() || "Patient";
+                  const sourcePatient = patientSearchResults.find(
+                    (p) => p.patientID === row.id,
+                  );
+                  const isMerged = sourcePatient?.isMerged === true;
+                  const mergedIntoLabel =
+                    sourcePatient?.mergedIntoNationalId ||
+                    sourcePatient?.mergedIntoPatientId;
 
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-cy={`patient-result-row-${row.id}`}
-                      >
-                        <TableCell>
-                          {dataSourceName === "OpenElis" ? (
-                            <div
-                              style={{ display: "flex", flexDirection: "row" }}
-                            >
-                              <RadioButton
-                                data-cy="radioButton"
-                                name="radio-group"
-                                onClick={patientSelected}
-                                labelText=""
-                                id={row.id}
-                              />
-                              <AsyncAvatar
-                                patientId={row.id}
-                                hasPhoto={true}
-                                patientName={patientName}
-                              />
-                              {isMerged && (
-                                <Tag
-                                  type="magenta"
-                                  size="sm"
-                                  title={
-                                    mergedIntoLabel
-                                      ? `Merged into ${mergedIntoLabel}`
-                                      : "Merged"
-                                  }
-                                  style={{ marginLeft: "0.5rem" }}
+                  return (
+                    <TableRow
+                      key={row.id}
+                      data-cy={`patient-result-row-${row.id}`}
+                    >
+                      <TableCell>
+                        {dataSourceName === "OpenElis" ? (
+                          <div
+                            style={{ display: "flex", flexDirection: "row" }}
+                          >
+                            <RadioButton
+                              data-cy="radioButton"
+                              name={fieldId("radio-group")}
+                              onClick={() => patientSelected(String(row.id))}
+                              labelText=""
+                              id={fieldId(String(row.id))}
+                            />
+                            <AsyncAvatar
+                              patientId={row.id}
+                              hasPhoto={true}
+                              patientName={patientName}
+                            />
+                            {isMerged && (
+                              <Tag
+                                type="magenta"
+                                size="sm"
+                                title={
+                                  mergedIntoLabel
+                                    ? `Merged into ${mergedIntoLabel}`
+                                    : "Merged"
+                                }
+                                style={{ marginLeft: "0.5rem" }}
+                              >
+                                <FormattedMessage
+                                  id="patient.search.merged.tag"
+                                  defaultMessage="Merged"
+                                />
+                              </Tag>
+                            )}
+                          </div>
+                        ) : (
+                          <span></span>
+                        )}
+                      </TableCell>
+
+                      {row.cells.map((cell) => (
+                        <TableCell key={cell.id}>
+                          {cell.info.header === "dataSourceName" ? (
+                            <>
+                              <Tag
+                                type={
+                                  cell.value === "OpenElis"
+                                    ? "red"
+                                    : cell.value === "Open Client Registry"
+                                      ? "green"
+                                      : "gray"
+                                }
+                              >
+                                {cell.value}
+                              </Tag>
+                              &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+                              {dataSourceName === "Open Client Registry" ? (
+                                <Button
+                                  id={row.id}
+                                  kind="tertiary"
+                                  onClick={() => handlePatientImport(row.id)}
+                                  size="md"
+                                  disabled={importStatus[row.id]}
                                 >
-                                  <FormattedMessage
-                                    id="patient.search.merged.tag"
-                                    defaultMessage="Merged"
-                                  />
-                                </Tag>
+                                  <Person size={16} />
+                                  {importStatus[row.id] ? (
+                                    <span>
+                                      &nbsp;&nbsp;Patient Imported Successfully
+                                    </span>
+                                  ) : (
+                                    <span>&nbsp;&nbsp;Import Patient</span>
+                                  )}
+                                </Button>
+                              ) : (
+                                <span></span>
                               )}
-                            </div>
+                            </>
                           ) : (
-                            <span></span>
+                            cell.value
                           )}
                         </TableCell>
-
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header === "dataSourceName" ? (
-                              <>
-                                <Tag
-                                  type={
-                                    cell.value === "OpenElis"
-                                      ? "red"
-                                      : cell.value === "Open Client Registry"
-                                        ? "green"
-                                        : "gray"
-                                  }
-                                >
-                                  {cell.value}
-                                </Tag>
-                                &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
-                                {dataSourceName === "Open Client Registry" ? (
-                                  <Button
-                                    id={row.id}
-                                    kind="tertiary"
-                                    onClick={() => handlePatientImport(row.id)}
-                                    size="md"
-                                    disabled={importStatus[row.id]}
-                                  >
-                                    <Person size={16} />
-                                    {importStatus[row.id] ? (
-                                      <span>
-                                        &nbsp;&nbsp;Patient Imported
-                                        Successfully
-                                      </span>
-                                    ) : (
-                                      <span>&nbsp;&nbsp;Import Patient</span>
-                                    )}
-                                  </Button>
-                                ) : (
-                                  <span></span>
-                                )}
-                              </>
-                            ) : (
-                              cell.value
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
+                      ))}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
         )}
       </DataTable>
       <Pagination
-        onChange={handlePageChange}
-        page={page}
-        pageSize={pageSize}
-        pageSizes={[10, 20, 30, 50, 100]}
-        totalItems={patientSearchResults.length}
-        forwardText={intl.formatMessage({ id: "pagination.forward" })}
-        backwardText={intl.formatMessage({ id: "pagination.backward" })}
-        itemRangeText={(min, max, total) =>
-          intl.formatMessage(
-            { id: "pagination.item-range" },
-            { min: min, max: max, total: total },
-          )
-        }
-        itemsPerPageText={intl.formatMessage({
-          id: "pagination.items-per-page",
+        {...serverPaginationProps({
+          paging,
+          rowsOnPage: visibleResults.length,
+          pageSize: serverPageSize,
+          onPageRequest: loadResultsPage,
+          intl,
         })}
-        itemText={(min, max) =>
-          intl.formatMessage({ id: "pagination.item" }, { min: min, max: max })
-        }
-        pageNumberText={intl.formatMessage({
-          id: "pagination.page-number",
-        })}
-        pageRangeText={(_current, total) =>
-          intl.formatMessage({ id: "pagination.page-range" }, { total: total })
-        }
-        pageText={(page, pagesUnknown) =>
-          intl.formatMessage(
-            { id: "pagination.page" },
-            { page: pagesUnknown ? "" : page },
-          )
-        }
       />
     </>
   );

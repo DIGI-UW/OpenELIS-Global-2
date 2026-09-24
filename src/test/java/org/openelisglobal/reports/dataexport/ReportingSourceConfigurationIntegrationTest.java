@@ -119,6 +119,22 @@ public class ReportingSourceConfigurationIntegrationTest extends BaseWebContextS
     }
 
     @Test
+    public void emptyInitialDefaultsDoNotAllowGeneratingAnExportWithoutSelectedColumns() {
+        var request = new ExportSubmission(1, "SAMPLE_TESTING", "SPREADSHEET", "empty-columns", List.of(),
+                new ExportFilter("2026-08-01", "2026-08-31", List.of(), List.of(), List.of()));
+        var failure = assertThrows(ReportingException.class, () -> catalog.freeze(request, TEST_SYS_USER_ID));
+        assertEquals(422, failure.status());
+    }
+
+    @Test
+    public void instanceConfigurationOverridesPrimaryReportDefaults() throws Exception {
+        assertEquals(List.of(), catalog.defaultColumns(catalog.definition("SAMPLE_TESTING"), "SPREADSHEET"));
+        apply(json.replace("SAMPLE_SUMMARY", "SAMPLE_TESTING"));
+        assertEquals(List.of("specimenId", "accessionNumber"),
+                catalog.defaultColumns(catalog.definition("SAMPLE_TESTING"), "SPREADSHEET"));
+    }
+
+    @Test
     public void configuredDefaultsAndSelectedResultsUseTheSameSourceInBothLayouts() throws Exception {
         apply(json);
         var analysis = analyses.get("1");

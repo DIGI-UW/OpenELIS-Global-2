@@ -56,6 +56,7 @@ import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 public class PatientResultTreeServiceTest {
 
     private static final String PATIENT_ID = "7";
+    private static final String READER = "9";
     private static final String TEST_ID = "42";
 
     @Mock
@@ -82,6 +83,9 @@ public class PatientResultTreeServiceTest {
     @Mock
     private UnitOfMeasureService unitOfMeasureService;
 
+    @Mock
+    private org.openelisglobal.systemuser.service.UserService userService;
+
     @InjectMocks
     private PatientResultTreeService patientResultTreeService;
 
@@ -106,6 +110,10 @@ public class PatientResultTreeServiceTest {
         lenient().when(bloodPressure.getTestSection()).thenReturn(testSection);
 
         lenient().when(patientService.get(PATIENT_ID)).thenReturn(patient);
+        // These tests are about the shape of the tree, so the reader holds the
+        // whole lab; the lab-unit scope has its own test.
+        lenient().when(userService.hasAllLabUnits(READER, org.openelisglobal.common.constants.Constants.ROLE_RECEPTION))
+                .thenReturn(true);
         lenient().when(testService.getResultType(any())).thenReturn("N");
         lenient().when(testService.getPossibleTestResults(any())).thenReturn(new ArrayList<>());
         lenient().when(resultService.getSimpleResultValue(any(Result.class)))
@@ -129,7 +137,7 @@ public class PatientResultTreeServiceTest {
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), eq("c-dia"))).thenReturn(limit(60d, 80d));
         when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("range");
 
-        List<TestDisplay> tests = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID)).getSubSets();
+        List<TestDisplay> tests = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets();
 
         assertEquals("each component is its own row", 2, tests.size());
         TestDisplay systolicDisplay = tests.get(0);
@@ -162,7 +170,7 @@ public class PatientResultTreeServiceTest {
                 result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-01 09:00:00")), "3", null),
                 result(analysis(bloodPressure, urine, Timestamp.valueOf("2026-08-02 09:00:00")), "4", null));
 
-        List<ResultTree> trees = patientResultTreeService.getResultTree(PATIENT_ID);
+        List<ResultTree> trees = patientResultTreeService.getResultTree(PATIENT_ID, READER);
 
         assertEquals(1, trees.size());
         List<PanelDisplay> panels = trees.get(0).getSubSets();
@@ -194,7 +202,7 @@ public class PatientResultTreeServiceTest {
         recorded.setMaxNormal(100d);
         givenPatientResults(recorded);
 
-        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID)).getSubSets().get(0);
+        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets().get(0);
 
         verify(resultLimitService).getResultLimitForResult(eq(analysis), eq(recorded), eq(patient), isNull());
         assertEquals(Double.valueOf(4d), display.getLowNormal());
@@ -213,7 +221,7 @@ public class PatientResultTreeServiceTest {
         givenPatientResults(result(analysis(bloodPressure, sampleType("1", "Serum"),
                 Timestamp.valueOf("2026-08-01 09:00:00")), "10", null));
 
-        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID)).getSubSets().get(0);
+        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets().get(0);
 
         assertNull("an unset critical bound must not be folded onto the normal range", display.getLowCritical());
         assertNull(display.getHiCritical());
@@ -237,7 +245,7 @@ public class PatientResultTreeServiceTest {
         diastolicResult.setLastupdated(Timestamp.valueOf("2026-08-01 11:15:47"));
         givenPatientResults(systolicResult, diastolicResult);
 
-        List<TestDisplay> tests = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID)).getSubSets();
+        List<TestDisplay> tests = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets();
 
         assertEquals(tests.get(0).getObs().get(0).getObsDatetime(), tests.get(1).getObs().get(0).getObsDatetime());
     }
@@ -255,7 +263,7 @@ public class PatientResultTreeServiceTest {
         quantification.setParentResult(parent);
         givenPatientResults(parent, quantification);
 
-        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID)).getSubSets().get(0);
+        TestDisplay display = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets().get(0);
 
         assertEquals(1, display.getObs().size());
         assertEquals("3", display.getObs().get(0).getValue());
@@ -274,12 +282,46 @@ public class PatientResultTreeServiceTest {
         Analysis analysis = analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00"));
         givenPatientResults(result(analysis, "120", systolic.getId()), result(analysis, "80", diastolic.getId()));
 
-        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, "c-dia", null);
+        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, "c-dia", null, READER);
 
         assertNotNull(panel);
         assertEquals(1, panel.getSubSets().size());
         assertEquals("Diastolic", panel.getSubSets().get(0).getComponent());
         assertEquals("80", panel.getSubSets().get(0).getObs().get(0).getValue());
+    }
+
+    /**
+     * Patient History is read from the patient's record, Reception's screen, so it
+     * shows the results of the reader's own Reception lab units. It used to show
+     * every result the patient had, whichever lab unit produced it.
+     */
+    @Test
+    public void getResultTree_showsOnlyTheReadersOwnLabUnits() {
+        String scopedReader = "11";
+        when(userService.hasAllLabUnits(scopedReader, org.openelisglobal.common.constants.Constants.ROLE_RECEPTION))
+                .thenReturn(false);
+        when(userService.getTestIdsInUserLabUnits(scopedReader,
+                org.openelisglobal.common.constants.Constants.ROLE_RECEPTION))
+                .thenReturn(new java.util.HashSet<>(Collections.singletonList(TEST_ID)));
+
+        org.openelisglobal.test.valueholder.Test otherUnitTest = mock(org.openelisglobal.test.valueholder.Test.class);
+        lenient().when(otherUnitTest.getId()).thenReturn("999");
+        lenient().when(otherUnitTest.getLocalizedName()).thenReturn("Malaria Smear");
+        TestSection otherSection = mock(TestSection.class);
+        lenient().when(otherSection.getId()).thenReturn("4");
+        lenient().when(otherSection.getLocalizedName()).thenReturn("Parasitology");
+        lenient().when(otherUnitTest.getTestSection()).thenReturn(otherSection);
+
+        when(testResultComponentService.getActiveComponentsByTestId(TEST_ID))
+                .thenReturn(Collections.singletonList(component("c-primary", "Primary", true)));
+        TypeOfSample serum = sampleType("1", "Serum");
+        givenPatientResults(result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-01 09:00:00")), "3", null),
+                result(analysis(otherUnitTest, serum, Timestamp.valueOf("2026-08-02 09:00:00")), "positive", null));
+
+        List<ResultTree> trees = patientResultTreeService.getResultTree(PATIENT_ID, scopedReader);
+
+        assertEquals("only the reader's own lab unit is in the tree", 1, trees.size());
+        assertEquals("Haematology", trees.get(0).getDisplay());
     }
 
     private PanelDisplay onlyPanel(List<ResultTree> trees) {
@@ -354,7 +396,7 @@ public class PatientResultTreeServiceTest {
                 result(analysis(bloodPressure, sampleType("2", "Urine"), Timestamp.valueOf("2026-08-02 09:00:00")), "4",
                         null));
 
-        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, "2");
+        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, "2", READER);
 
         assertEquals("a graph plots one specimen, not both", 1, panel.getSubSets().size());
         assertEquals("Urine", panel.getSubSets().get(0).getSampleType());
@@ -376,7 +418,7 @@ public class PatientResultTreeServiceTest {
                 result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-03 09:00:00")), "5", null),
                 result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-02 09:00:00")), "4", null));
 
-        List<ResultDisplay> obs = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, null)
+        List<ResultDisplay> obs = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, null, READER)
                 .getSubSets().get(0).getObs();
 
         assertEquals(Arrays.asList("2026-08-03 09:00:00", "2026-08-02 09:00:00", "2026-08-01 09:00:00"),
