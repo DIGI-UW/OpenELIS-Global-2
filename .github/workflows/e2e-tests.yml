@@ -65,6 +65,7 @@ jobs:
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         with:
+          retries: 3
           script: |
             const fs = require('fs');
             const scope = require('./.github/scripts/e2e-scope.cjs');
