@@ -343,6 +343,11 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(notListedUrl.searchParams.get("returnTo")).toBe(
       "/analyzers?setup=instrument",
     );
+    expect(
+      screen.getByText(
+        "Choose the listed type for your instrument, even if it will only send results. Whether it sends results only or also receives orders is set later, in Connect.",
+      ),
+    ).toBeVisible();
 
     expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
     expect(
@@ -770,7 +775,7 @@ describe("AnalyzerSetup Instrument step", () => {
       }),
     );
 
-    renderSetupWithHistory(
+    const history = renderSetupWithHistory(
       `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
     );
 
@@ -784,6 +789,13 @@ describe("AnalyzerSetup Instrument step", () => {
       screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeVisible();
     expect(activateAnalyzer).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Verify mappings" }),
+    );
+    const params = new URLSearchParams(history.location.search);
+    expect(params.get("setup")).toBe("verify");
+    expect(params.get("analyzerId")).toBe("42");
   });
 
   it("saves current settings and activates without requiring a connection test", async () => {

@@ -484,6 +484,9 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     placeholder={intl.formatMessage({
                       id: "analyzer.setup.instrument.type.placeholder",
                     })}
+                    helperText={intl.formatMessage({
+                      id: "analyzer.setup.instrument.type.helper",
+                    })}
                     items={activeTypes}
                     selectedItem={selectedType}
                     itemToString={typeLabel}
@@ -803,6 +806,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     candidate={candidate}
                     onCandidateChange={setCandidate}
                     onClose={onClose}
+                    onVerifyMappings={() => editStep("verify")}
                   />
                 ) : (
                   <Loading

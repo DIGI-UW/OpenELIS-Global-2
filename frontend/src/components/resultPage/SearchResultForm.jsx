@@ -27,6 +27,7 @@ import {
   Select,
   SelectItem,
   Loading,
+  ActionableNotification,
   Tag,
 } from "@carbon/react";
 import ServerPageArrows from "../common/ServerPageArrows";
@@ -69,7 +70,8 @@ import {
 import { FlagChip } from "./unified/flags";
 import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
-import { Warning } from "@carbon/icons-react";
+import CriticalCallbackModal from "./CriticalCallbackModal";
+import { Warning, Phone } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
@@ -1097,6 +1099,12 @@ export function SearchResults(props) {
   const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
   // Which analysisId's storage-picker modal is open (one at a time).
   const [storageModalRow, setStorageModalRow] = useState(null);
+  // Which row's critical-callback modal is open (one at a time; OGC-714).
+  const [callbackModalRow, setCallbackModalRow] = useState(null);
+  // Rows with a callback logged (keyed by row.id). Drives the needs-callback
+  // banner: seeded from the durable record (/rest/critical-callback/
+  // logged-results) when results load, updated in place on a new log.
+  const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
 
   const componentMounted = useRef(false);
   const holdingTimeNotifiedRows = useRef(new Set());
@@ -1192,6 +1200,37 @@ export function SearchResults(props) {
       });
       setValidationState(newValidationState);
     }
+  }, [props.results]);
+
+  // Seed the needs-callback banner from the durable record: saved results on
+  // this page that already have a callback logged (any session, any user) —
+  // a page reload must not resurrect the banner for already-called criticals.
+  useEffect(() => {
+    const rows = (props.results?.testResult || []).filter(
+      (row) => row.resultId,
+    );
+    if (rows.length === 0) {
+      return;
+    }
+    const ids = rows.map((row) => row.resultId).join(",");
+    getFromOpenElisServer(
+      `/rest/critical-callback/logged-results?resultIds=${ids}`,
+      (logged) => {
+        if (!componentMounted.current || !Array.isArray(logged)) {
+          return;
+        }
+        const loggedSet = new Set(logged.map(String));
+        const seeded = {};
+        rows.forEach((row) => {
+          if (loggedSet.has(String(row.resultId))) {
+            seeded[row.id] = true;
+          }
+        });
+        if (Object.keys(seeded).length > 0) {
+          setLoggedCallbackRows((prev) => ({ ...prev, ...seeded }));
+        }
+      },
+    );
   }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
@@ -1828,6 +1867,25 @@ export function SearchResults(props) {
                     }
                   }}
                 />
+                {/* Callback is documented against a PERSISTED result: the
+                    button only renders once the critical value has been
+                    saved (row.resultId), so the modal can
+                    never substitute for Save. The modal itself is rendered
+                    once at form level (pagination-proof for the banner). */}
+                {validationState[row.id]?.isCritical && row.resultId && (
+                  <Button
+                    hasIconOnly
+                    kind="danger--tertiary"
+                    size="sm"
+                    style={{ marginTop: "0.25rem" }}
+                    renderIcon={Phone}
+                    data-testid="log-callback-button"
+                    iconDescription={intl.formatMessage({
+                      id: "qa.qi.callback.button",
+                    })}
+                    onClick={() => setCallbackModalRow(row.id)}
+                  />
+                )}
                 {validationState[row.id]?.flag === "CRITICAL" && (
                   <div data-testid={`critical-flag-${row.id}`}>
                     <FlagChip flag="CRITICAL" />
@@ -2752,6 +2810,14 @@ export function SearchResults(props) {
     onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
   });
 
+  // Saved criticals with no callback logged this session (OGC-714).
+  const needsCallback = allRows.filter(
+    (row) =>
+      validationState[row.id]?.isCritical &&
+      row.resultId &&
+      !loggedCallbackRows[row.id],
+  );
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -2776,6 +2842,51 @@ export function SearchResults(props) {
             </Column>
           </Grid>
         )}
+        {/* Persistent needs-callback banner (OGC-714). The v4 Results Entry
+            design reserves a banner for exactly this; this is the legacy-page
+            bridge. */}
+        {needsCallback.length > 0 && (
+          <ActionableNotification
+            kind="warning"
+            lowContrast
+            inline
+            hideCloseButton
+            // status, not the alertdialog default: Carbon's alertdialog
+            // grabs focus back to the banner on every render, making the
+            // callback modal (and the results grid) untypeable while the
+            // banner is visible.
+            role="status"
+            data-testid="callback-banner"
+            style={{ maxWidth: "none", marginBottom: "0.5rem" }}
+            title={intl.formatMessage({
+              id: "qa.qi.callback.banner.title",
+            })}
+            subtitle={intl.formatMessage(
+              { id: "qa.qi.callback.banner.subtitle" },
+              { count: needsCallback.length },
+            )}
+            actionButtonLabel={intl.formatMessage({
+              id: "qa.qi.callback.button",
+            })}
+            onActionButtonClick={() => {
+              const first = needsCallback[0];
+              document
+                .getElementById("ResultValue" + first.id)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setCallbackModalRow(first.id);
+            }}
+          />
+        )}
+        <CriticalCallbackModal
+          open={callbackModalRow != null}
+          resultRow={(props.results?.testResult || []).find(
+            (row) => row.id === callbackModalRow,
+          )}
+          onClose={() => setCallbackModalRow(null)}
+          onLogged={(row) =>
+            setLoggedCallbackRows((prev) => ({ ...prev, [row.id]: true }))
+          }
+        />
         <Formik
           initialValues={SearchResultFormValues}
           //validationSchema={}
