@@ -92,6 +92,9 @@ test.describe("Server paging through Carbon", () => {
       );
       await unit.selectOption(unitId);
       await loaded;
+      await carbon.waitFor({ state: "visible", timeout: 5_000 }).catch(() => {
+        // a unit with nothing to work on renders no table and no pagination
+      });
       if ((await carbon.count()) === 0) {
         continue;
       }

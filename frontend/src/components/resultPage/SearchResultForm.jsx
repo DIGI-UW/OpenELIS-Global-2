@@ -27,11 +27,15 @@ import {
   Select,
   SelectItem,
   Loading,
-  Link,
   Tag,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
-import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
+import { Copy } from "@carbon/icons-react";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
 import SampleKindTag from "./SampleKindTag";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
@@ -300,11 +304,6 @@ export function SearchResultForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchResultFormValues,
   );
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const componentMounted = useRef(false);
 
@@ -347,25 +346,8 @@ export function SearchResultForm(props) {
         }));
       props.setResults?.({ ...results, testResult });
       setLoading(false);
-      const totalPages = Number(results.paging?.totalPages) || 1;
-      const currentPage = Number(results.paging?.currentPage) || 1;
-      const hasMultiplePages = totalPages > 1;
-      setPagination(hasMultiplePages);
-      setCurrentApiPage(hasMultiplePages ? currentPage : null);
-      setTotalApiPages(hasMultiplePages ? totalPages : null);
-      setNextPage(
-        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
-      );
-      setPreviousPage(
-        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
-      );
     } else {
       props.setResults?.({ testResult: [] });
-      setPagination(false);
-      setCurrentApiPage(null);
-      setTotalApiPages(null);
-      setNextPage(null);
-      setPreviousPage(null);
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "patient.search.nopatient" }),
@@ -384,10 +366,6 @@ export function SearchResultForm(props) {
     getFromOpenElisServer(url + "&page=" + pageNumber, setResultsWithId);
   };
 
-  const loadNextResultsPage = () => loadResultsPage(nextPage);
-
-  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
-
   /**
    * Re-runs the search, so the server rebuilds its pages, and reopens the page
    * the user was on when the rebuilt list still has it.
@@ -405,9 +383,6 @@ export function SearchResultForm(props) {
   };
 
   const getSelectedPatient = (patient) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setPatient(patient);
   };
   useEffect(() => {
@@ -502,9 +477,6 @@ export function SearchResultForm(props) {
   };
 
   const handleSubmit = (values) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     querySearch(values);
   };
 
@@ -539,9 +511,6 @@ export function SearchResultForm(props) {
   };
 
   const submitOnSelect = (e) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     var values = { unitType: e.target.value };
     handleSubmit(values);
   };
@@ -692,9 +661,6 @@ export function SearchResultForm(props) {
       setSearchFormValues(searchValues);
       querySearch(searchValues);
     }
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
   }, [searchBy]);
 
   return (
@@ -1104,50 +1070,6 @@ export function SearchResultForm(props) {
           </Grid>
         </>
       )}
-
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={16}>
-              {" "}
-              <br /> <br />
-            </Column>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
     </>
   );
 }
@@ -2825,6 +2747,11 @@ export function SearchResults(props) {
     return allRows;
   }, [allRows, poolLotFilter, poolIdFilter]);
 
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -2867,6 +2794,7 @@ export function SearchResults(props) {
               onChange={handleChange}
               //onBlur={handleBlur}
             >
+              {arrows.show && <ServerPageArrows {...arrows} />}
               <DataTable
                 data={displayRows}
                 keyField="id"

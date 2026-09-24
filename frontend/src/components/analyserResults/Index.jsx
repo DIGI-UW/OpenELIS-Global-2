@@ -8,7 +8,6 @@ import {
   Grid,
   Column,
   Section,
-  Link,
   Button,
   Loading,
   Stack,
@@ -17,7 +16,6 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { serverPageSizeOf } from "../utils/serverPaging";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import ImportIssuesPanel from "./ImportIssuesPanel";
@@ -49,11 +47,6 @@ const Index = () => {
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
@@ -121,10 +114,6 @@ const Index = () => {
     getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
-  const loadNextResultsPage = () => loadResultsPage(nextPage);
-
-  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
-
   const handleResults = (data) => {
     if (data) {
       setResults(data);
@@ -134,9 +123,6 @@ const Index = () => {
       if (typeof data.type === "string" && data.type.trim()) {
         setAnalyzerName(data.type.trim());
       }
-      const totalPages = Number(data.paging?.totalPages) || 1;
-      const currentPage = Number(data.paging?.currentPage) || 1;
-      const hasMultiplePages = totalPages > 1;
       setServerPageSize((previous) =>
         serverPageSizeOf(data.paging, data.resultList?.length ?? 0, previous),
       );
@@ -144,15 +130,6 @@ const Index = () => {
         Array.isArray(data.paging?.searchTermToPage)
           ? data.paging.searchTermToPage
           : [],
-      );
-      setPagination(hasMultiplePages);
-      setCurrentApiPage(hasMultiplePages ? currentPage : null);
-      setTotalApiPages(hasMultiplePages ? totalPages : null);
-      setNextPage(
-        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
-      );
-      setPreviousPage(
-        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
       );
 
       if (data.resultList.length == 0) {
@@ -243,43 +220,6 @@ const Index = () => {
                 <FormattedMessage id="referral.search" />{" "}
               </Button>
             </Column>
-            {pagination && (
-              <>
-                <Column lg={4} md={4} sm={2}></Column>
-                <Column
-                  lg={2}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "10px",
-                    width: "110%",
-                  }}
-                >
-                  <Link>
-                    {currentApiPage} / {totalApiPages}
-                  </Link>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <Button
-                      hasIconOnly
-                      id="loadpreviousresults"
-                      onClick={loadPreviousResultsPage}
-                      disabled={previousPage != null ? false : true}
-                      renderIcon={ArrowLeft}
-                      iconDescription="previous"
-                    ></Button>
-                    <Button
-                      hasIconOnly
-                      id="loadnextresults"
-                      onClick={loadNextResultsPage}
-                      disabled={nextPage != null ? false : true}
-                      renderIcon={ArrowRight}
-                      iconDescription="next"
-                    ></Button>
-                  </div>
-                </Column>
-              </>
-            )}
           </Grid>
         </>
         <AnalyserResults

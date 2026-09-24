@@ -19,7 +19,11 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
@@ -209,8 +213,13 @@ const EOrder = ({
   };
 
   const createDataTable = (eOrdersCurrent) => {
+    const arrows = serverPageArrowsProps({
+      paging,
+      onPageRequest: (pageNumber) => loadPage?.(pageNumber),
+    });
     return (
       <>
+        {arrows.show && <ServerPageArrows {...arrows} />}
         <DataTable
           id="eOrderTable"
           rows={eOrdersCurrent}

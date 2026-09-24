@@ -24,7 +24,11 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
-import { serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
@@ -121,6 +125,10 @@ const Validation = (props) => {
   const visibleRows = filterTriaged(triaged, activeFilter).map(
     (item) => item.row,
   );
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
@@ -938,6 +946,7 @@ const Validation = (props) => {
       <>
         <>
           <>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
               data={visibleRows}
               columns={columns}

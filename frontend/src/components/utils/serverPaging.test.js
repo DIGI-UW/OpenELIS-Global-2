@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   hasServerPages,
+  serverPageArrowsProps,
   serverPageSizeOf,
   serverPaginationProps,
 } from "./serverPaging";
@@ -96,5 +97,41 @@ describe("serverPaginationProps", () => {
     const p = props({ paging: undefined, rowsOnPage: 0, pageSize: undefined });
     expect(p.totalItems).toBe(0);
     expect(p.page).toBe(1);
+  });
+});
+
+describe("serverPageArrowsProps", () => {
+  it("names the server's page and asks for the neighbouring pages", () => {
+    const onPageRequest = vi.fn();
+    const arrows = serverPageArrowsProps({
+      paging: { currentPage: "2", totalPages: "4" },
+      onPageRequest,
+    });
+    expect(arrows.show).toBe(true);
+    expect(arrows.currentPage).toBe(2);
+    expect(arrows.totalPages).toBe(4);
+    expect(arrows.previousDisabled).toBe(false);
+    expect(arrows.nextDisabled).toBe(false);
+    arrows.onNext();
+    arrows.onPrevious();
+    expect(onPageRequest.mock.calls).toEqual([[3], [1]]);
+  });
+
+  it("disables the arrow that would leave the list, and hides on a single page", () => {
+    expect(
+      serverPageArrowsProps({
+        paging: { currentPage: 1, totalPages: 4 },
+        onPageRequest: vi.fn(),
+      }).previousDisabled,
+    ).toBe(true);
+    expect(
+      serverPageArrowsProps({
+        paging: { currentPage: 4, totalPages: 4 },
+        onPageRequest: vi.fn(),
+      }).nextDisabled,
+    ).toBe(true);
+    expect(
+      serverPageArrowsProps({ paging: undefined, onPageRequest: vi.fn() }).show,
+    ).toBe(false);
   });
 });

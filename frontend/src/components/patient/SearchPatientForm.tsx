@@ -2,7 +2,11 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
-import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
 import {
   Form,
   TextInput,
@@ -23,9 +27,9 @@ import {
   Loading,
   Toggle,
   Tag,
-  Link,
 } from "@carbon/react";
-import { Person, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import ServerPageArrows from "../common/ServerPageArrows";
+import { Person } from "@carbon/react/icons";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { patientSearchHeaderData } from "../data/PatientResultsTableHeaders";
 import { Formik, Field } from "formik";
@@ -77,12 +81,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   }>();
   const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
-  const [nextPage, setNextPage] = useState<Nullable<string>>(null);
   const [isToggled, setIsToggled] = useState(false);
-  const [previousPage, setPreviousPage] = useState<Nullable<string>>(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState<Nullable<number>>(null);
-  const [totalApiPages, setTotalApiPages] = useState<Nullable<number>>(null);
   const [url, setUrl] = useState("");
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
@@ -170,9 +169,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   };
 
   const handleSubmit = (values: PatientSearchCriteria) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
@@ -212,10 +208,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setLoading(true);
     getFromOpenElisServer(url + "&page=" + pageNumber, fetchPatientResults);
   };
-
-  const loadNextResultsPage = () => loadResultsPage(nextPage);
-
-  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadResultsPage,
+  });
 
   const toggle = () => {
     setIsToggled((prev) => !prev);
@@ -259,27 +255,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setServerPageSize((previous) =>
       serverPageSizeOf(res.paging, patientsResults.length, previous),
     );
-    if (res.paging) {
-      const { totalPages, currentPage } = res.paging as {
-        totalPages: string;
-        currentPage: string;
-      };
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      }
-    }
     setLoading(false);
   };
 
@@ -576,47 +551,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
           </Form>
         )}
       </Formik>
-      {pagination && (
-        <Grid>
-          <Column lg={8}>
-            {" "}
-            <div></div>
-          </Column>
-          <Column lg={14} />
-          <Column
-            lg={2}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "10px",
-              width: "110%",
-            }}
-          >
-            <Link>
-              {currentApiPage} / {totalApiPages}
-            </Link>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Button
-                hasIconOnly
-                id="loadpreviousresults"
-                onClick={loadPreviousResultsPage}
-                disabled={previousPage != null ? false : true}
-                renderIcon={ArrowLeft}
-                iconDescription="previous"
-              ></Button>
-              <Button
-                hasIconOnly
-                id="loadnextresults"
-                onClick={loadNextResultsPage}
-                disabled={nextPage != null ? false : true}
-                renderIcon={ArrowRight}
-                iconDescription="next"
-              ></Button>
-            </div>
-          </Column>
-        </Grid>
-      )}
+      {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
         rows={patientSearchResults}
         headers={patientSearchHeaderData}

@@ -34,9 +34,11 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import {
+  serverPageArrowsProps,
   serverPageSizeOf,
   serverPaginationProps,
 } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -525,6 +527,10 @@ const UnifiedResults: React.FC = () => {
   );
 
   const pagedRows = filteredRows;
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadWorklistPage,
+  });
 
   const visibleAnalysisIds = useMemo(
     () => pagedRows.map((row) => row.analysisId),
@@ -1284,6 +1290,7 @@ const UnifiedResults: React.FC = () => {
         )}
 
         <Column lg={16} md={8} sm={4}>
+          {arrows.show && <ServerPageArrows {...arrows} />}
           <TableContainer>
             {/* The expanded panel renders a second table (History) inside this
                 one, so naming the outer table is what tells a screen-reader

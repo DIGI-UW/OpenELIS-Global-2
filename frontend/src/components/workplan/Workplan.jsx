@@ -33,7 +33,12 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { ConfigurationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EQABadge from "../eqa/EQABadge";
-import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 
 export default function Workplan(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -61,6 +66,8 @@ export default function Workplan(props) {
     (pageNumber) => pageLoader.current?.(pageNumber),
     [],
   );
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   const type = props.type;
   let title = "";
@@ -255,6 +262,7 @@ export default function Workplan(props) {
             <Grid fullWidth={true}>
               <Column sm={4} md={8} lg={16}>
                 <>
+                  {arrows.show && <ServerPageArrows {...arrows} />}
                   <Table size={"sm"} data-cy="workplanResultsTable">
                     <TableHead>
                       <TableRow>

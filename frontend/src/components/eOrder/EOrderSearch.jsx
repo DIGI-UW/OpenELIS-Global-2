@@ -2,7 +2,6 @@ import {
   Button,
   Checkbox,
   Column,
-  Link,
   Select,
   SelectItem,
   TextInput,
@@ -10,7 +9,6 @@ import {
 } from "@carbon/react";
 import { React, useEffect, useState, useContext } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
@@ -35,11 +33,6 @@ const EOrderSearch = ({
   const [allInfo, setAllInfo] = useState(false);
   const [allInfo2, setAllInfo2] = useState(false);
   const [searchCompleted, setSearchCompleted] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [loading, setLoading] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -58,9 +51,6 @@ const EOrderSearch = ({
 
   const handleOrderStatus = (response) => {
     setStatusOptions(response);
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
   };
 
   function searchByIdentifier() {
@@ -94,29 +84,6 @@ const EOrderSearch = ({
   const parseEOrders = (response) => {
     setSearchCompleted(true);
     onPageReceived?.(response);
-    if (response && response.paging) {
-      const { totalPages, currentPage } = response.paging;
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      } else {
-        setNextPage(null);
-        setPreviousPage(null);
-        setPagination(false);
-      }
-    }
     setHasEOrders(
       response.eOrders instanceof Array && response.eOrders.length > 0,
     );
@@ -153,10 +120,6 @@ const EOrderSearch = ({
       parseEOrders,
     );
   };
-
-  const loadNextResultsPage = () => loadResultsPage(nextPage);
-
-  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
 
   useEffect(() => {
     registerPageLoader?.(loadResultsPage);
@@ -297,46 +260,6 @@ const EOrderSearch = ({
       <Column lg={16} md={8} sm={4}>
         {loading && <Loading description="Loading Orders..." small={true} />}
       </Column>
-
-      <>
-        <Column lg={14} />
-        <Column
-          lg={2}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "10px",
-            width: "100%",
-          }}
-        >
-          {pagination && (
-            <>
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </>
-          )}
-        </Column>
-      </>
     </>
   );
 };

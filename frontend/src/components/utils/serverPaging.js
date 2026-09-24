@@ -31,6 +31,25 @@ export function hasServerPages(paging) {
 }
 
 /**
+ * The props of the arrows above a paged table, driven by the same paging
+ * announcement as the Carbon Pagination below it, so both name the same page
+ * and ask the server for the same one.
+ */
+export function serverPageArrowsProps({ paging, onPageRequest }) {
+  const currentPage = Number(paging?.currentPage) || 1;
+  const totalPages = Number(paging?.totalPages) || 1;
+  return {
+    show: totalPages > 1,
+    currentPage,
+    totalPages,
+    onPrevious: () => onPageRequest(currentPage - 1),
+    onNext: () => onPageRequest(currentPage + 1),
+    previousDisabled: currentPage <= 1,
+    nextDisabled: currentPage >= totalPages,
+  };
+}
+
+/**
  * Carbon Pagination props that make Carbon's page the server's page. The item
  * count Carbon would print is replaced by the rows actually on screen, since
  * the server does not say how many rows the pages not yet fetched hold.

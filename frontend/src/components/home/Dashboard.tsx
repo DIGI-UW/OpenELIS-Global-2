@@ -21,6 +21,7 @@ import {
   TabList,
   Tag,
 } from "@carbon/react";
+import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
 import {
   Minimize,
@@ -35,11 +36,13 @@ import {
   EmailNew,
   Time,
   WarningSquareFilled,
-  ArrowLeft,
-  ArrowRight,
 } from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
-import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
 
 // Map each metric type to a representative icon shown in the top-left of its card.
 const TILE_ICONS: Record<string, any> = {
@@ -210,15 +213,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     );
   };
 
-  const currentApiPage = Number(paging?.currentPage) || 1;
-  const totalApiPages = Number(paging?.totalPages) || 1;
-  const pagination = totalApiPages > 1;
-  const nextPage = currentApiPage < totalApiPages ? currentApiPage + 1 : null;
-  const previousPage = currentApiPage > 1 ? currentApiPage - 1 : null;
-
-  const loadNextResultsPage = () => loadResultsPage(nextPage);
-
-  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadResultsPage,
+  });
 
   const loadCount = (data) => {
     if (componentMounted.current) {
@@ -581,43 +579,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
-                    {pagination && (
-                      <Grid>
-                        <Column lg={14} />
-                        <Column
-                          lg={2}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "10px",
-                            width: "110%",
-                          }}
-                        >
-                          <Link>
-                            {currentApiPage} / {totalApiPages}
-                          </Link>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <Button
-                              hasIconOnly
-                              id="loadpreviousresults"
-                              onClick={loadPreviousResultsPage}
-                              disabled={previousPage == null}
-                              renderIcon={ArrowLeft}
-                              iconDescription="previous"
-                            ></Button>
-                            <Button
-                              hasIconOnly
-                              id="loadnextresults"
-                              onClick={loadNextResultsPage}
-                              disabled={nextPage == null}
-                              renderIcon={ArrowRight}
-                              iconDescription="next"
-                            ></Button>
-                          </div>
-                        </Column>
-                      </Grid>
-                    )}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
@@ -674,6 +635,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         </Column>
                       </Grid>
                     )}
+                    {arrows.show && <ServerPageArrows {...arrows} />}
                     <DataTable
                       rows={data.filter((item) =>
                         tilesWithTabs.includes(selectedTile.type) &&

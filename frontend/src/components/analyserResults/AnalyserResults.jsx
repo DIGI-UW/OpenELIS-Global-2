@@ -24,7 +24,11 @@ import { Link as RouterLink } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
-import { serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -79,6 +83,10 @@ const AnalyserResults = (props) => {
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
   );
@@ -624,6 +632,7 @@ const AnalyserResults = (props) => {
       >
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
               data={patientResults}
               columns={columns}
