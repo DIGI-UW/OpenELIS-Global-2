@@ -48,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EQAShipmentServiceImpl implements EQAShipmentService {
 
-    /** FR-V2.5-14: the grace the monitor allows before a shipment reads overdue. */
+    /** The grace the monitor allows before a shipment reads overdue. */
     private static final int OVERDUE_GRACE_BUSINESS_DAYS = 2;
 
     @Autowired
@@ -121,7 +121,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         for (EQACycleParticipant participant : eqaCycleParticipantDAO.findActiveByCycleIds(cycleIds)) {
             rosterCounts.merge(participant.getCycle().getId(), 1, Integer::sum);
         }
-        // FR-V2.5-01 "Last distribution": the newest shipped date across the scheme's
+        // "Last distribution": the newest shipped date across the scheme's
         // cycles, one aggregate query for the whole list.
         Map<Long, Timestamp> lastShippedByCycle = new LinkedHashMap<>();
         for (Object[] row : shipmentService.getLatestShippedDatesByEqaCycleIds(cycleIds)) {
@@ -166,7 +166,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             scheme.put("schemeType", row[3] == null ? null : ((EQASchemeType) row[3]).name());
             scheme.put("discipline", row[5]);
             scheme.put("enrolledParticipantCount", enrolled);
-            // FR-V2.5-01: a dormant scheme must read 0, not its lifetime cycle total.
+            // A dormant scheme must read 0, not its lifetime cycle total.
             scheme.put("activeCycleCount", activeCycleCount);
             scheme.put("lastDistribution", lastDistribution == null ? null : lastDistribution.toString());
             scheme.put("cycles", cycleDtos);
@@ -200,7 +200,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public Map<String, Object> getPrepStatus(Long cycleId) {
         EQACycle cycle = cycle(cycleId);
-        // The gate the transition enforces, evaluated once (T-10): its blockers and its
+        // The gate the transition enforces, evaluated once: its blockers and its
         // arithmetic are what this renders, so the button and the rule agree.
         EQAPrepGate gate = eqaCycleService.evaluatePrepGate(cycle);
 
@@ -225,7 +225,8 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         status.put("cycleId", cycleId);
         status.put("cycleName", cycle.getCycleName());
         status.put("cycleStatus", cycle.getStatus() == null ? null : cycle.getStatus().name());
-        // FR-V2.5-02 step 4, read where the cycle is worked on: the operator packing a
+        // The distribution method, read where the cycle is worked on: the operator
+        // packing a
         // panel needs to know whether scores go back over FHIR or as a file.
         status.put("distributionMethod",
                 cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
@@ -237,7 +238,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         status.put("panels", panelDtos);
         status.put("blockers", gate.blockers());
         // The button state the workbench renders; the gate itself is enforced on the
-        // transition (T-10), so a stale client cannot ship past it.
+        // transition, so a stale client cannot ship past it.
         status.put("readyToShipAllowed", gate.isClear() && cycle.getStatus() == EQACycleStatus.PREP_IN_PROGRESS);
         return status;
     }
@@ -320,7 +321,8 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         shipment.setSystemUserId(userId(sysUserId));
         shipment = isNew ? shipmentService.createShipment(shipment) : shipmentService.updateShipment(shipment);
 
-        // A packed box waiting for dispatch. Since T-40 the box genuinely holds its
+        // A packed box waiting for dispatch. Since box contents were wired the box
+        // genuinely holds its
         // panel material, so markReadyToSend()'s "no contents" refusal is a real check
         // here rather than an obstacle to route around.
         if (box.getState() == BoxState.DRAFT) {
@@ -402,7 +404,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         }
 
         // Inventory follows the material: each dispatched participant consumes one
-        // aliquot per panel sample (FR-V2.5-12).
+        // aliquot per panel sample.
         for (EQAPanel panel : panels) {
             panel.setAliquotsShipped(
                     zeroIfNull(panel.getAliquotsShipped()) + samplesPerPanel.get(panel.getId()) * dispatching.size());
@@ -417,7 +419,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         return rows;
     }
 
-    // ---- FR-V2.5-14 receipt monitoring ----
+    // ---- receipt monitoring ----
 
     @Override
     @Transactional(readOnly = true)
@@ -426,7 +428,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         Map<Long, ShippingBox> latest = latestBoxes(cycleId);
         Map<Integer, EQAPanelReceipt> receipts = receiptsByShipment(cycleId);
         List<Map<String, Object>> rows = new ArrayList<>();
-        // The cycle's roster (T-24), not the scheme's enrollments: a lab enrolled
+        // The cycle's roster, not the scheme's enrollments: a lab enrolled
         // after this cycle was created is not one of its participants.
         for (Long organizationId : eqaCycleService.participantOrganizationIds(cycle)) {
             ShippingBox box = latest.get(organizationId);
@@ -446,7 +448,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         }
         Shipment shipment = box.getShipment();
         if (shipment.getStatus() == ShipmentStatus.DELIVERED) {
-            // Already receipted, by the participant (T-15) or by an earlier click.
+            // Already receipted, by the participant or by an earlier click.
             return toReceiptRow(organizationId, box, shipment, receiptsByShipment(cycleId));
         }
         if (box.getState() != BoxState.SENT && box.getState() != BoxState.IN_TRANSIT) {
@@ -466,9 +468,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     }
 
     /**
-     * AC-V2.5-13: once every active participant holds its panel there is nothing
-     * left to wait for, so the cycle walks shipped → delivered → submissions_open
-     * on its own. Each edge keeps its own audit row, as the machine requires.
+     * Once every active participant holds its panel there is nothing left to wait
+     * for, so the cycle walks shipped → delivered → submissions_open on its own.
+     * Each edge keeps its own audit row, as the machine requires.
      */
     private void openSubmissionsIfAllDelivered(EQACycle cycle, String sysUserId) {
         if (cycle.getStatus() != EQACycleStatus.SHIPPED) {
@@ -521,7 +523,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         }
     }
 
-    // ---- FR-V2.5-15 reprovisioning ----
+    // ---- reprovisioning ----
 
     @Override
     public Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId) {
@@ -548,7 +550,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             int takeFromReserve = Math.min(reserved, samples);
             int beyondReserve = samples - takeFromReserve;
             if (beyondReserve > 0) {
-                // FR-V2.5-15: an empty reserve is a hard warning, not a refusal — but it
+                // An empty reserve is a hard warning, not a refusal — but it
                 // takes a written justification, and the material still has to exist.
                 if (GenericValidator.isBlankOrNull(overrideNote)) {
                     throw new IllegalStateException(
@@ -589,7 +591,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         shipment.setSysUserId(sysUserId);
         shipment.setSystemUserId(userId(sysUserId));
 
-        // Repeat material comes out of the reserve first (FR-V2.5-15); whatever the
+        // Repeat material comes out of the reserve first; whatever the
         // reserve could not cover was justified above and comes out of production.
         for (EQAPanel panel : panels) {
             panel.setAliquotsReserved(zeroIfNull(panel.getAliquotsReserved()) - fromReserve.get(panel.getId()));
@@ -651,10 +653,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     /**
      * The box that currently represents each participant: its original, or the
-     * newest repeat once one has been sent (FR-V2.5-15). Repeats are suffixed
-     * {@code -R1}, {@code -R2}, … on the participant's base code — matched on that
-     * exact suffix rather than a bare prefix, because one organization id can be
-     * the prefix of another.
+     * newest repeat once one has been sent. Repeats are suffixed {@code -R1},
+     * {@code -R2}, … on the participant's base code — matched on that exact suffix
+     * rather than a bare prefix, because one organization id can be the prefix of
+     * another.
      */
     private Map<Long, ShippingBox> latestBoxes(Long cycleId) {
         Map<Long, ShippingBox> latest = new LinkedHashMap<>();
@@ -747,9 +749,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     }
 
     /**
-     * FR-V2.5-14: overdue is two <em>business</em> days past the expected delivery
-     * — a Friday delivery is not chased on Sunday. A shipment with no expected date
-     * is never overdue: nothing was promised to be late against.
+     * Overdue is two <em>business</em> days past the expected delivery — a Friday
+     * delivery is not chased on Sunday. A shipment with no expected date is never
+     * overdue: nothing was promised to be late against.
      */
     private static boolean isOverdue(Timestamp estimatedDelivery) {
         if (estimatedDelivery == null) {
@@ -771,11 +773,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
      * carries a target value.
      *
      * <p>
-     * The box is packed in the same breath (T-40): one contents row per panel
-     * sample, the grain dispatch already consumes aliquots at (FR-V2.5-12), so a
-     * provider box is never contentless. Inventory stays owned by
-     * {@code eqa_panel.aliquots_shipped} — these rows say what is in the box, they
-     * do not count it a second time.
+     * The box is packed in the same breath: one contents row per panel sample, the
+     * grain dispatch already consumes aliquots at, so a provider box is never
+     * contentless. Inventory stays owned by {@code eqa_panel.aliquots_shipped} —
+     * these rows say what is in the box, they do not count it a second time.
      */
     private ShippingBox createBox(EQACycle cycle, Long organizationId, String boxCode, String sysUserId) {
         Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));

@@ -51,7 +51,7 @@ public class EQADeadlineAlertScheduler {
     private static final long ESCALATION_HOURS = 4;
 
     /**
-     * FR-V2.2-14: digest thresholds, in days before a round's submission deadline.
+     * Digest thresholds, in days before a round's submission deadline.
      */
     private static final long[] DIGEST_DAYS = { 7, 3, 1 };
 
@@ -89,7 +89,7 @@ public class EQADeadlineAlertScheduler {
     @Autowired
     private EQACycleSubmissionService cycleSubmissionService;
 
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void checkEQADeadlines() {
         logger.debug("Running EQA deadline check...");
         Timestamp now = Timestamp.from(Instant.now());
@@ -120,7 +120,7 @@ public class EQADeadlineAlertScheduler {
         }
     }
 
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void checkSampleExpirations() {
         logger.debug("Running sample expiration check...");
         Timestamp horizon7d = Timestamp.from(Instant.now().plus(7, ChronoUnit.DAYS));
@@ -146,7 +146,7 @@ public class EQADeadlineAlertScheduler {
         }
     }
 
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void escalateUnacknowledgedAlerts() {
         logger.debug("Running alert escalation check...");
         // Push the OPEN/CRITICAL/unacknowledged/age filter into HQL so we only
@@ -165,16 +165,16 @@ public class EQADeadlineAlertScheduler {
     }
 
     /**
-     * FR-V2.2-14: 7/3/1-day submission-deadline digest. Alert rows are keyed to the
-     * ROUND, not the cycle: createAlert dedupes blindly on (type, entityType,
-     * entityId) within 30 minutes, so cycle-keyed rows would fold two different
-     * thresholds fired in one tick — a cycle whose round 1 is due tomorrow and
-     * round 2 in three days would permanently lose the second reminder. The
-     * business dedupe the FRS asks for — one alert per (cycle, threshold), ever —
-     * is the explicit alreadyAlerted check, which also outlives createAlert's
-     * 30-minute window across 5-minute reschedules.
+     * 7/3/1-day submission-deadline digest. Alert rows are keyed to the ROUND, not
+     * the cycle: createAlert dedupes blindly on (type, entityType, entityId) within
+     * 30 minutes, so cycle-keyed rows would fold two different thresholds fired in
+     * one tick — a cycle whose round 1 is due tomorrow and round 2 in three days
+     * would permanently lose the second reminder. The business dedupe the
+     * specification asks for — one alert per (cycle, threshold), ever — is the
+     * explicit alreadyAlerted check, which also outlives createAlert's 30-minute
+     * window across 5-minute reschedules.
      */
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void sendCycleDeadlineDigest() {
         logger.debug("Running EQA cycle deadline digest...");
         LocalDate today = LocalDate.now(clock);
@@ -235,10 +235,10 @@ public class EQADeadlineAlertScheduler {
     }
 
     /**
-     * FR-V2.4-06 automatic unblind: any distributed in-house panel whose unblind
-     * date has arrived is unblinded and scored. Idempotent — a scored panel is no
-     * longer DISTRIBUTED, so a re-run finds nothing (AC-V2.4-11); a per-panel
-     * failure is logged and never blocks the other panels.
+     * Automatic unblind: any distributed in-house panel whose unblind date has
+     * arrived is unblinded and scored. Idempotent — a scored panel is no longer
+     * DISTRIBUTED, so a re-run finds nothing; a per-panel failure is logged and
+     * never blocks the other panels.
      *
      * <p>
      * Day granularity is deliberate (decided with the team, 2026-08-20):
@@ -249,7 +249,7 @@ public class EQADeadlineAlertScheduler {
      * and is not what a lab has asked for yet. Until then, no caller should imply a
      * time of day in the UI or in a label.
      */
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void unblindDueInHousePanels() {
         LocalDate today = LocalDate.now(clock);
         for (EQAPanel panel : eqaPanelDAO.getAllMatching("status", EQAPanelStatus.DISTRIBUTED)) {
@@ -268,13 +268,12 @@ public class EQADeadlineAlertScheduler {
     }
 
     /**
-     * AC-V2.4-06: a result answered after its panel unblinded is scored on the next
-     * pass, keeping its lateness flag. Rides the sweep the unblind pass already
-     * runs on rather than adding a second scheduler (the house rule), and reads the
-     * missed rows rather than the scored panels, so the work shrinks as they are
-     * answered.
+     * A result answered after its panel unblinded is scored on the next pass,
+     * keeping its lateness flag. Rides the sweep the unblind pass already runs on
+     * rather than adding a second scheduler (the house rule), and reads the missed
+     * rows rather than the scored panels, so the work shrinks as they are answered.
      */
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void scoreLateInHouseResults() {
         try {
             int scored = blindingService.scoreLateResults(SCHEDULER_USER);
@@ -287,13 +286,13 @@ public class EQADeadlineAlertScheduler {
     }
 
     /**
-     * FR-V2.2-05 automatic submission: bridge each participant cycle's validated
-     * results onto its own rows, advance the participant state machine, and post to
-     * the provider once the review window has elapsed. Per-cycle calls in a
-     * try/catch, like the unblind pass above — one unreachable cycle must not abort
-     * the sweep, and the submission window makes a 5-minute cadence plenty.
+     * Automatic submission: bridge each participant cycle's validated results onto
+     * its own rows, advance the participant state machine, and post to the provider
+     * once the review window has elapsed. Per-cycle calls in a try/catch, like the
+     * unblind pass above — one unreachable cycle must not abort the sweep, and the
+     * submission window makes a 5-minute cadence plenty.
      */
-    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelayString = "${org.openelisglobal.eqa.alert.poll.frequency:300000}")
     public void advanceEQASubmissions() {
         logger.debug("Running EQA submission sweep...");
         for (Long cycleId : cycleSubmissionService.findAdvanceCandidates()) {

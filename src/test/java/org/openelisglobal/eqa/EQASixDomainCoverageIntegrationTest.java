@@ -27,9 +27,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-609 [EQA V2.1 / T-08] — AC-V2.1-23: all six ePT-validated test domains
- * must be expressible with standard test-catalog entries plus one scheme row,
- * with no domain-specific schema branches.
+ * OGC-609 [EQA V2.1] — all six ePT-validated test domains must be expressible
+ * with standard test-catalog entries plus one scheme row, with no
+ * domain-specific schema branches.
  *
  * <p>
  * The invariant this protects is a design one: the ePT crosswalk (§3 item A)
@@ -116,7 +116,7 @@ public class EQASixDomainCoverageIntegrationTest extends BaseWebContextSensitive
             EQAProgram scheme = new EQAProgram();
             scheme.setName(domain.name + " PT");
             scheme.setSchemeType(domain.schemeType);
-            // BR-004: only the in-house domains may omit a provider.
+            // Only the in-house domains may omit a provider.
             scheme.setProvider(domain.schemeType == EQASchemeType.IN_HOUSE ? null : "NHLS");
             scheme.setSysUserId(USER);
             Long schemeId = eqaProgramService.insert(scheme);

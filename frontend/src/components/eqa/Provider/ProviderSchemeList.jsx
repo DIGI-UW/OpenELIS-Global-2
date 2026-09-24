@@ -37,7 +37,7 @@ const breadcrumbs = [
 ];
 
 /**
- * Provider scheme list (FR-V2.5-01) — the entry point to the provider lane, and
+ * Provider scheme list — the entry point to the provider lane, and
  * what qa/030 points the EQA Provider menu row at.
  *
  * A scheme appears here when another laboratory is actively enrolled in it,
@@ -45,7 +45,7 @@ const breadcrumbs = [
  * in belongs on My Cycles instead. Each row expands to the scheme's cycles,
  * every one of them a link into the prep and shipping workbenches.
  *
- * ponytail: rows come from one server read and are neither filtered nor paged
+ * Rows come from one server read and are neither filtered nor paged
  * here — a lab provides a handful of schemes, and the server already groups the
  * counts. Add a filter when a deployment has enough schemes to need one.
  */
@@ -55,7 +55,7 @@ const ProviderSchemeList = () => {
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
 
-  // FR-V2.5-01 role-conditional composition (T-39): the provider panel only
+  // Role-conditional composition: the provider panel only
   // renders for the provider grant; a participant-only viewer gets links to
   // the participant surfaces instead of a blank page. The menu row itself is
   // visible to every EQA viewer today (menu reads are not permission-filtered)

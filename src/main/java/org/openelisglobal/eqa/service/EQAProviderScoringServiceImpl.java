@@ -16,8 +16,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
-import org.openelisglobal.analyte.service.AnalyteService;
-import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQADistributionDAO;
@@ -56,11 +54,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EQAProviderScoringServiceImpl implements EQAProviderScoringService {
 
-    /** FR-V2.5-07: unacceptable in 2 of the last 3 cycles is persistent failure. */
+    /** Unacceptable in 2 of the last 3 cycles is persistent failure. */
     private static final int PERSISTENT_FAILURE_WINDOW = 3;
     private static final int PERSISTENT_FAILURE_THRESHOLD = 2;
 
-    /** FR-V2.5-05's window: a laboratory's last four scored cycles. */
+    /** The performance window: a laboratory's last four scored cycles. */
     private static final int ROLLING_WINDOW = 4;
 
     private static final String ACTIVE_ENROLLMENT = "Active";
@@ -212,7 +210,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             // Only the free-text cells are escaped. Running a decimal through csvEscape
             // would quote a negative Z as a formula and print it as '-0.28 (found
             // driving the download, 2026-08-24).
-            String analyte = analyteName(analyteIdOrNull(result.getTestId()));
+            String analyte = eqaPanelService.analyteName(analyteIdOrNull(result.getTestId()));
             csv.append(StringUtil.csvEscape(testName(result.getTestId()))).append(',')
                     .append(analyte == null ? "" : StringUtil.csvEscape(analyte)).append(',')
                     .append(result.getResultText() != null ? StringUtil.csvEscape(result.getResultText())
@@ -257,7 +255,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             row.put("testName", testName(assignment.getTestId()));
             Long analyteId = analyteIdOrNull(assignment.getTestId());
             row.put("analyteId", analyteId);
-            row.put("analyteName", analyteName(analyteId));
+            row.put("analyteName", eqaPanelService.analyteName(analyteId));
             EQAResult result = onFile.get(assignment.getTestId());
             row.put("reported", result == null ? null : reportedOf(result));
             row.put("performanceStatus", result == null || result.getPerformanceStatus() == null ? null
@@ -355,7 +353,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         EQACycle cycle = cycle(cycleId);
         Map<String, Long> testByAnalyteName = new HashMap<>();
         for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            String name = analyteName(analyteIdOrNull(assignment.getTestId()));
+            String name = eqaPanelService.analyteName(analyteIdOrNull(assignment.getTestId()));
             if (Boolean.TRUE.equals(assignment.getIsActive()) && name != null) {
                 testByAnalyteName.put(name.trim().toLowerCase(), assignment.getTestId());
             }
@@ -479,14 +477,6 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         return testId == null ? null : eqaPanelService.findAnalyteIdForTest(String.valueOf(testId));
     }
 
-    private String analyteName(Long analyteId) {
-        if (analyteId == null) {
-            return null;
-        }
-        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
-        return analyte == null ? null : analyte.getAnalyteName();
-    }
-
     // ---- helpers ----
 
     private EQACycle cycle(Long cycleId) {
@@ -547,7 +537,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         return distribution;
     }
 
-    /** Each edge keeps its own audit row, as the state machine requires (T-10). */
+    /** Each edge keeps its own audit row, as the state machine requires. */
     private void advanceToScored(EQACycle cycle, String sysUserId) {
         int from = SCORING_PATH.indexOf(cycle.getStatus());
         for (int step = from + 1; step < SCORING_PATH.size(); step++) {
@@ -557,9 +547,9 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     }
 
     /**
-     * FR-V2.5-07: unacceptable in at least 2 of the participant's last 3 cycles in
-     * this scheme, the current one included. Cycles the participant did not take
-     * part in are not counted against it — only cycles that produced results.
+     * Unacceptable in at least 2 of the participant's last 3 cycles in this scheme,
+     * the current one included. Cycles the participant did not take part in are not
+     * counted against it — only cycles that produced results.
      */
     private boolean isPersistentFailure(EQACycle cycle, Long organizationId) {
         List<EQACycle> cycles = eqaCycleDAO.getAllMatchingOrdered("scheme.id", cycle.getScheme().getId(), "cycleNumber",
@@ -626,11 +616,11 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     }
 
     /**
-     * One enrollment per laboratory: the current one. Withdrawal is terminal
-     * (BR-013), so a laboratory re-admitted after leaving holds two rows, and the
-     * page must show it once with the status it holds now — otherwise a re-admitted
-     * participant appears twice with identical figures, since the rate is a
-     * property of the organization rather than of the paperwork.
+     * One enrollment per laboratory: the current one. Withdrawal is terminal, so a
+     * laboratory re-admitted after leaving holds two rows, and the page must show
+     * it once with the status it holds now — otherwise a re-admitted participant
+     * appears twice with identical figures, since the rate is a property of the
+     * organization rather than of the paperwork.
      */
     private List<EQAProgramEnrollment> currentEnrollments(Long schemeId) {
         Map<Long, EQAProgramEnrollment> byOrganization = new LinkedHashMap<>();

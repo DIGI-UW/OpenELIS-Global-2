@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- OGC-609 [EQA V2.1 / T-08] — catalog rows for the cycle-spine tests.
-    Eight analyte/test pairs covering the six ePT-validated domains of AC-V2.1-23
-    (COVID-19 and TB each need two, qualitative and quantitative/molecular).
-    Nothing domain-specific lives in the EQA schema — these are ordinary test-catalog
-    entries, which is exactly what the six-domain coverage test asserts. -->
+<!-- OGC-609 [EQA V2.1] — catalog rows for the cycle-spine tests. Eight analyte/test
+    pairs covering the six ePT-validated domains (COVID-19 and TB each need two,
+    qualitative and quantitative/molecular). Nothing domain-specific lives in
+    the EQA schema — these are ordinary test-catalog entries, which is exactly
+    what the six-domain coverage test asserts. -->
 <dataset>
 
     <analyte id="9801" analyte_id="9801"

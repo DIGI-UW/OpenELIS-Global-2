@@ -18,12 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Analyst Competency (OGC-611, FR-V2.3-06): the per-analyst ISO 15189 §6.2.3
- * evidence, banded Competent / Under review / Not competent.
+ * Analyst Competency (OGC-611): the per-analyst ISO 15189 §6.2.3 evidence,
+ * banded Competent / Under review / Not competent.
  *
  * <p>
- * Read-only by construction — competency events are service-written
- * (AC-V2.1-21), so there is deliberately no create handler here.
+ * Read-only by construction — competency events are service-written, so there
+ * is deliberately no create handler here.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -47,10 +47,10 @@ public class EQAAnalystCompetencyRestController extends BaseRestController {
     }
 
     /**
-     * Who result entry may record as the analyst on this scheme's samples
-     * (FR-V2.3-04). The scheme's opt-in list when it has one, every active user
-     * when it does not — FR-V2.1-08 makes an empty list permissive, and answering
-     * that here keeps the rule out of the grid.
+     * Who result entry may record as the analyst on this scheme's samples. The
+     * scheme's opt-in list when it has one, every active user when it does not —
+     * the specification makes an empty list permissive, and answering that here
+     * keeps the rule out of the grid.
      */
     @GetMapping(value = "/schemes/{schemeId}/eligible-analysts", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> eligibleAnalysts(@PathVariable Long schemeId) {

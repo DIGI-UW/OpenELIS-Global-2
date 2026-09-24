@@ -6,8 +6,8 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-609 [EQA V2.1 / T-08] Schema spine 1 of 2: cycle, round, cycle-state
-    audit (FR-V2.1-01/02/21).
+    OGC-609 [EQA V2.1] Schema spine 1 of 2: cycle, round, cycle-state
+    audit (02/21).
 
     Conventions follow the V1 EQA DDL (3.3.x.x/eqa-001..011), NOT qa/013's
     audited-entity style, because these entities extend the eqa module's
@@ -16,25 +16,25 @@
       * sys_user_id VARCHAR(36) NOT NULL + last_updated (@Version) columns.
       * No reference_tables registration — the eqa module is not opted into
         the generic audit trail; cycle history has its own dedicated audit
-        table (eqa_cycle_state_transition) per FR-V2.1-21.
+        table (eqa_cycle_state_transition).
 
-    eqa_cycle.status holds BOTH state machines (participant FR-V2.1-04 and
-    provider FR-V2.1-18) — which enum applies depends on whether this lab is
+    eqa_cycle.status holds BOTH state machines (participant and
+    provider) — which enum applies depends on whether this lab is
     the scheme's provider. The CHECK is the union; transition legality is
-    enforced at the service layer (T-10), not here.
+    enforced at the service layer, not here.
 
     scheme_id references eqa_program: gate G1 (2026-08-13) kept the V1 table
     name and made "scheme" the domain word — new columns use the domain word.
 
     Enum values are stored UPPERCASE (Java @Enumerated(STRING) names, matching
-    the V1 'DRAFT' precedent); FRS lowercase spellings are spec labels only.
+    the V1 'DRAFT' precedent); specification lowercase spellings are spec labels only.
     -->
 
     <changeSet author="openelisglobal" id="eqa-cycle-001-create-eqa-cycle">
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_cycle" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>EQA cycle: one run of a scheme (FR-V2.1-01)</comment>
+        <comment>EQA cycle: one run of a scheme</comment>
         <createSequence sequenceName="eqa_cycle_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_cycle">
             <column name="id" type="numeric(10,0)">
@@ -86,7 +86,7 @@
             baseTableSchemaName="clinlims" baseTableName="eqa_cycle" baseColumnNames="created_by"
             referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
 
-        <!-- Union of participant (FR-V2.1-04) and provider (FR-V2.1-18) machines. -->
+        <!-- Union of participant and provider machines. -->
         <sql>
             ALTER TABLE clinlims.eqa_cycle
             ADD CONSTRAINT eqa_cycle_status_chk
@@ -105,7 +105,7 @@
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_round" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>EQA round: one distribution event within a cycle (FR-V2.1-02)</comment>
+        <comment>EQA round: one distribution event within a cycle</comment>
         <createSequence sequenceName="eqa_round_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_round">
             <column name="id" type="numeric(10,0)">
@@ -123,7 +123,7 @@
             <column name="distribution_date" type="TIMESTAMP"/>
             <column name="submission_deadline" type="TIMESTAMP"/>
             <column name="sample_count" type="INT"/>
-            <!-- No CHECK: the FRS never enumerates round status; plain String
+            <!-- No CHECK: the specification never enumerates round status; plain String
                  in Java too (EQAProgramEnrollment.status precedent). -->
             <column name="status" type="VARCHAR(30)"/>
             <column name="sys_user_id" type="VARCHAR(36)">
@@ -155,7 +155,7 @@
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_cycle_state_transition" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Immutable cycle-state audit: who/what/why per transition (FR-V2.1-21)</comment>
+        <comment>Immutable cycle-state audit: who/what/why per transition</comment>
         <createSequence sequenceName="eqa_cycle_state_transition_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_cycle_state_transition">
             <column name="id" type="numeric(10,0)">
@@ -165,7 +165,7 @@
                 <constraints nullable="false"/>
             </column>
             <!-- TEXT, not enum: this table records BOTH state machines, whose
-                 enums differ (FR-V2.1-21). NULL prior_state = cycle creation. -->
+                 enums differ. NULL prior_state = cycle creation. -->
             <column name="prior_state" type="TEXT"/>
             <column name="new_state" type="TEXT">
                 <constraints nullable="false"/>
@@ -224,7 +224,7 @@
                 'PANEL_SEAL', 'PANEL_UNBLIND', 'HOMOGENEITY_QC_PASSED', 'MANUAL_OVERRIDE', 'SCHEDULED_JOB'))
         </sql>
 
-        <!-- Timeline queries (V2.5 FR-V2.5-16 cycle-timeline Accordion). -->
+        <!-- Timeline queries (the cycle-timeline accordion). -->
         <createIndex schemaName="clinlims" tableName="eqa_cycle_state_transition"
             indexName="idx_eqa_cycle_state_transition_cycle_occurred">
             <column name="cycle_id"/>

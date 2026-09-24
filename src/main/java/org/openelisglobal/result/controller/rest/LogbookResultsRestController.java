@@ -689,10 +689,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     }
 
     /**
-     * AC-V2.3-08 — a scheme that captures analysts may not have a result saved
-     * without one. Refused before anything persists, so a half-attributed save
-     * cannot happen; the grid marks the same rows invalid, and this is the contract
-     * for any other caller.
+     * — a scheme that captures analysts may not have a result saved without one.
+     * Refused before anything persists, so a half-attributed save cannot happen;
+     * the grid marks the same rows invalid, and this is the contract for any other
+     * caller.
      *
      * <p>
      * Whether the scheme captures analysts is asked of the database, not read off
@@ -738,9 +738,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     }
 
     /**
-     * FR-V2.3-04 — mirrors the analyst chosen on the grid onto the EQA participant
-     * result. Failure here must not lose the clinical result that was just saved,
-     * so it is logged rather than thrown.
+     * — mirrors the analyst chosen on the grid onto the EQA participant result.
+     * Failure here must not lose the clinical result that was just saved, so it is
+     * logged rather than thrown.
      */
     private void recordEqaAnalysts(List<TestResultItem> tests, String sysUserId) {
         for (TestResultItem item : tests) {

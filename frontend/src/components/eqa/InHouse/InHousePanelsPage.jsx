@@ -54,9 +54,6 @@ const InHousePanelsPage = () => {
   const [panels, setPanels] = useState([]);
   const [notification, setNotification] = useState(null);
 
-  const label = (id, fallback) =>
-    intl.formatMessage({ id, defaultMessage: fallback });
-
   const kpis = panelKpis(panels);
 
   const targetValuesCell = (panel) => {
@@ -67,11 +64,12 @@ const InHousePanelsPage = () => {
     if (seal.sealed) {
       return (
         <Tag type="purple">
-          <Locked size={12} /> {label("eqa.inhouse.seal.sealed", "Sealed")}
+          <Locked size={12} />{" "}
+          {intl.formatMessage({ id: "eqa.inhouse.seal.sealed" })}
         </Tag>
       );
     }
-    return `${label("eqa.inhouse.seal.unsealed", "Unsealed")} ${seal.date || ""}`.trim();
+    return `${intl.formatMessage({ id: "eqa.inhouse.seal.unsealed" })} ${seal.date || ""}`.trim();
   };
 
   useEffect(() => {
@@ -104,16 +102,13 @@ const InHousePanelsPage = () => {
           kind: "error",
           message:
             response?.error ||
-            label("eqa.inhouse.unblind.error", "Could not unblind this panel"),
+            intl.formatMessage({ id: "eqa.inhouse.unblind.error" }),
         });
         return;
       }
       setNotification({
         kind: "success",
-        message: label(
-          "eqa.inhouse.unblind.done",
-          "Panel unblinded and scored",
-        ),
+        message: intl.formatMessage({ id: "eqa.inhouse.unblind.done" }),
       });
       reload(schemeId);
     });
@@ -124,7 +119,7 @@ const InHousePanelsPage = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
-          <h3>{label("banner.menu.eqa.inHouse", "In-House Blinding")}</h3>
+          <h3>{intl.formatMessage({ id: "banner.menu.eqa.inHouse" })}</h3>
         </Column>
 
         {notification && (
@@ -140,7 +135,7 @@ const InHousePanelsPage = () => {
         <Column lg={8} md={4} sm={4}>
           <Select
             id="inhouse-scheme-filter"
-            labelText={label("eqa.inhouse.scheme", "In-house scheme")}
+            labelText={intl.formatMessage({ id: "eqa.inhouse.scheme" })}
             value={schemeId}
             onChange={(e) => setSchemeId(e.target.value)}
           >
@@ -157,7 +152,7 @@ const InHousePanelsPage = () => {
         <Column lg={8} md={4} sm={4}>
           {canManage ? (
             <Button onClick={() => history.push("/qa/eqa/in-house/new")}>
-              {label("eqa.inhouse.launchWizard", "Launch blinding wizard")}
+              {intl.formatMessage({ id: "eqa.inhouse.launchWizard" })}
             </Button>
           ) : (
             // Four steps of panel design in front of a seal this persona cannot
@@ -166,36 +161,22 @@ const InHousePanelsPage = () => {
               kind="info"
               lowContrast
               hideCloseButton
-              title={label(
-                "eqa.inhouse.readOnly.title",
-                "Read-only view of in-house panels",
-              )}
-              subtitle={label(
-                "eqa.inhouse.readOnly.body",
-                "Designing and sealing a blinded panel needs the manage grant. The panels below are the whole picture either way.",
-              )}
+              title={intl.formatMessage({ id: "eqa.inhouse.readOnly.title" })}
+              subtitle={intl.formatMessage({ id: "eqa.inhouse.readOnly.body" })}
             />
           )}
         </Column>
 
         {panels.length > 0 &&
           [
-            [
-              "eqa.inhouse.kpi.awaitingDistribution",
-              "Sealed, awaiting distribution",
-              kpis.awaitingDistribution,
-            ],
-            ["eqa.inhouse.kpi.inTesting", "In testing", kpis.inTesting],
-            [
-              "eqa.inhouse.kpi.unblindingSoon",
-              "Unblinding within 7 days",
-              kpis.unblindingSoon,
-            ],
-            ["eqa.inhouse.kpi.closed", "Scored or closed", kpis.closed],
-          ].map(([key, fallback, value]) => (
+            ["eqa.inhouse.kpi.awaitingDistribution", kpis.awaitingDistribution],
+            ["eqa.inhouse.kpi.inTesting", kpis.inTesting],
+            ["eqa.inhouse.kpi.unblindingSoon", kpis.unblindingSoon],
+            ["eqa.inhouse.kpi.closed", kpis.closed],
+          ].map(([key, value]) => (
             <Column key={key} lg={4} md={2} sm={2}>
               <Tile>
-                <div>{label(key, fallback)}</div>
+                <div>{intl.formatMessage({ id: key })}</div>
                 <h4>{value}</h4>
               </Tile>
             </Column>
@@ -203,39 +184,31 @@ const InHousePanelsPage = () => {
 
         <Column lg={16} md={8} sm={4}>
           {schemes.length === 0 ? (
-            <Tile>
-              {label(
-                "eqa.inhouse.noSchemes",
-                "No in-house scheme exists yet. Create one under EQA Program Management, choosing the In-house scheme type.",
-              )}
-            </Tile>
+            <Tile>{intl.formatMessage({ id: "eqa.inhouse.noSchemes" })}</Tile>
           ) : (
             <Table size="sm">
               <TableHead>
                 <TableRow>
                   <TableHeader>
-                    {label("eqa.inhouse.panel", "Panel")}
+                    {intl.formatMessage({ id: "eqa.inhouse.panel" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.cycle", "Cycle")}
+                    {intl.formatMessage({ id: "eqa.inhouse.cycle" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.samples", "Samples")}
+                    {intl.formatMessage({ id: "eqa.inhouse.samples" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.targetValues", "Target values")}
+                    {intl.formatMessage({ id: "eqa.inhouse.targetValues" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.status", "Status")}
+                    {intl.formatMessage({ id: "eqa.inhouse.status" })}
                   </TableHeader>
                   <TableHeader>
-                    {label(
-                      "eqa.inhouse.unblindDate",
-                      "Unblind date (submission deadline)",
-                    )}
+                    {intl.formatMessage({ id: "eqa.inhouse.unblindDate" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.actions", "Actions")}
+                    {intl.formatMessage({ id: "eqa.inhouse.actions" })}
                   </TableHeader>
                 </TableRow>
               </TableHead>
@@ -262,15 +235,14 @@ const InHousePanelsPage = () => {
                           downloadLabelSheet(panel.id, () =>
                             setNotification({
                               kind: "error",
-                              message: label(
-                                "eqa.inhouse.labels.error",
-                                "Could not generate the label sheet",
-                              ),
+                              message: intl.formatMessage({
+                                id: "eqa.inhouse.labels.error",
+                              }),
                             }),
                           )
                         }
                       >
-                        {label("eqa.inhouse.labels.print", "Print label sheet")}
+                        {intl.formatMessage({ id: "eqa.inhouse.labels.print" })}
                       </Button>
                       {panel.status === "DISTRIBUTED" && (
                         <Button
@@ -278,7 +250,9 @@ const InHousePanelsPage = () => {
                           size="sm"
                           onClick={() => unblind(panel.id)}
                         >
-                          {label("eqa.inhouse.unblind.now", "Unblind now")}
+                          {intl.formatMessage({
+                            id: "eqa.inhouse.unblind.now",
+                          })}
                         </Button>
                       )}
                     </TableCell>

@@ -1640,13 +1640,13 @@ export function SearchResults(props) {
     },
   ];
 
-  // FR-V2.3-04: the Analyst column exists only when a scheme on this page asks
+  // The Analyst column exists only when a scheme on this page asks
   // for it. Rendering it for every grid would leak the EQA flag to a bench tech
   // looking at neighbouring patient samples.
   if (props.results?.testResult?.some((row) => row.eqaPerAnalyst)) {
     columns.push({
       id: "eqaAnalyst",
-      // FR-V2.3-04 asks for a help Tooltip on the header: the column appears
+      // A help Tooltip on the header: the column appears
       // only for EQA rows, and a bench tech seeing it arrive unannounced has no
       // other way to know why.
       name: (

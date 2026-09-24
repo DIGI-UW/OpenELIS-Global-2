@@ -171,7 +171,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
         EQAPanel panel = panelService.unblindForUpdate(panelId, sysUserId, method);
 
         // One result per aliquot: a panel may carry several samples for the same
-        // analyte (FR-V2.4-02 Mode A splits a pool into N), so results are keyed
+        // analyte (pool-split blinding cuts one pool into N), so results are keyed
         // by panel sample and each is scored against its own sealed target.
         Map<Long, EQAPanelSample> samplesById = new LinkedHashMap<>();
         for (EQAPanelSample sample : panelSampleDAO.getAllMatchingOrdered("panel.id", panelId, "sampleCode", false)) {
@@ -210,8 +210,8 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     // ---- seal helpers ----
 
     /**
-     * AC-V2.4-13: the prep invariants are enforced here, not only in the wizard, so
-     * an API caller cannot distribute a panel the bench never signed off. Failing
+     * The prep invariants are enforced here, not only in the wizard, so an API
+     * caller cannot distribute a panel the bench never signed off. Failing
      * homogeneity QC is allowed, but only with the written justification the
      * standard asks for.
      */
@@ -349,7 +349,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
             EQAPanelSample panelSample, String testId, Long analystId, Patient patient, String sysUserId) {
         Test test = testService.get(testId);
 
-        // FR-V2.4-04/-15: the blind code IS the accession number, so Workplan
+        // The blind code IS the accession number, so Workplan
         // and result entry display it with no EQA-specific code path.
         Sample sample = new Sample();
         sample.setAccessionNumber(panelSample.getBlindCode());
@@ -429,7 +429,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     public int scoreLateResults(String sysUserId) {
         // Driven from the missed rows rather than from panels: the set shrinks as
         // they are answered, where a scan of every scored panel would grow for
-        // ever. ponytail: one query for the rows, one per row for its panel
+        // ever. One query for the rows, one per row for its panel
         // sample; an in-house panel carries a handful of samples.
         int scored = 0;
         for (EQAParticipantResult result : participantResultDAO.getAllMatching("submissionStatus",
@@ -522,10 +522,10 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     }
 
     /**
-     * In-house has no Z by construction (FR-V2.4-07), so the verdict is the whole
-     * score. Routing an unacceptable one to the Follow-Up Queue (FR-V2.4-08) is the
-     * tiered adapter's job, fired by recordScore — this method deliberately does
-     * not enqueue, or the failure would be registered twice.
+     * In-house has no Z by construction, so the verdict is the whole score. Routing
+     * an unacceptable one to the Follow-Up Queue is the tiered adapter's job, fired
+     * by recordScore — this method deliberately does not enqueue, or the failure
+     * would be registered twice.
      */
     private void score(EQAParticipantResult result, EQAPanelSample target, String sysUserId) {
         participantResultService.recordScore(result.getId(), verdictFor(target, result.getResultValue()), null,
@@ -533,8 +533,8 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     }
 
     /**
-     * FR-V2.4-07 / AC-V2.4-07/-08. The comparison itself is shared with the
-     * provider lane, which judges against the same sealed target.
+     * The comparison itself is shared with the provider lane, which judges against
+     * the same sealed target.
      */
     private EQAPerformanceStatus verdictFor(EQAPanelSample target, String reported) {
         return EqaPanelVerdict.of(target, reported);

@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Lab EQA Performance (OGC-611, FR-V2.3-07): the Coverage snapshot and Recent
- * Cycles list in one read, because the page renders them from one rollup.
+ * Lab EQA Performance (OGC-611): the Coverage snapshot and Recent Cycles list
+ * in one read, because the page renders them from one rollup.
  */
 @RestController
 @RequestMapping("/rest/eqa")

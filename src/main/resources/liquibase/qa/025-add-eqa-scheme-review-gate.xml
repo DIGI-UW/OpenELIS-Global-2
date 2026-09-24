@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.1 (OGC-609) FR-V2.1-09: the optional cycle-review gate flag.
-    Off by default, so existing schemes keep auto-submitting (FR-V2.2-05).
+    EQA V2.1 (OGC-609): the optional cycle-review gate flag.
+    Off by default, so existing schemes keep auto-submitting.
     When on, the participant cycle halts at ready_to_submit until a QA officer
-    confirms on the Review & Submit panel (FR-V2.2-07, T-13) and T-14's
+    confirms on the Review & Submit panel and the
     auto-submit stands down.
 
-    No task card owned this column: T-08 added scheme_type to eqa_program and
-    stopped there, while T-13 and T-14 both read the flag.
+    The schema spine added scheme_type to eqa_program and stopped there, while
+    both My Cycles and the auto-submit sweep read the flag.
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -20,7 +20,7 @@
                 <columnExists tableName="eqa_program" columnName="requires_cycle_review" schemaName="clinlims"/>
             </not>
         </preConditions>
-        <comment>Optional cycle-review gate per scheme; existing rows default to off (FR-V2.1-09)</comment>
+        <comment>Optional cycle-review gate per scheme; existing rows default to off</comment>
         <addColumn schemaName="clinlims" tableName="eqa_program">
             <column name="requires_cycle_review" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>

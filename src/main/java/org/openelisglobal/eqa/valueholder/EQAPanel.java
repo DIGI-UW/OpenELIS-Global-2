@@ -22,10 +22,10 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * A panel of material distributed to participants (FR-V2.1-11), shared by the
- * in-house (V2.4) and provider (V2.5) flows rather than forked per scheme type.
- * Carries its own source and inventory columns (FR-V2.1-17), because the prep →
- * ready_to_ship gate reads them.
+ * A panel of material distributed to participants, shared by the in-house
+ * (V2.4) and provider (V2.5) flows rather than forked per scheme type. Carries
+ * its own source and inventory columns, because the prep → ready_to_ship gate
+ * reads them.
  */
 @Getter
 @Setter
@@ -56,7 +56,9 @@ public class EQAPanel extends BaseObject<Long> {
     @Column(name = "panel_name", nullable = false, length = 255)
     private String panelName;
 
-    /** Derived from the scheme type; the FRS defines no closed vocabulary. */
+    /**
+     * Derived from the scheme type; the specification defines no closed vocabulary.
+     */
     @Column(name = "panel_type", length = 30)
     private String panelType;
 
@@ -67,15 +69,15 @@ public class EQAPanel extends BaseObject<Long> {
     private Timestamp preparedAt;
 
     /**
-     * Required for in-house panels; the panel-writing service (T-11) must enforce
-     * this, where the parent scheme's type is known.
+     * Required for in-house panels; the panel-writing service must enforce this,
+     * where the parent scheme's type is known.
      */
     @Column(name = "unblind_date")
     private Date unblindDate;
 
     /**
-     * How the panel left DISTRIBUTED (FR-V2.4-10). sys_user_id cannot carry this on
-     * its own, because the scheduler also writes a real user id.
+     * How the panel left DISTRIBUTED. sys_user_id cannot carry this on its own,
+     * because the scheduler also writes a real user id.
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "unblind_method", length = 20)

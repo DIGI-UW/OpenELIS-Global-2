@@ -57,23 +57,6 @@ const STATUS_CONFIG = {
   },
 };
 
-// action_type codes → i18n label keys.
-// ponytail: same 3-code mapping lives in CapaRegister.jsx / NCECorrectiveAction.jsx;
-// kept a small local copy rather than cross-importing a page component.
-const ACTION_TYPE_KEYS = {
-  1: "banner.menu.nonconformity.correctiveActions",
-  2: "nonconform.nce.preventive.action",
-  3: "nonconform.nce.concurrent.control.action",
-};
-
-const formatActionType = (actionType, intl) =>
-  (actionType || "")
-    .split(",")
-    .map((c) => c.trim())
-    .filter((c) => ACTION_TYPE_KEYS[c])
-    .map((c) => intl.formatMessage({ id: ACTION_TYPE_KEYS[c] }))
-    .join(", ");
-
 export const NceDashboard = () => {
   const intl = useIntl();
   const history = useHistory();

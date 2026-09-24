@@ -19,8 +19,6 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
-import org.openelisglobal.analyte.service.AnalyteService;
-import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -39,7 +37,6 @@ import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +78,9 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
     @Autowired
     private FhirUtil fhirUtil;
+
+    @Autowired
+    private EQAPanelService eqaPanelService;
 
     @Override
     public Map<String, Object> submitResultsViaFhir(Long distributionId, Long organizationId) {
@@ -176,7 +176,7 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
             return pushToRemoteStores(fhirResources, cycleId);
         } catch (FhirLocalPersistingException | RuntimeException e) {
             // Any transport or serialization failure is a failed attempt, not a
-            // crash: the caller counts it and retries under FR-V2.2-05 backoff.
+            // crash: the caller counts it and retries under the submission backoff.
             LogEvent.logError(this.getClass().getSimpleName(), "submitCycleViaFhir",
                     "EQA cycle submission failed: cycle=" + cycleId + ", enrollment=" + labEnrollmentId + ": "
                             + e.getMessage());
@@ -242,18 +242,9 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         return null;
     }
 
-    private String analyteNameFor(Long analyteId) {
-        if (analyteId == null) {
-            return null;
-        }
-        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
-        return analyte == null ? null : analyte.getAnalyteName();
-    }
-
     private String analyteNameForTest(Long testId) {
-        Long analyteId = testId == null ? null
-                : SpringContext.getBean(EQAPanelService.class).findAnalyteIdForTest(String.valueOf(testId));
-        return analyteNameFor(analyteId);
+        return testId == null ? null
+                : eqaPanelService.analyteName(eqaPanelService.findAnalyteIdForTest(String.valueOf(testId)));
     }
 
     /**
@@ -338,7 +329,7 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
                 String.valueOf(result.getAnalyteId()), "EQA analyte " + result.getAnalyteId()));
         // The analyte's name is what another instance can match on; ids differ per
         // install.
-        code.setText(analyteNameFor(result.getAnalyteId()));
+        code.setText(eqaPanelService.analyteName(result.getAnalyteId()));
         observation.setCode(code);
 
         String value = result.getResultValue();

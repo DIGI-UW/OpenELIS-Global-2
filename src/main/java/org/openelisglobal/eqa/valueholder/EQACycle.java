@@ -24,10 +24,9 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
- * One run of a scheme (FR-V2.1-01). "Scheme" is the domain word for an
- * {@link EQAProgram} row (gate G1 kept the V1 table/class). The single status
- * column serves both the participant and provider state machines — see
- * {@link EQACycleStatus}.
+ * One run of a scheme. "Scheme" is the domain word for an {@link EQAProgram}
+ * row (the V1 table and class were kept). The single status column serves both
+ * the participant and provider state machines — see {@link EQACycleStatus}.
  */
 @Getter
 @Setter
@@ -72,7 +71,7 @@ public class EQACycle extends BaseObject<Long> {
     @Column(name = "status", nullable = false, length = 30)
     private EQACycleStatus status = EQACycleStatus.PLANNED;
 
-    /** FR-V2.5-02 step 4; null on cycles created before the provider wizard. */
+    /** Null on cycles created before the provider wizard. */
     @Enumerated(EnumType.STRING)
     @Column(name = "distribution_method", length = 10)
     private EQADistributionMethod distributionMethod;
@@ -86,10 +85,10 @@ public class EQACycle extends BaseObject<Long> {
     private SystemUser createdBy;
 
     /**
-     * How many automatic FHIR submissions have been tried for this cycle
-     * (FR-V2.2-05, capped at 5). A failed attempt leaves the cycle in
-     * READY_TO_SUBMIT, and the participant machine has no self-edge, so the attempt
-     * cannot be recorded as a state transition.
+     * How many automatic FHIR submissions have been tried for this cycle (capped at
+     * 5). A failed attempt leaves the cycle in READY_TO_SUBMIT, and the participant
+     * machine has no self-edge, so the attempt cannot be recorded as a state
+     * transition.
      */
     @Column(name = "submission_attempts", nullable = false)
     private Integer submissionAttempts = 0;

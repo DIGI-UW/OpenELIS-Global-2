@@ -22,8 +22,8 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-611 (FR-V2.3-04) — per-analyst capture: what the Analyst column on
- * standard result entry writes, and the schemes it stays out of.
+ * OGC-611 — per-analyst capture: what the Analyst column on standard result
+ * entry writes, and the schemes it stays out of.
  *
  * <p>
  * The analyst is chosen at result entry, but the EQA participant result is

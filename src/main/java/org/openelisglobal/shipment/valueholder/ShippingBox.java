@@ -65,11 +65,10 @@ public class ShippingBox extends BaseObject<Integer> {
     private String notes;
 
     /**
-     * T-42: what an imported consignment says it holds — a JSON list of {label,
-     * type} captured from the SupplyDelivery at import time. Read-side only: an
-     * imported box has no box_sample_item rows (their FKs name rows only the sender
-     * has), so this is the manifest BoxDetails renders. Null on locally-created
-     * boxes.
+     * What an imported consignment says it holds — a JSON list of {label, type}
+     * captured from the SupplyDelivery at import time. Read-side only: an imported
+     * box has no box_sample_item rows (their FKs name rows only the sender has), so
+     * this is the manifest BoxDetails renders. Null on locally-created boxes.
      */
     @Column(name = "imported_contents", columnDefinition = "TEXT")
     private String importedContents;
@@ -106,9 +105,9 @@ public class ShippingBox extends BaseObject<Integer> {
     private Integer systemUserId;
 
     /**
-     * The EQA cycle this box distributes panel material for (FR-V2.5-13). Plain id
-     * rather than a reference to the EQA module: the shipment module never reads
-     * cycle state, and only the EQA side joins on it.
+     * The EQA cycle this box distributes panel material for. Plain id rather than a
+     * reference to the EQA module: the shipment module never reads cycle state, and
+     * only the EQA side joins on it.
      */
     @Column(name = "eqa_cycle_id")
     private Long eqaCycleId;

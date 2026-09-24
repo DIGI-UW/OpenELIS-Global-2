@@ -82,7 +82,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void read_legacyRoleAloneNoLongerAdmits() throws Exception {
-        // Pre-T-05 the RECEPTION/RESULTS role name was the whole gate. Now the
+        // Before the permission tiers the RECEPTION/RESULTS role name was the whole
+        // gate. Now the
         // qa.view.eqa authority (derived from the grant matrix at login) is
         // what admits a read.
         mockMvc.perform(get("/rest/eqa/my-programs").with(user("reception").roles("RECEPTION")))

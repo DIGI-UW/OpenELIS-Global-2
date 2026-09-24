@@ -13,8 +13,8 @@ public interface EQAPanelDAO extends BaseDAO<EQAPanel, Long> {
 
     /**
      * Panel count per cycle for a batch of cycles, as {@code [cycleId, count]} rows
-     * — the provider scheme list's panel column without a query per cycle (T-24).
-     * Cycles with no panel are simply absent.
+     * — the provider scheme list's panel column without a query per cycle. Cycles
+     * with no panel are simply absent.
      */
     List<Object[]> countByCycleIds(Collection<Long> cycleIds);
 }

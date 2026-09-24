@@ -22,7 +22,7 @@ import {
 import { savePrep, requestReadyToShip } from "./workbenchApi";
 
 /**
- * Prep workbench (FR-V2.5-12): inventory progress against what the cycle owes
+ * Prep workbench: inventory progress against what the cycle owes
  * its participants, the homogeneity QC record, and the ready-to-ship request.
  *
  * The button is disabled from the server's own verdict (readyToShipAllowed) and

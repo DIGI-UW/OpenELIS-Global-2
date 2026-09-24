@@ -309,7 +309,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             // Sync state change to FHIR server asynchronously
             shippingBoxFhirTransform.syncToFhir(box, false);
 
-            // T-41: taking delivery of an imported box completes the origin store's
+            // Taking delivery of an imported box completes the origin store's
             // SupplyDelivery, so the sender's monitor learns it arrived. Async and
             // non-fatal, like the sync above; a locally-created box is a no-op there.
             // The catch is not decoration: without @EnableAsync the call runs inline,
@@ -355,7 +355,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             shippingBoxDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Box not found with ID: " + id));
 
             // Validate box has at least one item of contents — a patient sample item or
-            // EQA panel material (T-40).
+            // EQA panel material.
             int contentsCount = boxSampleItemDAO.countByShippingBoxId(id);
             if (contentsCount == 0) {
                 throw new IllegalStateException("Cannot mark empty box as ready to send");

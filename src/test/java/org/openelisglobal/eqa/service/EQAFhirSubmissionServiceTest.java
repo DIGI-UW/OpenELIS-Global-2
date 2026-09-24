@@ -61,6 +61,10 @@ public class EQAFhirSubmissionServiceTest {
     @Mock
     private OrganizationService organizationService;
 
+    /** Analyte names on the Observation codes; null names are fine here. */
+    @Mock
+    private EQAPanelService eqaPanelService;
+
     @InjectMocks
     private EQAFhirSubmissionServiceImpl submissionService;
 

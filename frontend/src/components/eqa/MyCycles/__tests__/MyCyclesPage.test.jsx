@@ -6,7 +6,7 @@ import { MemoryRouter, Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import messages from "../../../../languages/en.json";
 import MyCyclesPage from "../MyCyclesPage";
-import { MOCK_CYCLES } from "../mockCycles";
+import { MOCK_CYCLES } from "./mockCycles";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -74,7 +74,7 @@ describe("MyCyclesPage", () => {
     expect(screen.getByTestId("cycle-row-2")).toBeInTheDocument();
     expect(screen.getByTestId("cycle-row-5")).toBeInTheDocument();
     expect(screen.getByTestId("cycle-row-6")).toBeInTheDocument();
-    // submitted / scored / closed stay out of the Active bucket
+    // Submitted / scored / closed stay out of the Active bucket
     expect(screen.queryByTestId("cycle-row-3")).not.toBeInTheDocument();
     expect(screen.queryByTestId("cycle-row-4")).not.toBeInTheDocument();
   });
@@ -290,7 +290,7 @@ describe("MyCyclesPage", () => {
     );
     // per-analyst column absent for a non-per-analyst scheme
     expect(within(expanded).queryByText("Assigned analyst")).toBeNull();
-    // no review gate on this scheme, so no pre-submission summary columns
+    // No review gate on this scheme, so no pre-submission summary columns
     expect(within(expanded).queryByText("Reported value")).toBeNull();
     expect(within(expanded).queryByText("Pre-submission summary")).toBeNull();
   });
@@ -305,16 +305,16 @@ describe("MyCyclesPage", () => {
     ).toBeInTheDocument();
     expect(within(expanded).getByText("Reported value")).toBeInTheDocument();
     expect(within(expanded).getByText("Validated")).toBeInTheDocument();
-    // one row per analyte, so each reported value is checkable on its own line
+    // One row per analyte, so each reported value is checkable on its own line
     expect(within(expanded).getAllByText("MTB Detection").length).toBe(3);
     expect(within(expanded).getAllByText("Detected").length).toBe(3);
     expect(within(expanded).getAllByText("Not detected").length).toBe(3);
-    // identity columns are not repeated on an analyte's continuation row
+    // Identity columns are not repeated on an analyte's continuation row
     expect(within(expanded).getAllByText("NHRL-TB-01").length).toBe(1);
   });
 
   test("summary is hidden once the gated cycle leaves ready_to_submit", () => {
-    // same scheme flag, but a closed cycle — the gate is state-dependent
+    // Same scheme flag, but a closed cycle — the gate is state-dependent
     renderPage(UNCYCLED_ORDERS, [
       { ...MOCK_CYCLES.find((c) => c.id === 7), samples: [] },
     ]);
@@ -387,7 +387,7 @@ describe("MyCyclesPage", () => {
     expect(
       await screen.findByText("Cycle submitted to provider — awaiting scores."),
     ).toBeInTheDocument();
-    // leaves the Active bucket, awaiting KPI now counts it
+    // Leaves the Active bucket, awaiting KPI now counts it
     expect(screen.queryByTestId("cycle-row-2")).not.toBeInTheDocument();
     expect(
       within(screen.getByTestId("kpi-awaiting")).getByText("2"),

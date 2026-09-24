@@ -57,11 +57,11 @@ import org.springframework.transaction.annotation.Transactional;
  * reconciliation.
  *
  * Follows the same polling pattern as FhirApiWorkFlowServiceImpl for Task
- * resources — including status backflow (T-41): when this lab receives an
- * imported box, the origin store's SupplyDelivery is completed, and a sender
- * polls its own store to learn its consignments arrived. Both directions ride
- * the same {@code org.openelisglobal.remote.source.updateStatus} flag the Task
- * workflow honours, so switching it off restores strictly manual confirmation.
+ * resources — including status backflow: when this lab receives an imported
+ * box, the origin store's SupplyDelivery is completed, and a sender polls its
+ * own store to learn its consignments arrived. Both directions ride the same
+ * {@code org.openelisglobal.remote.source.updateStatus} flag the Task workflow
+ * honours, so switching it off restores strictly manual confirmation.
  */
 @Service
 public class ShipmentFhirImportService {
@@ -98,8 +98,8 @@ public class ShipmentFhirImportService {
     private Optional<Boolean> remoteStoreUpdateStatus;
 
     /**
-     * T-43: consignments whose occurrence is older than this many days are not
-     * imported — dedup is local-only, so a fresh install would otherwise resurrect
+     * Consignments whose occurrence is older than this many days are not imported —
+     * dedup is local-only, so a fresh install would otherwise resurrect
      * long-delivered consignments whose sender never advanced the status.
      */
     @Value("${org.openelisglobal.shipment.import.maxAgeDays:30}")
@@ -246,7 +246,7 @@ public class ShipmentFhirImportService {
                 return false; // Already exists
             }
 
-            // T-43: staleness window. A consignment sent long ago whose status never
+            // Staleness window. A consignment sent long ago whose status never
             // advanced is history, not an arrival — importing it as IN_TRANSIT invents
             // a ghost. No occurrence date means age is unknowable: imported as today,
             // matching prior behaviour.
@@ -298,7 +298,7 @@ public class ShipmentFhirImportService {
                 box.setActualSampleCount(delivery.getSuppliedItem().getQuantity().getValue().intValue());
             }
 
-            // T-42: the consignment's manifest. Contents rows cannot be created here
+            // The consignment's manifest. Contents rows cannot be created here
             // (their FKs name rows only the sender has), so what the payload says is
             // inside is kept read-side for BoxDetails to render.
             box.setImportedContents(extractImportedContents(delivery));
@@ -438,7 +438,7 @@ public class ShipmentFhirImportService {
         return null;
     }
 
-    // ---- T-41: delivery-status backflow ----
+    // ---: delivery-status backflow ----
 
     /**
      * Receiver side: this lab has taken delivery of a box, so the store it was
@@ -609,10 +609,10 @@ public class ShipmentFhirImportService {
     }
 
     /**
-     * T-42: read the consignment's manifest off the SupplyDelivery as a JSON list
-     * of {label, type}. Prefers the content-item extensions (nested label/type);
-     * falls back to the bare specimen-reference displays an older sender writes,
-     * which carry only a type. Null when the payload names nothing.
+     * Read the consignment's manifest off the SupplyDelivery as a JSON list of
+     * {label, type}. Prefers the content-item extensions (nested label/type); falls
+     * back to the bare specimen-reference displays an older sender writes, which
+     * carry only a type. Null when the payload names nothing.
      */
     private String extractImportedContents(SupplyDelivery delivery) {
         List<Map<String, String>> items = new ArrayList<>();

@@ -26,9 +26,9 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-611 (FR-V2.3-01/02) — the tiered EQA to NCE adapter against the real
- * schema: which scored results become non-conformities, which land in the
- * Follow-Up Queue, and what escalate and dismiss write.
+ * OGC-611 (02) — the tiered EQA to NCE adapter against the real schema: which
+ * scored results become non-conformities, which land in the Follow-Up Queue,
+ * and what escalate and dismiss write.
  */
 public class EQAScoreTriageIntegrationTest extends EQASpineTestBase {
 
@@ -167,7 +167,7 @@ public class EQAScoreTriageIntegrationTest extends EQASpineTestBase {
     /**
      * The queue page renders an analyte name and tags the source through i18n, so
      * the row has to carry both — the snapshot holds only the analyte id and the
-     * source label is English (FR-V2.3-02).
+     * source label is English.
      */
     @Test
     public void queueRowsCarryAnalyteNamesAndTheSchemeTypeThePageTags() {

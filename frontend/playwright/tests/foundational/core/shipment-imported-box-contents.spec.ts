@@ -4,7 +4,7 @@ import { SHORT_TIMEOUT } from "../../../helpers/timeouts";
 import { resolveDbContainer } from "../../../helpers/db-container";
 
 /**
- * Imported box contents (T-42, OGC-613 cross-site gap fixes).
+ * Imported box contents (OGC-613 cross-site gap fixes).
  *
  * A box imported from a partner site has no local box_sample_item rows — the
  * FKs name rows only the sender has. What the consignment says it holds
@@ -50,7 +50,7 @@ async function csrfToken(page: Page): Promise<string> {
   throw new Error("No CSRF token in storage state — auth.setup did not run?");
 }
 
-test.describe("Imported box renders its manifest (T-42)", () => {
+test.describe("Imported box renders its manifest", () => {
   let boxDbId: number | undefined;
 
   test.afterAll(() => {

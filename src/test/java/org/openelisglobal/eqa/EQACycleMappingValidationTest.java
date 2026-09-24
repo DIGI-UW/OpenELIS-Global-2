@@ -25,8 +25,8 @@ import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
 
 /**
- * OGC-609 [EQA V2.1 / T-08] — ORM defaults and enum vocabularies for the cycle
- * spine. No database connection (constitution V.4, under 5 seconds).
+ * OGC-609 [EQA V2.1] — ORM defaults and enum vocabularies for the cycle spine.
+ * No database connection (constitution V.4, under 5 seconds).
  *
  * <p>
  * The enum assertions are load-bearing, not ceremony: every value is written to
@@ -49,7 +49,7 @@ public class EQACycleMappingValidationTest {
     public void roundIsInstantiableWithNoStatusVocabulary() {
         EQARound round = new EQARound();
         assertNotNull("EQARound should be instantiable", round);
-        assertNull("round status is free text; the FRS defines no vocabulary", round.getStatus());
+        assertNull("round status is free text; the specification defines no vocabulary", round.getStatus());
     }
 
     @Test
@@ -71,8 +71,7 @@ public class EQACycleMappingValidationTest {
     @Test
     public void programDefaultsToInternationalPt() {
         EQAProgram program = new EQAProgram();
-        assertEquals("V1 schemes are international PT (FR-V2.1-06)", EQASchemeType.INTERNATIONAL_PT,
-                program.getSchemeType());
+        assertEquals("V1 schemes are international PT", EQASchemeType.INTERNATIONAL_PT, program.getSchemeType());
     }
 
     @Test

@@ -1,6 +1,6 @@
 package org.openelisglobal.eqa.valueholder;
 
-/** AUTO = system event; MANUAL = user action (FR-V2.1-21). */
+/** AUTO = system event; MANUAL = user action. */
 public enum EQATriggerType {
     AUTO, MANUAL
 }

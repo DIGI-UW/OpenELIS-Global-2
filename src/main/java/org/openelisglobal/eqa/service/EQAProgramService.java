@@ -20,7 +20,7 @@ public interface EQAProgramService extends BaseObjectService<EQAProgram, Long> {
 
     void removeTestAssignment(Long programTestId);
 
-    /** FR-V2.4-03: the scheme's eligible analysts, the round-robin roster. */
+    /** The scheme's eligible analysts, the round-robin roster. */
     List<EQASchemeAnalyst> getAnalysts(Long programId);
 
     /** Replaces the roster with exactly these system users. */

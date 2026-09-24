@@ -20,23 +20,21 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.security.converter.EncryptionConverter;
 
 /**
- * One material sample within a panel (FR-V2.1-12), carrying the sealed target
- * value.
+ * One material sample within a panel, carrying the sealed target value.
  *
  * <p>
  * {@code targetValue} is encrypted at rest by the existing
- * {@link EncryptionConverter} (FR-V2.1-16). Three properties of that converter
- * shape how this column may be used: the ciphertext is salted per write, so the
- * column can never be indexed, made unique, or compared with {@code =}; blank
- * and whitespace values pass through unencrypted, so the service must reject
- * them rather than rely on the converter; and decrypting a value that was not
+ * {@link EncryptionConverter}. Three properties of that converter shape how
+ * this column may be used: the ciphertext is salted per write, so the column
+ * can never be indexed, made unique, or compared with {@code =}; blank and
+ * whitespace values pass through unencrypted, so the service must reject them
+ * rather than rely on the converter; and decrypting a value that was not
  * written as ciphertext throws, so nothing may seed plaintext here.
  *
  * <p>
  * Whether a caller is allowed to *see* the decrypted value depends on the
  * parent panel's status and the caller's unblind permission — that rule lives
- * in the DTO mapping (T-11), not here, because the entity cannot see the
- * caller.
+ * in the DTO mapping, not here, because the entity cannot see the caller.
  */
 @Getter
 @Setter

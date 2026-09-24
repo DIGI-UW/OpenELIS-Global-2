@@ -2,7 +2,7 @@
 <!--
     EQA V2.2 (OGC-610): retry bookkeeping for automatic FHIR submission.
 
-    FR-V2.2-05 caps automatic submission at five attempts with exponential
+    Automatic submission is capped at five attempts with exponential
     backoff, so the sweep has to know how many times it has already tried and
     when. Neither fact can be derived from what already ships:
 
@@ -15,7 +15,7 @@
       acknowledgeable, so counting them would make a technician's acknowledgement
       change the retry schedule.
 
-    The submission window itself is deliberately not a column: FR-V2.2-05 makes it
+    The submission window itself is deliberately not a column: the specification makes it
     a deployment setting (org.openelisglobal.eqa.submission.windowHours, default 1).
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
@@ -32,7 +32,7 @@
                 </not>
             </and>
         </preConditions>
-        <comment>Attempt counter and backoff anchor for automatic submission (FR-V2.2-05)</comment>
+        <comment>Attempt counter and backoff anchor for automatic submission</comment>
         <addColumn schemaName="clinlims" tableName="eqa_cycle">
             <column name="submission_attempts" type="numeric(2,0)" defaultValueNumeric="0">
                 <constraints nullable="false"/>
@@ -103,7 +103,7 @@
             </and>
         </preConditions>
         <comment>
-            Which analyte a mapped test reports for this scheme (FR-V2.2-05). Auto-submission
+            Which analyte a mapped test reports for this scheme. Auto-submission
             has to name an analyte because eqa_participant_result.analyte_id is a NOT NULL FK,
             and nothing else in the schema can supply one for an external scheme: eqa_panel_sample
             carries analytes only for in-house panels a supervisor built, eqa_program_test maps

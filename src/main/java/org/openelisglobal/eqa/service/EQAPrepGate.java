@@ -4,8 +4,8 @@ import java.util.List;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 
 /**
- * One evaluation of the ready-to-ship gate: AC-V2.1-13's homogeneity QC half
- * and FR-V2.5-12's inventory half, together.
+ * One evaluation of the ready-to-ship gate: the homogeneity QC half and the
+ * inventory half, together.
  *
  * <p>
  * Both readers of the gate share this evaluation — the cycle transition refuses
@@ -15,7 +15,9 @@ import org.openelisglobal.eqa.valueholder.EQAPanel;
  */
 public record EQAPrepGate(int participantCount, List<PanelRequirement> panels, List<String> blockers) {
 
-    /** What FR-V2.5-12 requires of one panel, against what the panel holds. */
+    /**
+     * What the inventory rule requires of one panel, against what the panel holds.
+     */
     public record PanelRequirement(EQAPanel panel, int sampleCount, int aliquotsNeeded) {
 
         public int produced() {

@@ -226,7 +226,7 @@ describe("EQAOrderForm panel integrity", () => {
     );
   };
 
-  // AC-V2.2-13: the one receipt an accreditation record needs prose on is the
+  // The one receipt an accreditation record needs prose on is the
   // one saying the material arrived compromised.
   test("unticking intact demands the note, and filling it clears the alert", async () => {
     renderForm();

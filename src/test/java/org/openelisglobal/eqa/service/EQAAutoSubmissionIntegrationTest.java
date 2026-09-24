@@ -35,8 +35,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * OGC-610 (EQA V2.2) — automatic submission end to end against the real schema:
  * the bridge from the standard result pipeline into
- * {@code eqa_participant_result}, the participant state walk, the FR-V2.2-05
- * window and retry cap, and the two fallbacks.
+ * {@code eqa_participant_result}, the participant state walk, the window and
+ * retry cap, and the two fallbacks.
  *
  * <p>
  * The fixture enters results the way the pipeline does — a {@code result} row

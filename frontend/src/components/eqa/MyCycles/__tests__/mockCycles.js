@@ -1,4 +1,4 @@
-// T-13 phase-1 fixtures. Field names mirror the frozen cycle contract
+// Test fixtures. Field names mirror the frozen cycle contract
 // (GET /rest/eqa/cycles/mine, PR #4070): id, cycleNumber, cycleName, status,
 // schemeId, plannedStartDate, plannedEndDate, participantState — plus the
 // display fields the endpoint does not serve yet (schemeName, provider,

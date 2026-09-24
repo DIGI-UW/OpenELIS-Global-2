@@ -52,9 +52,9 @@ public class BoxSampleItem extends BaseObject<Integer> {
     private SampleItem sampleItem;
 
     /**
-     * Provider EQA panel material (T-40). It is not a specimen accessioned in this
-     * lab — it is going out to participant laboratories — so it cannot be a
-     * SampleItem, but it is genuinely what the box holds.
+     * Provider EQA panel material. It is not a specimen accessioned in this lab —
+     * it is going out to participant laboratories — so it cannot be a SampleItem,
+     * but it is genuinely what the box holds.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "eqa_panel_sample_id")

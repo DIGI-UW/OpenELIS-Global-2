@@ -23,13 +23,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Provider prep and shipment workbenches (T-25, FR-V2.5-12 / FR-V2.5-13).
+ * Provider prep and shipment workbenches.
  *
  * <p>
  * There is no ready-to-ship endpoint here: clearing a cycle to ship is the
  * existing provider transition (PATCH /rest/eqa/cycles/{id}/transition), whose
- * gate T-25 completes — one gate, one place, and a stale client gets 409 rather
- * than a second opinion.
+ * gate the prep workbench completes — one gate, one place, and a stale client
+ * gets 409 rather than a second opinion.
  *
  * <p>
  * Reads sit under the {@link EQAGuards#READ} umbrella; prep and dispatch are
@@ -50,8 +50,8 @@ public class EQAShipmentRestController extends BaseRestController {
     }
 
     /**
-     * The provider scheme list (FR-V2.5-01), each scheme carrying its cycles, plus
-     * the KPI tile counts computed from the same read.
+     * The provider scheme list, each scheme carrying its cycles, plus the KPI tile
+     * counts computed from the same read.
      */
     @GetMapping(value = "/provider/schemes", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> providerSchemes() {
@@ -59,10 +59,10 @@ public class EQAShipmentRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.5-05: one row per laboratory enrolled in the scheme, with its rolling
-     * pass rate over its last four scored cycles, its most recent verdict and its
-     * open follow-up count. Each row carries the cycle history behind its rate, so
-     * the drill-in costs no second read.
+     * One row per laboratory enrolled in the scheme, with its rolling pass rate
+     * over its last four scored cycles, its most recent verdict and its open
+     * follow-up count. Each row carries the cycle history behind its rate, so the
+     * drill-in costs no second read.
      */
     @GetMapping(value = "/provider/schemes/{schemeId}/performance", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, Object>>> participantPerformance(@PathVariable Long schemeId) {
@@ -114,7 +114,7 @@ public class EQAShipmentRestController extends BaseRestController {
         return shipmentService.markShipped(cycleId, longListField(body, "organizationIds"), getSysUserId(request));
     }
 
-    // ---- T-26: receipt monitoring, reprovisioning, scoring (FR-V2.5-14/15/03/04)
+    // ---- receipt monitoring, reprovisioning, scoring ----
     // ----
 
     @GetMapping(value = "/cycles/{cycleId}/receipts", produces = MediaType.APPLICATION_JSON_VALUE)

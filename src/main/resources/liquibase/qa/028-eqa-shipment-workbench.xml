@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.5 (OGC-613) T-25: the provider shipment workbench sends panel
+    EQA V2.5 (OGC-613): the provider shipment workbench sends panel
     material to participants as ordinary shipping_box + shipment rows
-    (AC-V2.5-12 — no parallel EQA shipping table). Two things are missing for
+    (no parallel EQA shipping table). Two things are missing for
     that: a way back from a box to the cycle it serves, and a trigger_event
     value for the automatic ready_to_ship -> shipped move the first dispatch
     makes.
@@ -19,7 +19,7 @@
                 <columnExists tableName="shipping_box" columnName="eqa_cycle_id" schemaName="clinlims" />
             </not>
         </preConditions>
-        <comment>Link a shipping box to the EQA cycle it distributes (FR-V2.5-13)</comment>
+        <comment>Link a shipping box to the EQA cycle it distributes</comment>
         <addColumn tableName="shipping_box" schemaName="clinlims">
             <column name="eqa_cycle_id" type="BIGINT">
                 <constraints nullable="true" />

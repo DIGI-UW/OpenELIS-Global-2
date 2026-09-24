@@ -6,22 +6,21 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-609 [EQA V2.1 / T-08] Schema spine 2 of 2: participant results, cycle
-    links on existing tables, scheme_type (FR-V2.1-03/05/06).
+    OGC-609 [EQA V2.1] Schema spine 2 of 2: participant results, cycle
+    links on existing tables, scheme_type (05/06).
 
     Same conventions as qa/015 (see its header comment).
 
-    result_value is VARCHAR, not DECIMAL: the six ePT-validated domains
-    (AC-V2.1-23) include qualitative ("Reactive"), categorical ("Recent") and
+    result_value is VARCHAR, not DECIMAL: the six ePT-validated domains include qualitative ("Reactive"), categorical ("Recent") and
     semi-quantitative ("3+") results alongside numeric ones. V1's
     eqa_result.result_value DECIMAL(15,5) is exactly the limitation this
     table removes.
 
-    submission_channel is pinned to FHIR | MANUAL here — the FRS never
+    submission_channel is pinned to FHIR | MANUAL here — the specification never
     enumerates it formally (only 'fhir' appears literally; 'manual' is implied
-    by FR-V2.2-06's fallback + manual_submission_reference).
+    by the manual fallback + manual_submission_reference).
 
-    FR-V2.1-03 names "eqa_order" as the order-grain link target; no such table
+    The specification names "eqa_order" as the order-grain link target; no such table
     exists — sample_eqa is the real order-grain table (delivery plan §01 row 1).
     -->
 
@@ -29,7 +28,7 @@
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_participant_result" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Per-analyte participant result within a round (FR-V2.1-05)</comment>
+        <comment>Per-analyte participant result within a round</comment>
         <createSequence sequenceName="eqa_participant_result_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_participant_result">
             <column name="id" type="numeric(10,0)">
@@ -132,7 +131,7 @@
             CHECK (submission_channel IN ('FHIR', 'MANUAL'))
         </sql>
 
-        <!-- My Cycles list + submission tracking (FRS §V2.1 non-functional). -->
+        <!-- My Cycles list + submission tracking (specification §V2.1 non-functional). -->
         <createIndex schemaName="clinlims" tableName="eqa_participant_result"
             indexName="idx_eqa_participant_result_cycle_lab_status">
             <column name="cycle_id"/>
@@ -150,7 +149,7 @@
         <preConditions onFail="MARK_RAN">
             <not><columnExists tableName="eqa_distribution" columnName="cycle_id" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Nullable cycle/round links on V1 distributions; V1 rows stay NULL (FR-V2.1-03)</comment>
+        <comment>Nullable cycle/round links on V1 distributions; V1 rows stay NULL</comment>
         <addColumn schemaName="clinlims" tableName="eqa_distribution">
             <column name="cycle_id" type="numeric(10,0)"/>
             <column name="round_id" type="numeric(10,0)"/>
@@ -177,7 +176,7 @@
         <preConditions onFail="MARK_RAN">
             <not><columnExists tableName="sample_eqa" columnName="cycle_id" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Nullable cycle/round links on EQA orders; optional per gate G2 (FR-V2.1-03)</comment>
+        <comment>Nullable cycle/round links on EQA orders; optional per gate G2</comment>
         <addColumn schemaName="clinlims" tableName="sample_eqa">
             <column name="cycle_id" type="numeric(10,0)"/>
             <column name="round_id" type="numeric(10,0)"/>
@@ -204,7 +203,7 @@
         <preConditions onFail="MARK_RAN">
             <not><columnExists tableName="eqa_program" columnName="scheme_type" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Polymorphic scheme type; V1 rows backfill to INTERNATIONAL_PT via the default (FR-V2.1-06, gate G1)</comment>
+        <comment>Polymorphic scheme type; V1 rows backfill to INTERNATIONAL_PT via the default (gate G1)</comment>
         <addColumn schemaName="clinlims" tableName="eqa_program">
             <column name="scheme_type" type="VARCHAR(30)" defaultValue="INTERNATIONAL_PT">
                 <constraints nullable="false"/>

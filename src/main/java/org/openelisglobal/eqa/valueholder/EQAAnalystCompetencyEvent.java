@@ -19,7 +19,7 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Append-only competency log for an analyst (FR-V2.1-22).
+ * Append-only competency log for an analyst.
  *
  * <p>
  * It exists because a missed deadline is an absence of a result, not a result:
@@ -28,8 +28,8 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * here too.
  *
  * <p>
- * Service-write-only: a direct REST create must be refused (AC-V2.1-21).
- * {@code nceId} is an Integer because nc_event's primary key is INTEGER.
+ * Service-write-only: a direct REST create must be refused. {@code nceId} is an
+ * Integer because nc_event's primary key is INTEGER.
  */
 @Getter
 @Setter

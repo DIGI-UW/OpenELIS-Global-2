@@ -18,9 +18,9 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1] — receipt intake side-effects are one transaction
- * (FR-V2.1-20): receipt row + shipment delivery + cycle transition, and a
- * double receipt is a read, not a write.
+ * OGC-609 [EQA V2.1] — receipt intake side-effects are one transaction :
+ * receipt row + shipment delivery + cycle transition, and a double receipt is a
+ * read, not a write.
  */
 public class EQAPanelReceiptIntegrationTest extends EQASpineTestBase {
 
@@ -179,9 +179,9 @@ public class EQAPanelReceiptIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * AC-V2.2-13. A receipt saying the panel arrived compromised is the one receipt
-     * an accreditation record needs prose on, so the note is required exactly there
-     * — and nothing about the receipt is written without it.
+     * A receipt saying the panel arrived compromised is the one receipt an
+     * accreditation record needs prose on, so the note is required exactly there —
+     * and nothing about the receipt is written without it.
      */
     @Test
     public void aReceiptMarkedNotIntactWithoutANote_isRefusedAndWritesNothing() {
@@ -236,7 +236,7 @@ public class EQAPanelReceiptIntegrationTest extends EQASpineTestBase {
         try {
             receiptService.recordReceipt(cycleId, ENROLLMENT, 424242, null, true, null, ADMIN_USER_ID, USER);
         } catch (IllegalArgumentException expected) {
-            // the receipt insert that preceded the failure must not survive
+            // The receipt insert that preceded the failure must not survive
         }
 
         assertEquals("nothing may persist when a side-effect fails", Integer.valueOf(0), jdbc.queryForObject(

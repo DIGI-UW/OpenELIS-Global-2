@@ -59,11 +59,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Cycle read + transition API (T-10).
+ * Cycle read + transition API.
  *
  * <p>
- * No PUT or DELETE is mapped for the transitions path: audit rows are immutable
- * (FR-V2.1-21), and leaving those methods unmapped makes Spring answer 405.
+ * No PUT or DELETE is mapped for the transitions path: audit rows are
+ * immutable, and leaving those methods unmapped makes Spring answer 405.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -96,8 +96,8 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * OGC-933: the printed CPHL-format performance report. Streams a PDF rather
-     * than JSON, so the browser can open it straight from a link.
+     * OGC-933: the printed performance report. Streams a PDF rather than JSON, so
+     * the browser can open it straight from a link.
      *
      * <p>
      * An unknown cycle is a missing resource, so it answers 404 rather than the 422
@@ -203,9 +203,9 @@ public class EQACycleRestController extends BaseRestController {
      * Cycles this lab takes part in. OpenELIS runs single-tenant, so every cycle in
      * the database belongs to this lab; passing a labEnrollmentId adds that
      * enrollment's derived participant state to each row. Rows carry the display
-     * fields My Cycles renders (T-13): scheme name/provider/type, progress and
-     * per-sample entry state, computed from the orders linked via
-     * sample_eqa.cycle_id (wired at receipt by T-15).
+     * fields My Cycles renders: scheme name/provider/type, progress and per-sample
+     * entry state, computed from the orders linked via sample_eqa.cycle_id (wired
+     * at receipt).
      */
     @GetMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> myCycles(@RequestParam(required = false) Long labEnrollmentId) {
@@ -274,9 +274,10 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.4-01 step 1 creates the cycle it blinds into; the provider wizard
-     * (T-24) creates one the same way. {@code cycleNumber} may be omitted — the
-     * service takes the scheme's next number, which is what both wizards suggest.
+     * The in-house wizard's first step creates the cycle it blinds into; the
+     * provider wizard creates one the same way. {@code cycleNumber} may be omitted
+     * — the service takes the scheme's next number, which is what both wizards
+     * suggest.
      */
     @PostMapping(value = "/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
@@ -305,23 +306,23 @@ public class EQACycleRestController extends BaseRestController {
      * <p>
      * What counts as entered depends on the lane, because the two lanes have
      * different gates. An external analyte counts once its analysis is finalized in
-     * the standard pipeline, which is what auto-submit waits on (FR-V2.2-07). An
-     * in-house one counts as soon as a result exists: that lane scores from the
-     * unblind and never goes through validation at all, so the Finalized rule left
-     * a fully answered and scored panel reading <i>0 of 6</i>.
+     * the standard pipeline, which is what auto-submit waits on. An in-house one
+     * counts as soon as a result exists: that lane scores from the unblind and
+     * never goes through validation at all, so the Finalized rule left a fully
+     * answered and scored panel reading <i>0 of 6</i>.
      *
      * <p>
      * When the scheme's review gate is on, each analyte also carries what the lab
-     * is about to submit — reported value and validation timestamp — because
-     * FR-V2.2-07 requires the officer to see the validated results before the
+     * is about to submit — reported value and validation timestamp — because The
+     * review gate requires the officer to see the validated results before the
      * single Submit click. Reading the flag off the DTO keeps that decision with
      * the scheme without re-fetching it; both callers run {@link #toCycleDto}
      * first.
      *
      * <p>
-     * ponytail: one query per linked order, plus one per analysis only when the
-     * gate is on; fine at lab scale (a cycle carries a handful of panel samples).
-     * Batch it if a deployment ever links hundreds.
+     * One query per linked order, plus one per analysis only when the gate is on;
+     * fine at lab scale (a cycle carries a handful of panel samples). Batch it if a
+     * deployment ever links hundreds.
      */
     private void addSampleProgress(Map<String, Object> dto, Long cycleId) {
         IStatusService statusService = SpringContext.getBean(IStatusService.class);
@@ -397,9 +398,9 @@ public class EQACycleRestController extends BaseRestController {
 
     /**
      * One analyte row. The reported value comes from the standard pipeline rather
-     * than eqa_participant_result: validation there is the authoritative gate
-     * (FR-V2.2-07), and nothing writes participant results until T-14. Dictionary
-     * and numeric results are rendered by the shared
+     * than eqa_participant_result: validation there is the authoritative gate, and
+     * nothing writes participant results until auto-submission. Dictionary and
+     * numeric results are rendered by the shared
      * {@link ResultService#getSimpleResultValue} so a coded answer shows its text,
      * not its dictionary id. Only a finalized analysis reports a value — an
      * unvalidated one is not part of what would be submitted.
@@ -423,10 +424,10 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * The five-step cycle wizard's single write (FR-V2.5-02). One POST creates the
-     * cycle, its panel, its panel samples and its participant roster, and leaves it
-     * in prep — the service does all of that in one transaction, so a rejected
-     * wizard leaves nothing half-created behind.
+     * The five-step cycle wizard's single write. One POST creates the cycle, its
+     * panel, its panel samples and its participant roster, and leaves it in prep —
+     * the service does all of that in one transaction, so a rejected wizard leaves
+     * nothing half-created behind.
      *
      * <p>
      * Running a cycle for other laboratories is the provider's job, so this
@@ -507,7 +508,7 @@ public class EQACycleRestController extends BaseRestController {
         }
     }
 
-    /** Computed, never stored (FR-V2.1-18). */
+    /** Computed, never stored. */
     @GetMapping(value = "/cycles/{id}/participant-state", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> participantState(@PathVariable Long id, @RequestParam Long labEnrollmentId) {
         Map<String, Object> dto = new LinkedHashMap<>();
@@ -538,8 +539,8 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.5-16: the timeline shows the actor, not a numeric user id. NULL for
-     * AUTO transitions — the client renders those as the system actor.
+     * The timeline shows the actor, not a numeric user id. NULL for AUTO
+     * transitions — the client renders those as the system actor.
      */
     private String resolveUserName(Long triggeredBy) {
         if (triggeredBy == null) {
@@ -556,13 +557,12 @@ public class EQACycleRestController extends BaseRestController {
 
     /**
      * Advancing a cycle mutates lab-wide state and writes a permanent audit row, so
-     * it needs a manage-level grant rather than the class-level read roles
-     * (FR-V2.1-04).
+     * it needs a manage-level grant rather than the class-level read roles.
      *
      * <p>
      * Provenance is never taken from the request body: an HTTP call is a person
      * acting, so it is always recorded as a MANUAL override attributed to the
-     * session user (FR-V2.1-21).
+     * session user.
      */
     @PatchMapping(value = "/cycles/{id}/transition", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
@@ -616,8 +616,8 @@ public class EQACycleRestController extends BaseRestController {
             dto.put("provider", cycle.getScheme().getProvider());
             dto.put("schemeType",
                     cycle.getScheme().getSchemeType() == null ? null : cycle.getScheme().getSchemeType().name());
-            // FR-V2.1-09: drives the Review & Submit gate on My Cycles (FR-V2.2-07)
-            // and stands T-14's auto-submit down.
+            // Drives the Review & Submit gate on My Cycles
+            // and stands the auto-submit sweep down.
             dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
         }
         dto.put("distributionMethod",

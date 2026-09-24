@@ -6,8 +6,7 @@ import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
 
 /**
- * Provider-side scoring and score return for a V2 cycle (T-26, FR-V2.5-03 /
- * FR-V2.5-04).
+ * Provider-side scoring and score return for a V2 cycle.
  *
  * <p>
  * Participants' submissions live in {@code eqa_result}, at organization grain,
@@ -31,7 +30,7 @@ public interface EQAProviderScoringService {
     /**
      * Score every participant's results for this cycle against the peer group, then
      * walk the provider machine to scored. Each participant whose worst verdict is
-     * unacceptable is entered in the provider follow-up register (FR-V2.5-05).
+     * unacceptable is entered in the provider follow-up register.
      *
      * @throws IllegalStateException when the cycle is not open for scoring, or too
      *                               few results have arrived for the statistics to
@@ -39,7 +38,7 @@ public interface EQAProviderScoringService {
      */
     Map<String, Object> scoreCycle(Long cycleId, String sysUserId);
 
-    /** One participant's scores as CSV (FR-V2.5-04 manual return channel). */
+    /** One participant's scores as CSV (the manual return channel). */
     String buildScoreCsv(Long cycleId, Long organizationId);
 
     /**
@@ -60,10 +59,10 @@ public interface EQAProviderScoringService {
     Map<Long, String> sealedTargetsByTest(Long cycleId);
 
     /**
-     * FR-V2.5-05: one row per laboratory enrolled in the scheme, carrying its
-     * rolling pass rate over its last four scored cycles, its most recent verdict
-     * and its open follow-up count, plus the cycle history behind the rate so a row
-     * can be drilled into without a second read.
+     * One row per laboratory enrolled in the scheme, carrying its rolling pass rate
+     * over its last four scored cycles, its most recent verdict and its open
+     * follow-up count, plus the cycle history behind the rate so a row can be
+     * drilled into without a second read.
      *
      * <p>
      * The provider could previously see one cycle at a time and never the trend,
@@ -102,6 +101,6 @@ public interface EQAProviderScoringService {
     Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
             Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId);
 
-    /** One participant's scores returned over FHIR (FR-V2.5-04). */
+    /** One participant's scores returned over FHIR. */
     Map<String, Object> distributeScores(Long cycleId, Long organizationId);
 }

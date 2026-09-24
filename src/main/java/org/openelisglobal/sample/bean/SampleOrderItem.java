@@ -299,7 +299,7 @@ public class SampleOrderItem implements Serializable {
     private String eqaDeadline;
     private String eqaPriority;
 
-    // Panel receipt captured on the order form (FR-V2.1-20)
+    // Panel receipt captured on the order form
     private String eqaCycleId;
     private String eqaReceivedTempC;
     private Boolean eqaIntegrityOk;

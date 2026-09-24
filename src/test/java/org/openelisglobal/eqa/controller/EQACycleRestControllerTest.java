@@ -37,8 +37,8 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.login.valueholder.UserSessionData;
 
 /**
- * OGC-609 [EQA V2.1 / T-10] — the transition endpoint must not let a caller
- * describe its own audit record.
+ * OGC-609 [EQA V2.1] — the transition endpoint must not let a caller describe
+ * its own audit record.
  *
  * <p>
  * A cycle-state audit row is what an ISO 15189 assessor reads to tell a
@@ -103,7 +103,7 @@ public class EQACycleRestControllerTest {
     public void theStateMachineLaneIsStillCallerSupplied() {
         // This one is a legitimate parameter, not a provenance claim: a single lab
         // participates in some schemes and runs others. Authorisation for provider
-        // transitions belongs to the permission tiers in T-12.
+        // transitions belongs to the permission tiers.
         controller.transition(request, 7L,
                 Map.of("newState", "PREP_IN_PROGRESS", "reason", "prep started", "stateMachine", "PROVIDER"));
 

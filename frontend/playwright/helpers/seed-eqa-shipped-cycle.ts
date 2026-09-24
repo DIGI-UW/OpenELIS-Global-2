@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { resolveDbContainer } from "./db-container";
 
 /**
- * EQA T-46 E2E seeding — a provider cycle parked in SHIPPED with a partial
+ * EQA E2E seeding — a provider cycle parked in SHIPPED with a partial
  * roster: participant A's shipment DELIVERED, participant B never shipped.
  * That is exactly the state the Receipt Monitor's "Open submissions" manual
  * override exists for.

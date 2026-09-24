@@ -60,8 +60,8 @@ public class Shipment extends BaseObject<Integer> {
     private ShipmentStatus status;
 
     /**
-     * The shipment this one replaces (EQA reprovisioning, FR-V2.5-15). Plain id
-     * rather than a self-reference: readers only ever display or join it.
+     * The shipment this one replaces (EQA reprovisioning). Plain id rather than a
+     * self-reference: readers only ever display or join it.
      */
     @Column(name = "repeat_of_shipment_id")
     private Integer repeatOfShipmentId;
@@ -69,8 +69,8 @@ public class Shipment extends BaseObject<Integer> {
     /**
      * The acting user, as {@code shipping_box} records it. Mapped explicitly
      * because {@link BaseObject#getSysUserId()} is transient, and the column is NOT
-     * NULL — until EQA dispatch (T-25) no code path inserted a shipment through
-     * Hibernate, so every insert would have failed on it.
+     * NULL — until EQA dispatch no code path inserted a shipment through Hibernate,
+     * so every insert would have failed on it.
      */
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;

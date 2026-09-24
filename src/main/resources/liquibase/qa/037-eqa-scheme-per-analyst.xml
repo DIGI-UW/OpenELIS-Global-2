@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.3 (OGC-611, FR-V2.3-04): whether a scheme records which analyst ran
+    EQA V2.3 (OGC-611): whether a scheme records which analyst ran
     each sample. Off by default — the Analyst column only appears on standard
     result entry for schemes that opt in, so nothing changes for a lab that does
     not assess competence per analyst.
@@ -19,7 +19,7 @@
                 <columnExists schemaName="clinlims" tableName="eqa_program" columnName="per_analyst" />
             </not>
         </preConditions>
-        <comment>FR-V2.3-04: schemes that capture the analyst on every result</comment>
+        <comment>Schemes that capture the analyst on every result</comment>
         <addColumn schemaName="clinlims" tableName="eqa_program">
             <column name="per_analyst" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false" />
@@ -32,8 +32,8 @@
 
     <!--
         qa-055 hid the four V2 oversight rows with the note "each card re-activates
-        its own"; T-18, T-20 and T-24 have done theirs. This is T-19's, and it also
-        migrates the URL off the FRS path the row was seeded with — a hard
+        its own"; the other oversight pages have done theirs. This is per-analyst capture's, and it also
+        migrates the URL off the specification path the row was seeded with — a hard
         navigation to /eqa/oversight/analyst-track reaches the backend and 404s,
         because only the SPA router knows about that redirect.
     -->

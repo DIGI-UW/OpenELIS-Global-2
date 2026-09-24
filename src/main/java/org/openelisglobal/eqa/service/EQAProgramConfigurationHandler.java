@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
  *
  * <pre>
  * name,description,provider,schemeType,frequency,testSection,active
- * CPHL National HIV Serology EQA,PT for HIV serology sites,"CPHL, Port Moresby",REGIONAL_PT,Quarterly,Serology,Y
+ * National HIV Serology EQA,PT for HIV serology sites,"National Public Health Laboratory",REGIONAL_PT,Quarterly,Serology,Y
  * </pre>
  *
  * Rows upsert by programme name: a new name inserts, an existing name updates
@@ -67,7 +67,7 @@ public class EQAProgramConfigurationHandler implements DomainConfigurationHandle
     }
 
     // Deliberately not @Transactional at file grain: each row commits through the
-    // service's own transaction, so a row the service rejects (BR-004: external
+    // service's own transaction, so a row the service rejects (an external
     // scheme without a provider) is logged and skipped without poisoning the
     // whole file with a rollback-only transaction.
     @Override

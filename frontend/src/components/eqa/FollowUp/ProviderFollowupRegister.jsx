@@ -54,7 +54,7 @@ const STATUS_TAG = {
 };
 
 /**
- * FR-V2.5-06's triage moves, in the order a reviewer reaches for them. The
+ * The triage moves, in the order a reviewer reaches for them. The
  * button says what the reviewer is about to do; the tag says what the row is —
  * two different wordings for the same enum, so they carry separate keys.
  */
@@ -76,7 +76,7 @@ const dateCell = (value) =>
 
 /**
  * The notification a reviewer sends by hand when the participant has no
- * contact email, or mail is not configured for this installation (FR-V2.5-08's
+ * contact email, or mail is not configured for this installation (the
  * CSV fallback).
  */
 const notificationCsv = (row) => {
@@ -106,13 +106,13 @@ const notificationCsv = (row) => {
 };
 
 /**
- * Provider-side participant follow-up register (T-27, FR-V2.5-05..08): the
+ * Provider-side participant follow-up register (OGC-613): the
  * laboratories this lab provides PT to that returned unacceptable results, the
  * triage they are in, and the two actions that leave this page — notifying the
- * lab, and reprovisioning its panel (which is T-26's repeat shipment).
+ * lab, and reprovisioning its panel (which is the oversight page's repeat shipment).
  *
  * Escalation here is a register state, never a local non-conformity: the NCE
- * path belongs to this lab's own Follow-Up Queue (AC-V2.5-10).
+ * path belongs to this lab's own Follow-Up Queue.
  */
 const ProviderFollowupRegister = () => {
   const intl = useIntl();

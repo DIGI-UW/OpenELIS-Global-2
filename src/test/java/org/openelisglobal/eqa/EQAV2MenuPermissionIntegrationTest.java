@@ -32,11 +32,12 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
                     "true" },
             { "menu_eqa_follow_up_queue", "/qa/eqa/follow-up-queue", "banner.menu.eqa.followUpQueue", "true" },
             // qa/037: the competency dashboard is the page this row was waiting for, so
-            // it moves onto the served route and comes back on. The FRS path 404s on a
+            // it moves onto the served route and comes back on. The specification path 404s
+            // on a
             // hard navigation — only the SPA router knows the redirect.
             { "menu_eqa_analyst_competency", "/qa/eqa/analyst-competency", "banner.menu.eqa.analystCompetency",
                     "true" },
-            // qa/032: T-24's scheme list is the page this row was waiting for, so it
+            // qa/032: the provider scheme list is the page this row was waiting for, so it
             // moves onto the served route and comes back on.
             { "menu_eqa_provider", "/qa/eqa/provider/schemes", "banner.menu.eqa.provider", "true" },
             // qa/043: the provider's participant follow-up register had no way in

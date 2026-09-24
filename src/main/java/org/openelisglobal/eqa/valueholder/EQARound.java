@@ -20,8 +20,8 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * One distribution event within a cycle (FR-V2.1-02). Status is a plain String
- * — the FRS never enumerates round states (EQAProgramEnrollment.status
+ * One distribution event within a cycle. Status is a plain String — the
+ * specification never enumerates round states (EQAProgramEnrollment.status
  * precedent).
  */
 @Getter

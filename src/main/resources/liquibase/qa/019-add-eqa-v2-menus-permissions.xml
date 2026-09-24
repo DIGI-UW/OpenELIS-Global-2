@@ -2,8 +2,8 @@
 <!--
     EQA V2 (OGC-609): menu rows for the V2 three-lane IA + the V2
     permission tiers. qa.view.eqa stays the read umbrella; the tiers below are
-    what the V2 endpoints/pages actually gate on (FRS permissions table
-    collapsed to the set the cards use). Routes come from the FRS route
+    what the V2 endpoints/pages actually gate on (specification permissions table
+    collapsed to the set the cards use). Routes come from the specification route
     registry (/eqa/participant|oversight|management/...).
 
     Menu-visibility filtering by grant (OGC-1151) has no mechanism on this
@@ -21,7 +21,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_my_cycles'</sqlCheck>
         </preConditions>
-        <comment>My Cycles — participant lane landing page (FR-V2.2-02)</comment>
+        <comment>My Cycles — participant lane landing page</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />

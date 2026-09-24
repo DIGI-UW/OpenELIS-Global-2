@@ -1,13 +1,14 @@
-// Data seam for My Cycles (T-13). Reads the real cycle API (PR #4070 contract,
+// Data seam for My Cycles. Reads the real cycle API (PR #4070 contract,
 // enriched with schemeName/provider/schemeType/requiresCycleReview/progress/
 // samples). MOCK_CYCLES remains only as the test fixture. schemeType arrives
 // as the enum name (INTERNATIONAL_PT); the view model lower-cases it to match
 // i18n keys. perAnalyst and hasNce still have no backing schema (per-analyst
-// mapping is T-19, the NCE link is T-17) — they default false here.
+// mapping and the NCE link ship separately) — they default false here.
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import { asList } from "../eqaApi";
 
 const toViewModel = (dto) => ({
   perAnalyst: false,
@@ -18,14 +19,14 @@ const toViewModel = (dto) => ({
   schemeType: (dto.schemeType || "").toLowerCase(),
   progress: dto.progress || { entered: 0, total: 0 },
   samples: dto.samples || [],
-  // Per-lab derived state wins over the cycle's own machine state (FR-V2.1-18).
+  // Per-lab derived state wins over the cycle's own machine state.
   status: (dto.participantState || dto.status || "").toLowerCase(),
   deadline: dto.plannedEndDate || "",
 });
 
 export const fetchMyCycles = (callback) => {
   getFromOpenElisServer("/rest/eqa/cycles/mine", (data) =>
-    callback((data || []).map(toViewModel)),
+    callback(asList(data).map(toViewModel)),
   );
 };
 
@@ -55,7 +56,7 @@ export const submitCycle = (cycleId, callback) => {
   );
 };
 
-// FR-V2.2-06 manual fallback, reachable at last. The automatic channel spends a
+// Manual fallback, reachable at last. The automatic channel spends a
 // finite retry budget and then stops for good, and the alert it raises says
 // "submit manually" — this is what that sentence now points at. The provider's
 // reference is mandatory server-side: without it a manual submission is a claim

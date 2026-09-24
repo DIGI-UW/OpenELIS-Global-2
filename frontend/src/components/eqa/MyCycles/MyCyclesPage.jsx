@@ -43,6 +43,7 @@ import {
   submitCycle,
   submitCycleManually,
 } from "./cyclesApi";
+import { asList } from "../eqaApi";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -87,7 +88,7 @@ const ENTRY_TAG = {
 const resultEntryUrl = (labNo) =>
   `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(labNo)}`;
 
-// FR-V2.2-07: the pre-submission summary and its Submit action appear together,
+// The pre-submission summary and its Submit action appear together,
 // only while a review-gated scheme sits at ready_to_submit.
 const reviewGateOpen = (cycle) =>
   cycle.requiresCycleReview && cycle.status === "ready_to_submit";
@@ -108,7 +109,7 @@ const validatedAtLabel = (value) =>
 /**
  * Table rows for a cycle's samples. Normally one row per sample with the
  * analytes collapsed into a cell; under the review gate one row per analyte, so
- * each reported value can be checked on its own line (FR-V2.2-07). Only the
+ * each reported value can be checked on its own line. Only the
  * first row of a sample repeats its identity columns.
  */
 const sampleRows = (cycle) => {
@@ -244,9 +245,9 @@ const MyCyclesPage = () => {
     });
     getFromOpenElisServer("/rest/eqa/orders", (data) => {
       // G2 (decided 2026-08-13): ad-hoc EQA orders stay visible in their own
-      // bucket. cycleId lands on the order DTO with T-15; until then every
+      // bucket. cycleId lands on the order DTO at receipt; until then every
       // EQA order is uncycled by definition.
-      setUncycledOrders((data || []).filter((o) => !o.cycleId));
+      setUncycledOrders(asList(data).filter((o) => !o.cycleId));
     });
   }, []);
 

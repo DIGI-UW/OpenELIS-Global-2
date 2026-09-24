@@ -277,14 +277,15 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * FR-V2.5-05. The provider could see one cycle at a time and never the trend,
-     * which is the judgement the FR exists to support — which laboratory is
-     * drifting. The rate is asserted against a rebuild from the same rows rather
-     * than a figure typed into the test.
+     * The provider could see one cycle at a time and never the trend, which is the
+     * judgement the FR exists to support — which laboratory is drifting. The rate
+     * is asserted against a rebuild from the same rows rather than a figure typed
+     * into the test.
      */
     @Test
     public void participantPerformanceCarriesEachLaboratorysRollingPassRate() {
-        // The read is enrollment-driven, as FR-V2.5-05 asks: a laboratory belongs on
+        // The read is enrollment-driven, as the specification asks: a laboratory
+        // belongs on
         // this page because it is enrolled, not because it happens to have
         // reported. The intake fixture takes results in without enrolling anyone,
         // so the roster is seeded here.

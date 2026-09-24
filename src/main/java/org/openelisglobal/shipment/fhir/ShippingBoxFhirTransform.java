@@ -257,7 +257,7 @@ public class ShippingBoxFhirTransform {
         Map<String, String> nonConformityOverrides = null;
 
         for (BoxSampleItem bsi : boxSampleItems) {
-            // T-42: every contents row — patient specimen or panel material — travels
+            // Every contents row — patient specimen or panel material — travels
             // as a labelled content item so the receiver can render a manifest.
             String label = null;
             String typeDescription = null;
@@ -288,7 +288,7 @@ public class ShippingBoxFhirTransform {
             // panel material has no SampleItem, so keying this off the Specimen
             // reference below meant material recorded as damaged left no trace on the
             // wire — the one fact a sending laboratory most needs back.
-            // ponytail: the extension names a code but not which item it belongs to,
+            // The extension names a code but not which item it belongs to,
             // as it always has. Naming the item means nesting {item, code}, which is a
             // wire-format change and a separate decision.
             if (bsi.getReceptionStatus() != null && bsi.getReceptionStatus() != ReceptionStatus.PENDING

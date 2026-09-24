@@ -35,12 +35,12 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { calendarOnlyInput, hintStyle } from "../eqaCommon";
 import { createProviderCycle } from "./Workbench/workbenchApi";
-// The same test list T-21's in-house wizard picks from: the standard catalog
+// The same test list the in-house wizard picks from: the standard catalog
 // narrowed to tests that carry an analyte, since a panel target is stored
 // against one. One seam for both wizards rather than a second copy.
-import { fetchTests } from "../eqaApi";
+import { asList, fetchTests } from "../eqaApi";
 
-/** FR-V2.1-17's vocabularies, as the server spells them. */
+/** Panel vocabularies, as the server spells them. */
 const SOURCE_TYPES = ["IN_HOUSE_ALIQUOTED", "VENDOR_SOURCED", "MIXED"];
 // Exactly EQADistributionMethod; the server refuses anything else.
 const DISTRIBUTION_METHODS = ["FHIR", "CSV", "MIXED"];
@@ -63,7 +63,7 @@ const emptySample = () => ({
 });
 
 /**
- * Panel definition + cycle creation wizard (FR-V2.5-02): cycle details → panel
+ * Panel definition + cycle creation wizard: cycle details → panel
  * samples + source (with its cold chain) → participants → distribution method →
  * confirm & begin prep.
  *
@@ -112,14 +112,14 @@ const CycleWizard = () => {
     getFromOpenElisServer(
       `/rest/eqa/programs/${schemeId}/enrollments`,
       (data) => {
-        const active = (data || [])
+        const active = asList(data)
           .filter((e) => e.status === "Active" && e.organizationId != null)
           .map((e) => ({
             id: String(e.organizationId),
             name: e.organizationName || String(e.organizationId),
           }));
         setOrganizations(active);
-        // FR-V2.5-02 step 3: default = all active, still editable. Step 5
+        // Default = all active, still editable. Step 5
         // names every selected lab before the single write, which is what
         // keeps the default safe.
         setSelectedOrgs(active);
@@ -132,7 +132,7 @@ const CycleWizard = () => {
       prev.map((sample, i) => (i === index ? { ...sample, ...patch } : sample)),
     );
 
-  // A vendor-sourced panel must carry the vendor's provenance (FR-V2.1-17); the
+  // A vendor-sourced panel must carry the vendor's provenance; the
   // server refuses it too, this only saves the operator a round trip.
   const vendorRequired = sourceType !== "IN_HOUSE_ALIQUOTED";
   const samplesComplete = samples.every(
@@ -666,7 +666,7 @@ const CycleWizard = () => {
             </>
           )}
 
-          {/* FR-V2.5-02 step 4: how the cycle reaches its participants and
+          {/* how the cycle reaches its participants and
               returns their scores. The receipt monitor and score distribution
               read this to decide how each participant is served. */}
           {step === 3 && (

@@ -130,9 +130,6 @@ const BlindingWizard = () => {
     ...modeBlockers(roster, assignmentMode),
   ];
 
-  const label = (id, fallback, values) =>
-    intl.formatMessage({ id, defaultMessage: fallback }, values);
-
   const updateSample = (key, field, value) =>
     setSamples((rows) =>
       rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)),
@@ -152,10 +149,7 @@ const BlindingWizard = () => {
       if (status >= 400 || status === 0) {
         setNotification({
           kind: "error",
-          message: label(
-            "eqa.inhouse.roster.saveError",
-            "Could not save the analyst roster",
-          ),
+          message: intl.formatMessage({ id: "eqa.inhouse.roster.saveError" }),
         });
         return;
       }
@@ -163,10 +157,10 @@ const BlindingWizard = () => {
     });
   };
 
-  // FR-V2.4-04: cycle, panel and orders are one user action. The panel is
+  // Cycle, panel and orders are one user action. The panel is
   // written only here, at confirm — a wizard abandoned earlier leaves nothing
   // behind to resume or clean up.
-  // ponytail: no draft panels; add a resume path when a lab asks for one.
+  // No draft panels; add a resume path when a lab asks for one.
   const seal = () => {
     setBusy(true);
     setNotification(null);
@@ -177,7 +171,7 @@ const BlindingWizard = () => {
           kind: "error",
           message:
             cycleResponse?.error ||
-            label("eqa.inhouse.seal.cycleError", "Could not create the cycle"),
+            intl.formatMessage({ id: "eqa.inhouse.seal.cycleError" }),
         });
         return;
       }
@@ -207,7 +201,7 @@ const BlindingWizard = () => {
         cycleId: cycleResponse.id,
         panelName:
           cycle.cycleName ||
-          `${label("eqa.inhouse.panel.defaultName", "In-house panel")} ${cycleResponse.cycleNumber}`,
+          `${intl.formatMessage({ id: "eqa.inhouse.panel.defaultName" })} ${cycleResponse.cycleNumber}`,
         panelType: "IN_HOUSE",
         unblindDate: cycle.unblindDate,
         sourceType: prep.sourceType,
@@ -232,10 +226,7 @@ const BlindingWizard = () => {
             kind: "error",
             message:
               panelResponse?.error ||
-              label(
-                "eqa.inhouse.seal.panelError",
-                "Could not create the panel",
-              ),
+              intl.formatMessage({ id: "eqa.inhouse.seal.panelError" }),
           });
           return;
         }
@@ -251,7 +242,7 @@ const BlindingWizard = () => {
               kind: "error",
               message:
                 sealResponse?.error ||
-                label("eqa.inhouse.seal.error", "Could not seal the panel"),
+                intl.formatMessage({ id: "eqa.inhouse.seal.error" }),
             });
             return;
           }
@@ -284,18 +275,8 @@ const BlindingWizard = () => {
         <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Tile>
-              <h4>
-                {label(
-                  "eqa.inhouse.sealed.title",
-                  "Panel sealed and distributed",
-                )}
-              </h4>
-              <p>
-                {label(
-                  "eqa.inhouse.sealed.help",
-                  "The blinded orders now carry these blind codes as their sample IDs, in result entry and in the Workplan.",
-                )}
-              </p>
+              <h4>{intl.formatMessage({ id: "eqa.inhouse.sealed.title" })}</h4>
+              <p>{intl.formatMessage({ id: "eqa.inhouse.sealed.help" })}</p>
               <ul>
                 {(sealed.orderAccessionNumbers || []).map((code) => (
                   <li key={code}>{code}</li>
@@ -306,23 +287,18 @@ const BlindingWizard = () => {
                   and whoever tracks the cycle. Both facts and both destinations
                   belong here rather than one step back through the menu. */}
               <p>
-                {label(
-                  "eqa.inhouse.sealed.deadline",
-                  "Unblind date, and the deadline for the analysts to submit: {date}",
+                {intl.formatMessage(
+                  { id: "eqa.inhouse.sealed.deadline" },
                   { date: formatDateOnly(cycle.unblindDate) },
                 )}
               </p>
               <p>
                 {assignedAnalystNames.length > 0
-                  ? label(
-                      "eqa.inhouse.sealed.analysts",
-                      "Assigned analysts: {names}",
+                  ? intl.formatMessage(
+                      { id: "eqa.inhouse.sealed.analysts" },
                       { names: assignedAnalystNames.join(", ") },
                     )
-                  : label(
-                      "eqa.inhouse.sealed.noAnalysts",
-                      "No analyst is assigned to any sample on this panel.",
-                    )}
+                  : intl.formatMessage({ id: "eqa.inhouse.sealed.noAnalysts" })}
               </p>
               <Button
                 kind="tertiary"
@@ -330,30 +306,29 @@ const BlindingWizard = () => {
                   downloadLabelSheet(sealed.id, () =>
                     setNotification({
                       kind: "error",
-                      message: label(
-                        "eqa.inhouse.labels.error",
-                        "Could not generate the label sheet",
-                      ),
+                      message: intl.formatMessage({
+                        id: "eqa.inhouse.labels.error",
+                      }),
                     }),
                   )
                 }
               >
-                {label("eqa.inhouse.labels.print", "Print label sheet")}
+                {intl.formatMessage({ id: "eqa.inhouse.labels.print" })}
               </Button>{" "}
               <Button
                 kind="tertiary"
                 onClick={() => history.push("/qa/eqa/my-cycles")}
               >
-                {label("eqa.inhouse.sealed.toMyCycles", "Open My Cycles")}
+                {intl.formatMessage({ id: "eqa.inhouse.sealed.toMyCycles" })}
               </Button>{" "}
               <Button
                 kind="tertiary"
                 onClick={() => history.push("/WorkPlanByTestSection")}
               >
-                {label("eqa.inhouse.sealed.toWorkplan", "Open the Workplan")}
+                {intl.formatMessage({ id: "eqa.inhouse.sealed.toWorkplan" })}
               </Button>{" "}
               <Button onClick={() => history.push("/qa/eqa/in-house")}>
-                {label("eqa.inhouse.sealed.done", "Back to in-house panels")}
+                {intl.formatMessage({ id: "eqa.inhouse.sealed.done" })}
               </Button>
               {notification && (
                 <InlineNotification
@@ -375,19 +350,19 @@ const BlindingWizard = () => {
       {busy && <Loading />}
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
-          <h3>
-            {label("eqa.inhouse.wizard.title", "Create in-house blinded panel")}
-          </h3>
+          <h3>{intl.formatMessage({ id: "eqa.inhouse.wizard.title" })}</h3>
           <ProgressIndicator currentIndex={step} spaceEqually>
             <ProgressStep
-              label={label("eqa.inhouse.step1", "Scheme & cycle")}
+              label={intl.formatMessage({ id: "eqa.inhouse.step1" })}
             />
             <ProgressStep
-              label={label("eqa.inhouse.step2", "Samples & prep")}
+              label={intl.formatMessage({ id: "eqa.inhouse.step2" })}
             />
-            <ProgressStep label={label("eqa.inhouse.step3", "Analysts")} />
             <ProgressStep
-              label={label("eqa.inhouse.step4", "Confirm & seal")}
+              label={intl.formatMessage({ id: "eqa.inhouse.step3" })}
+            />
+            <ProgressStep
+              label={intl.formatMessage({ id: "eqa.inhouse.step4" })}
             />
           </ProgressIndicator>
         </Column>
@@ -406,7 +381,7 @@ const BlindingWizard = () => {
           <Column lg={16} md={8} sm={4}>
             <Select
               id="inhouse-scheme"
-              labelText={label("eqa.inhouse.scheme", "In-house scheme")}
+              labelText={intl.formatMessage({ id: "eqa.inhouse.scheme" })}
               value={cycle.schemeId}
               onChange={(e) => setCycle({ ...cycle, schemeId: e.target.value })}
             >
@@ -421,7 +396,7 @@ const BlindingWizard = () => {
             </Select>
             <TextInput
               id="inhouse-cycle-name"
-              labelText={label("eqa.inhouse.cycleName", "Cycle name")}
+              labelText={intl.formatMessage({ id: "eqa.inhouse.cycleName" })}
               value={cycle.cycleName}
               onChange={(e) =>
                 setCycle({ ...cycle, cycleName: e.target.value })
@@ -430,10 +405,7 @@ const BlindingWizard = () => {
             <TextInput
               id="inhouse-start"
               type="date"
-              labelText={label(
-                "eqa.inhouse.plannedStart",
-                "Planned start date",
-              )}
+              labelText={intl.formatMessage({ id: "eqa.inhouse.plannedStart" })}
               value={cycle.plannedStartDate}
               onChange={(e) =>
                 setCycle({ ...cycle, plannedStartDate: e.target.value })
@@ -442,10 +414,7 @@ const BlindingWizard = () => {
             <TextInput
               id="inhouse-unblind"
               type="date"
-              labelText={label(
-                "eqa.inhouse.unblindDate",
-                "Unblind date (submission deadline)",
-              )}
+              labelText={intl.formatMessage({ id: "eqa.inhouse.unblindDate" })}
               value={cycle.unblindDate}
               onChange={(e) =>
                 setCycle({ ...cycle, unblindDate: e.target.value })
@@ -470,18 +439,22 @@ const BlindingWizard = () => {
               <TableHead>
                 <TableRow>
                   <TableHeader>
-                    {label("eqa.inhouse.sample", "Sample")}
-                  </TableHeader>
-                  <TableHeader>{label("eqa.inhouse.test", "Test")}</TableHeader>
-                  <TableHeader>
-                    {label("eqa.inhouse.target", "Target value")}
-                  </TableHeader>
-                  <TableHeader>{label("eqa.inhouse.unit", "Unit")}</TableHeader>
-                  <TableHeader>
-                    {label("eqa.inhouse.rangeLow", "Range low")}
+                    {intl.formatMessage({ id: "eqa.inhouse.sample" })}
                   </TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.rangeHigh", "Range high")}
+                    {intl.formatMessage({ id: "eqa.inhouse.test" })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({ id: "eqa.inhouse.target" })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({ id: "eqa.inhouse.unit" })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({ id: "eqa.inhouse.rangeLow" })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({ id: "eqa.inhouse.rangeHigh" })}
                   </TableHeader>
                 </TableRow>
               </TableHead>
@@ -567,20 +540,15 @@ const BlindingWizard = () => {
                 setSamples((rows) => [...rows, emptySample(rows.length + 1)])
               }
             >
-              {label("eqa.inhouse.addSample", "Add sample")}
+              {intl.formatMessage({ id: "eqa.inhouse.addSample" })}
             </Button>
 
             <h5 style={{ marginTop: "1.5rem" }}>
-              {label("eqa.inhouse.prep.title", "Prep & aliquoting details")}
+              {intl.formatMessage({ id: "eqa.inhouse.prep.title" })}
             </h5>
-            <p>
-              {label(
-                "eqa.inhouse.prep.subtitle",
-                "The same panel-inventory fields the provider side records (FR-V2.1-17), so in-house and provider prep read alike.",
-              )}
-            </p>
+            <p>{intl.formatMessage({ id: "eqa.inhouse.prep.subtitle" })}</p>
             {/* The requirement, stated before the user trips it. One aliquot per
-                blinded sample: the analyst multiplier the FRS writes is already
+                blinded sample: the analyst multiplier the specification writes is already
                 in the row count, since distribution creates one order per
                 sample. */}
             <p>
@@ -596,7 +564,9 @@ const BlindingWizard = () => {
 
             <Select
               id="inhouse-source"
-              labelText={label("eqa.inhouse.prep.sourceType", "Source")}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.sourceType",
+              })}
               value={prep.sourceType}
               onChange={(e) => setPrep({ ...prep, sourceType: e.target.value })}
             >
@@ -605,25 +575,26 @@ const BlindingWizard = () => {
                   key={type}
                   value={type}
                   // eqa.panel.* is the shared panel vocabulary the provider
-                  // wizard renders too (T-24); lower-cased like every other
+                  // wizard renders too; lower-cased like every other
                   // enum-derived key in this module.
-                  text={label(
-                    `eqa.panel.source.${type.toLowerCase()}`,
-                    type.replace(/_/g, " "),
-                  )}
+                  text={intl.formatMessage({
+                    id: `eqa.panel.source.${type.toLowerCase()}`,
+                  })}
                 />
               ))}
             </Select>
             <TextInput
               id="inhouse-lot"
-              labelText={label("eqa.inhouse.prep.lotNumber", "Lot number")}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.lotNumber",
+              })}
               value={prep.lotNumber}
               onChange={(e) => setPrep({ ...prep, lotNumber: e.target.value })}
             />
             <NumberInput
               id="inhouse-aliquots"
               min={0}
-              label={label("eqa.inhouse.prep.aliquots", "Aliquots produced")}
+              label={intl.formatMessage({ id: "eqa.inhouse.prep.aliquots" })}
               value={prep.aliquotsProduced}
               onChange={(e, { value }) =>
                 setPrep({ ...prep, aliquotsProduced: value })
@@ -631,10 +602,9 @@ const BlindingWizard = () => {
             />
             <Select
               id="inhouse-storage"
-              labelText={label(
-                "eqa.inhouse.prep.storageTemp",
-                "Storage temperature",
-              )}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.storageTemp",
+              })}
               value={prep.storageTemp}
               onChange={(e) =>
                 setPrep({ ...prep, storageTemp: e.target.value })
@@ -644,20 +614,18 @@ const BlindingWizard = () => {
                 <SelectItem
                   key={temp}
                   value={temp}
-                  text={label(
-                    `eqa.panel.storage.${temp.toLowerCase()}`,
-                    temp.replace(/_/g, " "),
-                  )}
+                  text={intl.formatMessage({
+                    id: `eqa.panel.storage.${temp.toLowerCase()}`,
+                  })}
                 />
               ))}
             </Select>
             <TextInput
               id="inhouse-expiry"
               type="date"
-              labelText={label(
-                "eqa.inhouse.prep.expiration",
-                "Expiration date",
-              )}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.expiration",
+              })}
               value={prep.expirationDate}
               onChange={(e) =>
                 setPrep({ ...prep, expirationDate: e.target.value })
@@ -665,10 +633,9 @@ const BlindingWizard = () => {
             />
             <Checkbox
               id="inhouse-homogeneity"
-              labelText={label(
-                "eqa.inhouse.prep.homogeneity",
-                "Homogeneity QC passed",
-              )}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.homogeneity",
+              })}
               checked={prep.homogeneityQcPassed}
               onChange={(e, { checked }) =>
                 setPrep({ ...prep, homogeneityQcPassed: checked })
@@ -676,10 +643,9 @@ const BlindingWizard = () => {
             />
             <TextArea
               id="inhouse-homogeneity-notes"
-              labelText={label(
-                "eqa.inhouse.prep.homogeneityNotes",
-                "Homogeneity QC notes",
-              )}
+              labelText={intl.formatMessage({
+                id: "eqa.inhouse.prep.homogeneityNotes",
+              })}
               value={prep.homogeneityQcNotes}
               onChange={(e) =>
                 setPrep({ ...prep, homogeneityQcNotes: e.target.value })
@@ -692,7 +658,7 @@ const BlindingWizard = () => {
                 kind="warning"
                 lowContrast
                 hideCloseButton
-                title={label(blocker, blocker)}
+                title={intl.formatMessage({ id: blocker })}
                 subtitle={
                   blocker === "eqa.inhouse.gate.aliquots"
                     ? `${samples.length} / ${prep.aliquotsProduced || 0}`
@@ -707,8 +673,8 @@ const BlindingWizard = () => {
           <Column lg={16} md={8} sm={4}>
             <MultiSelect
               id="inhouse-roster"
-              titleText={label("eqa.inhouse.roster", "Scheme analysts")}
-              label={label("eqa.inhouse.roster.pick", "Select analysts")}
+              titleText={intl.formatMessage({ id: "eqa.inhouse.roster" })}
+              label={intl.formatMessage({ id: "eqa.inhouse.roster.pick" })}
               items={labUsers}
               itemToString={(user) =>
                 user ? user.displayName || user.loginName : ""
@@ -725,14 +691,11 @@ const BlindingWizard = () => {
               onChange={({ selectedItems }) =>
                 setRosterUsers((selectedItems || []).map((user) => user.id))
               }
-              helperText={label(
-                "eqa.inhouse.roster.help",
-                "Analysts are OpenELIS user accounts. Everyone selected here joins this scheme's roster and can be assigned samples to run; the roster is separate from who enters and who validates a result.",
-              )}
+              helperText={intl.formatMessage({ id: "eqa.inhouse.roster.help" })}
             />
             <Select
               id="inhouse-assignment-mode"
-              labelText={label("eqa.inhouse.assign.mode", "Assignment mode")}
+              labelText={intl.formatMessage({ id: "eqa.inhouse.assign.mode" })}
               value={assignmentMode}
               onChange={(e) => {
                 // Manual starts from the deal the user was just looking at,
@@ -747,7 +710,9 @@ const BlindingWizard = () => {
                 <SelectItem
                   key={mode}
                   value={mode}
-                  text={label(`eqa.inhouse.assign.${mode}`, mode)}
+                  text={intl.formatMessage({
+                    id: `eqa.inhouse.assign.${mode}`,
+                  })}
                 />
               ))}
             </Select>
@@ -767,21 +732,18 @@ const BlindingWizard = () => {
                 )}
               </p>
             )}
-            <p>
-              {label(
-                "eqa.inhouse.assign.footnote",
-                "Each assignment is recorded on the blinded order it creates, and follows that order through result entry.",
-              )}
-            </p>
+            <p>{intl.formatMessage({ id: "eqa.inhouse.assign.footnote" })}</p>
             <Table size="sm">
               <TableHead>
                 <TableRow>
                   <TableHeader>
-                    {label("eqa.inhouse.sample", "Sample")}
+                    {intl.formatMessage({ id: "eqa.inhouse.sample" })}
                   </TableHeader>
-                  <TableHeader>{label("eqa.inhouse.test", "Test")}</TableHeader>
                   <TableHeader>
-                    {label("eqa.inhouse.analyst", "Analyst")}
+                    {intl.formatMessage({ id: "eqa.inhouse.test" })}
+                  </TableHeader>
+                  <TableHeader>
+                    {intl.formatMessage({ id: "eqa.inhouse.analyst" })}
                   </TableHeader>
                 </TableRow>
               </TableHead>
@@ -836,63 +798,53 @@ const BlindingWizard = () => {
               kind="warning"
               lowContrast
               hideCloseButton
-              title={label(
-                "eqa.inhouse.confirm.sealWarning",
-                "Sealing encrypts the target values",
-              )}
-              subtitle={label(
-                "eqa.inhouse.confirm.sealWarningBody",
-                "After sealing, revealing a target takes the unblind privilege and is recorded in the audit trail. The panel cannot be edited afterwards.",
-              )}
+              title={intl.formatMessage({
+                id: "eqa.inhouse.confirm.sealWarning",
+              })}
+              subtitle={intl.formatMessage({
+                id: "eqa.inhouse.confirm.sealWarningBody",
+              })}
             />
             <Tile>
               <p>
-                {label("eqa.inhouse.scheme", "In-house scheme")}:{" "}
+                {intl.formatMessage({ id: "eqa.inhouse.scheme" })}:{" "}
                 {schemes.find(
                   (scheme) => String(scheme.id) === String(cycle.schemeId),
                 )?.name || "—"}
               </p>
               <p>
-                {label("eqa.inhouse.cycle", "Cycle")}: {cycle.cycleName || "—"}
+                {intl.formatMessage({ id: "eqa.inhouse.cycle" })}:{" "}
+                {cycle.cycleName || "—"}
               </p>
               <p>
-                {label("eqa.inhouse.confirm.samples", "Samples")}:{" "}
+                {intl.formatMessage({ id: "eqa.inhouse.confirm.samples" })}:{" "}
                 {samples.length}
               </p>
               <p>
-                {label("eqa.inhouse.confirm.aliquotRows", "Blinded aliquots")}:{" "}
+                {intl.formatMessage({ id: "eqa.inhouse.confirm.aliquotRows" })}:{" "}
                 {assigned.length}
               </p>
               <p>
-                {label("eqa.inhouse.prep.aliquots", "Aliquots produced")}:{" "}
+                {intl.formatMessage({ id: "eqa.inhouse.prep.aliquots" })}:{" "}
                 {prep.aliquotsProduced}
               </p>
               <p>
-                {label("eqa.inhouse.prep.lotNumber", "Lot number")}:{" "}
+                {intl.formatMessage({ id: "eqa.inhouse.prep.lotNumber" })}:{" "}
                 {prep.lotNumber || "—"}
               </p>
               <p>
-                {label(
-                  "eqa.inhouse.unblindDate",
-                  "Unblind date (submission deadline)",
-                )}
-                : {cycle.unblindDate}
+                {intl.formatMessage({ id: "eqa.inhouse.unblindDate" })}:{" "}
+                {cycle.unblindDate}
               </p>
               <p>
-                {label("eqa.inhouse.prep.homogeneity", "Homogeneity QC passed")}
-                : {prep.homogeneityQcPassed ? "✓" : prep.homogeneityQcNotes}
+                {intl.formatMessage({ id: "eqa.inhouse.prep.homogeneity" })}:{" "}
+                {prep.homogeneityQcPassed ? "✓" : prep.homogeneityQcNotes}
               </p>
               <p>
-                {label(
-                  "eqa.inhouse.confirm.labelNote",
-                  "Label sheets carry the blind code, cycle and analyte only — never a target value.",
-                )}
+                {intl.formatMessage({ id: "eqa.inhouse.confirm.labelNote" })}
               </p>
               <p>
-                {label(
-                  "eqa.inhouse.confirm.afterSeal",
-                  "Sealing creates one blinded order per aliquot. They appear in result entry and the Workplan under their blind codes, like any other order.",
-                )}
+                {intl.formatMessage({ id: "eqa.inhouse.confirm.afterSeal" })}
               </p>
             </Tile>
           </Column>
@@ -901,7 +853,7 @@ const BlindingWizard = () => {
         <Column lg={16} md={8} sm={4}>
           {step > 0 && (
             <Button kind="secondary" onClick={() => setStep(step - 1)}>
-              {label("eqa.inhouse.back", "Back")}
+              {intl.formatMessage({ id: "eqa.inhouse.back" })}
             </Button>
           )}{" "}
           {step < 3 && (
@@ -912,16 +864,16 @@ const BlindingWizard = () => {
               }
               onClick={() => setStep(step + 1)}
             >
-              {label("eqa.inhouse.next", "Next")}
+              {intl.formatMessage({ id: "eqa.inhouse.next" })}
             </Button>
           )}
           {step === 3 && (
             <Button disabled={busy || blockers.length > 0} onClick={seal}>
-              {label("eqa.inhouse.seal", "Seal panel & distribute")}
+              {intl.formatMessage({ id: "eqa.inhouse.seal" })}
             </Button>
           )}{" "}
           <Button kind="ghost" onClick={() => history.push("/qa/eqa/in-house")}>
-            {label("eqa.inhouse.cancel", "Cancel")}
+            {intl.formatMessage({ id: "eqa.inhouse.cancel" })}
           </Button>
         </Column>
       </Grid>

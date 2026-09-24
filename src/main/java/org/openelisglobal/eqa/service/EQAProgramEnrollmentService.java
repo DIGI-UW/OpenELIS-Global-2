@@ -8,9 +8,9 @@ import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 public interface EQAProgramEnrollmentService extends BaseObjectService<EQAProgramEnrollment, Long> {
 
     /**
-     * The enrollment status a participant must hold to count as taking part
-     * (BR-013) — one spelling, since the cycle gate and the shipment workbench both
-     * size a cycle by it.
+     * The enrollment status a participant must hold to count as taking part — one
+     * spelling, since the cycle gate and the shipment workbench both size a cycle
+     * by it.
      */
     String STATUS_ACTIVE = "Active";
 

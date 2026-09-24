@@ -24,9 +24,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * OGC-612 [EQA V2.4] — the writes the in-house blinding wizard makes before it
- * seals: the cycle it blinds into (FR-V2.4-01), the panel and its samples
- * (FR-V2.4-02), and the analyst roster round-robin draws from (FR-V2.4-03).
- * Sealing itself is covered by the T-22 suites.
+ * seals: the cycle it blinds into, the panel and its samples, and the analyst
+ * roster round-robin draws from. Sealing itself is covered by the blinding
+ * suites.
  */
 public class EQAInHouseWizardIntegrationTest extends EQASpineTestBase {
 

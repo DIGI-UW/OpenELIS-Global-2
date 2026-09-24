@@ -16,7 +16,7 @@
     attribution comes for free.
 
     The seeded wording is operational QA guidance, not clinical interpretation,
-    and is a starting library CPHL is expected to edit in place.
+    and is a starting library the provider is expected to edit in place.
     -->
 
     <changeSet author="openelisglobal" id="qa-060-seed-eqa-report-comment-library">

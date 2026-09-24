@@ -25,7 +25,7 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
      */
     /**
      * The scheme whose samples this one belongs to, when that scheme captures the
-     * analyst on every result (FR-V2.3-04).
+     * analyst on every result.
      *
      * <p>
      * Result entry asks per row, so this answers from the sample rather than making

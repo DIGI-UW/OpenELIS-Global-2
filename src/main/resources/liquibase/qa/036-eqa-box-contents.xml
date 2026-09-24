@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.5 (OGC-613) T-40: EQA panel material as real box contents.
+    EQA V2.5 (OGC-613): EQA panel material as real box contents.
 
     box_sample_item keys on sample_item — a specimen accessioned into this lab
     against a patient. Provider panel material is eqa_panel_sample and is going
@@ -35,7 +35,7 @@
                     columnName="eqa_panel_sample_id" />
             </not>
         </preConditions>
-        <comment>EQA panel material as box contents (FR-V2.5-13)</comment>
+        <comment>EQA panel material as box contents</comment>
 
         <addColumn schemaName="clinlims" tableName="box_sample_item">
             <column name="eqa_panel_sample_id" type="numeric(10,0)" />
@@ -79,7 +79,7 @@
         </rollback>
     </changeSet>
 
-    <!-- T-42: an imported box's contents rows cannot exist locally (their FKs
+    <!-- An imported box's contents rows cannot exist locally (their FKs
          name rows only the sender has), so what the consignment says it holds
          is kept read-side: a JSON list of {label, type} captured from the
          SupplyDelivery's content-item extensions at import time. Render-only —
@@ -91,7 +91,7 @@
                     columnName="imported_contents" />
             </not>
         </preConditions>
-        <comment>Imported consignment contents as a read-side manifest (T-42)</comment>
+        <comment>Imported consignment contents as a read-side manifest</comment>
         <addColumn schemaName="clinlims" tableName="shipping_box">
             <column name="imported_contents" type="TEXT" />
         </addColumn>

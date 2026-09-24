@@ -613,9 +613,9 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     /**
      * The assigned value each in-house result was scored against, keyed by result
      * id. Only panels that have actually been unblinded contribute: a sealed target
-     * is the whole point of a blinded panel (FR-V2.4-03), and this report is served
-     * under the EQA read permission, not the unblind one. External PT keeps its
-     * targets at the provider, so those rows have none either way.
+     * is the whole point of a blinded panel, and this report is served under the
+     * EQA read permission, not the unblind one. External PT keeps its targets at
+     * the provider, so those rows have none either way.
      */
     private Map<Long, String> revealedTargets(List<EQAParticipantResult> results) {
         List<Long> panelSampleIds = results.stream().map(EQAParticipantResult::getPanelSampleId)
@@ -641,10 +641,10 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     }
 
     /**
-     * The non-conformity an unacceptable score raised (FR-V2.3-01), so the report
-     * shows the investigation it is evidence for. Only unacceptable rows are looked
-     * up — no other tier creates one — which keeps this to a handful of queries
-     * rather than one per printed line.
+     * The non-conformity an unacceptable score raised, so the report shows the
+     * investigation it is evidence for. Only unacceptable rows are looked up — no
+     * other tier creates one — which keeps this to a handful of queries rather than
+     * one per printed line.
      */
     private Map<Long, String> nceNumbers(List<EQAParticipantResult> results) {
         Map<Long, String> numbers = new HashMap<>();
@@ -711,8 +711,8 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
          * How far off the bench was, signed, with the same distance as a share of the
          * target beside it. For a numeric panel this is the point of the exercise — not
          * merely whether the answer passed — and leaving the reader to subtract two
-         * columns is what AC-V2.4-10 calls a missing delta. A categorical answer has no
-         * distance, so it prints nothing.
+         * columns is a missing delta. A categorical answer has no distance, so it
+         * prints nothing.
          */
         String deltaLabel() {
             BigDecimal reportedNumber = number(reported);

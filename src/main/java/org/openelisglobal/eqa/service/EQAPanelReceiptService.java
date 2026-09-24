@@ -7,8 +7,8 @@ import org.openelisglobal.eqa.valueholder.EQAPanelReceipt;
 public interface EQAPanelReceiptService extends BaseObjectService<EQAPanelReceipt, Long> {
 
     /**
-     * Record that this lab received its panel for a cycle (FR-V2.1-20), atomically
-     * with its side-effects: the matched shipment gets its actual delivery date and
+     * Record that this lab received its panel for a cycle, atomically with its
+     * side-effects: the matched shipment gets its actual delivery date and
      * DELIVERED status, and a PLANNED cycle advances to PANEL_RECEIVED on the
      * participant machine. Either all three rows change or none do.
      *

@@ -30,10 +30,9 @@ import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-613 [EQA V2.5 / T-24] — the five-step cycle wizard's single write
- * (FR-V2.5-02) against a real DB: one call leaves a cycle, its panel, its panel
- * samples and its participant roster in place and the cycle in prep, or it
- * leaves nothing at all.
+ * OGC-613 [EQA V2.5] — the five-step cycle wizard's single write against a real
+ * DB: one call leaves a cycle, its panel, its panel samples and its participant
+ * roster in place and the cycle in prep, or it leaves nothing at all.
  */
 public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
 
@@ -178,7 +177,7 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
 
     /**
      * The wizard picks the orderable test; the analyte a target is stored against
-     * is resolved server-side (T-21's rule, shared via
+     * is resolved server-side (the in-house wizard's rule, shared via
      * EQAPanelService.analyteIdForTest).
      */
     @Test
@@ -242,7 +241,7 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
 
         try {
             cycleService.createProviderCycle(request, USER);
-            fail("FR-V2.1-17: vendor-sourced material must carry the vendor's provenance");
+            fail("vendor-sourced material must carry the vendor's provenance");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("vendor"));
         }
@@ -317,10 +316,10 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * FR-V2.2-14: the digest only ever looks at eqa_round, so the round is what
-     * makes a wizard-built cycle reachable by it. Asserting through the scheduler's
-     * own query rather than a row count is the point — a round that exists but
-     * falls outside that window still leaves the cycle unremindable.
+     * The digest only ever looks at eqa_round, so the round is what makes a
+     * wizard-built cycle reachable by it. Asserting through the scheduler's own
+     * query rather than a row count is the point — a round that exists but falls
+     * outside that window still leaves the cycle unremindable.
      */
     @Test
     public void theWizardWritesTheRoundTheDeadlineDigestReadsFrom() {
@@ -336,7 +335,8 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         assertEquals(Timestamp.valueOf("2026-10-01 00:00:00"),
                 jdbc.queryForObject("SELECT submission_deadline FROM clinlims.eqa_round WHERE cycle_id = ?",
                         Timestamp.class, created.getId()));
-        // FR-V2.5-02 step 1 collects "distribution date, submission deadline" — the
+        // The wizard's first step collects "distribution date, submission deadline" —
+        // the
         // round must carry both, not just the one the digest reads.
         assertEquals(Timestamp.valueOf("2026-09-01 00:00:00"),
                 jdbc.queryForObject("SELECT distribution_date FROM clinlims.eqa_round WHERE cycle_id = ?",
@@ -369,7 +369,9 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
                         Integer.class, scheme.getId()));
     }
 
-    /** The distribution date is half of the pair FR-V2.5-02 step 1 collects. */
+    /**
+     * The distribution date is half of the pair the wizard's first step collects.
+     */
     @Test
     public void aCycleWithNoDistributionDateIsRefused() {
         ProviderCycleRequest noStart = new ProviderCycleRequest(scheme.getId(), 12, "2026 Round", null,
@@ -381,7 +383,7 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         assertTrue(refused.getMessage(), refused.getMessage().contains("distribution date"));
     }
 
-    /** A cycle nobody can name is refused too (AC-V2.5-02's step 1 fields). */
+    /** A cycle nobody can name is refused too (the first step's fields). */
     @Test
     public void aCycleWithNoNameIsRefused() {
         ProviderCycleRequest unnamed = new ProviderCycleRequest(scheme.getId(), 13, "   ", Date.valueOf("2026-09-01"),

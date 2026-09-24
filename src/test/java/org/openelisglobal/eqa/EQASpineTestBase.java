@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Shared fixture for the EQA spine integration tests (T-08/T-09/T-10). Owns the
- * one authoritative clean-up order (children before parents) and the common
+ * Shared fixture for the EQA spine integration tests. Owns the one
+ * authoritative clean-up order (children before parents) and the common
  * inserters, so adding a table means editing one list, not one per test class.
  *
  * <p>
@@ -111,7 +111,7 @@ public abstract class EQASpineTestBase extends BaseWebContextSensitiveTest {
         jdbc.update("DELETE FROM clinlims.eqa_analyst_competency_event");
         jdbc.update("DELETE FROM clinlims.eqa_participant_followup");
         jdbc.update("DELETE FROM clinlims.eqa_panel_receipt");
-        // T-40: box contents reference panel material, so they go first.
+        // Box contents reference panel material, so they go first.
         jdbc.update("DELETE FROM clinlims.box_sample_item WHERE eqa_panel_sample_id IS NOT NULL");
         jdbc.update("DELETE FROM clinlims.eqa_panel_sample");
         jdbc.update("DELETE FROM clinlims.eqa_panel");

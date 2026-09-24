@@ -370,7 +370,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void anUnacceptableScorePrintsTheNonConformityItRaised() throws IOException {
-        // Scored through the service, so the FR-V2.3-01 adapter raises the NCE the
+        // Scored through the service, so the score-to-NCE adapter raises the NCE the
         // way production does rather than the test inserting one.
         Long resultId = insertParticipantResult(cycle, round, ENROLLMENT, BENCH_ANALYTE, EQASubmissionStatus.SUBMITTED,
                 "Reactive");
@@ -439,10 +439,10 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * AC-V2.4-10 asks the post-unblind view for targets <b>and deltas</b>. Targets
-     * were right; there was no delta anywhere, so a reader had to subtract two
-     * columns — and for a numeric in-house panel the distance is the point of the
-     * exercise, not merely whether the answer passed.
+     * The post-unblind view carries targets <b>and deltas</b>. Targets were right;
+     * there was no delta anywhere, so a reader had to subtract two columns — and
+     * for a numeric in-house panel the distance is the point of the exercise, not
+     * merely whether the answer passed.
      */
     @Test
     public void numericRowsCarryASignedDifferenceAndCategoricalOnesDoNot() throws IOException {

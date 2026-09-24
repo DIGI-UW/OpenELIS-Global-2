@@ -44,11 +44,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * OGC-612 (FR-V2.4) — the in-house blinding backend against the real schema:
  * seal-and-distribute creates standard orders keyed by blind code, the unblind
- * pass scores numeric and categorical results (AC-V2.4-07/-08), flags absent
- * results as missed deadlines with their competency event (AC-V2.4-16), opens
- * the follow-up register row (AC-V2.4-09), refuses to double-score
- * (AC-V2.4-11), and the label sheet leaks no target while regenerating
- * byte-identically (AC-V2.4-14/-15).
+ * pass scores numeric and categorical results (-08), flags absent results as
+ * missed deadlines with their competency event, opens the follow-up register
+ * row, refuses to double-score, and the label sheet leaks no target while
+ * regenerating byte-identically (-15).
  */
 public class EQABlindingIntegrationTest extends EQASpineTestBase {
 
@@ -193,7 +192,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
             p.setCycle(cycle);
             p.setStatus(status);
             p.setUnblindDate(unblindDate == null ? null : Date.valueOf(unblindDate));
-            // Prep evidence the seal gate now requires (AC-V2.4-13).
+            // Prep evidence the seal gate now requires.
             p.setAliquotsProduced(8);
             p.setHomogeneityQcPassed(true);
         });
@@ -295,7 +294,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                 String.class, resultId);
     }
 
-    // ---- seal-and-distribute (FR-V2.4-04, AC-V2.4-01/-17) ----
+    // ---- seal-and-distribute (-17) ----
 
     @Test
     public void sealAndDistribute_createsBlindOrdersDraftResultsAndDistributes() {
@@ -312,7 +311,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         assertEquals("DISTRIBUTED", dto.get("status"));
         assertEquals(List.of("IHBLIND-A7", "IHBLIND-B3"), dto.get("orderAccessionNumbers"));
 
-        // The blind code IS the accession number of a real order (FR-V2.4-15).
+        // The blind code IS the accession number of a real order.
         Long orderId = jdbc.queryForObject("SELECT id FROM clinlims.sample WHERE accession_number = 'IHBLIND-A7'",
                 Long.class);
         assertEquals("one NotStarted analysis on the seeded test", Integer.valueOf(1),
@@ -361,7 +360,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                 "SELECT count(*) FROM clinlims.sample WHERE accession_number LIKE 'IHBLIND-C%'", Integer.class));
     }
 
-    // ---- unblind + scoring (FR-V2.4-06/-07/-08/-14) ----
+    // ---- unblind + scoring (-07/-08/-14) ----
 
     @Test
     public void unblind_scoresEveryResultAndRoutesFailures() throws Exception {
@@ -394,7 +393,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         assertEquals("panel ends SCORED", EQAPanelStatus.SCORED,
                 eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
 
-        // AC-V2.4-07/-08: the verdict itself is persisted, not merely implied by
+        // The verdict itself is persisted, not merely implied by
         // a competency event. Both range bounds are exercised.
         assertEquals("ACCEPTABLE", resultRow(inRange).get("performance_status"));
         assertEquals("UNACCEPTABLE", resultRow(belowLow).get("performance_status"));
@@ -405,7 +404,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                 resultRow(neverEntered).get("submission_status"));
         assertNull("a missed deadline carries no verdict", resultRow(neverEntered).get("performance_status"));
 
-        // FR-V2.4-10: the audit distinguishes this from a scheduled unblind.
+        // The audit distinguishes this from a scheduled unblind.
         Map<String, Object> panelRow = panelRow(panel.getId());
         assertEquals("MANUAL", panelRow.get("unblind_method"));
         assertEquals(1L, ((Number) panelRow.get("unblinded_by")).longValue());
@@ -420,7 +419,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                         .filter(e -> neverEntered.longValue() == ((Number) e.get("participant_result_id")).longValue())
                         .findFirst().orElseThrow().get("event_type"));
 
-        // AC-V2.4-09: one register row, tagged In-house, holding every failure.
+        // One register row, tagged In-house, holding every failure.
         List<Map<String, Object>> followups = jdbc.queryForList(
                 "SELECT followup_status, participant_result_summary_json FROM clinlims.eqa_participant_followup"
                         + " WHERE cycle_id = ?",
@@ -560,7 +559,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void sealAndDistribute_handlesReplicateAliquotsOfOneAnalyte() {
-        // FR-V2.4-02 Mode A: one pool split into N aliquots, all the same analyte.
+        // Pool-split blinding: one pool split into N aliquots, all the same analyte.
         // The original per-analyte uniqueness made this impossible to distribute.
         EQAProgram scheme = inHouseScheme("IH Replicate Scheme");
         EQACycle cycle = readBack(insertCycle(scheme, 1));
@@ -657,16 +656,16 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
             action.run();
             fail("expected refusal: " + why);
         } catch (IllegalArgumentException | IllegalStateException expected) {
-            // the service refuses before writing anything
+            // The service refuses before writing anything
         }
     }
 
     /**
-     * AC-V2.4-06. A result answered after the unblind used to leave no trace: the
-     * row stayed MISSED_DEADLINE with no value and no verdict, and nothing could
-     * score it, because {@code resolveResult} returns early for that status and the
-     * unblind itself is guarded by the DISTRIBUTED → UNBLINDED edge. The re-resolve
-     * pass scores it and keeps the lateness, which are two separate facts.
+     * A result answered after the unblind used to leave no trace: the row stayed
+     * MISSED_DEADLINE with no value and no verdict, and nothing could score it,
+     * because {@code resolveResult} returns early for that status and the unblind
+     * itself is guarded by the DISTRIBUTED → UNBLINDED edge. The re-resolve pass
+     * scores it and keeps the lateness, which are two separate facts.
      */
     @Test
     public void lateResults_areScoredAndStillReadAsHavingMissedTheDeadline() {
@@ -715,11 +714,11 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * T-96. The pass is driven from the missed rows and never looked at the cycle,
-     * so a closed cycle went on gaining verdicts on the next sweep, silently and
-     * with no actor behind it. Closing is meant to end the cycle, and the close
-     * gate refuses while any of these rows is unanswered, so an answer that lands
-     * here arrived after the operator closed it.
+     * The pass is driven from the missed rows and never looked at the cycle, so a
+     * closed cycle went on gaining verdicts on the next sweep, silently and with no
+     * actor behind it. Closing is meant to end the cycle, and the close gate
+     * refuses while any of these rows is unanswered, so an answer that lands here
+     * arrived after the operator closed it.
      */
     @Test
     public void lateResults_areNotScoredOnceTheCycleIsClosed() {
@@ -763,7 +762,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
 
         try {
             blindingService.unblindAndScore(panel.getId(), USER, EQAUnblindMethod.MANUAL);
-            fail("a SCORED panel must refuse a second unblind (AC-V2.4-11)");
+            fail("a SCORED panel must refuse a second unblind");
         } catch (IllegalStateException expected) {
         }
         assertEquals("no double-scoring on the re-run", Integer.valueOf(eventsAfterFirstRun),
@@ -771,7 +770,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                         Integer.class, cycle.getId()));
     }
 
-    // ---- scheduled unblind (FR-V2.4-06 automatic path) ----
+    // ---- scheduled unblind (automatic path) ----
 
     @Test
     public void scheduler_unblindsOnlyDueInHousePanels() {
@@ -798,7 +797,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                 eqaPanelDAO.get(externalPanel.getId()).orElseThrow(AssertionError::new).getStatus());
     }
 
-    // ---- label sheet (FR-V2.4-13, AC-V2.4-14/-15) ----
+    // ---- label sheet (-15) ----
 
     @Test
     public void labelSheet_showsBlindCodesNeverTargets_andRegeneratesByteIdentically() throws Exception {
@@ -810,7 +809,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
 
         byte[] first = labelPDFService.generateLabelSheet(panel.getId());
         byte[] second = labelPDFService.generateLabelSheet(panel.getId());
-        assertArrayEquals("regeneration is byte-identical (AC-V2.4-15)", first, second);
+        assertArrayEquals("regeneration is byte-identical", first, second);
 
         PdfReader reader = new PdfReader(first);
         StringBuilder text = new StringBuilder();
@@ -821,7 +820,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         String extracted = text.toString();
 
         assertTrue("every blind code prints", extracted.contains("IHBLIND-P1") && extracted.contains("IHBLIND-P2"));
-        // AC-V2.4-14 also asks for the cycle and the analyte under each code. Both
+        // The sheet also carries the cycle and the analyte under each code. Both
         // are 8pt, and a box sized to the glyphs alone silently dropped them.
         String cycleIdentifier = cycle.getCycleName() != null ? cycle.getCycleName() : panel.getPanelName();
         assertTrue("the cycle identifier prints under each code", extracted.contains(cycleIdentifier));
@@ -832,7 +831,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                     analyteId);
             assertTrue("the analyte prints under its blind code: " + name, extracted.contains(name));
         }
-        assertFalse("numeric target must not leak (AC-V2.4-14)", extracted.contains("43.7"));
+        assertFalse("numeric target must not leak", extracted.contains("43.7"));
         assertFalse("acceptance range must not leak", extracted.contains("41.1") || extracted.contains("46.3"));
         assertFalse("categorical target must not leak", extracted.contains("SecretPositive77"));
     }

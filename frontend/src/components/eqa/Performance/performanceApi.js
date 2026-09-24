@@ -1,4 +1,4 @@
-// Data seam for Lab EQA Performance (OGC-611, FR-V2.3-07). One rollup endpoint
+// Data seam for Lab EQA Performance (OGC-611). One rollup endpoint
 // serves both views: the page shows the same KPI row above either of them, and
 // two calls would let the two halves disagree.
 import { getFromOpenElisServer } from "../../utils/Utils";

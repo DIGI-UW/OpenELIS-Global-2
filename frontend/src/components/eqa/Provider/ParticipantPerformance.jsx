@@ -30,7 +30,7 @@ const PERFORMANCE_TAG = {
 };
 
 /**
- * FR-V2.5-05 — how each participating laboratory is doing over time.
+ * — how each participating laboratory is doing over time.
  *
  * The provider could already see one cycle at a time, on the workbench's
  * Receipts tab, and never the trend. This is the trend: one row per enrolled
@@ -42,7 +42,7 @@ const PERFORMANCE_TAG = {
  * their z-scores. That history rides the same server read as the row, so opening
  * one costs no request.
  *
- * ponytail: no paging or filtering here — a scheme carries a handful of enrolled
+ * No paging or filtering here — a scheme carries a handful of enrolled
  * laboratories, and the rate is computed server-side. Add a filter when a
  * deployment has enough participants to need one.
  */
@@ -168,7 +168,7 @@ const ParticipantPerformance = () => {
 /**
  * One laboratory, and the cycles behind its rate.
  *
- * The expanded row is mounted only while it is open, which is the lesson T-24
+ * The expanded row is mounted only while it is open, which is the lesson the scheme list
  * paid for: Carbon leaves an always-rendered expanded row's inner container at
  * max-height 0, and the history table then paints over the row above and
  * swallows its own links. Checked here with elementFromPoint rather than by

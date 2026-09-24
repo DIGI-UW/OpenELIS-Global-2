@@ -5,8 +5,8 @@ import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
 
 /**
  * One assessable fact about an analyst in the competency window — either a
- * logged event or a scored result the log does not cover (FR-V2.3-06's union of
- * the two sources).
+ * logged event or a scored result the log does not cover (the union of the two
+ * sources).
  *
  * <p>
  * Rows sharing a {@code participantResultId} are one fact, not several: an
@@ -53,8 +53,9 @@ class EQACompetencyRow {
     Integer nceId;
 
     /**
-     * The grouping key for the FRS de-duplication. A row with no result behind it
-     * (a cross-cycle event) is its own fact, so it keys on the event instead.
+     * The grouping key for the specification de-duplication. A row with no result
+     * behind it (a cross-cycle event) is its own fact, so it keys on the event
+     * instead.
      */
     String factKey(int fallback) {
         return participantResultId != null ? "result:" + participantResultId : "event:" + fallback;

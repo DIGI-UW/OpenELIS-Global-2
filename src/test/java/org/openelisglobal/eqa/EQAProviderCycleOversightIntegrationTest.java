@@ -30,11 +30,10 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-613 [EQA V2.5 / T-26] — receipt monitoring (FR-V2.5-14), reprovisioning
- * (FR-V2.5-15) and provider scoring (FR-V2.5-03/04) against a real DB: the
- * overdue rule, the inventory arithmetic a repeat consumes, the automatic move
- * to submissions_open, and the bridge from the V2 cycle to the distribution its
- * participants' results hang off.
+ * OGC-613 [EQA V2.5] — receipt monitoring, reprovisioning and provider scoring
+ * (04) against a real DB: the overdue rule, the inventory arithmetic a repeat
+ * consumes, the automatic move to submissions_open, and the bridge from the V2
+ * cycle to the distribution its participants' results hang off.
  */
 public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
 
@@ -97,7 +96,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.5-14: the overdue rule ----
+    // ---: the overdue rule ----
 
     @Test
     public void aShipmentIsOverdueOnlyTwoBusinessDaysAfterTheExpectedDelivery() {
@@ -135,7 +134,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertNull(rows.get(0).get("receivedDate"));
     }
 
-    // ---- FR-V2.5-14 / AC-V2.5-13: delivery opens submissions ----
+    // ---: delivery opens submissions ----
 
     @Test
     public void submissionsOpenOnlyWhenEveryParticipantHoldsItsPanel() {
@@ -180,7 +179,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.5-15: reprovisioning ----
+    // ---: reprovisioning ----
 
     @Test
     public void aRepeatComesOutOfTheReserveAndRecordsWhatItReplaces() {
@@ -197,7 +196,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertEquals("2 samples for the original 2 participants plus 2 for the repeat", Integer.valueOf(6),
                 aliquots("aliquots_shipped"));
         assertEquals("the monitor now follows the repeat", repeat.get("boxCode"), receiptRow(ORG_A).get("boxCode"));
-        // T-40: a repeat box is packed like any other, so it does not go out empty.
+        // A repeat box is packed like any other, so it does not go out empty.
         assertEquals("the repeat box holds the panel material it replaces", Integer.valueOf(2),
                 jdbc.queryForObject(
                         "SELECT count(*) FROM clinlims.box_sample_item bsi"
@@ -250,7 +249,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.5-03/04: scoring and score return ----
+    // ---- scoring and score return ----
 
     @Test
     public void scoringWritesZScoresAdvancesTheCycleAndRegistersTheOutlier() {
@@ -271,7 +270,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
                 zScoreOf(outlier).abs().compareTo(new BigDecimal("3")) > 0);
 
         // Read from the table rather than through the register: this test owns the
-        // write, and T-27's register owns how it is read back.
+        // write, and the follow-up register owns how it is read back.
         assertEquals("one register row, for the outlier", Integer.valueOf(1),
                 jdbc.queryForObject(
                         "SELECT count(*) FROM clinlims.eqa_participant_followup WHERE participant_org_id = ?",

@@ -38,8 +38,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * OGC-609 [EQA V2.1 / T-10] — the two cycle state machines, their audit trail,
- * and the derived per-lab participant state, against a real DB.
+ * OGC-609 [EQA V2.1] — the two cycle state machines, their audit trail, and the
+ * derived per-lab participant state, against a real DB.
  */
 public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
 
@@ -74,7 +74,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         followups = FIRST_FOLLOWUP_ORG;
     }
 
-    // ---- FR-V2.1-04 / FR-V2.1-18: legal and illegal edges ----
+    // ---: legal and illegal edges ----
 
     @Test
     public void participantCycleWalksItsHappyPathAndAuditsEveryStep() {
@@ -158,7 +158,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void skippingAStateIsRefusedAndWritesNoAudit() {
-        // AC-V2.1-05: planned -> testing skips panel_received.
+        // Planned -> testing skips panel_received.
         EQACycle cycle = newCycle();
         try {
             cycleService.transition(cycle.getId(), EQACycleStatus.TESTING, EQAStateMachine.PARTICIPANT,
@@ -201,7 +201,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.1-18 / AC-V2.1-13: the prep -> ready_to_ship gate ----
+    // ---: the prep -> ready_to_ship gate ----
 
     @Test
     public void aPanelThatFailedHomogeneityQcCannotBeShipped() {
@@ -215,7 +215,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         try {
             cycleService.transition(cycle.getId(), EQACycleStatus.READY_TO_SHIP, EQAStateMachine.PROVIDER,
                     EQATriggerType.AUTO, EQATriggerEvent.HOMOGENEITY_QC_PASSED, null, null, USER);
-            fail("AC-V2.1-13: homogeneity_qc_passed = false must block ready_to_ship");
+            fail("homogeneity_qc_passed = false must block ready_to_ship");
         } catch (EQAInvalidTransitionException expected) {
             assertEquals(EQACycleStatus.PREP_IN_PROGRESS, expected.getPriorState());
             assertTrue(expected.getMessage().contains("homogeneity"));
@@ -234,7 +234,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
                     EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
             fail("there is nothing to ship");
         } catch (EQAInvalidTransitionException expected) {
-            // The refusal quotes the gate's own blockers (T-25), one vocabulary for the
+            // The refusal quotes the gate's own blockers, one vocabulary for the
             // transition and the prep workbench alike.
             assertTrue(expected.getMessage(), expected.getMessage().contains("No panel has been prepared"));
         }
@@ -245,7 +245,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
     @Test
     public void theGateOnlyAppliesToThatOneProviderEdge() {
         // A participant cycle with a failed panel is unaffected — the gate must not
-        // leak onto edges FR-V2.1-18 does not name.
+        // leak onto edges the provider machine does not name.
         EQACycle cycle = newCycle();
         insertQcPanel(cycle, false);
         cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
@@ -253,7 +253,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycle.getId()).getStatus());
     }
 
-    // ---- FR-V2.1-21: manual transitions carry a reason and an actor ----
+    // ---: manual transitions carry a reason and an actor ----
 
     @Test
     public void anAutomaticTransitionDiscardsAnyActorHandedToIt() {
@@ -285,7 +285,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void theTransitionsEndpointNamesTheActorRatherThanNumberingThem() {
-        // FR-V2.5-16 (T-35): the timeline shows "timestamp + actor". A bare user
+        // The timeline shows "timestamp + actor". A bare user
         // id is not an actor to the person reading the page, so the endpoint
         // resolves it; AUTO rows carry no user and resolve to null, which the
         // client renders as the system actor.
@@ -312,8 +312,8 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void aManualTransitionWithoutAReasonIsRefused() {
-        // AC-V2.1-19 requires a reason even on a happy-path manual move, which is
-        // stricter than FR-V2.1-21's "off the happy path" wording.
+        // A reason is required even on a happy-path manual move, which is
+        // stricter than the specification's "off the happy path" wording.
         EQACycle cycle = newCycle();
         try {
             cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
@@ -380,7 +380,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
                         + " AND exectype IN ('EXECUTED', 'RERAN')", Integer.class));
     }
 
-    // ---- FR-V2.1-18: the derivation table ----
+    // ---: the derivation table ----
 
     @Test
     public void participantStateIsDerivedFromReceiptsAndResults() {
@@ -412,7 +412,8 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void theMostAdvancedResultWinsWhenRowsDisagree() {
-        // The FRS table's rows overlap and it never states precedence; a lab that
+        // The specification table's rows overlap and it never states precedence; a lab
+        // that
         // has been scored is scored even while another analyte sits in draft.
         EQACycle cycle = newCycle();
         insertReceipt(cycle, ENROLLMENT_ID);
@@ -440,7 +441,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         assertEquals(EQACycleStatus.CLOSED, cycleService.deriveParticipantState(cycle.getId(), ENROLLMENT_ID));
     }
 
-    // ---- T-96: closing refuses while work is still hanging off the cycle ----
+    // ---: closing refuses while work is still hanging off the cycle ----
 
     @Test
     public void closingRefusesWhileAFollowUpIsStillOpen() {

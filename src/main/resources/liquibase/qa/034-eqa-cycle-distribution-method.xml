@@ -16,7 +16,7 @@
                 <columnExists schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
             </not>
         </preConditions>
-        <comment>FR-V2.5-02 step 4: how a cycle reaches its participants and returns their scores</comment>
+        <comment>How a cycle reaches its participants and returns their scores</comment>
         <addColumn schemaName="clinlims" tableName="eqa_cycle">
             <column name="distribution_method" type="VARCHAR(10)" />
         </addColumn>

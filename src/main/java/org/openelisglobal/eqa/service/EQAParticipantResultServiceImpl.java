@@ -24,8 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Participant-result lifecycle enforcement + competency events (OGC-609,
- * FR-V2.1-05 / FR-V2.1-22).
+ * Participant-result lifecycle enforcement + competency events (OGC-609).
  */
 @Service
 @Transactional
@@ -192,10 +191,10 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
     }
 
     /**
-     * Applies the tiered EQA to NCE rules (OGC-611, FR-V2.3-01) to a freshly scored
-     * result: non-conformity, Follow-Up Queue entry, or nothing. Fired after the
-     * score and any competency event are written to the session, inside the same
-     * transaction, because the adapter stamps the NCE onto that competency event.
+     * Applies the tiered EQA to NCE rules (OGC-611) to a freshly scored result:
+     * non-conformity, Follow-Up Queue entry, or nothing. Fired after the score and
+     * any competency event are written to the session, inside the same transaction,
+     * because the adapter stamps the NCE onto that competency event.
      */
     private void onResultScored(EQAParticipantResult result, EQAPerformanceStatus performance) {
         eqaScoreNceService.onResultScored(result, performance);

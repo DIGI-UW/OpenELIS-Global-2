@@ -149,7 +149,7 @@ describe("CycleWizard", () => {
     next();
 
     // A panel target is stored against an analyte, so a test without one is a
-    // dead end the wizard must not offer (T-21's rule, same seam).
+    // dead end the wizard must not offer (the in-house wizard's rule, same seam).
     expect(screen.getByText("HIV Viral Load")).toBeInTheDocument();
     expect(screen.queryByText("Test with no analyte")).not.toBeInTheDocument();
   });
@@ -273,7 +273,7 @@ describe("CycleWizard", () => {
   });
 
   test("step 3 preselects exactly the active enrollments", () => {
-    // FR-V2.5-02 step 3: default = all active, still editable — a cycle must
+    // Default = all active, still editable — a cycle must
     // not be one forgotten click from shipping to nobody.
     renderWizard();
     throughPanelStep();

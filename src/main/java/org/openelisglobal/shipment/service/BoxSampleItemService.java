@@ -71,9 +71,9 @@ public interface BoxSampleItemService {
     BoxSampleItem addSampleItemToBox(Integer shippingBoxId, String sampleItemId, Integer systemUserId);
 
     /**
-     * Pack EQA panel material into a box as its contents (T-40, FR-V2.5-13). One
-     * row per panel sample per box — the same grain the aliquot arithmetic
-     * dispatches — so a provider box is never contentless. Inventory stays owned by
+     * Pack EQA panel material into a box as its contents. One row per panel sample
+     * per box — the same grain the aliquot arithmetic dispatches — so a provider
+     * box is never contentless. Inventory stays owned by
      * {@code eqa_panel.aliquots_shipped}; these rows are what the box holds, not a
      * second count of it.
      *

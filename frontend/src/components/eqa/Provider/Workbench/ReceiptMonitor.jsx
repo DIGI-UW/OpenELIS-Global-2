@@ -65,10 +65,10 @@ const dateCell = (value) =>
   value ? formatDateOnly(value.substring(0, 10)) : "—";
 
 /**
- * Receipt monitor (FR-V2.5-14/15) plus the scoring and score-return actions
- * (FR-V2.5-03/04). Delivery, overdue and repeat all read off the shipment the
+ * Receipt monitor (15) plus the scoring and score-return actions
+ * (04). Delivery, overdue and repeat all read off the shipment the
  * participant's box carries, which is also what the participant's own receipt
- * (T-15) marks delivered — so a receipt recorded by the lab shows up here on
+ * marks delivered — so a receipt recorded by the lab shows up here on
  * the next load without a second source of truth.
  */
 const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
@@ -111,7 +111,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   /**
    * A 200 is not the same as a success here: the FHIR return answers 200 with
    * {success: false, error} when the store refuses the bundle, and reporting
-   * that as sent is the D-LIVE-1 mistake in a new place.
+   * that as sent repeats an earlier defect: a success toast over a failed save.
    */
   const report = (
     { ok, status, body },
@@ -179,7 +179,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   };
 
   /**
-   * T-46: open submissions on a partial roster. Auto-advance only fires when
+   * Open submissions on a partial roster. Auto-advance only fires when
    * every participant is delivered; one dormant lab must not keep submissions
    * closed for the labs that hold their panels. Audited MANUAL override —
    * reason required by the transition endpoint itself.

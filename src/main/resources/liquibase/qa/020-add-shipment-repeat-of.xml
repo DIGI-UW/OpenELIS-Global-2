@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.5 (OGC-613): FR-V2.5-15 reprovisioning sends a repeat panel as a
+    EQA V2.5 (OGC-613): reprovisioning sends a repeat panel as a
     new shipment that records which shipment it replaces. Nullable self-FK; the
     only schema change the shared shipment module needs for EQA.
 -->
@@ -16,7 +16,7 @@
                 <columnExists tableName="shipment" columnName="repeat_of_shipment_id" schemaName="clinlims" />
             </not>
         </preConditions>
-        <comment>Track which shipment a repeat shipment replaces (FR-V2.5-15)</comment>
+        <comment>Track which shipment a repeat shipment replaces</comment>
         <addColumn tableName="shipment" schemaName="clinlims">
             <column name="repeat_of_shipment_id" type="INTEGER">
                 <constraints nullable="true" />

@@ -23,10 +23,10 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * A lab's per-analyte result within a round (FR-V2.1-05) — the EQA-side view V1
- * lacks (D-LIVE-8). resultValue is a String on purpose: the six ePT-validated
- * domains include qualitative ("Reactive"), categorical ("Recent") and
- * semi-quantitative ("3+") results (AC-V2.1-23).
+ * A lab's per-analyte result within a round — the EQA-side view V1 lacks.
+ * resultValue is a String on purpose: the six ePT-validated domains include
+ * qualitative ("Reactive"), categorical ("Recent") and semi-quantitative ("3+")
+ * results.
  *
  * <p>
  * Reference columns are raw Longs in the module's SampleEQA.eqaEnrollmentId
@@ -72,9 +72,9 @@ public class EQAParticipantResult extends BaseObject<Long> {
     private Long analysisId;
 
     /**
-     * The exact aliquot this result answers, for in-house panels (FR-V2.4-02). Null
-     * for external PT, where the analyte alone identifies the result — the partial
-     * unique indexes in qa/027 enforce one rule per case.
+     * The exact aliquot this result answers, for in-house panels. Null for external
+     * PT, where the analyte alone identifies the result — the partial unique
+     * indexes in qa/027 enforce one rule per case.
      */
     @Column(name = "panel_sample_id")
     private Long panelSampleId;
@@ -101,7 +101,7 @@ public class EQAParticipantResult extends BaseObject<Long> {
     @Column(name = "submitted_at")
     private Timestamp submittedAt;
 
-    /** The scoring verdict (FR-V2.4-07); null until the result is scored. */
+    /** The scoring verdict; null until the result is scored. */
     @Enumerated(EnumType.STRING)
     @Column(name = "performance_status", length = 20)
     private EQAPerformanceStatus performanceStatus;

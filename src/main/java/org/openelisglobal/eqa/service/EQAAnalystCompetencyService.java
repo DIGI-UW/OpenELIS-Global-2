@@ -7,14 +7,14 @@ import org.openelisglobal.eqa.valueholder.EQADismissalCategory;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 
 /**
- * The single writer for analyst competency events (FR-V2.1-22). Scoring, missed
- * deadlines, NCE escalation and triage dismissal all record through here so the
- * "no analyst, no event" rule and the ISO 15189 §6.2.3 evidence trail have one
+ * The single writer for analyst competency events. Scoring, missed deadlines,
+ * NCE escalation and triage dismissal all record through here so the "no
+ * analyst, no event" rule and the ISO 15189 §6.2.3 evidence trail have one
  * implementation.
  *
  * <p>
  * It is also the reader those events exist for: {@link #getCompetencyRollup()}
- * turns the log into the FR-V2.3-06 competency bands.
+ * turns the log into the competency bands.
  */
 public interface EQAAnalystCompetencyService {
 
@@ -34,9 +34,9 @@ public interface EQAAnalystCompetencyService {
     void attachNce(Long participantResultId, Integer nceId);
 
     /**
-     * The Analyst Competency dashboard rollup (FR-V2.3-06): every analyst assigned
-     * to PT in the trailing twelve months, their per-analyte competency band, and
-     * the events behind it.
+     * The Analyst Competency dashboard rollup: every analyst assigned to PT in the
+     * trailing twelve months, their per-analyte competency band, and the events
+     * behind it.
      *
      * <p>
      * Derived on read from this log unioned with the scored results it does not

@@ -31,6 +31,7 @@ import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
@@ -54,7 +55,6 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.spring.util.SpringContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,7 +69,6 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
 
     private static final Logger logger = LoggerFactory.getLogger(EQACycleSubmissionServiceImpl.class);
 
-    /** FR-V2.2-05. */
     private static final int MAX_ATTEMPTS = 5;
 
     private static final String ENTITY_TYPE_EQA_CYCLE = "EQACycle";
@@ -77,7 +76,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     /** System actor for sweep-initiated writes, as in EQADeadlineAlertScheduler. */
     private static final String SCHEDULER_USER = "1";
 
-    /** The participant machine in order (FR-V2.1-04), walked one edge at a time. */
+    /** The participant machine in order, walked one edge at a time. */
     private static final List<EQACycleStatus> PARTICIPANT_PATH = List.of(PLANNED, PANEL_RECEIVED, TESTING,
             READY_TO_SUBMIT, SUBMITTED, SCORED, CLOSED);
 
@@ -124,6 +123,9 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     private EQAPanelService eqaPanelService;
 
     @Autowired
+    private AnalyteService analyteService;
+
+    @Autowired
     private AnalysisService analysisService;
 
     @Autowired
@@ -168,7 +170,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         }
         EQAProgram scheme = cycle.getScheme();
         // An in-house cycle is driven by the blinding service, which creates its
-        // results, submits and scores them itself (FR-V2.4-06). Sweeping it here
+        // results, submits and scores them itself. Sweeping it here
         // would race that path and submit blinded answers to nobody.
         if (scheme == null || scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
             return false;
@@ -450,15 +452,14 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     // ---- submission ----
 
     /**
-     * FR-V2.2-05: submit automatically only when the scheme delegates it, an
-     * endpoint exists, the review window has elapsed and the retry budget allows
-     * another try.
+     * Submit automatically only when the scheme delegates it, an endpoint exists,
+     * the review window has elapsed and the retry budget allows another try.
      */
     private boolean submitIfDue(EQACycle cycle, EQAProgram scheme) {
         if (cycle.getStatus() != READY_TO_SUBMIT || Boolean.TRUE.equals(scheme.getRequiresCycleReview())) {
             return false;
         }
-        // No FHIR store configured is the manual-fallback deployment (FR-V2.2-06),
+        // No FHIR store configured is the manual-fallback deployment,
         // not a failure: attempting a post would burn the retry budget on a
         // submission channel this lab never had.
         if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
@@ -665,33 +666,27 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             }
             EQACycle cycle = result.getCycle();
             EQARound round = result.getRound();
-            csv.append(cycleId).append(',').append(csvField(cycle == null ? null : cycle.getCycleName())).append(',')
-                    .append(round == null || round.getRoundNumber() == null ? "" : round.getRoundNumber()).append(',')
-                    .append(result.getAnalyteId()).append(',').append(csvField(analyteName(result.getAnalyteId())))
-                    .append(',').append(csvField(result.getResultValue())).append(',')
-                    .append(csvField(result.getResultUnit())).append(',').append(result.getSubmissionStatus().name())
-                    .append(',').append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append('\n');
+            csv.append(cycleId).append(',').append(StringUtil.csvEscape(cycle == null ? null : cycle.getCycleName()))
+                    .append(',').append(round == null || round.getRoundNumber() == null ? "" : round.getRoundNumber())
+                    .append(',').append(result.getAnalyteId()).append(',')
+                    .append(StringUtil.csvEscape(eqaPanelService.analyteName(result.getAnalyteId()))).append(',')
+                    .append(bundleValue(result.getResultValue())).append(',')
+                    .append(StringUtil.csvEscape(result.getResultUnit())).append(',')
+                    .append(result.getSubmissionStatus().name()).append(',')
+                    .append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append('\n');
         }
         return csv.toString();
     }
 
-    private String analyteName(Long analyteId) {
-        if (analyteId == null) {
-            return null;
-        }
-        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
-        return analyte == null ? null : analyte.getAnalyteName();
-    }
-
-    /** RFC 4180 quoting: a value carrying a comma, quote or newline is quoted. */
-    private String csvField(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (StringUtils.containsAny(value, ',', '"', '\n', '\r')) {
-            return '"' + value.replace("\"", "\"\"") + '"';
-        }
-        return value;
+    /**
+     * A reported value as a bundle cell. Numbers go out raw: the formula guard in
+     * {@link StringUtil#csvEscape} would prefix a negative result with an
+     * apostrophe, and the provider that imports this file would then read it as
+     * text. Everything else, including semi-quantitative answers such as "3+", is
+     * escaped.
+     */
+    private static String bundleValue(String value) {
+        return value != null && value.matches("-?\\d+(\\.\\d+)?") ? value : StringUtil.csvEscape(value);
     }
 
     @Override
@@ -710,7 +705,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             scored++;
         }
 
-        // FR-V2.2-08: the cycle is scored when nothing is still waiting for a
+        // The cycle is scored when nothing is still waiting for a
         // verdict. A missed-deadline result is resolved, not pending.
         boolean pending = participantResultDAO.getAllMatching("cycle.id", cycleId).stream()
                 .anyMatch(r -> r.getSubmissionStatus() != EQASubmissionStatus.SCORED
@@ -735,7 +730,6 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             throw new IllegalArgumentException(
                     "The CSV needs analyte_name and performance_status columns (the provider's scores CSV)");
         }
-        AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
         List<Map<String, Object>> scores = new ArrayList<>();
         List<String> unmapped = new ArrayList<>();
         for (int i = 1; i < lines.length; i++) {

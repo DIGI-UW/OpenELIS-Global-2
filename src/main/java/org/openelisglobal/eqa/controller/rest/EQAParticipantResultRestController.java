@@ -27,8 +27,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Participant-result lifecycle API (OGC-609, FR-V2.1-05). Paths follow the
- * established /rest/eqa contract style.
+ * Participant-result lifecycle API (OGC-609). Paths follow the established
+ * /rest/eqa contract style.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -104,7 +104,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
     /**
      * Score intake is a provider/officer act, so it takes the manage grant. An
      * external scheme's Z-score is passed through to the Z-carrying overload: the
-     * FR-V2.3-01 tiers read z_score, so dropping it here would silently downgrade
+     * The score tiers read z_score, so dropping it here would silently downgrade
      * every external unacceptable to the no-Z path.
      */
     @PatchMapping(value = "/participant-results/{id}/score", produces = MediaType.APPLICATION_JSON_VALUE)

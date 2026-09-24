@@ -32,8 +32,8 @@ const breadcrumbs = (cycleId) => [
 ];
 
 /**
- * Provider prep + shipment workbenches for one cycle (T-25, FR-V2.5-12/13).
- * Reached from the provider scheme list (T-24), which owns cycle selection.
+ * Provider prep + shipment workbenches for one cycle (13).
+ * Reached from the provider scheme list, which owns cycle selection.
  */
 const ProviderWorkbenchPage = () => {
   const intl = useIntl();
@@ -111,7 +111,7 @@ const ProviderWorkbenchPage = () => {
               "Prep must clear the inventory and QC gate before any panel can be dispatched.",
             )}
           />
-          {/* Deliberate divergence from FR-V2.5-16's "no in-page Tabs — use
+          {/* Deliberate divergence from the specification's "no in-page Tabs — use
               sidebar children" (decided with the user, 2026-08-28): the four
               workbench surfaces share one cycle banner and one state, so
               sidebar child routes would multiply route plumbing for no

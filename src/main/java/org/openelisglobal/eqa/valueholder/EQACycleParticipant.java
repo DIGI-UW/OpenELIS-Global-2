@@ -21,8 +21,7 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * One laboratory on one cycle's roster (FR-V2.5-02, the wizard's participant
- * step).
+ * One laboratory on one cycle's roster (the wizard's participant step).
  *
  * <p>
  * This is deliberately not the same thing as an {@link EQAProgramEnrollment}:

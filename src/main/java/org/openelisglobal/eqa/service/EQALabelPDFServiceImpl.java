@@ -16,9 +16,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.analyte.service.AnalyteService;
-import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
@@ -28,11 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * OGC-612 (FR-V2.4-13) — Avery 5160-equivalent label sheets. Layout is plain
- * text placed on a fixed 3×10 grid; the only data read is the blind code, the
- * cycle identifier and the analyte name, so a target value can never reach the
- * text layer (AC-V2.4-14). Output bytes are normalized so regeneration is
- * byte-identical (AC-V2.4-15).
+ * OGC-612 — Avery 5160-equivalent label sheets. Layout is plain text placed on
+ * a fixed 3×10 grid; the only data read is the blind code, the cycle identifier
+ * and the analyte name, so a target value can never reach the text layer.
+ * Output bytes are normalized so regeneration is byte-identical.
  */
 @Service
 @Transactional(readOnly = true)
@@ -62,13 +60,13 @@ public class EQALabelPDFServiceImpl implements EQALabelPDFService {
     @Autowired
     private EQAPanelSampleDAO panelSampleDAO;
     @Autowired
-    private AnalyteService analyteService;
+    private EQAPanelService eqaPanelService;
 
     @Override
     public byte[] generateLabelSheet(Long panelId) {
         EQAPanel panel = panelService.get(panelId);
         if (!PRINTABLE_STATES.contains(panel.getStatus())) {
-            // FR-V2.4-13 scopes the sheet to after sealing and before unblinding:
+            // The sheet is scoped to after sealing and before unblinding:
             // before, the panel is still being built; after, the targets are out
             // and a blind code is no longer blind.
             throw new IllegalStateException(
@@ -186,15 +184,14 @@ public class EQALabelPDFServiceImpl implements EQALabelPDFService {
      * Repeated ids cost nothing: the persistence context caches within the read.
      */
     private String analyteName(Long analyteId) {
-        Analyte analyte = analyteService.get(String.valueOf(analyteId));
-        return analyte == null || analyte.getAnalyteName() == null ? "" : analyte.getAnalyteName();
+        return StringUtils.defaultString(eqaPanelService.analyteName(analyteId));
     }
 
     /**
      * iText stamps wall-clock metadata (/CreationDate, /ModDate) and a random
      * trailer /ID on every run. Both are replaced with fixed same-length values —
      * offsets are untouched, so the document stays valid — making regeneration
-     * byte-identical (AC-V2.4-15).
+     * byte-identical.
      */
     private byte[] normalize(byte[] pdf) {
         String raw = new String(pdf, StandardCharsets.ISO_8859_1);

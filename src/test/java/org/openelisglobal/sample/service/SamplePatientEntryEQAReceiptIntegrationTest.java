@@ -18,8 +18,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * OGC-610 [EQA V2.2] — saving an EQA order routes it to a cycle and records the
- * panel receipt in the same transaction (FR-V2.2-12): the order and its receipt
- * either both land or neither does.
+ * panel receipt in the same transaction: the order and its receipt either both
+ * land or neither does.
  */
 public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBase {
 
@@ -122,7 +122,7 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
         assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycleId).getStatus());
     }
 
-    /** FR-V2.1-03: no cycle picked is a legal order, not a rejected one. */
+    /** No cycle picked is a legal order, not a rejected one. */
     @Test
     public void orderSaveWithoutACycle_recordsNoReceipt() {
         seedCycle("Uncycled order");
@@ -136,8 +136,8 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
     }
 
     /**
-     * FR-V2.2-12 atomicity: a receipt that cannot be recorded takes the order row
-     * down with it rather than leaving a half-saved EQA order behind.
+     * Atomicity: a receipt that cannot be recorded takes the order row down with it
+     * rather than leaving a half-saved EQA order behind.
      */
     @Test
     public void receiptFailure_rollsBackTheWholeOrderSave() {

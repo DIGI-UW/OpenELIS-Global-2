@@ -52,7 +52,7 @@ const PERFORMANCE_TAG = {
 };
 
 /**
- * FR-V2.3-06 — the ISO 15189 §6.2.3 evidence an assessor asks for: who ran PT
+ * — the ISO 15189 §6.2.3 evidence an assessor asks for: who ran PT
  * in the last twelve months, what each analyte says about them, and every event
  * the band was computed from.
  *

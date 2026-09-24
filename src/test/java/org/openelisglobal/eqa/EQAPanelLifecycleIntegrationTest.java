@@ -21,10 +21,9 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1] — panel lifecycle guards and the sealed-target read rule
- * (FR-V2.1-11 / FR-V2.1-16 / AC-V2.4-03). Runs against the
- * liquibase-provisioned schema, so the encryption converter and constraints are
- * live.
+ * OGC-609 [EQA V2.1] — panel lifecycle guards and the sealed-target read rule.
+ * Runs against the liquibase-provisioned schema, so the encryption converter
+ * and constraints are live.
  */
 public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
 
@@ -147,7 +146,7 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
         Map<String, Object> dto = dtos.get(0);
         assertEquals("A01", dto.get("sampleCode"));
         assertEquals("BLIND-A01", dto.get("blindCode"));
-        // T-25's pack list prints analyte names, not ids — and a name is not a target,
+        // The pack list prints analyte names, not ids — and a name is not a target,
         // so it travels with a sealed panel.
         assertEquals("the analyte resolves to its name",
                 jdbc.queryForObject("SELECT name FROM clinlims.analyte WHERE id = ?", String.class, ANALYTE),

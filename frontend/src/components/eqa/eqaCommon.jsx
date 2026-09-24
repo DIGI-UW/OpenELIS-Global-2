@@ -16,8 +16,8 @@ export const kpiLabelStyle = hintStyle;
 export const kpiValueStyle = { fontSize: "1.75rem", fontWeight: 600 };
 
 /**
- * Tag colour per cycle state, across both machines (FR-V2.1-04 participant,
- * FR-V2.1-18 provider). Keyed lower-case and looked up case-insensitively: the
+ * Tag colour per cycle state, across both machines (participant and
+ * provider). Keyed lower-case and looked up case-insensitively: the
  * participant endpoints answer lower-case, the provider ones the enum name.
  */
 const STATUS_TAG = {
@@ -66,17 +66,22 @@ export const isDispatched = (row) =>
 export const csvCell = (value) =>
   `"${String(value ?? "").replace(/"/g, '""')}"`;
 
-/** Hands the browser a CSV without a round trip to the server. */
-export const downloadCsv = (content, filename) => {
-  const url = URL.createObjectURL(
-    new Blob([content], { type: "text/csv;charset=utf-8;" }),
-  );
+/** Hands the browser a Blob to save under filename. */
+export const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 };
+
+/** Hands the browser a CSV without a round trip to the server. */
+export const downloadCsv = (content, filename) =>
+  downloadBlob(
+    new Blob([content], { type: "text/csv;charset=utf-8;" }),
+    filename,
+  );
 
 /** One cycle-state tag, so no page has to keep its own copy of the palette. */
 export const CycleStatusTag = ({ status }) => {

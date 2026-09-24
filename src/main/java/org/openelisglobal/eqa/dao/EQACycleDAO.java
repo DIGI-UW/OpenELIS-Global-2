@@ -16,7 +16,7 @@ public interface EQACycleDAO extends BaseDAO<EQACycle, Long> {
 
     /**
      * Every cycle of a batch of schemes, newest cycle number first within each
-     * scheme — the provider scheme list's cycles in one query (T-24).
+     * scheme — the provider scheme list's cycles in one query.
      */
     List<EQACycle> findBySchemeIds(Collection<Long> schemeIds);
 }

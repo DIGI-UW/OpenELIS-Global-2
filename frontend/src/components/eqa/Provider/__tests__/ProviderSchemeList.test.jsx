@@ -165,7 +165,7 @@ describe("ProviderSchemeList", () => {
     expect(screen.getByText("No schemes to provide yet")).toBeInTheDocument();
   });
 
-  // FR-V2.5-01 role-conditional composition (T-39)
+  // Role-conditional composition
   test("a participant-only viewer gets the participant links, not the provider table", () => {
     renderList(SCHEMES, KPIS, ["qa.view.eqa"]);
 
@@ -178,7 +178,7 @@ describe("ProviderSchemeList", () => {
       "/qa/eqa/my-cycles",
     );
     // No provider surface, and no provider fetch either — the hiding is UI
-    // composition (FR-V2.5-01); the endpoint stays read-guarded like every
+    // composition; the endpoint stays read-guarded like every
     // provider GET (EQARestGuardMatrixTest).
     expect(screen.queryByText("National HIV VL PT")).not.toBeInTheDocument();
     expect(screen.queryByTestId("kpi-active-schemes")).not.toBeInTheDocument();

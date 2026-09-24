@@ -412,7 +412,7 @@ const BoxDetails = () => {
     { key: "actions", header: intl.formatMessage({ id: "label.actions" }) },
   ];
 
-  // T-42: an imported box has no local contents rows — its manifest travels as
+  // An imported box has no local contents rows — its manifest travels as
   // JSON [{label, type}] on the box itself. Render-only: no reception status,
   // no per-item actions.
   const importedRows = useMemo(() => {

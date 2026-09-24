@@ -30,7 +30,7 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
     /** The accreditation window every KPI on the page is read against. */
     private static final int WINDOW_MONTHS = 12;
 
-    /** FR-V2.3-07's matrix is the last four cycles of each scheme. */
+    /** The matrix is the last four cycles of each scheme. */
     private static final int MATRIX_CYCLES = 4;
 
     private static final String UNASSIGNED_SECTION = "unassigned";
@@ -130,8 +130,8 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
      * {@code EQA_} prefix the {@code ?source=eqa} contract filters on.
      *
      * <p>
-     * ponytail: reads the whole table like the NCE dashboard does. If nc_event ever
-     * outgrows that, both callers want a counting query, not this one.
+     * Reads the whole table like the NCE dashboard does. If nc_event ever outgrows
+     * that, both callers want a counting query, not this one.
      */
     private Map<String, Object> nceCounts(LocalDate windowStart) {
         int total = 0;
@@ -153,9 +153,9 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
     }
 
     /**
-     * One row per section and scheme, its cells the scheme's last four cycles
-     * (FR-V2.3-07). A section that reported nothing in one of those cycles reads as
-     * missing rather than being dropped: the gap is the finding.
+     * One row per section and scheme, its cells the scheme's last four cycles. A
+     * section that reported nothing in one of those cycles reads as missing rather
+     * than being dropped: the gap is the finding.
      */
     private List<Map<String, Object>> coverage(List<EQAParticipantResult> results, Map<Long, String> sections) {
         Map<Long, List<EQACycle>> cyclesByScheme = new LinkedHashMap<>();

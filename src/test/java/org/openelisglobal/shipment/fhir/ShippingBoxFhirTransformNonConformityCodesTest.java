@@ -24,9 +24,9 @@ import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * T-44: the fhirNonConformityCodes SiteInformation config must be parsed as
- * real JSON, not scanned by indexOf — whitespace or formatting variations must
- * not silently drop custom SNOMED codes.
+ * The fhirNonConformityCodes SiteInformation config must be parsed as real
+ * JSON, not scanned by indexOf — whitespace or formatting variations must not
+ * silently drop custom SNOMED codes.
  */
 public class ShippingBoxFhirTransformNonConformityCodesTest {
 

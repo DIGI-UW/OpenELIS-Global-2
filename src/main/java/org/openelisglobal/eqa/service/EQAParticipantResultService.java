@@ -12,15 +12,14 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
 
     /**
      * Insert a new DRAFT, or update the editable fields of an existing DRAFT.
-     * Anything past DRAFT is immutable through this path (FR-V2.1-05).
+     * Anything past DRAFT is immutable through this path.
      */
     EQAParticipantResult saveDraft(EQAParticipantResult result);
 
     /**
-     * DRAFT → VALIDATED_PARTIAL → SUBMITTED (FR-V2.1-05); SUBMITTED stamps
-     * {@code submittedAt}. SCORED and MISSED_DEADLINE are refused here — they carry
-     * side-effects and go through {@link #recordScore} /
-     * {@link #markMissedDeadline}.
+     * DRAFT → VALIDATED_PARTIAL → SUBMITTED; SUBMITTED stamps {@code submittedAt}.
+     * SCORED and MISSED_DEADLINE are refused here — they carry side-effects and go
+     * through {@link #recordScore} / {@link #markMissedDeadline}.
      *
      * @throws IllegalStateException when the edge is not in the lifecycle
      */
@@ -28,18 +27,17 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
 
     /**
      * SUBMITTED → SCORED with the provider's verdict, which is persisted on the row
-     * (FR-V2.4-07) so a scored result is distinguishable from an unscored one. A
-     * QUESTIONABLE or UNACCEPTABLE score on a result with an assigned analyst
-     * writes the corresponding competency event (FR-V2.1-22).
+     * so a scored result is distinguishable from an unscored one. A QUESTIONABLE or
+     * UNACCEPTABLE score on a result with an assigned analyst writes the
+     * corresponding competency event.
      */
     EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, Long eqaResultId,
             String sysUserId);
 
     /**
-     * The same transition carrying the provider's Z-score, which the FR-V2.3-01
-     * tiers read to choose between a non-conformity and the Follow-Up Queue.
-     * In-house scoring has no Z by construction (FR-V2.4-07) and uses the overload
-     * above.
+     * The same transition carrying the provider's Z-score, which the score tiers
+     * read to choose between a non-conformity and the Follow-Up Queue. In-house
+     * scoring has no Z by construction and uses the overload above.
      */
     EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, BigDecimal zScore,
             Long eqaResultId, String sysUserId);
@@ -47,7 +45,7 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
     /**
      * DRAFT/VALIDATED_PARTIAL → MISSED_DEADLINE (timer terminal). Writes the
      * scheme-type-appropriate missed-deadline competency event when an analyst is
-     * assigned (FR-V2.1-22). Called by the deadline scheduler and manually.
+     * assigned. Called by the deadline scheduler and manually.
      */
     EQAParticipantResult markMissedDeadline(Long resultId, String sysUserId);
 

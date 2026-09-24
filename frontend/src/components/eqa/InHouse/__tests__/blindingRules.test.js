@@ -22,7 +22,7 @@ const prep = (overrides = {}) => ({
   ...overrides,
 });
 
-describe("in-house prep gate (AC-V2.4-12)", () => {
+describe("in-house prep gate", () => {
   test("clear when every sample is covered by an aliquot and QC passed", () => {
     expect(prepBlockers([sample("S1"), sample("S2")], prep())).toEqual([]);
   });
@@ -60,7 +60,7 @@ describe("in-house prep gate (AC-V2.4-12)", () => {
   });
 });
 
-describe("round-robin assignment (FR-V2.4-03)", () => {
+describe("round-robin assignment", () => {
   test("cycles the roster across samples", () => {
     const roster = [{ systemUserId: 7 }, { systemUserId: 9 }];
     const assigned = roundRobin(
@@ -75,13 +75,13 @@ describe("round-robin assignment (FR-V2.4-03)", () => {
   });
 });
 
-describe("assignment modes (FR-V2.4-03)", () => {
+describe("assignment modes", () => {
   const roster = [{ systemUserId: 7 }, { systemUserId: 9 }];
   const materials = [sample("S01"), sample("S02")];
 
   test("identical set gives every analyst every sample, each its own aliquot", () => {
     const rows = expandForMode(materials, roster, "IDENTICAL");
-    // 2 materials x 2 analysts — this IS the FRS's samples x analysts figure.
+    // 2 materials x 2 analysts — this IS the specification's samples x analysts figure.
     expect(rows).toHaveLength(4);
     expect(rows.map((r) => r.analystId)).toEqual([7, 9, 7, 9]);
     expect(rows.map((r) => r.materialKey)).toEqual([
@@ -122,7 +122,7 @@ describe("assignment modes (FR-V2.4-03)", () => {
   });
 });
 
-describe("seal state (FR-V2.1-16)", () => {
+describe("seal state", () => {
   test("a panel holding its targets back reads as sealed", () => {
     expect(sealState({ status: "SEALED" }).sealed).toBe(true);
     expect(sealState({ status: "DISTRIBUTED" }).sealed).toBe(true);

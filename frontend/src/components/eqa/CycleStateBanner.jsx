@@ -16,7 +16,7 @@ import { asList } from "./eqaApi";
 import { CycleStatusTag, hintStyle } from "./eqaCommon";
 
 /**
- * FR-V2.5-16: the cycle's state and how it got there, on every page that acts on
+ * The cycle's state and how it got there, on every page that acts on
  * a cycle. The history is the cycle-transition audit table, so a manual override
  * shows who forced it and the reason they gave.
  *
@@ -115,7 +115,7 @@ const CycleStateBanner = ({ cycleId, status, hint, distributionMethod }) => {
                         : row.triggerEvent || row.triggerType}
                     </TableCell>
                     <TableCell>
-                      {/* FR-V2.5-16: timestamp + actor. AUTO rows carry no
+                      {/* timestamp + actor. AUTO rows carry no
                           user, so they read as the system acting. */}
                       {row.triggeredByName ||
                         t("eqa.cycle.history.systemActor", "System")}

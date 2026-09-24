@@ -40,10 +40,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> implements EQAPanelService {
 
-    /** FR-V2.1-11's forward edges for the moves this service owns. */
+    /** The panel lifecycle's forward edges for the moves this service owns. */
     private static final Map<EQAPanelStatus, Set<EQAPanelStatus>> EDGES = new EnumMap<>(EQAPanelStatus.class);
 
-    /** Targets stay hidden until one of these states (FR-V2.1-16). */
+    /** Targets stay hidden until one of these states. */
     private static final Set<EQAPanelStatus> TARGETS_REVEALED = EnumSet.of(EQAPanelStatus.UNBLINDED,
             EQAPanelStatus.SCORED, EQAPanelStatus.CLOSED);
 
@@ -350,7 +350,7 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         dto.put("homogeneityQcNotes", panel.getHomogeneityQcNotes());
         dto.put("expirationDate", panel.getExpirationDate() == null ? null : panel.getExpirationDate().toString());
         // When the targets were revealed, and how. The landing list states the seal
-        // as a fact an auditor can read (FR-V2.1-16) rather than leaving it to be
+        // as a fact an auditor can read rather than leaving it to be
         // inferred from the lifecycle status.
         dto.put("unblindedAt", panel.getUnblindedAt() == null ? null : panel.getUnblindedAt().toString());
         dto.put("unblindMethod", panel.getUnblindMethod() == null ? null : panel.getUnblindMethod().name());
@@ -371,7 +371,7 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             dto.put("sampleCode", sample.getSampleCode());
             dto.put("blindCode", sample.getBlindCode());
             dto.put("analyteId", sample.getAnalyteId());
-            // Names, not ids, so the pack list a courier reads is legible (T-25).
+            // Names, not ids, so the pack list a courier reads is legible.
             dto.put("analyteName", analyteName(sample.getAnalyteId()));
             // The blinding guarantee: nulls, not omissions, so the shape is stable and a
             // client cannot infer anything from missing keys.
@@ -391,7 +391,9 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
      * row, which fk_eqa_panel_sample_analyte makes unreachable — so there is no
      * not-found branch to write here.
      */
-    private String analyteName(Long analyteId) {
+    @Override
+    @Transactional(readOnly = true)
+    public String analyteName(Long analyteId) {
         return analyteId == null ? null : analyteService.get(String.valueOf(analyteId)).getAnalyteName();
     }
 

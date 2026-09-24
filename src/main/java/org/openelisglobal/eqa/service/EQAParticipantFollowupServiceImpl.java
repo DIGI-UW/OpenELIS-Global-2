@@ -53,9 +53,9 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     private static final String WITHDRAWN = "Withdrawn";
 
     /**
-     * FR-V2.5-06's triage moves. Resolution and removal are terminal, and an
-     * escalated row can still be investigated and closed — the escalation is a
-     * priority, not an end state.
+     * The triage moves. Resolution and removal are terminal, and an escalated row
+     * can still be investigated and closed — the escalation is a priority, not an
+     * end state.
      */
     private static final Map<EQAFollowupStatus, Set<EQAFollowupStatus>> TRIAGE_EDGES = new EnumMap<>(
             EQAFollowupStatus.class);
@@ -170,7 +170,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             EQAFollowupStatus status = followup.getFollowupStatus();
             // Only this lab's own follow-ups: a row about another laboratory belongs to
             // the provider register, whose escalation is not a local non-conformity
-            // (AC-V2.5-10). With no self organization yet, no row can be this lab's.
+            // . With no self organization yet, no row can be this lab's.
             boolean mine = self != null && self.equals(followup.getParticipantOrgId());
             if (mine && status != EQAFollowupStatus.ESCALATED && status != EQAFollowupStatus.RESOLVED) {
                 open.add(followup);
@@ -357,10 +357,10 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     }
 
     /**
-     * BR-013: removing a participant from the programme is the enrollment's
-     * withdrawal, not just a register state — otherwise the next cycle would size
-     * itself to include a laboratory that was just removed. An enrollment already
-     * withdrawn is left alone rather than transitioned again.
+     * Removing a participant from the programme is the enrollment's withdrawal, not
+     * just a register state — otherwise the next cycle would size itself to include
+     * a laboratory that was just removed. An enrollment already withdrawn is left
+     * alone rather than transitioned again.
      */
     private void withdrawEnrollment(EQAParticipantFollowup followup, String reason, String sysUserId) {
         if (followup.getScheme() == null) {
@@ -411,10 +411,9 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     }
 
     /**
-     * ponytail: email plus the CSV fallback the FR names. A FHIR
-     * CommunicationRequest is the third channel it allows — add it when a
-     * deployment actually reads one; nothing in this codebase writes that resource
-     * today.
+     * Email plus the CSV fallback the FR names. A FHIR CommunicationRequest is the
+     * third channel it allows — add it when a deployment actually reads one;
+     * nothing in this codebase writes that resource today.
      */
     private String notificationBody(EQAParticipantFollowup followup) {
         StringBuilder body = new StringBuilder("Your laboratory's results for ").append(schemeName(followup))
@@ -494,8 +493,8 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     }
 
     /**
-     * FR-V2.3-02 maps five triage categories onto four competency event types; the
-     * "counts against the analyst" split lives in the FR-V2.3-06 rollup, not here.
+     * Five triage categories map onto four competency event types; the "counts
+     * against the analyst" split lives in the competency rollup, not here.
      */
     private EQACompetencyEventType competencyEventTypeFor(EQADismissalCategory category) {
         switch (category) {
@@ -580,7 +579,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         return self;
     }
 
-    /** Row builder shared by both enqueue paths (FR-V2.3-01, FR-V2.4-08). */
+    /** Row builder shared by both enqueue paths. */
     public static Map<String, Object> summaryRow(EQAParticipantResult result, String targetValue) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put(ROW_RESULT_ID, result.getId());

@@ -938,8 +938,8 @@ export default function App() {
                   from="/qa/eqa/distribution"
                   to="/qa/eqa/provider/schemes"
                 />
-                {/* qa/019 menu row (T-12) ships the FRS path; page lives in the
-                    /qa/eqa/* family with its V1 siblings (T-24 card note). */}
+                {/* qa/019 menu row ships the specification path; page lives in the
+                    /qa/eqa/* family with its V1 siblings. */}
                 <Redirect
                   exact
                   from="/eqa/participant/cycles"
@@ -973,7 +973,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Provider lane (T-24 + T-25): the scheme list is the entry
+                {/* Provider lane: the scheme list is the entry
                     point qa/030 points the menu row at, the wizard creates a
                     cycle, and the workbenches run the one it created. */}
                 <SecureRoute
@@ -983,7 +983,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* FR-V2.5-05 participant performance: the trend the workbench's
+                {/* Participant performance: the trend the workbench's
                     per-cycle view cannot show. Declared before the bare scheme
                     list so the more specific path wins. */}
                 <SecureRoute
@@ -993,7 +993,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Both of these 404'd after the provider lane moved: the FRS path is
+                {/* Both of these 404'd after the provider lane moved: the specification path is
                     what qa/019 seeded into the menu, and /provider/workbench is the URL
                     the cycle picker shipped at before the scheme list replaced it. */}
                 <Redirect
@@ -1020,8 +1020,8 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Oversight lane (T-18): the follow-up queue. qa/019 seeded
-                    its menu row at the FRS path, so that path redirects here
+                {/* Oversight lane: the follow-up queue. qa/019 seeded
+                    its menu row at the specification path, so that path redirects here
                     the way My Cycles does. Triage writes carry their own
                     qa.manage.eqa guard server-side. */}
                 <Redirect
@@ -1036,7 +1036,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Provider-side counterpart (T-27): follow-up with other labs,
+                {/* Provider-side counterpart: follow-up with other labs,
                     which never becomes a local non-conformity. */}
                 <SecureRoute
                   path="/qa/eqa/provider/follow-ups"
@@ -1045,8 +1045,8 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Lab Performance (T-20): two views of one rollup, as sibling
-                    routes rather than in-page tabs — the FRS makes these
+                {/* Lab Performance: two views of one rollup, as sibling
+                    routes rather than in-page tabs — the specification makes these
                     submenu children. */}
                 <Redirect
                   exact
@@ -1067,8 +1067,8 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Analyst Competency (T-19): the last oversight menu row.
-                    qa/019 seeded it at the FRS path, which redirects here the
+                {/* Analyst Competency: the last oversight menu row.
+                    qa/019 seeded it at the specification path, which redirects here the
                     way its two siblings do. Read-only — competency events are
                     service-written, never posted from this page. */}
                 <Redirect
@@ -1083,7 +1083,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* In-house blinding (T-21): landing list, then the 4-step
+                {/* In-house blinding: landing list, then the 4-step
                     wizard. The wizard's writes carry their own qa.manage.eqa
                     guard server-side, so both routes sit on the read umbrella. */}
                 <SecureRoute

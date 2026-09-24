@@ -43,11 +43,11 @@ public class EQAProgramServiceImpl extends BaseObjectServiceImpl<EQAProgram, Lon
     }
 
     /**
-     * BR-004 (FR-V2.1-06): external arrangement types have a real provider
-     * organization behind them; only in-house schemes may omit it. save() delegates
-     * to insert/update, so both service-level write paths are covered.
-     * activateProgram/deactivateProgram write through the DAO directly and stay
-     * exempt — which is what still lets a legacy provider-less scheme be retired.
+     * External arrangement types have a real provider organization behind them;
+     * only in-house schemes may omit it. save() delegates to insert/update, so both
+     * service-level write paths are covered. activateProgram/deactivateProgram
+     * write through the DAO directly and stay exempt — which is what still lets a
+     * legacy provider-less scheme be retired.
      */
     @Override
     public Long insert(EQAProgram program) {

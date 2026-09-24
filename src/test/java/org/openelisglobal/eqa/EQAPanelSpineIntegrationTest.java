@@ -29,7 +29,7 @@ import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1 / T-09] — panels, sealed samples, receipts, follow-ups and
+ * OGC-609 [EQA V2.1] — panels, sealed samples, receipts, follow-ups and
  * competency events against a real DB (qa/017 + qa/018).
  *
  * <p>
@@ -77,7 +77,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
         jdbc.update("DELETE FROM clinlims.organization WHERE id = ?", ORG_ID);
     }
 
-    // ---- FR-V2.1-11/12/17 ----
+    // ---- panels, samples and inventory ----
 
     @Test
     public void panelAndSealedSampleRoundTripWithExactValues() {
@@ -150,7 +150,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
                 p.setAliquotsReserved(5);
                 p.setAliquotsShipped(6);
             });
-            fail("produced must be >= reserved + shipped (FR-V2.1-17)");
+            fail("produced must be >= reserved + shipped");
         } catch (Exception expected) {
             assertConstraintViolation(expected, "eqa_panel_aliquots_chk");
         }
@@ -172,7 +172,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.1-08 ----
+    // ---- scheme analysts ----
 
     @Test
     public void anAnalystMayBeListedOncePerScheme() {
@@ -186,7 +186,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.1-20 ----
+    // ---- panel receipts ----
 
     @Test
     public void oneReceiptPerCyclePerLab() {
@@ -210,7 +210,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
         assertTrue("integrity defaults to ok", receipt.getIntegrityOk());
     }
 
-    // ---- FR-V2.1-13 ----
+    // ---- follow-ups ----
 
     @Test
     public void oneOpenFollowupPerCyclePerOrganisation() {
@@ -218,13 +218,13 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
         insertFollowup(cycle);
         try {
             insertFollowup(cycle);
-            fail("AC-V2.1-09: duplicate follow-up must be refused");
+            fail("duplicate follow-up must be refused");
         } catch (Exception expected) {
             assertConstraintViolation(expected, "uq_eqa_participant_followup_cycle_org");
         }
     }
 
-    // ---- FR-V2.1-22 ----
+    // ---- competency events ----
 
     @Test
     public void competencyEventPersistsWithItsVocabulary() {
@@ -254,7 +254,7 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
                             + " scheme_id, sys_user_id, last_updated)"
                             + " VALUES (9982, ?, 'unknown', current_date, ?, ?, now())",
                     ADMIN_USER_ID, scheme.getId(), USER);
-            fail("AC-V2.1-22: an undefined event_type must be refused");
+            fail("an undefined event_type must be refused");
         } catch (Exception expected) {
             assertConstraintViolation(expected, "eqa_competency_event_type_chk");
         }

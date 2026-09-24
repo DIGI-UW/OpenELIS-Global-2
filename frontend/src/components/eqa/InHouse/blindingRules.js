@@ -6,7 +6,7 @@
 // Callers pass the EXPANDED rows (see expandForMode), never the materials the
 // user typed: one blinded order is created per row, so one aliquot per row is
 // the whole rule. Under an identical set the expansion is materials x analysts,
-// which is exactly the figure the FRS writes the gate as — same arithmetic,
+// which is exactly the figure the specification writes the gate as — same arithmetic,
 // reached without a second formula to keep in step.
 export const prepBlockers = (samples, prep) => {
   const blockers = [];
@@ -27,7 +27,7 @@ export const prepBlockers = (samples, prep) => {
   return blockers;
 };
 
-// FR-V2.4-03's assignment modes. The rows the wizard collects in step 2 are
+// The assignment modes. The rows the wizard collects in step 2 are
 // materials; what gets sealed is one aliquot per row of the expansion below,
 // because distribution creates exactly one blinded order per panel sample.
 export const ASSIGNMENT_MODES = ["ROUND_ROBIN", "IDENTICAL", "MANUAL"];
@@ -38,7 +38,7 @@ export const ASSIGNMENT_MODES = ["ROUND_ROBIN", "IDENTICAL", "MANUAL"];
 // aliquot per analyst — each with its own blind code, which is what keeps two
 // analysts testing the same material from comparing notes.
 //
-// The identical expansion is why the FRS writes the gate as
+// The identical expansion is why the specification writes the gate as
 // aliquots >= samples x analysts: in that mode the expansion IS that product,
 // so the one rule "an aliquot per blinded row" covers both readings.
 export const expandForMode = (samples, roster, mode) => {

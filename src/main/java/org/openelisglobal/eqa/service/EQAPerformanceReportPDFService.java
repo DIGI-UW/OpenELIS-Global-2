@@ -1,9 +1,9 @@
 package org.openelisglobal.eqa.service;
 
 /**
- * OGC-933 — the printed CPHL-format EQA performance report. Section- and
- * programme-level summaries, the z-score / performance scoring table and the
- * cycle identifiers, in the layout that replaces CPHL's Access report.
+ * OGC-933 — the printed EQA performance report. Section- and programme-level
+ * summaries, the z-score / performance scoring table and the cycle identifiers,
+ * in the layout a national provider's paper report uses.
  */
 public interface EQAPerformanceReportPDFService {
 

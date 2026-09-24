@@ -85,17 +85,17 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
     }
 
     /**
-     * FR-V2.3-01. Z governs whenever the provider returned one; the categorical
-     * path exists because HIV qualitative, TB smear grading and blood-film ID have
-     * no Z by construction, and an external provider calling such a result
-     * unacceptable warrants the same non-conformity as a numeric |Z| &gt; 3.
+     * Z governs whenever the provider returned one; the categorical path exists
+     * because HIV qualitative, TB smear grading and blood-film ID have no Z by
+     * construction, and an external provider calling such a result unacceptable
+     * warrants the same non-conformity as a numeric |Z| &gt; 3.
      *
      * <p>
      * Two readings are pinned down here. In-house unacceptable never auto-creates
-     * an NCE (FR-V2.4-08: in-house is exploratory, so it is triaged first). And an
-     * external unacceptable with |Z| &le; 2 is contradictory data rather than a
-     * clean pass, so it is queued for a human instead of taking the FR's literal
-     * "no action" branch — dropping an explicit unacceptable verdict would lose it.
+     * an NCE (in-house is exploratory, so it is triaged first). And an external
+     * unacceptable with |Z| &le; 2 is contradictory data rather than a clean pass,
+     * so it is queued for a human instead of taking the FR's literal "no action"
+     * branch — dropping an explicit unacceptable verdict would lose it.
      */
     private Tier tierFor(EQAParticipantResult result, EQAPerformanceStatus performance, EQAProgram scheme) {
         boolean external = scheme.getSchemeType() != EQASchemeType.IN_HOUSE;
@@ -162,7 +162,7 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
     @Override
     public NcEvent escalateFollowup(Long followupId, String sysUserId) {
         EQAParticipantFollowup followup = followupService.get(followupId);
-        // AC-V2.5-10, enforced rather than merely structural (T-27): a row about
+        // Enforced rather than merely structural: a row about
         // another laboratory is the provider's register entry, and a local
         // non-conformity would put another lab's failure in this lab's QMS.
         Long self = followupService.selfOrganizationId();
@@ -199,8 +199,8 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
             nce.setTitle(truncate("Escalated EQA follow-up: " + String.join(", ", analytes) + " in "
                     + (scheme == null ? "unknown scheme" : scheme.getName()) + " cycle "
                     + (cycle == null ? "?" : cycle.getCycleNumber()), 200));
-            nce.setDescription("Escalated from the EQA Follow-Up Queue (FR-V2.3-02). Covers participant result(s) "
-                    + resultIds + ". Queue snapshot: " + followup.getParticipantResultSummaryJson());
+            nce.setDescription("Escalated from the EQA Follow-Up Queue. Covers participant result(s) " + resultIds
+                    + ". Queue snapshot: " + followup.getParticipantResultSummaryJson());
             nce.setImmediateAction("Investigate the flagged analytes and record corrective action");
             nce.setNameOfReporter("EQA Follow-Up Queue");
             nce.setReportDate(new Date(System.currentTimeMillis()));
@@ -222,7 +222,7 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
     }
 
     private String describe(EQAParticipantResult result, EQAProgram scheme, EQACycle cycle, String analyte) {
-        StringBuilder text = new StringBuilder("Auto-created from an unacceptable EQA score (FR-V2.3-01).");
+        StringBuilder text = new StringBuilder("Auto-created from an unacceptable EQA score.");
         text.append(" Scheme: ").append(scheme.getName()).append(" (").append(scheme.getSchemeType()).append(").");
         text.append(" Cycle: ").append(cycle.getCycleNumber());
         if (cycle.getCycleName() != null) {

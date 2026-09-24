@@ -25,9 +25,9 @@ import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-610 [EQA V2.2 / T-13] — GET /rest/eqa/cycles/mine carries the display
- * fields My Cycles renders: scheme name/provider/type and progress + entry
- * state computed at analysis grain from orders linked via sample_eqa.cycle_id.
+ * OGC-610 [EQA V2.2] — GET /rest/eqa/cycles/mine carries the display fields My
+ * Cycles renders: scheme name/provider/type and progress + entry state computed
+ * at analysis grain from orders linked via sample_eqa.cycle_id.
  */
 public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
 
@@ -123,16 +123,15 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertEquals(scheme.getName(), row.get("schemeName"));
         assertEquals("NHRL", row.get("provider"));
         assertEquals("REGIONAL_PT", row.get("schemeType"));
-        assertEquals("the review gate is off unless a scheme opts in (FR-V2.1-09)", Boolean.FALSE,
-                row.get("requiresCycleReview"));
+        assertEquals("the review gate is off unless a scheme opts in", Boolean.FALSE, row.get("requiresCycleReview"));
         assertEquals(Map.of("entered", 0, "total", 0), row.get("progress"));
         assertTrue("a cycle with no linked orders has no sample rows", ((List<?>) row.get("samples")).isEmpty());
     }
 
     /**
-     * FR-V2.2-07: with the gate on, each analyte carries what would be submitted —
-     * the value validated in the standard pipeline and when it was released. With
-     * the gate off those fields stay off the wire entirely.
+     * With the gate on, each analyte carries what would be submitted — the value
+     * validated in the standard pipeline and when it was released. With the gate
+     * off those fields stay off the wire entirely.
      */
     @Test
     public void reviewGatedSchemeCarriesReportedValueAndValidationTime() {
@@ -188,7 +187,7 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertTrue("an ungated cycle does not ship reported values",
                 analytesOf(row).stream().noneMatch(a -> a.containsKey("value")));
 
-        // flipping the open analysis to finalized flips the sample and progress
+        // Flipping the open analysis to finalized flips the sample and progress
         jdbc.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = ?", finalizedId, ANALYSIS_NOT_STARTED_ID);
         row = findCycleRow(cycleId);
         assertEquals(Map.of("entered", 2, "total", 2), row.get("progress"));

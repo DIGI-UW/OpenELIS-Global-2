@@ -26,8 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * OGC-610 [EQA V2.2 / T-16] — the 7/3/1-day cycle deadline digest (FR-V2.2-14),
- * against a real DB with a pinned clock.
+ * OGC-610 [EQA V2.2] — the 7/3/1-day cycle deadline digest, against a real DB
+ * with a pinned clock.
  *
  * <p>
  * The clock is pinned so "7 days out" is a fact of the fixture, not of when CI

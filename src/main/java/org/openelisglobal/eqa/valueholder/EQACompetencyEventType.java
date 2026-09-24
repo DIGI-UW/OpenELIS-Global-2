@@ -1,8 +1,8 @@
 package org.openelisglobal.eqa.valueholder;
 
 /**
- * Analyst competency events (FR-V2.1-22) — the single source of truth for this
- * vocabulary; other requirements reference these names.
+ * Analyst competency events — the single source of truth for this vocabulary;
+ * other requirements reference these names.
  *
  * <p>
  * A missed deadline is an absence-of-result, not a result, which is why this

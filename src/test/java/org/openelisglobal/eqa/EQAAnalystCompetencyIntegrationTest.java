@@ -28,9 +28,9 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-611 (FR-V2.3-06) — the Analyst Competency rollup against the real schema:
- * which events count against an analyst, which are excused, and the band each
- * combination asserts.
+ * OGC-611 — the Analyst Competency rollup against the real schema: which events
+ * count against an analyst, which are excused, and the band each combination
+ * asserts.
  *
  * <p>
  * Every case here seeds through the shipped writer
@@ -94,7 +94,7 @@ public class EQAAnalystCompetencyIntegrationTest extends EQASpineTestBase {
         clearNceTables();
     }
 
-    // ---- the counted / excused split (FR-V2.1-22) ----
+    // ---- the counted / excused split ----
 
     @Test
     public void fourAcceptableScoredResultsAssertCompetent() {
@@ -182,11 +182,11 @@ public class EQAAnalystCompetencyIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * FR-V2.3-06's own worked example, seeded the way production writes it: the
-     * score event lands first and triage answers it. OR-ing the two let the score
-     * event's flags survive whatever triage decided, so an equipment fault was
-     * never lifted off the analyst who happened to run the sample -- the excusing
-     * categories could only ever excuse a sample that had not failed.
+     * The specification's own worked example, seeded the way production writes it:
+     * the score event lands first and triage answers it. OR-ing the two let the
+     * score event's flags survive whatever triage decided, so an equipment fault
+     * was never lifted off the analyst who happened to run the sample -- the
+     * excusing categories could only ever excuse a sample that had not failed.
      */
     @Test
     public void anEquipmentFaultIsLiftedOffTheAnalystWhoRanTheSample() {

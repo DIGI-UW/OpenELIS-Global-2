@@ -1,4 +1,4 @@
-// Data seam for Analyst Competency (OGC-611, FR-V2.3-06). One rollup endpoint
+// Data seam for Analyst Competency (OGC-611). One rollup endpoint
 // serves the tiles, the table and each analyst's history: the bands and the
 // evidence behind them must be computed once, or a row could disagree with the
 // events it expands to show.

@@ -1,8 +1,8 @@
-// Data seam for the provider lane: the scheme list and cycle wizard (T-24) and
-// the prep + shipment workbenches (T-25), OGC-613.
+// Data seam for the provider lane: the scheme list and cycle wizard and
+// the prep + shipment workbenches, OGC-613.
 // Every write goes through a FullResponse helper so a 409 (gate refusal, wrong
 // box state) or 422 (bad input) reaches the operator verbatim — a JSON-only
-// helper would swallow the reason, which is the D-LIVE-1 mistake.
+// helper would swallow the reason.
 import {
   deleteFromOpenElisServerFullResponse,
   getFromOpenElisServer,
@@ -10,18 +10,10 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
+import { asList } from "../../eqaApi";
 
 /**
- * A list read must answer a list. `data || []` is not enough: a failed read
- * hands back the server's error object, which is truthy, so the page reaches
- * `.map` on an object and white-screens. Every list endpoint here goes through
- * this.
- */
-const asList = (callback) => (data) =>
-  callback(Array.isArray(data) ? data : []);
-
-/**
- * FR-V2.5-01. One read draws the whole board: `schemes` (each carrying its
+ * One read draws the whole board: `schemes` (each carrying its
  * cycles) plus the `kpis` tile counts, so the tiles and the table cannot
  * disagree. The same list-shape guard as asList, applied to the board's parts.
  */
@@ -46,9 +38,8 @@ export const fetchPrepStatus = (cycleId, callback) =>
   );
 
 export const fetchShipmentRows = (cycleId, callback) =>
-  getFromOpenElisServer(
-    `/rest/eqa/cycles/${cycleId}/shipments`,
-    asList(callback),
+  getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/shipments`, (data) =>
+    callback(asList(data)),
   );
 
 /**
@@ -73,7 +64,7 @@ const withBody = (callback) => (response) => {
 };
 
 /**
- * FR-V2.5-02. One POST writes the cycle, its panel, its samples and its
+ * One POST writes the cycle, its panel, its samples and its
  * participant roster, and leaves the cycle in prep — so a wizard the server
  * refuses leaves nothing half-created for the scheme list to show.
  */
@@ -107,7 +98,7 @@ export const markShipped = (cycleId, organizationIds, callback) =>
 
 /**
  * Clearing a cycle to ship is the ordinary provider transition — the inventory
- * and QC gate lives there (T-10 + T-25), so the workbench does not get a
+ * and QC gate lives there, so the workbench does not get a
  * second, weaker gate of its own.
  */
 export const requestReadyToShip = (cycleId, callback) =>
@@ -131,16 +122,16 @@ export const requestReadyToShip = (cycleId, callback) =>
 export const fetchPanelSamples = (panelId, callback) =>
   getFromOpenElisServer(`/rest/eqa/panels/${panelId}/samples`, callback);
 
-// --- T-26 receipt monitoring, reprovisioning and scoring (FR-V2.5-14/15/03/04) ---
+// --- receipt monitoring, reprovisioning and scoring ---
 
 export const fetchReceiptRows = (cycleId, callback) =>
   getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/receipts`, (data) =>
-    callback(data || []),
+    callback(asList(data)),
   );
 
 export const fetchScoreRows = (cycleId, callback) =>
   getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/scores`, (data) =>
-    callback(data || []),
+    callback(asList(data)),
   );
 
 export const markDelivered = (cycleId, organizationId, callback) =>
@@ -159,7 +150,7 @@ export const sendRepeat = (cycleId, organizationId, overrideNote, callback) =>
   );
 
 /**
- * T-46: the operator's audited override — open submissions while part of the
+ * The operator's audited override — open submissions while part of the
  * roster is still undelivered. MANUAL with a written reason by construction:
  * it rides the generic transition endpoint, which refuses a blank reason.
  */
@@ -246,12 +237,12 @@ export const importIntakeCsv = (cycleId, organizationId, csv, callback) =>
 /** The pre-approved library the picker offers. */
 export const fetchCommentLibrary = (callback) =>
   getFromOpenElisServer("/rest/eqa/report-comments", (data) =>
-    callback(data || []),
+    callback(asList(data)),
   );
 
 export const fetchCycleComments = (cycleId, callback) =>
   getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/report-comments`, (data) =>
-    callback(data || []),
+    callback(asList(data)),
   );
 
 /** Ids only: the endpoint has no text field, so nothing unapproved can be sent. */

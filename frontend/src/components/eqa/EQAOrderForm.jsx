@@ -13,7 +13,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 
 /**
  * A receipt marked not-intact needs the note that says what was wrong with the
- * material (AC-V2.2-13). Exported so the wizard's Next button holds on the same
+ * material. Exported so the wizard's Next button holds on the same
  * rule the receipt service enforces, rather than a second copy of it.
  */
 export const eqaReceiptNoteMissing = (orderFormValues) => {

@@ -38,8 +38,8 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     private static final int WINDOW_MONTHS = 12;
 
     /**
-     * FR-V2.3-06's evidence floor: fewer than four assessable samples is not
-     * evidence of competence, so it bands as Under Review rather than Competent.
+     * The evidence floor: fewer than four assessable samples is not evidence of
+     * competence, so it bands as Under Review rather than Competent.
      */
     private static final int EVIDENCE_FLOOR = 4;
 
@@ -66,7 +66,7 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     private static final List<String> CLOSED_NCE_STATUSES = List.of("Closed", "Completed");
 
     /**
-     * FR-V2.1-22's "counts against the analyst" column, as two sets.
+     * The "counts against the analyst" column, as two sets.
      *
      * <p>
      * DISMISSED_EQUIPMENT and DISMISSED_ACCEPTABLE_ON_REVIEW appear in neither:
@@ -159,8 +159,8 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     }
 
     /**
-     * ponytail: reads both tables whole, as the Lab Performance rollup does. If
-     * either outgrows that, both pages want a windowed query rather than this one.
+     * Reads both tables whole, as the Lab Performance rollup does. If either
+     * outgrows that, both pages want a windowed query rather than this one.
      */
     @Override
     @Transactional(readOnly = true)
@@ -232,7 +232,7 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     /**
      * The scored results the log does not already speak for — in practice the
      * acceptable ones, since scoring writes an event for every other verdict. A
-     * result the log covers is skipped: FR-V2.3-06 makes the event canonical.
+     * result the log covers is skipped: the event is canonical.
      */
     private EQACompetencyRow fromResult(EQAParticipantResult result, LocalDate windowStart, Set<Long> covered) {
         if (result.getAssignedAnalystId() == null || covered.contains(result.getId())) {
@@ -350,11 +350,11 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     }
 
     /**
-     * FR-V2.3-06's band table, read in precedence order because its rows overlap —
-     * an analyst with an open escalation also satisfies "failure_n ≥ 2", and its
-     * final "otherwise Competent" would claim anyone the earlier rows skipped.
-     * Severest first is the only ordering that cannot assert competence over an
-     * unanswered failure.
+     * The band table, read in precedence order because its rows overlap — an
+     * analyst with an open escalation also satisfies "failure_n ≥ 2", and its final
+     * "otherwise Competent" would claim anyone the earlier rows skipped. Severest
+     * first is the only ordering that cannot assert competence over an unanswered
+     * failure.
      *
      * <p>
      * The table's "2+ consecutive questionable_score" clause is deliberately not
@@ -399,8 +399,8 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     }
 
     /**
-     * The de-duplication FR-V2.3-06 asks for: rows about one sample collapse to one
-     * fact, and the FRS names the winner -- "the event is the canonical row".
+     * The de-duplication: rows about one sample collapse to one fact, and the
+     * specification names the winner -- "the event is the canonical row".
      */
     private List<EQACompetencyRow> facts(List<EQACompetencyRow> rows) {
         Map<String, List<EQACompetencyRow>> byFact = new LinkedHashMap<>();
@@ -428,10 +428,10 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
      *
      * <p>
      * OR-ing them was the defect: the score event always lands first, so its flags
-     * survived whatever triage decided, and the two categories the FRS says do not
-     * count against the analyst could only ever excuse a sample that had not
-     * failed. An equipment fault was never lifted off the analyst who happened to
-     * run the sample.
+     * survived whatever triage decided, and the two categories the specification
+     * says do not count against the analyst could only ever excuse a sample that
+     * had not failed. An equipment fault was never lifted off the analyst who
+     * happened to run the sample.
      *
      * <p>
      * Nothing leaves the record. The evidence table under each analyst still lists
@@ -439,7 +439,8 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
      * failed and sees why it was excused; only the counts move. Excusing pulls the
      * denominator down, which can band an analyst Under Review for thin evidence
      * rather than Competent -- a broken analyser means less evidence about the
-     * person, not more, and FR-V2.3-06's own worked example is exactly that case.
+     * person, not more, and the specification's own worked example is exactly that
+     * case.
      */
     private EQACompetencyRow collapse(List<EQACompetencyRow> group) {
         EQACompetencyRow fact = copy(group.get(0));

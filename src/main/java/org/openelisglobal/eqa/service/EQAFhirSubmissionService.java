@@ -36,9 +36,8 @@ public interface EQAFhirSubmissionService {
 
     /**
      * Post one lab's participant results for a V2 cycle as a DiagnosticReport
-     * bundle (FR-V2.2-05). Cycle-grain, unlike
-     * {@link #submitResultsViaFhir(Long, Long)}, which serves the V1
-     * distribution/eqa_result pair.
+     * bundle. Cycle-grain, unlike {@link #submitResultsViaFhir(Long, Long)}, which
+     * serves the V1 distribution/eqa_result pair.
      *
      * @return false when the FHIR store refuses the bundle, so the caller can count
      *         a failed attempt and back off. A cycle with no submittable result

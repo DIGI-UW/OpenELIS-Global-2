@@ -88,9 +88,9 @@ public class EQAProgramRestControllerTest {
     }
 
     /**
-     * FR-V2.2-07's review gate. It is read by the auto-submit sweep, the cycle DTO
-     * and My Cycles, and was written by nothing, so outside the test suite it could
-     * only ever be its column default of false.
+     * The review gate. It is read by the auto-submit sweep, the cycle DTO and My
+     * Cycles, and was written by nothing, so outside the test suite it could only
+     * ever be its column default of false.
      */
     @Test
     public void testCreateProgram_CarriesTheReviewGate() {

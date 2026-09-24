@@ -19,9 +19,9 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-611 (FR-V2.3-07) — the Lab Performance rollup against the real schema:
- * which results count towards the twelve-month KPIs, what a coverage cell says,
- * and which cycles reach the Recent Cycles list.
+ * OGC-611 — the Lab Performance rollup against the real schema: which results
+ * count towards the twelve-month KPIs, what a coverage cell says, and which
+ * cycles reach the Recent Cycles list.
  */
 public class EQALabPerformanceIntegrationTest extends EQASpineTestBase {
 

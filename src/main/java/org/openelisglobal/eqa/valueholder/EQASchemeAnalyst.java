@@ -17,8 +17,8 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Opt-in list of users who may be recorded as the analyst on a scheme's samples
- * (FR-V2.1-08). An empty list for a scheme means any user may be recorded — so
+ * Opt-in list of users who may be recorded as the analyst on a scheme's
+ * samples. An empty list for a scheme means any user may be recorded — so
  * absence of rows is permissive, not restrictive.
  *
  * <p>

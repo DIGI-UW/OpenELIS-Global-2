@@ -64,20 +64,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cycle state machines and the derived participant view (T-10). Two machines
- * share the single eqa_cycle.status column: participant (FR-V2.1-04) and
- * provider (FR-V2.1-18); which applies is the caller's assertion via
- * {@link EQAStateMachine}.
+ * Cycle state machines and the derived participant view. Two machines share the
+ * single eqa_cycle.status column: participant and provider; which applies is
+ * the caller's assertion via {@link EQAStateMachine}.
  */
 @Service
 @Transactional
 public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> implements EQACycleService {
 
-    /** FR-V2.1-04. Terminal: CLOSED. */
+    /** Participant machine. Terminal: CLOSED. */
     private static final Map<EQACycleStatus, Set<EQACycleStatus>> PARTICIPANT_EDGES = new EnumMap<>(
             EQACycleStatus.class);
 
-    /** FR-V2.1-18. Terminal: CLOSED. */
+    /** Provider machine. Terminal: CLOSED. */
     private static final Map<EQACycleStatus, Set<EQACycleStatus>> PROVIDER_EDGES = new EnumMap<>(EQACycleStatus.class);
 
     /**
@@ -102,7 +101,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         PROVIDER_EDGES.put(PLANNED, EnumSet.of(PREP_IN_PROGRESS));
         PROVIDER_EDGES.put(PREP_IN_PROGRESS, EnumSet.of(READY_TO_SHIP));
         PROVIDER_EDGES.put(READY_TO_SHIP, EnumSet.of(SHIPPED));
-        // SHIPPED → SUBMISSIONS_OPEN (T-46, decided 2026-08-26): a partial roster is
+        // SHIPPED → SUBMISSIONS_OPEN (decided 2026-08-26): a partial roster is
         // a legal place to open submissions from — one dormant lab must not park the
         // cycle in SHIPPED for the labs that hold their panels. Manual-only in
         // practice: the auto path (openSubmissionsIfAllDelivered) still walks
@@ -294,7 +293,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
                     "Cannot move a " + machine + " cycle from " + priorState + " to " + newState);
         }
 
-        // FR-V2.1-21 requires a reason for off-happy-path manual moves; AC-V2.1-19
+        // A reason is required for off-happy-path manual moves
         // requires one on the happy path too. Requiring both reason and actor on
         // every MANUAL transition satisfies both.
         if (triggerType == EQATriggerType.MANUAL) {
@@ -331,10 +330,9 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     }
 
     /**
-     * FR-V2.1-18 / AC-V2.1-13: a provider cycle may not reach ready_to_ship while
-     * {@link #evaluatePrepGate} names anything outstanding. The refusal quotes the
-     * gate's own blockers, so the operator reads the same sentences the prep
-     * workbench shows.
+     * A provider cycle may not reach ready_to_ship while {@link #evaluatePrepGate}
+     * names anything outstanding. The refusal quotes the gate's own blockers, so
+     * the operator reads the same sentences the prep workbench shows.
      */
     /**
      * Closing is the one transition that ends a cycle, so it refuses while work is
@@ -387,15 +385,15 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
     /**
      * The gate, evaluated once for both its readers. A cycle with no panel is
-     * refused — the FRS predicate is vacuously true on an empty set, which would
-     * let a panel-less cycle through a gate whose point is that something passed
-     * QC.
+     * refused — the specification predicate is vacuously true on an empty set,
+     * which would let a panel-less cycle through a gate whose point is that
+     * something passed QC.
      *
      * <p>
-     * The inventory half (T-25, FR-V2.5-12) sizes the cycle by its participant
-     * roster (T-24): each participant needs one aliquot per panel sample, on top of
-     * what the panel holds back. The row-level invariant produced >= reserved +
-     * shipped is a DB CHECK in qa/017.
+     * The inventory half sizes the cycle by its participant roster: each
+     * participant needs one aliquot per panel sample, on top of what the panel
+     * holds back. The row-level invariant produced >= reserved + shipped is a DB
+     * CHECK in qa/017.
      */
     @Override
     @Transactional(readOnly = true)
@@ -479,7 +477,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         if (request.participantOrganizationIds() == null || request.participantOrganizationIds().isEmpty()) {
             throw new IllegalArgumentException("A cycle needs at least one participant laboratory");
         }
-        // VENDOR_SOURCED and MIXED carry the vendor's provenance (FR-V2.1-17); an
+        // VENDOR_SOURCED and MIXED carry the vendor's provenance; an
         // in-house aliquoted panel has none to carry.
         if ((request.sourceType() == EQAPanelSourceType.VENDOR_SOURCED
                 || request.sourceType() == EQAPanelSourceType.MIXED)
@@ -495,7 +493,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         List<Long> participants = resolveParticipants(scheme, request.participantOrganizationIds());
         List<EQAPanelSample> samples = toPanelSamples(request.samples());
 
-        // Cycle and panel creation are T-21's (FR-V2.4-01/02) — the same writes the
+        // Cycle and panel creation are the in-house wizard's — the same writes the
         // in-house wizard makes. Calling them from inside this transaction is what
         // makes the provider wizard's single POST all-or-nothing, which two client
         // calls could not be.
@@ -524,7 +522,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             eqaCycleParticipantDAO.insert(participant);
         }
 
-        // FR-V2.2-14: the 7/3/1-day digest is driven off eqa_round.submission_deadline,
+        // The 7/3/1-day digest is driven off eqa_round.submission_deadline,
         // so a cycle with no round is invisible to it however close its deadline is.
         // The planned end date is that deadline, and this is the only place it is
         // known, so round 1 is written here rather than left to blinding.
@@ -532,8 +530,9 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         round.setFhirUuid(UUID.randomUUID());
         round.setCycle(cycle);
         round.setRoundNumber(1);
-        // Step 1's date pair IS the FRS's "distribution date, submission deadline"
-        // (FR-V2.5-02); the cycle keeps them as planned_start/planned_end, the round
+        // Step 1's date pair IS the specification's "distribution date, submission
+        // deadline"
+        // ; the cycle keeps them as planned_start/planned_end, the round
         // carries them under their real names for the digest and reports. Both are
         // required above, so the round is unconditional.
         round.setDistributionDate(new Timestamp(request.plannedStartDate().getTime()));
@@ -543,7 +542,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
         // Step 5 is "confirm & begin prep", so the wizard leaves the cycle where the
         // prep workbench expects it. A person clicked this, so it is recorded as a
-        // manual move attributed to them (FR-V2.1-21), like every other HTTP-driven
+        // manual move attributed to them, like every other HTTP-driven
         // transition.
         return transition(cycle.getId(), PREP_IN_PROGRESS, EQAStateMachine.PROVIDER, EQATriggerType.MANUAL,
                 EQATriggerEvent.MANUAL_OVERRIDE, actingUser(sysUserId), "Cycle created by the provider cycle wizard",
@@ -638,8 +637,8 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     }
 
     /**
-     * FR-V2.1-18's derivation table. Its rows overlap and the FRS does not say
-     * which wins, so this reads most-advanced-first.
+     * The participant-state derivation table. Its rows overlap and the
+     * specification does not say which wins, so this reads most-advanced-first.
      */
     @Override
     @Transactional(readOnly = true)

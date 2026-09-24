@@ -1,4 +1,4 @@
-// Data seam for the Follow-Up Queue (OGC-611, FR-V2.3-02). Every call is live:
+// Data seam for the Follow-Up Queue (OGC-611). Every call is live:
 // the queue, escalate and dismiss endpoints all shipped with the tiered NCE
 // adapter, so nothing here is mocked.
 //
@@ -10,6 +10,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import { asList } from "../eqaApi";
 
 const SOURCE_KEY = {
   IN_HOUSE: "in_house",
@@ -43,7 +44,7 @@ const toViewModel = (dto) => {
     ...dto,
     results,
     sourceKey: SOURCE_KEY[dto.schemeType] || "external",
-    // FR-V2.3-01 puts exactly two kinds of item in this queue, and the scheme
+    // Exactly two kinds of item land in this queue, and the scheme
     // decides which: an in-house failure, or an external score in the
     // questionable band. An external result bad enough to be a plain
     // unacceptable took the auto-NCE path and never arrived here — so reading
@@ -57,7 +58,7 @@ const toViewModel = (dto) => {
 
 export const fetchFollowUpQueue = (callback) =>
   getFromOpenElisServer("/rest/eqa/followups", (data) =>
-    callback((data || []).map(toViewModel)),
+    callback(asList(data).map(toViewModel)),
   );
 
 /**
@@ -90,7 +91,7 @@ export const dismissFollowUp = (followupId, category, notes, callback) =>
     withBody(callback),
   );
 
-// --- T-27: the provider-side register (FR-V2.5-05..08) ---
+// --- the provider-side register ---
 
 /**
  * Rows about other laboratories, in every status. The same view model as the
@@ -98,7 +99,7 @@ export const dismissFollowUp = (followupId, category, notes, callback) =>
  */
 export const fetchProviderRegister = (callback) =>
   getFromOpenElisServer("/rest/eqa/provider/followups", (data) =>
-    callback((data || []).map(toViewModel)),
+    callback(asList(data).map(toViewModel)),
   );
 
 export const triageFollowUp = (followupId, target, notes, callback) =>

@@ -20,8 +20,8 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Provider-side follow-up with a participating lab after poor performance
- * (FR-V2.1-13). One open register row per cycle per organisation.
+ * Provider-side follow-up with a participating lab after poor performance. One
+ * open register row per cycle per organisation.
  *
  * <p>
  * The result summary is stored as a JSON snapshot rather than recomputed, so

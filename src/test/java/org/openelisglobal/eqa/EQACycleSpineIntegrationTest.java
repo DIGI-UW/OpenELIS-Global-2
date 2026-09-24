@@ -27,10 +27,10 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1 / T-08] — the cycle spine against a real DB. qa/015 and
- * qa/016 shape these tables: CHECK constraints, foreign keys and unique
- * constraints are all live here, and the tests assert them rather than
- * deferring to manual UAT.
+ * OGC-609 [EQA V2.1] — the cycle spine against a real DB. qa/015 and qa/016
+ * shape these tables: CHECK constraints, foreign keys and unique constraints
+ * are all live here, and the tests assert them rather than deferring to manual
+ * UAT.
  */
 public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
 
@@ -49,7 +49,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
         seedEnrollment(ENROLLMENT_ID, "Spine test enrollment");
     }
 
-    // ---- FR-V2.1-01/02/05/21: the spine persists and reads back intact ----
+    // ---- the spine persists and reads back intact ----
 
     @Test
     public void cycleRoundResultAndTransitionRoundTripWithExactValues() {
@@ -133,7 +133,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
         assertEquals(cycleId, readTransition.getCycle().getId());
     }
 
-    // ---- FR-V2.1-03: existing order/distribution rows gain optional links ----
+    // ---: existing order/distribution rows gain optional links ----
 
     @Test
     public void v1DistributionCanBeLinkedToACycleAndRound() {
@@ -165,7 +165,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
         assertEquals("sample_eqa.cycle_id must stay nullable (gate G2)", Integer.valueOf(1), nullableCycleId);
     }
 
-    // ---- FR-V2.1-01/02/05: uniqueness invariants ----
+    // ---- uniqueness invariants ----
 
     @Test
     public void cycleNumberIsUniquePerScheme() {
@@ -240,7 +240,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.1-06 + BR-004 ----
+    // ---- scheme type and provider rules ----
 
     @Test
     public void v1SchemesBackfillToInternationalPt() {
@@ -257,7 +257,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
     public void externalSchemeWithoutProviderIsRejectedOnInsert() {
         try {
             insertScheme("No provider", EQASchemeType.INTERNATIONAL_PT, null);
-            fail("BR-004: an international PT scheme needs a provider");
+            fail("an international PT scheme needs a provider");
         } catch (Exception expected) {
             assertTrue("message should name the rule, got: " + expected.getMessage(),
                     rootMessage(expected).contains("Provider is required"));
@@ -268,7 +268,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
     public void blankProviderCountsAsMissing() {
         try {
             insertScheme("Blank provider", EQASchemeType.REGIONAL_PT, "   ");
-            fail("BR-004: whitespace is not a provider");
+            fail("whitespace is not a provider");
         } catch (Exception expected) {
             assertTrue(rootMessage(expected).contains("Provider is required"));
         }
@@ -289,7 +289,7 @@ public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
         scheme.setSchemeType(EQASchemeType.INTER_LAB_SPLIT);
         try {
             eqaProgramService.update(scheme);
-            fail("BR-004 must hold on update, not only on insert");
+            fail("the provider rule must hold on update, not only on insert");
         } catch (Exception expected) {
             assertTrue(rootMessage(expected).contains("Provider is required"));
         }

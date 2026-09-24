@@ -159,7 +159,7 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
      * The contents row for EQA panel material, in the shape the box contents table
      * already renders: the panel sample's own code stands in for an accession
      * number and the panel's material type for the specimen type. Nothing here may
-     * carry the sealed target value (FR-V2.1-16).
+     * carry the sealed target value.
      */
     private SampleItemDTO toPanelMaterialDTO(BoxSampleItem boxSampleItem, Integer shippingBoxId) {
         EQAPanelSample panelSample = boxSampleItem.getEqaPanelSample();

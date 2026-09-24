@@ -22,10 +22,10 @@ import org.openelisglobal.qaevent.service.EqaScoreNceService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-613 [EQA V2.5 / T-27] — the provider-side participant follow-up register:
- * which register a row belongs to, the triage moves FR-V2.5-06 allows, the
- * persistent-failure rule (FR-V2.5-07), and the guarantee that another
- * laboratory's failure never becomes a non-conformity in this one (AC-V2.5-10).
+ * OGC-613 [EQA V2.5] — the provider-side participant follow-up register: which
+ * register a row belongs to, the triage moves it allows, the persistent-failure
+ * rule, and the guarantee that another laboratory's failure never becomes a
+ * non-conformity in this one.
  */
 public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
 
@@ -98,7 +98,7 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                 followupService.getProviderRegisterRows().size());
     }
 
-    // ---- FR-V2.5-06: triage ----
+    // ---: triage ----
 
     @Test
     public void triageWalksTheRegisterRowThroughItsLifecycle() {
@@ -144,7 +144,7 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                         String.class, enrollmentId));
     }
 
-    // ---- FR-V2.5-08: notification ----
+    // ---: notification ----
 
     @Test
     public void notifyingWithoutAContactEmailAsksTheReviewerToSendItByHand() {
@@ -158,7 +158,7 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                 followupService.get(followupId).getNotifiedAt() != null);
     }
 
-    // ---- FR-V2.5-07: persistent failure ----
+    // ---: persistent failure ----
 
     @Test
     public void unacceptableInTwoOfTheLastThreeCyclesEscalatesOnItsOwn() {
@@ -192,7 +192,7 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
         assertEquals("NOTIFIED", row.get("followupStatus"));
     }
 
-    // ---- AC-V2.5-10: never a local non-conformity ----
+    // ---: never a local non-conformity ----
 
     @Test
     public void aProviderRowCannotBeEscalatedIntoALocalNonConformity() {
@@ -247,7 +247,7 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
     private EQACycle scoredCycle(int cycleNumber) {
         EQACycle cycle = readBack(insertCycle(scheme, cycleNumber));
         // Straight to the state scoring starts from: the walk through prep and
-        // dispatch has its own gate, and it is T-26's test that owns it.
+        // dispatch has its own gate, and the oversight suite owns it.
         jdbc.update("UPDATE clinlims.eqa_cycle SET status = ? WHERE id = ?", EQACycleStatus.SUBMISSIONS_OPEN.name(),
                 cycle.getId());
         Long distributionId = insertDistribution(readBack(cycle.getId()));

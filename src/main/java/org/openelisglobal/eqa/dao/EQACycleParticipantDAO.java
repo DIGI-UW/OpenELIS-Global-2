@@ -10,7 +10,7 @@ public interface EQACycleParticipantDAO extends BaseDAO<EQACycleParticipant, Lon
     /**
      * Active roster rows for a batch of cycles, oldest enrollment first. Batched
      * rather than per-cycle because the provider scheme list needs the roster of
-     * every cycle it renders (T-24) — one query, not one per row.
+     * every cycle it renders — one query, not one per row.
      *
      * <p>
      * Answers an empty list for an empty batch rather than issuing {@code IN ()},

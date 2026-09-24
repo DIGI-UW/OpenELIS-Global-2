@@ -71,7 +71,7 @@ const percent = (value) =>
   value === null || value === undefined ? "—" : `${value}%`;
 
 /**
- * FR-V2.3-07 — the accreditation snapshot: lab-wide twelve-month KPIs above,
+ * — the accreditation snapshot: lab-wide twelve-month KPIs above,
  * then either the per-section coverage matrix (Coverage) or the cycles behind
  * it (Recent Cycles). Both views read one rollup, so the KPI row cannot
  * disagree with the table under it.

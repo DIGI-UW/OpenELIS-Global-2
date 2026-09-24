@@ -77,17 +77,12 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAFollowupRestController#escalate", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAFollowupRestController#dismiss", EQAGuards.MANAGE);
         // Provider-round management
-        WRITE_GUARDS.put("EQADistributionRestController#createDistribution", EQAGuards.PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#updateDistribution", EQAGuards.PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#advanceStatus", EQAGuards.PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#generateBarcodes", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAEnrollmentRestController#createEnrollments", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAEnrollmentRestController#updateEnrollmentStatus", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#createProgram", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateProgram", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateAnalysts", EQAGuards.PROVIDER);
-        WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQACycleRestController#createProviderCycle", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAResultRestController#takeInCycleResults", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQASubmissionRestController#intakeScoresCsv", EQAGuards.MANAGE);
@@ -95,17 +90,17 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);
-        // T-26: receipt monitoring, reprovisioning and score return are provider work
+        // Receipt monitoring, reprovisioning and score return are provider work
         WRITE_GUARDS.put("EQAShipmentRestController#markDelivered", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#sendRepeat", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#distributeScores", EQAGuards.PROVIDER);
         // Scoring writes verdicts and advances the cycle, as intakeScores does
         WRITE_GUARDS.put("EQAShipmentRestController#score", EQAGuards.MANAGE);
-        // T-27: the provider follow-up register's triage
+        // The provider follow-up register's triage
         WRITE_GUARDS.put("EQAFollowupRestController#triage", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAFollowupRestController#notifyParticipant", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAFollowupRestController#repeat", EQAGuards.PROVIDER);
-        // Score intake is the provider's verdict coming back (FR-V2.2-08)
+        // Score intake is the provider's verdict coming back
         WRITE_GUARDS.put("EQASubmissionRestController#intakeScores", EQAGuards.MANAGE);
         // Participant lane — bench work, so the legacy roles still admit it
         WRITE_GUARDS.put("EQAMyProgramsRestController#createMyProgram", EQAGuards.PARTICIPANT);
@@ -118,9 +113,6 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQASubmissionRestController#submitAfterReview", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAParticipantResultRestController#createDraft", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAParticipantResultRestController#transition", EQAGuards.PARTICIPANT);
-        WRITE_GUARDS.put("EQAResultRestController#submitResult", EQAGuards.PARTICIPANT);
-        WRITE_GUARDS.put("EQAResultRestController#batchImportResults", EQAGuards.PARTICIPANT);
-        WRITE_GUARDS.put("EQASubmissionRestController#submitViaFhir", EQAGuards.PARTICIPANT);
         // Panel lifecycle, and the separate privilege that reveals sealed targets
         WRITE_GUARDS.put("EQAPanelRestController#createPanel", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#seal", EQAGuards.MANAGE);

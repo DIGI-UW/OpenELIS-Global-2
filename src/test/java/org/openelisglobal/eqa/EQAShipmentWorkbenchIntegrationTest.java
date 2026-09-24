@@ -42,10 +42,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * OGC-613 [EQA V2.5 / T-25] — the provider prep and shipment workbenches
- * against a real DB: the FR-V2.5-12 inventory gate is enforced on the server,
- * and dispatch writes ordinary shipment rows (AC-V2.5-12) while moving the
- * cycle itself.
+ * OGC-613 [EQA V2.5] — the provider prep and shipment workbenches against a
+ * real DB: the inventory gate is enforced on the server, and dispatch writes
+ * ordinary shipment rows while moving the cycle itself.
  */
 public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
 
@@ -93,7 +92,8 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         seedOrganizations();
         scheme = insertScheme("Provider scheme " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "This lab");
         cycle = readBack(insertCycle(scheme, 1));
-        // Two participants, two samples per panel: FR-V2.5-12 needs 4 aliquots plus
+        // Two participants, two samples per panel: the inventory rule needs 4 aliquots
+        // plus
         // whatever the panel holds back.
         enroll(ORG_A);
         enroll(ORG_B);
@@ -122,7 +122,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         }
     }
 
-    // ---- FR-V2.5-12: the prep gate ----
+    // ---: the prep gate ----
 
     @Test
     public void prepStatusReportsWhatTheGateRequires() {
@@ -158,7 +158,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
 
         try {
             readyToShip();
-            fail("FR-V2.5-12: ready_to_ship must be refused while the panel is short of aliquots");
+            fail("ready_to_ship must be refused while the panel is short of aliquots");
         } catch (EQAInvalidTransitionException expected) {
             // The refusal quotes the gate's own blocker, so the operator reads the same
             // sentence the workbench showed.
@@ -212,7 +212,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 "SELECT aliquots_produced FROM clinlims.eqa_panel WHERE id = ?", Integer.class, panel.getId()));
     }
 
-    // ---- FR-V2.5-13: the shipment workbench ----
+    // ---: the shipment workbench ----
 
     @Test
     public void shipmentRowsCoverEveryActiveParticipantEvenBeforeAnyBoxExists() {
@@ -240,7 +240,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                         "EQA-C" + cycle.getId() + "-" + ORG_A));
     }
 
-    // ---- T-40: the box holds its panel material ----
+    // ---: the box holds its panel material ----
 
     @Test
     public void savingDetailsPacksThePanelMaterialIntoTheBox() {
@@ -376,7 +376,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     }
 
     /**
-     * T-24: once a cycle carries its own roster, that roster — not the scheme's
+     * Once a cycle carries its own roster, that roster — not the scheme's
      * enrollment list — is what the cycle costs and who it ships to. This suite's
      * other cases exercise the opposite side of the same rule: they seed no roster
      * at all, so they run on the pre-qa/032 fallback.
@@ -539,7 +539,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals(EQACycleStatus.READY_TO_SHIP, readBack(cycle.getId()).getStatus());
     }
 
-    // ---- FR-V2.5-01: the provider scheme list ----
+    // ---: the provider scheme list ----
 
     @Test
     public void providerSchemeListCarriesOnlySchemesThisLabProvides() {
@@ -585,7 +585,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     @Test
     public void providerSchemeListCountsOnlyOpenCyclesAsActive() {
         // The fixture cycle is the scheme's only one; closing it must zero the
-        // count while the expansion still lists the cycle (FR-V2.5-01).
+        // count while the expansion still lists the cycle.
         jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
 
         Map<String, Object> scheme = providerSchemes().get(0);
@@ -686,12 +686,12 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 providerSchemes().get(0).get("discipline"));
     }
 
-    // ---- T-41: delivery-status backflow ----
+    // ---: delivery-status backflow ----
 
     @Test
     public void aRemoteReceiptDeliversTheCurrentShipmentLikeAManualConfirm() {
         // Single-participant roster, so one delivery is "all delivered" and the
-        // cycle should walk to submissions on its own (AC-V2.5-13).
+        // cycle should walk to submissions on its own.
         addToRoster(ORG_A);
         clearTheGate();
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
@@ -733,7 +733,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 readBack(cycle.getId()).getStatus());
     }
 
-    // ---- T-42: the consignment's manifest travels and survives import ----
+    // ---: the consignment's manifest travels and survives import ----
 
     @Test
     public void theExportedConsignmentNamesEveryPanelSample() {
@@ -780,7 +780,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 && manifest.contains("\"type\":\"Provider panel\""));
     }
 
-    // ---- T-43: the staleness window ----
+    // ---: the staleness window ----
 
     @Test
     public void aStaleConsignmentIsNotResurrected() {
@@ -806,7 +806,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE box_id = ?", String.class, boxCode));
     }
 
-    // ---- T-46: opening submissions on a partial roster ----
+    // ---: opening submissions on a partial roster ----
 
     @Test
     public void aPartialRosterCanOpenSubmissionsByManualOverride() {

@@ -43,7 +43,7 @@ const BOX_STATE_TAG = {
 };
 
 /**
- * Shipment workbench (FR-V2.5-13): one row per participant, courier details,
+ * Shipment workbench: one row per participant, courier details,
  * bulk dispatch, and the two documents that travel with the box.
  *
  * Both PDFs are generated in the browser through the shipment module's own

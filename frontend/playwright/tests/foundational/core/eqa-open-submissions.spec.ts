@@ -6,7 +6,7 @@ import {
 } from "../../../helpers/seed-eqa-shipped-cycle";
 
 /**
- * EQA T-46 — opening submissions on a partial roster (OGC-613).
+ * EQA — opening submissions on a partial roster (OGC-613).
  *
  * A SHIPPED cycle with one participant delivered and one dormant must offer
  * the provider an explicit, audited way to open submissions: the "Open
@@ -19,7 +19,7 @@ import {
 
 const RUN = Date.now().toString(36);
 
-test.describe("EQA open submissions on a partial roster (T-46)", () => {
+test.describe("EQA open submissions on a partial roster", () => {
   let seed: ShippedCycleSeed;
 
   test.beforeAll(() => {

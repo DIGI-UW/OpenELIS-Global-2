@@ -6,29 +6,29 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-609 [EQA V2.1 / T-09] Schema spine 4 of 4: participant follow-ups, panel
-    receipts, analyst competency events (FR-V2.1-13/20/22).
+    OGC-609 [EQA V2.1] Schema spine 4 of 4: participant follow-ups, panel
+    receipts, analyst competency events (20/22).
 
-    Same conventions as qa/017. Three FK targets are named wrongly in the FRS and
+    Same conventions as qa/017. Three FK targets are named wrongly in the specification and
     are corrected here against the codebase:
 
-      * FR-V2.1-20 says lab_enrollment       -> real table is eqa_lab_program_enrollment
-      * FR-V2.1-20 says sample_shipment      -> real table is shipment, and its PK is
+      * The specification says lab_enrollment       -> real table is eqa_lab_program_enrollment
+      * The specification says sample_shipment      -> real table is shipment, and its PK is
                                                 INTEGER, so shipment_id is INTEGER here
                                                 rather than the numeric(10,0) used by
                                                 every other FK in the EQA spine
-      * FR-V2.1-22 says nce                  -> real table is nc_event, PK INTEGER
+      * The specification says nce                  -> real table is nc_event, PK INTEGER
 
-    FR-V2.1-20 also says the receipt sets sample_shipment.delivery_status; the real
+    The specification also says the receipt sets sample_shipment.delivery_status; the real
     column is shipment.status, carrying ShipmentStatus values (DELIVERED). That
-    write belongs to the receipt-writing service (T-15), not schema.
+    write belongs to the receipt-writing service, not schema.
     -->
 
     <changeSet author="openelisglobal" id="eqa-followup-001-create-eqa-participant-followup">
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_participant_followup" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Provider-side follow-up register for underperforming participants (FR-V2.1-13)</comment>
+        <comment>Provider-side follow-up register for underperforming participants</comment>
         <createSequence sequenceName="eqa_participant_followup_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_participant_followup">
             <column name="id" type="numeric(10,0)">
@@ -106,7 +106,7 @@
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_panel_receipt" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Participant-side confirmation that a panel arrived (FR-V2.1-20)</comment>
+        <comment>Participant-side confirmation that a panel arrived</comment>
         <createSequence sequenceName="eqa_panel_receipt_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_panel_receipt">
             <column name="id" type="numeric(10,0)">
@@ -132,7 +132,7 @@
             <column name="integrity_ok" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <!-- The receipt-writing service (T-15) must require this when integrity_ok
+            <!-- The receipt-writing service must require this when integrity_ok
                  is false; not a DB CHECK because the UI stages partial drafts. -->
             <column name="integrity_notes" type="TEXT"/>
             <column name="notes" type="TEXT"/>
@@ -145,7 +145,7 @@
         </createTable>
 
         <!-- One receipt per cycle per participating lab. This is also what makes the
-             participant-state derivation (FR-V2.1-18) a single-row lookup. -->
+             participant-state derivation a single-row lookup. -->
         <addUniqueConstraint
             schemaName="clinlims" tableName="eqa_panel_receipt"
             columnNames="cycle_id, lab_enrollment_id"
@@ -182,7 +182,7 @@
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="eqa_analyst_competency_event" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>Append-only competency event log; richer than results alone (FR-V2.1-22)</comment>
+        <comment>Append-only competency event log; richer than results alone</comment>
         <createSequence sequenceName="eqa_analyst_competency_event_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="eqa_analyst_competency_event">
             <column name="id" type="numeric(10,0)">

@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Follow-Up Queue triage API (OGC-611, FR-V2.3-02): the queue this lab owes a
- * corrective review on, plus its escalate and dismiss actions.
+ * Follow-Up Queue triage API (OGC-611): the queue this lab owes a corrective
+ * review on, plus its escalate and dismiss actions.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -49,7 +49,7 @@ public class EQAFollowupRestController extends BaseRestController {
         return followupService.getQueueRows();
     }
 
-    // ---- T-27: the provider-side register (FR-V2.5-05..08) ----
+    // ---- the provider-side register ----
 
     @GetMapping(value = "/provider/followups", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> register() {
@@ -83,9 +83,9 @@ public class EQAFollowupRestController extends BaseRestController {
     }
 
     /**
-     * Flag for repeat (FR-V2.5-06 → FR-V2.5-15): reprovisioning is the shipment
-     * service's job, and the register row keeps its own status — the repeat is an
-     * action taken during triage, not a state of the follow-up.
+     * Flag for repeat: reprovisioning is the shipment service's job, and the
+     * register row keeps its own status — the repeat is an action taken during
+     * triage, not a state of the follow-up.
      */
     @PostMapping(value = "/provider/followups/{followupId}/repeat", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)

@@ -38,7 +38,7 @@ public class ShippingBoxForm extends BaseForm {
     @Size(max = 2000)
     private String notes;
 
-    /** T-42: JSON [{label, type}] manifest of an imported box; null otherwise. */
+    /** JSON [{label, type}] manifest of an imported box; null otherwise. */
     private String importedContents;
 
     private Timestamp createdDate;
@@ -69,9 +69,8 @@ public class ShippingBoxForm extends BaseForm {
     private String contents;
 
     /**
-     * Set when this box carries EQA panel material for a provider cycle (T-40).
-     * Without it nothing outside the EQA workbench can tell an EQA box from a
-     * referral box.
+     * Set when this box carries EQA panel material for a provider cycle. Without it
+     * nothing outside the EQA workbench can tell an EQA box from a referral box.
      */
     private Long eqaCycleId;
 

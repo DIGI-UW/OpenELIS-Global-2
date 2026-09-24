@@ -71,7 +71,7 @@ public class EQAProgramRestController extends ControllerUtills {
             program.setSchemeType(schemeTypeOf(schemeType));
             program.setProvider(blankToNull((String) body.get("provider")));
             program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
-            // FR-V2.2-07's review gate. Read at three layers — the auto-submit sweep,
+            // The review gate. Read at three layers — the auto-submit sweep,
             // the cycle DTO and My Cycles — and until now written nowhere, so outside
             // the test suite it could only ever be its column default of false.
             program.setRequiresCycleReview(Boolean.TRUE.equals(body.get("requiresCycleReview")));
@@ -213,9 +213,9 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     /**
-     * FR-V2.4-03: the scheme's analyst roster, with the display names the wizard's
-     * assignment step shows. Rows come back even for a user since deactivated —
-     * hiding them would silently drop an assignment already made.
+     * The scheme's analyst roster, with the display names the wizard's assignment
+     * step shows. Rows come back even for a user since deactivated — hiding them
+     * would silently drop an assignment already made.
      */
     @GetMapping(value = "/{id}/analysts", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getAnalysts(@PathVariable Long id) {
@@ -240,7 +240,7 @@ public class EQAProgramRestController extends ControllerUtills {
             }
             // Ids arrive as numbers or strings depending on the caller; reading each
             // through String.valueOf is what keeps a JSON type mismatch from 500ing
-            // (the same cast bug qa/T-01 fixed on enrollment).
+            // (the same cast bug qa fixed on enrollment).
             List<Long> systemUserIds = rows.stream().filter(row -> row != null)
                     .map(row -> Long.valueOf(String.valueOf(row).trim())).collect(Collectors.toList());
 
@@ -278,8 +278,8 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     /**
-     * A blank provider is stored as NULL, so the BR-004 check and every reader see
-     * "no provider" as one value instead of two.
+     * A blank provider is stored as NULL, so the provider-required check and every
+     * reader see "no provider" as one value instead of two.
      */
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
@@ -295,10 +295,10 @@ public class EQAProgramRestController extends ControllerUtills {
         // wizard filters on it, so it has to reach the client.
         dto.put("schemeType", program.getSchemeType() == null ? null : program.getSchemeType().name());
         dto.put("isActive", program.getIsActive());
-        // FR-V2.3-04: result entry reads this to decide whether to show the
+        // Result entry reads this to decide whether to show the
         // Analyst column, so the scheme list has to carry it.
         dto.put("perAnalyst", Boolean.TRUE.equals(program.getPerAnalyst()));
-        // FR-V2.2-07: with this on, a participant's cycle holds at ready-to-submit
+        // With this on, a participant's cycle holds at ready-to-submit
         // for a human to review rather than submitting itself.
         dto.put("requiresCycleReview", Boolean.TRUE.equals(program.getRequiresCycleReview()));
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);

@@ -50,7 +50,7 @@ const SOURCE_TAG = {
   inter_lab_split: "cyan",
 };
 
-// FR-V2.3-02 gives the queue a Source filter. The keys are the ones the rows
+// The queue has a Source filter. The keys are the ones the rows
 // already carry, so the tag colours above and this list cannot drift apart.
 const SOURCE_KEYS = Object.keys(SOURCE_TAG);
 
@@ -59,7 +59,7 @@ const REASON_TAG = {
   inHouseFailure: "red",
 };
 
-// FR-V2.3-02's triage categories, in the order a reviewer reaches for them.
+// The triage categories, in the order a reviewer reaches for them.
 const DISMISSAL_CATEGORIES = [
   "TRANSCRIPTION_ERROR",
   "KNOWN_EQUIPMENT_ISSUE",
@@ -120,7 +120,7 @@ export const queueCsv = (rows, sourceLabelOf, reasonLabelOf) => {
 };
 
 /**
- * FR-V2.3-02 — this lab's questionable EQA scores and in-house failures
+ * — this lab's questionable EQA scores and in-house failures
  * awaiting corrective review, with the two triage actions the tiered NCE rules
  * leave to a human: escalate to an NCE, or dismiss with a category that writes
  * the matching competency event.

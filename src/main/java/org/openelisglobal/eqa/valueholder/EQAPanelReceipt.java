@@ -19,9 +19,9 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Participant-side confirmation that a panel arrived (FR-V2.1-20). One row per
- * cycle per participating lab, which is also what makes the derived
- * participant-state lookup a single-row read.
+ * Participant-side confirmation that a panel arrived. One row per cycle per
+ * participating lab, which is also what makes the derived participant-state
+ * lookup a single-row read.
  *
  * <p>
  * {@code shipmentId} is an Integer, not the Long used elsewhere in the EQA
@@ -71,8 +71,7 @@ public class EQAPanelReceipt extends BaseObject<Long> {
     private Boolean integrityOk = true;
 
     /**
-     * The receipt-writing service (T-15) must require this when integrityOk is
-     * false.
+     * The receipt-writing service must require this when integrityOk is false.
      */
     @Column(name = "integrity_notes", columnDefinition = "TEXT")
     private String integrityNotes;

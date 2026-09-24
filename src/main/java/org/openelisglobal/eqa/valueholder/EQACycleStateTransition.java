@@ -19,11 +19,11 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Immutable audit of cycle state transitions (FR-V2.1-21) — records the *why*
- * (manual override vs timer expiry) that the generic audit_log loses.
- * Immutability is enforced by API-surface omission: no update or delete path
- * exists anywhere; T-10/T-11 expose read-only endpoints. priorState/newState
- * are TEXT, not enums, because both state machines land here.
+ * Immutable audit of cycle state transitions — records the *why* (manual
+ * override vs timer expiry) that the generic audit_log loses. Immutability is
+ * enforced by API-surface omission: no update or delete path exists anywhere;
+ * only read-only endpoints expose it. priorState/newState are TEXT, not enums,
+ * because both state machines land here.
  */
 @Getter
 @Setter

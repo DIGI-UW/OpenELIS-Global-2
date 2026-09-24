@@ -94,9 +94,9 @@ public class EQAPanelRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.4-02: the wizard's panel + samples in one write, PREPARING. Targets
-     * arrive here in the clear over TLS and land encrypted (the column's
-     * converter); nothing reads them back out until the panel unblinds.
+     * The wizard's panel + samples in one write, PREPARING. Targets arrive here in
+     * the clear over TLS and land encrypted (the column's converter); nothing reads
+     * them back out until the panel unblinds.
      */
     @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
@@ -186,8 +186,8 @@ public class EQAPanelRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.4-06 manual unblind: unblinds AND scores — the endpoint's caller
-     * expects the panel to come back resolved, same as the scheduled path.
+     * Manual unblind: unblinds AND scores — the endpoint's caller expects the panel
+     * to come back resolved, same as the scheduled path.
      */
     @PostMapping(value = "/panels/{id}/unblind", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.UNBLIND)
@@ -197,10 +197,10 @@ public class EQAPanelRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.4-04 "Seal panel &amp; distribute": body carries one order spec per
-     * panel sample — {@code {"orders":[{"panelSampleId":1,"testId":"7",
-     * "analystId":12}]}} — analystId optional (round-robin fills it). Values are
-     * read via String.valueOf so a numeric-vs-string JSON mismatch cannot 500.
+     * "Seal panel &amp; distribute": body carries one order spec per panel sample —
+     * {@code {"orders":[{"panelSampleId":1,"testId":"7", "analystId":12}]}} —
+     * analystId optional (round-robin fills it). Values are read via String.valueOf
+     * so a numeric-vs-string JSON mismatch cannot 500.
      */
     @PostMapping(value = "/panels/{id}/seal-and-distribute", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
@@ -219,11 +219,11 @@ public class EQAPanelRestController extends BaseRestController {
         return blindingService.sealAndDistribute(id, specs, getSysUserId(request));
     }
 
-    /** FR-V2.4-13: blind-code label sheet, printable any time after sealing. */
+    /** blind-code label sheet, printable any time after sealing. */
     /**
-     * FR-V2.4-13: reprint is allowed to anyone who can see the panel, so this stays
-     * on the read umbrella rather than the lifecycle grant — the sheet carries
-     * blind codes only, never a target.
+     * Reprint is allowed to anyone who can see the panel, so this stays on the read
+     * umbrella rather than the lifecycle grant — the sheet carries blind codes
+     * only, never a target.
      */
     @GetMapping(value = "/panels/{id}/labels", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> labelSheet(HttpServletRequest request, @PathVariable Long id) {

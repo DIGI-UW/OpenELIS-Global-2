@@ -225,7 +225,7 @@ public class EQADeadlineAlertSchedulerTest {
     }
 
     /**
-     * FR-V2.2-05: the submission sweep visits every candidate even when one of them
+     * The submission sweep visits every candidate even when one of them
      * throws. Without the per-cycle catch, a single unreachable cycle would stop
      * every other lab's submission for as long as it stayed broken — and the
      * scheduler would look like it was running fine.

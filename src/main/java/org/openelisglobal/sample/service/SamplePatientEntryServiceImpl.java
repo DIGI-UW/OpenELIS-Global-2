@@ -632,7 +632,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
         sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
 
-        // The cycle link is optional (FR-V2.1-03): an order without one stays
+        // The cycle link is optional: an order without one stays
         // visible in the uncycled bucket rather than being rejected outright.
         Long cycleId = null;
         if (!GenericValidator.isBlankOrNull(updateData.getEqaCycleId())) {
@@ -652,7 +652,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         sampleEQAService.insert(sampleEQA);
 
-        // FR-V2.1-20: the panel receipt rides this order's transaction on purpose —
+        // The panel receipt rides this order's transaction on purpose —
         // a receipt that cannot be recorded must take the whole order down with it.
         // recordReceipt is idempotent, so re-saving the same cycle is a read.
         if (cycleId != null && enrollmentId != null) {

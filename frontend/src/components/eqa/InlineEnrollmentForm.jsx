@@ -11,6 +11,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { asList } from "./eqaApi";
 
 // The "my scheme is not on this list" option: an enrollment may name a provider
 // whose schemes this instance does not carry, so free text stays available.
@@ -63,7 +64,7 @@ const InlineEnrollmentForm = ({
     };
 
     getFromOpenElisServer("/rest/eqa/programs", (data) => {
-      const items = (data || []).filter((scheme) => scheme.name);
+      const items = asList(data).filter((scheme) => scheme.name);
       setSchemes(items);
       if (enrollment && items.some((s) => s.name === enrollment.programName)) {
         setSchemeChoice(enrollment.programName);

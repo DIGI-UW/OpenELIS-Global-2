@@ -2,15 +2,15 @@ import { test, expect, Page } from "../../../helpers/test-base";
 import { SHORT_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Shipment Settings — cross-site identity and FHIR mapping (T-45 + T-44,
+ * Shipment Settings — cross-site identity and FHIR mapping (
  * OGC-613 cross-site gap fixes).
  *
- * T-45: siteOrganizationFhirUuid is what makes cross-site shipping
+ * siteOrganizationFhirUuid is what makes cross-site shipping
  * addressable. Unset, the import filter is off and exports carry no supplier —
  * the Settings page must say so with a warning banner, and the banner must
  * clear once an organization is chosen.
  *
- * T-44: the non-conformity SNOMED codes are edited here and consumed by the
+ * the non-conformity SNOMED codes are edited here and consumed by the
  * export transform through a real JSON parse; this asserts the UI write path
  * round-trips into the stored config.
  */
@@ -29,7 +29,7 @@ async function csrfToken(page: Page): Promise<string> {
   throw new Error("No CSRF token in storage state — auth.setup did not run?");
 }
 
-test.describe("Shipment Settings site organization warning (T-45)", () => {
+test.describe("Shipment Settings site organization warning", () => {
   test("the banner shows while the site organization is unset and clears when it is chosen", async ({
     page,
   }) => {
@@ -96,7 +96,7 @@ test.describe("Shipment Settings site organization warning (T-45)", () => {
   });
 });
 
-test.describe("Shipment Settings non-conformity codes (T-44)", () => {
+test.describe("Shipment Settings non-conformity codes", () => {
   test("a code edited in the UI round-trips into the stored FHIR mapping config", async ({
     page,
   }) => {

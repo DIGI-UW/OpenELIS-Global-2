@@ -7,8 +7,6 @@ import static org.junit.Assert.assertNull;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
@@ -30,6 +28,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String PROVIDER = "Central Public Health Laboratory (CPHL), Port Moresby";
+
+    private static final String TEMPLATE = "/testdata/eqa-programs-sample.csv";
+
+    private static final String TEMPLATE_NAME = "eqa-programs-sample.csv";
     private static final String[] CPHL_PROGRAMMES = { "CPHL National HIV Serology EQA",
             "CPHL National HIV Viral Load EQA", "CPHL National EID EQA", "CPHL National HIV Recency EQA",
             "CPHL National COVID-19 Molecular EQA", "CPHL National TB Microscopy EQA" };
@@ -55,10 +57,11 @@ public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContex
     }
 
     @Test
-    public void shippedCphlTemplateLoadsSixProgrammesAndRerunsWithoutDuplicating() throws Exception {
-        Path template = Path.of("volume/configuration/backend/eqa-programs/cphl-eqa-programs.csv");
-        try (InputStream first = Files.newInputStream(template)) {
-            handler.processConfiguration(first, template.getFileName().toString());
+    public void shippedTemplateLoadsSixProgrammesAndRerunsWithoutDuplicating() throws Exception {
+        // The same six-scheme file the PNG distro ships as
+        // configs/configuration/backend/eqa-programs/png-eqa-programs.csv.
+        try (InputStream first = getClass().getResourceAsStream(TEMPLATE)) {
+            handler.processConfiguration(first, TEMPLATE_NAME);
         }
 
         List<Map<String, Object>> rows = jdbc()
@@ -85,8 +88,8 @@ public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContex
         // The checksum layer normally prevents a second run of an unchanged file;
         // the handler itself must still upsert, not duplicate, when re-fed (edited
         // file, forced reload).
-        try (InputStream second = Files.newInputStream(template)) {
-            handler.processConfiguration(second, template.getFileName().toString());
+        try (InputStream second = getClass().getResourceAsStream(TEMPLATE)) {
+            handler.processConfiguration(second, TEMPLATE_NAME);
         }
         assertEquals("re-run upserts instead of duplicating", Integer.valueOf(6), jdbc().queryForObject(
                 "SELECT count(*) FROM clinlims.eqa_program WHERE provider = ?", Integer.class, PROVIDER));
@@ -128,7 +131,8 @@ public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContex
         assertEquals("a row with an invalid schemeType is skipped, not inserted half-formed", Integer.valueOf(0),
                 jdbc().queryForObject("SELECT count(*) FROM clinlims.eqa_program WHERE name = 'Handler Test Bad Type'",
                         Integer.class));
-        assertEquals("BR-004 still guards config rows: external scheme without provider is skipped", Integer.valueOf(0),
+        assertEquals("the provider rule still guards config rows: external scheme without provider is skipped",
+                Integer.valueOf(0),
                 jdbc().queryForObject(
                         "SELECT count(*) FROM clinlims.eqa_program WHERE name = 'Handler Test No Provider'",
                         Integer.class));
