@@ -14,6 +14,7 @@ import {
   DatePickerInput,
   Grid,
   Heading,
+  Loading,
   Pagination,
   Search,
   Section,
@@ -1076,6 +1077,11 @@ const UnifiedResults: React.FC = () => {
     <>
       <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {loading && (
+        <Loading
+          description={intl.formatMessage({ id: "label.results.loading" })}
+        />
+      )}
       <Grid fullWidth className="unifiedResultsPage">
         <Column lg={16} md={8} sm={4}>
           <Section>

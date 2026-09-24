@@ -3632,6 +3632,7 @@
   "label.results.inReviewBy": "In review by {0}",
   "label.results.labUnit": "Lab Unit",
   "label.results.load": "Load results",
+  "label.results.loading": "Loading results...",
   "label.results.range": "Reference Range",
   "label.results.range.env": "Regulatory Limit",
   "label.results.range.vector": "Interpretation",
