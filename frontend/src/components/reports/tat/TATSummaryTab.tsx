@@ -3,6 +3,7 @@ import { Tile, InlineNotification, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import TATBreakdownTable from "./TATBreakdownTable";
 import { formatTat } from "./tatUtils";
+import type { TatFilters, TatSummaryData } from "./types";
 
 const STAT_CARDS = [
   { key: "totalCount", labelId: "reports.tat.totalResults", isCount: true },
@@ -12,9 +13,15 @@ const STAT_CARDS = [
   { key: "min", labelId: "reports.tat.minTat" },
   { key: "max", labelId: "reports.tat.maxTat" },
   { key: "stdDeviation", labelId: "reports.tat.stdDeviation" },
-];
+] as const;
 
-function TATSummaryTab({ data, loading, filters }) {
+interface TATSummaryTabProps {
+  data: TatSummaryData | null;
+  loading: boolean;
+  filters: TatFilters | null;
+}
+
+function TATSummaryTab({ data, loading, filters }: TATSummaryTabProps) {
   const intl = useIntl();
 
   if (loading) {

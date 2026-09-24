@@ -11,8 +11,14 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { formatTat } from "./tatUtils";
+import type { TatBreakdownRow } from "./types";
 
-function TATBreakdownTable({ breakdown, onDrillDown }) {
+interface TATBreakdownTableProps {
+  breakdown: TatBreakdownRow[];
+  onDrillDown?: (dimensionValue: string) => void;
+}
+
+function TATBreakdownTable({ breakdown, onDrillDown }: TATBreakdownTableProps) {
   const intl = useIntl();
 
   const headers = [
@@ -49,7 +55,7 @@ function TATBreakdownTable({ breakdown, onDrillDown }) {
               </TableHead>
               <TableBody>
                 {tableRows.map((row) => {
-                  const original = breakdown[parseInt(row.id)];
+                  const original = breakdown[parseInt(row.id, 10)];
                   return (
                     <TableRow
                       key={row.id}

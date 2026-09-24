@@ -13,6 +13,14 @@ import {
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import type {
+  CalculationMode,
+  DisplayListItem,
+  Priority,
+  SelectOption,
+  TatFilters,
+  TatSegment,
+} from "./types";
 
 export const SEGMENTS = [
   { id: "RECEIPT_TO_VALIDATION", labelKey: "reports.tat.segment.receiptToValidation" },
@@ -22,9 +30,14 @@ export const SEGMENTS = [
   { id: "RECEIPT_TO_RESULT", labelKey: "reports.tat.segment.receiptToResult" },
   { id: "RESULT_TO_VALIDATION", labelKey: "reports.tat.segment.resultToValidation" },
   { id: "OVERALL", labelKey: "reports.tat.segment.overall" },
-];
+] as const;
 
-const DATE_PRESETS = [
+interface DatePreset {
+  labelKey: string;
+  compute: () => { from: Date; to: Date };
+}
+
+const DATE_PRESETS: DatePreset[] = [
   { labelKey: "reports.tat.preset.today", compute: () => ({ from: new Date(), to: new Date() }) },
   { labelKey: "reports.tat.preset.7days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 7); return { from, to }; } },
   { labelKey: "reports.tat.preset.30days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 30); return { from, to }; } },
@@ -47,11 +60,11 @@ const DATE_PRESETS = [
   }},
 ];
 
-function formatDate(d) {
+function formatDate(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-function getDefaultDates() {
+function getDefaultDates(): Pick<TatFilters, "fromDate" | "toDate"> {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 30);
@@ -61,47 +74,51 @@ function getDefaultDates() {
   };
 }
 
-function TATFilterBar({ onGenerate }) {
+interface TATFilterBarProps {
+  onGenerate: (filters: TatFilters) => void;
+}
+
+function TATFilterBar({ onGenerate }: TATFilterBarProps) {
   const intl = useIntl();
   const defaults = getDefaultDates();
 
   const [fromDate, setFromDate] = useState(defaults.fromDate);
   const [toDate, setToDate] = useState(defaults.toDate);
-  const [segment, setSegment] = useState("RECEIPT_TO_VALIDATION");
-  const [calculationMode, setCalculationMode] = useState("CALENDAR");
-  const [priority, setPriority] = useState("");
+  const [segment, setSegment] = useState<TatSegment>("RECEIPT_TO_VALIDATION");
+  const [calculationMode, setCalculationMode] = useState<CalculationMode>("CALENDAR");
+  const [priority, setPriority] = useState<Priority>("");
   const [includeCancelled, setIncludeCancelled] = useState(false);
 
-  const [labUnitIds, setLabUnitIds] = useState([]);
-  const [testIds, setTestIds] = useState([]);
+  const [labUnitIds, setLabUnitIds] = useState<Array<string | undefined>>([]);
+  const [testIds, setTestIds] = useState<Array<string | undefined>>([]);
   const [sampleTypeId, setSampleTypeId] = useState("");
   const [orderingSiteId, setOrderingSiteId] = useState("");
 
-  const [labUnitOptions, setLabUnitOptions] = useState([]);
-  const [testOptions, setTestOptions] = useState([]);
-  const [sampleTypeOptions, setSampleTypeOptions] = useState([]);
-  const [siteOptions, setSiteOptions] = useState([]);
+  const [labUnitOptions, setLabUnitOptions] = useState<SelectOption[]>([]);
+  const [testOptions, setTestOptions] = useState<SelectOption[]>([]);
+  const [sampleTypeOptions, setSampleTypeOptions] = useState<SelectOption[]>([]);
+  const [siteOptions, setSiteOptions] = useState<SelectOption[]>([]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (res) => {
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (res: DisplayListItem[] | null) => {
       if (res)
         setLabUnitOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (res) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (res: DisplayListItem[] | null) => {
       if (res)
         setTestOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/user-sample-types", (res) => {
+    getFromOpenElisServer("/rest/user-sample-types", (res: DisplayListItem[] | null) => {
       if (res)
         setSampleTypeOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", (res) => {
+    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", (res: DisplayListItem[] | null) => {
       if (res)
         setSiteOptions(
           res.map((item) => ({
@@ -224,7 +241,9 @@ function TATFilterBar({ onGenerate }) {
               id: SEGMENTS.find((s) => s.id === segment)?.labelKey,
             }),
           }}
-          onChange={({ selectedItem }) => setSegment(selectedItem.id)}
+          onChange={({ selectedItem }) =>
+            setSegment((selectedItem as SelectOption).id as TatSegment)
+          }
         />
       </div>
 
@@ -242,7 +261,7 @@ function TATFilterBar({ onGenerate }) {
           items={labUnitOptions}
           itemToString={(item) => item?.text || ""}
           onChange={({ selectedItems }) =>
-            setLabUnitIds(selectedItems.map((i) => i.id))
+            setLabUnitIds(selectedItems.map((i: SelectOption) => i.id))
           }
           size="sm"
         />
@@ -253,7 +272,7 @@ function TATFilterBar({ onGenerate }) {
           items={testOptions}
           itemToString={(item) => item?.text || ""}
           onChange={({ selectedItems }) =>
-            setTestIds(selectedItems.map((i) => i.id))
+            setTestIds(selectedItems.map((i: SelectOption) => i.id))
           }
           size="sm"
         />
@@ -315,7 +334,7 @@ function TATFilterBar({ onGenerate }) {
             <FormattedMessage id="reports.tat.workingTime" />
           </label>
           <ContentSwitcher
-            onChange={({ name }) => setCalculationMode(name)}
+            onChange={({ name }) => setCalculationMode(name as CalculationMode)}
             selectedIndex={calculationMode === "CALENDAR" ? 0 : 1}
             size="sm"
           >
@@ -341,7 +360,9 @@ function TATFilterBar({ onGenerate }) {
               ? intl.formatMessage({ id: `reports.tat.priority.${priority.toLowerCase()}` })
               : intl.formatMessage({ id: "reports.tat.priority.all" }),
           }}
-          onChange={({ selectedItem }) => setPriority(selectedItem.id)}
+          onChange={({ selectedItem }) =>
+            setPriority((selectedItem as SelectOption).id as Priority)
+          }
         />
 
         <Checkbox

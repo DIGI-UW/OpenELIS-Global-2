@@ -105,7 +105,7 @@ describe("TATTrendsTab", () => {
       callback(mockTrendData);
     });
 
-    const { container } = renderWithIntl(
+    renderWithIntl(
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
