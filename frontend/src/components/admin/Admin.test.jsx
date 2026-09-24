@@ -52,13 +52,13 @@ describe("Admin", () => {
       expect(
         screen.getByText(messages["master.lists.page.test.management"]),
       ).toBeInTheDocument();
-      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(13);
+      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(14);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-icon"),
-      ).toHaveLength(13);
+      ).toHaveLength(14);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-arrow"),
-      ).toHaveLength(13);
+      ).toHaveLength(14);
       expect(document.querySelector(".cds--side-nav")).not.toBeInTheDocument();
     },
   );
@@ -84,6 +84,38 @@ describe("Admin", () => {
 
     expect(screen.getByTestId("current-path")).toHaveTextContent(
       "/MasterListsPage/userManagement",
+    );
+  });
+
+  test("the stuck analyzer events tile stays inside the admin route family", () => {
+    // Opening it from the admin shell must not drop the reader back to the
+    // main navigation, so it has an admin route of its own.
+    render(
+      <MemoryRouter initialEntries={["/MasterListsPage"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <AdminDashboard basePath="/MasterListsPage" />
+          <Route
+            path="*"
+            render={({ location }) => (
+              <span data-testid="current-path">{location.pathname}</span>
+            )}
+          />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const tile = screen
+      .getByText(messages["analyzer.importIssues.events.title"])
+      .closest("a");
+    expect(tile).toHaveAttribute(
+      "href",
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
+
+    fireEvent.click(tile);
+
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/MasterListsPage/stuckAnalyzerEvents",
     );
   });
 });

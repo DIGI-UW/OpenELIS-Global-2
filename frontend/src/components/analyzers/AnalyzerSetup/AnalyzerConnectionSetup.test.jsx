@@ -474,6 +474,52 @@ describe("AnalyzerConnectionSetup", () => {
       expect(screen.queryByText("Connection failed")).not.toBeInTheDocument();
     });
 
+    it("asks for the listener port when the Bridge cannot check without it", async () => {
+      await probeWith(
+        serverProbe("BLOCKED", [
+          {
+            key: "listener",
+            status: "SKIPPED",
+            messageKey: "listener.configuration.missing",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(
+        await screen.findByText("Connection settings are incomplete"),
+      ).toBeVisible();
+      expect(
+        screen.getByText("Enter the Bridge listener port before testing."),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("This check could not be run."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains that an analyzer uploading files cannot be tested from the Bridge", async () => {
+      await probeWith(
+        serverProbe("FAILED", [
+          {
+            key: "http-input",
+            status: "FAILED",
+            messageKey: "http.input.verify.with.delivery",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(await screen.findByText("Analyzer file upload")).toBeVisible();
+      expect(
+        screen.getByText(
+          "This analyzer sends files to the Bridge, so the Bridge cannot test the connection from here. A delivered file is the proof.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
+    });
+
     it("reports a listener failure as an error", async () => {
       await probeWith(
         serverProbe("FAILED", [

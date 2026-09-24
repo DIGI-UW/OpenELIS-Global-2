@@ -14,6 +14,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { formatTat } from "./tatUtils";
+import QAEmptyState from "../../qa/common/QAEmptyState";
 
 function formatTimestamp(ts) {
   if (!ts) return "—";
@@ -84,9 +85,10 @@ function TATDetailListTab({ filters, buildQueryString }) {
 
   if (!data || !data.results || data.results.length === 0) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
-        <FormattedMessage id="reports.tat.noResults" />
-      </div>
+      <QAEmptyState
+        titleKey="qa.empty.tat.title"
+        subheadKey="qa.empty.tat.subhead"
+      />
     );
   }
 

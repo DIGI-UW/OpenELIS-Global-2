@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-709 QI Configuration — the config spine for the QI dashboard.
+
+    A row is either an indicator-wide default (test_category_id IS NULL) or a
+    per-test-section override. Consumers (OGC-710/711/712) resolve thresholds
+    most-specific-wins. indicator_key is CHECK-constrained to the QiIndicator
+    enum values (the enum is the source of truth; this CHECK + the seed below
+    are derived). The DB-filled `lastupdated` (DEFAULT now()) and the BaseObject
+    @Version column `last_updated` are two distinct columns by OpenELIS
+    convention — do not collapse them.
+    -->
+
+    <changeSet author="openelisglobal" id="qi-config-001-create-qi-config-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="qi_config" schemaName="clinlims"/></not>
+        </preConditions>
+        <createSequence sequenceName="qi_config_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="qi_config">
+            <!-- numeric PK: the generic audit-trail (history.reference_id) is numeric,
+                 so an audited entity must not use a UUID/varchar id -->
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_qi_config"/>
+            </column>
+            <column name="indicator_key" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- FK to test_section.id; NULL = the indicator-level default row -->
+            <column name="test_category_id" type="numeric(10)"/>
+            <column name="is_enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_threshold" type="NUMERIC(15,5)"/>
+            <column name="action_threshold" type="NUMERIC(15,5)"/>
+            <!-- DB-filled wall-clock last-modified (not mapped in the entity) -->
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version optimistic-lock column (distinct from lastupdated) -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.qi_config
+            ADD CONSTRAINT qi_config_indicator_chk
+            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK'))
+        </sql>
+
+        <addForeignKeyConstraint
+            constraintName="fk_qi_config_test_category"
+            baseTableSchemaName="clinlims" baseTableName="qi_config" baseColumnNames="test_category_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_section" referencedColumnNames="id"/>
+
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="qi_config"
+            columnNames="indicator_key, test_category_id"
+            constraintName="uq_qi_config_indicator_category"/>
+
+        <!-- Postgres treats NULLs as distinct, so the composite unique above does
+             NOT prevent two indicator-level defaults; this partial index does. -->
+        <sql>
+            CREATE UNIQUE INDEX uq_qi_config_default
+            ON clinlims.qi_config (indicator_key)
+            WHERE test_category_id IS NULL
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="qi_config"/>
+            <dropSequence sequenceName="qi_config_id_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Register qi_config for audit-trail history. AuditableBaseObjectServiceImpl
+         throws (rolling back every write) if this reference_tables row is absent. -->
+    <changeSet author="openelisglobal" id="qi-config-002-register-audit-ref-table">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'qi_config'</sqlCheck>
+        </preConditions>
+        <comment>Register qi_config so AuditableBaseObjectServiceImpl can emit history</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="qi_config"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'qi_config'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Shipped default config for the five dashboard indicators (prod baseline,
+         not dev data): every install boots with the indicators configured. Rows are
+         keyed on (indicator_key, no test section) and inserted only when absent, so
+         this is safe to re-run. TAT thresholds are mean-TAT HOURS, lower-is-better;
+         NCE ships without numeric thresholds until its bands are defined; CALLBACK
+         ships disabled because critical-callback compliance is a programme a lab
+         opts into. last_updated (the BaseObject @Version column) MUST be non-null,
+         else Hibernate treats a seeded row as stale on its first update. -->
+    <changeSet author="openelisglobal" id="qi-config-004-seed-default-indicators">
+        <comment>Seed default rows for TAT, REJECTION, AMENDMENT, NCE, CALLBACK</comment>
+        <sql>
+            INSERT INTO clinlims.qi_config
+                (id, indicator_key, is_enabled, target_threshold, action_threshold, lastupdated, last_updated)
+            SELECT nextval('clinlims.qi_config_id_seq'), v.indicator_key, v.is_enabled,
+                   v.target_threshold, v.action_threshold, now(), now()
+            FROM (VALUES
+                ('TAT',       true,  24,   48),
+                ('REJECTION', true,  2,    5),
+                ('AMENDMENT', true,  0.5,  2),
+                ('NCE',       true,  NULL, NULL),
+                ('CALLBACK',  false, 100,  95)
+            ) AS v(indicator_key, is_enabled, target_threshold, action_threshold)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.qi_config c
+                WHERE c.indicator_key = v.indicator_key AND c.test_category_id IS NULL);
+        </sql>
+        <rollback>
+            <delete schemaName="clinlims" tableName="qi_config">
+                <where>indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK') AND test_category_id IS NULL</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

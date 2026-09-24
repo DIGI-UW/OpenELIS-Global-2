@@ -26,7 +26,12 @@ function TestSelectForm(props) {
     mounted.current = true;
     let testId = new URLSearchParams(window.location.search).get("testId");
     testId = testId ? testId : "";
-    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (fetchedTests) => {
+    // The tests this user may work on, narrowed on the server to their Results
+    // lab units, the same list the results search offers. The full catalogue
+    // used to be offered here, so a user could pick a test they hold no unit
+    // for and get an empty workplan.
+    getFromOpenElisServer("/rest/test-list", (response) => {
+      const fetchedTests = Array.isArray(response) ? response : [];
       let test = fetchedTests.find((test) => test.id === testId);
       let testLabel = test
         ? test.value

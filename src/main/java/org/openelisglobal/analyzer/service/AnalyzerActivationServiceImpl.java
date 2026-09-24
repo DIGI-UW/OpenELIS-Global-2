@@ -82,13 +82,13 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     @Override
     @Transactional
     public AnalyzerActivationResult activate(String analyzerId, String actor) {
-        return activateExact(findAnalyzer(analyzerId), actor);
+        return activateExact(lockAnalyzer(analyzerId), actor);
     }
 
     @Override
     @Transactional
     public AnalyzerActivationResult reactivate(String analyzerId, String actor) {
-        return activateExact(findAnalyzer(analyzerId), actor);
+        return activateExact(lockAnalyzer(analyzerId), actor);
     }
 
     private AnalyzerActivationResult activateExact(Analyzer analyzer, String actor) {
@@ -132,7 +132,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     @Override
     @Transactional
     public AnalyzerDeactivationResult deactivate(String analyzerId, String actor) {
-        Analyzer analyzer = findAnalyzer(analyzerId);
+        Analyzer analyzer = lockAnalyzer(analyzerId);
         String exactActor = requireText(actor, "actor");
         if (analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE) {
             return AnalyzerDeactivationResult.deactivated(analyzer);
@@ -346,6 +346,20 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         }
         var testSection = testSectionService.get(id.trim());
         return testSection != null && "Y".equalsIgnoreCase(testSection.getIsActive());
+    }
+
+    /**
+     * Holds the analyzer row for the rest of the transaction, so lifecycle
+     * transitions on one analyzer run one after another. A concurrent transition
+     * waits here and then validates against the committed state, instead of both
+     * commanding the Bridge and the one that loses the version check compensating
+     * the other's runtime away.
+     */
+    private Analyzer lockAnalyzer(String analyzerId) {
+        String exactId = requireText(analyzerId, "analyzer ID");
+        analyzerService.findByIdForUpdate(exactId)
+                .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
+        return findAnalyzer(exactId);
     }
 
     private Analyzer findAnalyzer(String analyzerId) {
