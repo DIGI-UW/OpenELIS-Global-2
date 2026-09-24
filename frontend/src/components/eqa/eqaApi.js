@@ -12,14 +12,6 @@ import {
  */
 export const asList = (data) => (Array.isArray(data) ? data : []);
 
-/**
- * These endpoints answer their refusals as {error: "..."} JSON with a 4xx, so a
- * truthy body is not success on its own — checking the status here is what keeps
- * a "saved!" toast over an empty table from coming back.
- */
-export const failed = (response) =>
-  !response || response.error || (response.status && response.status >= 400);
-
 // The tests a panel can be built from: those a participating laboratory could
 // raise an order for, named from the whole catalog rather than from the
 // lab-unit-scoped list. Panel material is not lab-unit scoped, and the scoped

@@ -273,6 +273,14 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     /**
      * Test-section-scoped counterpart of
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}. Returns 0
+     * for an empty section list.
+     */
+    int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
      * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}. Returns 0 for
      * an empty section list.
      */

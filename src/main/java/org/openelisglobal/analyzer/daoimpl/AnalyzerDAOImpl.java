@@ -96,6 +96,13 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     }
 
     @Override
+    public Optional<Analyzer> findByIdForUpdate(String id) {
+        // Lock only the analyzer row, not the shared profile/site-binding rows.
+        return entityManager.createQuery("FROM Analyzer a WHERE a.id = :id", Analyzer.class).setParameter("id", id)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultStream().findFirst();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId) {
         String hql = "SELECT new org.openelisglobal.analyzer.service.AnalyzerTestCapability("

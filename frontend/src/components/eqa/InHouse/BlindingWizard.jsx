@@ -26,7 +26,8 @@ import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatDateOnly } from "../../utils/Utils";
-import { createCycle, createPanel, failed, fetchTests } from "../eqaApi";
+import { createCycle, createPanel, fetchTests } from "../eqaApi";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   downloadLabelSheet,
   fetchAnalysts,
@@ -165,7 +166,7 @@ const BlindingWizard = () => {
     setBusy(true);
     setNotification(null);
     const withCycle = (cycleResponse) => {
-      if (failed(cycleResponse)) {
+      if (requestFailed(cycleResponse)) {
         setBusy(false);
         setNotification({
           kind: "error",
@@ -220,7 +221,7 @@ const BlindingWizard = () => {
         })),
       },
       (panelResponse) => {
-        if (failed(panelResponse)) {
+        if (requestFailed(panelResponse)) {
           setBusy(false);
           setNotification({
             kind: "error",
@@ -237,7 +238,7 @@ const BlindingWizard = () => {
         }));
         sealAndDistribute(panelResponse.id, orders, (sealResponse) => {
           setBusy(false);
-          if (failed(sealResponse)) {
+          if (requestFailed(sealResponse)) {
             setNotification({
               kind: "error",
               message:

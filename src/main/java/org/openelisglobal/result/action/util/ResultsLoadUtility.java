@@ -1314,7 +1314,7 @@ public class ResultsLoadUtility {
             testItem.setHasQualifiedResult(true);
         }
 
-        testItem.setDictionaryResults(values);
+        testItem.setDictionaryResults(StoredDictionaryResult.withStoredValue(values, result, dictionaryService));
     }
 
     private void setQualifiedValues(TestResultItem testItem, Result result) {

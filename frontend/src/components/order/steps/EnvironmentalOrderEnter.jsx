@@ -386,6 +386,7 @@ const EnvironmentalOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="ENVIRONMENTAL"
         />
 
         {/* Requester / Ordering Provider */}

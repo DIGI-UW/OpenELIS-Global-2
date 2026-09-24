@@ -309,6 +309,22 @@ export interface AnalyzerControlRecognitionUpdate {
  * @param {Function} callback - Callback function (data) => void
  * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
+export interface AnalyzerDeliveryIssuesResponse {
+  status: string;
+  data?: {
+    count: number;
+    rows: Array<{ id: string; state: string; actionable: boolean }>;
+  };
+}
+
+/** Results the Analyzer Bridge received but has not delivered to OpenELIS. */
+export const getAnalyzerDeliveryIssues = (
+  callback: DataCallback<AnalyzerDeliveryIssuesResponse | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
+};
+
 export const getAnalyzers = (
   filters: AnalyzerFilters = {},
   callback: DataCallback<AnalyzersResponse | undefined>,

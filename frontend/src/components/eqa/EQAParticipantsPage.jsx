@@ -120,7 +120,9 @@ const EQAParticipantsPage = () => {
         } else {
           setNotification({
             kind: "error",
-            message: response?.error || "Failed to enroll organization",
+            message:
+              response?.error ||
+              intl.formatMessage({ id: "eqa.enrollment.error" }),
           });
         }
         fetchEnrollments();
@@ -137,6 +139,11 @@ const EQAParticipantsPage = () => {
           setWithdrawModalOpen(false);
           setSelectedEnrollment(null);
           fetchEnrollments();
+        } else {
+          setNotification({
+            kind: "error",
+            message: intl.formatMessage({ id: "eqa.enrollment.error" }),
+          });
         }
       },
     );

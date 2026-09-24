@@ -17,6 +17,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestSectionOrderForm;
 import org.openelisglobal.testconfiguration.validator.TestSectionOrderFormValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -88,14 +89,14 @@ public class TestSectionOrderRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionOrder")
-    public TestSectionOrderForm postTestSectionOrder(HttpServletRequest request,
+    public ResponseEntity<?> postTestSectionOrder(HttpServletRequest request,
             @RequestBody @Valid TestSectionOrderForm form, BindingResult result) throws ParseException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
         String changeList = form.getJsonChangeList();
 
@@ -115,14 +116,14 @@ public class TestSectionOrderRestController extends BaseController {
         try {
             testSectionService.updateAll(testSections);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private List<ActivateSet> getActivateSetForActions(String key, JSONObject root, JSONParser parser) {

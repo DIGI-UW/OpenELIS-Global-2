@@ -36,6 +36,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -115,7 +116,7 @@ public class TestAddRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/TestAdd")
-    public TestAddForm postTestAdd(HttpServletRequest request, @RequestBody @Valid TestAddForm form,
+    public ResponseEntity<?> postTestAdd(HttpServletRequest request, @RequestBody @Valid TestAddForm form,
             BindingResult result) {
         formValidator.validate(form, result);
 
@@ -128,7 +129,8 @@ public class TestAddRestController extends BaseRestController {
         try {
             obj = (JSONObject) parser.parse(jsonString);
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            result.reject("error.jsonWad.invalid");
+            return validationRefusal(result);
         }
         TestAddParams testAddParams = testAddControllerUtills.extractTestAddParms(obj, parser);
         validateLoinc(testAddParams.loinc, result);
@@ -139,7 +141,7 @@ public class TestAddRestController extends BaseRestController {
         try {
             testAddService.addTests(testSets, nameLocalization, reportingNameLocalization, currentUserId);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         testService.refreshTestNames();
@@ -152,7 +154,7 @@ public class TestAddRestController extends BaseRestController {
         displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_BY_NAME);
         displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private Errors validateLoinc(String loincCode, Errors errors) {

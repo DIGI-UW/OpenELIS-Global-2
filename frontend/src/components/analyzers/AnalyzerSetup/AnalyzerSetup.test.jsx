@@ -789,6 +789,12 @@ describe("AnalyzerSetup Instrument step", () => {
       screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeVisible();
     expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Mappings need to be verified again"),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Mappings reviewed for this setup"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Verify mappings" }),
@@ -827,6 +833,11 @@ describe("AnalyzerSetup Instrument step", () => {
       `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
       onClose,
     );
+
+    expect(
+      await screen.findByText("Analyzer is ready to activate"),
+    ).toBeVisible();
+    expect(screen.getByText("Mappings reviewed for this setup")).toBeVisible();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Finish and activate" }),

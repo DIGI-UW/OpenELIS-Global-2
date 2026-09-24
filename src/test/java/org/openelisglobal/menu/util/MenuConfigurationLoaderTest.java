@@ -133,8 +133,13 @@ public class MenuConfigurationLoaderTest {
         assertTrue(configuredMenus.stream().allMatch(Menu::isHideInOldUI));
     }
 
+    /**
+     * Admin opens the dashboard in one click: the menu carries no children, so the
+     * side nav renders it as a link rather than a group to expand. The dashboard
+     * itself is where the stuck analyzer events live.
+     */
     @Test
-    public void distributionMenu_shouldExposeAdminDashboardAndStuckAnalyzerEvents() {
+    public void distributionMenu_shouldSendAdminStraightToItsDashboard() {
         Menu existingAdministration = menu("110", "menu_administration", 110);
         existingAdministration.setActionURL("/MasterListsPage");
         List<Menu> menus = new ArrayList<>();
@@ -142,12 +147,10 @@ public class MenuConfigurationLoaderTest {
 
         MenuConfigurationLoader.loadConfiguredMenus(new File("volume/menu/menu_config.json"), menus);
 
-        Menu adminDashboard = findMenu(menus, "menu_administration_dashboard");
-        Menu stuckAnalyzerEvents = findMenu(menus, "menu_administration_stuck_analyzer_events");
-        assertEquals("/MasterListsPage", adminDashboard.getActionURL());
-        assertEquals("menu_administration", adminDashboard.getParent().getElementId());
-        assertEquals("/AnalyzerResults?view=import-issues", stuckAnalyzerEvents.getActionURL());
-        assertEquals("menu_administration", stuckAnalyzerEvents.getParent().getElementId());
+        Menu administration = findMenu(menus, "menu_administration");
+        assertEquals("/MasterListsPage", administration.getActionURL());
+        assertTrue("the Admin menu has no children to expand", menus.stream().noneMatch(
+                menu -> menu.getParent() != null && "menu_administration".equals(menu.getParent().getElementId())));
     }
 
     @Test

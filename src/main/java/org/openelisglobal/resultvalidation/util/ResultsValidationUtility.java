@@ -73,6 +73,7 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.result.action.util.CriticalRangeFormat;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
@@ -573,7 +574,8 @@ public class ResultsValidationUtility {
         testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
-        testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
+        testItem.setDictionaryResults(
+                StoredDictionaryResult.withStoredValue(getAnyDictonaryValues(testResults), result, dictionaryService));
         // The test-level type is the first test_result row's, which for a
         // multi-component test is the primary's; an entered result knows its
         // own component's type, so prefer the stored one.

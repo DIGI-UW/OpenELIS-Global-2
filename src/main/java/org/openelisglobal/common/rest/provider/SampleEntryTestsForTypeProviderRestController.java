@@ -23,6 +23,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.program.service.ProgramPickerRules;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.qc.dao.TestQcThresholdDAO;
@@ -43,6 +44,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -150,14 +152,33 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
+    /**
+     * Programs the current reception user may file an order under. OGC-781 FR-6:
+     * deactivated programs are never offered, and when the order's {@code domain}
+     * is given (enum name or legacy one-letter code) only programs of that domain
+     * are returned. Without a domain every active program is offered.
+     */
     public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
+        return getUserSPrograms(request, response, null);
+    }
+
+    @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response,
+            @RequestParam(value = "domain", required = false) String domain) throws ServletException, IOException {
+        Domain orderDomain = Domain.fromRaw(domain);
+        List<ProgramOption> options = new ArrayList<>();
+        for (IdValuePair option : userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION)) {
             Program program = programService.get(option.getId());
-            return program == null ? null : new ProgramOption(option.getId(), option.getValue(), program.getCode());
-        }).filter(java.util.Objects::nonNull).toList();
+            if (program == null || !ProgramPickerRules.isActive(program)
+                    || !ProgramPickerRules.offerableForDomain(program, orderDomain)) {
+                continue;
+            }
+            options.add(new ProgramOption(option.getId(), option.getValue(), program.getCode(),
+                    Domain.normalize(program.getDomain())));
+        }
+        return options;
     }
 
     private SampleEntryTests createSearchResult(String sampleType, List<String> testUnitIds) {
@@ -548,11 +569,21 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         private final String id;
         private final String value;
         private final String code;
+        private final String domain;
 
         public ProgramOption(String id, String value, String code) {
+            this(id, value, code, null);
+        }
+
+        public ProgramOption(String id, String value, String code, String domain) {
             this.id = id;
             this.value = value;
             this.code = code;
+            this.domain = domain;
+        }
+
+        public String getDomain() {
+            return domain;
         }
 
         public String getId() {

@@ -4,13 +4,17 @@
     "programName": "Vector Field Survey",
     "questionnaireUUID": "c7a3e1f0-9b2d-4e85-a6c4-1f8b0d3e7a52"
   },
+  "domain": "VECTOR",
   "additionalOrderEntryQuestions": {
     "resourceType": "Questionnaire",
     "id": "c7a3e1f0-9b2d-4e85-a6c4-1f8b0d3e7a52",
     "name": "VectorFieldSurvey",
     "title": "Vector Field Survey",
     "status": "active",
-    "subjectType": ["Specimen", "ServiceRequest"],
+    "subjectType": [
+      "Specimen",
+      "ServiceRequest"
+    ],
     "description": "Summary larval/pupal field-survey counts transcribed by the lab to drive Vector LHU Mode C (HI/CI/BI/ABJ) and Mode D (PPI). Field-level surveillance capture is out of scope; these are summary counts only.",
     "item": [
       {

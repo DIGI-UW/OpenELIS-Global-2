@@ -46,6 +46,19 @@ public interface UserService {
             String roleName);
 
     /**
+     * The ids of the active tests in the lab units the user holds {@code roleName}
+     * in: the single definition of which rows a lab-unit-restricted user may see,
+     * shared by Results, Validation and Incoming Orders.
+     */
+    Set<String> getTestIdsInUserLabUnits(String systemUserId, String roleName);
+
+    /**
+     * Whether the user's lab units for {@code roleName} cover every active lab
+     * unit: a global administrator or a user mapped to all lab units.
+     */
+    boolean hasAllLabUnits(String systemUserId, String roleName);
+
+    /**
      * The programs this user may order under. Read from the cached display list,
      * which is rebuilt only when a program is saved: a program deleted straight
      * from the database therefore lingers there until the next restart, so an id

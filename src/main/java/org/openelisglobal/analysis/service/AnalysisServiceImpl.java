@@ -934,6 +934,14 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
             List<String> testSectionIds) {
         return baseObjectDAO.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(completedDate, statusIds,

@@ -21,7 +21,6 @@ import {
   Column,
   Form,
   Grid,
-  Link,
   Loading,
   Pagination,
   Select,
@@ -32,7 +31,14 @@ import {
   Tooltip,
   Tag,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import ServerPageArrows from "../common/ServerPageArrows";
+import { Copy } from "@carbon/icons-react";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import SampleKindTag from "./SampleKindTag";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
@@ -201,23 +207,45 @@ function ResultSearchPage() {
   }, [allRows, poolLotFilter, poolIdFilter]);
   // ── End pool filter ─────────────────────────────────────────────────────────
 
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
+
   const setResults = (resultForm) => {
     setOriginalResultForm(resultForm);
     setResultForm(resultForm);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(
+        resultForm.paging,
+        resultForm.testResult?.length ?? 0,
+        previous,
+      ),
+    );
     setResultSetVersion((version) => version + 1);
   };
 
   /**
    * The results table re-runs the current search after a write instead of
-   * sending the browser back to the URL it is already on. SearchResultForm
-   * owns the search and publishes its refresh here whenever the endpoint
-   * changes; SearchResults calls it after a save.
+   * sending the browser back to the URL it is already on, and asks for a
+   * server page when Carbon's pagination moves. SearchResultForm owns the
+   * search and publishes both here whenever the endpoint changes.
    */
   const refreshRun = useRef(null);
   const registerRefresh = useCallback((run) => {
     refreshRun.current = run;
   }, []);
-  const refreshResults = useCallback(() => refreshRun.current?.(), []);
+  const refreshResults = useCallback(
+    (pageToReopen) => refreshRun.current?.(pageToReopen),
+    [],
+  );
+  const pageLoader = useRef(null);
+  const registerPageLoader = useCallback((run) => {
+    pageLoader.current = run;
+  }, []);
+  const loadPage = useCallback(
+    (pageNumber) => pageLoader.current?.(pageNumber),
+    [],
+  );
   return (
     <>
       <SearchResultForm
@@ -225,6 +253,7 @@ function ResultSearchPage() {
         setSearchBy={setSearchBy}
         setResults={setResults}
         registerRefresh={registerRefresh}
+        registerPageLoader={registerPageLoader}
         poolLotOptions={poolLotOptions}
         poolOptions={poolOptions}
         poolLotFilter={poolLotFilter}
@@ -246,6 +275,8 @@ function ResultSearchPage() {
         setResultForm={setResultForm}
         refreshOnSubmit={true}
         refreshResults={refreshResults}
+        serverPageSize={serverPageSize}
+        loadPage={loadPage}
         poolLotFilter={poolLotFilter}
         poolIdFilter={poolIdFilter}
       />
@@ -276,15 +307,14 @@ export function SearchResultForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchResultFormValues,
   );
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const componentMounted = useRef(false);
 
   const setResultsWithId = (results) => {
+    if (!results) {
+      setLoading(false);
+      return;
+    }
     if (results.testResult) {
       // /AccessionResults is a patient-result view; QC duplicates/blanks belong
       // on the QC review surfaces (/LogbookResults, /RangeResults) instead.
@@ -319,25 +349,8 @@ export function SearchResultForm(props) {
         }));
       props.setResults?.({ ...results, testResult });
       setLoading(false);
-      const totalPages = Number(results.paging?.totalPages) || 1;
-      const currentPage = Number(results.paging?.currentPage) || 1;
-      const hasMultiplePages = totalPages > 1;
-      setPagination(hasMultiplePages);
-      setCurrentApiPage(hasMultiplePages ? currentPage : null);
-      setTotalApiPages(hasMultiplePages ? totalPages : null);
-      setNextPage(
-        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
-      );
-      setPreviousPage(
-        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
-      );
     } else {
       props.setResults?.({ testResult: [] });
-      setPagination(false);
-      setCurrentApiPage(null);
-      setTotalApiPages(null);
-      setNextPage(null);
-      setPreviousPage(null);
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "patient.search.nopatient" }),
@@ -350,20 +363,29 @@ export function SearchResultForm(props) {
 
   const intl = useIntl();
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, setResultsWithId);
+    getFromOpenElisServer(url + "&page=" + pageNumber, setResultsWithId);
   };
 
-  const loadPreviousResultsPage = () => {
+  /**
+   * Re-runs the search, so the server rebuilds its pages, and reopens the page
+   * the user was on when the rebuilt list still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, setResultsWithId);
+    getFromOpenElisServer(url, (results) => {
+      const totalPages = Number(results?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, setResultsWithId);
+      } else {
+        setResultsWithId(results);
+      }
+    });
   };
 
   const getSelectedPatient = (patient) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setPatient(patient);
   };
   useEffect(() => {
@@ -408,15 +430,15 @@ export function SearchResultForm(props) {
       "&testSectionId=" +
       values.unitType +
       "&collectionDate=" +
-      values.collectionDate +
+      (values.collectionDate || "") +
       "&recievedDate=" +
-      values.recievedDate +
+      (values.recievedDate || "") +
       "&selectedTest=" +
-      values.testName +
+      (values.testName || "") +
       "&selectedSampleStatus=" +
-      values.sampleStatusType +
+      (values.sampleStatusType || "") +
       "&selectedAnalysisStatus=" +
-      values.analysisStatus +
+      (values.analysisStatus || "") +
       "&doRange=" +
       searchBy.doRange +
       "&finished=" +
@@ -458,9 +480,6 @@ export function SearchResultForm(props) {
   };
 
   const handleSubmit = (values) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     querySearch(values);
   };
 
@@ -468,15 +487,9 @@ export function SearchResultForm(props) {
     if (!props.registerRefresh) {
       return;
     }
-    props.registerRefresh(
-      url
-        ? () => {
-            setLoading(true);
-            getFromOpenElisServer(url, setResultsWithId);
-          }
-        : null,
-    );
-  }, [url, props.registerRefresh]);
+    props.registerRefresh(url ? refreshResults : null);
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerRefresh, props.registerPageLoader]);
 
   const getTests = (tests) => {
     if (componentMounted.current) {
@@ -501,9 +514,6 @@ export function SearchResultForm(props) {
   };
 
   const submitOnSelect = (e) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     var values = { unitType: e.target.value };
     handleSubmit(values);
   };
@@ -654,9 +664,6 @@ export function SearchResultForm(props) {
       setSearchFormValues(searchValues);
       querySearch(searchValues);
     }
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
   }, [searchBy]);
 
   return (
@@ -1066,50 +1073,6 @@ export function SearchResultForm(props) {
           </Grid>
         </>
       )}
-
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={16}>
-              {" "}
-              <br /> <br />
-            </Column>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
     </>
   );
 }
@@ -1121,8 +1084,6 @@ export function SearchResults(props) {
 
   const intl = useIntl();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
   const [methodsByTestId, setMethodsByTestId] = useState({});
@@ -1429,26 +1390,7 @@ export function SearchResults(props) {
     {
       id: "sampleKind",
       name: intl.formatMessage({ id: "column.name.sampleKind" }),
-      cell: (row) => {
-        if (!row.qcType) {
-          return (
-            <Tag size="sm" type="outline">
-              {intl.formatMessage({ id: "label.sampleKind.client" })}
-            </Tag>
-          );
-        }
-        const labelKey = `label.sampleKind.${row.qcType.toLowerCase()}`;
-        return (
-          <span style={{ display: "inline-flex", gap: "0.25rem" }}>
-            <Tag size="sm" type="purple">
-              {intl.formatMessage({ id: "label.sampleKind.qc" })}
-            </Tag>
-            <Tag size="sm" type="warm-gray">
-              {intl.formatMessage({ id: labelKey, defaultMessage: row.qcType })}
-            </Tag>
-          </span>
-        );
-      },
+      cell: (row) => <SampleKindTag qcType={row.qcType} />,
       selector: (row) => row.qcType || "Client sample",
       sortable: true,
       width: "11rem",
@@ -2919,7 +2861,7 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        props.refreshResults?.();
+        props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
       }
     } else {
       addNotification({
@@ -2951,15 +2893,6 @@ export function SearchResults(props) {
     return message;
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
-
   // Apply pool filters passed down from ResultSearchPage (display-only — the
   // full props.results is still used for saving so nothing is dropped on submit).
   const poolLotFilter = props.poolLotFilter || "";
@@ -2973,9 +2906,10 @@ export function SearchResults(props) {
     return allRows;
   }, [allRows, poolLotFilter, poolIdFilter]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [poolLotFilter, poolIdFilter]);
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
 
   // Saved criticals with no callback logged this session (OGC-714).
   const needsCallback = allRows.filter(
@@ -3072,8 +3006,9 @@ export function SearchResults(props) {
               onChange={handleChange}
               //onBlur={handleBlur}
             >
+              {arrows.show && <ServerPageArrows {...arrows} />}
               <DataTable
-                data={displayRows.slice((page - 1) * pageSize, page * pageSize)}
+                data={displayRows}
                 keyField="id"
                 columns={columns}
                 isSortable
@@ -3083,43 +3018,13 @@ export function SearchResults(props) {
               ></DataTable>
               <Pagination
                 style={{ marginTop: "1.5rem" }}
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 50, 100]}
-                totalItems={displayRows.length}
-                forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                backwardText={intl.formatMessage({ id: "pagination.backward" })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min: min, max: max, total: total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
+                {...serverPaginationProps({
+                  paging: props.results?.paging,
+                  rowsOnPage: displayRows.length,
+                  pageSize: props.serverPageSize,
+                  onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                  intl,
                 })}
-                itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min: min, max: max },
-                  )
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total: total },
-                  )
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
               />
 
               <ESignatureButton

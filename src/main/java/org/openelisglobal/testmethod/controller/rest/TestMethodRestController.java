@@ -109,9 +109,19 @@ public class TestMethodRestController extends BaseController {
         }
     }
 
+    /**
+     * {@code method.name} is VARCHAR(20); a longer English name failed the insert
+     * with a 500 (OGC-1234).
+     */
+    private static final int METHOD_NAME_MAX_LENGTH = 20;
+
     @PostMapping(value = "/inline-create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> inlineCreateAndLink(@PathVariable String testId,
             @RequestBody @Valid InlineCreateRequest req, HttpServletRequest request) {
+        if (req.nameEnglish != null && req.nameEnglish.trim().length() > METHOD_NAME_MAX_LENGTH) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body("nameEnglish must be at most " + METHOD_NAME_MAX_LENGTH + " characters");
+        }
         InlineCreateData data = new InlineCreateData();
         data.nameEnglish = req.nameEnglish;
         data.nameFrench = req.nameFrench;

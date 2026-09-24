@@ -33,5 +33,24 @@
             fetch="select" lazy="false">
             <column name="test_section_id" precision="10" scale="0" />
         </many-to-one>
+
+        <!-- Programs V2: single required domain, mirrors panel.domain (OGC-224). -->
+        <property name="domain" type="java.lang.String">
+            <column name="DOMAIN" length="20" not-null="true" />
+        </property>
+
+        <!-- Programs V2: deactivate/reactivate lifecycle. 'Y'/'N' to match Panel. -->
+        <property name="isActive" column="is_active"
+            type="java.lang.String" />
+
+        <!-- Programs V2: many-to-many via program_lab_unit; legacy testSection
+            single FK stays populated during the transition. -->
+        <set name="labUnits" table="program_lab_unit" lazy="false"
+            fetch="select" cascade="none">
+            <key column="program_id" />
+            <many-to-many
+                class="org.openelisglobal.test.valueholder.TestSection"
+                column="test_section_id" />
+        </set>
     </class>
 </hibernate-mapping>

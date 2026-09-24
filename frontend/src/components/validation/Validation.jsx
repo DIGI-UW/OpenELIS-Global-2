@@ -25,6 +25,11 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
@@ -91,8 +96,6 @@ const Validation = (props) => {
     return "on-time";
   };
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -123,6 +126,10 @@ const Validation = (props) => {
   const visibleRows = filterTriaged(triaged, activeFilter).map(
     (item) => item.row,
   );
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
@@ -250,11 +257,10 @@ const Validation = (props) => {
    * batch that has now been released.
    */
   const refreshQueue = () => {
-    setPage(1);
     setExpandedRowIds([]);
     setQcAckChecked(false);
     setQcJustification("");
-    props.refreshResults?.();
+    props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
   };
 
   /**
@@ -335,15 +341,6 @@ const Validation = (props) => {
       setNotificationVisible(true);
       // Re-throw so ESignatureButton aborts the ceremony.
       throw error;
-    }
-  };
-
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
     }
   };
 
@@ -928,10 +925,7 @@ const Validation = (props) => {
               kind={activeFilter === filter ? "primary" : "tertiary"}
               aria-pressed={activeFilter === filter}
               data-testid={`triage-filter-${filter}`}
-              onClick={() => {
-                setActiveFilter(filter);
-                setPage(1);
-              }}
+              onClick={() => setActiveFilter(filter)}
             >
               {intl.formatMessage({ id: `label.validation.filter.${filter}` })}{" "}
               ({filterCounts[filter]})
@@ -978,8 +972,9 @@ const Validation = (props) => {
       <>
         <>
           <>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
+              data={visibleRows}
               columns={columns}
               isSortable
               expandableRows
@@ -1009,43 +1004,13 @@ const Validation = (props) => {
               }}
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={visibleRows.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: visibleRows.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
             {qcAckRequired && (

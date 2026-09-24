@@ -15,6 +15,8 @@ import { createQueryClient } from "../../../utils/queryClient";
 import { NotificationContext } from "../../../layout/Layout";
 import TestRenameEntry from "../TestRenameEntry";
 
+const notify = vi.fn();
+
 vi.mock("../../../utils/Utils", async () => {
   const actual = await vi.importActual("../../../utils/Utils");
   const getFromOpenElisServer = vi.fn();
@@ -59,7 +61,7 @@ describe("TestRenameEntry", () => {
               value={{
                 notificationVisible: false,
                 setNotificationVisible: vi.fn(),
-                addNotification: vi.fn(),
+                addNotification: notify,
               }}
             >
               <TestRenameEntry />
@@ -128,6 +130,31 @@ describe("TestRenameEntry", () => {
       nameFrench: "Glucose FR",
       reportNameEnglish: "GLU",
     });
+  });
+
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status; it used
+  // to be reported as a saved rename.
+  it("reports a refused rename (400) as an error, never as saved", async () => {
+    notify.mockReset();
+    renderScreen();
+    await screen.findByRole("button", { name: "Glucose" });
+    await openTest("Glucose");
+
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "validation", fieldErrors: [], status: 400 }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
   });
 
   it("reads the tests again once a rename is accepted, without reloading", async () => {

@@ -120,7 +120,11 @@ describe.each(SCREENS)(
       });
       getFromOpenElisServer.mockReset();
       getFromOpenElisServer.mockImplementation((url, callback) => {
-        if (url.startsWith(dashboardEndpoint)) return callback(entries);
+        if (url.startsWith(dashboardEndpoint))
+          return callback({
+            items: entries,
+            paging: { currentPage: "1", totalPages: "1" },
+          });
         return callback([]);
       });
     });

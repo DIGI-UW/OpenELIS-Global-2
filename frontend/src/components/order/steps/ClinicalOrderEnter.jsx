@@ -392,6 +392,7 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="CLINICAL"
         />
 
         {/* Clinical Information */}

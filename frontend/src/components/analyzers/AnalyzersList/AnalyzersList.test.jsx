@@ -17,6 +17,7 @@ vi.mock("../../../services/analyzerService", () => ({
   deactivateAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeMapping: vi.fn(),
@@ -52,6 +53,7 @@ import {
   deactivateAnalyzer,
   getAnalyzer,
   getAnalyzers,
+  getAnalyzerDeliveryIssues,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   reactivateAnalyzer,
@@ -610,6 +612,58 @@ describe("AnalyzersList", () => {
 
     expect(window.location.pathname).toBe("/AnalyzerResults");
     expect(new URLSearchParams(window.location.search).get("id")).toBe("1");
+  });
+
+  test("surfaces results the Bridge could not deliver and opens them for review", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+    getAnalyzerDeliveryIssues.mockImplementation((callback) => {
+      act(() =>
+        callback({
+          status: "success",
+          data: {
+            count: 3,
+            rows: [
+              { id: "recv-v1:a", state: "DMQ", actionable: true },
+              { id: "recv-v1:b", state: "DMQ", actionable: true },
+              { id: "recv-v1:c", state: "RETRYING", actionable: false },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByTestId("delivery-issues-attention"),
+    ).toHaveTextContent("3 analyzer results were not delivered");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review undelivered results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("view")).toBe(
+      "import-issues",
+    );
+  });
+
+  test("shows no delivery banner when the Bridge holds nothing or cannot be reached", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+    getAnalyzerDeliveryIssues.mockImplementation((callback) => {
+      act(() => callback(undefined));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await screen.findByTestId("analyzers-table");
+    expect(
+      screen.queryByTestId("delivery-issues-attention"),
+    ).not.toBeInTheDocument();
   });
 
   test("uses the concise lab-facing analyzer columns in their review order", async () => {
