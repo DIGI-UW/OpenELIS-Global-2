@@ -2,9 +2,20 @@
 -- Run only on a development/UAT database, supplying the current source JSON as
 -- the psql source_definition variable. Existing stable records are never reset.
 \set ON_ERROR_STOP on
+-- Optional fresh failed-only fixture; defaults preserve existing CI setup.
+\if :{?failed_job_id}
+\else
+\set failed_job_id '47900000-0000-4000-8000-000000000101'
+\endif
+\if :{?failed_only}
+\else
+\set failed_only false
+\endif
 BEGIN;
 SET LOCAL search_path TO clinlims, public;
 SELECT set_config('reporting.fixture_definition', :'source_definition', true) AS fixture_definition \gset
+SELECT set_config('reporting.failed_job_id', :'failed_job_id', true) AS failed_job_id_setting \gset
+SELECT set_config('reporting.failed_only', :'failed_only', true) AS failed_only_setting \gset
 DO $fixture$
 DECLARE
     source_definition jsonb := current_setting('reporting.fixture_definition')::jsonb;
@@ -15,6 +26,7 @@ DECLARE
     snapshot jsonb;
     fixture_id text;
     fixture_state text;
+    fixture_client_key text;
 BEGIN
     SELECT id::text, test_section_id::text INTO STRICT test_id_value, section_id_value
       FROM test WHERE guid = 'b50d156e-0f6f-40cd-921c-4e831602a623' AND is_active = 'Y';
@@ -37,15 +49,20 @@ BEGIN
         'resultStatuses',jsonb_build_array('FINALIZED')),
       'statusIds', jsonb_build_array(status_id_value));
     FOR fixture_id, fixture_state IN SELECT * FROM (VALUES
-        ('47900000-0000-4000-8000-000000000101','FAILED'),
-        ('47900000-0000-4000-8000-000000000102','EXPIRED')) AS fixtures(id, state) LOOP
+        (current_setting('reporting.failed_job_id')::uuid::text,'FAILED'),
+        ('47900000-0000-4000-8000-000000000102','EXPIRED')) AS fixtures(id, state)
+        WHERE state = 'FAILED' OR NOT current_setting('reporting.failed_only')::boolean LOOP
+        fixture_client_key := 'synthetic-recovery-' || fixture_state;
+        IF fixture_state = 'FAILED' AND fixture_id <> '47900000-0000-4000-8000-000000000101' THEN
+            fixture_client_key := 'synthetic-recovery-' || fixture_id;
+        END IF;
         IF EXISTS (SELECT 1 FROM reporting_export_job WHERE id = fixture_id
-            AND (client_request_id <> 'synthetic-recovery-' || fixture_state OR owner_id <> owner_id_value)) THEN
+            AND (client_request_id <> fixture_client_key OR owner_id <> owner_id_value)) THEN
             RAISE EXCEPTION 'Reporting queue fixture identity is already in use';
         END IF;
         INSERT INTO reporting_export_job(id, owner_id, client_request_id, source_id, layout, request_json,
           request_hash, state, submitted_at, started_at, completed_at, expires_at, failure_code, last_updated)
-        VALUES (fixture_id, owner_id_value, 'synthetic-recovery-' || fixture_state, 'SAMPLE_TESTING',
+        VALUES (fixture_id, owner_id_value, fixture_client_key, 'SAMPLE_TESTING',
           'SPREADSHEET', snapshot::text, md5(snapshot::text), fixture_state,
           now() - interval '8 days', now() - interval '8 days', now() - interval '8 days',
           CASE WHEN fixture_state = 'EXPIRED' THEN now() - interval '1 day' END,

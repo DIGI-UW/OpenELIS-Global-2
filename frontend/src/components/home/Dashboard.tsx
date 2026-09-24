@@ -20,6 +20,8 @@ import {
   Tabs,
   TabList,
   Tag,
+  InlineNotification,
+  Stack,
 } from "@carbon/react";
 import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
@@ -57,7 +59,7 @@ const TILE_ICONS: Record<string, any> = {
   AVERAGE_TURN_AROUND_TIME: Time,
   DELAYED_TURN_AROUND: WarningSquareFilled,
 };
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
@@ -128,7 +130,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   >([]);
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
-  const componentMounted = useRef(true);
+  const [metricsFailed, setMetricsFailed] = useState(false);
+  const [metricsAttempt, setMetricsAttempt] = useState(0);
   // The server's page announcement for the list shown, and the rows a full
   // server page holds; Carbon's items per page is pinned to the latter so
   // Carbon's page is the server's page.
@@ -148,13 +151,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     useContext(NotificationContext) as Notification;
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, []);
+    const controller = new AbortController();
+    setLoading(true);
+    setMetricsFailed(false);
+    getFromOpenElisServer<typeof counts>(
+      "/rest/home-dashboard/metrics",
+      (data) => {
+        if (controller.signal.aborted) return;
+        if (data == null) {
+          setMetricsFailed(true);
+        } else {
+          setCounts(data);
+        }
+        setLoading(false);
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [metricsAttempt]);
 
   useEffect(() => {
     if (selectedTile != null) {
@@ -180,11 +194,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         );
       }
     }
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
   }, [selectedTile]);
 
   useEffect(() => {
@@ -217,13 +226,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     paging,
     onPageRequest: loadResultsPage,
   });
-
-  const loadCount = (data) => {
-    if (componentMounted.current) {
-      setCounts(data);
-      setLoading(false);
-    }
-  };
 
   const loadData = (res, requestId: number) => {
     // A newer tile was opened while this request was in flight; its data wins.
@@ -492,6 +494,27 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       header: "Orders Entered",
     },
   ];
+
+  if (metricsFailed) {
+    return (
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <Stack gap={5}>
+            <InlineNotification
+              kind="error"
+              role="alert"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "dashboard.metrics.loadFailed" })}
+            />
+            <Button onClick={() => setMetricsAttempt((attempt) => attempt + 1)}>
+              <FormattedMessage id="common.retry" />
+            </Button>
+          </Stack>
+        </Column>
+      </Grid>
+    );
+  }
 
   return (
     <>
