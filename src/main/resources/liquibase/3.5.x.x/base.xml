@@ -567,5 +567,6 @@
   <include relativeToChangelogFile="true" file="105-program-domain.xml"/>
   <include relativeToChangelogFile="true" file="106-program-active.xml"/>
   <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
+  <include relativeToChangelogFile="true" file="108-program-domain-shipped-classification.xml"/>
 
 </databaseChangeLog>

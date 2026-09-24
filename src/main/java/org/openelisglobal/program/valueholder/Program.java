@@ -18,8 +18,10 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -135,5 +137,18 @@ public class Program extends BaseObject<String> {
 
     public void setLabUnits(Set<TestSection> labUnits) {
         this.labUnits = labUnits == null ? new HashSet<>() : labUnits;
+    }
+
+    /**
+     * Audit-trail projection of the lab unit set. The history diff skips
+     * collections unless the entity offers a {@code get<Field>_Audit()} view, so
+     * this is what a lab-unit change is recorded as.
+     */
+    public String getLabUnits_Audit() {
+        if (labUnits == null || labUnits.isEmpty()) {
+            return "";
+        }
+        return labUnits.stream().map(TestSection::getId).filter(Objects::nonNull).sorted()
+                .collect(Collectors.joining(","));
     }
 }

@@ -22,6 +22,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.program.service.ProgramPickerRules;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
@@ -461,8 +462,7 @@ public class UserServiceImpl implements UserService {
             if (program.isEmpty()) {
                 continue;
             }
-            TestSection section = program.get().getTestSection();
-            if (section == null || testUnitIds.contains(section.getId())) {
+            if (ProgramPickerRules.servesAnyLabUnit(program.get(), testUnitIds)) {
                 userPrograms.add(pair);
             }
         }

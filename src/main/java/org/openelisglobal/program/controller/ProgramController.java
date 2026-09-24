@@ -1,7 +1,6 @@
 package org.openelisglobal.program.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -13,9 +12,12 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Questionnaire;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.program.service.ProgramPickerRules;
 import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
@@ -23,6 +25,7 @@ import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping(value = "/rest")
@@ -48,151 +52,201 @@ public class ProgramController extends BaseRestController {
     @GetMapping(value = "/program/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public EditProgramForm createProgram(@PathVariable String id) {
+        Program program = requireProgram(id);
         EditProgramForm form = new EditProgramForm();
-        Program program = programService.get(id);
-        form.setProgram(program);
         form.setAdditionalOrderEntryQuestions(
                 questionnaireStorageService.getQuestionnaire(program.getQuestionnaireUUID()).orElse(null));
-        if (program.getTestSection() != null) {
-            form.setTestSectionId(program.getTestSection().getId());
-        }
-        form.setDomain(program.getDomain());
-        form.setActive(!"N".equalsIgnoreCase(program.getIsActive()));
-        if (program.getLabUnits() != null && !program.getLabUnits().isEmpty()) {
-            form.setLabUnitIds(
-                    program.getLabUnits().stream().map(TestSection::getId).sorted().collect(Collectors.toList()));
-        } else if (program.getTestSection() != null) {
-            // Legacy single-FK fallback so the admin editor still shows a lab
-            // unit before the row has been re-saved through the many-to-many.
-            List<String> single = new ArrayList<>();
-            single.add(program.getTestSection().getId());
-            form.setLabUnitIds(single);
-        }
+        project(form, program);
         return form;
     }
 
+    /**
+     * Creates or updates a program. Programs V2 fields ({@code domain},
+     * {@code active}, {@code labUnitIds}) are additive: a client that does not send
+     * one keeps the persisted value, so the legacy editor, the lifecycle flip and a
+     * partial payload can never silently reset a program to Clinical, reactivate
+     * it, drop its lab units or orphan its questionnaire.
+     */
     @PostMapping(value = "/program", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public EditProgramForm createProgram(@RequestBody EditProgramForm form) {
-        Questionnaire questionnaire = form.getAdditionalOrderEntryQuestions();
         Program program = form.getProgram();
-        if (!GenericValidator.isBlankOrNull(program.getId())) {
-            program.setLastupdated(programService.get(program.getId()).getLastupdated());
+        if (program == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "program is required");
         }
-        if (program.getQuestionnaireUUID() == null) {
-            program.setQuestionnaireUUID(UUID.randomUUID());
+        Program existing = GenericValidator.isBlankOrNull(program.getId()) ? null : requireProgram(program.getId());
+        if (existing != null) {
+            program.setLastupdated(existing.getLastupdated());
+            if (program.getQuestionnaireUUID() == null) {
+                program.setQuestionnaireUUID(existing.getQuestionnaireUUID());
+            }
         }
-        if (questionnaire == null) {
+        Questionnaire questionnaire = form.getAdditionalOrderEntryQuestions();
+        if (questionnaire == null && existing == null) {
             questionnaire = new Questionnaire();
         }
-
-        // Programs V2 - domain and active flow onto the entity so Liquibase's
-        // NOT NULL constraint is satisfied and the picker filter works. The
-        // JSON field name is `active` (boolean); storage is 'Y'/'N' to match
-        // panel / test_section.
-        if (StringUtils.isNotBlank(form.getDomain())) {
-            program.setDomain(form.getDomain());
-        }
-        if (form.getActive() != null) {
-            program.setIsActive(form.getActive() ? "Y" : "N");
+        // Only mint a questionnaire id when one is actually being stored, so a
+        // lifecycle flip on a program that never had a questionnaire leaves it
+        // exactly as it was instead of pointing it at an empty resource.
+        if (program.getQuestionnaireUUID() == null && questionnaire != null) {
+            program.setQuestionnaireUUID(UUID.randomUUID());
         }
 
-        // Many-to-many lab units. The legacy single testSection FK is kept
-        // populated (first entry wins) so older readers still resolve one lab
-        // unit before they migrate to labUnitIds.
-        Set<TestSection> resolvedLabUnits = new HashSet<>();
-        List<String> labUnitIds = form.getLabUnitIds();
-        if (labUnitIds != null && !labUnitIds.isEmpty()) {
-            for (String labUnitId : labUnitIds) {
-                if (StringUtils.isBlank(labUnitId)) {
-                    continue;
-                }
-                TestSection section = testSectionService.get(labUnitId);
-                if (section != null) {
-                    resolvedLabUnits.add(section);
-                }
-            }
-        }
-        program.setLabUnits(resolvedLabUnits);
-
-        program.setTestSection(null);
-        if (!resolvedLabUnits.isEmpty()) {
-            program.setTestSection(resolvedLabUnits.iterator().next());
-        } else if (StringUtils.isNotBlank(form.getTestSectionId())) {
-            TestSection testSection = testSectionService.get(form.getTestSectionId());
-            if (testSection != null) {
-                program.setTestSection(testSection);
-                program.getLabUnits().add(testSection);
-            }
-        }
-
+        program.setDomain(resolveDomain(form.getDomain(), existing));
+        program.setIsActive(resolveActive(form.getActive(), existing));
+        Set<TestSection> labUnits = resolveLabUnits(form, existing);
+        program.setLabUnits(labUnits);
+        program.setTestSection(ProgramPickerRules.firstLabUnit(labUnits));
         program.setManuallyChanged(true);
+
         program = programService.save(program);
-        questionnaire.setId(program.getQuestionnaireUUID().toString());
-        questionnaireStorageService.saveQuestionnaire(questionnaire);
+        if (questionnaire != null) {
+            questionnaire.setId(program.getQuestionnaireUUID().toString());
+            questionnaireStorageService.saveQuestionnaire(questionnaire);
+        } else if (program.getQuestionnaireUUID() != null) {
+            questionnaire = questionnaireStorageService.getQuestionnaire(program.getQuestionnaireUUID()).orElse(null);
+        }
         DisplayListService.getInstance().refreshList(ListType.PROGRAM);
 
-        // Re-project the persisted state so the caller sees canonicalized
-        // domain/active/labUnitIds without a follow-up GET.
-        form.setProgram(program);
-        form.setDomain(program.getDomain());
-        form.setActive(!"N".equalsIgnoreCase(program.getIsActive()));
-        form.setLabUnitIds(
-                program.getLabUnits().stream().map(TestSection::getId).sorted().collect(Collectors.toList()));
+        form.setAdditionalOrderEntryQuestions(questionnaire);
+        project(form, program);
         return form;
     }
 
     @GetMapping(value = "/program/{id}/questionnaire", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public Questionnaire getAdditionalEntryQuestions(HttpServletRequest request, @PathVariable String id) {
-        Program program = programService.get(id);
+        Program program = findProgram(id);
         if (program == null) {
             return null;
         }
         return questionnaireStorageService.getQuestionnaire(program.getQuestionnaireUUID()).orElse(null);
     }
 
-    // Programs V2 - the admin list needs domain / active / labUnitIds per row.
-    // /rest/displayList/PROGRAM only carries id + name, so the admin UI reads
-    // this instead. Not paginated because the list is small (typically < 50
-    // rows) and the admin screen filters client-side.
+    /**
+     * Admin list rows with domain, status and lab units.
+     * {@code /rest/displayList/PROGRAM} only carries id and name. Not paginated:
+     * the list is small and the admin screen filters client-side.
+     */
     @GetMapping(value = "/program-list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<Map<String, Object>> listPrograms() {
-        List<Program> programs = programService.getAll();
-        return programs.stream()
+        return programService.getAll().stream()
                 .sorted(Comparator.comparing(Program::getProgramName,
                         Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(this::toListRow).collect(Collectors.toList());
     }
 
-    private Map<String, Object> toListRow(Program program) {
-        List<String> labUnitIds = new ArrayList<>();
-        if (program.getLabUnits() != null && !program.getLabUnits().isEmpty()) {
-            labUnitIds = program.getLabUnits().stream().map(TestSection::getId).sorted().collect(Collectors.toList());
-        } else if (program.getTestSection() != null) {
-            labUnitIds.add(program.getTestSection().getId());
+    /**
+     * FR-18.2: read-time count of orders filed under a program, for the deactivate
+     * confirmation.
+     */
+    @GetMapping(value = "/program/{id}/orderCount", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> getOrderCount(@PathVariable String id) {
+        if (!StringUtil.isInteger(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "program id must be numeric");
         }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("programId", id);
+        body.put("count", programSampleService.countByProgramId(id));
+        return body;
+    }
+
+    private Program requireProgram(String id) {
+        Program program = findProgram(id);
+        if (program == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No program with id " + id);
+        }
+        return program;
+    }
+
+    private Program findProgram(String id) {
+        if (!StringUtil.isInteger(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "program id must be numeric");
+        }
+        return programService.getMatch("id", id).orElse(null);
+    }
+
+    private String resolveDomain(String requested, Program existing) {
+        if (StringUtils.isNotBlank(requested)) {
+            Domain domain = Domain.fromRaw(requested);
+            if (domain == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown program domain: " + requested);
+            }
+            return domain.name();
+        }
+        if (existing != null) {
+            return Domain.normalize(existing.getDomain());
+        }
+        return Domain.DEFAULT.name();
+    }
+
+    private String resolveActive(Boolean requested, Program existing) {
+        if (requested != null) {
+            return requested ? "Y" : "N";
+        }
+        return existing == null || ProgramPickerRules.isActive(existing) ? "Y" : "N";
+    }
+
+    /**
+     * {@code labUnitIds} present (even empty) is the caller's full statement of the
+     * lab units; the legacy single {@code testSectionId} is honoured when the
+     * many-to-many list is absent; and a payload that names neither keeps what is
+     * persisted.
+     */
+    private Set<TestSection> resolveLabUnits(EditProgramForm form, Program existing) {
+        Set<TestSection> resolved = new HashSet<>();
+        if (form.getLabUnitIds() != null) {
+            for (String labUnitId : form.getLabUnitIds()) {
+                TestSection section = findTestSection(labUnitId);
+                if (section != null) {
+                    resolved.add(section);
+                }
+            }
+            return resolved;
+        }
+        if (StringUtils.isNotBlank(form.getTestSectionId())) {
+            TestSection section = findTestSection(form.getTestSectionId());
+            if (section != null) {
+                resolved.add(section);
+            }
+            return resolved;
+        }
+        if (existing != null) {
+            if (existing.getLabUnits() != null) {
+                resolved.addAll(existing.getLabUnits());
+            }
+            if (resolved.isEmpty() && existing.getTestSection() != null) {
+                resolved.add(existing.getTestSection());
+            }
+        }
+        return resolved;
+    }
+
+    private TestSection findTestSection(String id) {
+        if (StringUtils.isBlank(id) || !StringUtil.isInteger(id.trim())) {
+            return null;
+        }
+        return testSectionService.getMatch("id", id.trim()).orElse(null);
+    }
+
+    private void project(EditProgramForm form, Program program) {
+        form.setProgram(program);
+        form.setTestSectionId(program.getTestSection() == null ? null : program.getTestSection().getId());
+        form.setDomain(Domain.normalize(program.getDomain()));
+        form.setActive(ProgramPickerRules.isActive(program));
+        form.setLabUnitIds(ProgramPickerRules.labUnitIds(program));
+    }
+
+    private Map<String, Object> toListRow(Program program) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", program.getId());
         row.put("name", program.getProgramName());
         row.put("code", program.getCode());
-        row.put("domain", program.getDomain());
-        row.put("active", !"N".equalsIgnoreCase(program.getIsActive()));
-        row.put("labUnitIds", labUnitIds);
+        row.put("domain", Domain.normalize(program.getDomain()));
+        row.put("active", ProgramPickerRules.isActive(program));
+        row.put("labUnitIds", ProgramPickerRules.labUnitIds(program));
         return row;
-    }
-
-    // Programs V2 - read-time historical order count for the deactivate modal
-    // (FR-18.2). Returns 0 for programs with no orders. The frontend degrades
-    // gracefully on 404 in deployments that have not applied this slice.
-    @GetMapping(value = "/program/{id}/orderCount", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public Map<String, Object> getOrderCount(@PathVariable String id) {
-        long count = programSampleService.countByProgramId(id);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("programId", id);
-        body.put("count", count);
-        return body;
     }
 }
