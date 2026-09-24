@@ -159,4 +159,32 @@ describe("ResultSelectListAdd", () => {
       ),
     );
   });
+
+  it("saves the new entry once per test even when Next is pressed again", async () => {
+    await nameTheListAndContinue();
+    await userEvent.click(screen.getByLabelText("Culture"));
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
+
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback({}),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(3),
+    );
+    const [, payload] = postToOpenElisServerJsonResponse.mock.calls[2];
+    const perTest = JSON.parse(JSON.parse(payload).testSelectListJson);
+    expect(perTest).toHaveLength(1);
+    expect(perTest[0].items.filter((item) => !item.id)).toHaveLength(1);
+  });
 });

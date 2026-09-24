@@ -192,16 +192,22 @@ function ResultSelectListAdd() {
     );
   };
 
+  // OGC-1234 — Next can be pressed again (a refused save, or Cancel then
+  // Next): the new entry is the only item without an id, so it is replaced
+  // rather than appended a second time, which saved it twice on each test.
   const enrichTestSelectListJson = (list, englishLangPost) => {
     return list.map((test) => {
+      const existingItems = test.items.filter(
+        (item) => item.id !== undefined && item.id !== null && item.id !== "",
+      );
       const enrichedItems = [
-        ...test.items,
+        ...existingItems,
         {
           // id: null,
           value: englishLangPost,
           qualifiable: true,
           normal: true,
-          order: test.items.length,
+          order: existingItems.length,
         },
       ];
 
