@@ -572,4 +572,7 @@
   <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
   <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
 
+  <!-- OGC-1151: privilege data for the navigation menu filter -->
+  <include relativeToChangelogFile="true" file="105-menu-privilege-urls.xml"/>
+
 </databaseChangeLog>

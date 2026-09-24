@@ -61,8 +61,15 @@ public class MenuController {
         return findMenuItem(elementId, MenuUtil.getMenuTree());
     }
 
-    @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Serves the unfiltered tree for the menu configuration screens. Admin-only:
+     * otherwise any authenticated caller could read nodes the {@code /rest/menu}
+     * filter removed — the interceptor auto-allows this path, since no
+     * {@code system_module_url} row can match a path-variable URL. All callers sit
+     * behind GLOBAL_ADMIN routes.
+     */
     @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {
         return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());
     }
