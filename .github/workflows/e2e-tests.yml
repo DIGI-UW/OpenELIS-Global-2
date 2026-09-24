@@ -59,7 +59,6 @@ jobs:
 
       - name: Decide E2E scope
         id: scope
-        continue-on-error: true
         uses: actions/github-script@v8
         env:
           RUN_EVENT: ${{ github.event.workflow_run.event }}
