@@ -211,4 +211,22 @@ public class TestCatalogEditorGroupRangesIntegrationTest extends BaseWebContextS
         assertNull("the sibling does not have that specimen, so its range is shared across its own",
                 sibling.sampleTypeId);
     }
+
+    /**
+     * OGC-1238: each test's ranges carry their component's code, which siblings
+     * share, so the group editor can tell identical ranges on different tests'
+     * components apart from ones that really differ.
+     */
+    @org.junit.Test
+    public void getRanges_carriesTheComponentCodeSharedBySiblings() {
+        GroupRangesUpdate body = new GroupRangesUpdate();
+        body.testIds = List.of(String.valueOf(SEED_TEST_ID), String.valueOf(SIBLING_TEST_ID));
+        body.ranges = List.of(sharedRange());
+        controller.saveGroupRanges(body, authedRequest());
+
+        RangeDto seed = rangesOf(SEED_TEST_ID).get(0);
+        RangeDto sibling = rangesOf(SIBLING_TEST_ID).get(0);
+        assertEquals("PRIMARY", seed.componentCode);
+        assertEquals("PRIMARY", sibling.componentCode);
+    }
 }

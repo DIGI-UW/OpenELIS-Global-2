@@ -1091,6 +1091,9 @@ public class TestCatalogEditorRestController {
     public static class RangeDto {
         public String id;
         public String componentId;
+        // Read-only: the component's code, the same across a test's specimen
+        // siblings, so a group edit can compare ranges across tests (OGC-1238).
+        public String componentCode;
         // OGC-1145 Phase 2: null = shared (every specimen the test runs on);
         // a value overrides this range for that sample type only.
         public String sampleTypeId;
@@ -1366,10 +1369,16 @@ public class TestCatalogEditorRestController {
         RangesResponse resp = new RangesResponse();
         resp.testId = testId;
         List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        Map<String, String> codeById = new HashMap<>();
+        for (TestResultComponent c : comps) {
+            codeById.put(c.getId(), c.getCode());
+        }
         for (ResultLimit l : limits) {
             RangeDto d = new RangeDto();
             d.id = l.getId();
             d.componentId = l.getComponentId();
+            d.componentCode = l.getComponentId() == null ? null : codeById.get(l.getComponentId());
             d.sampleTypeId = l.getSampleTypeId();
             d.gender = l.getGender();
             d.minAge = finiteOrNull(l.getMinAge());
@@ -1387,7 +1396,6 @@ public class TestCatalogEditorRestController {
         resp.coverage = coverageService.validate(limits);
         // Name the component behind each gap/overlap so the UI can say which
         // component is uncovered — only meaningful when the test has several.
-        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
         if (comps.size() > 1) {
             Map<String, String> labelById = new HashMap<>();
             for (TestResultComponent c : comps) {
@@ -1498,18 +1506,50 @@ public class TestCatalogEditorRestController {
     public static class GroupStorageUpdate {
         public List<String> testIds = new ArrayList<>();
         public StorageDto storage;
+        // The StorageDto fields the admin changed. Only these are written; every
+        // test keeps its own value for the rest. Null writes the whole form.
+        public List<String> fields;
     }
+
+    private static final Map<String, java.util.function.BiConsumer<StorageDto, StorageDto>> STORAGE_FIELDS = Map
+            .ofEntries(Map.entry("storageCondition", (t, s) -> t.storageCondition = s.storageCondition),
+                    Map.entry("storageConditionCustom", (t, s) -> t.storageConditionCustom = s.storageConditionCustom),
+                    Map.entry("storageDuration", (t, s) -> t.storageDuration = s.storageDuration),
+                    Map.entry("storageDurationUnit", (t, s) -> t.storageDurationUnit = s.storageDurationUnit),
+                    Map.entry("stabilityNotes", (t, s) -> t.stabilityNotes = s.stabilityNotes),
+                    Map.entry("protectFromLight", (t, s) -> t.protectFromLight = s.protectFromLight),
+                    Map.entry("doNotFreeze", (t, s) -> t.doNotFreeze = s.doNotFreeze),
+                    Map.entry("doNotRefrigerate", (t, s) -> t.doNotRefrigerate = s.doNotRefrigerate),
+                    Map.entry("disposalMethod", (t, s) -> t.disposalMethod = s.disposalMethod),
+                    Map.entry("disposalTimeframe", (t, s) -> t.disposalTimeframe = s.disposalTimeframe),
+                    Map.entry("disposalUnit", (t, s) -> t.disposalUnit = s.disposalUnit),
+                    Map.entry("specialInstructions", (t, s) -> t.specialInstructions = s.specialInstructions),
+                    Map.entry("overrideRestricted", (t, s) -> t.overrideRestricted = s.overrideRestricted));
 
     @PutMapping(value = "/group/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> saveGroupStorage(@RequestBody GroupStorageUpdate body, HttpServletRequest request) {
         if (body == null || body.testIds == null || body.testIds.isEmpty() || body.storage == null) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        if (body.fields != null && !STORAGE_FIELDS.keySet().containsAll(body.fields)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.fields != null && body.fields.isEmpty()) {
+            return ResponseEntity.ok().build();
+        }
         String sysUserId = ControllerUtills.getSysUserId(request);
         for (String testId : body.testIds) {
-            if (testService.getTestById(testId) != null) {
-                handlingService.saveForTest(testId, toHandling(body.storage), sysUserId);
+            if (testService.getTestById(testId) == null) {
+                continue;
             }
+            StorageDto desired = body.storage;
+            if (body.fields != null) {
+                desired = toStorage(testId, handlingService.getByTestId(testId));
+                for (String field : body.fields) {
+                    STORAGE_FIELDS.get(field).accept(desired, body.storage);
+                }
+            }
+            handlingService.saveForTest(testId, toHandling(desired), sysUserId);
         }
         return ResponseEntity.ok().build();
     }

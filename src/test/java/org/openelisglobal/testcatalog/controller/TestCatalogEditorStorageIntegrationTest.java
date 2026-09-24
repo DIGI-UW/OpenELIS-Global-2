@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
@@ -12,6 +13,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.GroupStorageUpdate;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.StorageDto;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -30,6 +32,7 @@ import org.springframework.mock.web.MockHttpSession;
 public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95401L;
+    private static final long SIBLING_ID = 95402L;
 
     @Autowired
     private TestService testService;
@@ -89,6 +92,10 @@ public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensi
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "StorageIT", "StorageIT desc", UUID.randomUUID().toString());
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Y', ?, NOW())",
+                SIBLING_ID, "StorageIT sibling", "StorageIT sibling desc", UUID.randomUUID().toString());
     }
 
     @After
@@ -97,8 +104,10 @@ public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensi
     }
 
     private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.test_sample_handling WHERE test_id = ?", TEST_ID);
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        for (long id : new long[] { TEST_ID, SIBLING_ID }) {
+            jdbc.update("DELETE FROM clinlims.test_sample_handling WHERE test_id = ?", id);
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", id);
+        }
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -175,5 +184,85 @@ public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensi
         assertEquals(404, controller.getStorage("99999999").getStatusCode().value());
         assertEquals(404,
                 controller.saveStorage("99999999", new StorageDto(), authedRequest()).getStatusCode().value());
+    }
+
+    private void seedDifferingSiblings() {
+        StorageDto frozen = new StorageDto();
+        frozen.storageCondition = "FROZEN";
+        frozen.protectFromLight = true;
+        controller.saveStorage(testId(), frozen, authedRequest());
+        StorageDto refrigerated = new StorageDto();
+        refrigerated.storageCondition = "REFRIGERATED";
+        refrigerated.protectFromLight = false;
+        controller.saveStorage(String.valueOf(SIBLING_ID), refrigerated, authedRequest());
+    }
+
+    private GroupStorageUpdate groupUpdate(StorageDto storage, List<String> fields) {
+        GroupStorageUpdate body = new GroupStorageUpdate();
+        body.testIds = List.of(testId(), String.valueOf(SIBLING_ID));
+        body.storage = storage;
+        body.fields = fields;
+        return body;
+    }
+
+    /**
+     * OGC-1238: a group save writes only the fields the admin changed; every other
+     * field keeps each test's own value instead of the first test's.
+     */
+    @org.junit.Test
+    public void saveGroupStorage_writesOnlyTheChangedFields() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "REFRIGERATED";
+        form.protectFromLight = false;
+        form.stabilityNotes = "Keep upright";
+
+        assertEquals(200, controller.saveGroupStorage(groupUpdate(form, List.of("stabilityNotes")), authedRequest())
+                .getStatusCode().value());
+
+        StorageDto first = controller.getStorage(testId()).getBody();
+        assertEquals("FROZEN", first.storageCondition);
+        assertTrue(first.protectFromLight);
+        assertEquals("Keep upright", first.stabilityNotes);
+        StorageDto sibling = controller.getStorage(String.valueOf(SIBLING_ID)).getBody();
+        assertEquals("REFRIGERATED", sibling.storageCondition);
+        assertFalse(sibling.protectFromLight);
+        assertEquals("Keep upright", sibling.stabilityNotes);
+    }
+
+    @org.junit.Test
+    public void saveGroupStorage_withNoChangedFieldsWritesNothing() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "REFRIGERATED";
+
+        assertEquals(200,
+                controller.saveGroupStorage(groupUpdate(form, List.of()), authedRequest()).getStatusCode().value());
+
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+        Integer version = jdbc.queryForObject("SELECT version FROM clinlims.test_sample_handling WHERE test_id = ?",
+                Integer.class, TEST_ID);
+        assertEquals(Integer.valueOf(1), version);
+    }
+
+    @org.junit.Test
+    public void saveGroupStorage_rejectsAnUnknownField() {
+        seedDifferingSiblings();
+        assertEquals(422, controller.saveGroupStorage(groupUpdate(new StorageDto(), List.of("testId")), authedRequest())
+                .getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+    }
+
+    @org.junit.Test
+    public void saveGroupStorage_withoutAFieldListStillWritesTheWholeForm() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "AMBIENT";
+
+        controller.saveGroupStorage(groupUpdate(form, null), authedRequest());
+
+        assertEquals("AMBIENT", controller.getStorage(testId()).getBody().storageCondition);
+        assertFalse(controller.getStorage(testId()).getBody().protectFromLight);
+        assertEquals("AMBIENT", controller.getStorage(String.valueOf(SIBLING_ID)).getBody().storageCondition);
     }
 }

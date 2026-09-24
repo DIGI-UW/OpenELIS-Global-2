@@ -145,3 +145,111 @@ describe("CombinedTestEditor ranges", () => {
     expect(body.ranges[0].id).toBeUndefined();
   });
 });
+
+describe("CombinedTestEditor range specimen scope (OGC-1238)", () => {
+  const serum = { id: "st-serum", name: "Serum" };
+  const plasma = { id: "st-plasma", name: "Plasma" };
+
+  beforeEach(() => {
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/tests/31/ranges")) {
+        cb({
+          testId: "31",
+          ranges: [{ ...seedRange, sampleTypeId: "st-serum" }],
+          sampleTypes: [serum],
+        });
+      } else if (url.endsWith("/tests/32/ranges")) {
+        // Identical bounds, but shared instead of scoped to Serum.
+        cb({
+          testId: "32",
+          ranges: [{ ...seedRange, id: "50" }],
+          sampleTypes: [plasma],
+        });
+      } else {
+        base(url, cb);
+      }
+    });
+  });
+
+  it("warns when the ranges differ only in specimen scope, and shows the scope", async () => {
+    renderGroup();
+
+    expect(await screen.findByTestId("ranges-differ-warning")).toBeVisible();
+    expect(screen.getByTestId("group-range-sample-type-0")).toHaveTextContent(
+      "Serum",
+    );
+  });
+
+  it("keeps each range's specimen scope in the group save", async () => {
+    renderGroup();
+    await screen.findByTestId("ranges-differ-warning");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["button.testCatalog.setAllTo"],
+      }),
+    );
+
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(body.ranges[0].sampleTypeId).toBe("st-serum");
+  });
+
+  it("offers every selected test's sample type in the range dialog", async () => {
+    renderGroup();
+    await screen.findByTestId("ranges-differ-warning");
+
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: messages["label.button.edit"],
+      })[0],
+    );
+
+    const picker = await screen.findByLabelText(
+      messages["label.testCatalog.override.col.sampleType"],
+    );
+    expect(picker.value).toBe("st-serum");
+    const options = Array.from(picker.querySelectorAll("option")).map(
+      (o) => o.value,
+    );
+    expect(options).toEqual(["", "st-serum", "st-plasma"]);
+  });
+});
+
+describe("CombinedTestEditor compares ranges across tests' own components (OGC-1238)", () => {
+  const sibling = (componentId, overrides = {}) => ({
+    ...seedRange,
+    componentId,
+    componentCode: "PRIMARY",
+    ...overrides,
+  });
+
+  const wire = (range31, range32) => {
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/tests/31/ranges")) {
+        cb({ testId: "31", ranges: [range31], sampleTypes: [] });
+      } else if (url.endsWith("/tests/32/ranges")) {
+        cb({ testId: "32", ranges: [range32], sampleTypes: [] });
+      } else {
+        base(url, cb);
+      }
+    });
+  };
+
+  it("shows no warning when siblings hold the same range on their own components", async () => {
+    wire(sibling("comp-31"), sibling("comp-32", { id: "50" }));
+    renderGroup();
+    await screen.findByTestId("group-range-critical-0");
+
+    expect(screen.queryByTestId("ranges-differ-warning")).toBeNull();
+  });
+
+  it("still warns when the siblings' bounds differ", async () => {
+    wire(sibling("comp-31"), sibling("comp-32", { id: "50", highNormal: 6 }));
+    renderGroup();
+
+    expect(await screen.findByTestId("ranges-differ-warning")).toBeVisible();
+  });
+});

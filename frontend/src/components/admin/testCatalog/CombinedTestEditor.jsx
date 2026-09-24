@@ -42,7 +42,8 @@ const rangeSignature = (ranges) =>
   JSON.stringify(
     (ranges || [])
       .map((r) => ({
-        componentId: r.componentId || null,
+        component: r.componentCode || r.componentId || null,
+        sampleTypeId: r.sampleTypeId || null,
         gender: r.gender || null,
         minAge: r.minAge ?? null,
         maxAge: r.maxAge ?? null,
@@ -78,6 +79,8 @@ const CombinedTestEditor = () => {
   const [summaries, setSummaries] = useState([]);
   const [ranges, setRanges] = useState([]);
   const [components, setComponents] = useState([]);
+  // The union of the selected tests' sample types, for the range scope picker.
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [differs, setDiffers] = useState(false);
   // FR-74 — per-test view of which tests diverge from the seed (first test), so
   // the admin sees exactly what "set all to" will overwrite.
@@ -103,11 +106,15 @@ const CombinedTestEditor = () => {
         // Pull each test's ranges to decide shared-vs-differs (FR-9/10).
         let pending = testIds.length;
         const perTest = {};
+        const typesById = {};
         testIds.forEach((id) => {
           getFromOpenElisServer(
             `/rest/test-catalog/tests/${id}/ranges`,
             (r) => {
               perTest[id] = (r && r.ranges) || [];
+              ((r && r.sampleTypes) || []).forEach((t) => {
+                typesById[t.id] = t;
+              });
               pending -= 1;
               if (pending === 0) {
                 const seedSig = rangeSignature(perTest[testIds[0]]);
@@ -125,6 +132,7 @@ const CombinedTestEditor = () => {
                 // Seed the editor from the first test's ranges (the "set all to"
                 // starting point when they differ; the shared value when they agree).
                 setRanges(perTest[testIds[0]] || []);
+                setSampleTypes(Object.values(typesById));
                 setLoading(false);
               }
             },
@@ -179,6 +187,7 @@ const CombinedTestEditor = () => {
       testIds,
       ranges: ranges.map((r) => ({
         componentId: r.componentId || null,
+        sampleTypeId: r.sampleTypeId || null,
         gender: r.gender || null,
         minAge: r.minAge,
         maxAge: r.maxAge,
@@ -217,6 +226,16 @@ const CombinedTestEditor = () => {
         }
       },
     );
+  };
+
+  const showSampleTypeColumn = sampleTypes.length > 1;
+
+  const sampleTypeLabel = (id) => {
+    if (!id) {
+      return intl.formatMessage({ id: "label.testCatalog.override.shared" });
+    }
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : id;
   };
 
   const breadcrumbs = [
@@ -414,6 +433,11 @@ const CombinedTestEditor = () => {
               <Table size="sm">
                 <TableHead>
                   <TableRow>
+                    {showSampleTypeColumn && (
+                      <TableHeader>
+                        <FormattedMessage id="label.testCatalog.override.col.sampleType" />
+                      </TableHeader>
+                    )}
                     <TableHeader>
                       <FormattedMessage id="label.testCatalog.ranges.table.sex" />
                     </TableHeader>
@@ -437,6 +461,11 @@ const CombinedTestEditor = () => {
                 <TableBody>
                   {ranges.map((r, i) => (
                     <TableRow key={r.id || `r-${i}`}>
+                      {showSampleTypeColumn && (
+                        <TableCell data-testid={`group-range-sample-type-${i}`}>
+                          {sampleTypeLabel(r.sampleTypeId)}
+                        </TableCell>
+                      )}
                       <TableCell>{r.gender || "All"}</TableCell>
                       <TableCell>
                         {(r.minAge ?? 0) +
@@ -509,6 +538,7 @@ const CombinedTestEditor = () => {
         <RangeModal
           range={editingIndex >= 0 ? ranges[editingIndex] : null}
           components={components}
+          sampleTypes={sampleTypes}
           onSave={handleSaveRange}
           onCancel={() => setEditingIndex(null)}
         />
