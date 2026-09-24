@@ -34,6 +34,7 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 const REFUSAL_MESSAGES = {
   "name.required": "error.panel.nameRequired",
   "name.tooLong": "error.panel.nameTooLong",
+  "name.duplicate": "error.panel.nameDuplicate",
   "description.tooLong": "error.panel.descriptionTooLong",
   "activation.needsTest": "helper.panel.needsTest",
 };

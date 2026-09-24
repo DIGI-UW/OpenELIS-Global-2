@@ -18,6 +18,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -198,13 +199,13 @@ function TestModifyEntry() {
 
   const handleTestModifyEntryPostCallBack = (res) => {
     setIsLoading(false);
-    if (res) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });

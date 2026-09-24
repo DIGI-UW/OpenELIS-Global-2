@@ -707,35 +707,264 @@ describe("SampleResultsSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("copies sample-results configuration from another test", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/test-list") {
-        cb([
-          { id: "9", value: "Other Test" },
-          { id: "7", value: "This Test" },
-        ]);
-      } else {
-        cb(clone(SAMPLE_RESULTS));
-      }
-    });
-    const { container } = renderSection();
-    await screen.findByDisplayValue("SYS");
+  describe("Copy configuration from test (OGC-1234: replace, staged until Save)", () => {
+    const SOURCE = {
+      testId: "9",
+      components: [
+        {
+          id: "S1",
+          code: "PRIMARY",
+          label: "Innolia",
+          displayOrder: 0,
+          resultType: "D",
+          isPrimary: true,
+          options: [
+            { id: "SO1", value: "824", valueName: "HIV1", sortOrder: 1 },
+            { id: "SO2", value: "825", valueName: "HIV2", sortOrder: 2 },
+          ],
+          interpretations: [
+            {
+              id: "SI1",
+              valueMatch: "824",
+              text: "HIV-1 positive",
+              severity: "CRITICAL",
+              displayOrder: 1,
+            },
+          ],
+        },
+      ],
+    };
+    const addNotification = vi.fn();
 
-    // "Start from another test" is a typeahead ComboBox.
-    fireEvent.change(container.querySelector("#copy-from-test"), {
-      target: { value: "Other" },
-    });
-    fireEvent.click(await screen.findByText("Other Test"));
-    fireEvent.click(
+    const mockServer = (sourceResponse) =>
+      getFromOpenElisServer.mockImplementation((url, cb) => {
+        if (url === "/rest/test-list") {
+          cb([
+            { id: "9", value: "Other Test" },
+            { id: "7", value: "This Test" },
+          ]);
+        } else if (url === "/rest/uom") {
+          cb([]);
+        } else if (url === "/rest/test-catalog/tests/9/sample-results") {
+          cb(sourceResponse === undefined ? undefined : clone(sourceResponse));
+        } else {
+          cb(clone(SAMPLE_RESULTS));
+        }
+      });
+
+    const renderWithNotifications = async () => {
+      const { NotificationContext } = await import("../../../layout/Layout");
+      const utils = render(
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{ addNotification, setNotificationVisible: () => {} }}
+          >
+            <SampleResultsSection testId="7" />
+          </NotificationContext.Provider>
+        </IntlProvider>,
+      );
+      await screen.findByDisplayValue("SYS");
+      return utils;
+    };
+
+    const pickSourceAndClickCopy = async (container) => {
+      fireEvent.change(container.querySelector("#copy-from-test"), {
+        target: { value: "Other" },
+      });
+      fireEvent.click(await screen.findByText("Other Test"));
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: messages["label.testCatalog.sampleResults.copyFromButton"],
+        }),
+      );
+    };
+
+    const confirmButton = () =>
       screen.getByRole("button", {
-        name: messages["label.testCatalog.sampleResults.copyFromButton"],
-      }),
-    );
+        name: new RegExp(
+          messages["label.testCatalog.sampleResults.copyConfirm.confirm"],
+        ),
+      });
 
-    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
-    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
-      "/rest/test-catalog/tests/7/sample-results/copy-from/9",
-    );
+    beforeEach(() => addNotification.mockClear());
+
+    it("asks for confirmation first and changes nothing until confirmed", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+
+      expect(
+        screen.getByText(
+          messages["label.testCatalog.sampleResults.copyConfirm.title"],
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/will be replaced with those of Other Test/),
+      ).toBeInTheDocument();
+      expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+        "/rest/test-catalog/tests/9/sample-results",
+        expect.anything(),
+      );
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+      expect(putToOpenElisServer).not.toHaveBeenCalled();
+    });
+
+    it("cancelling the confirmation keeps this test's configuration", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+
+      const dialog = screen.getByRole("dialog", { hidden: false });
+      fireEvent.click(
+        Array.from(dialog.querySelectorAll("button")).find(
+          (b) => b.textContent === messages["label.button.cancel"],
+        ),
+      );
+
+      expect(container.querySelector("#opt-value-0-0").value).toBe("Male");
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+      expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+        "/rest/test-catalog/tests/9/sample-results",
+        expect.anything(),
+      );
+    });
+
+    it("confirming stages the source's configuration without writing, and Save replaces this test's with it", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(
+        await screen.findByTestId("copy-staged-warning"),
+      ).toHaveTextContent(
+        "Configuration copied from Other Test, not saved yet",
+      );
+      expect(screen.getByDisplayValue("Innolia")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("Systolic")).toBeNull();
+      expect(screen.getAllByText("HIV1").length).toBeGreaterThan(0);
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+      expect(putToOpenElisServer).not.toHaveBeenCalled();
+
+      fireEvent.click(saveButton());
+
+      expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
+      expect(putToOpenElisServer.mock.calls[0][0]).toBe(
+        "/rest/test-catalog/tests/7/sample-results",
+      );
+      const payload = savedPayload();
+      expect(payload.components).toHaveLength(1);
+      const [staged] = payload.components;
+      expect(staged.id).toBeUndefined();
+      expect(staged.code).toBe("PRIMARY");
+      expect(staged.label).toBe("Innolia");
+      expect(staged.options.map((o) => o.value)).toEqual(["824", "825"]);
+      expect(staged.options.every((o) => o.id === undefined)).toBe(true);
+      expect(staged.interpretations).toHaveLength(1);
+      expect(staged.interpretations[0].id).toBeUndefined();
+      expect(staged.interpretations[0].text).toBe("HIV-1 positive");
+      expect(JSON.stringify(payload)).not.toContain("Male");
+    });
+
+    it("the same source test can be picked and staged again after a copy is staged", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+      expect(container.querySelector("#copy-from-test")).toHaveValue("");
+
+      await pickSourceAndClickCopy(container);
+
+      expect(
+        screen.getByText(/will be replaced with those of Other Test/),
+      ).toBeInTheDocument();
+    });
+
+    it("an option value this test already has keeps its id, so the save updates it instead of leaving an inactive twin", async () => {
+      mockServer({
+        testId: "9",
+        components: [
+          {
+            id: "S9",
+            code: "SYS",
+            label: "Systolic source",
+            displayOrder: 1,
+            resultType: "D",
+            options: [
+              { id: "SO9", value: "Male", sortOrder: 1 },
+              { id: "SO10", value: "Female", sortOrder: 2 },
+            ],
+            interpretations: [],
+          },
+        ],
+      });
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+      fireEvent.click(saveButton());
+
+      const [staged] = savedPayload().components;
+      expect(staged.id).toBeUndefined();
+      expect(staged.options).toEqual([
+        expect.objectContaining({ id: "O1", value: "Male" }),
+        expect.not.objectContaining({ id: expect.anything() }),
+      ]);
+      expect(staged.options[1].value).toBe("Female");
+    });
+
+    it("discarding the staged copy reloads this test's own configuration", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: messages["label.testCatalog.sampleResults.copyDiscard"],
+        }),
+      );
+
+      expect(await screen.findByDisplayValue("Systolic")).toBeInTheDocument();
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+      expect(putToOpenElisServer).not.toHaveBeenCalled();
+    });
+
+    it("a source with no result configuration stages nothing and says so", async () => {
+      mockServer({ testId: "9", components: [] });
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "info",
+          message: "Other Test has no result configuration to copy.",
+        }),
+      );
+      expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+    });
+
+    it("a source that fails to load stages nothing and reports an error, never success", async () => {
+      mockServer(undefined);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: "The configuration of Other Test could not be loaded.",
+        }),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
+    });
   });
 
   /**
