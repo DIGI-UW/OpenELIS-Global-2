@@ -232,6 +232,34 @@ describe("ProgramManagement", () => {
     ]);
   });
 
+  it("sends a choice question with no answer options as having none, instead of silently restoring the saved ones", async () => {
+    renderPage();
+    await screen.findByText("Cytology", { selector: "td" });
+
+    fireEvent.click(
+      within(rowNamed("Cytology")).getByRole("button", {
+        name: "Edit program",
+      }),
+    );
+    await screen.findByDisplayValue("Nature of Specimen");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete option" }),
+    );
+    await screen.findByText(
+      "No options yet — add at least one so reception can pick a value.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const item = lastPostedPayload().additionalOrderEntryQuestions.item[0];
+    expect(item.type).toBe("choice");
+    expect(item.answerOption).toBeUndefined();
+  });
+
   it("confirms a deactivation with the order count, sends only the lifecycle flip and says so in the toast", async () => {
     renderPage();
     await screen.findByText("Cytology", { selector: "td" });

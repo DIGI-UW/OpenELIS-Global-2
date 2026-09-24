@@ -27,6 +27,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +37,14 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Programs REST endpoints. Authorization is per method rather than per class:
+ * {@code /program/{id}} and {@code /program/{id}/questionnaire} are read by
+ * order entry and so stay open to any authenticated user, while the
+ * administration endpoints are restricted to ADMIN like every other Test
+ * Management controller, including the {@code /rest/lab-units-management}
+ * endpoint the Programs screen already calls.
+ */
 @RestController
 @RequestMapping(value = "/rest")
 public class ProgramController extends BaseRestController {
@@ -68,6 +77,7 @@ public class ProgramController extends BaseRestController {
      * it, drop its lab units or orphan its questionnaire.
      */
     @PostMapping(value = "/program", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public EditProgramForm createProgram(@RequestBody EditProgramForm form) {
         Program program = form.getProgram();
@@ -129,6 +139,7 @@ public class ProgramController extends BaseRestController {
      * the list is small and the admin screen filters client-side.
      */
     @GetMapping(value = "/program-list", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public List<Map<String, Object>> listPrograms() {
         return programService.getAll().stream()
@@ -142,6 +153,7 @@ public class ProgramController extends BaseRestController {
      * confirmation.
      */
     @GetMapping(value = "/program/{id}/orderCount", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public Map<String, Object> getOrderCount(@PathVariable String id) {
         if (!StringUtil.isInteger(id)) {

@@ -746,6 +746,9 @@ function ProgramEditor({
   const selectedLabUnitItems = labUnitItems.filter((item) =>
     labUnitIds.includes(item.id),
   );
+  const unofferedLabUnitIds = labUnitIds.filter(
+    (id) => !labUnitItems.some((item) => item.id === id),
+  );
 
   const handleDomainChange = (nextDomain) => {
     if (!nextDomain || nextDomain === domain) return;
@@ -826,7 +829,7 @@ function ProgramEditor({
           q.options.length
         ) {
           merged.answerOption = q.options.map(fromOption);
-        } else if (q.type !== "choice" && q.type !== "checkbox") {
+        } else {
           delete merged.answerOption;
         }
         return merged;
@@ -1001,6 +1004,7 @@ function ProgramEditor({
           <Column lg={8} md={4} sm={2}>
             <FilterableMultiSelect
               id={`units-${idSuffix}`}
+              key={`units-${idSuffix}-${labUnitItems.length}`}
               titleText={intl.formatMessage({
                 id: "admin.programs.basicInfo.labUnits.label",
               })}
@@ -1011,11 +1015,12 @@ function ProgramEditor({
               itemToString={(item) => item?.label || ""}
               initialSelectedItems={selectedLabUnitItems}
               onChange={({ selectedItems }) =>
-                setLabUnitIds(
-                  (selectedItems || [])
+                setLabUnitIds([
+                  ...unofferedLabUnitIds,
+                  ...(selectedItems || [])
                     .filter((item) => !item.isSelectAll)
                     .map((item) => item.id),
-                )
+                ])
               }
               selectionFeedback="top-after-reopen"
             />
@@ -1215,7 +1220,9 @@ function ProgramEditor({
                       <SelectItem
                         key={ty}
                         value={ty}
-                        text={ty[0].toUpperCase() + ty.slice(1)}
+                        text={intl.formatMessage({
+                          id: `admin.programs.questionnaire.question.type.${ty}`,
+                        })}
                       />
                     ))}
                   </Select>
@@ -1463,7 +1470,9 @@ function ProgramEditor({
                       id={`pv-${q.key}`}
                       labelText=""
                       disabled
-                      placeholder={q.type}
+                      placeholder={intl.formatMessage({
+                        id: `admin.programs.questionnaire.question.type.${q.type}`,
+                      })}
                     />
                   )}
                   {q.type === "quantity" && (

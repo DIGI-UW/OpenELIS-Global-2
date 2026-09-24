@@ -11,6 +11,8 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.server.ResponseStatusException;
@@ -238,7 +241,12 @@ public class ProgramSaveContractTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void orderCount_isZeroForAnUnusedProgramAndRejectsNonNumericIds() {
+    public void orderCount_countsOrdersFiledUnderTheProgramAndRejectsNonNumericIds() throws Exception {
+        executeDataSetWithStateManagement("testdata/program-sample.xml");
+        resyncSequence("clinlims.program_seq", "clinlims.program");
+
+        assertEquals("the seeded program has one order filed under it", 1L, controller.getOrderCount("1").get("count"));
+
         Program created = create("V2TCNT", "V2 count", "CLINICAL", true, Collections.emptyList(), null);
         assertEquals(0L, controller.getOrderCount(created.getId()).get("count"));
         try {
@@ -247,6 +255,31 @@ public class ProgramSaveContractTest extends BaseWebContextSensitiveTest {
         } catch (ResponseStatusException e) {
             assertEquals(HttpStatus.BAD_REQUEST.value(), e.getStatusCode().value());
         }
+    }
+
+    /**
+     * The administration endpoints are ADMIN-only like every other Test Management
+     * controller, while the two reads order entry performs stay open to any
+     * authenticated user. A class-level guard would lock non-admins out of
+     * ordering, so the split is asserted rather than left to a reviewer to notice.
+     */
+    @Test
+    public void adminEndpointsRequireAdminWhileOrderEntryReadsStayOpen() throws Exception {
+        assertEquals("hasRole('ADMIN')",
+                preAuthorizeValue(ProgramController.class.getMethod("createProgram", EditProgramForm.class)));
+        assertEquals("hasRole('ADMIN')", preAuthorizeValue(ProgramController.class.getMethod("listPrograms")));
+        assertEquals("hasRole('ADMIN')",
+                preAuthorizeValue(ProgramController.class.getMethod("getOrderCount", String.class)));
+
+        assertNull("order entry reads a program for every user",
+                preAuthorizeValue(ProgramController.class.getMethod("createProgram", String.class)));
+        assertNull("order entry reads a questionnaire for every user", preAuthorizeValue(ProgramController.class
+                .getMethod("getAdditionalEntryQuestions", HttpServletRequest.class, String.class)));
+    }
+
+    private String preAuthorizeValue(Method method) {
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+        return annotation == null ? null : annotation.value();
     }
 
     @Test
