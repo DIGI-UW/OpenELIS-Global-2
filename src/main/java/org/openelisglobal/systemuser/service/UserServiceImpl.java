@@ -3,7 +3,9 @@ package org.openelisglobal.systemuser.service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -372,41 +374,18 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<TestResultItem> filterResultsByLabUnitRoles(String systemUserId, List<TestResultItem> results,
             String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
-        }
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(systemUserId, roleName);
+        List<TestResultItem> allowed = results.stream().filter(result -> allTestsIds.contains(result.getTestId()))
+                .collect(Collectors.toList());
         org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
-                "User " + systemUserId + " has " + (testSections != null ? testSections.size() : 0) + " test sections: "
-                        + testUnitIds);
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-        // Log which test IDs are in the results and which are allowed
-        List<String> resultTestIds = results.stream().map(r -> r.getTestId()).collect(Collectors.toList());
-        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
-                "Input results: " + results.size() + " (test IDs: " + resultTestIds + "), Allowed test IDs: "
-                        + allTestsIds.size() + ", Filtered results: "
-                        + results.stream().filter(result -> allTestsIds.contains(result.getTestId())).count());
-        return results.stream().filter(result -> allTestsIds.contains(result.getTestId())).collect(Collectors.toList());
+                "User " + systemUserId + " may work on " + allTestsIds.size() + " tests; kept " + allowed.size()
+                        + " of " + results.size() + " results");
+        return allowed;
     }
 
     @Override
     public List<IdValuePair> getAllDisplayUserTestsByLabUnit(String SystemUserId, String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
-        }
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
         List<IdValuePair> allDisplayUserTests = DisplayListService.getInstance()
                 .getListWithLeadingBlank(DisplayListService.ListType.ALL_TESTS);
         return allDisplayUserTests.stream().filter(test -> allTestsIds.contains(test.getId()))
@@ -416,33 +395,105 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<AnalysisItem> filterAnalysisResultsByLabUnitRoles(String SystemUserId, List<AnalysisItem> results,
             String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
-        }
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
         return results.stream().filter(result -> allTestsIds.contains(result.getTestId())).collect(Collectors.toList());
     }
 
     @Override
     public List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
+        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * The tests a user may work on in a role, as a list.
+     *
+     * <p>
+     * A view over {@link #getTestIdsInUserLabUnits(String, String)}, so the batch
+     * workplan shares the one read the rest of the request already paid for.
+     */
+    @Override
+    public List<String> getUserTestIdsForLabUnitRoles(String systemUserId, String roleName) {
+        return new ArrayList<>(getTestIdsInUserLabUnits(systemUserId, roleName));
+    }
+
+    /**
+     * The tests a user may work on in a role, read once per request.
+     *
+     * <p>
+     * Answering this reads every test in the user's lab units, so callers that ask
+     * repeatedly — a report walking a patient's samples, a notification walking the
+     * users who hold a role — used to read the whole catalogue once per iteration.
+     * A patient with a few hundred samples made their report take minutes and the
+     * browser gave up on it. Lab-unit assignments cannot change within a request,
+     * so the answer is cached in the request and the reads collapse to one.
+     *
+     * <p>
+     * The returned set is shared with the other callers in the same request and is
+     * not modifiable.
+     */
+    @Override
+    public Set<String> getTestIdsInUserLabUnits(String systemUserId, String roleName) {
+        String cacheKey = "userLabUnitTestIds:" + systemUserId + ":" + roleName;
+        Set<String> cached = testIdsCachedInRequest(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        String roleId = roleService.getRoleByName(roleName).getId();
+        List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
             testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
+        Set<String> testIds = testIdsInSections(testUnitIds);
+        cacheTestIdsInRequest(cacheKey, testIds);
+        return testIds;
+    }
 
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
-                .collect(Collectors.toList());
+    /**
+     * The active tests of the given sections, also cached per request: users who
+     * share lab units share this answer, so a notification that walks every holder
+     * of a role reads the catalogue once rather than once per user.
+     */
+    private Set<String> testIdsInSections(List<String> sectionIds) {
+        if (sectionIds == null || sectionIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        String cacheKey = "labUnitSectionTestIds:" + sectionIds.stream().sorted().collect(Collectors.joining(","));
+        Set<String> cached = testIdsCachedInRequest(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        Set<String> testIds = new LinkedHashSet<>();
+        testService.getTestsByTestSectionIds(sectionIds).forEach(test -> testIds.add(test.getId()));
+        Set<String> shared = Collections.unmodifiableSet(testIds);
+        cacheTestIdsInRequest(cacheKey, shared);
+        return shared;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<String> testIdsCachedInRequest(String cacheKey) {
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        Object cached = attributes.getAttribute(cacheKey, RequestAttributes.SCOPE_REQUEST);
+        return cached instanceof Set ? (Set<String>) cached : null;
+    }
+
+    private void cacheTestIdsInRequest(String cacheKey, Set<String> testIds) {
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            attributes.setAttribute(cacheKey, testIds, RequestAttributes.SCOPE_REQUEST);
+        }
+    }
+
+    @Override
+    public boolean hasAllLabUnits(String systemUserId, String roleName) {
+        String roleId = roleService.getRoleByName(roleName).getId();
+        List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
+        return testSections != null && !testSections.isEmpty() && testSections.size() == activeTestSections().size();
     }
 
     @Override

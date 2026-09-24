@@ -17,6 +17,7 @@ import { useHistory } from "react-router-dom";
 import FilterContext from "../filter/filter-context";
 import { trendHash } from "../trendline/trendKey";
 
+import { normalizeScientificNotation } from "../../../resultPage/scientificNotation";
 // Map an observation interpretation to a Carbon Tag color so abnormal /
 // high / low / critical results stand out without leaning on custom CSS.
 function interpretationToTagType(interp?: string): string {
@@ -31,7 +32,9 @@ function interpretationToTagType(interp?: string): string {
 
 /** A result a line can be drawn through — i.e. one that parses as a number. */
 function isPlottable(obs?: { value?: string }): boolean {
-  return !Number.isNaN(parseFloat(obs?.value ?? ""));
+  return !Number.isNaN(
+    parseFloat(normalizeScientificNotation(obs?.value ?? "")),
+  );
 }
 
 function formatDateHeader(iso: string): string {

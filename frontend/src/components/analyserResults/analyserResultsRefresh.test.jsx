@@ -114,6 +114,54 @@ describe("Analyzer results worklist", () => {
     expect(hrefWrittenTo).toBeNull();
   });
 
+  it("asks the server for the page Carbon moves to, and reopens it after accepting", async () => {
+    const pages = {
+      1: {
+        resultList: [row(0)],
+        type: "Demo Analyzer",
+        paging: { totalPages: 2, currentPage: 1, searchTermToPage: [] },
+      },
+      2: {
+        resultList: [row(1)],
+        type: "Demo Analyzer",
+        paging: { totalPages: 2, currentPage: 2, searchTermToPage: [] },
+      },
+    };
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (!url.startsWith("/rest/AnalyzerResults")) return;
+      const requested =
+        Number(new URL(url, "http://x").searchParams.get("page")) || 1;
+      callback(pages[requested]);
+    });
+    const pageUrls = () =>
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter((url) => url.includes("page="));
+    renderScreen();
+    await screen.findByText(/ACC0/);
+    expect(pageUrls()).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Page" }));
+
+    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
+    expect(screen.queryByText(/ACC0/)).toBeNull();
+    expect(pageUrls()).toEqual(["/rest/AnalyzerResults?id=22&page=2"]);
+
+    postToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
+      callback({ status: 200 }),
+    );
+    fireEvent.click(screen.getByTestId("Save-btn"));
+
+    await waitFor(() => expect(pageUrls()).toHaveLength(2));
+    expect(pageUrls()[1]).toBe("/rest/AnalyzerResults?id=22&page=2");
+    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
+    const posted = JSON.parse(
+      postToOpenElisServerFullResponse.mock.calls[0][1],
+    );
+    expect(posted.paging.currentPage).toBe(2);
+    expect(posted.resultList.map((r) => r.accessionNumber)).toEqual(["ACC1"]);
+  });
+
   it.each([1, 0])(
     "removes stale server-pagination controls after a refresh leaves %i pages",
     async (totalPages) => {

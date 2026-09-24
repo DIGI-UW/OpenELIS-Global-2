@@ -1,5 +1,12 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
+import {
   Heading,
   Loading,
   Grid,
@@ -54,7 +61,6 @@ function UserManagement() {
   const queryClient = useQueryClient();
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
@@ -69,11 +75,13 @@ function UserManagement() {
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [filters, setFilters] = useState([]);
-  const [startingRecNo, setStartingRecNo] = useState(1);
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [userManagementList, setUserManagementList] = useState();
   const [userManagementListShow, setUserManagementListShow] = useState([]);
   const [testSectionsShow, setTestSectionsShow] = useState({});
@@ -91,18 +99,6 @@ function UserManagement() {
       },
     );
   }
-
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-    setSelectedRowIds([]);
-  };
 
   useEffect(() => {
     const selectedIDsObject = {
@@ -147,12 +143,23 @@ function UserManagement() {
     }
   }
 
-  const handlePageChange = ({ page, pageSize }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
-    setSelectedRowCombinedUserID([]);
+  const handlePageChange = ({ page: newPage }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+      setSelectedRowCombinedUserID([]);
+    }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // What the screen shows is a read of one endpoint, so the endpoint is the
   // cache key: a write invalidates USER_LIST_KEY and the list is read again,
@@ -224,6 +231,14 @@ function UserManagement() {
       setFromRecordCount(pagination.fromRecordCount);
       setToRecordCount(pagination.toRecordCount);
       setTotalRecordCount(pagination.totalRecordCount);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          pagination.fromRecordCount,
+          pagination.toRecordCount,
+          pagination.totalRecordCount,
+          previous,
+        ),
+      );
 
       const newUserManagementList = userManagementList.menuList.map((item) => {
         return {
@@ -295,8 +310,7 @@ function UserManagement() {
 
   const handlePanelSearchChange = (event) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value;
     setPanelSearchTerm(query);
     setSelectedRowIds([]);
@@ -305,8 +319,7 @@ function UserManagement() {
   useEffect(() => {
     if (isSearching && panelSearchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, panelSearchTerm]);
 
@@ -357,8 +370,6 @@ function UserManagement() {
                   fromRecordCount={fromRecordCount}
                   toRecordCount={toRecordCount}
                   totalRecordCount={totalRecordCount}
-                  handlePreviousPage={handlePreviousPage}
-                  handleNextPage={handleNextPage}
                   deleteDeactivate={deleteDeactivateUserManagement}
                   id={selectedRowCombinedUserID[0]}
                   otherParmsInLink={`&startingRecNo=1&roleFilter=`}
@@ -463,11 +474,9 @@ function UserManagement() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
-                  rows={userManagementListShow.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )}
+                  rows={userManagementListShow}
                   headers={[
                     {
                       key: "select",
@@ -579,9 +588,10 @@ function UserManagement() {
                 <Pagination
                   onChange={handlePageChange}
                   page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20]}
-                  totalItems={userManagementListShow.length}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
                   forwardText={intl.formatMessage({
                     id: "pagination.forward",
                   })}

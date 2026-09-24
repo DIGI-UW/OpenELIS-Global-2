@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATDetailResponse;
@@ -53,6 +54,9 @@ public class TATReportServiceTest {
     private TATCalculationService tatCalculationService;
 
     @Mock
+    private AnalysisService analysisService;
+
+    @Mock
     private EntityManager entityManager;
 
     @Mock
@@ -69,6 +73,10 @@ public class TATReportServiceTest {
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString())).thenReturn(query);
         when(query.setParameter(anyString(), any())).thenReturn(query);
+        // The bench of an analysis is resolved by the analysis service; these rows
+        // all carry their own section, which is the branch it returns first.
+        when(analysisService.getTestSection(any(Analysis.class)))
+                .thenAnswer(call -> ((Analysis) call.getArgument(0)).getTestSection());
     }
 
     // ========== Helper Methods ==========

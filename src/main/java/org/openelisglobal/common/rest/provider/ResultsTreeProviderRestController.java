@@ -1,9 +1,11 @@
 package org.openelisglobal.common.rest.provider;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.PanelDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultTree;
 import org.openelisglobal.common.services.PatientResultTreeService;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -21,14 +23,16 @@ public class ResultsTreeProviderRestController {
 
     @GetMapping(value = "result-tree", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<ResultTree> getResultTreeArray(@RequestParam String patientId) {
-        return patientResultTreeService.getResultTree(patientId);
+    public List<ResultTree> getResultTreeArray(HttpServletRequest request, @RequestParam String patientId) {
+        return patientResultTreeService.getResultTree(patientId, ControllerUtills.getSysUserId(request));
     }
 
     @GetMapping(value = "test-result-tree", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public PanelDisplay getTestResultTree(@RequestParam String patientId, @RequestParam String testId,
-            @RequestParam(required = false) String componentId, @RequestParam(required = false) String sampleTypeId) {
-        return patientResultTreeService.getTestResultTree(patientId, testId, componentId, sampleTypeId);
+    public PanelDisplay getTestResultTree(HttpServletRequest request, @RequestParam String patientId,
+            @RequestParam String testId, @RequestParam(required = false) String componentId,
+            @RequestParam(required = false) String sampleTypeId) {
+        return patientResultTreeService.getTestResultTree(patientId, testId, componentId, sampleTypeId,
+                ControllerUtills.getSysUserId(request));
     }
 }

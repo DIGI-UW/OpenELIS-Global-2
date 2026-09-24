@@ -8,7 +8,6 @@ import {
   Grid,
   Column,
   Section,
-  Link,
   Button,
   Loading,
   Stack,
@@ -16,7 +15,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { serverPageSizeOf } from "../utils/serverPaging";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import ImportIssuesPanel from "./ImportIssuesPanel";
@@ -48,15 +47,13 @@ const Index = () => {
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
   const [searchTermToPage, setSearchTermToPage] = useState([]);
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
   const [labNumber, setLabNumber] = useState("");
   const location = useLocation();
   const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
@@ -81,13 +78,23 @@ const Index = () => {
     }
   }, [url]);
 
-  /** Rereads the worklist the address bar names, after a write changes it. */
-  const refreshResults = () => {
+  /**
+   * Rereads the worklist the address bar names, after a write changes it, and
+   * reopens the page the user was on when the reread worklist still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     if (!url) {
       return;
     }
     setIsLoading(true);
-    getFromOpenElisServer(url, handleResults);
+    getFromOpenElisServer(url, (data) => {
+      const totalPages = Number(data?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+      } else {
+        handleResults(data);
+      }
+    });
   };
 
   const extractUniqueGroups = (data) => {
@@ -101,14 +108,10 @@ const Index = () => {
     });
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows, the lab number search and Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, handleResults);
-  };
-
-  const loadPreviousResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, handleResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
   const handleResults = (data) => {
@@ -120,22 +123,13 @@ const Index = () => {
       if (typeof data.type === "string" && data.type.trim()) {
         setAnalyzerName(data.type.trim());
       }
-      const totalPages = Number(data.paging?.totalPages) || 1;
-      const currentPage = Number(data.paging?.currentPage) || 1;
-      const hasMultiplePages = totalPages > 1;
+      setServerPageSize((previous) =>
+        serverPageSizeOf(data.paging, data.resultList?.length ?? 0, previous),
+      );
       setSearchTermToPage(
         Array.isArray(data.paging?.searchTermToPage)
           ? data.paging.searchTermToPage
           : [],
-      );
-      setPagination(hasMultiplePages);
-      setCurrentApiPage(hasMultiplePages ? currentPage : null);
-      setTotalApiPages(hasMultiplePages ? totalPages : null);
-      setNextPage(
-        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
-      );
-      setPreviousPage(
-        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
       );
 
       if (data.resultList.length == 0) {
@@ -220,53 +214,12 @@ const Index = () => {
                   if (!pageMapping) {
                     return;
                   }
-                  setIsLoading(true);
-                  getFromOpenElisServer(
-                    url + "&page=" + pageMapping.value,
-                    handleResults,
-                  );
+                  loadResultsPage(pageMapping.value);
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
               </Button>
             </Column>
-            {pagination && (
-              <>
-                <Column lg={4} md={4} sm={2}></Column>
-                <Column
-                  lg={2}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "10px",
-                    width: "110%",
-                  }}
-                >
-                  <Link>
-                    {currentApiPage} / {totalApiPages}
-                  </Link>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <Button
-                      hasIconOnly
-                      id="loadpreviousresults"
-                      onClick={loadPreviousResultsPage}
-                      disabled={previousPage != null ? false : true}
-                      renderIcon={ArrowLeft}
-                      iconDescription="previous"
-                    ></Button>
-                    <Button
-                      hasIconOnly
-                      id="loadnextresults"
-                      onClick={loadNextResultsPage}
-                      disabled={nextPage != null ? false : true}
-                      renderIcon={ArrowRight}
-                      iconDescription="next"
-                    ></Button>
-                  </div>
-                </Column>
-              </>
-            )}
           </Grid>
         </>
         <AnalyserResults
@@ -274,6 +227,8 @@ const Index = () => {
           results={results}
           sampleGroup={sampleGroup}
           refreshResults={refreshResults}
+          serverPageSize={serverPageSize}
+          loadPage={loadResultsPage}
         />
       </div>
     </>

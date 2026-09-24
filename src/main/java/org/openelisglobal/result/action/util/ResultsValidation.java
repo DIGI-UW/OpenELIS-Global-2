@@ -126,11 +126,7 @@ public class ResultsValidation {
             if (resultValue.equals(SPECIAL_CASE)) {
                 return;
             }
-            try {
-                Double.parseDouble(StringUtil.getActualNumericValue(resultValue));
-            } catch (NumberFormatException e) {
-                // errors.add(new ActionError("errors.number.format", new
-                // StringBuilder("Result")));
+            if (!StringUtil.isNumeric(StringUtil.getActualNumericValue(resultValue))) {
                 errors.reject("errors.number.format");
             }
         }
@@ -213,8 +209,10 @@ public class ResultsValidation {
 
         } else {
             Result dbResult = resultService.getResultById(item.getResultId());
-            return !item.getShadowResultValue().equals(dbResult.getValue())
-                    && !GenericValidator.isBlankOrNull(dbResult.getValue());
+            // Compared against the value as entered: what the screen submits is
+            // what the technologist typed, not the parseable form.
+            return !item.getShadowResultValue().equals(dbResult.getEnteredValue())
+                    && !GenericValidator.isBlankOrNull(dbResult.getEnteredValue());
         }
 
         return false;
@@ -232,7 +230,7 @@ public class ResultsValidation {
 
         if (result != null && result.getAnalyte() != null
                 && "Conclusion".equals(result.getAnalyte().getAnalyteName())) {
-            if (result.getValue().equals(item.getShadowResultValue())) {
+            if (result.getEnteredValue().equals(item.getShadowResultValue())) {
                 return;
             }
         }

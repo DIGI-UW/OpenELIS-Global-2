@@ -33,6 +33,9 @@ public class NceActionLog extends BaseObject<Integer> {
     @Column(name = "date_completed")
     private Date dateCompleted;
 
+    @Column(name = "due_date")
+    private Date dueDate;
+
     @Column(name = "turn_around_time")
     private Integer turnAroundTime;
 
@@ -91,6 +94,14 @@ public class NceActionLog extends BaseObject<Integer> {
 
     public void setDateCompleted(Date dateCompleted) {
         this.dateCompleted = dateCompleted;
+    }
+
+    public Date getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(Date dueDate) {
+        this.dueDate = dueDate;
     }
 
     public Integer getTurnAroundTime() {
