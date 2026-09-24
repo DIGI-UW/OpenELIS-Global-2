@@ -277,7 +277,7 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
     await page.getByRole("button", { name: "Copy from Test" }).click();
     await expect(
       page.getByText(
-        `${toCopy} ${toCopy === 1 ? "method" : "methods"} copied from ${first.value}.`,
+        `From ${first.value}: ${toCopy} ${toCopy === 1 ? "method" : "methods"} copied.`,
       ),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
