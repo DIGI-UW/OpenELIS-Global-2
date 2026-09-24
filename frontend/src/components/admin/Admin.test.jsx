@@ -52,13 +52,13 @@ describe("Admin", () => {
       expect(
         screen.getByText(messages["master.lists.page.test.management"]),
       ).toBeInTheDocument();
-      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(14);
+      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(13);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-icon"),
-      ).toHaveLength(14);
+      ).toHaveLength(13);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-arrow"),
-      ).toHaveLength(14);
+      ).toHaveLength(13);
       expect(document.querySelector(".cds--side-nav")).not.toBeInTheDocument();
     },
   );

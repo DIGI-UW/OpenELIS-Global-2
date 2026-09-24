@@ -29,7 +29,7 @@ vi.mock("../../layout/Layout", async () => {
   };
 });
 
-import ProgramManagementV2 from "./ProgramManagementV2";
+import ProgramManagement from "./ProgramManagement";
 
 const cytologyQuestionnaire = {
   resourceType: "Questionnaire",
@@ -121,7 +121,7 @@ const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/MasterListsPage/program"]}>
       <IntlProvider locale="en" messages={messages}>
-        <ProgramManagementV2 />
+        <ProgramManagement />
       </IntlProvider>
     </MemoryRouter>,
   );
@@ -134,7 +134,7 @@ const lastPostedPayload = () => {
 const rowNamed = (name) =>
   screen.getByText(name, { selector: "td" }).closest("tr");
 
-describe("ProgramManagementV2", () => {
+describe("ProgramManagement", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
     postToOpenElisServerFullResponse.mockReset();
