@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.vector.service.VectorSpeciesService;
@@ -44,7 +45,11 @@ public class VectorSpeciesRestController {
     @GetMapping(value = "/lifecycle-stages", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, String>>> getLifecycleStages(@RequestParam String sampleTypeId) {
         try {
-            List<Dictionary> stages = vectorSpeciesService.getLifecycleStagesBySampleTypeId(sampleTypeId);
+            // Vector order entry's species and lifecycle pickers. sample_type:view is
+            // admin-scoped and the broad catch turns a denial into a 500, leaving the
+            // picker empty with no explanation. Reads only; create/update stay gated.
+            List<Dictionary> stages = SystemContext
+                    .callAsSystem(() -> vectorSpeciesService.getLifecycleStagesBySampleTypeId(sampleTypeId));
             List<Map<String, String>> result = stages.stream().map(d -> {
                 String code = d.getLocalAbbreviation();
                 if (code == null || code.isBlank()) {
@@ -65,8 +70,9 @@ public class VectorSpeciesRestController {
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorSpecies>> getSpecies(@RequestParam(required = false) String sampleTypeId) {
         try {
-            List<VectorSpecies> result = sampleTypeId != null ? vectorSpeciesService.getBySampleTypeId(sampleTypeId)
-                    : vectorSpeciesService.getAll();
+            List<VectorSpecies> result = SystemContext
+                    .callAsSystem(() -> sampleTypeId != null ? vectorSpeciesService.getBySampleTypeId(sampleTypeId)
+                            : vectorSpeciesService.getAll());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -77,7 +83,7 @@ public class VectorSpeciesRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<VectorSpecies> getSpeciesById(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(vectorSpeciesService.get(id));
+            return ResponseEntity.ok(SystemContext.callAsSystem(() -> vectorSpeciesService.get(id)));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();

@@ -30,6 +30,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -89,6 +90,21 @@ public class SampleAddService {
     }
 
     public List<SampleTestCollection> createSampleTestCollection() {
+        // Turning the submitted sample XML into sample items, tests and panels.
+        // Every lookup it needs is admin-scoped — typeOfSample (sample_type:view),
+        // panel and panelItem (panel:view), unitOfMeasure (result:view) — and no
+        // order-entry role holds any of them, so this denied while BUILDING the
+        // order the caller was permitted to place.
+        //
+        // The clinical entry step posts an empty sampleXML and so never reached
+        // here; environmental and vector post a populated one, which is why only
+        // those two domains failed. Nothing is read on the caller's behalf: the
+        // ids being resolved are the ones they just picked from lists this same
+        // screen showed them.
+        return SystemContext.callAsSystem(this::createSampleTestCollectionInternal);
+    }
+
+    private List<SampleTestCollection> createSampleTestCollectionInternal() {
         xmlProcessed = true;
         String collectionDateFromRecieveDate = null;
         if (USE_RECEIVE_DATE_FOR_COLLECTION_DATE) {
@@ -260,7 +276,11 @@ public class SampleAddService {
             throw new IllegalThreadStateException("createSampleTestCollection must be called first");
         }
 
-        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(test.getId());
+        // panel:view again — same reasoning as createSampleTestCollection. This
+        // resolves which panel (if any) a test on the order belongs to, so the
+        // analysis rows can record it.
+        List<PanelItem> panelItems = SystemContext
+                .callAsSystem(() -> panelItemService.getPanelItemByTestId(test.getId()));
 
         for (PanelItem panelItem : panelItems) {
             Panel panel = panelIdPanelMap.get(panelItem.getPanel().getId());

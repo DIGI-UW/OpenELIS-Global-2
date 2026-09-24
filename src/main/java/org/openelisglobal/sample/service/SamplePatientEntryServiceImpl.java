@@ -1104,7 +1104,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         java.sql.Date collectionDateTime = DateUtil.convertStringDateTimeToSqlDate(sampleTestCollection.collectionDate);
         TestSection testSection = test.getTestSection();
         if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(userSelectedTestSection)) {
-            testSection = testSectionService.get(userSelectedTestSection);
+            // test:configure gates the test-section catalogue; resolving the section
+            // the order names is order assembly, not catalogue administration.
+            testSection = SystemContext.callAsSystem(() -> testSectionService.get(userSelectedTestSection));
         }
 
         Panel panel = updateData.getSampleAddService().getPanelForTest(test);

@@ -433,35 +433,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             maybePersistLabelRequests(form, updateData, getSysUserId(request));
 
             if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
-                List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-                Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
-                List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
-                String message = MessageUtil.getMessage("notification.order.stat",
-                        AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
-                StringBuffer sb = new StringBuffer(message);
-                for (String userId : systemUserIds) {
-                    List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
-                            Constants.ROLE_RESULTS);
-                    if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                        List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
-                                .collect(Collectors.toList());
-                        String testString = String.join(", ", tests);
-                        sb.append(testString);
-                        try {
-                            Notification notification = new Notification();
-                            notification.setMessage(sb.toString());
-                            notification.setUser(systemUserService.getUserById(userId));
-                            notification.setCreatedDate(OffsetDateTime.now());
-                            notification.setReadAt(null);
-                            notificationDAO.save(notification);
-                        } catch (Exception e) {
-                        }
-                    }
-                }
+                // Notifying the results staff that an urgent order arrived. Reading who
+                // they are (system_user:view) and which analyses fall in their lab units
+                // (result:view) are admin-scoped, and the person placing the order holds
+                // neither — so marking an order STAT would deny the save. The caller is
+                // not reading anyone's results; the system is routing a notification.
+                notifyResultsStaffOfStatOrder(sampleOrder);
             }
-
-            // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
-            // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
             LogEvent.logError("persistData failed with LIMSRuntimeException", e);
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -826,4 +804,43 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                         .collect(Collectors.toList()));
         return body;
     }
+
+    /**
+     * A STAT order tells the results bench to pick it up now. Building that
+     * notification reads the users holding ROLE_RESULTS ({@code system_user:view})
+     * and filters the order's analyses to each user's lab units
+     * ({@code result:view}) — both administrative privileges that an order-entry
+     * role does not hold, so without system context simply choosing STAT priority
+     * made the save fail. Nobody's results are exposed: the message names the tests
+     * on the order that was just placed.
+     */
+    private void notifyResultsStaffOfStatOrder(SampleOrderItem sampleOrder) {
+        SystemContext.runAsSystem(() -> {
+            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
+            Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+            List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
+            String message = MessageUtil.getMessage("notification.order.stat",
+                    AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
+            for (String userId : systemUserIds) {
+                List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
+                        Constants.ROLE_RESULTS);
+                if (userAnalyses == null || userAnalyses.isEmpty()) {
+                    continue;
+                }
+                String testString = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
+                        .collect(Collectors.joining(", "));
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(message + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                    LogEvent.logError(e);
+                }
+            }
+        });
+    }
+
 }

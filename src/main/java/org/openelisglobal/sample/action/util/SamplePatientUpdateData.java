@@ -30,6 +30,7 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
@@ -859,7 +860,12 @@ public class SamplePatientUpdateData {
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
-        Program program = programService.get(programId);
+        // Resolving the programme the order was placed under. ProgramService is
+        // gated on PRIV_PROGRAM_VIEW, an admin privilege no order-entry role holds,
+        // so populating the order form denied before the controller was reached —
+        // the request failed in the filter chain with a bare container 403 and
+        // nothing in the log.
+        Program program = SystemContext.callAsSystem(() -> programService.get(programId));
         setProgramQuestionnaireResponse(additionalQuestions);
 
         // For updates (sample already exists), try to load existing ProgramSample
@@ -927,7 +933,9 @@ public class SamplePatientUpdateData {
         }
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ORDER_PROGRAM, "true")) {
             if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
-                createObservation(programService.get(sampleOrder.getProgramId()).getProgramName(),
+                createObservation(
+                        SystemContext.callAsSystem(() -> programService.get(sampleOrder.getProgramId()))
+                                .getProgramName(),
                         observationHistoryService.getObservationTypeIdForType(ObservationType.PROGRAM),
                         ValueType.LITERAL);
             }

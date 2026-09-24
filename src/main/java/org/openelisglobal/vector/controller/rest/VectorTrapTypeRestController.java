@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.vector.service.VectorTrapTypeService;
 import org.openelisglobal.vector.valueholder.VectorTrapType;
@@ -42,8 +43,13 @@ public class VectorTrapTypeRestController {
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorTrapType>> getTrapTypes(@RequestParam(required = false) String sampleTypeId) {
         try {
-            List<VectorTrapType> result = sampleTypeId != null ? vectorTrapTypeService.getBySampleTypeId(sampleTypeId)
-                    : vectorTrapTypeService.getAll();
+            // The trap-type picker on vector order entry. Gated on sample_type:view,
+            // which order-entry roles do not hold, and the broad catch below turned
+            // the denial into a 500 — so the picker was silently empty. Reads only;
+            // creating and editing trap types stay gated.
+            List<VectorTrapType> result = SystemContext
+                    .callAsSystem(() -> sampleTypeId != null ? vectorTrapTypeService.getBySampleTypeId(sampleTypeId)
+                            : vectorTrapTypeService.getAll());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -54,7 +60,7 @@ public class VectorTrapTypeRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<VectorTrapType> getTrapType(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(vectorTrapTypeService.get(id));
+            return ResponseEntity.ok(SystemContext.callAsSystem(() -> vectorTrapTypeService.get(id)));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
