@@ -368,4 +368,30 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       container.querySelector('[data-cy="labUnitManagement"]').textContent,
     ).toBe("Lab Units Editor");
   });
+
+  it("offers no sections to pick from on the catalog import screen", () => {
+    // Importing a file edits no single record, so the greyed list that tells a
+    // reader to click a test would be an instruction the page cannot honour.
+    mockLocation = { pathname: "/MasterListsPage/CatalogImport", search: "" };
+    const { container } = renderNav();
+
+    expect(container.querySelectorAll('[aria-disabled="true"]')).toHaveLength(
+      0,
+    );
+    expect(
+      screen.queryByText(
+        messages["sidenav.label.admin.testCatalog.sectionsHelper"],
+      ),
+    ).not.toBeInTheDocument();
+    V1_SECTIONS.forEach((sectionKey) => {
+      expect(
+        container.querySelector(`[data-cy="section-${sectionKey}"]`),
+      ).toBeNull();
+    });
+    // The entity links the screen is reached from stay in place.
+    expect(container.querySelector('[data-cy="catalogImport"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-cy="testCatalogList"]'),
+    ).not.toBeNull();
+  });
 });

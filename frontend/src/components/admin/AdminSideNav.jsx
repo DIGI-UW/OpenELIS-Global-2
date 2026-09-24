@@ -133,6 +133,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const inLabUnitsContext =
     !!editorLabUnitId || /\/LabUnitManagement(\/|$)/.test(location.pathname);
 
+  // Importing a catalog file edits no single record, so the menu offers its
+  // entity links and nothing else: a greyed list of test sections under
+  // "Click a test to edit its sections" would be an instruction the page
+  // cannot honour.
+  const inCatalogImport = /\/CatalogImport(\/|$)/.test(location.pathname);
+
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
@@ -403,7 +409,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         >
           <FormattedMessage id="sidenav.label.admin.catalogImport" />
         </SideNavMenuItem>
-        {editorLabUnitId ? (
+        {inCatalogImport ? null : editorLabUnitId ? (
           <>
             {editorLabUnitId === "new"
               ? sectionsCaption(
