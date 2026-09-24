@@ -96,27 +96,52 @@ export default function BatchWorkplan() {
     [batches, batchPage, batchPageSize],
   );
 
-  const loadPendingTests = useCallback(() => {
+  const loadPendingTests = useCallback((onDone) => {
     getFromOpenElisServer(
       `${BATCH_ENDPOINT}/pending-tests?limit=500`,
       (res) => {
         setPendingTests(Array.isArray(res) ? res : []);
+        if (onDone) onDone();
       },
     );
   }, []);
 
-  const loadBatches = useCallback(() => {
+  const loadBatches = useCallback((onDone) => {
     getFromOpenElisServer(`${BATCH_ENDPOINT}/batches`, (res) => {
       setBatches(Array.isArray(res) ? res : []);
+      if (onDone) onDone();
     });
   }, []);
 
+  // Clear the loading flag only once both fetches have answered. Setting it back
+  // in the same tick left it permanently false, so nothing was ever disabled
+  // while a refresh was in flight.
   const reload = useCallback(() => {
     setLoading(true);
-    loadPendingTests();
-    loadBatches();
-    setLoading(false);
+    let outstanding = 2;
+    const settle = () => {
+      outstanding -= 1;
+      if (outstanding === 0) setLoading(false);
+    };
+    loadPendingTests(settle);
+    loadBatches(settle);
   }, [loadBatches, loadPendingTests]);
+
+  // A list that shrinks under the current page (creating a batch, archiving one)
+  // would otherwise leave the viewer on a page past the end, showing an empty
+  // table while rows sit on earlier pages.
+  useEffect(() => {
+    const lastPage = Math.max(
+      1,
+      Math.ceil(pendingTests.length / pendingPageSize),
+    );
+    if (pendingPage > lastPage) setPendingPage(lastPage);
+  }, [pendingTests.length, pendingPageSize, pendingPage]);
+
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(batches.length / batchPageSize));
+    if (batchPage > lastPage) setBatchPage(lastPage);
+  }, [batches.length, batchPageSize, batchPage]);
 
   useEffect(() => {
     reload();

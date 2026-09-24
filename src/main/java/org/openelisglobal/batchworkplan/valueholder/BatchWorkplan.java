@@ -185,8 +185,15 @@ public class BatchWorkplan extends BaseObject<Long> {
     @Override
     public void setSysUserId(String sysUserId) {
         super.setSysUserId(sysUserId);
+        // Mirrors the audit id onto the column when it is numeric. A caller we
+        // cannot parse leaves the existing value alone rather than throwing out of
+        // a setter; the service rejects such a caller before it gets this far.
         if (sysUserId != null) {
-            updatedByUserId = Integer.valueOf(sysUserId);
+            try {
+                updatedByUserId = Integer.valueOf(sysUserId);
+            } catch (NumberFormatException e) {
+                // not a numeric system user id; leave updatedByUserId untouched
+            }
         }
     }
 }

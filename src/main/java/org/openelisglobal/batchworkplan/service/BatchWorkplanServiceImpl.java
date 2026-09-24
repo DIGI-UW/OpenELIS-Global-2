@@ -65,7 +65,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     @Override
     @Transactional(readOnly = true)
     public List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId) {
-        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(openStatuses());
+        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(unarchivedStatuses());
         List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
         // Both exclusions are in the query, so the row cap is the last thing applied
         // and a page full of already-batched or out-of-unit work cannot squeeze the
@@ -78,7 +78,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     @Override
     @Transactional(readOnly = true)
     public List<BatchWorkplanResponse> getBatches(String sysUserId) {
-        List<BatchWorkplan> batches = batchWorkplanDAO.getForUserInStatuses(toUserId(sysUserId), openStatuses());
+        List<BatchWorkplan> batches = batchWorkplanDAO.getForUserInStatuses(toUserId(sysUserId), unarchivedStatuses());
         Set<String> analysisIds = batches.stream().flatMap(batch -> batch.getItems().stream())
                 .map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toCollection(LinkedHashSet::new));
         Map<String, Analysis> analysesById = analysesById(new ArrayList<>(analysisIds));
@@ -91,13 +91,15 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             throw new IllegalArgumentException("At least one analysis is required to create a batch workplan");
         }
 
+        Integer ownerId = requireUserId(sysUserId);
+
         List<String> analysisIds = request.getAnalysisIds().stream().filter(StringUtils::isNotBlank).distinct()
                 .collect(Collectors.toList());
         if (analysisIds.isEmpty()) {
             throw new IllegalArgumentException("At least one analysis is required to create a batch workplan");
         }
 
-        Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, openStatuses());
+        Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, unarchivedStatuses());
         if (!alreadyAssigned.isEmpty()) {
             throw new IllegalArgumentException("Analyses already assigned to an open batch: " + alreadyAssigned);
         }
@@ -122,8 +124,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         batch.setNotes(StringUtils.trimToNull(request.getNotes()));
         batch.setCreatedAt(Timestamp.from(Instant.now()));
         batch.setSysUserId(sysUserId);
-        batch.setCreatedByUserId(toUserId(sysUserId));
-        batch.setUpdatedByUserId(toUserId(sysUserId));
+        batch.setCreatedByUserId(ownerId);
+        batch.setUpdatedByUserId(ownerId);
 
         for (int index = 0; index < analysisIds.size(); index++) {
             BatchWorkplanItem item = new BatchWorkplanItem();
@@ -142,6 +144,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         if (nextStatus == null) {
             throw new IllegalArgumentException("Batch status is required");
         }
+        Integer actorId = requireUserId(sysUserId);
         BatchWorkplan batch = batchWorkplanDAO.getWithItems(id)
                 .orElseThrow(() -> new LIMSRuntimeException("Batch workplan not found: " + id));
         BatchWorkplanStatus currentStatus = batch.getStatus();
@@ -153,7 +156,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         Timestamp now = Timestamp.from(Instant.now());
         batch.setStatus(nextStatus);
         batch.setSysUserId(sysUserId);
-        batch.setUpdatedByUserId(toUserId(sysUserId));
+        batch.setUpdatedByUserId(actorId);
         if (nextStatus == BatchWorkplanStatus.ACTIVE) {
             batch.setActivatedAt(now);
         } else if (nextStatus == BatchWorkplanStatus.COMPLETED) {
@@ -195,7 +198,20 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                 statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
     }
 
-    private List<BatchWorkplanStatus> openStatuses() {
+    /**
+     * Every status except ARCHIVED, which is the one set three different questions
+     * happen to share: which batches are still work in hand, which analyses a batch
+     * still holds, and which analyses a new batch may not claim.
+     *
+     * <p>
+     * COMPLETED is deliberately in the set. A completed batch keeps its analyses:
+     * they carry results by then, so they are no longer pending and would not be
+     * offered for batching anyway. The one case this leaves awkward is an analysis
+     * reopened by a rejection or a retest, which stays held until its batch is
+     * archived. Releasing it automatically needs the reopen path, which this
+     * milestone does not build.
+     */
+    private List<BatchWorkplanStatus> unarchivedStatuses() {
         return Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE, BatchWorkplanStatus.COMPLETED);
     }
 
@@ -321,10 +337,28 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         return testId + ":" + methodId;
     }
 
+    /**
+     * The caller's numeric id, or null when it is absent or unparseable. Null is
+     * the safe answer on a read: the batch query treats it as "owns nothing" rather
+     * than failing the request. Writes call {@link #requireUserId} instead, so a
+     * caller we cannot identify gets a 400 rather than an unowned batch.
+     */
     private Integer toUserId(String sysUserId) {
         if (StringUtils.isBlank(sysUserId)) {
             return null;
         }
-        return Integer.valueOf(sysUserId);
+        try {
+            return Integer.valueOf(sysUserId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer requireUserId(String sysUserId) {
+        Integer userId = toUserId(sysUserId);
+        if (userId == null) {
+            throw new IllegalArgumentException("Could not identify the requesting user");
+        }
+        return userId;
     }
 }
