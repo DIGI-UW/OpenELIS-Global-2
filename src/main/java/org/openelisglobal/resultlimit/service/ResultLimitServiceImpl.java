@@ -111,6 +111,18 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ResultLimit> getNumericRangesForTest(String testId) {
+        List<ResultLimit> numeric = new ArrayList<>();
+        for (ResultLimit limit : getBaseObjectDAO().getAllResultLimitsForTest(testId)) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(limit.getResultTypeId())) {
+                numeric.add(limit);
+            }
+        }
+        return numeric;
+    }
+
+    @Override
     @Transactional
     public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
         // The Ranges editor only manages NUMERIC reference ranges. Dictionary /

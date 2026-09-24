@@ -37,7 +37,9 @@ import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -63,13 +65,15 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private final TestQcThresholdDAO testQcThresholdDAO;
     private final TestService testService;
     private final MicrobiologyReferenceService microbiologyReferenceService;
+    private final TypeOfSampleTestService typeOfSampleTestService;
 
     public SampleEntryTestsForTypeProviderRestController(PanelService panelService,
             TestSectionService testSectionService, TypeOfSamplePanelService samplePanelService,
             PanelItemService panelItemService, TypeOfSampleService typeOfSampleService, UserService userService,
             RoleService roleService, ProgramService programService, TestMethodService testMethodService,
             TestQcThresholdDAO testQcThresholdDAO, TestService testService,
-            MicrobiologyReferenceService microbiologyReferenceService) {
+            MicrobiologyReferenceService microbiologyReferenceService,
+            TypeOfSampleTestService typeOfSampleTestService) {
         this.panelService = panelService;
         this.testSectionService = testSectionService;
         this.samplePanelService = samplePanelService;
@@ -82,6 +86,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         this.testQcThresholdDAO = testQcThresholdDAO;
         this.testService = testService;
         this.microbiologyReferenceService = microbiologyReferenceService;
+        this.typeOfSampleTestService = typeOfSampleTestService;
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -186,36 +191,41 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         List<Test> tests = new ArrayList<>(
                 typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true, testUnitIds));
 
-        Collections.sort(tests, new Comparator<Test>() {
-
-            @Override
-            public int compare(Test t1, Test t2) {
-                if (GenericValidator.isBlankOrNull(t1.getSortOrder())
-                        || GenericValidator.isBlankOrNull(t2.getSortOrder())) {
-                    return localizedTestName(t1).compareTo(localizedTestName(t2));
-                }
-
-                try {
-                    int t1Sort = Integer.parseInt(t1.getSortOrder());
-                    int t2Sort = Integer.parseInt(t2.getSortOrder());
-
-                    if (t1Sort > t2Sort) {
-                        return 1;
-                    } else if (t1Sort < t2Sort) {
-                        return -1;
-                    } else {
-                        return 0;
-                    }
-
-                } catch (NumberFormatException e) {
-                    return localizedTestName(t1).compareTo(localizedTestName(t2));
-                }
-            }
-        });
+        tests.sort(orderEntryComparator(sampleType));
 
         List<TypeOfSamplePanel> panelList = getPanelList(sampleType);
         List<PanelTestMap> panelMap = linkTestsToPanels(panelList, tests);
         return new SampleEntryTests(StringUtil.snipToMaxIdLength(sampleType), addPanels(panelMap), addTests(tests));
+    }
+
+    /**
+     * The order a sample type's tests are offered in: the position set on the Test
+     * Catalog's Display Order for this sample type (sampletype_test.display_order),
+     * then the legacy global test sort order, then the name. Tests without a value
+     * at a step sort after those with one.
+     */
+    Comparator<Test> orderEntryComparator(String sampleType) {
+        Map<String, Integer> displayOrderByTestId = new HashMap<>();
+        for (TypeOfSampleTest junction : typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleType)) {
+            if (junction.getDisplayOrder() != null) {
+                displayOrderByTestId.put(junction.getTestId(), junction.getDisplayOrder());
+            }
+        }
+        Comparator<Integer> nullsLast = Comparator.nullsLast(Comparator.naturalOrder());
+        return Comparator.<Test, Integer>comparing(test -> displayOrderByTestId.get(test.getId()), nullsLast)
+                .thenComparing(test -> parseSortOrder(test.getSortOrder()), nullsLast)
+                .thenComparing(this::localizedTestName);
+    }
+
+    private static Integer parseSortOrder(String sortOrder) {
+        if (GenericValidator.isBlankOrNull(sortOrder)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(sortOrder.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private ArrayList<TestMap> addTests(List<Test> tests) {

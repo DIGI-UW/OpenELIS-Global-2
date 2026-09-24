@@ -442,3 +442,33 @@ describe("MethodsSection", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("MethodsSection copy picker filter (OGC-1238)", () => {
+  it("narrows the source tests to those matching what was typed", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === `/rest/test/${TEST_ID}/methods`) {
+        cb(LINKS);
+      } else if (url === "/rest/displayList/METHODS") {
+        cb(ALL_METHODS);
+      } else if (url === "/rest/test-list") {
+        cb([
+          ...ALL_TESTS,
+          { id: "11", value: "QA Sibling (Serum)" },
+          { id: "12", value: "Glucose (Plasma)" },
+        ]);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByText("PCR");
+
+    fireEvent.change(container.querySelector("#copy-from-test"), {
+      target: { value: "qa sib" },
+    });
+
+    await screen.findByText("QA Sibling (Serum)");
+    const options = Array.from(
+      container.querySelectorAll(".cds--list-box__menu-item"),
+    ).map((o) => o.textContent);
+    expect(options).toEqual(["QA Sibling (Serum)"]);
+  });
+});

@@ -486,6 +486,10 @@ export default function MethodsSection({ testId }) {
           })}
           items={otherTests}
           itemToString={(item) => (item ? item.value : "")}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
           selectedItem={otherTests.find((t) => t.id === copyTestId) || null}
           onChange={({ selectedItem }) => setCopyTestId(selectedItem?.id || "")}
           style={{ minWidth: "260px" }}

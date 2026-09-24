@@ -761,6 +761,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     }
 
     @Override
+    public boolean isNameLocalization(String localizationId) {
+        if (localizationId == null || localizationId.isBlank()) {
+            return false;
+        }
+        String hql = "select count(t) from Test t where t.localizedTestName.id = :id"
+                + " or t.localizedReportingName.id = :id";
+        try {
+            Long count = entityManager.unwrap(Session.class).createQuery(hql, Long.class)
+                    .setParameter("id", localizationId).uniqueResult();
+            return count != null && count > 0;
+        } catch (HibernateException e) {
+            handleException(e, "isNameLocalization");
+        }
+        return false;
+    }
+
+    @Override
     public List<Test> getActiveTestsByLoinc(String[] loincCodes) {
         String sql = "From Test t where t.loinc IN (:loinc) and t.isActive='Y'";
         try {
