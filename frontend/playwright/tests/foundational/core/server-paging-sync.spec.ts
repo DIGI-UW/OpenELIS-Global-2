@@ -67,6 +67,9 @@ test.describe("Server paging through Carbon", () => {
   test("a session-paged worklist asks the server for the page Carbon moves to", async ({
     page,
   }) => {
+    // Every lab unit is opened until one spans two server pages, or none does
+    // and the test skips; that walk takes longer than the default budget.
+    test.setTimeout(180_000);
     await page.goto("/WorkPlanByTestSection", {
       waitUntil: "domcontentloaded",
     });
@@ -95,7 +98,7 @@ test.describe("Server paging through Carbon", () => {
       );
       await unit.selectOption(unitId);
       await loaded;
-      await carbon.waitFor({ state: "visible", timeout: 5_000 }).catch(() => {
+      await carbon.waitFor({ state: "visible", timeout: 1_500 }).catch(() => {
         // a unit with nothing to work on renders no table and no pagination
       });
       if ((await carbon.count()) === 0) {
@@ -195,18 +198,22 @@ test.describe("Server paging through Carbon", () => {
   test("the clinical order dashboard pages the server's list from either control", async ({
     page,
   }) => {
+    // The page count comes from the server's own announcement, so the test
+    // never reads Carbon while the first page is still loading.
+    const firstLoad = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/order/dashboard?") &&
+        !response.url().includes("page="),
+    );
     await page.goto("/order/clinical", { waitUntil: "domcontentloaded" });
+    const firstPage = await (await firstLoad).json();
+    const totalPages = Number(firstPage.paging?.totalPages || 1);
+    test.skip(totalPages < 2, "needs more orders than one server page holds");
     const main = page.getByRole("main");
     const carbon = main.locator(".cds--pagination").first();
-    await expect(carbon).toBeVisible({ timeout: NAV_TIMEOUT });
-    await expect(carbon).toContainText(/items? on this page/, {
+    await expect(carbon).toContainText(`of ${totalPages} pages`, {
       timeout: NAV_TIMEOUT,
     });
-    const pagesText = await carbon
-      .locator(".cds--pagination__right")
-      .innerText();
-    const totalPages = Number((pagesText.match(/of (\d+) page/) || [])[1]);
-    test.skip(totalPages < 2, "needs more orders than one server page holds");
     await expect(carbon.locator("select").first()).toBeDisabled();
 
     const pageTwo = page.waitForResponse(
@@ -258,22 +265,26 @@ test.describe("Server paging through Carbon", () => {
       .filter({ has: page.locator('option[value="All"]') })
       .first();
     await expect(statusFilter).toBeVisible({ timeout: NAV_TIMEOUT });
+    // "All" means every stage only once the stage list has arrived.
+    await expect
+      .poll(() => statusFilter.locator("option").count(), {
+        timeout: NAV_TIMEOUT,
+      })
+      .toBeGreaterThan(5);
     const allLoaded = page.waitForResponse(
       (response) =>
-        response.url().includes("/rest/pathology/dashboard?") &&
+        response.url().includes("/rest/pathology/dashboard?statuses=") &&
+        response.url().includes("COMPLETED") &&
         !response.url().includes("page="),
     );
     await statusFilter.selectOption("All");
-    await allLoaded;
+    const allCases = await (await allLoaded).json();
+    const totalPages = Number(allCases.paging?.totalPages || 1);
+    test.skip(totalPages < 2, "needs more cases than one server page holds");
     const carbon = main.locator(".cds--pagination").first();
-    await expect(carbon).toContainText(/items? on this page/, {
+    await expect(carbon).toContainText(`of ${totalPages} pages`, {
       timeout: UI_TIMEOUT,
     });
-    const pagesText = await carbon
-      .locator(".cds--pagination__right")
-      .innerText();
-    const totalPages = Number((pagesText.match(/of (\d+) page/) || [])[1]);
-    test.skip(totalPages < 2, "needs more cases than one server page holds");
 
     const pageTwo = page.waitForResponse((response) =>
       response.url().includes("/rest/pathology/dashboard?page=2"),
