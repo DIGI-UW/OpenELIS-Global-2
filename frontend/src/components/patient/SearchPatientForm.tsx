@@ -551,6 +551,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
           </Form>
         )}
       </Formik>
+      {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
         rows={patientSearchResults}
         headers={patientSearchHeaderData}
@@ -558,7 +559,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
           <TableContainer title="Patient Results" data-cy="patientResultsTable">
-            {arrows.show && <ServerPageArrows {...arrows} />}
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>

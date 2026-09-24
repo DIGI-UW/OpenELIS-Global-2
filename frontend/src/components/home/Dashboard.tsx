@@ -579,6 +579,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
+                    {arrows.show && <ServerPageArrows {...arrows} />}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
@@ -635,7 +636,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         </Column>
                       </Grid>
                     )}
-                    {arrows.show && <ServerPageArrows {...arrows} />}
                     <DataTable
                       rows={data.filter((item) =>
                         tilesWithTabs.includes(selectedTile.type) &&
