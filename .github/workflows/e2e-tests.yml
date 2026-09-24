@@ -48,6 +48,7 @@ jobs:
 
       - name: Download triggering pull request
         id: download_scope
+        if: github.event.workflow_run.event == 'pull_request'
         uses: actions/download-artifact@v6
         with:
           name: e2e-scope-context
@@ -58,6 +59,7 @@ jobs:
 
       - name: Decide E2E scope
         id: scope
+        continue-on-error: true
         uses: actions/github-script@v8
         env:
           RUN_EVENT: ${{ github.event.workflow_run.event }}

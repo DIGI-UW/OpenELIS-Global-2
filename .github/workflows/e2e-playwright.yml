@@ -49,6 +49,7 @@ jobs:
       - name: Decide E2E scope
         id: scope
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           script: |
