@@ -145,4 +145,50 @@ test.describe("Server paging through Carbon", () => {
     );
     await expect(main.locator("#loadpreviousresults")).toBeDisabled();
   });
+
+  test("the merge screen's two panels are the shared patient search and hide the patient chosen opposite", async ({
+    page,
+  }) => {
+    await page.goto("/PatientMerge", { waitUntil: "domcontentloaded" });
+    const firstLastName = page.locator("#patient1-lastName");
+    await expect(firstLastName).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(page.locator("#patient2-lastName")).toBeVisible();
+    await expect(page.locator("#lastName")).toHaveCount(0);
+
+    await firstLastName.fill("a");
+    const searched = page.waitForResponse((response) =>
+      response.url().includes("/rest/patient-search-results"),
+    );
+    await page.locator("#patient1-local_search").click();
+    await searched;
+    const panels = page.locator(".patientSelectionSection");
+    const firstRows = panels.nth(0).locator("tbody tr");
+    const found = await firstRows.count();
+    test.skip(found === 0, "needs at least one local patient to choose");
+    await expect(panels.nth(0).locator(".cds--pagination")).toBeVisible();
+
+    const chosenRow = firstRows.first();
+    const chosen = (await chosenRow.getAttribute("data-cy")) || "";
+    const details = page.waitForResponse((response) =>
+      response.url().includes("/rest/patient/merge/details/"),
+    );
+    await chosenRow.locator(".cds--radio-button__label").first().click();
+    await details;
+    await expect(
+      panels
+        .nth(0)
+        .getByRole("button", { name: /Search for different patient/i }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.locator("#patient1-lastName")).toHaveCount(0);
+
+    await page.locator("#patient2-lastName").fill("a");
+    const searchedAgain = page.waitForResponse((response) =>
+      response.url().includes("/rest/patient-search-results"),
+    );
+    await page.locator("#patient2-local_search").click();
+    await searchedAgain;
+    const secondRows = panels.nth(1).locator("tbody tr");
+    await expect(secondRows.first()).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(panels.nth(1).locator(`[data-cy="${chosen}"]`)).toHaveCount(0);
+  });
 });
