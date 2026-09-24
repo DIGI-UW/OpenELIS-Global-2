@@ -47,18 +47,21 @@ describe("Admin", () => {
         screen.getByText(messages["unifiedSystemUser.browser.title"]),
       ).toBeInTheDocument();
       expect(
+        screen.getByText(messages["role.management.title"]),
+      ).toBeInTheDocument();
+      expect(
         screen.getByText(messages["organization.main.title"]),
       ).toBeInTheDocument();
       expect(
         screen.getByText(messages["master.lists.page.test.management"]),
       ).toBeInTheDocument();
-      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(13);
+      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(14);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-icon"),
-      ).toHaveLength(13);
+      ).toHaveLength(14);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-arrow"),
-      ).toHaveLength(13);
+      ).toHaveLength(14);
       expect(document.querySelector(".cds--side-nav")).not.toBeInTheDocument();
     },
   );

@@ -462,6 +462,18 @@ export default function App() {
                   render={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
+                {/*
+                  Role Management also lives in the admin side nav at
+                  /MasterListsPage/roleManagement, next to User Management,
+                  which is where people look for it. That path sits under the
+                  Admin shell and so requires GLOBAL_ADMIN.
+
+                  This top-level route is kept deliberately: it is gated on the
+                  role:manage PRIVILEGE, so a User Account Administrator — who
+                  holds role:manage but not GLOBAL_ADMIN — can still reach the
+                  screen even though the admin nav is closed to them. Removing
+                  it would silently revoke the capability we granted them.
+                */}
                 <SecureRoute
                   path="/RoleManagement"
                   exact

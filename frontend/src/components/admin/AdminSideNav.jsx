@@ -18,6 +18,7 @@ import {
   Report,
   Bullhorn,
   User,
+  UserRole,
   BatchJob,
   ResultNew,
   Popup,
@@ -716,6 +717,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/userManagement`)}
       >
         <FormattedMessage id="unifiedSystemUser.browser.title" />
+      </SideNavLink>
+      <SideNavLink
+        data-cy="roleMgmnt"
+        renderIcon={UserRole}
+        {...navProps(`${path}/roleManagement`)}
+      >
+        <FormattedMessage id="role.management.title" />
       </SideNavLink>
       <SideNavLink
         data-cy="batchTestReassignment"

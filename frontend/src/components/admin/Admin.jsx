@@ -34,6 +34,7 @@ import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
 import UserManagement from "./userManagement/UserManagement";
+import RoleManagement from "./roleManagement/RoleManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
@@ -143,6 +144,7 @@ function Admin() {
         component={ResultReportingConfiguration}
       />
       <Route path={`${path}/userManagement`} component={UserManagement} />
+      <Route path={`${path}/roleManagement`} component={RoleManagement} />
       <Route
         path={`${path}/batchTestReassignment`}
         component={BatchTestReassignmentAndCancelation}

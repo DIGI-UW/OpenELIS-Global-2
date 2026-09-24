@@ -20,6 +20,16 @@ import {
   postToOpenElisServer,
   putToOpenElisServer,
 } from "../../utils/Utils";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "role.management.title",
+    link: "/MasterListsPage/roleManagement",
+  },
+];
 
 /**
  * Role administration: create assignable roles and edit the privileges they
@@ -196,146 +206,155 @@ function RoleManagement() {
   const shownEffectiveNames = selectedRoleId ? effectiveNames : EMPTY_SET;
 
   return (
-    <Stack gap={5}>
-      <Section>
-        <Heading>
-          <FormattedMessage id="role.management.title" />
-        </Heading>
-      </Section>
+    <div className="adminPageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <Stack gap={5}>
+        <Section>
+          <Heading>
+            <FormattedMessage id="role.management.title" />
+          </Heading>
+        </Section>
 
-      {notification && (
-        <InlineNotification
-          kind={notification.kind}
-          title={intl.formatMessage({ id: notification.key })}
-          onCloseButtonClick={() => setNotification(null)}
-        />
-      )}
-
-      <Grid>
-        <Column lg={8} md={4} sm={4}>
-          <Select
-            id="role-select"
-            labelText={intl.formatMessage({ id: "role.management.select" })}
-            value={selectedRoleId}
-            onChange={(e) => setSelectedRoleId(e.target.value)}
-          >
-            <SelectItem value="" text="" />
-            {roles.map((role) => (
-              <SelectItem
-                key={role.id}
-                value={String(role.id)}
-                text={role.name}
-              />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={8} md={4} sm={4}>
-          <Button kind="tertiary" onClick={() => setCreateOpen(true)}>
-            <FormattedMessage id="role.management.create" />
-          </Button>
-        </Column>
-      </Grid>
-
-      {loading && <Loading description="" withOverlay={false} />}
-
-      {selectedRole && !loading && (
-        <Stack gap={4}>
-          <p>
-            <FormattedMessage id="role.management.directHint" />
-          </p>
-          {Object.keys(byCategory)
-            .sort()
-            .map((category) => (
-              <Section key={category}>
-                <Heading>{category}</Heading>
-                {byCategory[category].map((privilege) => {
-                  const checked = shownDirectIds.has(privilege.id);
-                  const inheritedOnly =
-                    !checked && shownEffectiveNames.has(privilege.name);
-                  return (
-                    <Checkbox
-                      key={privilege.id}
-                      id={`priv-${privilege.id}`}
-                      labelText={
-                        inheritedOnly
-                          ? `${privilege.name} (${intl.formatMessage({
-                              id: "role.management.inherited",
-                            })})`
-                          : privilege.name
-                      }
-                      checked={checked}
-                      onChange={() => toggle(privilege.id)}
-                    />
-                  );
-                })}
-              </Section>
-            ))}
-          <Button onClick={savePrivileges} disabled={saving}>
-            <FormattedMessage id="role.management.save" />
-          </Button>
-        </Stack>
-      )}
-
-      <Modal
-        open={createOpen}
-        modalHeading={intl.formatMessage({ id: "role.management.create" })}
-        primaryButtonText={intl.formatMessage({ id: "role.management.create" })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestClose={() => setCreateOpen(false)}
-        onRequestSubmit={createRole}
-        primaryButtonDisabled={saving || !draft.name.trim()}
-      >
-        <Stack gap={4}>
-          <TextInput
-            id="role-name"
-            labelText={intl.formatMessage({ id: "role.management.name" })}
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+        {notification && (
+          <InlineNotification
+            kind={notification.kind}
+            title={intl.formatMessage({ id: notification.key })}
+            onCloseButtonClick={() => setNotification(null)}
           />
-          <TextInput
-            id="role-description"
-            labelText={intl.formatMessage({
-              id: "role.management.description",
-            })}
-            value={draft.description}
-            onChange={(e) =>
-              setDraft({ ...draft, description: e.target.value })
-            }
-          />
-          <Select
-            id="role-container"
-            labelText={intl.formatMessage({ id: "role.management.container" })}
-            helperText={intl.formatMessage({
-              id: "role.management.containerHint",
-            })}
-            value={draft.groupingParentName}
-            onChange={(e) =>
-              setDraft({ ...draft, groupingParentName: e.target.value })
-            }
-          >
-            {CONTAINERS.map((c) => (
-              <SelectItem key={c} value={c} text={c} />
-            ))}
-          </Select>
-          <Select
-            id="role-parent"
-            labelText={intl.formatMessage({ id: "role.management.inherits" })}
-            helperText={intl.formatMessage({
-              id: "role.management.inheritsHint",
-            })}
-            value={draft.parentRoleName}
-            onChange={(e) =>
-              setDraft({ ...draft, parentRoleName: e.target.value })
-            }
-          >
-            <SelectItem value="" text="" />
-            {roles.map((role) => (
-              <SelectItem key={role.id} value={role.name} text={role.name} />
-            ))}
-          </Select>
-        </Stack>
-      </Modal>
-    </Stack>
+        )}
+
+        <Grid>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="role-select"
+              labelText={intl.formatMessage({ id: "role.management.select" })}
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(e.target.value)}
+            >
+              <SelectItem value="" text="" />
+              {roles.map((role) => (
+                <SelectItem
+                  key={role.id}
+                  value={String(role.id)}
+                  text={role.name}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <Button kind="tertiary" onClick={() => setCreateOpen(true)}>
+              <FormattedMessage id="role.management.create" />
+            </Button>
+          </Column>
+        </Grid>
+
+        {loading && <Loading description="" withOverlay={false} />}
+
+        {selectedRole && !loading && (
+          <Stack gap={4}>
+            <p>
+              <FormattedMessage id="role.management.directHint" />
+            </p>
+            {Object.keys(byCategory)
+              .sort()
+              .map((category) => (
+                <Section key={category}>
+                  <Heading>{category}</Heading>
+                  {byCategory[category].map((privilege) => {
+                    const checked = shownDirectIds.has(privilege.id);
+                    const inheritedOnly =
+                      !checked && shownEffectiveNames.has(privilege.name);
+                    return (
+                      <Checkbox
+                        key={privilege.id}
+                        id={`priv-${privilege.id}`}
+                        labelText={
+                          inheritedOnly
+                            ? `${privilege.name} (${intl.formatMessage({
+                                id: "role.management.inherited",
+                              })})`
+                            : privilege.name
+                        }
+                        checked={checked}
+                        onChange={() => toggle(privilege.id)}
+                      />
+                    );
+                  })}
+                </Section>
+              ))}
+            <Button onClick={savePrivileges} disabled={saving}>
+              <FormattedMessage id="role.management.save" />
+            </Button>
+          </Stack>
+        )}
+
+        <Modal
+          open={createOpen}
+          modalHeading={intl.formatMessage({ id: "role.management.create" })}
+          primaryButtonText={intl.formatMessage({
+            id: "role.management.create",
+          })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
+          onRequestClose={() => setCreateOpen(false)}
+          onRequestSubmit={createRole}
+          primaryButtonDisabled={saving || !draft.name.trim()}
+        >
+          <Stack gap={4}>
+            <TextInput
+              id="role-name"
+              labelText={intl.formatMessage({ id: "role.management.name" })}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            />
+            <TextInput
+              id="role-description"
+              labelText={intl.formatMessage({
+                id: "role.management.description",
+              })}
+              value={draft.description}
+              onChange={(e) =>
+                setDraft({ ...draft, description: e.target.value })
+              }
+            />
+            <Select
+              id="role-container"
+              labelText={intl.formatMessage({
+                id: "role.management.container",
+              })}
+              helperText={intl.formatMessage({
+                id: "role.management.containerHint",
+              })}
+              value={draft.groupingParentName}
+              onChange={(e) =>
+                setDraft({ ...draft, groupingParentName: e.target.value })
+              }
+            >
+              {CONTAINERS.map((c) => (
+                <SelectItem key={c} value={c} text={c} />
+              ))}
+            </Select>
+            <Select
+              id="role-parent"
+              labelText={intl.formatMessage({ id: "role.management.inherits" })}
+              helperText={intl.formatMessage({
+                id: "role.management.inheritsHint",
+              })}
+              value={draft.parentRoleName}
+              onChange={(e) =>
+                setDraft({ ...draft, parentRoleName: e.target.value })
+              }
+            >
+              <SelectItem value="" text="" />
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={role.name} text={role.name} />
+              ))}
+            </Select>
+          </Stack>
+        </Modal>
+      </Stack>
+    </div>
   );
 }
 
