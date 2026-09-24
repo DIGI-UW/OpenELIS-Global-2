@@ -190,11 +190,23 @@ public class SampleTypeManagementRestController extends BaseRestController {
         private boolean success;
         private String message;
         private T data;
+        private String field;
 
         public ApiResponse(boolean success, String message, T data) {
             this.success = success;
             this.message = message;
             this.data = data;
+        }
+
+        /** A refusal that names the form field it is about (OGC-1234). */
+        public static <T> ApiResponse<T> refusedOn(String field, String message) {
+            ApiResponse<T> response = new ApiResponse<>(false, message, null);
+            response.field = field;
+            return response;
+        }
+
+        public String getField() {
+            return field;
         }
 
         // Getters
@@ -298,6 +310,12 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
+            ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refusal = refuseUpdate(existingTypeOfSample,
+                    sampleTypeDTO);
+            if (refusal != null) {
+                return refusal;
+            }
+
             String userId = getSysUserId(request);
 
             if (sampleTypeDTO.getDescription() != null && !sampleTypeDTO.getDescription().trim().isEmpty()) {
@@ -314,18 +332,13 @@ public class SampleTypeManagementRestController extends BaseRestController {
             }
 
             if (sampleTypeDTO.getAbbreviation() != null) {
-                String abbreviation = sampleTypeDTO.getAbbreviation().trim();
-                if (abbreviation.length() <= 10) {
-                    existingTypeOfSample.setLocalAbbreviation(abbreviation);
-                }
+                existingTypeOfSample.setLocalAbbreviation(sampleTypeDTO.getAbbreviation().trim());
             }
 
             // WHONET code — empty string clears it; the column caps at 5 chars.
             if (sampleTypeDTO.getWhonetCode() != null) {
                 String whonetCode = sampleTypeDTO.getWhonetCode().trim();
-                if (whonetCode.length() <= 5) {
-                    existingTypeOfSample.setWhonetCode(whonetCode.isEmpty() ? null : whonetCode);
-                }
+                existingTypeOfSample.setWhonetCode(whonetCode.isEmpty() ? null : whonetCode);
             }
 
             // Disposal instructions (OGC-296 v2.1) — free-text reference;
@@ -383,6 +396,49 @@ public class SampleTypeManagementRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error updating sample type: " + e.getMessage(), null));
         }
+    }
+
+    /**
+     * OGC-1234: every rule a Basic Info save can break, checked on a detached copy
+     * of the requested values before the loaded entity is touched: a refused save
+     * must write nothing, and a read-only transaction here can still flush a dirty
+     * entity. An abbreviation or WHONET code over its column width used to be
+     * dropped silently while the save reported success; a name or abbreviation
+     * another sample type of the domain already uses used to fail with a generic
+     * conflict message.
+     */
+    private ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refuseUpdate(TypeOfSample existing,
+            SampleTypeManagementDTO requested) {
+        String abbreviation = requested.getAbbreviation() == null ? existing.getLocalAbbreviation()
+                : requested.getAbbreviation().trim();
+        if (abbreviation != null && abbreviation.length() > 10) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.refusedOn("abbreviation", "The abbreviation has at most 10 characters."));
+        }
+        if (requested.getWhonetCode() != null && requested.getWhonetCode().trim().length() > 5) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.refusedOn("whonetCode", "The WHONET code has at most 5 characters."));
+        }
+        TypeOfSample probe = new TypeOfSample();
+        probe.setId(existing.getId());
+        probe.setDescription(requested.getDescription() == null || requested.getDescription().trim().isEmpty()
+                ? existing.getDescription()
+                : requested.getDescription().trim());
+        probe.setDomain(requested.getDomain() != null
+                && !requested.getDomain().equals(mapBackendDomainToFrontend(existing.getDomain()))
+                        ? Domain.normalize(requested.getDomain())
+                        : existing.getDomain());
+        probe.setLocalAbbreviation(abbreviation);
+        String conflict = typeOfSampleService.conflictingField(probe);
+        if ("name".equals(conflict)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.refusedOn("description",
+                    "Another sample type in this domain already has this description."));
+        }
+        if ("abbreviation".equals(conflict)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.refusedOn("abbreviation",
+                    "Another sample type in this domain already uses this abbreviation."));
+        }
+        return null;
     }
 
     /** One terminology mapping for a sample type. */

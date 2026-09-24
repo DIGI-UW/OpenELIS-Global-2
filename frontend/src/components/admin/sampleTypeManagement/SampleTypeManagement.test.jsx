@@ -26,6 +26,14 @@ vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: api.get,
   postToOpenElisServerJsonResponse: api.post,
   putToOpenElisServer: api.put,
+  putToOpenElisServerFullResponse: (url, body, callback) =>
+    api.put(url, body, (status, responseBody = {}) =>
+      callback({
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => responseBody,
+      }),
+    ),
   deleteFromOpenElisServer: api.delete,
   postToOpenElisServer: api.postRaw,
 }));
@@ -185,7 +193,7 @@ describe("SampleTypeManagement", () => {
     );
   });
 
-  // OGC-1234 — a create refused by bean validation (400) must not read as a
+  // OGC-1234: a create refused by bean validation (400) must not read as a
   // successful save: the editor stays on the add form and names the field.
   test("a refused create (400) keeps the add form open and marks the name", async () => {
     api.post.mockImplementation((_url, _body, callback) =>
@@ -315,5 +323,58 @@ describe("SampleTypeManagement", () => {
         "/MasterListsPage/SampleTypeEditor/sample-type-9/",
       ),
     );
+  });
+
+  // OGC-1234: an update the server refuses names the field and says why,
+  // instead of "Update failed (HTTP 409)".
+  test("a description another sample type already has is refused on that field", async () => {
+    api.put.mockImplementation((_url, _body, callback) =>
+      callback(409, {
+        success: false,
+        field: "description",
+        message:
+          "Another sample type in this domain already has this description.",
+      }),
+    );
+    renderPage("/MasterListsPage/SampleTypeEditor/sample-type-2/basic-info");
+    const description = await screen.findByDisplayValue(
+      "Blood culture specimen",
+    );
+    await userEvent.clear(description);
+    await userEvent.type(description, "Serum specimen");
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    const refusal = messages["error.sampleType.update.description.409"];
+    expect(
+      await screen.findByText(`Failed to update sample type: ${refusal}`),
+    ).toBeInTheDocument();
+    expect(document.getElementById("st-description")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.queryByText(/Update failed \(HTTP/)).toBeNull();
+  });
+
+  test("a create whose name is taken (409) marks the name, not a server error", async () => {
+    api.post.mockImplementation((_url, _body, callback) =>
+      callback({
+        error: "duplicate",
+        field: "sampleTypeEnglishName",
+        status: 409,
+      }),
+    );
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+    const name = await screen.findByRole("textbox", { name: /Name/ });
+    await userEvent.type(name, "Blood culture new");
+    await userEvent.type(document.getElementById("st-description"), "probe");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Sample Type" }),
+    );
+
+    const refusal = messages["error.sampleType.create.duplicateName"];
+    expect(
+      await screen.findByText(`Failed to create sample type: ${refusal}`),
+    ).toBeInTheDocument();
+    expect(name).toHaveAttribute("aria-invalid", "true");
   });
 });

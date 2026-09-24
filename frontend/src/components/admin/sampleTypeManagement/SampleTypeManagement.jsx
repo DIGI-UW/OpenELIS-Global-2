@@ -70,7 +70,7 @@ import useDomains from "../../common/useDomains";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 
 // Breadcrumbs
@@ -512,7 +512,15 @@ function SampleTypeManagement({ intl }) {
             "/rest/SampleTypeCreate",
             JSON.stringify(sampleTypeData),
             (result) => {
-              if (result && result.status === 400) {
+              if (result && result.status === 409) {
+                const duplicate = new Error(
+                  intl.formatMessage({
+                    id: "error.sampleType.create.duplicateName",
+                  }),
+                );
+                duplicate.fieldErrors = { name: duplicate.message };
+                reject(duplicate);
+              } else if (result && result.status === 400) {
                 const nameRefused = (result.fieldErrors || []).some(
                   (fe) =>
                     fe.field === "sampleTypeEnglishName" ||
@@ -574,15 +582,33 @@ function SampleTypeManagement({ intl }) {
           whonetCode: editingType.whonetCode?.trim() || "",
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/sample-types/${editingType.id}`,
             JSON.stringify(updateData),
-            (status) => {
-              if (status === 200) {
-                resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+            async (response) => {
+              if (response && response.ok) {
+                resolve(response.status);
+                return;
               }
+              let body = null;
+              try {
+                body = response ? await response.json() : null;
+              } catch (e) {
+                body = null;
+              }
+              const messageId = body?.field
+                ? `error.sampleType.update.${body.field}.${response.status}`
+                : null;
+              const refusal = new Error(
+                messageId && intl.messages[messageId]
+                  ? intl.formatMessage({ id: messageId })
+                  : body?.message ||
+                      `Update failed (HTTP ${response ? response.status : 0})`,
+              );
+              refusal.fieldErrors = body?.field
+                ? { [body.field]: refusal.message }
+                : {};
+              reject(refusal);
             },
           );
         });

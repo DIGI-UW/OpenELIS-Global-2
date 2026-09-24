@@ -10,6 +10,7 @@ import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.domain.Domain;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -109,6 +110,9 @@ public class SampleTypeCreateRestController extends BaseController {
 
         TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
                 Boolean.TRUE.equals(form.getActive()));
+        if (typeOfSampleService.nameInUse(identifyingName)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
+        }
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -124,9 +128,15 @@ public class SampleTypeCreateRestController extends BaseController {
         try {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
+        } catch (LIMSDuplicateRecordException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "postSampleTypeCreate", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
-            throw e;
+            Map<String, Object> body = new HashMap<>();
+            body.put("error", "insertFailed");
+            body.put("message", "The sample type could not be created.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
         }
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
@@ -134,6 +144,14 @@ public class SampleTypeCreateRestController extends BaseController {
 
         // return findForward(FWD_SUCCESS_INSERT, form);
         return ResponseEntity.ok(form);
+    }
+
+    private static Map<String, Object> duplicateNameBody(String name) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "duplicate");
+        body.put("field", "sampleTypeEnglishName");
+        body.put("message", "A sample type named '" + name + "' already exists.");
+        return body;
     }
 
     private Map<String, Object> validationErrorBody(BindingResult result) {
@@ -175,8 +193,8 @@ public class SampleTypeCreateRestController extends BaseController {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
         typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
-        typeOfSample.setLocalAbbreviation(
-                identifyingName.length() > 10 ? identifyingName.substring(0, 10) : identifyingName);
+        typeOfSample
+                .setLocalAbbreviation(typeOfSampleService.uniqueLocalAbbreviation(identifyingName, backendDomainCode));
         if (whonetCode != null) {
             String trimmed = whonetCode.trim();
             if (!trimmed.isEmpty() && trimmed.length() <= 5) {
