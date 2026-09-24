@@ -3,10 +3,12 @@ package org.openelisglobal.testconfiguration.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.domain.Domain;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -20,6 +22,8 @@ import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -85,13 +89,12 @@ public class SampleTypeCreateRestController extends BaseController {
     }
 
     @PostMapping(value = "/SampleTypeCreate")
-    public SampleTypeCreateForm postSampleTypeCreate(HttpServletRequest request,
+    public ResponseEntity<?> postSampleTypeCreate(HttpServletRequest request,
             @RequestBody @Valid SampleTypeCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
@@ -116,16 +119,47 @@ public class SampleTypeCreateRestController extends BaseController {
         try {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
+        } catch (LIMSDuplicateRecordException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "postSampleTypeCreate", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(buildDuplicateBody(typeOfSample, identifyingName, backendDomainCode));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
-            throw e;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "insertFailed", "message", "The sample type could not be created."));
         }
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
 
-        // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
+    }
+
+    /**
+     * The DAO's uniqueness check triggers if EITHER (description, domain) OR
+     * (localAbbrev, domain) already exists. When the auto-derived abbreviation
+     * (first 10 chars of the name) is the culprit, the admin's only path forward is
+     * a name with a different beginning, so name that specifically instead of a
+     * generic "duplicate."
+     */
+    private Map<String, Object> buildDuplicateBody(TypeOfSample typeOfSample, String identifyingName,
+            String backendDomainCode) {
+        TypeOfSample descriptionProbe = new TypeOfSample();
+        descriptionProbe.setDescription(identifyingName);
+        descriptionProbe.setDomain(backendDomainCode);
+        TypeOfSample nameClash = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(descriptionProbe, true);
+        if (nameClash != null) {
+            return Map.of("error", "duplicate", "field", "name", "message",
+                    "A sample type named '" + identifyingName + "' already exists in this domain.");
+        }
+        String abbrev = typeOfSample.getLocalAbbreviation();
+        TypeOfSample abbrevClash = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(abbrev, backendDomainCode);
+        if (abbrevClash != null) {
+            return Map.of("error", "duplicate", "field", "name", "message",
+                    "This name shares its first 10 characters ('" + abbrev
+                            + "') with an existing sample type in this domain. Pick a name with a different start.");
+        }
+        return Map.of("error", "duplicate", "field", "name", "message", "A sample type with this name already exists.");
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {
