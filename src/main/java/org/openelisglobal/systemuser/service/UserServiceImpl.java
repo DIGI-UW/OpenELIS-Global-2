@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -396,17 +397,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getAllDisplayUserTestsByLabUnit(String SystemUserId, String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
-        }
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
         List<IdValuePair> allDisplayUserTests = DisplayListService.getInstance()
                 .getListWithLeadingBlank(DisplayListService.ListType.ALL_TESTS);
         return allDisplayUserTests.stream().filter(test -> allTestsIds.contains(test.getId()))
@@ -416,33 +407,37 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<AnalysisItem> filterAnalysisResultsByLabUnitRoles(String SystemUserId, List<AnalysisItem> results,
             String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<String> testUnitIds = new ArrayList<>();
-        if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
-        }
-
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
         return results.stream().filter(result -> allTestsIds.contains(result.getTestId())).collect(Collectors.toList());
     }
 
     @Override
     public List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
+        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
+        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Set<String> getTestIdsInUserLabUnits(String systemUserId, String roleName) {
+        String roleId = roleService.getRoleByName(roleName).getId();
+        List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
             testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
+        Set<String> testIds = new LinkedHashSet<>();
+        if (!testUnitIds.isEmpty()) {
+            testService.getTestsByTestSectionIds(testUnitIds).forEach(test -> testIds.add(test.getId()));
+        }
+        return testIds;
+    }
 
-        List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
-        List<String> allTestsIds = new ArrayList<>();
-        allTests.forEach(test -> allTestsIds.add(test.getId()));
-        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
-                .collect(Collectors.toList());
+    @Override
+    public boolean hasAllLabUnits(String systemUserId, String roleName) {
+        String roleId = roleService.getRoleByName(roleName).getId();
+        List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
+        return testSections != null && !testSections.isEmpty() && testSections.size() == activeTestSections().size();
     }
 
     @Override
