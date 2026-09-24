@@ -343,6 +343,11 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(notListedUrl.searchParams.get("returnTo")).toBe(
       "/analyzers?setup=instrument",
     );
+    expect(
+      screen.getByText(
+        "Choose the listed type for your instrument, even if it will only send results. Whether it sends results only or also receives orders is set later, in Connect.",
+      ),
+    ).toBeVisible();
 
     expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
     expect(

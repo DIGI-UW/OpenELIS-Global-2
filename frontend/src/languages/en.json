@@ -630,6 +630,7 @@
   "analyzer.setup.instrument.summary": "Saved instrument details",
   "analyzer.setup.step.edit": "Edit {step}",
   "analyzer.setup.instrument.type": "Analyzer type",
+  "analyzer.setup.instrument.type.helper": "Choose the listed type for your instrument, even if it will only send results. Whether it sends results only or also receives orders is set later, in Connect.",
   "analyzer.setup.instrument.type.placeholder": "Search analyzer types",
   "analyzer.setup.instrument.type.required": "Select an analyzer type",
   "analyzer.setup.instrument.typeOption": "{name} · {manufacturer} · {protocol} · revision {revision}",
