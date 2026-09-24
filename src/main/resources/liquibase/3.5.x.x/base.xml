@@ -584,4 +584,7 @@
   <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
   <include relativeToChangelogFile="true" file="108-program-domain-shipped-classification.xml"/>
 
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="109-analyzer-delivery-action.xml"/>
+
 </databaseChangeLog>

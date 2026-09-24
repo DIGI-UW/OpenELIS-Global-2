@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="109-analyzer-delivery-action" author="Satyam087">
+        <comment>
+            Durable attribution for manual Retry and Dismiss on undelivered analyzer
+            results. The Bridge records only OpenELIS's service account, so the acting
+            OpenELIS user is retained here. analyzer_id is nullable because an outbox
+            entry from an unregistered sender matches no OpenELIS analyzer.
+        </comment>
+        <createSequence schemaName="clinlims" sequenceName="analyzer_delivery_action_seq"
+            startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="analyzer_delivery_action">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_delivery_action"/>
+            </column>
+            <column name="outbox_entry_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="varchar(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="numeric(10,0)"/>
+            <column name="actor" type="varchar(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acted_at" type="timestamp" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="timestamp"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_analyzer_delivery_action_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_delivery_action"
+            baseColumnNames="analyzer_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="analyzer_delivery_action"
+            indexName="idx_analyzer_delivery_action_entry">
+            <column name="outbox_entry_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.analyzer_delivery_action
+            ADD CONSTRAINT chk_analyzer_delivery_action_action
+            CHECK (action IN ('RETRY', 'DISMISS'));
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_delivery_action"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_delivery_action_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="109-analyzer-delivery-action-audit" author="Satyam087">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_delivery_action'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Register the table for audit history, otherwise saveNewHistory resolves no
+            reference table and records nothing.
+        </comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_delivery_action"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'analyzer_delivery_action'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
