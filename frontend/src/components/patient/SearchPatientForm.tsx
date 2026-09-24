@@ -94,6 +94,9 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   );
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
+  // Bumped by Clear: remounting the form is what empties the uncontrolled
+  // inputs and the gender radios along with Formik's values.
+  const [formInstance, setFormInstance] = useState(0);
   // When a lab-number deep link drives the search, auto-select the matched
   // patient once results arrive (so the user lands on the patient page, not the
   // search results). Manual searches leave this false and just list results.
@@ -223,6 +226,19 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setIsToggled((prev) => !prev);
   };
 
+  /** Back to a blank search: every criterion, the date, the CR toggle and the results. */
+  const clearSearch = () => {
+    setSearchFormValues({ ...SearchPatientFormValues });
+    setFormInstance((instance) => instance + 1);
+    setDob("");
+    setIsToggled(false);
+    setPrevfirstName("");
+    setPrevlastName("");
+    setPatientSearchResults([]);
+    setPaging(undefined);
+    setUrl("");
+  };
+
   const fetchPatientResults = (res: PatientSearchResponse) => {
     if (!res || !res.patientSearchResults) {
       setPatientSearchResults([]);
@@ -342,6 +358,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {loading && <Loading />}
       <Formik
+        key={formInstance}
         initialValues={searchFormValues}
         enableReinitialize={true}
         // validationSchema={}
@@ -538,6 +555,17 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                     id="label.button.externalsearch"
                     defaultMessage="External Search"
                   />
+                </Button>
+              </Column>
+              <Column lg={4} md={4} sm={2}>
+                <Button
+                  id={fieldId("clear_search")}
+                  type="button"
+                  kind="ghost"
+                  data-cy="clearPatientSearchButton"
+                  onClick={clearSearch}
+                >
+                  <FormattedMessage id="label.button.clear" />
                 </Button>
               </Column>
               {configurationProperties.ENABLE_CLIENT_REGISTRY === "true" && (
