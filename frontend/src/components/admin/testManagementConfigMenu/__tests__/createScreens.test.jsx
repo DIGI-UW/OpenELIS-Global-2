@@ -193,3 +193,66 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, read, fill }) => {
     expect(document.getElementById("eng")).toHaveValue("Serum");
   });
 });
+
+/**
+ * OGC-1234 — a refusal never arrives as a falsy value: the post helper hands the
+ * callback an object carrying the HTTP status. A 400 (markup in the name,
+ * refused by bean validation) used to be read as a successful create.
+ */
+describe("SampleTypeCreate refusal", () => {
+  it("reports a refused create (400) as an error and keeps the entry", async () => {
+    const addNotification = vi.fn();
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({
+        existingSampleTypeList: [{ value: "Blood" }],
+        inactiveSampleTypeList: [],
+      }),
+    );
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({
+          error: "validation",
+          fieldErrors: [{ field: "sampleTypeEnglishName" }],
+          status: 400,
+        }),
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification,
+              }}
+            >
+              <SampleTypeCreate />
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Blood")).toBeInTheDocument();
+
+    await type("eng", "QA<b>RV</b>");
+    await type("fr", "QA<b>RV</b>");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.sampleType.create.invalidName"],
+        }),
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+    expect(document.getElementById("eng")).toHaveValue("QA<b>RV</b>");
+  });
+});

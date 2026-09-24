@@ -70,28 +70,35 @@ function SampleTypeCreate() {
   };
 
   const handlePostSampleTypeCreateListCallBack = (res, actions) => {
-    if (res) {
-      if (res) {
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        actions.resetForm();
-        setBothFilled(false);
-        invalidateServerData();
-        setNotificationVisible(true);
-      }
+    const failed =
+      !res ||
+      (typeof res.status === "number" &&
+        (res.status === 0 || res.status >= 400));
+    if (!failed) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "notification.user.post.delete.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      actions.resetForm();
+      setBothFilled(false);
+      invalidateServerData();
+      setNotificationVisible(true);
     } else {
       actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id:
+            res && res.status === 400
+              ? "error.sampleType.create.invalidName"
+              : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
     }

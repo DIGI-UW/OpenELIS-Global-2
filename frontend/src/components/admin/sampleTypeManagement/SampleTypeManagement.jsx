@@ -492,7 +492,12 @@ function SampleTypeManagement({ intl }) {
       if (view === "add") {
         // Snapshot existing ids so we can identify the newly-created row after
         // refresh regardless of how its name is stored/localized.
-        const existingIds = new Set(sampleTypes.map((t) => String(t.id)));
+        const before = await refreshSampleTypes();
+        const existingIds = new Set(
+          (Array.isArray(before) ? before : sampleTypes).map((t) =>
+            String(t.id),
+          ),
+        );
         // The legacy create flow also wires the workplan/results/validation
         // role modules for the new type, so creation goes through it.
         const sampleTypeData = {
@@ -507,7 +512,24 @@ function SampleTypeManagement({ intl }) {
             "/rest/SampleTypeCreate",
             JSON.stringify(sampleTypeData),
             (result) => {
-              if (result && result.error) {
+              if (result && result.status === 400) {
+                const nameRefused = (result.fieldErrors || []).some(
+                  (fe) =>
+                    fe.field === "sampleTypeEnglishName" ||
+                    fe.field === "sampleTypeFrenchName",
+                );
+                const refusal = new Error(
+                  intl.formatMessage({
+                    id: nameRefused
+                      ? "error.sampleType.create.invalidName"
+                      : "error.sampleType.create.invalid",
+                  }),
+                );
+                refusal.fieldErrors = nameRefused
+                  ? { name: refusal.message }
+                  : {};
+                reject(refusal);
+              } else if (result && result.error) {
                 reject(new Error(result.message || result.error));
               } else if (result && result.status && result.status !== 200) {
                 reject(new Error(result.message || "Save failed"));
@@ -597,6 +619,7 @@ function SampleTypeManagement({ intl }) {
     } catch (error) {
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
+        ...(error.fieldErrors || {}),
         submit: `Failed to ${operation} sample type: ${error.message}`,
       });
     } finally {
@@ -610,6 +633,7 @@ function SampleTypeManagement({ intl }) {
     listUrl,
     refreshSampleTypes,
     whonetRepair.returnTo,
+    intl,
   ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
@@ -1415,7 +1439,10 @@ function SampleTypeManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
-                              !!Object.keys(formErrors).length ||
+                              Object.entries(formErrors).some(
+                                ([field, message]) =>
+                                  field !== "submit" && !!message,
+                              ) ||
                               !editingType?.name?.trim() ||
                               !editingType?.description?.trim()
                             }

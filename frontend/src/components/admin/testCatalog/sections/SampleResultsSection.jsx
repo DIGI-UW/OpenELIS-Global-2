@@ -15,6 +15,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
   Table,
   TableHead,
   TableRow,
@@ -30,6 +31,22 @@ import {
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+
+/**
+ * OGC-1234 — the source test's components as unsaved rows of this test. Ids
+ * are dropped so the save inserts them (or reuses this test's row with the
+ * same code) and soft-deletes every current component, option and
+ * interpretation that the source does not have: Copy replaces, it never
+ * merges.
+ */
+const stageCopiedComponents = (sourceComponents) =>
+  sourceComponents.map(({ id, ...component }) => ({
+    ...component,
+    options: (component.options || []).map(({ id, ...option }) => option),
+    interpretations: (component.interpretations || []).map(
+      ({ id, ...interpretation }) => interpretation,
+    ),
+  }));
 
 /**
  * OGC-949 M5 / OGC-749 — Sample & Results section.
@@ -148,6 +165,14 @@ const SampleResultsSection = ({ testId }) => {
   const [components, setComponents] = useState([]);
   const [otherTests, setOtherTests] = useState([]);
   const [copyFromId, setCopyFromId] = useState("");
+  // Remounts the picker after a copy is staged: Carbon's ComboBox keeps its
+  // own selection when selectedItem returns to null, so picking the same test
+  // again would not fire onChange.
+  const [copyPickerKey, setCopyPickerKey] = useState(0);
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
+  // Name of the test whose configuration is staged in the editor and not yet
+  // saved; null when the editor shows this test's own saved configuration.
+  const [copiedFrom, setCopiedFrom] = useState(null);
   const [uoms, setUoms] = useState([]);
   // Dictionary typeahead results + a reset counter (per component) so the ComboBox
   // clears its input after an option is added.
@@ -174,6 +199,7 @@ const SampleResultsSection = ({ testId }) => {
           return;
         }
         setComponents(res.components);
+        setCopiedFrom(null);
       },
     );
   };
@@ -638,28 +664,52 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
-  const handleCopyFrom = () => {
-    if (!copyFromId) {
-      return;
-    }
-    postToOpenElisServerJsonResponse(
-      `/rest/test-catalog/tests/${testId}/sample-results/copy-from/${copyFromId}`,
-      JSON.stringify({}),
+  const copySource = otherTests.find((t) => t.id === copyFromId) || null;
+  const copySourceName = copySource ? copySource.value : "";
+
+  const notifyCopy = (kind, messageId, source) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.sample-results",
+      }),
+      message: intl.formatMessage({ id: messageId }, { source }),
+    });
+  };
+
+  // OGC-1234 — Copy replaces this test's configuration with the source's.
+  // Confirming only stages it in the editor; Save commits it.
+  const confirmCopyFrom = () => {
+    setCopyConfirmOpen(false);
+    const sourceId = copyFromId;
+    const sourceName = copySourceName;
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${sourceId}/sample-results`,
       (res) => {
-        if (res) {
-          setCopyFromId("");
-          load();
-          setNotificationVisible(true);
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "label.testCatalog.section.sample-results",
-            }),
-            message: intl.formatMessage({
-              id: "label.testCatalog.sampleResults.copied",
-            }),
-          });
+        if (!res || !Array.isArray(res.components)) {
+          notifyCopy(
+            "error",
+            "label.testCatalog.sampleResults.copyLoadError",
+            sourceName,
+          );
+          return;
         }
+        if (res.components.length === 0) {
+          notifyCopy(
+            "info",
+            "label.testCatalog.sampleResults.copyEmpty",
+            sourceName,
+          );
+          return;
+        }
+        setComponents(stageCopiedComponents(res.components));
+        setAdvancedTypesOpen({});
+        setOptionSearch({});
+        setUnitForm(null);
+        setCopiedFrom(sourceName);
+        setCopyFromId("");
+        setCopyPickerKey((k) => k + 1);
       },
     );
   };
@@ -1309,6 +1359,7 @@ const SampleResultsSection = ({ testId }) => {
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
         <ComboBox
+          key={`copy-from-test-${copyPickerKey}`}
           id="copy-from-test"
           titleText={intl.formatMessage({
             id: "label.testCatalog.sampleResults.copyFrom",
@@ -1318,7 +1369,7 @@ const SampleResultsSection = ({ testId }) => {
           })}
           items={otherTests}
           itemToString={(t) => (t ? t.value : "")}
-          selectedItem={otherTests.find((t) => t.id === copyFromId) || null}
+          selectedItem={copySource}
           onChange={({ selectedItem }) =>
             setCopyFromId(selectedItem ? selectedItem.id : "")
           }
@@ -1326,11 +1377,55 @@ const SampleResultsSection = ({ testId }) => {
         <Button
           kind="secondary"
           disabled={!copyFromId}
-          onClick={handleCopyFrom}
+          onClick={() => setCopyConfirmOpen(true)}
         >
           <FormattedMessage id="label.testCatalog.sampleResults.copyFromButton" />
         </Button>
       </div>
+
+      {copiedFrom && (
+        <div>
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="copy-staged-warning"
+            title={intl.formatMessage(
+              { id: "label.testCatalog.sampleResults.copyStaged" },
+              { source: copiedFrom },
+            )}
+            subtitle={intl.formatMessage({
+              id: "label.testCatalog.sampleResults.copyStaged.helper",
+            })}
+          />
+          <Button kind="ghost" size="sm" onClick={load}>
+            <FormattedMessage id="label.testCatalog.sampleResults.copyDiscard" />
+          </Button>
+        </div>
+      )}
+
+      <Modal
+        open={copyConfirmOpen}
+        danger
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.confirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestSubmit={confirmCopyFrom}
+        onRequestClose={() => setCopyConfirmOpen(false)}
+        onSecondarySubmit={() => setCopyConfirmOpen(false)}
+      >
+        <p>
+          {intl.formatMessage(
+            { id: "label.testCatalog.sampleResults.copyConfirm.body" },
+            { source: copySourceName },
+          )}
+        </p>
+      </Modal>
 
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button

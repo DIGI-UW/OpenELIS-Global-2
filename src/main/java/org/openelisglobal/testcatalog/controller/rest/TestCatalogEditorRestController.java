@@ -981,7 +981,7 @@ public class TestCatalogEditorRestController {
     public ResponseEntity<SampleResults> copySampleResults(@PathVariable String testId, @PathVariable String sourceId,
             HttpServletRequest request) {
         Test test = testService.getTestById(testId);
-        if (test == null) {
+        if (test == null || testService.getTestById(sourceId) == null) {
             return ResponseEntity.notFound().build();
         }
         componentService.copyComponentsFromTest(sourceId, testId, ControllerUtills.getSysUserId(request));
@@ -2144,6 +2144,10 @@ public class TestCatalogEditorRestController {
      * panel already carries is never a reason to refuse, so a panel created
      * elsewhere with a longer name stays editable here; the localization is only
      * rewritten on an actual rename.
+     * <p>
+     * OGC-1234 — a rename onto another panel's name is refused as
+     * {@code name.duplicate} instead of failing with a 500; a description is free
+     * text and may repeat another panel's.
      */
     @PutMapping(value = "/panels/{panelId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PanelOption> savePanelBasicInfo(@PathVariable String panelId,
@@ -2161,6 +2165,9 @@ public class TestCatalogEditorRestController {
         }
         if (renamed && name.length() > PANEL_NAME_MAX_LENGTH) {
             return refused(panel, "name.tooLong");
+        }
+        if (renamed && panelNameTakenByAnother(name, panel.getId())) {
+            return refused(panel, "name.duplicate");
         }
         String description = body.description == null ? null : body.description.trim();
         if (description != null && description.length() > PANEL_DESCRIPTION_MAX_LENGTH) {
@@ -2220,6 +2227,18 @@ public class TestCatalogEditorRestController {
         panelService.update(panel);
         refreshPanelDisplayLists();
         return ResponseEntity.ok(toPanelOption(panelService.getPanelById(panel.getId())));
+    }
+
+    /** Same rule as the panel DAO's duplicate check: trimmed, case-insensitive. */
+    private boolean panelNameTakenByAnother(String name, String panelId) {
+        String wanted = name.trim().toLowerCase(Locale.ROOT);
+        for (Panel other : panelService.getAllPanels()) {
+            if (!other.getId().equals(panelId) && other.getPanelName() != null
+                    && other.getPanelName().trim().toLowerCase(Locale.ROOT).equals(wanted)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ResponseEntity<PanelOption> refused(Panel panel, String refusal) {

@@ -184,4 +184,136 @@ describe("SampleTypeManagement", () => {
       returnTo,
     );
   });
+
+  // OGC-1234 — a create refused by bean validation (400) must not read as a
+  // successful save: the editor stays on the add form and names the field.
+  test("a refused create (400) keeps the add form open and marks the name", async () => {
+    api.post.mockImplementation((_url, _body, callback) =>
+      callback({
+        error: "validation",
+        fieldErrors: [{ field: "sampleTypeEnglishName", defaultMessage: "" }],
+        status: 400,
+      }),
+    );
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+
+    const name = await screen.findByRole("textbox", { name: /Name/ });
+    await userEvent.type(name, "QA<b>RV</b>0923");
+    await userEvent.type(
+      document.getElementById("st-description"),
+      "QA markup probe",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Sample Type" }),
+    );
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    expect(api.post.mock.calls[0][0]).toBe("/rest/SampleTypeCreate");
+    const refusal = messages["error.sampleType.create.invalidName"];
+    expect(
+      await screen.findByText(`Failed to create sample type: ${refusal}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText(refusal)).toBeInTheDocument();
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name).toHaveValue("QA<b>RV</b>0923");
+    expect(screen.getByTestId("sample-type-current-url")).toHaveTextContent(
+      "/MasterListsPage/SampleTypeEditor/new/basic-info",
+    );
+    expect(screen.queryByText("Sample type saved successfully.")).toBeNull();
+  });
+
+  test("after a refused create, correcting the name re-enables Create and the create goes through", async () => {
+    api.post
+      .mockImplementationOnce((_url, _body, callback) =>
+        callback({
+          error: "validation",
+          fieldErrors: [{ field: "sampleTypeEnglishName", defaultMessage: "" }],
+          status: 400,
+        }),
+      )
+      .mockImplementationOnce((_url, _body, callback) => callback({}));
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+
+    const name = await screen.findByRole("textbox", { name: /Name/ });
+    await userEvent.type(name, "QA<b>RV</b>0923");
+    await userEvent.type(
+      document.getElementById("st-description"),
+      "QA markup probe",
+    );
+    const create = screen.getByRole("button", { name: "Create Sample Type" });
+    await userEvent.click(create);
+    await screen.findByText(
+      `Failed to create sample type: ${messages["error.sampleType.create.invalidName"]}`,
+    );
+
+    await userEvent.clear(name);
+    await userEvent.type(name, "QA Plain 0923");
+    expect(name).not.toHaveAttribute("aria-invalid", "true");
+    expect(create).toBeEnabled();
+    await userEvent.click(create);
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(api.post.mock.calls[1][1]).sampleTypeEnglishName).toBe(
+      "QA Plain 0923",
+    );
+  });
+
+  test("a create opened straight on /new lands on the new sample type, not the first listed one", async () => {
+    const created = {
+      id: "sample-type-9",
+      name: "QA Plain 0923",
+      description: "QA plain probe",
+      domain: "CLINICAL",
+      isActive: false,
+      testCount: 0,
+    };
+    let posted = false;
+    // The page's own list read is still in flight when the admin clicks Create
+    // (a deep link to /new with a long list), so it never answers in time.
+    const pendingListReads = [];
+    let clicked = false;
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/sample-types") {
+        const answer = () =>
+          callback({
+            success: true,
+            data: posted ? [sampleType, created] : [sampleType],
+          });
+        if (!clicked) {
+          pendingListReads.push(answer);
+        } else {
+          answer();
+        }
+      } else if (url === "/rest/sample-types/sample-type-9") {
+        callback({ success: true, data: created });
+      } else if (url.startsWith("/rest/AllTestsForSampleTypeProvider")) {
+        callback({ tests: [] });
+      } else {
+        callback({});
+      }
+    });
+    api.post.mockImplementation((_url, _body, callback) => {
+      posted = true;
+      callback({});
+    });
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: /Name/ }),
+      "QA Plain 0923",
+    );
+    await userEvent.type(
+      document.getElementById("st-description"),
+      "QA plain probe",
+    );
+    const create = screen.getByRole("button", { name: "Create Sample Type" });
+    clicked = true;
+    await userEvent.click(create);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("sample-type-current-url")).toHaveTextContent(
+        "/MasterListsPage/SampleTypeEditor/sample-type-9/",
+      ),
+    );
+  });
 });

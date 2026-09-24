@@ -1,8 +1,11 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
@@ -20,6 +23,8 @@ import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -84,14 +89,17 @@ public class SampleTypeCreateRestController extends BaseController {
         return builder.toString();
     }
 
+    /**
+     * Creates a sample type. A form refused by bean validation (a blank name, or
+     * markup refused by {@code @SafeHtml}) answers 400 with the field errors and
+     * creates nothing (OGC-1234); it used to answer 200 with the form echoed back,
+     * which the editor read as a successful create.
+     */
     @PostMapping(value = "/SampleTypeCreate")
-    public SampleTypeCreateForm postSampleTypeCreate(HttpServletRequest request,
+    public ResponseEntity<?> postSampleTypeCreate(HttpServletRequest request,
             @RequestBody @Valid SampleTypeCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
-            saveErrors(result);
-            setupDisplayItems(form);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationErrorBody(result));
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
@@ -125,7 +133,20 @@ public class SampleTypeCreateRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
+    }
+
+    private Map<String, Object> validationErrorBody(BindingResult result) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "validation");
+        body.put("message", "The sample type was not created: the form has invalid fields.");
+        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+            Map<String, String> entry = new HashMap<>();
+            entry.put("field", fe.getField());
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            return entry;
+        }).collect(Collectors.toList()));
+        return body;
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {

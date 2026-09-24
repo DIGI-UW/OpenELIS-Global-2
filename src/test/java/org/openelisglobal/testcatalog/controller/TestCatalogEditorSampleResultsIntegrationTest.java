@@ -580,6 +580,88 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
+    public void copySampleResults_unknownSourceReturns404_andLeavesTheTargetUntouched() {
+        ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
+        primary.resultType = "D";
+        primary.isPrimary = true;
+        primary.options.add(opt(null, "SRIT-Kept", 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+
+        assertEquals(404, controller.copySampleResults(String.valueOf(TEST_ID), "99999999", authedRequest())
+                .getStatusCode().value());
+
+        SampleResults target = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(1, target.components.size());
+        assertEquals("SRIT-Kept", target.components.get(0).options.get(0).valueName);
+    }
+
+    /**
+     * OGC-1234 — "Copy configuration from test" replaces. The editor stages the
+     * source's components with their ids dropped and the ordinary save commits
+     * them, so a target that is already configured (the case the copy endpoint
+     * skipped: 162 of 164 tests have a typed PRIMARY) ends up with exactly the
+     * source's components, options and interpretations, and nothing of its own.
+     */
+    @org.junit.Test
+    public void savingAStagedCopy_replacesAConfiguredTargetsComponentsOptionsAndInterpretations() {
+        ResultComponentDto targetPrimary = comp(null, "PRIMARY", "Target result", 0);
+        targetPrimary.resultType = "D";
+        targetPrimary.isPrimary = true;
+        targetPrimary.options.add(opt(null, "SRIT-Positive", 1));
+        targetPrimary.options.add(opt(null, "SRIT-Valid", 2));
+        targetPrimary.interpretations.add(interp(null, "SRIT-Positive", "Target interpretation", "ABNORMAL"));
+        ResultComponentDto targetExtra = comp(null, "EXTRA", "Target extra", 1);
+        targetExtra.resultType = "N";
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(targetPrimary, targetExtra), authedRequest());
+        String targetPrimaryId = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.stream()
+                .filter(c -> "PRIMARY".equals(c.code)).findFirst().get().id;
+
+        ResultComponentDto sourcePrimary = comp(null, "PRIMARY", "Source result", 0);
+        sourcePrimary.resultType = "D";
+        sourcePrimary.isPrimary = true;
+        sourcePrimary.options.add(opt(null, "SRIT-HIV1", 1));
+        sourcePrimary.options.add(opt(null, "SRIT-HIV2", 2));
+        sourcePrimary.interpretations.add(interp(null, "SRIT-HIV1", "Source interpretation", "CRITICAL"));
+        controller.saveSampleResults(String.valueOf(SOURCE_ID), body(sourcePrimary), authedRequest());
+
+        SampleResults staged = controller.getSampleResults(String.valueOf(SOURCE_ID)).getBody();
+        staged.testId = String.valueOf(TEST_ID);
+        for (ResultComponentDto c : staged.components) {
+            c.id = null;
+            c.options.forEach(o -> o.id = null);
+            c.interpretations.forEach(i -> i.id = null);
+        }
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), staged, authedRequest()).getStatusCode().value());
+
+        SampleResults target = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals("the target keeps only the source's components", 1, target.components.size());
+        ResultComponentDto replaced = target.components.get(0);
+        assertEquals("PRIMARY", replaced.code);
+        assertEquals("Source result", replaced.label);
+        assertEquals("the PRIMARY row is reused, so ranges keyed on it keep pointing at it", targetPrimaryId,
+                replaced.id);
+        assertEquals(java.util.List.of("SRIT-HIV1", "SRIT-HIV2"),
+                replaced.options.stream().map(o -> o.valueName).collect(java.util.stream.Collectors.toList()));
+        assertEquals(1, replaced.interpretations.size());
+        assertEquals("Source interpretation", replaced.interpretations.get(0).text);
+        assertEquals("CRITICAL", replaced.interpretations.get(0).severity);
+
+        assertEquals("the target's own options are soft-deleted", Long.valueOf(2L),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND is_active = false"
+                        + " AND component_id = ?", Long.class, TEST_ID, targetPrimaryId));
+        assertEquals("the target's extra component is soft-deleted", "N",
+                jdbc.queryForObject(
+                        "SELECT is_active FROM clinlims.test_result_component WHERE test_id = ? AND code = 'EXTRA'",
+                        String.class, TEST_ID));
+
+        SampleResults source = controller.getSampleResults(String.valueOf(SOURCE_ID)).getBody();
+        assertEquals("the source is untouched", java.util.List.of("SRIT-HIV1", "SRIT-HIV2"),
+                source.components.get(0).options.stream().map(o -> o.valueName)
+                        .collect(java.util.stream.Collectors.toList()));
+    }
+
+    @org.junit.Test
     public void saveSampleResults_reAddingASoftDeletedCode_reactivatesInsteadOfColliding() {
         // Add SYS, then remove it (soft-delete leaves the row with is_active='N',
         // still occupying the (test_id, code) UNIQUE slot).
