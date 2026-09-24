@@ -18,6 +18,7 @@ public class UserSession {
     private String firstName;
     private String lastName;
     private Set<String> roles;
+    private Set<String> permissions;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -84,6 +85,14 @@ public class UserSession {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public Set<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Set<String> permissions) {
+        this.permissions = permissions;
     }
 
     public String getSessionId() {

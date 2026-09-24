@@ -21,7 +21,6 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.controller.BaseController;
-import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -29,7 +28,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.paging.PagingBean.Paging;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
-import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -85,8 +83,6 @@ public class AnalyzerResultsController extends BaseController {
             "resultList*.isDeleted", "resultList*.result", "resultList*.completeDate", "resultList*.note",
             "resultList*.reflexSelectionId", "resultList*.typeOfSampleId", };
 
-    private static final boolean IS_RETROCI = ConfigurationProperties.getInstance()
-            .isPropertyValueEqual(ConfigurationProperties.Property.configurationName, "CI_GENERAL");
     private static final String REJECT_VALUE = "XXXX";
     private static final String RESULT_SUBJECT = "Analyzer Result Note";
 
@@ -128,25 +124,12 @@ public class AnalyzerResultsController extends BaseController {
     @Autowired
     private AnalyzerService analyzerService;
 
-    // used in constructor, so use constructor injection
     private TypeOfSampleService typeOfSampleService;
 
     private TestReflexUtil reflexUtil = new TestReflexUtil();
 
-    private final String DBS_SAMPLE_TYPE_ID;
-
     public AnalyzerResultsController(TypeOfSampleService typeOfSampleService) {
         this.typeOfSampleService = typeOfSampleService;
-
-        if (IS_RETROCI) {
-            TypeOfSample typeOfSample = new TypeOfSample();
-            typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain(Domain.CLINICAL.name());
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
-            DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
-        } else {
-            DBS_SAMPLE_TYPE_ID = null;
-        }
     }
 
     @RequestMapping(value = "/AnalyzerResults", method = RequestMethod.GET)

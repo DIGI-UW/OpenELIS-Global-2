@@ -27,7 +27,9 @@ import {
   formatRecognitionMode,
 } from "../AnalyzerTypeManagement/recognitionText";
 import { includesComboBoxText } from "../comboBoxSearch";
-import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
+import AnalyzerConnectionSetup, {
+  needsMappingVerification,
+} from "./AnalyzerConnectionSetup";
 
 import "./AnalyzerSetup.scss";
 
@@ -53,6 +55,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const [saveError, setSaveError] = useState(false);
   const [bindingSelectionError, setBindingSelectionError] = useState(false);
   const [selectingBinding, setSelectingBinding] = useState(false);
+  const [connectReadiness, setConnectReadiness] = useState(null);
 
   const analyzerId = new URLSearchParams(location.search).get("analyzerId");
 
@@ -484,6 +487,9 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     placeholder={intl.formatMessage({
                       id: "analyzer.setup.instrument.type.placeholder",
                     })}
+                    helperText={intl.formatMessage({
+                      id: "analyzer.setup.instrument.type.helper",
+                    })}
                     items={activeTypes}
                     selectedItem={selectedType}
                     itemToString={typeLabel}
@@ -792,7 +798,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
               )}
               {state === "complete" && step === "verify" && (
                 <p className="analyzer-setup__verify-summary">
-                  {intl.formatMessage({ id: "analyzer.setup.verify.summary" })}
+                  {intl.formatMessage({
+                    id: needsMappingVerification(connectReadiness)
+                      ? "analyzer.setup.verify.summary.stale"
+                      : "analyzer.setup.verify.summary",
+                  })}
                 </p>
               )}
               {state === "current" &&
@@ -803,6 +813,8 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     candidate={candidate}
                     onCandidateChange={setCandidate}
                     onClose={onClose}
+                    onVerifyMappings={() => editStep("verify")}
+                    onReadinessChange={setConnectReadiness}
                   />
                 ) : (
                   <Loading

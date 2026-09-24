@@ -41,7 +41,9 @@ public class QCControlLotForm extends BaseForm {
     @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String testId;
 
-    @NotBlank
+    // Optional since OGC-1147: omitted for a bench control lot on a manual
+    // method, which has no analyzer. @Pattern skips a null, and the JSON body
+    // omits the field rather than sending an empty string.
     @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String instrumentId;
 
@@ -135,8 +137,13 @@ public class QCControlLotForm extends BaseForm {
         return instrumentId;
     }
 
+    /**
+     * Collapses a blank analyzer to null here rather than at each consumer, so
+     * "bench lot" has exactly one representation downstream — the entity, the
+     * validator and the JSON echoed back to the client all see null.
+     */
     public void setInstrumentId(String instrumentId) {
-        this.instrumentId = instrumentId;
+        this.instrumentId = (instrumentId == null || instrumentId.isBlank()) ? null : instrumentId;
     }
 
     public String getCalculationMethod() {

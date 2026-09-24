@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,14 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
@@ -608,6 +618,173 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertEquals(2, activationRecordDAO.findByAnalyzerId(analyzer.getId()).size());
             status.setRollbackOnly();
         });
+    }
+
+    /**
+     * Two activations of one analyzer overlap: the first to reach the Bridge gets
+     * APPLIED and the second ALREADY_APPLIED. Unless lifecycle transitions on the
+     * analyzer row are serialized, the second commits first, the first then fails
+     * its version check and compensates by deactivating the runtime that the
+     * committed row records as active. The data is committed so both transactions
+     * really contend for the row.
+     */
+    @Test
+    public void overlappingActivationsLeaveTheBridgeRuntimeActive() throws Exception {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        String profileId = "site.activation-race." + UUID.randomUUID();
+        ActivationRaceFixture fixture = transaction.execute(status -> {
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+            binding.setProfileBinding(profileBinding);
+            binding.setCreatedBy(TEST_SYS_USER_ID);
+            binding.setSysUserId(TEST_SYS_USER_ID);
+            siteBindingDAO.insert(binding);
+
+            AnalyzerSiteBindingRevision revision = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
+            AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+            confirmation.setSiteBindingRevision(revision);
+            confirmation.setProfileId(profileId);
+            confirmation.setProfileRevision(1);
+            confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
+            confirmation.setBindingFingerprint(revision.getBindingFingerprint());
+            confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
+            confirmation.setConfirmedRowsJson("[]");
+            confirmation.setExcludedRowsJson("[]");
+            confirmation.setConfirmedBy(TEST_SYS_USER_ID);
+            confirmation.setSysUserId(TEST_SYS_USER_ID);
+            confirmationDAO.insert(confirmation);
+
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName("Activation race test");
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setActive(false);
+            analyzer.setSiteBindingRevision(revision);
+            analyzer.setTestUnitIds(List.of("1"));
+            analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            analyzerDAO.insert(analyzer);
+            return new ActivationRaceFixture(analyzer, profileBinding, binding, revision, confirmation);
+        });
+        Analyzer analyzer = fixture.analyzer();
+
+        try {
+            AnalyzerSiteBindingSnapshot snapshot = new AnalyzerSiteBindingSnapshot(fixture.binding(),
+                    fixture.revision(), List.of(), List.of());
+            BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
+            AnalyzerSiteBindingService siteBindingService = mock(AnalyzerSiteBindingService.class);
+            AnalyzerSiteBindingConfirmationService confirmationService = mock(
+                    AnalyzerSiteBindingConfirmationService.class);
+            TestSectionService testSectionService = mock(TestSectionService.class);
+            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
+            when(profileCatalogService.getProfile(profileId, 1)).thenReturn(
+                    new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
+                            new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
+                                    "No automated control recognition", true, List.of())));
+            when(siteBindingService.findByRevisionId(fixture.revision().getId()))
+                    .thenReturn(java.util.Optional.of(snapshot));
+            when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                    .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(fixture.confirmation()));
+            TestSection activeUnit = new TestSection();
+            activeUnit.setId("1");
+            activeUnit.setIsActive("Y");
+            when(testSectionService.get("1")).thenReturn(activeUnit);
+            when(bridgeClient.getConnection(analyzer.getBridgeConnectionId()))
+                    .thenReturn(connectionDocument(analyzer, fixture.profileBinding()));
+
+            AtomicReference<String> runtimeState = new AtomicReference<>("INACTIVE");
+            List<String> bridgeCommands = new CopyOnWriteArrayList<>();
+            CountDownLatch firstActivationInBridge = new CountDownLatch(1);
+            CountDownLatch secondActivationFinished = new CountDownLatch(1);
+            when(bridgeClient.applyRuntimeCommand(eq(analyzer.getBridgeConnectionId()), eq(1), anyString(),
+                    anyString())).thenAnswer(invocation -> {
+                        String action = invocation.getArgument(2);
+                        String commandId = invocation.getArgument(3);
+                        bridgeCommands.add(action);
+                        String state = "DEACTIVATE".equals(action) ? "INACTIVE" : "ACTIVE";
+                        boolean changed = !state.equals(runtimeState.getAndSet(state));
+                        if (changed && "ACTIVATE".equals(action)) {
+                            firstActivationInBridge.countDown();
+                            secondActivationFinished.await(3, TimeUnit.SECONDS);
+                        }
+                        ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, fixture.profileBinding(),
+                                commandId, action, state, bridgeCommands.size());
+                        acknowledgement.put("outcome", changed ? "APPLIED" : "ALREADY_APPLIED");
+                        return acknowledgement;
+                    });
+
+            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+            AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
+                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
+                    new AnalyzerActivationRecordServiceImpl(activationRecordDAO, auditTrailService),
+                    java.time.Clock.systemUTC(), () -> UUID.randomUUID().toString(),
+                    () -> UUID.randomUUID().toString());
+            Callable<String> activation = () -> {
+                try {
+                    AnalyzerActivationResult result = transaction
+                            .execute(status -> activationService.activate(analyzer.getId(), TEST_SYS_USER_ID));
+                    return result.activated() ? "activated" : "blocked " + result.blockers();
+                } catch (RuntimeException exception) {
+                    return exception.getClass().getSimpleName();
+                }
+            };
+
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            String firstOutcome;
+            String secondOutcome;
+            try {
+                Future<String> first = executor.submit(activation);
+                assertTrue("The first activation never reached the Bridge",
+                        firstActivationInBridge.await(30, TimeUnit.SECONDS));
+                Future<String> second = executor.submit(() -> {
+                    try {
+                        return activation.call();
+                    } finally {
+                        secondActivationFinished.countDown();
+                    }
+                });
+                firstOutcome = first.get(60, TimeUnit.SECONDS);
+                secondOutcome = second.get(60, TimeUnit.SECONDS);
+            } finally {
+                executor.shutdownNow();
+            }
+
+            assertEquals("The Bridge must not be told to deactivate a runtime recorded as active",
+                    List.of("ACTIVATE", "ACTIVATE"), bridgeCommands);
+            assertEquals("ACTIVE", runtimeState.get());
+            assertEquals("activated", firstOutcome);
+            assertEquals("activated", secondOutcome);
+            assertEquals(Analyzer.AnalyzerStatus.ACTIVE,
+                    transaction.execute(status -> analyzerDAO.get(analyzer.getId()).orElseThrow()).getStatus());
+        } finally {
+            transaction.executeWithoutResult(status -> {
+                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL WHERE id::text = ?",
+                        analyzer.getId());
+                jdbc.update("DELETE FROM analyzer_activation_record WHERE analyzer_id::text = ?", analyzer.getId());
+                jdbc.update("DELETE FROM analyzer WHERE id::text = ?", analyzer.getId());
+                jdbc.update("DELETE FROM analyzer_site_binding_confirmation WHERE id::text = ?",
+                        fixture.confirmation().getId());
+                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id::text = ?",
+                        fixture.revision().getId());
+                jdbc.update("DELETE FROM analyzer_site_binding WHERE id::text = ?", fixture.binding().getId());
+                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id::text = ?",
+                        fixture.profileBinding().getId());
+            });
+        }
+    }
+
+    private record ActivationRaceFixture(Analyzer analyzer, AnalyzerProfileBinding profileBinding,
+            AnalyzerSiteBinding binding, AnalyzerSiteBindingRevision revision,
+            AnalyzerSiteBindingConfirmation confirmation) {
     }
 
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {

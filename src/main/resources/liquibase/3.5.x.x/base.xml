@@ -560,6 +560,18 @@
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
   <include relativeToChangelogFile="true" file="104-analyzer-delivery-receipt.xml"/>
 
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs -->
+  <include relativeToChangelogFile="true" file="083-nce-trigger-source.xml"/>
+
+  <!-- OGC-707: CAPA Register due date on nce_action_log -->
+  <include relativeToChangelogFile="true" file="084-nce-action-log-due-date.xml"/>
+
+  <!-- OGC-704: per-test TEa for Westgard sigma metrics -->
+  <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
+
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
+
   <!-- Programs V2 (OGC-781): domain + is_active + program_lab_unit junction.
        Existing programs backfill to CLINICAL/active; the many-to-many keeps
        the legacy single test_section_id column populated during the

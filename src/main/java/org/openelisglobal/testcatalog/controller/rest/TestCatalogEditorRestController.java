@@ -1633,7 +1633,7 @@ public class TestCatalogEditorRestController {
             }
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
-            o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            o.name = t.getLocalizedName();
             o.domain = Domain.normalize(t.getDomain());
             options.add(o);
         }

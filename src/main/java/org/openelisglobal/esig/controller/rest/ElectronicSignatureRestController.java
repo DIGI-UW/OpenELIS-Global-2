@@ -1,15 +1,36 @@
 package org.openelisglobal.esig.controller.rest;
 
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPTable;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.PdfExportSupport.ExportWindow;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.EsigFirstUseCertification;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,6 +40,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,8 +68,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/esig")
 public class ElectronicSignatureRestController extends BaseRestController {
 
+    private static final int MAX_LOG_PAGE_SIZE = 200;
+
+    /** The signature log columns, in order, shared by the CSV and PDF exports. */
+    private static final String[] EXPORT_HEADER_KEYS = { "esig.export.header.signedAt", "esig.export.header.signer",
+            "esig.export.header.action", "esig.export.header.subject", "esig.export.header.reason" };
+
     @Autowired
     private ElectronicSignatureService electronicSignatureService;
+
+    // Injected rather than ConfigurationProperties.getInstance(): the static
+    // path routes through SpringContext's static holder, which test slices
+    // must not touch (registering SpringContext in a slice overwrites the
+    // holder for every later test in the JVM).
+    @Autowired
+    private ConfigurationProperties configurationProperties;
 
     // ========================
     // Signature Execution
@@ -190,6 +225,176 @@ public class ElectronicSignatureRestController extends BaseRestController {
         List<ElectronicSignature> signatures = electronicSignatureService.getSignaturesForRecord(recordType, recordId);
 
         return ResponseEntity.ok(signatures.stream().map(this::toSignatureResponse).toList());
+    }
+
+    /**
+     * Filterable, paginated signature log (E-Sig Log page, OGC-702). Gated on the
+     * QMS pillar permission from the QA permission registry.
+     */
+    @GetMapping(value = "/log", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(QaPermissions.VIEW_QMS)
+    public ResponseEntity<?> getSignatureLog(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
+            @RequestParam(required = false) String recordType, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int pageSize) {
+
+        if (page < 0) {
+            page = 0;
+        }
+        if (pageSize < 1) {
+            pageSize = 25;
+        }
+        if (pageSize > MAX_LOG_PAGE_SIZE) {
+            pageSize = MAX_LOG_PAGE_SIZE;
+        }
+
+        LogFilter filter = parseLogFilter(fromDate, toDate, meaning, recordType);
+
+        List<ElectronicSignature> signatures = electronicSignatureService.searchSignatures(filter.start(), filter.end(),
+                signerId, filter.meaning(), filter.recordType(), page, pageSize);
+        long totalCount = electronicSignatureService.countSearchSignatures(filter.start(), filter.end(), signerId,
+                filter.meaning(), filter.recordType());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("items", signatures.stream().map(this::toSignatureResponse).toList());
+        response.put("totalCount", totalCount);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * CSV export of the signature log (OGC-703). Applies the same filters as /log,
+     * capped at the shared export row limit.
+     */
+    @GetMapping(value = "/log/export")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
+    public void exportSignatureLogCsv(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
+            @RequestParam(required = false) String recordType, HttpServletResponse response) throws IOException {
+
+        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType);
+
+        response.setContentType("text/csv");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition", "attachment; filename=\"e-signature-log.csv\"");
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        PrintWriter writer = response.getWriter();
+        writer.printf("%s,%s,%s,%s,%s%n", (Object[]) exportHeaders());
+        for (ElectronicSignature sig : signatures) {
+            writer.printf("%s,%s,%s,%s,%s%n",
+                    StringUtil.csvEscape(sig.getSignedAt() != null ? sdf.format(sig.getSignedAt()) : ""),
+                    StringUtil.csvEscape(sig.getSignerNamePrinted()), StringUtil.csvEscape(meaningLabel(sig)),
+                    StringUtil.csvEscape(subjectLabel(sig)), StringUtil.csvEscape(sig.getRejectionReason()));
+        }
+        writer.flush();
+    }
+
+    /**
+     * PDF export of the signature log (OGC-703): CAP-style header (lab name, date
+     * range, total record count, generated-at) and page-numbered footer.
+     */
+    @GetMapping(value = "/log/exportPdf")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
+    public void exportSignatureLogPdf(@RequestParam String fromDate, @RequestParam String toDate,
+            @RequestParam(required = false) Long signerId, @RequestParam(required = false) String meaning,
+            @RequestParam(required = false) String recordType, HttpServletResponse response) throws IOException {
+
+        List<ElectronicSignature> signatures = loadExportRows(fromDate, toDate, signerId, meaning, recordType);
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=\"e-signature-log.pdf\"");
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        try {
+            Document document = new Document(PageSize.A4.rotate());
+            PdfExportSupport.openWithPageNumbers(document, response.getOutputStream(), "export.page");
+
+            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font metaFont = new Font(Font.FontFamily.HELVETICA, 9);
+            Font headerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.WHITE);
+            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
+
+            PdfExportSupport.addHeading(document, MessageUtil.getMessage("esig.export.title"), titleFont, metaFont,
+                    MessageUtil.getMessage("export.labName") + ": " + PdfExportSupport.labName(configurationProperties)
+                            + "\n",
+                    MessageUtil.getMessage("export.dateRange") + ": " + fromDate + " — " + toDate + "\n",
+                    MessageUtil.getMessage("esig.export.totalRecords") + ": " + signatures.size() + "\n",
+                    MessageUtil.getMessage("export.generatedAt") + ": " + sdf.format(new java.util.Date()) + "\n\n");
+
+            PdfPTable table = new PdfPTable(5);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[] { 2f, 2.2f, 2f, 2.4f, 3.4f });
+            PdfExportSupport.addHeaderRow(table, headerFont, 5, exportHeaders());
+
+            for (ElectronicSignature sig : signatures) {
+                table.addCell(new Phrase(sig.getSignedAt() != null ? sdf.format(sig.getSignedAt()) : "", cellFont));
+                table.addCell(new Phrase(Objects.toString(sig.getSignerNamePrinted(), ""), cellFont));
+                table.addCell(new Phrase(meaningLabel(sig), cellFont));
+                table.addCell(new Phrase(subjectLabel(sig), cellFont));
+                table.addCell(new Phrase(Objects.toString(sig.getRejectionReason(), ""), cellFont));
+            }
+
+            document.add(table);
+            document.close();
+        } catch (DocumentException e) {
+            LogEvent.logError(e);
+            throw new IOException("Error generating PDF", e);
+        }
+    }
+
+    /** Validated /log filter set, shared by the list and export endpoints. */
+    private record LogFilter(Timestamp start, Timestamp end, SignatureMeaning meaning, String recordType) {
+    }
+
+    private LogFilter parseLogFilter(String fromDate, String toDate, String meaning, String recordType) {
+        ExportWindow window = PdfExportSupport.parseWindow(fromDate, toDate, "fromDate", "toDate");
+
+        SignatureMeaning meaningFilter = null;
+        if (meaning != null && !meaning.isBlank()) {
+            try {
+                meaningFilter = SignatureMeaning.valueOf(meaning);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unknown meaning: " + meaning);
+            }
+        }
+        String recordTypeFilter = (recordType == null || recordType.isBlank()) ? null : recordType;
+
+        return new LogFilter(window.start(), window.end(), meaningFilter, recordTypeFilter);
+    }
+
+    /** The filtered rows both exports render, capped at the shared row limit. */
+    private List<ElectronicSignature> loadExportRows(String fromDate, String toDate, Long signerId, String meaning,
+            String recordType) {
+        LogFilter filter = parseLogFilter(fromDate, toDate, meaning, recordType);
+        return electronicSignatureService.searchSignatures(filter.start(), filter.end(), signerId, filter.meaning(),
+                filter.recordType(), 0, PdfExportSupport.MAX_EXPORT_ROWS);
+    }
+
+    private String[] exportHeaders() {
+        return Arrays.stream(EXPORT_HEADER_KEYS).map(MessageUtil::getMessage).toArray(String[]::new);
+    }
+
+    /**
+     * A rejected date window, meaning or record type is the caller's mistake, not a
+     * server error — for the log listing and both of its exports alike.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleInvalidRequest(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(errorResponse("INVALID_REQUEST", e.getMessage()));
+    }
+
+    private String meaningLabel(ElectronicSignature sig) {
+        if (sig.getSignatureMeaning() == null) {
+            return "";
+        }
+        return MessageUtil.getMessage("esig.meaning." + sig.getSignatureMeaning().name());
+    }
+
+    private String subjectLabel(ElectronicSignature sig) {
+        if (sig.getRecordType() == null) {
+            return "";
+        }
+        return sig.getRecordType() + " #" + sig.getRecordId();
     }
 
     // ========================
