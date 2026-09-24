@@ -31,6 +31,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -68,6 +69,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @Autowired
     private QCControlLotService controlLotService;
+
+    @Autowired
+    private AnalyzerResultsService analyzerResultsService;
 
     @Autowired
     private AnalyzerService analyzerService;
@@ -608,6 +612,144 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertEquals(2, activationRecordDAO.findByAnalyzerId(analyzer.getId()).size());
             status.setRollbackOnly();
         });
+    }
+
+    /**
+     * Saving in the mapping editor appends a site-binding revision, and activation
+     * readiness assesses the revision the analyzer is pinned to. Confirming in the
+     * editor must therefore move not-yet-active analyzers onto the confirmed
+     * revision, while an active analyzer keeps the revision it ingests with.
+     */
+    @Test
+    public void confirmingInTheMappingEditorUnblocksActivationOfAnalyzersNotYetActive() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            String testId = jdbc.queryForObject("SELECT nextval('test_seq')", Long.class).toString();
+            String resultOptionId = jdbc.queryForObject("SELECT nextval('test_result_seq')", Long.class).toString();
+            jdbc.update(
+                    "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
+                            + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
+                    Long.valueOf(testId), "Analyzer mapping gate test", "Analyzer mapping gate test",
+                    UUID.randomUUID());
+            jdbc.update("INSERT INTO test_result (id, test_id, tst_rslt_type, value, sort_order, is_active, "
+                    + "is_normal, lastupdated) VALUES (?, ?, 'D', 'POSITIVE', 1, TRUE, TRUE, CURRENT_TIMESTAMP)",
+                    Long.valueOf(resultOptionId), Long.valueOf(testId));
+
+            org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+            test.setId(testId);
+            test.setIsActive("Y");
+            TestResult resultOption = new TestResult();
+            resultOption.setId(resultOptionId);
+            resultOption.setIsActive(true);
+            resultOption.setTestResultType("D");
+            resultOption.setTest(test);
+            TestService testService = mock(TestService.class);
+            TestResultService testResultService = mock(TestResultService.class);
+            SystemUserService systemUserService = mock(SystemUserService.class);
+            AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class);
+            SystemUser actor = new SystemUser();
+            actor.setId(TEST_SYS_USER_ID);
+            actor.setFirstName("Integration");
+            actor.setLastName("Reviewer");
+            when(testService.get(testId)).thenReturn(test);
+            when(testResultService.get(resultOptionId)).thenReturn(resultOption);
+            when(systemUserService.getUserById(TEST_SYS_USER_ID)).thenReturn(actor);
+            when(mappingCatalogService.searchActiveTests(null))
+                    .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption(testId,
+                            "Analyzer mapping gate test", "TEST", List.of())));
+            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(
+                    List.of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive")));
+
+            String profileId = "site.gate." + UUID.randomUUID();
+            BridgeProfileCatalog.ProfileRevision catalogRevision = new BridgeProfileCatalog.ProfileRevision(
+                    profile(profileId), new ObjectMapper().createObjectNode(),
+                    new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
+                            "No automated control recognition", true, List.of()));
+            BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
+            when(profileCatalogService.getProfile(profileId, 1)).thenReturn(catalogRevision);
+            when(profileCatalogService.getCatalog())
+                    .thenReturn(new BridgeProfileCatalog("1.0", "sha256:" + "e".repeat(64), List.of(catalogRevision)));
+
+            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+            AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
+                    revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService,
+                    testResultService);
+            AnalyzerSiteBindingConfirmationService confirmationService = new AnalyzerSiteBindingConfirmationServiceImpl(
+                    confirmationDAO, auditTrailService, systemUserService, mappingCatalogService);
+            AnalyzerProfileBindingService profileBindingService = new AnalyzerProfileBindingServiceImpl(
+                    profileBindingDAO, profileCatalogService, siteBindingService);
+            AnalyzerTypeMappingService mappingService = new AnalyzerTypeMappingServiceImpl(profileCatalogService,
+                    profileBindingDAO, siteBindingService, mappingCatalogService, profileBindingService,
+                    confirmationService, analyzerResultsService, analyzerInstanceLocalStateService);
+
+            AnalyzerProfileBinding profileBinding = profileBindingService.resolveActiveRevision(profileId, 1,
+                    TEST_SYS_USER_ID);
+            AnalyzerSiteBindingSnapshot initial = siteBindingService.resolveInitialRevision(profileBinding,
+                    profile(profileId), TEST_SYS_USER_ID);
+            Analyzer settingUp = gateAnalyzer("Mapping gate analyzer in setup", Analyzer.AnalyzerStatus.SETUP,
+                    initial.revision());
+            Analyzer active = gateAnalyzer("Mapping gate analyzer already active", Analyzer.AnalyzerStatus.ACTIVE,
+                    initial.revision());
+
+            AnalyzerTypeMappingView saved = mappingService.saveMapping(profileId, 1,
+                    new AnalyzerTypeMappingUpdate(initial.revision().getBindingFingerprint(),
+                            List.of(new AnalyzerSiteBindingTestDraft("RAW-A", AnalyzerSiteBindingMappingState.BOUND,
+                                    testId)),
+                            List.of(new AnalyzerSiteBindingResultDraft("RAW-A", "POS",
+                                    AnalyzerSiteBindingMappingState.BOUND, resultOptionId))),
+                    TEST_SYS_USER_ID);
+            mappingService
+                    .confirmMapping(profileId, 1,
+                            new AnalyzerSiteBindingConfirmationRequest(saved.bindingFingerprint(),
+                                    RECOGNITION_FINGERPRINT,
+                                    List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null),
+                                            new AnalyzerSiteBindingSourceRow("RAW-A", "POS")),
+                                    List.of()),
+                            TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            TestSectionService testSectionService = mock(TestSectionService.class);
+            TestSection activeUnit = new TestSection();
+            activeUnit.setId("1");
+            activeUnit.setIsActive("Y");
+            when(testSectionService.get("1")).thenReturn(activeUnit);
+            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
+            when(bridgeClient.getConnection(settingUp.getBridgeConnectionId()))
+                    .thenReturn(connectionDocument(settingUp, profileBinding));
+            AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
+                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
+                    new AnalyzerActivationRecordServiceImpl(activationRecordDAO, auditTrailService),
+                    java.time.Clock.systemUTC(), () -> "activate-gate", () -> "deactivate-gate");
+
+            List<String> blockers = activationService.readiness(settingUp.getId()).blockers().stream()
+                    .map(AnalyzerActivationBlocker::code).toList();
+            assertFalse(blockers.toString(), blockers.contains("analyzer.activation.blocker.mappings"));
+            assertFalse(blockers.toString(), blockers.contains("analyzer.activation.blocker.recognition"));
+            assertEquals(saved.siteBindingRevision(),
+                    analyzerDAO.get(settingUp.getId()).orElseThrow().getSiteBindingRevision().getRevisionNumber());
+            assertEquals(initial.revision().getId(),
+                    analyzerDAO.get(active.getId()).orElseThrow().getSiteBindingRevision().getId());
+            status.setRollbackOnly();
+        });
+    }
+
+    private Analyzer gateAnalyzer(String name, Analyzer.AnalyzerStatus analyzerStatus,
+            AnalyzerSiteBindingRevision revision) {
+        Analyzer analyzer = new Analyzer();
+        analyzer.ensureFhirUuid();
+        analyzer.setName(name);
+        analyzer.setStatus(analyzerStatus);
+        analyzer.setActive(analyzerStatus == Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setSiteBindingRevision(revision);
+        analyzer.setTestUnitIds(List.of("1"));
+        analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
+        analyzer.setSysUserId(TEST_SYS_USER_ID);
+        analyzerDAO.insert(analyzer);
+        return analyzer;
     }
 
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {

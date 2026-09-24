@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
@@ -30,11 +31,13 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     private final AnalyzerProfileBindingService profileBindingService;
     private final AnalyzerSiteBindingConfirmationService confirmationService;
     private final AnalyzerResultsService analyzerResultsService;
+    private final AnalyzerInstanceLocalStateService localStateService;
 
     public AnalyzerTypeMappingServiceImpl(BridgeProfileCatalogService bridgeProfileCatalogService,
             AnalyzerProfileBindingDAO profileBindingDAO, AnalyzerSiteBindingService siteBindingService,
             AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService,
-            AnalyzerSiteBindingConfirmationService confirmationService, AnalyzerResultsService analyzerResultsService) {
+            AnalyzerSiteBindingConfirmationService confirmationService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerInstanceLocalStateService localStateService) {
         this.bridgeProfileCatalogService = bridgeProfileCatalogService;
         this.profileBindingDAO = profileBindingDAO;
         this.siteBindingService = siteBindingService;
@@ -42,6 +45,7 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         this.profileBindingService = profileBindingService;
         this.confirmationService = confirmationService;
         this.analyzerResultsService = analyzerResultsService;
+        this.localStateService = localStateService;
     }
 
     @Override
@@ -82,8 +86,18 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         AnalyzerSiteBindingSnapshot candidate = findBinding(profile.profileId(), profile.revision()).orElseThrow(
                 () -> new IllegalArgumentException("Analyzer Type mappings must be saved before confirmation"));
         validateConfirmable(compose(revision, profile, candidate));
-        return confirmationService.confirm(candidate, revision.controlRecognitionSummary().recognitionFingerprint(),
-                request, actor);
+        AnalyzerSiteBindingConfirmationView confirmed = confirmationService.confirm(candidate,
+                revision.controlRecognitionSummary().recognitionFingerprint(), request, actor);
+        // Ingestion reads an active analyzer's pinned revision, so only analyzers not
+        // yet active adopt this one.
+        String profileBindingId = candidate.binding().getProfileBinding().getId();
+        profileBindingDAO.findAnalyzersByProfileId(profile.profileId()).stream()
+                .filter(analyzer -> analyzer.getStatus() != Analyzer.AnalyzerStatus.ACTIVE)
+                .filter(analyzer -> profileBindingId.equals(analyzer.getPinnedProfileBinding().getId()))
+                .forEach(analyzer -> localStateService.selectSiteBindingRevision(analyzer.getId(),
+                        candidate.binding().getId(), candidate.revision().getRevisionNumber(),
+                        candidate.revision().getBindingFingerprint(), actor));
+        return confirmed;
     }
 
     private AnalyzerTypeMappingView compose(BridgeProfileCatalog.ProfileRevision revision,

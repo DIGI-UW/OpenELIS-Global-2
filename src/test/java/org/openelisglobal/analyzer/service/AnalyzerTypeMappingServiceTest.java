@@ -59,12 +59,16 @@ public class AnalyzerTypeMappingServiceTest {
     @Mock
     private AnalyzerResultsService analyzerResultsService;
 
+    @Mock
+    private AnalyzerInstanceLocalStateService localStateService;
+
     private AnalyzerTypeMappingService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerTypeMappingServiceImpl(bridgeProfileCatalogService, profileBindingDAO, siteBindingService,
-                mappingCatalogService, profileBindingService, confirmationService, analyzerResultsService);
+                mappingCatalogService, profileBindingService, confirmationService, analyzerResultsService,
+                localStateService);
     }
 
     @Test
