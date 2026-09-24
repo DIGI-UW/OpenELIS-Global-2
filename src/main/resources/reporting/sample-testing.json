@@ -1,6 +1,6 @@
 {
   "id": "SAMPLE_TESTING",
-  "version": 3,
+  "version": 4,
   "label": "Sample & Testing",
   "source": "SAMPLE_TESTING",
   "dateAnchor": "collectionDate",
@@ -9,7 +9,7 @@
   "catalogs": ["tests", "components", "observations", "testTurnaround", "componentTurnaround"],
   "filters": ["labSectionIds", "testIds", "resultStatuses"],
   "defaultColumns": {
-    "SPREADSHEET": ["accessionNumber", "specimenId", "collectionDate", "sampleType", "catalog:tests"],
-    "RESULT_LIST": ["accessionNumber", "specimenId", "collectionDate", "testName", "component", "resultValue", "resultUnit", "resultStatus"]
+    "SPREADSHEET": [],
+    "RESULT_LIST": []
   }
 }

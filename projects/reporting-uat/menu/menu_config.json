@@ -1,0 +1,424 @@
+{
+  "menus": [
+    {
+      "elementId": "menu_section_main",
+      "presentationOrder": 1,
+      "displayKey": "sidenav.section.main",
+      "presentationStyle": "section",
+      "childMenus": [
+        {
+          "elementId": "menu_home",
+          "displayKey": "banner.menu.home",
+          "actionURL": "/Dashboard",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 1,
+          "icon": "home"
+        }
+      ]
+    },
+    {
+      "elementId": "menu_section_patient_orders",
+      "presentationOrder": 2,
+      "displayKey": "sidenav.section.patientOrders",
+      "presentationStyle": "section",
+      "childMenus": [
+        {
+          "elementId": "menu_sample_add",
+          "displayKey": "sidenav.workflow.orderTest",
+          "actionURL": "/SamplePatientEntry",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 1,
+          "icon": "order"
+        },
+        {
+          "elementId": "menu_results_unified",
+          "displayKey": "banner.menu.results.unified",
+          "actionURL": "/Results",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": true,
+          "presentationOrder": 2,
+          "icon": "results"
+        },
+        {
+          "elementId": "menu_results_patient",
+          "displayKey": "banner.menu.results.unified",
+          "actionURL": "/PatientResults",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 2,
+          "icon": "results"
+        },
+        {
+          "elementId": "menu_resultvalidation_routine",
+          "displayKey": "sidenav.workflow.resultsValidation",
+          "actionURL": "/ResultValidation?type=&test=",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 3,
+          "icon": "validation"
+        },
+        {
+          "elementId": "menu_patient_add_or_edit",
+          "displayKey": "sidenav.workflow.patientManagement",
+          "actionURL": "/PatientManagement",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 4,
+          "icon": "patient"
+        }
+      ]
+    },
+    {
+      "elementId": "menu_section_reports",
+      "presentationOrder": 3,
+      "displayKey": "banner.menu.reports",
+      "presentationStyle": "section",
+      "childMenus": [
+        {
+          "elementId": "menu_reports",
+          "displayKey": "banner.menu.reports",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 1,
+          "icon": "reports",
+          "childMenus": [
+            {
+              "elementId": "menu_reports_status_patient",
+              "displayKey": "openreports.patientTestStatus",
+              "actionURL": "/Report?type=patient&report=patientCILNSP_vreduit",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 1
+            },
+            {
+              "elementId": "menu_reports_patient_print_queue",
+              "presentationOrder": 2,
+              "displayKey": "reporting.menu.patientPrintQueue",
+              "toolTipKey": "reporting.design.pending"
+            },
+            {
+              "elementId": "menu_reports_custom_data_export",
+              "displayKey": "reporting.title",
+              "actionURL": "/reports/custom-data-export",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 3
+            },
+            {
+              "elementId": "menu_reports_queue",
+              "presentationOrder": 4,
+              "displayKey": "reporting.queue",
+              "actionURL": "/reports/custom-data-export?view=queue"
+            },
+            {
+              "elementId": "menu_reports_other",
+              "presentationOrder": 5,
+              "displayKey": "reporting.menu.otherReports",
+              "childMenus": [
+                {
+                  "elementId": "menu_reports_routine",
+                  "displayKey": "banner.menu.reports.routine",
+                  "actionURL": "/RoutineReports",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 1
+                },
+                {
+                  "elementId": "menu_reports_study",
+                  "displayKey": "banner.menu.reports.study",
+                  "actionURL": "/StudyReports",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 2
+                },
+                {
+                  "elementId": "menu_reports_audittrail",
+                  "displayKey": "sideNav.title.audittrail",
+                  "actionURL": "",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 3
+                },
+                {
+                  "elementId": "menu_reports_tatreport",
+                  "displayKey": "sideNav.title.tatreport",
+                  "actionURL": "/TATReport",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 4
+                },
+                {
+                  "elementId": "menu_reports_environmental",
+                  "displayKey": "sideNav.title.environmentalReports",
+                  "actionURL": "",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 5
+                },
+                {
+                  "elementId": "menu_reports_vectorsurveillance",
+                  "displayKey": "vectorReport.title",
+                  "actionURL": "/VectorSurveillanceReport",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 6
+                },
+                {
+                  "elementId": "menu_reports_whonet_export",
+                  "displayKey": "reports.export.whonet",
+                  "actionURL": "/Report?type=patient&report=ExportWHONETReportByDate",
+                  "isActive": true,
+                  "openInNewWindow": false,
+                  "hideInOldUI": false,
+                  "presentationOrder": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "elementId": "menu_section_administration",
+      "presentationOrder": 4,
+      "displayKey": "sidenav.section.administration",
+      "presentationStyle": "section",
+      "childMenus": [
+        {
+          "elementId": "menu_administration",
+          "displayKey": "banner.menu.administration",
+          "actionURL": "/MasterListsPage",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 1,
+          "icon": "settings"
+        },
+        {
+          "elementId": "menu_workplan",
+          "displayKey": "banner.menu.workplan",
+          "isActive": true,
+          "openInNewWindow": false,
+          "hideInOldUI": false,
+          "presentationOrder": 2,
+          "icon": "workplan"
+        },
+        {
+          "elementId": "menu_more_tools",
+          "presentationOrder": 3,
+          "displayKey": "sidenav.moreTools",
+          "icon": "more",
+          "childMenus": [
+            {
+              "elementId": "menu_generic_sample",
+              "displayKey": "banner.menu.generic.sample",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 1
+            },
+            {
+              "elementId": "menu_sample",
+              "displayKey": "banner.menu.sample",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 2
+            },
+            {
+              "elementId": "menu_environmental_compliance",
+              "displayKey": "sidenav.label.environmental.compliance",
+              "actionURL": "/EnvironmentalDashboard",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 3
+            },
+            {
+              "elementId": "menu_patient",
+              "displayKey": "banner.menu.patient",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 4
+            },
+            {
+              "elementId": "menu_storage",
+              "displayKey": "banner.menu.storage",
+              "actionURL": "",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 5
+            },
+            {
+              "elementId": "menu_sample_shipment",
+              "displayKey": "banner.menu.sample.shipment",
+              "actionURL": "/SampleShipment",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 6
+            },
+            {
+              "elementId": "menu_analyzers",
+              "displayKey": "analyzer.navigation.analyzers",
+              "actionURL": "/analyzers",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 7
+            },
+            {
+              "elementId": "menu_nonconformity",
+              "displayKey": "banner.menu.nonconformity",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 8
+            },
+            {
+              "elementId": "menu_eqa",
+              "displayKey": "banner.menu.eqa",
+              "isActive": false,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 9
+            },
+            {
+              "elementId": "menu_eqa_tests",
+              "displayKey": "banner.menu.eqa.tests",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 10
+            },
+            {
+              "elementId": "menu_eqa_mgmt",
+              "displayKey": "banner.menu.eqa.mgmt",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 11
+            },
+            {
+              "elementId": "menu_alerts_standalone",
+              "displayKey": "banner.menu.alerts",
+              "actionURL": "/Alerts",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 12
+            },
+            {
+              "elementId": "menu_pathology",
+              "displayKey": "sidenav.label.pathology",
+              "actionURL": "/PathologyDashboard",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 13
+            },
+            {
+              "elementId": "menu_immunochem",
+              "displayKey": "sidenav.label.immunochem",
+              "actionURL": "/ImmunohistochemistryDashboard",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 14
+            },
+            {
+              "elementId": "menu_cytology",
+              "displayKey": "sidenav.label.cytology",
+              "actionURL": "/CytologyDashboard",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 15
+            },
+            {
+              "elementId": "menu_results",
+              "displayKey": "banner.menu.results",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 16
+            },
+            {
+              "elementId": "menu_resultvalidation",
+              "displayKey": "banner.menu.resultvalidation",
+              "actionURL": "/ResultValidation?type=&test=",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": false,
+              "presentationOrder": 17
+            },
+            {
+              "elementId": "menu_billing",
+              "displayKey": "banner.menu.billing",
+              "actionURL": "",
+              "isActive": true,
+              "openInNewWindow": true,
+              "hideInOldUI": true,
+              "presentationOrder": 18
+            },
+            {
+              "elementId": "menu_aliquot",
+              "displayKey": "banner.menu.aliquot",
+              "actionURL": "/Aliquot",
+              "isActive": true,
+              "openInNewWindow": true,
+              "hideInOldUI": true,
+              "presentationOrder": 19
+            },
+            {
+              "elementId": "menu_notebook",
+              "displayKey": "sidenav.label.notebook",
+              "actionURL": "/NotebookDashboard",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 20
+            },
+            {
+              "elementId": "menu_inventory",
+              "displayKey": "sidenav.label.inventory",
+              "actionURL": "",
+              "isActive": true,
+              "openInNewWindow": false,
+              "hideInOldUI": true,
+              "presentationOrder": 21
+            },
+            {
+              "elementId": "menu_help",
+              "displayKey": "banner.menu.help",
+              "isActive": true,
+              "openInNewWindow": true,
+              "hideInOldUI": false,
+              "presentationOrder": 22
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "excludes": []
+}

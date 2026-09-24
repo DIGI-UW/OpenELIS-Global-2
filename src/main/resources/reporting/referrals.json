@@ -1,0 +1,14 @@
+{
+  "id": "REFERRALS",
+  "version": 1,
+  "label": "Referrals",
+  "source": "REFERRALS",
+  "dateAnchor": "sentDate",
+  "layouts": ["TABLE"],
+  "attributes": ["referralId", "referralResultId", "resultId", "referralAccessionNumber", "referringLab", "referredLab", "referredTestName", "returnedTestName", "requestDate", "referralDate", "referralResultValue", "referralResultDate", "referralStatus", "resultUnit"],
+  "catalogs": [],
+  "filters": ["labSectionIds", "testIds"],
+  "defaultColumns": {
+    "TABLE": ["referralAccessionNumber", "referringLab", "referredLab", "referredTestName", "referralDate", "referralResultValue", "referralResultDate", "referralStatus"]
+  }
+}

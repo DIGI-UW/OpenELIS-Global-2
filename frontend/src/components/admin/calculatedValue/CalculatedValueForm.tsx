@@ -36,6 +36,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import "../ruleBuilderAccordion.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -860,7 +861,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                     </div>
                   </div>
                   <div style={{ marginTop: "1rem" }}>
-                    <Accordion>
+                    <Accordion className="ruleBuilderAccordion">
                       <AccordionItem
                         title={
                           <FormattedMessage

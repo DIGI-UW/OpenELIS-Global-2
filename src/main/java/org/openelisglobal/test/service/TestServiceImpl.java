@@ -3,6 +3,7 @@ package org.openelisglobal.test.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
@@ -756,6 +758,32 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getTestById(String testId) {
         return getBaseObjectDAO().getTestById(testId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByIds(Collection<String> testIds) {
+        if (testIds == null || testIds.isEmpty()) {
+            return List.of();
+        }
+        return getBaseObjectDAO().get(new ArrayList<>(testIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getLabelOrDefault(String testId, Function<Test, String> label, String fallback) {
+        if (testId == null) {
+            return fallback;
+        }
+        try {
+            Test test = getBaseObjectDAO().getTestById(testId);
+            String resolved = test == null ? null : label.apply(test);
+            return resolved == null || resolved.isBlank() ? fallback : resolved;
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "getLabelOrDefault",
+                    "Could not resolve test name for " + testId + ": " + e.getMessage());
+            return fallback;
+        }
     }
 
     @Override

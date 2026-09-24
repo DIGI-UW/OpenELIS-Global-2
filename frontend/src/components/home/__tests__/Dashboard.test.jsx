@@ -32,6 +32,18 @@ const orders = Array.from({ length: ORDER_COUNT }, (_, index) => ({
   testSection: "1",
 }));
 
+// The server answers a test-section tab with that section's own rows; the
+// browser must show what it is sent rather than filter the page again.
+const haematologyOrder = {
+  id: "900",
+  priority: "ROUTINE",
+  orderDate: "2026-09-14",
+  patientId: "P900",
+  labNumber: "HAEM000000000001",
+  testName: "Haemoglobin",
+  testSection: "2",
+};
+
 const notificationContext = {
   notificationVisible: false,
   setNotificationVisible: vi.fn(),
@@ -66,13 +78,23 @@ describe("Home dashboard order list", () => {
       if (url.startsWith("/rest/home-dashboard/metrics")) {
         callback({ ordersInProgress: ORDER_COUNT });
       } else if (url.startsWith("/rest/user-test-sections/ALL")) {
-        callback([{ id: "1", value: "Haematology" }]);
+        callback([
+          { id: "1", value: "Biochemistry" },
+          { id: "2", value: "Haematology" },
+        ]);
       } else if (url.startsWith("/rest/home-dashboard/ORDERS_IN_PROGRESS")) {
-        // Mirrors the server: one page of orders at a time, the rest behind
+        // Mirrors the server: the chosen section is filtered server-side, and
+        // one page of what is left comes back at a time, the rest behind
         // ?page=N.
-        const requested = Number(
-          new URLSearchParams(url.split("?")[1]).get("page") ?? 1,
-        );
+        const params = new URLSearchParams(url.split("?")[1]);
+        const requested = Number(params.get("page") ?? 1);
+        if (params.get("testSectionId") === "2") {
+          callback({
+            displayItems: [haematologyOrder],
+            paging: { currentPage: "1", totalPages: "1" },
+          });
+          return;
+        }
         callback({
           displayItems: orders.slice(
             (requested - 1) * SERVER_PAGE_SIZE,
@@ -93,23 +115,77 @@ describe("Home dashboard order list", () => {
     vi.clearAllMocks();
   });
 
-  it("pages past the first 100 orders instead of disabling next", async () => {
+  it("walks the server's pages one request at a time from Carbon and from the arrows", async () => {
     const user = userEvent.setup();
     renderDashboard();
 
     await openInProgressTile(user);
 
-    expect(await screen.findByText("1-100 of 150 items")).toBeInTheDocument();
+    const pageRequests = () =>
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter(
+          (url) => url.includes("ORDERS_IN_PROGRESS") && url.includes("page="),
+        );
+
+    expect(
+      await screen.findByText("100 items on this page"),
+    ).toBeInTheDocument();
     expect(screen.getByText("ACC0000000000001")).toBeInTheDocument();
     expect(screen.queryByText("ACC0000000000150")).not.toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([]);
 
     const nextPage = screen.getByRole("button", { name: "Next Page" });
     expect(nextPage).toBeEnabled();
-
     await user.click(nextPage);
 
-    expect(await screen.findByText("101-150 of 150 items")).toBeInTheDocument();
+    expect(
+      await screen.findByText("50 items on this page"),
+    ).toBeInTheDocument();
     expect(screen.getByText("ACC0000000000150")).toBeInTheDocument();
     expect(screen.queryByText("ACC0000000000001")).not.toBeInTheDocument();
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=2",
+    ]);
+    expect(screen.getByRole("button", { name: "Next Page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "next" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "previous" }));
+
+    expect(
+      await screen.findByText("100 items on this page"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ACC0000000000001")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=2",
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=1",
+    ]);
+  });
+
+  it("asks the server for the chosen test section and shows what comes back", async () => {
+    const user = userEvent.setup();
+    renderDashboard();
+
+    await openInProgressTile(user);
+    expect(await screen.findByText("ACC0000000000001")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Haematology" }));
+
+    expect(await screen.findByText("HAEM000000000001")).toBeInTheDocument();
+    expect(screen.queryByText("ACC0000000000001")).not.toBeInTheDocument();
+    expect(screen.getByText(/1 items? on this page/)).toBeInTheDocument();
+    expect(
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter((url) => url.includes("testSectionId=")),
+    ).toEqual(["/rest/home-dashboard/ORDERS_IN_PROGRESS?testSectionId=2"]);
+
+    await user.click(screen.getByRole("tab", { name: "All" }));
+
+    expect(await screen.findByText("ACC0000000000001")).toBeInTheDocument();
+    expect(screen.queryByText("HAEM000000000001")).not.toBeInTheDocument();
   });
 });

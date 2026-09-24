@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="479-005-menu-presentation" author="pmanko">
+    <addColumn tableName="menu">
+      <column name="presentation_style" type="varchar(20)"/>
+      <column name="icon" type="varchar(60)"/>
+      <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="menu" columnName="last_updated"/>
+      <dropColumn tableName="menu" columnName="icon"/>
+      <dropColumn tableName="menu" columnName="presentation_style"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>
