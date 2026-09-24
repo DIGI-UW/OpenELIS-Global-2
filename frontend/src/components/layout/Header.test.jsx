@@ -376,6 +376,100 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 
+  describe("reporting navigation", () => {
+    const leaf = (id, label, url) => ({
+      menu: {
+        elementId: id,
+        displayKey: label,
+        actionURL: url,
+        isActive: true,
+      },
+      childMenus: [],
+    });
+    const menuData = [
+      MOCK_MENU_DATA[0],
+      {
+        menu: {
+          elementId: "menu_reports",
+          displayKey: "banner.menu.reports",
+          isActive: true,
+        },
+        childMenus: [
+          leaf(
+            "menu_reports_status_patient",
+            "openreports.patientTestStatus",
+            "/Report?type=patient&report=patientCILNSP_vreduit",
+          ),
+          leaf(
+            "menu_reports_custom_data_export",
+            "reporting.title",
+            "/reports/custom-data-export",
+          ),
+          leaf(
+            "menu_reports_queue",
+            "reporting.queue",
+            "/reports/custom-data-export?view=queue",
+          ),
+        ],
+      },
+    ];
+
+    test.each([
+      [
+        "/reports/custom-data-export?job=example&view=queue&page=2&review=example",
+        "My Report Queue",
+      ],
+      [
+        "/reports/custom-data-export?view=builder&step=columns&type=SAMPLE_TESTING",
+        "Custom Data Export",
+      ],
+      [
+        "/Report?report=patientCILNSP_vreduit&review=example&type=patient",
+        "Patient Status Report",
+      ],
+    ])(
+      "a deep link selects only its menu entry and opens Reports: %s",
+      async (initialRoute, name) => {
+        const { container } = renderHeader({ menuData, initialRoute });
+        const selected = await screen.findByRole("link", { name, exact: true });
+        expect(selected).toHaveAttribute("aria-current", "page");
+        expect(
+          container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+        ).toHaveLength(1);
+        expect(
+          screen.getByRole("button", { name: "Reports", exact: true }),
+        ).toHaveAttribute("aria-expanded", "true");
+      },
+    );
+
+    test("opening the queue from Home expands Reports and preserves native modified-click behavior", async () => {
+      renderHeader({ menuData, initialRoute: "/Dashboard" });
+      const reports = await screen.findByRole("button", {
+        name: "Reports",
+        exact: true,
+      });
+      fireEvent.click(reports);
+      const queue = screen.getByRole("link", {
+        name: "My Report Queue",
+        exact: true,
+      });
+      expect(fireEvent.click(queue, { ctrlKey: true })).toBe(true);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
+      fireEvent.click(queue);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/reports/custom-data-export?view=queue",
+      );
+      expect(
+        screen.getByRole("link", { name: "My Report Queue", exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Reports", exact: true }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
   describe("Home item active state", () => {
     test.each(["/", "/Dashboard"])(
       "landing on %s highlights the Home menu item",
@@ -544,138 +638,22 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("URL Matching and Active State", () => {
-    /**
-     * Test: URL matching logic is covered by E2E tests
-     * Unit testing active state requires complex DOM mocking
-     * See: cypress/e2e/sidenavEnhanced.cy.js for comprehensive URL matching tests
-     *
-     * Note: Active state is determined by:
-     * 1. Exact match: location.pathname === menuItem.menu.actionURL
-     * 2. Prefix match: location.pathname.startsWith(menuItem.menu.actionURL + "/")
-     * 3. Length check: actionURL.length > 1 (prevents "/" from matching everything)
-     */
-    test("URL matching logic documentation", () => {
-      // This test documents the URL matching algorithm
-      // Actual behavior is tested in E2E tests with real navigation
-      expect(true).toBe(true);
-    });
-
-    /**
-     * Test: Active state styling verification
-     * Verifies that active nav items have correct styling:
-     * - Left border (4px blue)
-     * - Background color (not transparent)
-     * - No double borders
-     * - No white background on focus/active
-     * - Subnav items (like workplan) show active state correctly
-     */
-    test("active nav items have correct styling", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
+    test.each(["/Storage", "/WorkPlanByTest"])(
+      "nested route %s has one active, visible navigation destination",
+      async (initialRoute) => {
+        const { container } = renderHeader({ initialRoute });
+        await waitFor(() => {
+          const selected = container.querySelector(
+            '.cds--side-nav [aria-current="page"]',
           );
-          expect(activeLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '.cds--side-nav__link--current');
-          // screen.debug(activeLink);
-
-          // Verify active link exists and has correct class
+          expect(selected).toHaveAttribute("href", initialRoute);
+          expect(selected).toBeVisible();
           expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: Workplan subnav shows active state
-     * Verifies that subnav items like workplan correctly show active state
-     * when the current path matches their actionURL
-     */
-    test("workplan subnav shows active state when path matches", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/WorkPlanByTest",
-      });
-
-      await waitFor(
-        () => {
-          const workplanLink = container.querySelector(
-            '.cds--side-nav__link[href="/WorkPlanByTest"]',
-          );
-          expect(workplanLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '[href="/WorkPlanByTest"]');
-
-          // Verify workplan link has active class
-          expect(
-            workplanLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item
-          const menuItem = workplanLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: No double borders on active items
-     * Verifies that active items don't have multiple borders applied
-     * Note: jsdom's getComputedStyle has limitations, so we check class and structure instead
-     */
-    test("active items have only left border, no double borders", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
-          );
-          expect(activeLink).toBeTruthy();
-
-          // Verify active class is present
-          expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-
-          // In jsdom, getComputedStyle may not work correctly, so we verify structure instead
-          // The CSS rules ensure only left border is applied (verified via CSS file)
-          // For actual computed styles, use browser DevTools or E2E tests
-        },
-        { timeout: 5000 },
-      );
-    });
+            container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+          ).toHaveLength(1);
+        });
+      },
+    );
   });
 
   describe("Menu Initialization", () => {

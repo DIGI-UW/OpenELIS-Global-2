@@ -11,6 +11,7 @@ import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.RuleResultScope;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
@@ -77,10 +78,13 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         if (test == null) {
             return;
         }
+        // the number drives the rules; what the technologist wrote is what a
+        // person reads in the alert
         String value = result.getValue();
+        String writtenValue = result.getEnteredValue();
         boolean critical = isCriticalValue(result, value);
         if (critical) {
-            recordCriticalResultAlert(result, test, value);
+            recordCriticalResultAlert(result, test, writtenValue);
         }
         List<TestAlertRule> rules = alertRuleService.getByTestId(test.getId());
         if (rules == null || rules.isEmpty()) {
@@ -101,7 +105,8 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             }
             String testName = test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
             String subject = "Test alert: " + testName;
-            String message = "[ALERT: " + rule.getName() + "] " + testName + (value != null ? " result " + value : "");
+            String message = "[ALERT: " + rule.getName() + "] " + testName
+                    + (writtenValue != null ? " result " + writtenValue : "");
             dispatchHeader(rule, message, sysUserId);
             dispatchExternal(rule, subject, message, result);
         }
@@ -141,6 +146,11 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
      * one: entering a value posts the characters typed, while editing one posts
      * what the field was showing — the formatted value. Same measurement, same
      * rule, two spellings of the number. A numeric rule is about the number.
+     *
+     * <p>
+     * The rule's value may itself be written in scientific notation, the way the
+     * result it names is shown on screen, so it is normalized before it is read as
+     * a number. The result's side arrives already normalized.
      */
     private boolean valueMatches(String triggerValue, String value, String resultType) {
         if (triggerValue == null || value == null) {
@@ -153,7 +163,8 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             return false;
         }
         try {
-            return Double.compare(Double.parseDouble(triggerValue.trim()), Double.parseDouble(value.trim())) == 0;
+            return Double.compare(Double.parseDouble(StringUtil.normalizeScientificNotation(triggerValue.trim())),
+                    Double.parseDouble(value.trim())) == 0;
         } catch (NumberFormatException e) {
             return false;
         }

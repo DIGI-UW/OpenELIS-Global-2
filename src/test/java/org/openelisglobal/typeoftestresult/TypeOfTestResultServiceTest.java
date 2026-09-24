@@ -27,13 +27,6 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataInDataBase() {
-        List<TypeOfTestResult> typeOfTestResults = typeOfTestResultService.getAll();
-        assertNotNull(typeOfTestResults);
-        assertTrue(typeOfTestResults.size() > 0);
-    }
-
-    @Test
     public void getAll_shouldReturnAllTypeOfTestResults() {
         List<TypeOfTestResult> typeOfTestResults = typeOfTestResultService.getAll();
         assertEquals(7, typeOfTestResults.size());
@@ -42,7 +35,6 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getTypeOfTestResultByType_shouldReturnTypeOfTestResultByType() {
         TypeOfTestResult typeOfTestResult = typeOfTestResultService.getTypeOfTestResultByType("N");
-        assertNotNull(typeOfTestResult);
         assertEquals("Numeric", typeOfTestResult.getDescription());
         assertEquals("N", typeOfTestResult.getTestResultType());
     }
@@ -51,7 +43,6 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
     public void getResultTypeById_shouldReturnResultTypeById() {
         TypeOfTestResult typeOfTestResult = typeOfTestResultService.getTypeOfTestResultByType("N");
         ResultType resultType = typeOfTestResultService.getResultTypeById(typeOfTestResult.getId());
-        assertNotNull(resultType);
         assertEquals(ResultType.REMARK, resultType);
     }
 
@@ -75,11 +66,7 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void update_shouldUpdateTypeOfTestResult() {
-
         TypeOfTestResult typeOfTestResult = typeOfTestResultService.get("1");
-
-        String originalId = typeOfTestResult.getId();
-        String originalHl7Value = typeOfTestResult.getHl7Value();
 
         typeOfTestResult.setDescription("Beta");
         typeOfTestResult.setTestResultType("B");
@@ -122,7 +109,6 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
 
         TypeOfTestResult savedResult = typeOfTestResultService.save(typeOfTestResult);
 
-        assertNotNull(savedResult);
         assertNotNull(savedResult.getId());
         assertEquals("Test", savedResult.getDescription());
         assertEquals("Z", savedResult.getTestResultType());

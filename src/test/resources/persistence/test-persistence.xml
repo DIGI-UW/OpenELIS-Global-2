@@ -16,6 +16,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.menu.valueholder.Menu</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
         <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
@@ -157,6 +158,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
+        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
@@ -175,6 +177,7 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+        <class>org.openelisglobal.reports.dataexport.valueholder.ExportJob</class>
 
         <!-- User Role entities (Required for real UserService filtering) -->
         <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>
@@ -200,6 +203,10 @@
         <!-- Electronic Signature entities (21 CFR Part 11) -->
         <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+        <!-- QI Configuration (OGC-709) -->
+        <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+        <!-- Critical Callback capture (OGC-714) -->
+        <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
         <class>org.openelisglobal.questionnaire.valueholder.Questionnaire</class>
@@ -253,6 +260,10 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+
+        <!-- Test Accreditation (OGC-686) -->
+        <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
+        <class>org.openelisglobal.accreditation.valueholder.TestAccreditation</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

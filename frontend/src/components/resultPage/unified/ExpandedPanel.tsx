@@ -114,6 +114,8 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /** the worklist's lab unit — scopes OGC-1025 control capture. */
+  testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
   loadedAnalyzerId?: string;
   methods: IdValue[];
@@ -142,6 +144,8 @@ interface ExpandedPanelProps {
   referralReasons: IdValue[];
   referralDraft: ReferralDraft | null;
   onReferralDraftChange: (draft: ReferralDraft | null) => void;
+  referenceLabReportDate?: string;
+  onReferenceLabReportDateChange?: (value: string) => void;
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
@@ -184,6 +188,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  testSectionId,
   loadedAnalyzerId,
   methods,
   analyzers,
@@ -203,6 +208,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   referralReasons,
   referralDraft,
   onReferralDraftChange,
+  referenceLabReportDate = "",
+  onReferenceLabReportDateChange = () => {},
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
@@ -558,6 +565,27 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             onCancel={() => onReferralDraftChange(null)}
           />
         )}
+
+        {/* Typing in a result the reference laboratory reported: its own report
+            date belongs to the referral, not to this laboratory's entry date,
+            and the External Referrals report prints it. */}
+        {row.referredOut && (
+          <div data-testid={`referral-report-date-row-${rowKey}`}>
+            <TextInput
+              id={`referral-report-date-${rowKey}`}
+              labelText={intl.formatMessage({
+                id: "label.results.referral.reportDate",
+              })}
+              placeholder={intl.formatMessage({
+                id: "label.results.referral.reportDate.placeholder",
+              })}
+              value={referenceLabReportDate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onReferenceLabReportDateChange(e.target.value)
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* Inline NCE (FR-E1/E2) — the shipped form, embedded, auto-linked to
@@ -653,6 +681,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
         editable={editable}
+        resultType={row.resultType}
+        testSectionId={testSectionId}
+        unitOfMeasure={row.unitsOfMeasure}
         fromAnalyzerId={loadedAnalyzerId}
         analyzerName={
           analyzers.find((a) => a.id === loadedAnalyzerId)?.value as

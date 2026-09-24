@@ -1,0 +1,31 @@
+{
+  "id": "NON_CONFORMANCE",
+  "version": 1,
+  "label": "Non-Conformance",
+  "source": "NON_CONFORMANCE",
+  "dateAnchor": "eventOrRecordedDate",
+  "layouts": [
+    "TABLE"
+  ],
+  "attributes": [
+    "ncAccessionNumber",
+    "rejectionReason",
+    "rejectionDate",
+    "rejectionStage",
+    "rejectedBy",
+    "ncOccurrenceId",
+    "ncSpecimenId",
+    "ncStatus",
+    "ncDateBasis",
+    "ncEventDate",
+    "ncRecordedDate",
+    "ncRecordSource"
+  ],
+  "catalogs": [],
+  "filters": [
+    "labSectionIds"
+  ],
+  "defaultColumns": {
+    "TABLE": []
+  }
+}
