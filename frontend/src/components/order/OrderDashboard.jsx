@@ -34,6 +34,12 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
@@ -47,7 +53,7 @@ import "./order-workflow.scss";
  * - DSH-3/4: "Include external sources" toggle for EMR/referral orders
  * - DSH-5/6: "+ New Order" button and barcode scan bar
  * - DSH-7/8: Filter dropdowns (Status, date range, Priority)
- * - DSH-9: Pagination (25/50/100 items, default 100)
+ * - DSH-9: Pagination, one server page at a time (paging.results.pageSize)
  */
 
 const STATUS_OPTIONS = [
@@ -68,8 +74,6 @@ const PRIORITY_OPTIONS = [
   { id: "routine", label: "Routine" },
 ];
 
-const PAGE_SIZES = [25, 50, 100];
-
 const OrderDashboardContent = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -85,9 +89,11 @@ const OrderDashboardContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: null, end: null });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
-  const [hasMore, setHasMore] = useState(false);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
 
   const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
   const isEnvOrVector = workflow === "environmental" || workflow === "vector";
@@ -106,14 +112,28 @@ const OrderDashboardContent = () => {
   // Identifies the load in flight, so a superseded response is dropped.
   const latestRequest = useRef(0);
 
-  // Fetch orders
+  const applyPage = useCallback((requestId, response) => {
+    if (requestId !== latestRequest.current) {
+      return;
+    }
+    setIsLoading(false);
+    if (response) {
+      const pageOrders = response.orders || [];
+      setOrders(pageOrders);
+      setPaging(response.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response.paging, pageOrders.length, previous),
+      );
+    }
+  }, []);
+
+  // A new search: the server matches every order against the filters, caches
+  // the list and answers with its first page.
   const fetchOrders = useCallback(() => {
     const requestId = ++latestRequest.current;
     setIsLoading(true);
 
     const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
       workflowType: workflow,
     });
 
@@ -130,28 +150,41 @@ const OrderDashboardContent = () => {
     if (dateRange.end)
       params.append("endDate", toLocalIso(new Date(dateRange.end)));
 
-    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) => {
-      if (requestId !== latestRequest.current) {
-        return;
-      }
-      setIsLoading(false);
-      if (response) {
-        const pageOrders = response.orders || [];
-        setOrders(pageOrders);
-        setHasMore(pageOrders.length > 0);
-      }
-    });
-  }, [page, pageSize, searchQuery, statusFilter, priorityFilter, dateRange]);
+    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) =>
+      applyPage(requestId, response),
+    );
+  }, [
+    workflow,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    dateRange,
+    applyPage,
+  ]);
+
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = useCallback(
+    (pageNumber) => {
+      const requestId = ++latestRequest.current;
+      setIsLoading(true);
+      getFromOpenElisServer(
+        `/rest/order/dashboard?page=${pageNumber}`,
+        (response) => applyPage(requestId, response),
+      );
+    },
+    [applyPage],
+  );
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  /** A narrowed list is shorter, so a filter change starts again from page 1. */
+  /** A filter change is a new search, which the server answers from page 1. */
   const applyFilter = (setFilter) => (value) => {
     setFilter(value);
-    setPage(1);
   };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   // Handlers
   const handleNewOrder = () => {
@@ -542,6 +575,7 @@ const OrderDashboardContent = () => {
           </div>
 
           {/* Orders Table */}
+          {arrows.show && <ServerPageArrows {...arrows} />}
           <DataTable rows={rows} headers={headers} isSortable>
             {({
               rows,
@@ -634,30 +668,15 @@ const OrderDashboardContent = () => {
             )}
           </DataTable>
 
-          {/* Pagination (DSH-9) */}
+          {/* Pagination (DSH-9): Carbon's page is the server's page */}
           <Pagination
-            pagesUnknown
-            isLastPage={!hasMore}
-            totalItems={(page - 1) * pageSize + orders.length}
-            itemText={() =>
-              intl.formatMessage(
-                { id: "pagination.items-on-page" },
-                { count: orders.length },
-              )
-            }
-            itemRangeText={() =>
-              intl.formatMessage(
-                { id: "pagination.items-on-page" },
-                { count: orders.length },
-              )
-            }
-            pageSize={pageSize}
-            pageSizes={PAGE_SIZES}
-            page={page}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage);
-              setPageSize(newPageSize);
-            }}
+            {...serverPaginationProps({
+              paging,
+              rowsOnPage: orders.length,
+              pageSize: serverPageSize,
+              onPageRequest: loadPage,
+              intl,
+            })}
           />
         </Stack>
       </div>

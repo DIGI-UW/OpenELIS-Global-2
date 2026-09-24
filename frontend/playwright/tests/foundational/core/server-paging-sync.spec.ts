@@ -191,4 +191,110 @@ test.describe("Server paging through Carbon", () => {
     await expect(secondRows.first()).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(panels.nth(1).locator(`[data-cy="${chosen}"]`)).toHaveCount(0);
   });
+
+  test("the clinical order dashboard pages the server's list from either control", async ({
+    page,
+  }) => {
+    await page.goto("/order/clinical", { waitUntil: "domcontentloaded" });
+    const main = page.getByRole("main");
+    const carbon = main.locator(".cds--pagination").first();
+    await expect(carbon).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(carbon).toContainText(/items? on this page/, {
+      timeout: NAV_TIMEOUT,
+    });
+    const pagesText = await carbon
+      .locator(".cds--pagination__right")
+      .innerText();
+    const totalPages = Number((pagesText.match(/of (\d+) page/) || [])[1]);
+    test.skip(totalPages < 2, "needs more orders than one server page holds");
+    await expect(carbon.locator("select").first()).toBeDisabled();
+
+    const pageTwo = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/order/dashboard?page=2") ||
+        response.url().endsWith("/rest/order/dashboard?page=2"),
+    );
+    await carbon.getByRole("button", { name: /next page/i }).click();
+    await pageTwo;
+    await expect(main.getByText(`2 / ${totalPages}`)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await expect(carbon.locator(".cds--pagination__right select")).toHaveValue(
+      "2",
+    );
+
+    const pageOne = page.waitForResponse((response) =>
+      response.url().includes("/rest/order/dashboard?page=1"),
+    );
+    await main.locator("#loadpreviousresults").click();
+    await pageOne;
+    await expect(main.getByText(`1 / ${totalPages}`)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await expect(main.locator("#loadpreviousresults")).toBeDisabled();
+
+    const filtered = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/order/dashboard?") &&
+        response.url().includes("status=in_progress") &&
+        !response.url().includes("page="),
+    );
+    await main.locator("#status-filter").click();
+    await page.getByRole("option", { name: "In Progress" }).click();
+    await filtered;
+    await expect(carbon.locator(".cds--pagination__right select")).toHaveValue(
+      "1",
+      { timeout: UI_TIMEOUT },
+    );
+  });
+
+  test("the pathology dashboard pages the server's cases from either control", async ({
+    page,
+  }) => {
+    await page.goto("/PathologyDashboard", { waitUntil: "domcontentloaded" });
+    const main = page.getByRole("main");
+    const statusFilter = main
+      .locator("select")
+      .filter({ has: page.locator('option[value="All"]') })
+      .first();
+    await expect(statusFilter).toBeVisible({ timeout: NAV_TIMEOUT });
+    const allLoaded = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/pathology/dashboard?") &&
+        !response.url().includes("page="),
+    );
+    await statusFilter.selectOption("All");
+    await allLoaded;
+    const carbon = main.locator(".cds--pagination").first();
+    await expect(carbon).toContainText(/items? on this page/, {
+      timeout: UI_TIMEOUT,
+    });
+    const pagesText = await carbon
+      .locator(".cds--pagination__right")
+      .innerText();
+    const totalPages = Number((pagesText.match(/of (\d+) page/) || [])[1]);
+    test.skip(totalPages < 2, "needs more cases than one server page holds");
+
+    const pageTwo = page.waitForResponse((response) =>
+      response.url().includes("/rest/pathology/dashboard?page=2"),
+    );
+    await main.locator("#loadnextresults").click();
+    await pageTwo;
+    await expect(main.getByText(`2 / ${totalPages}`)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await expect(carbon.locator(".cds--pagination__right select")).toHaveValue(
+      "2",
+    );
+
+    const pageOne = page.waitForResponse((response) =>
+      response.url().includes("/rest/pathology/dashboard?page=1"),
+    );
+    await carbon.locator(".cds--pagination__right select").selectOption("1");
+    await pageOne;
+    await expect(main.getByText(`1 / ${totalPages}`)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await expect(main.locator("#loadpreviousresults")).toBeDisabled();
+  });
 });

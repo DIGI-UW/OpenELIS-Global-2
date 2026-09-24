@@ -28,6 +28,12 @@ import {
   postToOpenElisServerFullResponse,
   hasRole,
 } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -46,8 +52,11 @@ function PathologyDashboard() {
 
   const [statuses, setStatuses] = useState([]);
   const [pathologyEntries, setPathologyEntries] = useState([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
   const [filters, setFilters] = useState({
     searchTerm: "",
     myCases: false,
@@ -97,7 +106,7 @@ function PathologyDashboard() {
     postToOpenElisServerFullResponse(
       "/rest/pathology/assignTechnician?pathologySampleId=" + pathologySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
   };
 
@@ -106,18 +115,8 @@ function PathologyDashboard() {
       "/rest/pathology/assignPathologist?pathologySampleId=" +
         pathologySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
-  };
-
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
   };
 
   const renderCell = (cell, row) => {
@@ -171,9 +170,11 @@ function PathologyDashboard() {
     return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
-  const setPathologyEntriesWithIds = (entries) => {
+  /** One server page of cases and the page announcement it came with. */
+  const setPathologyEntriesWithIds = (response) => {
     if (componentMounted.current) {
-      if (entries && entries.length > 0) {
+      const entries = response?.items || [];
+      if (entries.length > 0) {
         setPathologyEntries(
           entries.map((entry) => {
             return { ...entry, id: "" + entry.pathologySampleId };
@@ -182,6 +183,10 @@ function PathologyDashboard() {
       } else {
         setPathologyEntries([]);
       }
+      setPaging(response?.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response?.paging, entries.length, previous),
+      );
       setLoading(false);
     }
   };
@@ -223,12 +228,35 @@ function PathologyDashboard() {
     );
   };
 
-  const refreshItems = () => {
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = (pageNumber) => {
     getFromOpenElisServer(
-      "/rest/pathology/dashboard?" + filtersToParameters(),
+      "/rest/pathology/dashboard?page=" + pageNumber,
       setPathologyEntriesWithIds,
     );
   };
+
+  /**
+   * Runs the search again and, when asked, reopens the page that was showing
+   * (an assignment changes a row, not the list) as long as it still exists.
+   */
+  const refreshItems = (pageToReopen) => {
+    getFromOpenElisServer(
+      "/rest/pathology/dashboard?" + filtersToParameters(),
+      (response) => {
+        setPathologyEntriesWithIds(response);
+        const reopen = Number(pageToReopen) || 1;
+        if (
+          reopen > 1 &&
+          reopen <= (Number(response?.paging?.totalPages) || 1)
+        ) {
+          loadPage(reopen);
+        }
+      },
+    );
+  };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   const openCaseView = (id) => {
     history.push("/PathologyCaseView/" + id);
@@ -399,11 +427,9 @@ function PathologyDashboard() {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              rows={pathologyEntries.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              rows={pathologyEntries}
               headers={[
                 {
                   key: "requestDate",
@@ -470,43 +496,13 @@ function PathologyDashboard() {
               )}
             </DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={pathologyEntries.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging,
+                rowsOnPage: pathologyEntries.length,
+                pageSize: serverPageSize,
+                onPageRequest: loadPage,
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
           </Column>
         </Grid>

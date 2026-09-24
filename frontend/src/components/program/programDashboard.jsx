@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import {
   Tile,
   DataTable,
@@ -16,8 +21,6 @@ import {
   Grid,
   Column,
   Search,
-  Button,
-  Link,
   Heading,
   Section,
 } from "@carbon/react";
@@ -25,7 +28,6 @@ import {
 import "./programCaseView.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
 let breadcrumbs = [
@@ -51,59 +53,71 @@ const ProgramDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const intl = useIntl();
 
-  const fetchDashBoard = (pageNumber, filter) => {
-    let url = programDashboardUrl;
-    if (pageNumber && pageNumber > 1) url += `?page=${pageNumber}`;
-    if (filter)
-      url +=
-        pageNumber && pageNumber > 1
-          ? `&filter=${encodeURIComponent(filter)}`
-          : `?filter=${encodeURIComponent(filter)}`;
+  /** Applies one server page and its page announcement to the table. */
+  const applyPage = (response) => {
+    if (!response || !response.orderProgramsDashboardForm) return;
 
-    getFromOpenElisServer(url, (response) => {
-      if (!response || !response.orderProgramsDashboardForm) return;
+    const form = response.orderProgramsDashboardForm;
 
-      const form = response.orderProgramsDashboardForm;
+    const paging = form.paging || {};
 
-      const paging = form.paging || {};
+    const totalPages = Number(paging.totalPages || 1);
+    const currentPage = Number(paging.currentPage || 1);
 
-      const totalPages = Number(paging.totalPages || 1);
-      const currentPage = Number(paging.currentPage || 1);
-
-      setSummary({
-        totalEntries: response.totalEntries || 0,
-        totalPages,
-        currentPage,
-      });
-
-      const formatted = form.orderPrograms.map((item) => ({
-        id: String(item.programSampleId),
-        patientId: item.patientPK,
-        patientName: `${item.firstName || ""} ${item.lastName || ""}`,
-        firstName: item.firstName || "",
-        lastName: item.lastName || "",
-        programName: item.programName || "",
-        programCode: item.programCode || "",
-        accession: item.accessionNumber || "",
-        receivedDate: new Date(item.receivedDate).toLocaleDateString() || "",
-        questionnaireResponseUuid: item.questionnaireResponseUuid || "",
-      }));
-
-      setTableRows(formatted);
-      setServerPageSize((previous) =>
-        serverPageSizeOf(paging, formatted.length, previous),
-      );
+    setSummary({
+      totalEntries: response.totalEntries || 0,
+      totalPages,
+      currentPage,
     });
+
+    const formatted = form.orderPrograms.map((item) => ({
+      id: String(item.programSampleId),
+      patientId: item.patientPK,
+      patientName: `${item.firstName || ""} ${item.lastName || ""}`,
+      firstName: item.firstName || "",
+      lastName: item.lastName || "",
+      programName: item.programName || "",
+      programCode: item.programCode || "",
+      accession: item.accessionNumber || "",
+      receivedDate: new Date(item.receivedDate).toLocaleDateString() || "",
+      questionnaireResponseUuid: item.questionnaireResponseUuid || "",
+    }));
+
+    setTableRows(formatted);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(paging, formatted.length, previous),
+    );
+  };
+
+  /** A new search: the server caches the matching list and answers with page 1. */
+  const fetchDashBoard = (filter) => {
+    const url = filter
+      ? `${programDashboardUrl}?filter=${encodeURIComponent(filter)}`
+      : programDashboardUrl;
+    getFromOpenElisServer(url, applyPage);
+  };
+
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = (pageNumber) => {
+    getFromOpenElisServer(
+      `${programDashboardUrl}?page=${pageNumber}`,
+      applyPage,
+    );
   };
 
   const history = useHistory();
+
+  const arrows = serverPageArrowsProps({
+    paging: summary,
+    onPageRequest: loadPage,
+  });
 
   const handleRowClick = (programSampleId) => {
     history.push(`/programView/${programSampleId}`);
   };
 
   useEffect(() => {
-    fetchDashBoard(1, searchTerm);
+    fetchDashBoard(searchTerm);
   }, [searchTerm]);
 
   const headers = [
@@ -170,56 +184,6 @@ const ProgramDashboard = () => {
 
         <Column sm={4} md={8} lg={16} className="table-container">
           <div className="table-item">
-            {summary.totalPages > 1 && (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                    marginRight: "3rem",
-                    gap: "1rem",
-                    fontSize: "1rem",
-                  }}
-                >
-                  <Link>
-                    {summary.currentPage}/{summary.totalPages}
-                  </Link>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                    marginBottom: "1rem",
-                    gap: "1rem",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <Button
-                      onClick={() => {
-                        if (summary.currentPage > 1)
-                          fetchDashBoard(summary.currentPage - 1, searchTerm);
-                      }}
-                      renderIcon={ArrowLeft}
-                      hasIconOnly
-                      iconDescription="previous"
-                    />
-                    <Button
-                      onClick={() => {
-                        if (summary.currentPage < summary.totalPages)
-                          fetchDashBoard(summary.currentPage + 1, searchTerm);
-                      }}
-                      renderIcon={ArrowRight}
-                      hasIconOnly
-                      iconDescription="next"
-                      disabled={summary.currentPage === summary.totalPages}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
             <Search
               size="lg"
               labelText={intl.formatMessage({
@@ -232,6 +196,7 @@ const ProgramDashboard = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable rows={displayedRows} headers={headers} isSortable>
               {({ headers, getHeaderProps, getTableProps }) => (
                 <>
@@ -282,8 +247,7 @@ const ProgramDashboard = () => {
                       paging: summary,
                       rowsOnPage: tableRows.length,
                       pageSize: serverPageSize,
-                      onPageRequest: (pageNumber) =>
-                        fetchDashBoard(pageNumber, searchTerm),
+                      onPageRequest: loadPage,
                       intl,
                     })}
                   />

@@ -80,7 +80,10 @@ beforeEach(() => {
       return callback(DASHBOARD_COUNTS);
     }
     if (url.startsWith("/rest/pathology/dashboard?")) {
-      return callback(DASHBOARD_ENTRIES);
+      return callback({
+        items: DASHBOARD_ENTRIES,
+        paging: { currentPage: "1", totalPages: "1" },
+      });
     }
     return callback([]);
   });
