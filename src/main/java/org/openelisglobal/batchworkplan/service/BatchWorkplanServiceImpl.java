@@ -1,0 +1,364 @@
+package org.openelisglobal.batchworkplan.service;
+
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.batchworkplan.dao.BatchWorkplanDAO;
+import org.openelisglobal.batchworkplan.dao.BatchWorkplanItemDAO;
+import org.openelisglobal.batchworkplan.form.BatchWorkplanItemResponse;
+import org.openelisglobal.batchworkplan.form.BatchWorkplanRequest;
+import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
+import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
+import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
+import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem;
+import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
+import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional
+public class BatchWorkplanServiceImpl implements BatchWorkplanService {
+
+    private static final int DEFAULT_PENDING_LIMIT = 100;
+    private static final int MAX_PENDING_LIMIT = 500;
+    private static final DateTimeFormatter BATCH_NAME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private final BatchWorkplanDAO batchWorkplanDAO;
+    private final BatchWorkplanItemDAO batchWorkplanItemDAO;
+    private final AnalysisService analysisService;
+    private final IStatusService statusService;
+    private final UserService userService;
+
+    public BatchWorkplanServiceImpl(BatchWorkplanDAO batchWorkplanDAO, BatchWorkplanItemDAO batchWorkplanItemDAO,
+            AnalysisService analysisService, IStatusService statusService, UserService userService) {
+        this.batchWorkplanDAO = batchWorkplanDAO;
+        this.batchWorkplanItemDAO = batchWorkplanItemDAO;
+        this.analysisService = analysisService;
+        this.statusService = statusService;
+        this.userService = userService;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId) {
+        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(unarchivedStatuses());
+        List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
+        // Both exclusions are in the query, so the row cap is the last thing applied
+        // and a page full of already-batched or out-of-unit work cannot squeeze the
+        // eligible rows out of the result.
+        List<Analysis> analyses = analysisService.getPendingAnalysesForWorkplan(workplanPendingStatusIds(),
+                visibleTestIds, assignedAnalysisIds, boundLimit(limit));
+        return analyses.stream().map(this::toPendingResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BatchWorkplanResponse> getBatches(String sysUserId) {
+        List<BatchWorkplan> batches = batchWorkplanDAO.getForUserInStatuses(toUserId(sysUserId), unarchivedStatuses());
+        Set<String> analysisIds = batches.stream().flatMap(batch -> batch.getItems().stream())
+                .map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, Analysis> analysesById = analysesById(new ArrayList<>(analysisIds));
+        return batches.stream().map(batch -> toBatchResponse(batch, analysesById)).collect(Collectors.toList());
+    }
+
+    @Override
+    public BatchWorkplanResponse createBatch(BatchWorkplanRequest request, String sysUserId) {
+        if (request == null || request.getAnalysisIds() == null || request.getAnalysisIds().isEmpty()) {
+            throw new IllegalArgumentException("At least one analysis is required to create a batch workplan");
+        }
+
+        Integer ownerId = requireUserId(sysUserId);
+
+        List<String> analysisIds = request.getAnalysisIds().stream().filter(StringUtils::isNotBlank).distinct()
+                .collect(Collectors.toList());
+        if (analysisIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one analysis is required to create a batch workplan");
+        }
+
+        Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, unarchivedStatuses());
+        if (!alreadyAssigned.isEmpty()) {
+            throw new IllegalArgumentException("Analyses already assigned to an open batch: " + alreadyAssigned);
+        }
+
+        List<Analysis> analyses = analysisService.getAnalysesByIdsWithDetails(analysisIds);
+        if (analyses.size() != analysisIds.size()) {
+            throw new IllegalArgumentException("One or more analyses were not found");
+        }
+        // Re-check the caller's lab units on the write path: the pending list is
+        // already scoped, but the request body is client-supplied and a crafted one
+        // would otherwise batch another unit's work.
+        if (inUserLabUnits(analyses, sysUserId).size() != analyses.size()) {
+            throw new IllegalArgumentException("One or more analyses are outside your lab units");
+        }
+        validatePending(analyses);
+
+        BatchWorkplan batch = new BatchWorkplan();
+        batch.setName(StringUtils.defaultIfBlank(request.getName(),
+                "Batch " + LocalDateTime.now().format(BATCH_NAME_FORMAT)));
+        batch.setStatus(BatchWorkplanStatus.DRAFT);
+        batch.setTestSectionId(StringUtils.trimToNull(request.getTestSectionId()));
+        batch.setNotes(StringUtils.trimToNull(request.getNotes()));
+        batch.setCreatedAt(Timestamp.from(Instant.now()));
+        batch.setSysUserId(sysUserId);
+        batch.setCreatedByUserId(ownerId);
+        batch.setUpdatedByUserId(ownerId);
+
+        for (int index = 0; index < analysisIds.size(); index++) {
+            BatchWorkplanItem item = new BatchWorkplanItem();
+            item.setAnalysisId(analysisIds.get(index));
+            item.setSortOrder(index + 1);
+            batch.addItem(item);
+        }
+
+        Long id = batchWorkplanDAO.insert(batch);
+        BatchWorkplan saved = batchWorkplanDAO.getWithItems(id).orElse(batch);
+        return toBatchResponse(saved, analysesByIdFromAnalyses(analyses));
+    }
+
+    @Override
+    public BatchWorkplanResponse transitionBatch(Long id, BatchWorkplanStatus nextStatus, String sysUserId) {
+        if (nextStatus == null) {
+            throw new IllegalArgumentException("Batch status is required");
+        }
+        Integer actorId = requireUserId(sysUserId);
+        BatchWorkplan batch = batchWorkplanDAO.getWithItems(id)
+                .orElseThrow(() -> new LIMSRuntimeException("Batch workplan not found: " + id));
+        BatchWorkplanStatus currentStatus = batch.getStatus();
+        if (!currentStatus.canTransitionTo(nextStatus)) {
+            throw new IllegalArgumentException(
+                    "Cannot transition batch workplan from " + currentStatus + " to " + nextStatus);
+        }
+
+        Timestamp now = Timestamp.from(Instant.now());
+        batch.setStatus(nextStatus);
+        batch.setSysUserId(sysUserId);
+        batch.setUpdatedByUserId(actorId);
+        if (nextStatus == BatchWorkplanStatus.ACTIVE) {
+            batch.setActivatedAt(now);
+        } else if (nextStatus == BatchWorkplanStatus.COMPLETED) {
+            batch.setCompletedAt(now);
+        } else if (nextStatus == BatchWorkplanStatus.ARCHIVED) {
+            batch.setArchivedAt(now);
+        }
+
+        BatchWorkplan updated = batchWorkplanDAO.update(batch);
+        return toBatchResponse(updated, analysesById(
+                updated.getItems().stream().map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toList())));
+    }
+
+    /**
+     * The subset of these analyses whose test falls in a lab unit the user holds
+     * the Results role for. Same helper the Results worklist and the four legacy
+     * workplan screens use, so all five scope identically.
+     */
+    private List<Analysis> inUserLabUnits(List<Analysis> analyses, String sysUserId) {
+        if (analyses.isEmpty()) {
+            return analyses;
+        }
+        return userService.filterAnalysesByLabUnitRoles(sysUserId, analyses, Constants.ROLE_RESULTS);
+    }
+
+    private void validatePending(List<Analysis> analyses) {
+        Set<String> pendingStatuses = new LinkedHashSet<>(workplanPendingStatusIds());
+        for (Analysis analysis : analyses) {
+            if (!pendingStatuses.contains(analysis.getStatusId())) {
+                throw new IllegalArgumentException("Analysis " + analysis.getId() + " is not pending workplan entry");
+            }
+        }
+    }
+
+    private List<String> workplanPendingStatusIds() {
+        return Arrays.asList(statusService.getStatusID(AnalysisStatus.NotStarted),
+                statusService.getStatusID(AnalysisStatus.BiologistRejected),
+                statusService.getStatusID(AnalysisStatus.TechnicalRejected),
+                statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
+    }
+
+    /**
+     * Every status except ARCHIVED, which is the one set three different questions
+     * happen to share: which batches are still work in hand, which analyses a batch
+     * still holds, and which analyses a new batch may not claim.
+     *
+     * <p>
+     * COMPLETED is deliberately in the set. A completed batch keeps its analyses:
+     * they carry results by then, so they are no longer pending and would not be
+     * offered for batching anyway. The one case this leaves awkward is an analysis
+     * reopened by a rejection or a retest, which stays held until its batch is
+     * archived. Releasing it automatically needs the reopen path, which this
+     * milestone does not build.
+     */
+    private List<BatchWorkplanStatus> unarchivedStatuses() {
+        return Arrays.asList(BatchWorkplanStatus.DRAFT, BatchWorkplanStatus.ACTIVE, BatchWorkplanStatus.COMPLETED);
+    }
+
+    private int boundLimit(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return DEFAULT_PENDING_LIMIT;
+        }
+        return Math.min(limit, MAX_PENDING_LIMIT);
+    }
+
+    private Map<String, Analysis> analysesById(List<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return analysesByIdFromAnalyses(analysisService.getAnalysesByIdsWithDetails(analysisIds));
+    }
+
+    private Map<String, Analysis> analysesByIdFromAnalyses(List<Analysis> analyses) {
+        Map<String, Analysis> byId = new HashMap<>();
+        for (Analysis analysis : analyses) {
+            byId.put(analysis.getId(), analysis);
+        }
+        return byId;
+    }
+
+    private BatchWorkplanResponse toBatchResponse(BatchWorkplan batch, Map<String, Analysis> analysesById) {
+        BatchWorkplanResponse response = new BatchWorkplanResponse();
+        response.setId(batch.getId());
+        response.setName(batch.getName());
+        response.setStatus(batch.getStatus());
+        response.setTestSectionId(batch.getTestSectionId());
+        response.setNotes(batch.getNotes());
+        response.setCreatedAt(batch.getCreatedAt());
+        response.setActivatedAt(batch.getActivatedAt());
+        response.setCompletedAt(batch.getCompletedAt());
+        response.setArchivedAt(batch.getArchivedAt());
+        response.setItemCount(batch.getItems() == null ? 0 : batch.getItems().size());
+        List<BatchWorkplanItemResponse> items = new ArrayList<>();
+        if (batch.getItems() != null) {
+            for (BatchWorkplanItem item : batch.getItems()) {
+                BatchWorkplanItemResponse itemResponse = new BatchWorkplanItemResponse();
+                Analysis analysis = analysesById.get(item.getAnalysisId());
+                if (analysis != null) {
+                    copyPendingFields(toPendingResponse(analysis), itemResponse);
+                } else {
+                    itemResponse.setAnalysisId(item.getAnalysisId());
+                }
+                itemResponse.setId(item.getId());
+                itemResponse.setSortOrder(item.getSortOrder());
+                items.add(itemResponse);
+            }
+        }
+        response.setItems(items);
+        return response;
+    }
+
+    private PendingBatchTestResponse toPendingResponse(Analysis analysis) {
+        PendingBatchTestResponse response = new PendingBatchTestResponse();
+        response.setAnalysisId(analysis.getId());
+        response.setStatusId(analysis.getStatusId());
+        response.setStatusName(statusService.getStatusNameFromId(analysis.getStatusId()));
+        response.setNonconforming(
+                statusService.matches(analysis.getStatusId(), AnalysisStatus.NonConforming_depricated));
+
+        SampleItem sampleItem = analysis.getSampleItem();
+        if (sampleItem != null) {
+            response.setSampleItemId(sampleItem.getId());
+            TypeOfSample typeOfSample = sampleItem.getTypeOfSample();
+            if (typeOfSample != null) {
+                response.setSampleType(typeOfSample.getLocalizedName());
+            }
+            Sample sample = sampleItem.getSample();
+            if (sample != null) {
+                response.setSampleId(sample.getId());
+                response.setAccessionNumber(sample.getAccessionNumber());
+                response.setReceivedDate(sample.getReceivedDateForDisplay());
+            }
+        }
+
+        Test test = analysis.getTest();
+        if (test != null) {
+            response.setTestId(test.getId());
+            response.setTestName(test.getName());
+        }
+
+        TestSection testSection = analysis.getTestSection();
+        if (testSection != null) {
+            response.setTestSectionId(testSection.getId());
+            response.setTestSectionName(testSection.getTestSectionName());
+        }
+
+        Method method = analysis.getMethod();
+        if (method != null) {
+            response.setMethodId(method.getId());
+            response.setMethodName(method.getLocalizedValue());
+        }
+        response.setGroupKey(buildGroupKey(response));
+        return response;
+    }
+
+    private void copyPendingFields(PendingBatchTestResponse source, PendingBatchTestResponse target) {
+        target.setAnalysisId(source.getAnalysisId());
+        target.setAccessionNumber(source.getAccessionNumber());
+        target.setSampleId(source.getSampleId());
+        target.setSampleItemId(source.getSampleItemId());
+        target.setReceivedDate(source.getReceivedDate());
+        target.setTestId(source.getTestId());
+        target.setTestName(source.getTestName());
+        target.setTestSectionId(source.getTestSectionId());
+        target.setTestSectionName(source.getTestSectionName());
+        target.setMethodId(source.getMethodId());
+        target.setMethodName(source.getMethodName());
+        target.setSampleType(source.getSampleType());
+        target.setStatusId(source.getStatusId());
+        target.setStatusName(source.getStatusName());
+        target.setGroupKey(source.getGroupKey());
+        target.setNonconforming(source.isNonconforming());
+    }
+
+    private String buildGroupKey(PendingBatchTestResponse response) {
+        String testId = StringUtils.defaultIfBlank(response.getTestId(), "unknown-test");
+        String methodId = StringUtils.defaultIfBlank(response.getMethodId(), "manual");
+        return testId + ":" + methodId;
+    }
+
+    /**
+     * The caller's numeric id, or null when it is absent or unparseable. Null is
+     * the safe answer on a read: the batch query treats it as "owns nothing" rather
+     * than failing the request. Writes call {@link #requireUserId} instead, so a
+     * caller we cannot identify gets a 400 rather than an unowned batch.
+     */
+    private Integer toUserId(String sysUserId) {
+        if (StringUtils.isBlank(sysUserId)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(sysUserId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer requireUserId(String sysUserId) {
+        Integer userId = toUserId(sysUserId);
+        if (userId == null) {
+            throw new IllegalArgumentException("Could not identify the requesting user");
+        }
+        return userId;
+    }
+}
