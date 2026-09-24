@@ -228,6 +228,7 @@
   "admin.programs.editor.status.noHardDelete": "No hard delete — deactivate preserves history.",
   "admin.programs.deactivate.modal.body": "\"{programName}\" will stop appearing in the order-entry Program picker for new orders. {orderCount, plural, one {Its # historical order keeps its program coding} other {Its # historical orders keep their program coding}} and all indicator counts are preserved. You can reactivate it at any time from the Programs list.",
   "admin.programs.deactivate.modal.body.unknownCount": "\"{programName}\" will stop appearing in the order-entry Program picker for new orders. Historical orders keep their program coding and all indicator counts are preserved. You can reactivate it at any time from the Programs list.",
+  "admin.programs.questionnaire.question.unsupported": "This is a \"{type}\" item, which this builder does not edit. It is kept exactly as it is when you save. Edit it in JSON mode.",
   "admin.programs.questionnaire.question.type.boolean": "Yes / No",
   "admin.programs.questionnaire.question.type.choice": "Choice",
   "admin.programs.questionnaire.question.type.checkbox": "Checkbox",

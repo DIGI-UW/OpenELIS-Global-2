@@ -100,6 +100,41 @@ const QUESTION_TYPES = [
   "text",
   "quantity",
 ];
+
+/**
+ * "Checkbox" is this screen's label for a multi-select, not a FHIR type. FHIR
+ * spells that as a choice that repeats, which is what order entry renders and
+ * what the questionnaire parser accepts, so the two are mapped on the way in
+ * and out rather than stored verbatim.
+ */
+const toEditorType = (item) =>
+  item.type === "choice" && item.repeats === true ? "checkbox" : item.type;
+
+/**
+ * Every item.type FHIR R4 allows. The editor offers a subset; the rest are
+ * carried through untouched so a questionnaire that uses one stays editable
+ * instead of being refused on save.
+ */
+const FHIR_ITEM_TYPES = new Set([
+  "group",
+  "display",
+  "boolean",
+  "decimal",
+  "integer",
+  "date",
+  "dateTime",
+  "time",
+  "string",
+  "text",
+  "url",
+  "choice",
+  "open-choice",
+  "attachment",
+  "reference",
+  "quantity",
+]);
+
+const isEditableType = (type) => QUESTION_TYPES.includes(type);
 const TYPE_EXAMPLE_IDS = {
   boolean: "admin.programs.questionnaire.question.typeExample.boolean",
   choice: "admin.programs.questionnaire.question.typeExample.choice",
@@ -173,15 +208,19 @@ function questionsFromParsed(parsed, keyPrefix) {
   if (!Array.isArray(parsed?.item)) {
     return [];
   }
-  return parsed.item.map((it, i) => ({
-    key: `${keyPrefix}-${i}`,
-    linkId: it.linkId || `q${i + 1}`,
-    text: it.text || "",
-    type: it.type || "string",
-    options: Array.isArray(it.answerOption)
-      ? it.answerOption.map(toOption)
-      : [],
-  }));
+  return parsed.item.map((it, i) => {
+    const type = toEditorType(it) || "string";
+    return {
+      key: `${keyPrefix}-${i}`,
+      linkId: it.linkId || `q${i + 1}`,
+      text: it.text || "",
+      type,
+      readOnly: !isEditableType(type),
+      options: Array.isArray(it.answerOption)
+        ? it.answerOption.map(toOption)
+        : [],
+    };
+  });
 }
 
 function ProgramManagement() {
@@ -789,11 +828,16 @@ function ProgramEditor({
     }
     const seen = new Set();
     for (const it of parsed.item) {
-      if (!it.linkId || !it.text || !QUESTION_TYPES.includes(it.type)) {
+      const needsText = it.type !== "display" && it.type !== "group";
+      if (
+        !it.linkId ||
+        (needsText && !it.text) ||
+        !FHIR_ITEM_TYPES.has(it.type)
+      ) {
         throw new Error(
           intl.formatMessage(
             { id: "admin.programs.questionnaire.json.error.itemShape" },
-            { allowed: QUESTION_TYPES.join(", ") },
+            { allowed: [...FHIR_ITEM_TYPES].join(", ") },
           ),
         );
       }
@@ -818,12 +862,21 @@ function ProgramEditor({
       resourceType: "Questionnaire",
       item: questions.map((q, i) => {
         const linkId = q.linkId || `q${i + 1}`;
+        const base = baseItemsByLink.get(linkId) || {};
+        if (q.readOnly) {
+          return base;
+        }
         const merged = {
-          ...(baseItemsByLink.get(linkId) || {}),
+          ...base,
           linkId,
           text: q.text,
-          type: q.type,
+          type: q.type === "checkbox" ? "choice" : q.type,
         };
+        if (q.type === "checkbox") {
+          merged.repeats = true;
+        } else {
+          delete merged.repeats;
+        }
         if (
           (q.type === "choice" || q.type === "checkbox") &&
           q.options.length
@@ -1169,64 +1222,10 @@ function ProgramEditor({
         <Column lg={9} md={8} sm={4}>
           {mode === 0 ? (
             <Stack gap={3}>
-              {questions.map((q) => (
-                <Tile key={q.key}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <TextInput
-                      id={`qt-${q.key}`}
-                      labelText={intl.formatMessage({
-                        id: "admin.programs.questionnaire.question.text.label",
-                      })}
-                      value={q.text}
-                      onChange={(e) =>
-                        patchQuestion(q.key, { text: e.target.value })
-                      }
-                    />
-                    <OverflowMenu
-                      aria-label={intl.formatMessage({
-                        id: "admin.programs.questionnaire.question.actions.aria",
-                      })}
-                    >
-                      <OverflowMenuItem
-                        isDelete
-                        itemText={intl.formatMessage({
-                          id: "admin.programs.questionnaire.question.actions.delete",
-                        })}
-                        onClick={() =>
-                          setQuestions((qs) =>
-                            qs.filter((x) => x.key !== q.key),
-                          )
-                        }
-                      />
-                    </OverflowMenu>
-                  </div>
-                  <Select
-                    id={`qty-${q.key}`}
-                    labelText={intl.formatMessage({
-                      id: "admin.programs.questionnaire.question.type.label",
-                    })}
-                    value={q.type}
-                    onChange={(e) =>
-                      patchQuestion(q.key, { type: e.target.value })
-                    }
-                  >
-                    {QUESTION_TYPES.map((ty) => (
-                      <SelectItem
-                        key={ty}
-                        value={ty}
-                        text={intl.formatMessage({
-                          id: `admin.programs.questionnaire.question.type.${ty}`,
-                        })}
-                      />
-                    ))}
-                  </Select>
-                  {TYPE_EXAMPLE_IDS[q.type] && (
+              {questions.map((q) =>
+                q.readOnly ? (
+                  <Tile key={q.key}>
+                    <strong>{q.text || q.linkId}</strong>
                     <p
                       style={{
                         fontSize: 12,
@@ -1234,99 +1233,175 @@ function ProgramEditor({
                         marginTop: 4,
                       }}
                     >
-                      {intl.formatMessage({ id: TYPE_EXAMPLE_IDS[q.type] })}
+                      {intl.formatMessage(
+                        {
+                          id: "admin.programs.questionnaire.question.unsupported",
+                        },
+                        { type: q.type },
+                      )}
                     </p>
-                  )}
-                  {(q.type === "choice" || q.type === "checkbox") && (
-                    <Stack gap={2} style={{ marginTop: 8 }}>
-                      <span
-                        style={{ fontSize: 12, textTransform: "uppercase" }}
-                      >
-                        <FormattedMessage id="admin.programs.questionnaire.answerOptions.section.title" />
-                      </span>
-                      {q.options.map((o, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "center",
-                          }}
-                        >
-                          <TextInput
-                            id={`opt-${q.key}-${i}`}
-                            size="sm"
-                            labelText=""
-                            value={o.value}
-                            readOnly={o.coded}
-                            onChange={(e) => {
-                              if (o.coded) return;
-                              const next = [...q.options];
-                              next[i] = { ...o, value: e.target.value };
-                              patchQuestion(q.key, { options: next });
-                            }}
-                          />
-                          {o.coded ? (
-                            <Tag type="cool-gray" size="sm">
-                              <FormattedMessage id="admin.programs.questionnaire.answerOptions.coded" />
-                            </Tag>
-                          ) : (
-                            <IconButton
-                              kind="ghost"
-                              size="sm"
-                              label={intl.formatMessage({
-                                id: "admin.programs.questionnaire.answerOptions.deleteOption",
-                              })}
-                              onClick={() =>
-                                patchQuestion(q.key, {
-                                  options: q.options.filter((_, j) => j !== i),
-                                })
-                              }
-                            >
-                              <TrashCan />
-                            </IconButton>
-                          )}
-                        </div>
-                      ))}
-                      {q.options.some((o) => o.coded) && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "var(--cds-text-secondary)",
-                          }}
-                        >
-                          <FormattedMessage id="admin.programs.questionnaire.answerOptions.codedHelp" />
-                        </p>
-                      )}
-                      {q.options.length === 0 && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "var(--cds-text-secondary)",
-                          }}
-                        >
-                          <FormattedMessage id="admin.programs.questionnaire.answerOptions.empty" />
-                        </p>
-                      )}
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        renderIcon={Add}
-                        onClick={() =>
-                          patchQuestion(q.key, {
-                            options: [
-                              ...q.options,
-                              { value: "", coded: false, raw: null },
-                            ],
-                          })
+                  </Tile>
+                ) : (
+                  <Tile key={q.key}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <TextInput
+                        id={`qt-${q.key}`}
+                        labelText={intl.formatMessage({
+                          id: "admin.programs.questionnaire.question.text.label",
+                        })}
+                        value={q.text}
+                        onChange={(e) =>
+                          patchQuestion(q.key, { text: e.target.value })
                         }
+                      />
+                      <OverflowMenu
+                        aria-label={intl.formatMessage({
+                          id: "admin.programs.questionnaire.question.actions.aria",
+                        })}
                       >
-                        <FormattedMessage id="admin.programs.questionnaire.answerOptions.addOption" />
-                      </Button>
-                    </Stack>
-                  )}
-                </Tile>
-              ))}
+                        <OverflowMenuItem
+                          isDelete
+                          itemText={intl.formatMessage({
+                            id: "admin.programs.questionnaire.question.actions.delete",
+                          })}
+                          onClick={() =>
+                            setQuestions((qs) =>
+                              qs.filter((x) => x.key !== q.key),
+                            )
+                          }
+                        />
+                      </OverflowMenu>
+                    </div>
+                    <Select
+                      id={`qty-${q.key}`}
+                      labelText={intl.formatMessage({
+                        id: "admin.programs.questionnaire.question.type.label",
+                      })}
+                      value={q.type}
+                      onChange={(e) =>
+                        patchQuestion(q.key, { type: e.target.value })
+                      }
+                    >
+                      {QUESTION_TYPES.map((ty) => (
+                        <SelectItem
+                          key={ty}
+                          value={ty}
+                          text={intl.formatMessage({
+                            id: `admin.programs.questionnaire.question.type.${ty}`,
+                          })}
+                        />
+                      ))}
+                    </Select>
+                    {TYPE_EXAMPLE_IDS[q.type] && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "var(--cds-text-secondary)",
+                          marginTop: 4,
+                        }}
+                      >
+                        {intl.formatMessage({ id: TYPE_EXAMPLE_IDS[q.type] })}
+                      </p>
+                    )}
+                    {(q.type === "choice" || q.type === "checkbox") && (
+                      <Stack gap={2} style={{ marginTop: 8 }}>
+                        <span
+                          style={{ fontSize: 12, textTransform: "uppercase" }}
+                        >
+                          <FormattedMessage id="admin.programs.questionnaire.answerOptions.section.title" />
+                        </span>
+                        {q.options.map((o, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              alignItems: "center",
+                            }}
+                          >
+                            <TextInput
+                              id={`opt-${q.key}-${i}`}
+                              size="sm"
+                              labelText=""
+                              value={o.value}
+                              readOnly={o.coded}
+                              onChange={(e) => {
+                                if (o.coded) return;
+                                const next = [...q.options];
+                                next[i] = { ...o, value: e.target.value };
+                                patchQuestion(q.key, { options: next });
+                              }}
+                            />
+                            {o.coded ? (
+                              <Tag type="cool-gray" size="sm">
+                                <FormattedMessage id="admin.programs.questionnaire.answerOptions.coded" />
+                              </Tag>
+                            ) : (
+                              <IconButton
+                                kind="ghost"
+                                size="sm"
+                                label={intl.formatMessage({
+                                  id: "admin.programs.questionnaire.answerOptions.deleteOption",
+                                })}
+                                onClick={() =>
+                                  patchQuestion(q.key, {
+                                    options: q.options.filter(
+                                      (_, j) => j !== i,
+                                    ),
+                                  })
+                                }
+                              >
+                                <TrashCan />
+                              </IconButton>
+                            )}
+                          </div>
+                        ))}
+                        {q.options.some((o) => o.coded) && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--cds-text-secondary)",
+                            }}
+                          >
+                            <FormattedMessage id="admin.programs.questionnaire.answerOptions.codedHelp" />
+                          </p>
+                        )}
+                        {q.options.length === 0 && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--cds-text-secondary)",
+                            }}
+                          >
+                            <FormattedMessage id="admin.programs.questionnaire.answerOptions.empty" />
+                          </p>
+                        )}
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={Add}
+                          onClick={() =>
+                            patchQuestion(q.key, {
+                              options: [
+                                ...q.options,
+                                { value: "", coded: false, raw: null },
+                              ],
+                            })
+                          }
+                        >
+                          <FormattedMessage id="admin.programs.questionnaire.answerOptions.addOption" />
+                        </Button>
+                      </Stack>
+                    )}
+                  </Tile>
+                ),
+              )}
               {questions.length === 0 && (
                 <p
                   style={{
@@ -1442,6 +1517,21 @@ function ProgramEditor({
                         id: "admin.programs.questionnaire.preview.untitled",
                       })}
                   </label>
+                  {q.readOnly && (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--cds-text-secondary)",
+                      }}
+                    >
+                      {intl.formatMessage(
+                        {
+                          id: "admin.programs.questionnaire.question.unsupported",
+                        },
+                        { type: q.type },
+                      )}
+                    </p>
+                  )}
                   {q.type === "choice" && (
                     <Select id={`pv-${q.key}`} labelText="" disabled>
                       <SelectItem
