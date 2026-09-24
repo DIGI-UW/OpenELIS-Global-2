@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import {
   DEFAULT_SERVER_PAGE_SIZE,
   serverPageSizeFrom,
   startingRecNoFor,
 } from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import {
   Button,
   Column,
@@ -122,16 +123,6 @@ function DictionaryManagement() {
     }
   }, [selectedRowIds]);
 
-  const handleNextPage = () => {
-    setPage((current) => current + 1);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPage((current) => Math.max(current - 1, 1));
-    setSelectedRowIds([]);
-  };
-
   const yesOrNo = [
     {
       id: "Y",
@@ -149,6 +140,16 @@ function DictionaryManagement() {
       setSelectedRowIds([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   const fetchedDictionaryMenu = (res) => {
     if (componentMounted.current) {
@@ -668,45 +669,6 @@ function DictionaryManagement() {
                   {toRecordCount} <FormattedMessage id="of" />{" "}
                   {totalRecordCount}
                 </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.previous",
-                    })}
-                    disabled={parseInt(fromRecordCount) <= 1}
-                    onClick={handlePreviousPage}
-                    renderIcon={ArrowLeft}
-                  />
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.next",
-                    })}
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
-                    disabled={
-                      parseInt(toRecordCount) >= parseInt(totalRecordCount)
-                    }
-                  />
-                </div>
               </Column>
             </Form>
           </Section>
@@ -732,6 +694,7 @@ function DictionaryManagement() {
         <br />
         <Grid fullWidth={true} className="gridBoundary">
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
               size="sm"
               rows={isSearching ? searchedMenuList : dictionaryMenuList}

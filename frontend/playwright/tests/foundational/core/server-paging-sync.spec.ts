@@ -72,6 +72,9 @@ test.describe("Server paging through Carbon", () => {
     });
     const unit = page.locator("#select-1");
     await expect(unit).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect
+      .poll(() => unit.locator("option").count(), { timeout: NAV_TIMEOUT })
+      .toBeGreaterThan(1);
     const units = await unit
       .locator("option")
       .evaluateAll((options) =>

@@ -4,6 +4,8 @@ import {
   serverPageSizeFrom,
   startingRecNoFor,
 } from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import {
   Heading,
@@ -133,16 +135,6 @@ function OrganizationManagement() {
     );
   }
 
-  const handleNextPage = () => {
-    setPage((current) => current + 1);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPage((current) => Math.max(current - 1, 1));
-    setSelectedRowIds([]);
-  };
-
   const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
     setPage(1);
@@ -176,6 +168,16 @@ function OrganizationManagement() {
       setSelectedRowIds([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // Browsing and searching are the same list from two endpoints, so which one
   // is read follows the search box rather than both being read at once.
@@ -298,8 +300,6 @@ function OrganizationManagement() {
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           deleteDeactivate={deleteDeactivateOrganizationManagament}
           id={selectedRowIds[0]}
           otherParmsInLink={`&startingRecNo=1`}
@@ -337,6 +337,7 @@ function OrganizationManagement() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
                   rows={organizationsManagmentListShow}
                   headers={[

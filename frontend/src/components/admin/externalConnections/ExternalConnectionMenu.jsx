@@ -4,6 +4,8 @@ import {
   serverPageSizeFrom,
   startingRecNoFor,
 } from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import {
   Heading,
   Grid,
@@ -91,16 +93,6 @@ function ExternalConnectionMenu() {
     invalidateServerData();
   };
 
-  const handleNextPage = () => {
-    setPage((current) => current + 1);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPage((current) => Math.max(current - 1, 1));
-    setSelectedRowIds([]);
-  };
-
   const handleSearchChange = (event) => {
     setIsSearching(true);
     setPage(1);
@@ -115,6 +107,16 @@ function ExternalConnectionMenu() {
       setSelectedRowIds([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // Browsing and searching are the same list from two endpoints, so which one
   // is read follows the search box.
@@ -220,8 +222,6 @@ function ExternalConnectionMenu() {
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           deleteDeactivate={deactivateConnection}
           id={selectedRowIds[0]}
           otherParmsInLink={`&startingRecNo=1`}
@@ -252,6 +252,7 @@ function ExternalConnectionMenu() {
           <br />
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={16} md={8} sm={4}>
+              {arrows.show && <ServerPageArrows {...arrows} />}
               <DataTable
                 rows={connectionListShow}
                 headers={[

@@ -4,6 +4,8 @@ import {
   serverPageSizeFrom,
   startingRecNoFor,
 } from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import {
   Heading,
   Loading,
@@ -98,16 +100,6 @@ function UserManagement() {
     );
   }
 
-  const handleNextPage = () => {
-    setPage((current) => current + 1);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPage((current) => Math.max(current - 1, 1));
-    setSelectedRowIds([]);
-  };
-
   useEffect(() => {
     const selectedIDsObject = {
       selectedIDs: selectedRowIds,
@@ -158,6 +150,16 @@ function UserManagement() {
       setSelectedRowCombinedUserID([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // What the screen shows is a read of one endpoint, so the endpoint is the
   // cache key: a write invalidates USER_LIST_KEY and the list is read again,
@@ -368,8 +370,6 @@ function UserManagement() {
                   fromRecordCount={fromRecordCount}
                   toRecordCount={toRecordCount}
                   totalRecordCount={totalRecordCount}
-                  handlePreviousPage={handlePreviousPage}
-                  handleNextPage={handleNextPage}
                   deleteDeactivate={deleteDeactivateUserManagement}
                   id={selectedRowCombinedUserID[0]}
                   otherParmsInLink={`&startingRecNo=1&roleFilter=`}
@@ -474,6 +474,7 @@ function UserManagement() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
                   rows={userManagementListShow}
                   headers={[
