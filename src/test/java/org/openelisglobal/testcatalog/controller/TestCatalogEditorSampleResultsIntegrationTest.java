@@ -20,6 +20,7 @@ import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestContr
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -577,6 +578,91 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     public void copySampleResults_unknownTargetReturns404() {
         assertEquals(404, controller.copySampleResults("99999999", String.valueOf(SOURCE_ID), authedRequest())
                 .getStatusCode().value());
+    }
+
+    /**
+     * OGC-1234 — a removed option stays as an inactive row, and adding the same
+     * value back is a new row beside it. A result entered now must resolve to the
+     * row the test offers, not to whichever row was inserted first.
+     */
+    @org.junit.Test
+    public void dictionaryLookup_prefersTheActiveRowOverAnInactiveOneWithTheSameValue() {
+        String value = String.valueOf(DICT_ID);
+        ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
+        primary.resultType = "D";
+        primary.isPrimary = true;
+        primary.options.add(opt(null, value, 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+        String firstRowId = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0).id;
+
+        ResultComponentDto withoutIt = comp(null, "PRIMARY", "Result", 0);
+        withoutIt.resultType = "D";
+        withoutIt.isPrimary = true;
+        withoutIt.options.add(opt(null, "SRIT-Other", 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(withoutIt), authedRequest());
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+        String activeRowId = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0).id;
+        assertNotEquals("re-adding the value creates a second row", firstRowId, activeRowId);
+
+        TestResult resolved = testResultService.getTestResultsByTestAndDictonaryResult(String.valueOf(TEST_ID), value);
+        assertEquals("the active row wins", activeRowId, resolved.getId());
+        String componentId = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).id;
+        assertEquals("the component-scoped lookup agrees", activeRowId, testResultService
+                .getTestResultsByTestAndDictonaryResult(String.valueOf(TEST_ID), value, componentId).getId());
+
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(withoutIt), authedRequest());
+        assertEquals("with no active row left, the most recent one answers", activeRowId,
+                testResultService.getTestResultsByTestAndDictonaryResult(String.valueOf(TEST_ID), value).getId());
+    }
+
+    /**
+     * OGC-1234 — a select-list range whose normal value the component no longer
+     * offers can never match a result; it is removed on save. A range whose normal
+     * value is still offered is kept, and one on a component that is no longer a
+     * select list goes too.
+     */
+    @org.junit.Test
+    public void savingSampleResults_dropsSelectListRangesWhoseNormalValueIsNoLongerOffered() {
+        String kept = String.valueOf(DICT_ID);
+        ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
+        primary.resultType = "D";
+        primary.isPrimary = true;
+        primary.options.add(opt(null, kept, 1));
+        primary.options.add(opt(null, "SRIT-Removed", 2));
+        ResultComponentDto second = comp(null, "SECOND", "Second", 1);
+        second.resultType = "D";
+        second.options.add(opt(null, kept, 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary, second), authedRequest());
+        SampleResults saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        String primaryId = saved.components.stream().filter(c -> "PRIMARY".equals(c.code)).findFirst().get().id;
+        String secondId = saved.components.stream().filter(c -> "SECOND".equals(c.code)).findFirst().get().id;
+        String removedValue = saved.components.stream().filter(c -> "PRIMARY".equals(c.code)).findFirst().get().options
+                .stream().filter(o -> "SRIT-Removed".equals(o.valueName)).findFirst().get().value;
+        insertDictionaryRange(95291L, removedValue, primaryId);
+        insertDictionaryRange(95292L, kept, primaryId);
+        insertDictionaryRange(95293L, kept, secondId);
+
+        ResultComponentDto primaryAfter = comp(primaryId, "PRIMARY", "Result", 0);
+        primaryAfter.resultType = "D";
+        primaryAfter.isPrimary = true;
+        primaryAfter.options.add(opt(null, kept, 1));
+        ResultComponentDto secondAfter = comp(secondId, "SECOND", "Second", 1);
+        secondAfter.resultType = "N";
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primaryAfter, secondAfter), authedRequest());
+
+        java.util.List<Long> remaining = jdbc.queryForList(
+                "SELECT id FROM clinlims.result_limits WHERE test_id = ? ORDER BY id", Long.class, TEST_ID);
+        assertEquals("only the range whose normal value is still offered survives", java.util.List.of(95292L),
+                remaining);
+    }
+
+    private void insertDictionaryRange(long id, String normalDictionaryId, String componentId) {
+        jdbc.update(
+                "INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, normal_dictionary_id,"
+                        + " component_id, lastupdated) VALUES (?, ?, 2, ?, ?, NOW())",
+                id, TEST_ID, Long.parseLong(normalDictionaryId), componentId);
     }
 
     @org.junit.Test

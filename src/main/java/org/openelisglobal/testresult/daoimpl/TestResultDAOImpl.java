@@ -179,6 +179,34 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         return list;
     }
 
+    /**
+     * OGC-1234 — an option removed in the Test Catalog editor stays as an inactive
+     * row with the same value, and a re-added one is a new row beside it. A result
+     * must resolve to the row the test offers now. When no active row exists (a
+     * result entered before the option was removed) the most recent row is the
+     * answer, the one the result was last offered through.
+     */
+    private static TestResult preferActive(List<TestResult> candidates) {
+        TestResult newest = null;
+        for (TestResult candidate : candidates) {
+            if (!Boolean.FALSE.equals(candidate.getIsActive())) {
+                return candidate;
+            }
+            if (newest == null || numericId(candidate) > numericId(newest)) {
+                newest = candidate;
+            }
+        }
+        return newest;
+    }
+
+    private static long numericId(TestResult testResult) {
+        try {
+            return Long.parseLong(testResult.getId().trim());
+        } catch (RuntimeException e) {
+            return Long.MIN_VALUE;
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TestResult getTestResultsByTestAndDictonaryResult(String testId, String result) throws LIMSRuntimeException {
@@ -194,7 +222,7 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
                 list = query.list();
 
                 if (list != null && !list.isEmpty()) {
-                    return list.get(0);
+                    return preferActive(list);
                 }
 
             } catch (RuntimeException e) {
@@ -227,7 +255,7 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
             query.setParameter("componentId", componentId);
             List<TestResult> list = query.list();
             if (list != null && !list.isEmpty()) {
-                return list.get(0);
+                return preferActive(list);
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
