@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   Column,
+  DefinitionTooltip,
   Grid,
   InlineNotification,
   Modal,
@@ -529,6 +530,24 @@ const Validation = (props) => {
                 />
               </picture>
             )}
+            {/* OGC-1147: a control covering this result failed. A tag rather
+                than another icon — the reason has to be readable, or a tech clears
+                the hold out of confusion and the safety argument evaporates.
+                DefinitionTooltip, not a title prop: Carbon's Tag swallows title
+                and renders its own wrapper, so the reason never showed. */}
+            {row.qcHold && (
+              <DefinitionTooltip
+                definition={intl.formatMessage({
+                  id: "validation.qcHold.tooltip",
+                })}
+                align="bottom"
+                openOnHover
+              >
+                <Tag type="red" size="sm">
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+              </DefinitionTooltip>
+            )}
           </>
         );
       case "testName": {
@@ -726,6 +745,13 @@ const Validation = (props) => {
                 <b>
                   {" "}
                   <FormattedMessage id="validation.label.nonconform" />
+                </b>
+                <Tag type="red" size="sm" style={{ marginLeft: "1rem" }}>
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+                <b>
+                  {" "}
+                  <FormattedMessage id="validation.legend.qcHold" />
                 </b>
               </>
             )}

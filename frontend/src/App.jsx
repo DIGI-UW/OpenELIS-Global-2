@@ -22,6 +22,17 @@ import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
+import QAPlaceholder from "./components/qa/QAPlaceholder";
+import QAOverview from "./components/qa/overview/QAOverview";
+import QIDashboard from "./components/qa/qi/QIDashboard";
+import QIConfigList from "./components/qa/qi/QIConfigList";
+import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
+import AmendmentReport from "./components/qa/qi/AmendmentReport";
+import RejectionReport from "./components/qa/qi/RejectionReport";
+import CallbackReport from "./components/qa/qi/CallbackReport";
+import ESignatureLog from "./components/qa/qms/ESignatureLog";
+import CapaRegister from "./components/qa/qms/CapaRegister";
+import Accreditation from "./components/qa/qms/Accreditation";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
@@ -161,9 +172,44 @@ import {
   VectorDeconvolutionWorklist,
 } from "./components/vectorIdentification";
 
+// QA-context breadcrumb for the TAT report mounted at /qa/qi/tat (OGC-696).
+// Labels are i18n keys resolved by PageBreadCrumb.
+const qaTatBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sideNav.label.qa", link: "/qa/overview" },
+  { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
+  { label: "reports.tat.title", link: "" },
+];
+
 export const ANALYZER_RESULTS_ROLES = [
   Roles.GLOBAL_ADMIN,
   Roles.ANALYSER_IMPORT,
+];
+
+// Paths the QA information-architecture rehome moved (OGC-689/691/695). Kept so
+// bookmarks and anything still linking the old path land on the new page; every
+// in-app link points at the new path.
+const REHOMED_PATHS = [
+  ["/EQAOrders", "/qa/eqa/orders"],
+  ["/EQAMyPrograms", "/qa/eqa/my-programs"],
+  ["/EQAManagement", "/qa/eqa/management"],
+  ["/EQAResults", "/qa/eqa/results"],
+  ["/EQAParticipants", "/qa/eqa/participants"],
+  ["/EQADistribution/create", "/qa/eqa/distribution/create"],
+  ["/EQADistribution", "/qa/eqa/distribution"],
+  ["/qa/qi", "/qa/qi/dashboard"],
+  ["/analyzers/qc/db", "/qa/qc/dashboard"],
+  ["/analyzers/qc/control-lots", "/qa/qc/control-lots"],
+  ["/analyzers/qc/rule-config", "/qa/qc/rule-config"],
+];
+
+// The quality-indicator reports: same route shape, same roles, each gated on its
+// own indicator being enabled.
+const QI_INDICATOR_ROUTES = [
+  ["tat", "TAT", () => <TATReport breadcrumbs={qaTatBreadcrumbs} />],
+  ["rejection", "REJECTION", () => <RejectionReport />],
+  ["amendment", "AMENDMENT", () => <AmendmentReport />],
+  ["callback", "CALLBACK", () => <CallbackReport />],
 ];
 
 export default function App() {
@@ -852,47 +898,134 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
+                {REHOMED_PATHS.map(([from, to]) => (
+                  <Redirect key={from} exact from={from} to={to} />
+                ))}
                 <SecureRoute
-                  path="/EQAOrders"
+                  path="/qa/eqa/orders"
                   exact
                   render={() => <EQAOrdersPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQAMyPrograms"
+                  path="/qa/eqa/my-programs"
                   exact
                   render={() => <MyProgramsPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQAManagement"
+                  path="/qa/eqa/management"
                   exact
                   render={() => <EQAProgramManagement />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQAResults"
+                  path="/qa/eqa/results"
                   exact
                   render={() => <EQAResultsPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQAParticipants"
+                  path="/qa/eqa/participants"
                   exact
                   render={() => <EQAParticipantsPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQADistribution/create"
+                  path="/qa/eqa/distribution/create"
                   exact
                   render={() => <CreateDistribution />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/EQADistribution"
+                  path="/qa/eqa/distribution"
                   exact
                   render={() => <EQADistributionDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                {/* QA menu (OGC-688): Overview shell + placeholder leaves.
+                    No pillar-landing routes: sidenav parents expand-only
+                    (never navigate), so landing pages would be unreachable. */}
+                <SecureRoute
+                  path="/qa/overview"
+                  exact
+                  render={() => <QAOverview />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qc/reagent-qc"
+                  exact
+                  render={() => <QAPlaceholder feature="reagent-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/qa/qc/manual-qc"
+                  exact
+                  render={() => <QAPlaceholder feature="manual-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
+                    placeholder; the pillar menu entry is now expand-only. */}
+                <SecureRoute
+                  path="/qa/qi/dashboard"
+                  exact
+                  render={() => <QIDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qi/config"
+                  exact
+                  render={() => <QIConfigList />}
+                  permission="qa.manage.qi"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                {QI_INDICATOR_ROUTES.map(([slug, indicator, page]) => (
+                  <SecureRoute
+                    key={slug}
+                    path={`/qa/qi/${slug}`}
+                    exact
+                    render={() => (
+                      <QIEnabledRoute indicator={indicator}>
+                        {page()}
+                      </QIEnabledRoute>
+                    )}
+                    role={[Roles.RESULTS, Roles.REPORTS]}
+                  />
+                ))}
+                <SecureRoute
+                  path="/qa/qms/nce-register"
+                  exact
+                  render={() => (
+                    <NonConformIndex form="ViewNonConformingEvent" />
+                  )}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qms/audit-trail"
+                  exact
+                  render={() => <AuditTrailReportIndex />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/e-signature-log"
+                  exact
+                  render={() => <ESignatureLog />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/capa-register"
+                  exact
+                  render={() => <CapaRegister />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/accreditation"
+                  exact
+                  render={() => <Accreditation />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/Storage"
@@ -1021,10 +1154,17 @@ export default function App() {
                   render={() => <InstrumentDetailPage />}
                   role={Roles.LAB_SUPERVISOR}
                 />
+                {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
                 <SecureRoute
-                  path="/analyzers/qc/db"
+                  path="/qa/qc/dashboard"
                   exact
                   render={() => <QCDashboard />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/qa/qc/alerts"
+                  exact
+                  render={() => <QCDashboard initialTab={1} />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
@@ -1034,7 +1174,7 @@ export default function App() {
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
-                  path="/analyzers/qc/control-lots"
+                  path="/qa/qc/control-lots"
                   exact
                   render={() => <ControlLotList />}
                   role={Roles.LAB_SUPERVISOR}
@@ -1052,7 +1192,7 @@ export default function App() {
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
-                  path="/analyzers/qc/rule-config"
+                  path="/qa/qc/rule-config"
                   exact
                   render={() => <RuleConfigPanel />}
                   role={Roles.LAB_SUPERVISOR}
@@ -1237,11 +1377,18 @@ export default function App() {
                   render={() => <ReportIndex />}
                   role={Roles.REPORTS}
                 />
-                <SecureRoute
+                {/* QA v0.5 IA rehome (OGC-690): Audit Trail moved to QMS pillar */}
+                <Route
                   path="/AuditTrailReport"
                   exact
-                  render={() => <AuditTrailReportIndex />}
-                  role={Roles.GLOBAL_ADMIN}
+                  render={({ location }) => (
+                    <Redirect
+                      to={{
+                        pathname: "/qa/qms/audit-trail",
+                        search: location.search,
+                      }}
+                    />
+                  )}
                 />
                 <SecureRoute
                   path={REPORTING_ROUTE_PATHS}

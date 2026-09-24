@@ -329,7 +329,15 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     @Transactional(readOnly = true)
     public TestSection getTestSection(Analysis analysis) {
-        return analysis == null ? null : analysis.getTestSection();
+        if (analysis == null) {
+            return null;
+        }
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection();
+        }
+        // Legacy and imported analyses often carry no section of their own; the
+        // test's home section is the bench that actually ran the work.
+        return analysis.getTest() == null ? null : analysis.getTest().getTestSection();
     }
 
     @Override
@@ -728,6 +736,35 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate) {
         return getBaseObjectDAO().getAnalysisCompleteInRange(lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(analyzerId, testId, lowDate,
+                highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByAnalyzerAndTest(analyzerId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId,
+            String testId, Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(testSectionId, testId,
+                lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId,
+            Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByTestSectionAndTest(testSectionId, testId, before);
     }
 
     @Override

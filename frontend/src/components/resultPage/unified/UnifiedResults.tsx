@@ -1447,6 +1447,7 @@ const UnifiedResults: React.FC = () => {
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}
                               analyzers={analyzers}
