@@ -81,6 +81,8 @@ export interface PanelRow extends ResultCellRow {
   testMethod?: string;
   analyzerId?: string;
   referredOut?: boolean;
+  /** QC kind of the sample (BLANK, CONTROL, DUPLICATE); a client sample has none. */
+  qcType?: string;
   analysisNotes?: AnalysisNote[];
   /** OGC-1022 (R3): NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side. */
   resultFlag?: string;
@@ -278,6 +280,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           </>
         )}
         <span>{row.testName}</span>
+        <span
+          className="unifiedContextSampleKind"
+          data-testid={`sample-kind-${rowKey}`}
+        >
+          <FormattedMessage id="column.name.sampleKind" />
+          <SampleKindTag qcType={row.qcType} />
+        </span>
         {row.referredOut && (
           <Tag type="cyan" size="sm">
             <FormattedMessage id="label.results.referredOut" />

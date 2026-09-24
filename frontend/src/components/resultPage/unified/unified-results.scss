@@ -712,3 +712,9 @@
 .unifiedResultsPage .unifiedResultsChip {
   cursor: pointer;
 }
+
+.unifiedContextSampleKind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

@@ -31,6 +31,8 @@ import {
   Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
+import SampleKindTag from "./SampleKindTag";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
@@ -1361,26 +1363,7 @@ export function SearchResults(props) {
     {
       id: "sampleKind",
       name: intl.formatMessage({ id: "column.name.sampleKind" }),
-      cell: (row) => {
-        if (!row.qcType) {
-          return (
-            <Tag size="sm" type="outline">
-              {intl.formatMessage({ id: "label.sampleKind.client" })}
-            </Tag>
-          );
-        }
-        const labelKey = `label.sampleKind.${row.qcType.toLowerCase()}`;
-        return (
-          <span style={{ display: "inline-flex", gap: "0.25rem" }}>
-            <Tag size="sm" type="purple">
-              {intl.formatMessage({ id: "label.sampleKind.qc" })}
-            </Tag>
-            <Tag size="sm" type="warm-gray">
-              {intl.formatMessage({ id: labelKey, defaultMessage: row.qcType })}
-            </Tag>
-          </span>
-        );
-      },
+      cell: (row) => <SampleKindTag qcType={row.qcType} />,
       selector: (row) => row.qcType || "Client sample",
       sortable: true,
       width: "11rem",
