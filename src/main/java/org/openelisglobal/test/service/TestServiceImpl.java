@@ -1008,4 +1008,10 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         }
         return ids;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isNameLocalization(String localizationId) {
+        return getBaseObjectDAO().isNameLocalization(localizationId);
+    }
 }

@@ -119,6 +119,8 @@ public interface TestDAO extends BaseDAO<Test, String> {
 
     List<Test> getActiveTestsByLoinc(String loincCode);
 
+    boolean isNameLocalization(String localizationId);
+
     List<Test> getActiveTestsByLoinc(String[] loincCodes);
 
     boolean duplicateTestExists(Test test) throws LIMSRuntimeException;
