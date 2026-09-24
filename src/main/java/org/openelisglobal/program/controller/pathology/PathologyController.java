@@ -5,18 +5,24 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
+import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.util.PathologyStages;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -89,13 +95,94 @@ public class PathologyController extends BaseRestController {
         return pathologyDisplayService.convertToCaseDisplayItem(pathologySampleId);
     }
 
+    /**
+     * A post naming a row the case cannot hold is answered with the sentence the
+     * service raised, and a designation two saves claimed at once is a conflict.
+     */
     @PostMapping(value = "/rest/pathology/caseView/{pathologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public PathologySampleForm getFilteredPathologyEntries(@PathVariable("pathologySampleId") Integer pathologySampleId,
+    public ResponseEntity<?> getFilteredPathologyEntries(@PathVariable("pathologySampleId") Integer pathologySampleId,
             @RequestBody PathologySampleForm form, HttpServletRequest request) {
         form.setSystemUserId(this.getSysUserId(request));
-        pathologySampleService.updateWithFormValues(pathologySampleId, form);
+        try {
+            pathologySampleService.updateWithFormValues(pathologySampleId, form);
+        } catch (PathologyCaseRuleException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            // Designations are worked out in memory, so the unique indexes are the
+            // last guard and the save that loses the race has to say so.
+            if (designationCollision(e)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("conflict", "designation", "error",
+                                "another save named a cassette or slide on this case at the same moment;"
+                                        + " reload the case and add it again"));
+            }
+            throw e;
+        }
 
-        return form;
+        return ResponseEntity.ok(form);
+    }
+
+    /**
+     * Walks the cause chain for a designation unique index by name; package-private
+     * for its test.
+     */
+    static boolean designationCollision(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null && (cause.getMessage().contains("pathology_block_designation_uk")
+                    || cause.getMessage().contains("pathology_slide_designation_uk"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @PostMapping(value = "/rest/pathology/block/{blockId}/deactivate", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> deactivateBlock(@PathVariable("blockId") Integer blockId,
+            @RequestBody(required = false) DeactivationRequest body, HttpServletRequest request) {
+        return pathologySampleService.deactivateBlock(blockId, reasonFrom(body), getSysUserId(request))
+                .<ResponseEntity<?>>map(block -> ResponseEntity.ok(toMap(block))).orElseGet(() -> ResponseEntity
+                        .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology block with id " + blockId)));
+    }
+
+    @PostMapping(value = "/rest/pathology/slide/{slideId}/deactivate", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> deactivateSlide(@PathVariable("slideId") Integer slideId,
+            @RequestBody(required = false) DeactivationRequest body, HttpServletRequest request) {
+        return pathologySampleService.deactivateSlide(slideId, reasonFrom(body), getSysUserId(request))
+                .<ResponseEntity<?>>map(slide -> ResponseEntity.ok(toMap(slide))).orElseGet(() -> ResponseEntity
+                        .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology slide with id " + slideId)));
+    }
+
+    private String reasonFrom(DeactivationRequest body) {
+        return body == null ? null : body.reason;
+    }
+
+    private Map<String, Object> toMap(PathologyBlock block) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", block.getId());
+        row.put("designation", block.getDesignation());
+        row.put("barcode", block.getBarcode());
+        row.put("cassetteState", block.getCassetteState() == null ? null : block.getCassetteState().name());
+        row.put("active", block.isActive());
+        return row;
+    }
+
+    private Map<String, Object> toMap(PathologySlide slide) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", slide.getId());
+        row.put("designation", slide.getDesignation());
+        row.put("barcode", slide.getBarcode());
+        row.put("blockId", slide.getBlockId());
+        row.put("active", slide.isActive());
+        return row;
+    }
+
+    /**
+     * Why the block or slide is being taken out of use; the bench may give none.
+     */
+    public static class DeactivationRequest {
+        public String reason;
     }
 }
