@@ -41,8 +41,9 @@ import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.systemuser.service.UserService;
 
 /**
- * Incoming orders are scoped by the same lab-unit assignment as Results and
- * Validation: an order is shown when one of its tests is in the user's Results
+ * Incoming orders are scoped by lab unit the same way Results and Validation
+ * are, but against the Reception role, which is the one that works the incoming
+ * orders: an order is shown when one of its tests is in the user's Reception
  * lab units, and always shown when it cannot be tied to a test at all.
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -113,7 +114,7 @@ public class ElectronicOrderLabUnitScopeImplTest {
 
     @Test
     public void aUserHoldingEveryLabUnitSeesTheListUnchangedWithoutReadingTheFhirStore() {
-        when(userService.hasAllLabUnits(USER, Constants.ROLE_RESULTS)).thenReturn(true);
+        when(userService.hasAllLabUnits(USER, Constants.ROLE_RECEPTION)).thenReturn(true);
         List<ElectronicOrder> orders = Arrays.asList(hematologyOrder, biochemistryOrder);
 
         assertSame(orders, scope.restrictToUserLabUnits(orders, USER));
@@ -174,9 +175,9 @@ public class ElectronicOrderLabUnitScopeImplTest {
     }
 
     private void restrictTo(String... testIds) {
-        when(userService.hasAllLabUnits(USER, Constants.ROLE_RESULTS)).thenReturn(false);
+        when(userService.hasAllLabUnits(USER, Constants.ROLE_RECEPTION)).thenReturn(false);
         Set<String> allowed = new LinkedHashSet<>(Arrays.asList(testIds));
-        when(userService.getTestIdsInUserLabUnits(eq(USER), eq(Constants.ROLE_RESULTS))).thenReturn(allowed);
+        when(userService.getTestIdsInUserLabUnits(eq(USER), eq(Constants.ROLE_RECEPTION))).thenReturn(allowed);
     }
 
     private static ElectronicOrder order(String externalId) {

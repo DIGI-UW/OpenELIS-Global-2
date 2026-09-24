@@ -35,9 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
  * which lives in the local FHIR store rather than on the order row. The
  * requests behind a page of orders are read in batches, each order's codes are
  * resolved to OpenELIS tests the same way an order is resolved when it is
- * imported, and the tests' lab units are matched against the user's Results lab
- * units. An order whose codes resolve to no test, or whose request cannot be
- * read, is kept: without a test there is no lab unit to judge it by.
+ * imported, and the tests' lab units are matched against the user's Reception
+ * lab units, since Reception is the role that works the incoming orders. An
+ * order whose codes resolve to no test, or whose request cannot be read, is
+ * kept: without a test there is no lab unit to judge it by.
  */
 @Service
 @Transactional(readOnly = true)
@@ -61,10 +62,10 @@ public class ElectronicOrderLabUnitScopeImpl implements ElectronicOrderLabUnitSc
 
     @Override
     public List<ElectronicOrder> restrictToUserLabUnits(List<ElectronicOrder> orders, String systemUserId) {
-        if (orders == null || orders.isEmpty() || userService.hasAllLabUnits(systemUserId, Constants.ROLE_RESULTS)) {
+        if (orders == null || orders.isEmpty() || userService.hasAllLabUnits(systemUserId, Constants.ROLE_RECEPTION)) {
             return orders;
         }
-        Set<String> allowedTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_RESULTS);
+        Set<String> allowedTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_RECEPTION);
         Map<String, ServiceRequest> requests = readServiceRequests(orders);
         List<ElectronicOrder> visible = new ArrayList<>();
         for (ElectronicOrder order : orders) {
