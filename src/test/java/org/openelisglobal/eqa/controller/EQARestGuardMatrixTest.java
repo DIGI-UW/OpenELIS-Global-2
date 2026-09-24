@@ -248,8 +248,7 @@ public class EQARestGuardMatrixTest {
             String authority = entry.getKey();
             String file = entry.getValue();
             String changeset = classpathResource(file);
-            assertTrue(authority + " is not registered by " + file,
-                    changeset.contains("value=\"" + authority + "\"/>"));
+            assertTrue(authority + " is not registered by " + file, registersAuthority(changeset, authority));
             assertTrue(authority + " is registered but no role grant selects it in " + file,
                     grantsAuthority(changeset, authority));
             // A changeset nobody includes never runs, and the guard above then
@@ -284,9 +283,23 @@ public class EQARestGuardMatrixTest {
      * name, either singly or as part of an IN list. Requiring that SQL shape keeps
      * the registration insert in the same file from satisfying the assertion.
      */
+    /**
+     * The permission registry is seeded either as Liquibase insert columns or as a
+     * SQL tuple list, depending on which changeset owns the row. Both spellings
+     * count as registration.
+     */
+    private boolean registersAuthority(String changeset, String authority) {
+        return changeset.contains("value=\"" + authority + "\"/>") || changeset.contains("('" + authority + "',");
+    }
+
+    /**
+     * A grant names the permission either in a WHERE clause or inside the ARRAY
+     * literal that lists what a role receives.
+     */
     private boolean grantsAuthority(String changeset, String authority) {
         return changeset.contains("m.name = '" + authority + "'")
-                || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*");
+                || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*")
+                || changeset.matches("(?s).*ARRAY\\[[^\\]]*'" + Pattern.quote(authority) + "'.*");
     }
 
     private String classpathResource(String path) throws Exception {

@@ -228,10 +228,6 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
                 text.contains("Intake lab " + failing));
         // The meta block is four columns and every fact adds two cells, so an odd
         // number of facts leaves a short last row that iText drops without saying
-        // so. These two are the last pair on the block: if the row is not padded,
-        // whichever fact lands there disappears from a report nobody re-reads.
-        // The meta block is four columns and every fact adds two cells, so an odd
-        // number of facts leaves a short last row that iText drops without saying
         // so. Both of these sit at the end of the block: unpadded, whichever lands
         // there disappears from a report nobody re-reads.
         assertTrue("the generation stamp survives the block's last row", text.contains("Generated"));

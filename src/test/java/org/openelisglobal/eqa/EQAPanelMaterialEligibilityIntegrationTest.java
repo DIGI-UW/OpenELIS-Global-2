@@ -32,6 +32,7 @@ public class EQAPanelMaterialEligibilityIntegrationTest extends EQASpineTestBase
     private static final long ORDERABLE_TEST = 9941L;
     private static final long UNORDERABLE_TEST = 9942L;
     private static final int SAMPLE_TYPE_LINK = 99441;
+    private static final int SAMPLE_TYPE_SEED = 99442;
 
     @Autowired
     private EQAPanelService eqaPanelService;
@@ -42,9 +43,21 @@ public class EQAPanelMaterialEligibilityIntegrationTest extends EQASpineTestBase
     public void seedCatalog() {
         seedTest(ORDERABLE_TEST, "Eligibility orderable test");
         seedTest(UNORDERABLE_TEST, "Eligibility unorderable test");
-        // An existing sample type, not a new one: type_of_sample requires a
-        // localization row, and which type it is does not matter here.
+        // Any sample type will do; which one does not matter here. Prefer one that
+        // already exists, because type_of_sample needs a localization row of its
+        // own. A sibling fixture can leave the table empty, though, so seed the
+        // pair rather than depend on what ran before.
         Long sampleType = jdbc.queryForObject("SELECT min(id) FROM clinlims.type_of_sample", Long.class);
+        if (sampleType == null) {
+            sampleType = (long) SAMPLE_TYPE_SEED;
+            jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated)"
+                    + " VALUES (?, 'Eligibility sample type', NOW())", SAMPLE_TYPE_SEED);
+            jdbc.update(
+                    "INSERT INTO clinlims.type_of_sample (id, description, domain, local_abbrev, is_active,"
+                            + " sort_order, name_localization_id, lastupdated)"
+                            + " VALUES (?, 'Eligibility sample type', 'H', 'ELIG', 'true', 99442, ?, NOW())",
+                    SAMPLE_TYPE_SEED, SAMPLE_TYPE_SEED);
+        }
         jdbc.update("DELETE FROM clinlims.sampletype_test WHERE id = ?", SAMPLE_TYPE_LINK);
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)",
                 SAMPLE_TYPE_LINK, sampleType, ORDERABLE_TEST);

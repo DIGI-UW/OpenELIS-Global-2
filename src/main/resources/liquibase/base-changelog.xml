@@ -154,4 +154,8 @@
        applying. Last on purpose: it repairs a changelog row, so it has to run after
        every changeset that could have written one. -->
   <include file="liquibase/qa/041-clear-stale-eqa-v2-start-tag.xml" />
+
+  <!-- Restores the alert-type CHECK both lines rewrote independently. Last, so
+       it wins over every earlier definition of the same constraint. -->
+  <include file="liquibase/qa/045-alert-type-union.xml" />
 </databaseChangeLog>

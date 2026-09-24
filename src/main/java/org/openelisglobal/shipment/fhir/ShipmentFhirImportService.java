@@ -317,18 +317,13 @@ public class ShipmentFhirImportService {
             if (destinationUuid == null || destinationUuid.isBlank()) {
                 destinationUuid = extractExtensionString(delivery, EXT_DESTINATION_ORG);
             }
-            if (destinationUuid == null || destinationUuid.isBlank()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                        "Box " + boxId + " has no destination organization UUID, skipping import");
-                return false;
-            }
 
             // Only accept boxes addressed to this laboratory. The Shipment Settings
             // site organization is the explicit answer when a site has one;
             // remote.source.identifier is the fallback for sites that never set it.
             String siteOrgUuid = getSiteOrganizationFhirUuid();
             if (siteOrgUuid != null && !siteOrgUuid.isBlank()) {
-                if (!destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
+                if (destinationUuid == null || !destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
                     // Said out loud, because a site that has its own organization
                     // configured wrongly cannot otherwise tell this apart from "the
                     // partner has sent nothing".
@@ -339,26 +334,40 @@ public class ShipmentFhirImportService {
                                     + ", contained=" + delivery.getContained().size() + "]");
                     return false;
                 }
-            } else {
+            } else if (destinationUuid != null && !destinationUuid.isBlank()) {
                 List<String> selfIdentifiers = fhirConfig.getRemoteStoreIdentifier();
-                if (selfIdentifiers.isEmpty()) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                            "remote.source.identifier is not configured; cannot determine box ownership, skipping"
-                                    + " import");
-                    return false;
-                }
-                if (!matchesSelfIdentity(destinationUuid, selfIdentifiers)) {
+                if (!selfIdentifiers.isEmpty() && !matchesSelfIdentity(destinationUuid, selfIdentifiers)) {
                     return false; // not destined for this lab
                 }
             }
 
-            // Resolve the destination org by shared UUID; materialize it if absent (like
-            // referral's
-            // referring org), so no manual provisioning is needed.
-            Organization destinationOrg = organizationService.getOrganizationByFhirId(destinationUuid);
+            // Resolve the destination organization by shared UUID, materializing it if
+            // absent so no manual provisioning is needed. A sender that publishes no
+            // UUID at all still has to land, so fall back to the name it put on the
+            // receiver or the destination reference.
+            Organization destinationOrg = null;
+            if (destinationUuid != null && !destinationUuid.isBlank()) {
+                destinationOrg = organizationService.getOrganizationByFhirId(destinationUuid);
+                if (destinationOrg == null) {
+                    destinationOrg = createDestinationOrganization(destinationUuid,
+                            delivery.hasDestination() ? delivery.getDestination().getDisplay() : null);
+                }
+            }
             if (destinationOrg == null) {
-                destinationOrg = createDestinationOrganization(destinationUuid,
-                        delivery.hasDestination() ? delivery.getDestination().getDisplay() : null);
+                String display = receiverDisplay(delivery);
+                if (display == null && delivery.hasDestination()) {
+                    display = delivery.getDestination().getDisplay();
+                }
+                if (display != null) {
+                    Organization probe = new Organization();
+                    probe.setOrganizationName(display);
+                    destinationOrg = organizationService.getOrganizationByName(probe, true);
+                }
+            }
+            if (destinationOrg == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
+                        "No matching local organization for box " + boxId + ", skipping import");
+                return false;
             }
             box.setDestinationFacility(destinationOrg);
 

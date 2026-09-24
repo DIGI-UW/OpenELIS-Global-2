@@ -69,7 +69,9 @@ public class EQACycleRestControllerTest {
     public void setUp() {
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId((int) SESSION_USER_ID);
-        when(request.getSession()).thenReturn(session);
+        // getSysUserId reads an existing session without creating one, so the
+        // no-argument overload is never the one it calls.
+        when(request.getSession(false)).thenReturn(session);
         when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
         when(cycleService.transition(anyLong(), any(), any(), any(), any(), any(), any(), anyString()))
                 .thenReturn(new EQACycle());

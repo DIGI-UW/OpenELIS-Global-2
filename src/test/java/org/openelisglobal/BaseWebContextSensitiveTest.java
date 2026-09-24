@@ -294,12 +294,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 ensureAuditSystemUser();
                 ensureReferenceSeedRows();
 
-                // Fixture rows carry explicit ids but never advance the backing
-                // sequence, so a later sequence-backed insert into a fixture-named
-                // table collides with a seeded id (observation_history was the
-                // repeat offender). Every table a dataset names was just truncated,
-                // so MAX(id)+1 is exactly the right next value — resync here rather
-                // than hoping each test remembers resyncSequence().
+                // The explicit allowlist above covers the legacy generators; this
+                // catches every other dataset-named table whose sequence follows the
+                // <table>_seq convention, so a fixture id can never collide with a
+                // later sequence-backed insert. After the commit: it reads the tables
+                // on its own connection, which the uncommitted TRUNCATE still locks.
                 resyncSequencesForTables(dataset.getTableNames());
 
                 // Refresh StatusService cache to pick up any status_of_sample changes
@@ -529,12 +528,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * nothing was resynced at all.
      *
      * <p>
-     * Forward-only, via GREATEST against the sequence's own high-water mark:
-     * fixture rows never advance the sequence, so bumping it past MAX(id) fixes
-     * literal-id collisions — but pulling a high sequence DOWN to a just-truncated
-     * table's MAX+1 creates the opposite collision, because other tests insert
-     * literal low ids by raw JDBC outside any dataset load (dictionary id 8,
-     * history id 100009 in CI). A sequence may only ever move up.
+     * Forward-only, via GREATEST against the sequence's own current value: fixture
+     * rows never advance the sequence, so bumping it past MAX(id) fixes literal-id
+     * collisions — but pulling a high sequence DOWN to a just-truncated table's
+     * MAX+1 creates the opposite collision, because other tests insert literal low
+     * ids by raw JDBC outside any dataset load (dictionary id 8, history id 100009
+     * in CI). A sequence may only ever move up.
      */
     private void resyncSequencesForTables(String[] tableNames) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
@@ -557,7 +556,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 try (Statement st = conn.createStatement()) {
                     st.execute("SELECT setval('clinlims." + sequence + "', GREATEST("
                             + "(SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims." + tableName + ")::bigint, "
-                            + "(SELECT last_value + 1 FROM clinlims." + sequence + ")), false)");
+                            + "(SELECT last_value FROM clinlims." + sequence + ")), false)");
                 }
             }
         }
