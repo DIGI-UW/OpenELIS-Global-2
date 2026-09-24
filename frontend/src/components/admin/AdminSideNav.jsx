@@ -28,6 +28,7 @@ import {
   Sprout,
   ListChecked,
   Chemistry,
+  WarningAlt,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -43,6 +44,9 @@ import {
   MICROBIOLOGY_REFERENCE_SECTIONS,
   sectionPath,
 } from "./microbiologyReference/sectionConfig";
+
+/** The analyzer's stuck import events, reachable from the admin shell. */
+const STUCK_ANALYZER_EVENTS_PATH = "/AnalyzerResults?view=import-issues";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -947,6 +951,16 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/dataExportStatus`)}
       >
         <FormattedMessage id="dataexport.status.title" />
+      </SideNavLink>
+      {/* Lives on the analyzer results page, outside the admin route family, so
+          it carries its whole path and leaves this shell when opened. */}
+      <SideNavLink
+        data-cy="stuckAnalyzerEvents"
+        renderIcon={WarningAlt}
+        href={STUCK_ANALYZER_EVENTS_PATH}
+        onClick={handleNavigation(STUCK_ANALYZER_EVENTS_PATH)}
+      >
+        <FormattedMessage id="analyzer.importIssues.events.title" />
       </SideNavLink>
       <SideNavLink
         data-cy="calendarMgmnt"

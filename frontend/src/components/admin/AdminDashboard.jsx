@@ -17,6 +17,7 @@ import {
   Settings,
   TableOfContents,
   User,
+  WarningAlt,
 } from "@carbon/icons-react";
 
 const ADMIN_DASHBOARD_LINKS = [
@@ -85,6 +86,13 @@ const ADMIN_DASHBOARD_LINKS = [
     path: "notificationTriggerConfig",
     icon: Bullhorn,
   },
+  {
+    // Lives outside the admin route family, so it carries its own whole path.
+    messageId: "analyzer.importIssues.events.title",
+    path: "stuckAnalyzerEvents",
+    to: "/AnalyzerResults?view=import-issues",
+    icon: WarningAlt,
+  },
 ];
 
 export default function AdminDashboard({ basePath }) {
@@ -111,7 +119,7 @@ export default function AdminDashboard({ basePath }) {
       </p>
       <Grid className="admin-dashboard__grid">
         {ADMIN_DASHBOARD_LINKS.map((link) => {
-          const targetPath = `${basePath}/${link.path}`;
+          const targetPath = link.to || `${basePath}/${link.path}`;
           const Icon = link.icon;
           return (
             <Column key={link.path} lg={5} md={4} sm={4}>
