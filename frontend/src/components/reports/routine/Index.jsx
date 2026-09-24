@@ -94,15 +94,6 @@ export const RoutineReports = (props) => {
           id={"openreports.mgt.rejection"}
         />
       )}
-
-      {type === "patient" && report === "ExportWHONETReportByDate" && (
-        <ReportByDate
-          report={"ExportWHONETReportByDate"}
-          id={"header.label.study.ciexport"}
-        />
-      )}
-
-
     </>
   );
 };
