@@ -32,6 +32,14 @@ public interface UserService {
     List<AnalysisItem> filterAnalysisResultsByLabUnitRoles(String SystemUserId, List<AnalysisItem> results,
             String roleName);
 
+    /**
+     * Ids of every test in the lab units this user holds the given role for. The
+     * predicate behind {@link #filterAnalysesByLabUnitRoles}, exposed separately so
+     * a caller that pages or caps its query can push the same scope into SQL
+     * instead of discarding rows after the fact.
+     */
+    List<String> getUserTestIdsForLabUnitRoles(String systemUserId, String roleName);
+
     List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName);
 
     List<TestResultItem> filterResultsByLabUnitRoles(String SystemUserId, List<TestResultItem> results,

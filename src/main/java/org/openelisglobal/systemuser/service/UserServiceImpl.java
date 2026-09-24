@@ -407,6 +407,18 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * The tests a user may work on in a role, as a list.
+     *
+     * <p>
+     * A view over {@link #getTestIdsInUserLabUnits(String, String)}, so the batch
+     * workplan shares the one read the rest of the request already paid for.
+     */
+    @Override
+    public List<String> getUserTestIdsForLabUnitRoles(String systemUserId, String roleName) {
+        return new ArrayList<>(getTestIdsInUserLabUnits(systemUserId, roleName));
+    }
+
+    /**
      * The tests a user may work on in a role, read once per request.
      *
      * <p>

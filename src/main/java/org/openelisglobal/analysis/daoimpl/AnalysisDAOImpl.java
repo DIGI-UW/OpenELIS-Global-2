@@ -141,6 +141,60 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) throws LIMSRuntimeException {
+        // An empty test list means the user holds no lab unit, which is "sees
+        // nothing", not "sees everything" - so short-circuit rather than drop the
+        // predicate.
+        if (statusIdList == null || statusIdList.isEmpty() || testIdList == null || testIdList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        boolean hasExclusions = excludedAnalysisIds != null && !excludedAnalysisIds.isEmpty();
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.statusId IN (:statusIdList) " + "AND t.id IN (:testIdList) "
+                    + (hasExclusions ? "AND a.id NOT IN (:excludedAnalysisIds) " : "")
+                    + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("statusIdList", statusIdList);
+            query.setParameterList("testIdList", testIdList);
+            if (hasExclusions) {
+                query.setParameterList("excludedAnalysisIds", excludedAnalysisIds);
+            }
+            if (maxResults > 0) {
+                query.setMaxResults(maxResults);
+            }
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getPendingAnalysesForWorkplan()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.id IN (:analysisIds) " + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("analysisIds", analysisIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAnalysesByIdsWithDetails()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<String> testIdList,
             List<String> statusIdList, Date lowDate, Date highDate) throws LIMSRuntimeException {
         try {
