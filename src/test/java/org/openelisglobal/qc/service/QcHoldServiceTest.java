@@ -5,7 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Set;
 import org.junit.After;
@@ -14,15 +13,16 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.qc.builder.BenchQCCaptureFormBuilder;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-1147 FR-C3 — the hold-or-warn policy, which is the difference between a
- * warning a technician can read and a control that actually stops a result
- * being released.
+ * OGC-1147 — the hold-or-warn policy, which is the difference between a warning
+ * a technician can read and a control that actually stops a result being
+ * released.
  *
  * <p>
  * Reuses {@code bench-qc-fail-signal.xml}: a failing manual control in lab unit
@@ -113,16 +113,8 @@ public class QcHoldServiceTest extends BaseWebContextSensitiveTest {
     }
 
     private BenchQCCaptureForm capture(QCQualitativeOutcome outcome, BigDecimal value, String runAt) {
-        BenchQCCaptureForm form = new BenchQCCaptureForm();
-        form.setSource(QCSource.MANUAL);
-        form.setTestId(TEST_ID);
-        form.setTestSectionId(LAB_UNIT);
-        form.setControlLotId("bench-lot-a");
-        form.setQualitativeOutcome(outcome);
-        form.setResultValue(value);
-        form.setExpectedValue(new BigDecimal("100.00000"));
-        form.setUncertainty(new BigDecimal("5.00000"));
-        form.setRunDateTime(Timestamp.valueOf(runAt).toLocalDateTime());
-        return form;
+        return BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID).withTestSectionId(LAB_UNIT)
+                .withControlLotId("bench-lot-a").withOutcome(outcome).withResultValue(value)
+                .withTarget(new BigDecimal("100.00000"), new BigDecimal("5.00000")).withRunDateTime(runAt).build();
     }
 }

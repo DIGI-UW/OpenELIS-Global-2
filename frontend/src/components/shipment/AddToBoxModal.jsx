@@ -43,6 +43,8 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
     setLoading(true);
     setError(null);
 
+    // getFromOpenElisServer's 3rd arg is an AbortSignal, not an error callback;
+    // it reports failures by invoking the callback with an undefined response.
     getFromOpenElisServer(
       `/rest/shipping-box/by-facility/${sample.destinationFacilityId}`,
       (response) => {
@@ -59,11 +61,9 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
           } else if (draftBoxes.length === 1) {
             setSelectedBoxId(draftBoxes[0].id.toString());
           }
+        } else {
+          setError(intl.formatMessage({ id: "shipment.error.fetchBoxes" }));
         }
-        setLoading(false);
-      },
-      (error) => {
-        setError(intl.formatMessage({ id: "shipment.error.fetchBoxes" }));
         setLoading(false);
       },
     );
@@ -266,7 +266,7 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
             />
           )}
 
-          {availableBoxes.length === 0 && (
+          {!error && availableBoxes.length === 0 && (
             <InlineNotification
               kind="warning"
               title={intl.formatMessage({

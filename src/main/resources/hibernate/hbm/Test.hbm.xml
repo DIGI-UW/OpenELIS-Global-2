@@ -75,6 +75,9 @@
         <property name="domain" type="java.lang.String">
             <column name="DOMAIN" length="20" />
         </property>
+        <property name="cultureWorkflowType" type="java.lang.String">
+            <column name="culture_workflow_type" length="40" />
+        </property>
         <property name="stickerRequiredFlag" type="java.lang.String">
             <column name="STICKER_REQ_FLAG" length="1" />
         </property>
@@ -136,10 +139,8 @@
         <property name="antimicrobialResistance"
             type="java.lang.Boolean" column="antimicrobial_resistance" />
 
-        <!-- C.1 / OGC-704: total allowable error (percent) for sigma metrics -->
-        <property name="tea" type="java.lang.Double">
-            <column name="TEA" precision="10" scale="4" />
-        </property>
+        <!-- OGC-704: total allowable error (percent) for sigma metrics -->
+        <property name="tea" type="java.lang.Double" column="TEA" />
     </class>
     <!-- <query name="test.getNext"> -->
     <!-- from Test t order by t.testSection.testSectionName, t.testName -->

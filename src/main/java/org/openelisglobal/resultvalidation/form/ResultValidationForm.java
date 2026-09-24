@@ -10,6 +10,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.bean.QcFailureItem;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 public class ResultValidationForm extends BaseForm implements ValidationPagingForm {
@@ -26,6 +27,11 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
 
     @Valid
     private List<AnalysisItem> resultList;
+
+    // Failed QC samples in the current batch (S-08 FR-04). Drives the QC
+    // acknowledgment panel; empty/null means no QC failures and the panel is
+    // hidden.
+    private List<QcFailureItem> qcFailureList = new java.util.ArrayList<>();
 
     @Pattern(regexp = "^[a-zA-Z0-9 -]*$", groups = { ResultValidation.class })
     private String testSection = "";
@@ -58,7 +64,7 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
     @NotNull(groups = { ResultValidation.class })
     private Boolean displayTestSections = true;
 
-    // Response-only (DEF-2): accessions whose release the save withheld because an
+    // Response-only: accessions whose release the save withheld because an
     // open QC failure covers them. Never bound from the request.
     private List<String> withheldAccessions;
 
@@ -167,5 +173,13 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
 
     public void setWithheldAccessions(List<String> withheldAccessions) {
         this.withheldAccessions = withheldAccessions;
+    }
+
+    public List<QcFailureItem> getQcFailureList() {
+        return qcFailureList;
+    }
+
+    public void setQcFailureList(List<QcFailureItem> qcFailureList) {
+        this.qcFailureList = qcFailureList;
     }
 }

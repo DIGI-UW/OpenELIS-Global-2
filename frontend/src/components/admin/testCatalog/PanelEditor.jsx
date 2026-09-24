@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { Button, Column, Grid, Loading, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
+import { NotificationContext } from "../../layout/Layout";
 import {
   DEFAULT_PANEL_SECTION,
   isValidPanelSection,
@@ -11,6 +13,7 @@ import {
 import PanelBasicInfoSection from "./sections/PanelBasicInfoSection";
 import PanelTestsSection from "./sections/PanelTestsSection";
 import PanelTerminologySection from "./sections/PanelTerminologySection";
+import LocalizationSection from "./sections/LocalizationSection";
 import { domainTagType } from "./PanelsList";
 
 /**
@@ -24,6 +27,7 @@ const PanelEditor = () => {
   const intl = useIntl();
   const history = useHistory();
   const { panelId, section } = useParams();
+  const { notificationVisible } = useContext(NotificationContext);
   const basePath = history.location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
@@ -76,6 +80,11 @@ const PanelEditor = () => {
 
   return (
     <>
+      {/* The sections raise their messages through NotificationContext; the
+          page has to render the AlertDialog for them to reach the operator
+          (app-wide pattern, as in the test editor). Without it every refusal
+          this editor reports was invisible (OGC-1232). */}
+      {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
@@ -147,6 +156,17 @@ const PanelEditor = () => {
               )}
               {activeSection === "terminology" && !isCreate && (
                 <PanelTerminologySection panel={panel} onSaved={setPanel} />
+              )}
+              {/* Same section a test uses; a panel's name lives in the same
+                  localization tables, reached through the panel's own bridge
+                  endpoint. Not offered while creating: there is no panel to
+                  hang translations off yet. */}
+              {activeSection === "localization" && !isCreate && (
+                <LocalizationSection
+                  entity="panel"
+                  entityId={panelId}
+                  refsUrl={`/rest/test-catalog/panels/${panelId}/localization`}
+                />
               )}
             </>
           )}

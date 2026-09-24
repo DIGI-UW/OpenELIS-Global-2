@@ -1,47 +1,9 @@
 package org.openelisglobal.reports.rejection.bean;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
+import org.openelisglobal.reports.qi.PagedResponse;
 
-public class RejectionDetailResponse {
-
-    private List<RejectionEvent> items = new ArrayList<>();
-    private int totalCount;
-    private int page;
-    private int pageSize;
-
-    public List<RejectionEvent> getItems() {
-        return items;
-    }
-
-    public void setItems(List<RejectionEvent> items) {
-        this.items = items;
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(int totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    public int getPage() {
-        return page;
-    }
-
-    public void setPage(int page) {
-        this.page = page;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
+public class RejectionDetailResponse extends PagedResponse<RejectionDetailResponse.RejectionEvent> {
 
     public static class RejectionEvent {
 

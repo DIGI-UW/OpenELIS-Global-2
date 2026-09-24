@@ -20,6 +20,7 @@ import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliverySuppliedItemComponent;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.eqa.service.EQACycleService;
@@ -54,9 +55,9 @@ public class ShippingBoxFhirTransform {
     private static final String EXT_SPECIMEN_TYPE_SUMMARY = "http://openelis.org/fhir/extension/shipment-specimen-type-summary";
     private static final String EXT_NON_CONFORMITY = "http://openelis.org/fhir/extension/shipment-non-conformity";
     /**
-     * T-42: one per contents row, nested {label, type} — what a receiving site
-     * renders as the box's manifest, since the row FKs mean nothing to it. Carries
-     * panel material too, which has no Specimen resource and so no EXT_SPECIMEN.
+     * One per contents row, nested {label, type} — what a receiving site renders as
+     * the box's manifest, since the row FKs mean nothing to it. Carries panel
+     * material too, which has no Specimen resource and so no EXT_SPECIMEN.
      */
     public static final String EXT_CONTENT_ITEM = "http://openelis.org/fhir/extension/shipment-content-item";
     /**
@@ -68,6 +69,14 @@ public class ShippingBoxFhirTransform {
     public static final String EXT_EQA_CYCLE = "http://openelis.org/fhir/extension/eqa-cycle";
     /** Anchor for the contained Location the destination reference points at. */
     static final String CONTAINED_DESTINATION_ID = "destination-facility";
+    /**
+     * The receiving laboratory, repeated as a flat extension. The reference itself
+     * travels as a contained Location; a site running an older build reads only
+     * this.
+     */
+    private static final String EXT_DESTINATION_ORG = "http://openelis.org/fhir/extension/shipment-destination-org";
+    /** The sending laboratory's configured name, for the receiver to display. */
+    private static final String EXT_SOURCE_ORG = "http://openelis.org/fhir/extension/shipment-source-org";
 
     @Autowired
     private BoxSampleItemDAO boxSampleItemDAO;
@@ -156,6 +165,8 @@ public class ShippingBoxFhirTransform {
                 destination.setManagingOrganization(
                         new Reference("Organization/" + box.getDestinationFacility().getFhirUuid().toString())
                                 .setDisplay(facilityName));
+                supplyDelivery.addExtension(new Extension(EXT_DESTINATION_ORG,
+                        new StringType(box.getDestinationFacility().getFhirUuid().toString())));
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery", "Destination facility '"
                         + facilityName + "' has no FHIR UUID — remote sites may not be able to match it");
@@ -174,6 +185,13 @@ public class ShippingBoxFhirTransform {
             LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery",
                     "siteOrganizationFhirUuid not configured — box " + box.getBoxId()
                             + " exports with no supplier; receiving sites cannot tell who shipped it");
+        }
+
+        // Extension — source org (sending lab name for receiver display)
+        String configName = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.configurationName);
+        if (configName != null && !configName.isBlank()) {
+            supplyDelivery.addExtension(new Extension(EXT_SOURCE_ORG, new StringType(configName)));
         }
 
         // Extensions — temperature requirement
@@ -406,14 +424,13 @@ public class ShippingBoxFhirTransform {
     public void syncToFhir(ShippingBox box, boolean isCreate) {
         try {
             SupplyDelivery supplyDelivery = transformToSupplyDelivery(box);
-            persistSupplyDelivery(supplyDelivery, isCreate);
+            persistSupplyDelivery(supplyDelivery);
         } catch (Exception e) {
             LogEvent.logError("Error syncing ShippingBox to FHIR: " + e.getMessage(), e);
         }
     }
 
-    private void persistSupplyDelivery(SupplyDelivery supplyDelivery, boolean isCreate)
-            throws FhirLocalPersistingException {
+    private void persistSupplyDelivery(SupplyDelivery supplyDelivery) throws FhirLocalPersistingException {
         try {
             FhirPersistanceService fhirPersistanceService = SpringContext.getBean(FhirPersistanceService.class);
             if (fhirPersistanceService == null) {

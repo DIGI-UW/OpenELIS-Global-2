@@ -4,8 +4,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -122,7 +124,6 @@ public class SampleEditServiceImpl implements SampleEditService {
     @Override
     public void editSample(SampleEditForm form, HttpServletRequest request, Sample updatedSample, boolean sampleChanged,
             String sysUserId) {
-
         List<SampleEditItem> existingTests = form.getExistingTests() != null ? form.getExistingTests()
                 : new ArrayList<>();
         List<Analysis> cancelAnalysisList = createRemoveList(existingTests, sysUserId);
@@ -469,31 +470,30 @@ public class SampleEditServiceImpl implements SampleEditService {
         return sampleAddService.createSampleTestCollection();
     }
 
+    /**
+     * Cancels every sample item flagged for removal and every analysis the form
+     * lists on those items. Rows are grouped by sample item id: the accession
+     * number only decorates the first row of each group and the front end sends it
+     * as an empty string on the others, so it cannot mark a group boundary.
+     */
     private List<SampleItem> createCancelSampleList(List<SampleEditItem> list, List<Analysis> cancelAnalysisList,
             String sysUserId) {
         List<SampleItem> cancelList = new ArrayList<>();
-
-        boolean cancelTest = false;
+        Set<String> removedSampleItemIds = new HashSet<>();
 
         for (SampleEditItem editItem : list) {
-            if (editItem.getAccessionNumber() != null) {
-                cancelTest = false;
-            }
-            if (cancelTest && !cancelAnalysisListContainsId(editItem.getAnalysisId(), cancelAnalysisList)) {
-                Analysis analysis = getCancelableAnalysis(editItem, sysUserId);
-                cancelAnalysisList.add(analysis);
-            }
-
-            if (editItem.isRemoveSample()) {
-                cancelTest = true;
+            if (editItem.isRemoveSample() && removedSampleItemIds.add(editItem.getSampleItemId())) {
                 SampleItem sampleItem = getCancelableSampleItem(editItem, sysUserId);
                 if (sampleItem != null) {
                     cancelList.add(sampleItem);
                 }
-                if (!cancelAnalysisListContainsId(editItem.getAnalysisId(), cancelAnalysisList)) {
-                    Analysis analysis = getCancelableAnalysis(editItem, sysUserId);
-                    cancelAnalysisList.add(analysis);
-                }
+            }
+        }
+
+        for (SampleEditItem editItem : list) {
+            if (removedSampleItemIds.contains(editItem.getSampleItemId())
+                    && !cancelAnalysisListContainsId(editItem.getAnalysisId(), cancelAnalysisList)) {
+                cancelAnalysisList.add(getCancelableAnalysis(editItem, sysUserId));
             }
         }
 
@@ -614,18 +614,25 @@ public class SampleEditServiceImpl implements SampleEditService {
             // Skip if no storage location specified
             if (storageLocationId == null || storageLocationId.trim().isEmpty() || storageLocationType == null
                     || storageLocationType.trim().isEmpty()) {
+                logger.warn("Cannot assign storage location - SampleItem not persisted yet");
                 continue;
             }
 
             SampleItem sampleItem = sampleTestCollection.item;
             if (sampleItem == null || sampleItem.getId() == null) {
-                logger.warn("Cannot assign storage location - SampleItem not persisted yet");
                 continue;
             }
 
             String sampleItemId = sampleItem.getId();
-            sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                    storagePositionCoordinate, "Auto-assigned on order creation");
+            java.util.Map<String, Object> existing = sampleStorageService.getSampleItemLocation(sampleItemId);
+            boolean alreadyAssigned = existing != null && !existing.isEmpty();
+            if (alreadyAssigned) {
+                sampleStorageService.moveSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Reassignment on order save", "");
+            } else {
+                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Auto-assigned on order creation");
+            }
         }
     }
 

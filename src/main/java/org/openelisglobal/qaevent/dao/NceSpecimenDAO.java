@@ -16,8 +16,8 @@ public interface NceSpecimenDAO extends BaseDAO<NceSpecimen, Integer> {
 
     /**
      * Of the given analyses, those linked to a still-open QC-failure NCE — the
-     * Validation QC-fail signal (OGC-1147 FR-C1). Batched: one query per validation
-     * list, never one per row.
+     * Validation QC-fail signal (OGC-1147). Batched: one query per validation list,
+     * never one per row.
      */
     List<Integer> findAnalysisIdsWithOpenQcHold(Collection<Integer> analysisIds);
 }

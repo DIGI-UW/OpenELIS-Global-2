@@ -10,8 +10,10 @@ import {
   Column,
   DataTable,
   Grid,
+  InlineNotification,
   Loading,
   Modal,
+  NotificationActionButton,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +26,7 @@ import {
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EQABadge from "../eqa/EQABadge";
 import { NotificationContext } from "../layout/Layout";
@@ -31,6 +34,7 @@ import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
+  putToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 import "./BoxDetails.css";
 import SampleAssignmentModal from "./SampleAssignmentModal";
@@ -50,6 +54,7 @@ const BoxDetails = () => {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [sampleToRemove, setSampleToRemove] = useState(null);
+  const [reconcileBlockCount, setReconcileBlockCount] = useState(null);
 
   useEffect(() => {
     if (boxId) {
@@ -351,11 +356,21 @@ const BoxDetails = () => {
   };
 
   const handleReconcile = () => {
-    putToOpenElisServer(
+    setReconcileBlockCount(null);
+    putToOpenElisServerJsonResponse(
       `/rest/shipping-box/${boxId}/state?newState=RECONCILED`,
       null,
-      (status) => {
-        if (status >= 200 && status < 300) {
+      (res) => {
+        if (res?.blockedReferralCount != null) {
+          // OGC-807: box gated by non-terminal referrals — show inline error + link.
+          setReconcileBlockCount(res.blockedReferralCount);
+        } else if (res?.error || (res?.statusCode && res.statusCode >= 300)) {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.reconcile" }),
+          });
+        } else {
           addNotification({
             kind: "success",
             title: intl.formatMessage({ id: "notification.success" }),
@@ -364,13 +379,6 @@ const BoxDetails = () => {
             }),
           });
           fetchBoxDetails();
-        } else {
-          console.error("Error reconciling box:", status);
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "notification.error" }),
-            message: intl.formatMessage({ id: "shipment.error.reconcile" }),
-          });
         }
       },
     );
@@ -480,6 +488,8 @@ const BoxDetails = () => {
   if (!box) {
     return (
       <div className="error-container">
+        {/* The fetch failure that lands here raises a message of its own. */}
+        <AlertDialog />
         <p>
           <FormattedMessage id="shipment.error.boxNotFound" />
         </p>
@@ -489,6 +499,9 @@ const BoxDetails = () => {
 
   return (
     <div className="box-details">
+      {/* Without this every message this page raises is discarded, so sending a
+          box, removing a sample or a failed state change all passed in silence. */}
+      <AlertDialog />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
@@ -582,6 +595,29 @@ const BoxDetails = () => {
               )}
               {box.state === "RECEIVED" && (
                 <>
+                  {reconcileBlockCount != null && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      title={intl.formatMessage({ id: "notification.error" })}
+                      subtitle={intl.formatMessage(
+                        { id: "referral.box.cannotReconcileMessage" },
+                        { count: reconcileBlockCount },
+                      )}
+                      onCloseButtonClick={() => setReconcileBlockCount(null)}
+                      actions={
+                        <NotificationActionButton
+                          onClick={() =>
+                            (window.location.href = `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`)
+                          }
+                        >
+                          {intl.formatMessage({
+                            id: "referral.box.viewBlockedReferrals",
+                          })}
+                        </NotificationActionButton>
+                      }
+                    />
+                  )}
                   <Button
                     kind="primary"
                     renderIcon={Checkmark}

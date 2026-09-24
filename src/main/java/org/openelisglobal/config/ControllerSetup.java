@@ -32,7 +32,8 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@Order(Ordered.HIGHEST_PRECEDENCE)
+// Leaves HIGHEST_PRECEDENCE free for a package-scoped @ControllerAdvice.
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @ControllerAdvice
 public class ControllerSetup extends ResponseEntityExceptionHandler {
 
@@ -48,14 +49,13 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Method-security denials (@PreAuthorize) must surface as 403, not fall into
-     * the generic RuntimeException -> 500 mapping below.
-     * AuthorizationDeniedException (Spring Security 6.3+ method security) extends
-     * AccessDeniedException, so both shapes land here — the more specific handler
-     * wins over handleRuntimeException.
+     * Keeps @PreAuthorize denials on 403: handleRuntimeException would otherwise
+     * claim them, since AccessDeniedException is a RuntimeException. Debug-level,
+     * because a refusal is the authorization layer working.
      */
     @ExceptionHandler(value = { AccessDeniedException.class })
     protected ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
         return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
                 HttpStatus.FORBIDDEN);
     }

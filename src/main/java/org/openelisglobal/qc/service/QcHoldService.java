@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Set;
 
 /**
- * OGC-1147 FR-C1/C3 — the QC-fail signal as Validation consumes it.
+ * OGC-1147 — the QC-fail signal as Validation consumes it.
  */
 public interface QcHoldService {
 
@@ -23,7 +23,7 @@ public interface QcHoldService {
     Set<String> analysisIdsBlockedFromRelease(Collection<String> analysisIds);
 
     /**
-     * Whether this lab blocks release on an open QC failure, or only warns (FR-C3).
+     * Whether this lab blocks release on an open QC failure, or only warns.
      */
     boolean blocksRelease();
 }

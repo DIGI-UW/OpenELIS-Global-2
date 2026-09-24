@@ -13,14 +13,14 @@
   <include file="liquibase/2.6.x.x/base.xml" />
   <include file="liquibase/2.7.x.x/base.xml" />
   <include file="liquibase/2.8.x.x/base.xml" />
+  <include file="liquibase/2.9.x.x/base.xml" />
   <include file="liquibase/3.1.x.x/base.xml" />
   <include file="liquibase/3.2.x.x/base.xml" />
   <include file="liquibase/3.3.x.x/base.xml" />
   <include file="liquibase/3.4.x.x/base.xml" />
   <include file="liquibase/3.4.14.x/base.xml" />
   <include file="liquibase/3.5.x.x/base.xml" />
-  <!-- Analyzer QC Rule Migrations -->
-  <include file="liquibase/analyzer/base.xml" />
+  <include file="liquibase/3.6.x.x/base.xml" />
   <!-- QC (Quality Control) Westgard Rules Feature -->
   <include file="liquibase/qc/001-create-qc-tables.xml" />
   <include file="liquibase/qc/002-create-westgard-rule-config.xml" />
@@ -30,43 +30,34 @@
   <include file="liquibase/qc/007-add-qc-menu-items.xml" />
   <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
   <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
+  <!-- S-08: QC Result Evaluation (OGC-554) -->
+  <include file="liquibase/qc/010-create-sample-item-qc-profile.xml" />
+  <include file="liquibase/qc/011-add-test-qc-thresholds.xml" />
+  <include file="liquibase/qc/012-add-result-qc-evaluation.xml" />
+  <include file="liquibase/qc/013-create-validation-qc-acknowledgment.xml" />
+  <include file="liquibase/qc/014-register-validation-qc-ack-reference-table.xml" />
+
   <!-- OGC-1147 Manual & RDT QC persistence -->
   <include file="liquibase/qc/010-manual-rdt-qc.xml" />
 
-  <!-- QA Menu v0.5 (IA Rehome) -->
+  <!-- QA menu tree, every row of it (OGC-688) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
 
-  <!-- QA v1 MVP -->
-  <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
-  <include file="liquibase/qa/003-add-amendment-report-module.xml" />
+  <!-- QA permission registry and the QA Officer role -->
   <include file="liquibase/qa/004-add-qa-permission-model.xml" />
 
-  <!-- QA Phase B -->
-  <include file="liquibase/qa/005-add-esig-log-menu.xml" />
-
-  <include file="liquibase/qa/006-add-capa-register-menu.xml" />
-
-  <!-- QA Phase C -->
+  <!-- QI configuration and its indicator defaults (OGC-709/710/714) -->
   <include file="liquibase/qa/007-create-qi-config-table.xml" />
 
-  <!-- QA Phase C.4 — Critical Callback -->
+  <!-- Critical callback capture (OGC-714) -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
-  <include file="liquibase/qa/009-add-callback-qi-indicator.xml" />
 
-  <!-- QA Phase C.3 — OGC-710: TAT thresholds become duration (hours) -->
-  <include file="liquibase/qa/010-tat-duration-thresholds.xml" />
+  <!-- Indexes for the QI cohort queries: started_date (rejection) and
+       released_date (amendment, TAT, callback — polled by the evaluator) -->
+  <include file="liquibase/qa/011-analysis-date-indexes.xml" />
 
-  <!-- QA Phase C.3 — OGC-710: index for the rejection cohort queries -->
-  <include file="liquibase/qa/011-analysis-started-date-index.xml" />
-
-  <!-- QA Phase C.4 — index for the released-cohort QI queries (polled) -->
-  <include file="liquibase/qa/012-analysis-released-date-index.xml" />
-
-  <!-- QA Phase D.1 — OGC-686: accrediting bodies + per-test accreditation -->
+  <!-- OGC-686: accrediting bodies + per-test accreditation -->
   <include file="liquibase/qa/013-create-accreditation-tables.xml" />
-
-  <!-- QA Phase D.2 — OGC-686: accreditation page menu row -->
-  <include file="liquibase/qa/014-add-accreditation-menu.xml" />
 
   <!-- A name for the point the EQA V2 set begins, so a rollback can say where to
        stop rather than counting backwards through whatever core changesets sit

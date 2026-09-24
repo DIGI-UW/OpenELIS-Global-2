@@ -17,9 +17,9 @@ public enum QiIndicator {
      * validation and the OGC-712 breach comparison. TAT is LOWER_BETTER because its
      * thresholds are mean-TAT <b>hours</b> (the metric every TAT surface actually
      * computes), not an on-time compliance % — per-test TAT targets are
-     * unpopulated, so a compliance % would be incomputable (C.3 gap #3 decision).
-     * REJECTION/AMENDMENT thresholds are rate percentages. CALLBACK is the one
-     * HIGHER_BETTER indicator — its metric is read-back compliance %.
+     * unpopulated, so a compliance % would be incomputable. REJECTION/AMENDMENT
+     * thresholds are rate percentages. CALLBACK is the one HIGHER_BETTER indicator
+     * — its metric is read-back compliance %.
      */
     public enum Direction {
         HIGHER_BETTER, LOWER_BETTER

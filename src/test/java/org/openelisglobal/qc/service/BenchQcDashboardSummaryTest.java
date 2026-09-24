@@ -12,15 +12,15 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.qc.builder.BenchQCCaptureFormBuilder;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
-import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-1147 FR-D1 — the bench QC listing that makes manual and RDT controls
- * visible to a supervisor.
+ * OGC-1147 — the bench QC listing that makes manual and RDT controls visible to
+ * a supervisor.
  *
  * <p>
  * This exists as its own roll-up rather than a source filter on the instrument
@@ -119,11 +119,10 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * FR-D2 end-to-end: a manual quantitative control reaches the Levey-Jennings
-     * chart's own data path, not merely "has a z-score". The chart queries by
-     * control lot with no analyzer filter, which is why this works without touching
-     * the charting code — but that is a property worth asserting rather than
-     * assuming.
+     * End-to-end: a manual quantitative control reaches the Levey-Jennings chart's
+     * own data path, not merely "has a z-score". The chart queries by control lot
+     * with no analyzer filter, which is why this works without touching the
+     * charting code — but that is a property worth asserting rather than assuming.
      */
     @Test
     public void manualQuantitativeControlAppearsInChartDataForItsLot() {
@@ -139,9 +138,9 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * The other half of FR-D2/D3: an RDT control must never reach the chart. It has
-     * no lot and no number, so there is nothing to plot and no statistics to plot
-     * it against.
+     * The other half of the split: an RDT control must never reach the chart. It
+     * has no lot and no number, so there is nothing to plot and no statistics to
+     * plot it against.
      */
     @Test
     public void rdtControlNeverReachesChartData() {
@@ -157,27 +156,15 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     private void recordManual(QCQualitativeOutcome outcome, BigDecimal value, String runAt) {
-        BenchQCCaptureForm form = new BenchQCCaptureForm();
-        form.setSource(QCSource.MANUAL);
-        form.setTestId(TEST_ID);
-        form.setTestSectionId(LAB_UNIT);
-        form.setControlLotId("bench-lot-a");
-        form.setQualitativeOutcome(outcome);
-        form.setResultValue(value);
-        form.setExpectedValue(new BigDecimal("100.00000"));
-        form.setUncertainty(new BigDecimal("5.00000"));
-        form.setRunDateTime(Timestamp.valueOf(runAt).toLocalDateTime());
-        qcResultService.createBenchQCResult(form, TECHNICIAN);
+        qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID)
+                .withTestSectionId(LAB_UNIT).withControlLotId("bench-lot-a").withOutcome(outcome).withResultValue(value)
+                .withTarget(new BigDecimal("100.00000"), new BigDecimal("5.00000")).withRunDateTime(runAt).build(),
+                TECHNICIAN);
     }
 
     private void recordRdt(QCQualitativeOutcome outcome, String runAt) {
-        BenchQCCaptureForm form = new BenchQCCaptureForm();
-        form.setSource(QCSource.RDT);
-        form.setTestId(RDT_TEST_ID);
-        form.setTestSectionId(LAB_UNIT);
-        form.setControlLabel("Malaria RDT · LOT-BENCH-1");
-        form.setQualitativeOutcome(outcome);
-        form.setRunDateTime(Timestamp.valueOf(runAt).toLocalDateTime());
-        qcResultService.createBenchQCResult(form, TECHNICIAN);
+        qcResultService.createBenchQCResult(BenchQCCaptureFormBuilder.create(QCSource.RDT).withTestId(RDT_TEST_ID)
+                .withTestSectionId(LAB_UNIT).withControlLabel("Malaria RDT · LOT-BENCH-1").withOutcome(outcome)
+                .withRunDateTime(runAt).build(), TECHNICIAN);
     }
 }

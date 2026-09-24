@@ -12,6 +12,12 @@ public interface AccreditingBodyService extends BaseObjectService<AccreditingBod
     List<AccreditingBodyView> getBodyViews();
 
     /**
+     * One body's view row — the same assembler {@link #getBodyViews()} uses, for a
+     * write response that has to echo the row it just changed.
+     */
+    AccreditingBodyView getBodyView(Long id);
+
+    /**
      * Portfolio counts + active body names, for the page banner and QA Overview.
      */
     AccreditationSummary getSummary();
@@ -25,7 +31,7 @@ public interface AccreditingBodyService extends BaseObjectService<AccreditingBod
      */
     AccreditingBody updateBody(Long id, AccreditingBody incoming, String sysUserId);
 
-    /** Delete a body. Rejected while any test is still enrolled under it (FR-6). */
+    /** Delete a body. Rejected while any test is still enrolled under it. */
     void deleteBody(Long id, String sysUserId);
 
     /** Attach (or clear, with a null image id) this body's report logo. */

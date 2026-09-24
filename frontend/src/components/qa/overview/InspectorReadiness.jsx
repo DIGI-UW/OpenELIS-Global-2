@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Accordion, AccordionItem } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { formatTat } from "../../reports/tat/tatUtils";
 import ComingSoon from "./ComingSoon";
+import { NCE_DRILL_URL, countCriticalPending, useNceList } from "./nceOverview";
 import {
-  NCE_DRILL_URL,
-  countCriticalPending,
-  fetchNceList,
-} from "./nceOverview";
-import {
-  fetchAccreditationSummary,
-  fetchOverviewSummary,
-  fetchTatRollup,
+  useAccreditationSummary,
+  useOverviewSummary,
+  useTatRollup,
 } from "./overviewData";
 import { STATUS_ICON, qcPillar } from "./PillarStatus";
 
@@ -45,9 +41,9 @@ const AnswerRow = ({ titleKey, status, answer, loading, onClick }) => (
 );
 
 /**
- * Inspector readiness Q&A (OGC-694 WS-F): Q1 answers from the QC instrument
+ * Inspector readiness Q&A (OGC-694): Q1 answers from the QC instrument
  * rollup, Q3 from the TAT rollup, Q4 from the NCE register, Q5 from the
- * accreditation portfolio summary (OGC-686 D.2); Q2 (EQA, OGC-721) stays a
+ * accreditation portfolio summary (OGC-686); Q2 (EQA, OGC-721) stays a
  * placeholder.
  */
 const InspectorReadiness = () => {
@@ -58,22 +54,11 @@ const InspectorReadiness = () => {
   const [open, setOpen] = useState(
     () => sessionStorage.getItem(STORAGE_KEY) === "1",
   );
-  // undefined = loading, null = fetch yielded no data
-  const [summary, setSummary] = useState();
-  const [nceList, setNceList] = useState();
-  const [tat, setTat] = useState();
-  const [accreditation, setAccreditation] = useState();
-
-  useEffect(() => {
-    let mounted = true;
-    fetchOverviewSummary((data) => mounted && setSummary(data));
-    fetchNceList((list) => mounted && setNceList(list));
-    fetchTatRollup((data) => mounted && setTat(data));
-    fetchAccreditationSummary((data) => mounted && setAccreditation(data));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { loading: summaryLoading, summary } = useOverviewSummary();
+  const { loading: nceLoading, nceList } = useNceList();
+  const { loading: tatLoading, tat } = useTatRollup();
+  const { loading: accreditationLoading, accreditation } =
+    useAccreditationSummary();
 
   const handleHeadingClick = ({ isOpen }) => {
     setOpen(isOpen);
@@ -95,7 +80,7 @@ const InspectorReadiness = () => {
           <div className="qa-cs-rows">
             <AnswerRow
               titleKey="qa.overview.inspector.q1"
-              loading={summary === undefined}
+              loading={summaryLoading}
               status={q1Status}
               answer={
                 qc && qc.totalInstruments > 0
@@ -117,7 +102,7 @@ const InspectorReadiness = () => {
             />
             <AnswerRow
               titleKey="qa.overview.inspector.q3"
-              loading={tat === undefined}
+              loading={tatLoading}
               status={tat ? (tat.tone === "bad" ? "amber" : "green") : null}
               answer={
                 tat
@@ -131,7 +116,7 @@ const InspectorReadiness = () => {
             />
             <AnswerRow
               titleKey="qa.overview.inspector.q4"
-              loading={nceList === undefined}
+              loading={nceLoading}
               status={critical == null ? null : critical > 0 ? "red" : "green"}
               answer={
                 critical == null
@@ -145,7 +130,7 @@ const InspectorReadiness = () => {
             />
             <AnswerRow
               titleKey="qa.overview.inspector.q5"
-              loading={accreditation === undefined}
+              loading={accreditationLoading}
               status={ACCREDITATION_STATUS[accreditation?.worstStatus] || null}
               answer={
                 // worstStatus is null once every body is inactive, so key the

@@ -52,7 +52,11 @@ const draftKey = (localeCode, field) => `${localeCode}|${field}`;
  * translations in-context. These live in the generic `localization` tables (the
  * test already FK-links to them), so this reads/writes through the existing
  * /rest/localizations/{id} endpoints; the editor controller only bridges
- * testId → the backing localization ids. No per-test translation store.
+ * an entity id → the backing localization ids. No per-entity translation store.
+ *
+ * <p>Reused by the Panel and Sample Type editors, which pass their own bridge
+ * endpoint via `refsUrl` and their id via `entityId`; a test needs neither and
+ * keeps calling it with `testId` alone.
  *
  * The picker opens on the session locale so the admin knows which record they are
  * looking at. For the chosen locale each field shows its value with a fallback
@@ -63,7 +67,28 @@ const draftKey = (localeCode, field) => `${localeCode}|${field}`;
  * another language does not drop what was typed; one Save flushes every pending
  * locale of a field in a single PUT.
  */
-const LocalizationSection = ({ testId }) => {
+const LocalizationSection = ({
+  testId,
+  refsUrl,
+  entityId,
+  entity = "test",
+}) => {
+  // Panels and sample types keep their display names in the same generic
+  // localization tables a test does, and each has its own endpoint bridging an id
+  // to the backing localization row. The rest of this section is entity-agnostic
+  // already, so they pass that endpoint in rather than duplicating any of it.
+  const id = entityId !== undefined ? entityId : testId;
+  const localizationRefsUrl =
+    refsUrl || `/rest/test-catalog/tests/${id}/localization`;
+  // Only the strings that name the thing being translated differ between
+  // entities; everything else here reads the same for all three.
+  const copy = (suffix) =>
+    intl.formatMessage({
+      id: `label.${entity}.localization.${suffix}`,
+      defaultMessage: intl.formatMessage({
+        id: `label.testCatalog.localization.${suffix}`,
+      }),
+    });
   const intl = useIntl();
 
   const [locales, setLocales] = useState([]);
@@ -104,54 +129,51 @@ const LocalizationSection = ({ testId }) => {
 
   // Load the test's localization refs, then hydrate each one's translations.
   const load = useCallback(() => {
-    if (!testId) {
+    if (!id) {
       return;
     }
     setLoading(true);
     setError(false);
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/localization`,
-      (refs) => {
-        if (!mounted.current) {
-          return;
-        }
-        if (!refs || !Array.isArray(refs.fields)) {
-          setLoading(false);
-          setError(true);
-          return;
-        }
-        if (refs.fields.length === 0) {
-          setFields([]);
-          setLoading(false);
-          return;
-        }
-        let pending = refs.fields.length;
-        // Indexed, not appended: these requests finish in any order, and the
-        // fields must keep the order the server declared them in.
-        const resolved = new Array(refs.fields.length);
-        refs.fields.forEach((ref, index) => {
-          getFromOpenElisServer(
-            `/rest/localizations/${ref.localizationId}`,
-            (loc) => {
-              if (!mounted.current) {
-                return;
-              }
-              resolved[index] = {
-                field: ref.field,
-                localizationId: ref.localizationId,
-                translations: (loc && loc.translations) || {},
-              };
-              pending -= 1;
-              if (pending === 0) {
-                setFields(resolved);
-                setLoading(false);
-              }
-            },
-          );
-        });
-      },
-    );
-  }, [testId]);
+    getFromOpenElisServer(localizationRefsUrl, (refs) => {
+      if (!mounted.current) {
+        return;
+      }
+      if (!refs || !Array.isArray(refs.fields)) {
+        setLoading(false);
+        setError(true);
+        return;
+      }
+      if (refs.fields.length === 0) {
+        setFields([]);
+        setLoading(false);
+        return;
+      }
+      let pending = refs.fields.length;
+      // Indexed, not appended: these requests finish in any order, and the
+      // fields must keep the order the server declared them in.
+      const resolved = new Array(refs.fields.length);
+      refs.fields.forEach((ref, index) => {
+        getFromOpenElisServer(
+          `/rest/localizations/${ref.localizationId}`,
+          (loc) => {
+            if (!mounted.current) {
+              return;
+            }
+            resolved[index] = {
+              field: ref.field,
+              localizationId: ref.localizationId,
+              translations: (loc && loc.translations) || {},
+            };
+            pending -= 1;
+            if (pending === 0) {
+              setFields(resolved);
+              setLoading(false);
+            }
+          },
+        );
+      });
+    });
+  }, [id, localizationRefsUrl]);
 
   useEffect(() => {
     load();
@@ -290,18 +312,14 @@ const LocalizationSection = ({ testId }) => {
         />
       )}
 
-      <p>
-        {intl.formatMessage({ id: "label.testCatalog.localization.intro" })}
-      </p>
+      <p>{copy("intro")}</p>
 
       {fields.length === 0 ? (
         <InlineNotification
           kind="info"
           lowContrast
           hideCloseButton
-          title={intl.formatMessage({
-            id: "label.testCatalog.localization.empty",
-          })}
+          title={copy("empty")}
         />
       ) : (
         <>
@@ -334,7 +352,10 @@ const LocalizationSection = ({ testId }) => {
               >
                 <span className="cds--label">
                   {intl.formatMessage({
-                    id: `label.testCatalog.localization.field.${entry.field}`,
+                    id: `label.${entity}.localization.field.${entry.field}`,
+                    defaultMessage: intl.formatMessage({
+                      id: `label.testCatalog.localization.field.${entry.field}`,
+                    }),
                   })}
                 </span>
                 {fallbackTag(entry)}

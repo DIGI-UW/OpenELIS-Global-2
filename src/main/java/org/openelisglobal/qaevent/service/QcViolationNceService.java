@@ -6,8 +6,8 @@ import org.openelisglobal.qc.valueholder.QCRuleViolation;
 
 /**
  * Auto-creates a Non-Conforming Event from a REJECTION-severity Westgard QC
- * violation (NCE FRS trigger #10, OGC-701) and links the affected patient
- * samples within a capped lookback window (OGC-728).
+ * violation (OGC-701) and links the affected patient samples within a capped
+ * lookback window (OGC-728).
  */
 public interface QcViolationNceService {
 
@@ -20,9 +20,9 @@ public interface QcViolationNceService {
 
     /**
      * Create the NCE for a failed bench control that has no statistical violation
-     * behind it — an RDT Invalid control line (OGC-1147 D4/FR-C1). Scopes affected
-     * analyses by lab unit rather than analyzer, using the same capped window.
-     * Idempotent on the QC result.
+     * behind it — an RDT Invalid control line (OGC-1147). Scopes affected analyses
+     * by lab unit rather than analyzer, using the same capped window. Idempotent on
+     * the QC result.
      */
     NcEvent createNceForFailedControl(QCResult qcResult);
 }

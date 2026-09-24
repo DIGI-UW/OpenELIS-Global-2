@@ -41,12 +41,10 @@ public class QCControlLotForm extends BaseForm {
     @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String testId;
 
-    // Optional since OGC-1147 (FR-B3): omitted for a bench control lot on a manual
-    // method, which has no analyzer. @Pattern skips null but NOT "", and a form
-    // post
-    // sends an unselected dropdown as "", so the regex has to admit the empty
-    // string.
-    @Pattern(regexp = "^$|[1-9]\\d*", message = "must be a positive numeric ID")
+    // Optional since OGC-1147: omitted for a bench control lot on a manual
+    // method, which has no analyzer. @Pattern skips a null, and the JSON body
+    // omits the field rather than sending an empty string.
+    @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String instrumentId;
 
     @NotBlank

@@ -30,11 +30,11 @@ import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Integration test for the Rejection Rate compute (OGC-710, C.3 gap #4).
- * Fixture testdata/result.xml provides two analyses started 2025-07-07. A
- * rejection is simulated exactly as production does it: a REJECTION_REASON
- * ('R') note on the analysis whose text is the rejection-reason dictionary
- * value (LogbookResultsController / ResultUtil).
+ * Integration test for the Rejection Rate compute (OGC-710). Fixture
+ * testdata/result.xml provides two analyses started 2025-07-07. A rejection is
+ * simulated exactly as production does it: a REJECTION_REASON ('R') note on the
+ * analysis whose text is the rejection-reason dictionary value
+ * (LogbookResultsController / ResultUtil).
  */
 public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
 
@@ -65,6 +65,13 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
+        // testdata/result.xml declares neither note nor sample_requester, so
+        // whatever earlier test classes wrote into those two tables survives
+        // this load and collides with the ids the rejections below claim. The
+        // fixture cannot clear them and resyncing the sequences would only
+        // walk them backwards onto rows already committed, so empty the two
+        // tables this test owns instead.
+        jdbcTemplate.execute("TRUNCATE TABLE clinlims.note, clinlims.sample_requester");
     }
 
     private void writeRejectionNote(String analysisId, String reason) {

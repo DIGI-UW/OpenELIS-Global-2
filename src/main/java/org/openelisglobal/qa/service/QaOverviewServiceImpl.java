@@ -1,6 +1,5 @@
 package org.openelisglobal.qa.service;
 
-import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -11,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -26,14 +26,12 @@ import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.qc.service.QCRuleViolationService;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Compiles the QA Overview aggregates (OGC-694 WS-F) from existing QC, EQA,
+ * Compiles the QA Overview aggregates (OGC-694) from existing QC, EQA,
  * audit-trail, and e-signature services within one read-only transaction
  * (Constitution IV.5).
  */
@@ -61,26 +59,6 @@ public class QaOverviewServiceImpl implements QaOverviewService {
     @Autowired
     private AnalyzerService analyzerService;
 
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-
-    /**
-     * Whitelisted audit reference-table IDs, resolved from names once at startup.
-     */
-    private List<String> auditReferenceTableIds = new ArrayList<>();
-
-    @PostConstruct
-    private void resolveAuditReferenceTableIds() {
-        List<String> ids = new ArrayList<>();
-        for (String name : HistoryService.SYSTEM_AUDIT_ENTITY_TABLES) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(name);
-            if (rt != null) {
-                ids.add(rt.getId());
-            }
-        }
-        this.auditReferenceTableIds = ids;
-    }
-
     @Override
     @Transactional(readOnly = true)
     public QaOverviewSummary getSummary() {
@@ -100,7 +78,8 @@ public class QaOverviewServiceImpl implements QaOverviewService {
         // One scan covers both windows: the 24h range can reach before the week
         // start early in the week, and the week range always contains "recent".
         Timestamp from = weekStartTs.before(dayAgoTs) ? weekStartTs : dayAgoTs;
-        List<QCRuleViolation> violations = loadViolations(from, nowTs);
+        List<QCRuleViolation> violations = orWarn("QC violations",
+                () -> qcRuleViolationService.findByDateRange(from, nowTs), List.of());
 
         compileQc(summary, violations, weekStartTs, dayAgoTs);
         compileEqa(summary, nowTs);
@@ -110,25 +89,27 @@ public class QaOverviewServiceImpl implements QaOverviewService {
         return summary;
     }
 
-    private List<QCRuleViolation> loadViolations(Timestamp from, Timestamp to) {
+    /**
+     * The overview is a dashboard: one unavailable source greys out its own tile
+     * rather than failing the whole page, so every source is read through here.
+     */
+    private <T> T orWarn(String what, Supplier<T> read, T fallback) {
         try {
-            return qcRuleViolationService.findByDateRange(from, to);
+            return read.get();
         } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "loadViolations", "QC violations unavailable: " + e.getMessage());
-            return List.of();
+            LogEvent.logWarn(getClass().getName(), "getSummary", what + " unavailable: " + e.getMessage());
+            return fallback;
         }
     }
 
     private void compileQc(QaOverviewSummary summary, List<QCRuleViolation> violations, Timestamp weekStart,
             Timestamp dayAgo) {
-        try {
-            QCDashboardSummary qcSummary = qcDashboardService.getDashboardSummary();
+        QCDashboardSummary qcSummary = orWarn("QC dashboard summary", qcDashboardService::getDashboardSummary, null);
+        if (qcSummary != null) {
             summary.qc.compliantInstruments = qcSummary.getCompliantInstruments();
             summary.qc.warningInstruments = qcSummary.getWarningInstruments();
             summary.qc.nonCompliantInstruments = qcSummary.getNonCompliantInstruments();
             summary.qc.totalInstruments = qcSummary.getTotalInstruments();
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "compileQc", "QC dashboard summary unavailable: " + e.getMessage());
         }
         summary.qc.violations24h = violations.stream()
                 .filter(v -> v.getViolationDateTime() != null && !v.getViolationDateTime().before(dayAgo)).count();
@@ -143,44 +124,33 @@ public class QaOverviewServiceImpl implements QaOverviewService {
     }
 
     private void compileEqa(QaOverviewSummary summary, Timestamp now) {
-        try {
-            List<SampleEQA> samples = sampleEQAService.findEqaSamples();
+        List<SampleEQA> samples = orWarn("EQA orders", sampleEQAService::findEqaSamples, null);
+        if (samples != null) {
             Timestamp soonCutoff = Timestamp.from(now.toInstant().plus(EQA_DUE_SOON_DAYS, ChronoUnit.DAYS));
             summary.eqa.open = samples.size();
             summary.eqa.overdue = samples.stream()
                     .filter(s -> s.getEqaDeadline() != null && s.getEqaDeadline().before(now)).count();
             summary.eqa.dueSoon14d = samples.stream().filter(s -> s.getEqaDeadline() != null
                     && !s.getEqaDeadline().before(now) && !s.getEqaDeadline().after(soonCutoff)).count();
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "compileEqa", "EQA orders unavailable: " + e.getMessage());
         }
     }
 
     private void compileWeekCounters(QaOverviewSummary summary, Timestamp weekStart, Timestamp now) {
-        try {
-            summary.week.auditEntries = historyService.getSystemEventHistoryCount(weekStart, now, null,
-                    auditReferenceTableIds, null, null, null);
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "compileWeekCounters",
-                    "Audit history count unavailable: " + e.getMessage());
-        }
-        try {
-            summary.week.signatureEvents = electronicSignatureService.countSignaturesInDateRange(weekStart, now);
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "compileWeekCounters",
-                    "Signature count unavailable: " + e.getMessage());
-        }
+        summary.week.auditEntries = orWarn("Audit history count",
+                () -> historyService.getSystemEventHistoryCount(weekStart, now, null,
+                        new ArrayList<>(historyService.getSystemAuditReferenceTableIds().values()), null, null, null),
+                summary.week.auditEntries);
+        summary.week.signatureEvents = orWarn("Signature count",
+                () -> electronicSignatureService.countSignaturesInDateRange(weekStart, now),
+                summary.week.signatureEvents);
     }
 
     private void compileActivity(QaOverviewSummary summary, List<QCRuleViolation> violations, Timestamp dayAgo,
             Timestamp now) {
         List<ActivityItem> items = new ArrayList<>();
-        try {
-            electronicSignatureService.getSignaturesInDateRange(dayAgo, now).stream().limit(ACTIVITY_CAP)
-                    .forEach(sig -> items.add(toActivityItem(sig)));
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(getClass().getName(), "compileActivity", "Signatures unavailable: " + e.getMessage());
-        }
+        orWarn("Signatures", () -> electronicSignatureService.getSignaturesInDateRange(dayAgo, now),
+                List.<ElectronicSignature>of()).stream().limit(ACTIVITY_CAP)
+                .forEach(sig -> items.add(toActivityItem(sig)));
         Map<String, String> instrumentNames = new HashMap<>();
         violations.stream().filter(v -> v.getViolationDateTime() != null && !v.getViolationDateTime().before(dayAgo))
                 .limit(ACTIVITY_CAP).forEach(v -> items.add(toActivityItem(v, instrumentNames)));
@@ -216,11 +186,8 @@ public class QaOverviewServiceImpl implements QaOverviewService {
     }
 
     private String lookupInstrumentName(String instrumentId) {
-        try {
-            return analyzerService.getWithType(instrumentId).map(Analyzer::getName)
-                    .orElse("Instrument " + instrumentId);
-        } catch (RuntimeException e) {
-            return "Instrument " + instrumentId;
-        }
+        String fallback = "Instrument " + instrumentId;
+        return orWarn("Instrument name",
+                () -> analyzerService.getWithBinding(instrumentId).map(Analyzer::getName).orElse(fallback), fallback);
     }
 }

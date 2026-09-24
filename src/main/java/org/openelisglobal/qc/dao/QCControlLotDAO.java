@@ -42,9 +42,8 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
 
     /**
      * Get non-EXPIRED lots sharing (lotNumber, testId, controlLevel) — the
-     * uniqueness key for a usable lot (GAP-5). The same physical lot number
-     * legitimately recurs across different tests, and retired lots don't block
-     * reuse.
+     * uniqueness key for a usable lot. The same physical lot number legitimately
+     * recurs across different tests, and retired lots don't block reuse.
      */
     List<QCControlLot> getNonExpiredByLotTestAndLevel(String lotNumber, String testId, String controlLevel)
             throws LIMSRuntimeException;

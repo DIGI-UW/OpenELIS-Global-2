@@ -393,7 +393,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                                                                                       // object
             setActionLogs(form, ncEvent);
 
-            // F-4: record the effectiveness verdict when the review was answered. Only a
+            // Record the effectiveness verdict when the review was answered. Only a
             // "Yes" verdict resolves the NCE (routed to resolveNCEvent by the controller);
             // a "No" verdict lands here and is persisted without closing, so the
             // ineffective outcome is not discarded.

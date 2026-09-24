@@ -22,6 +22,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.renamemethod.service.RenameMethodService;
 import org.openelisglobal.renametestsection.service.RenameTestSectionService;
+import org.openelisglobal.testconfiguration.service.ResultSelectListService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,11 +52,15 @@ public class EntityNamesProviderRestController {
     @Autowired
     private RenameMethodService renameMethodService;
 
+    @Autowired
+    private ResultSelectListService resultSelectListService;
+
     public static final String PANEL = "panel";
     public static final String SAMPLE_TYPE = "sampleType";
     public static final String TEST_SECTION = "testSection";
     public static final String UNIT_OF_MEASURE = "unitOfMeasure";
     public static final String METHOD = "method";
+    public static final String RESULT_SELECT_OPTION = "resultSelectOption";
     String INVALID = "invalid";
     String VALID = "valid";
 
@@ -101,6 +106,8 @@ public class EntityNamesProviderRestController {
             localization = getLocalizationForUnitOfMeasure(id);
         } else if (METHOD.equals(entityName)) {
             localization = getLocalizationForRenameMethod(id);
+        } else if (RESULT_SELECT_OPTION.equals(entityName)) {
+            localization = getLocalizationForResultSelectOption(id);
         }
         // add entity types as needed
 
@@ -144,5 +151,9 @@ public class EntityNamesProviderRestController {
 
     private Localization getLocalizationForRenameMethod(String id) {
         return renameMethodService.getLocalizationForRenameMethod(id);
+    }
+
+    private Localization getLocalizationForResultSelectOption(String id) {
+        return resultSelectListService.getLocalizationForResultSelectOption(id);
     }
 }

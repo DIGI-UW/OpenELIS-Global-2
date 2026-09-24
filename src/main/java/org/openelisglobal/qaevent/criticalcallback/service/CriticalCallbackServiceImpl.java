@@ -3,7 +3,6 @@ package org.openelisglobal.qaevent.criticalcallback.service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,6 +20,7 @@ import org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback;
 import org.openelisglobal.qaevent.qiconfig.dto.ResolvedConfig;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
 import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
+import org.openelisglobal.reports.qi.QiReportSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -34,11 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * The compliance compute (OGC-714 read side) lives here rather than on a
  * parallel report service: the metric window and clock both anchor on
- * {@code analysis.released_date} (the C.4 outline §3.1/§3.3 — a callback made
- * before release counts as compliant via the negative delta), criticality is
- * recomputed from result_limits critical bounds with the same outside-band rule
- * the write side validates, and the numerator is EXISTS(CONFIRMED within SLA) —
- * immune to repeat attempt rows.
+ * {@code analysis.released_date} (a callback made before release counts as
+ * compliant via the negative delta), criticality is recomputed from
+ * result_limits critical bounds with the same outside-band rule the write side
+ * validates, and the numerator is EXISTS(CONFIRMED within SLA) — immune to
+ * repeat attempt rows.
  */
 @Service
 public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalCallback, String>
@@ -47,8 +47,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
     /**
      * Callback target window, the pass line for the compliance numerator and the
      * "over target" failure reason. TJC NPSG.02.03.01 makes the lab define this
-     * timeframe rather than fixing 60 minutes. ponytail: property, not a qi_config
-     * column — no per-test-section callback policy to model yet.
+     * timeframe rather than fixing 60 minutes.
      */
     @Value("${org.openelisglobal.qi.callback.sla.minutes:60}")
     private int slaMinutes;
@@ -60,9 +59,10 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
      * load-bearing — unconfigured bounds persist as ±Infinity, and an all-Infinity
      * low bound would otherwise match every result.
      */
-    // ponytail: any-variant limit match (ignores gender/age discrimination — exact
-    // for the common one-default-limit-per-test config); add SQL demographic
-    // resolution if labs configure gender/age-specific criticals
+    // Caveat: matches any result_limits row for the test, ignoring gender/age
+    // variants. Exact when a test has one default limit (the common setup); if a
+    // lab configures gender- or age-specific criticals, this needs demographic
+    // resolution in SQL or the compliance numbers will be off.
     private static final String CRITICAL_FROM = " FROM analysis a JOIN result r ON r.analysis_id = a.id"
             + " JOIN result_limits rl ON rl.test_id = a.test_id"
             + " CROSS JOIN LATERAL (SELECT BTRIM(regexp_replace(r.value, '[<>]', '', 'g')) AS val) v";
@@ -98,12 +98,6 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
 
     @Override
     @Transactional(readOnly = true)
-    public List<CriticalCallback> getByAnalysisId(String analysisId) {
-        return baseObjectDAO.getByAnalysisId(analysisId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<String> getLoggedResultIds(Collection<String> resultIds) {
         return baseObjectDAO.getLoggedResultIds(resultIds);
     }
@@ -126,17 +120,15 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
                 .createNativeQuery(
                         "SELECT COUNT(DISTINCT a.id) AS critical_count," + " COUNT(DISTINCT a.id) FILTER (WHERE "
                                 + CONFIRMED_IN_SLA + ") AS confirmed_count" + CRITICAL_FROM + CRITICAL_WHERE)
-                .setParameter("fromTs", startOf(fromDate)).setParameter("toTs", endOf(toDate))
-                .setParameter("slaMinutes", slaMinutes).uniqueResult();
+                .setParameter("fromTs", QiReportSupport.startOf(fromDate))
+                .setParameter("toTs", QiReportSupport.endOf(toDate)).setParameter("slaMinutes", slaMinutes)
+                .uniqueResult();
 
         long critical = ((Number) counts[0]).longValue();
         long confirmed = ((Number) counts[1]).longValue();
         response.setCriticalCount(critical);
         response.setConfirmedCount(confirmed);
-        if (critical > 0) {
-            response.setCompliancePercent(
-                    BigDecimal.valueOf(confirmed * 100.0 / critical).setScale(2, RoundingMode.HALF_UP).doubleValue());
-        }
+        response.setCompliancePercent(QiReportSupport.ratePercent(confirmed, critical));
         return response;
     }
 
@@ -152,9 +144,9 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         }
 
         Session session = entityManager.unwrap(Session.class);
-        // ponytail: fetch-all + in-memory paging, same as the Amendment report;
-        // criticals are rare and the window is capped at 366 days. DISTINCT ON
-        // collapses result_limits variants; the lateral picks the latest attempt.
+        // Loads the whole window (criticals are rare, max 366 days) and pages in
+        // memory. DISTINCT ON collapses result_limits variants; the lateral picks
+        // the latest callback attempt.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = session.createNativeQuery("SELECT DISTINCT ON (a.id) CAST(a.id AS varchar),"
                 + " s.accession_number, t.name, COALESCE(cc.result_value, r.value),"
@@ -165,7 +157,8 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
                 + " LEFT JOIN LATERAL (SELECT * FROM critical_callback c2 WHERE c2.analysis_id = a.id"
                 + " ORDER BY c2.logged_at DESC LIMIT 1) cc ON true"
                 + " LEFT JOIN system_user su ON su.id = cc.logged_by" + CRITICAL_WHERE + " ORDER BY a.id")
-                .setParameter("fromTs", startOf(fromDate)).setParameter("toTs", endOf(toDate)).list();
+                .setParameter("fromTs", QiReportSupport.startOf(fromDate))
+                .setParameter("toTs", QiReportSupport.endOf(toDate)).list();
 
         List<CallbackEvent> all = new ArrayList<>();
         for (Object[] row : rows) {
@@ -199,9 +192,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         response.setAckDistribution(ackDistribution(all));
         response.setFailureCounts(failureCounts(all));
 
-        int fromIndex = Math.min(page * pageSize, all.size());
-        int toIndex = Math.min(fromIndex + pageSize, all.size());
-        response.setItems(all.subList(fromIndex, toIndex));
+        response.setItems(QiReportSupport.page(all, page, pageSize));
         response.setTotalCount(all.size());
         return response;
     }
@@ -265,14 +256,6 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
             }
         }
         return reasons;
-    }
-
-    private static Timestamp startOf(LocalDate date) {
-        return Timestamp.valueOf(date.atStartOfDay());
-    }
-
-    private static Timestamp endOf(LocalDate date) {
-        return Timestamp.valueOf(date.plusDays(1).atStartOfDay());
     }
 
     /** "≤ low / ≥ high" from the configured (finite) critical bounds. */

@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to en.json (or fr.json, mg.json, fr_MG.json ...) to activate. Only the ids you list are replaced; everything else keeps its shipped wording.",
+  "login.title": "Sign in",
+  "label.button.save": "Keep"
+}

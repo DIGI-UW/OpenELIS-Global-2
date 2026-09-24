@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,9 +47,6 @@ public class EQADistributionRestControllerTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpSession session;
-
     @InjectMocks
     private EQADistributionRestController controller;
 
@@ -60,8 +56,7 @@ public class EQADistributionRestControllerTest {
     public void setUp() {
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId(1);
-        when(request.getSession()).thenReturn(session);
-        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+        when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
 
         currentUser = new SystemUser();
         currentUser.setId("1");

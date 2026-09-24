@@ -113,6 +113,9 @@
         <mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
         <mapping resource="hibernate/hbm/Referral.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralResult.hbm.xml" />
+        <mapping resource="hibernate/hbm/ReferralSubcontract.hbm.xml" />
+        <mapping
+            resource="hibernate/hbm/ReferralStatusHistory.hbm.xml" />
         <mapping resource="hibernate/hbm/TestCodeType.hbm.xml" />
         <mapping
             resource="hibernate/hbm/OrganizationHL7Schema.hbm.xml" />
@@ -122,7 +125,6 @@
         <mapping resource="hibernate/hbm/OrganizationAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/PersonAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationContact.hbm.xml" />
-        <mapping resource="hibernate/hbm/Menu.hbm.xml" />
         <mapping resource="hibernate/hbm/CronScheduler.hbm.xml" />
         <mapping resource="hibernate/hbm/ReportExternalExport.hbm.xml" />
         <mapping resource="hibernate/hbm/ReportQueueType.hbm.xml" />

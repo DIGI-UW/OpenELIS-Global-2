@@ -5,21 +5,29 @@ import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import org.openelisglobal.coldstorage.dao.FreezerThresholdProfileDAO;
+import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.ThresholdEvaluationService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile;
 import org.openelisglobal.coldstorage.valueholder.ThresholdProfile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationService {
 
-    private final FreezerThresholdProfileDAO freezerThresholdProfileDAO;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ThresholdEvaluationServiceImpl.class);
 
-    public ThresholdEvaluationServiceImpl(FreezerThresholdProfileDAO freezerThresholdProfileDAO) {
+    private final FreezerThresholdProfileDAO freezerThresholdProfileDAO;
+    private final FreezerReadingService freezerReadingService;
+
+    public ThresholdEvaluationServiceImpl(FreezerThresholdProfileDAO freezerThresholdProfileDAO,
+            FreezerReadingService freezerReadingService) {
         this.freezerThresholdProfileDAO = freezerThresholdProfileDAO;
+        this.freezerReadingService = freezerReadingService;
     }
 
     @Override
@@ -41,21 +49,161 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
 
     @Override
     public FreezerReading.Status evaluateStatus(BigDecimal temperature, BigDecimal humidity, ThresholdProfile profile) {
-        if (profile == null || temperature == null) {
+        return evaluateInstantaneousStatus(temperature, humidity, profile);
+    }
+
+    @Override
+    public FreezerReading.Status evaluateTemperatureStatus(BigDecimal temperature, ThresholdProfile profile,
+            Freezer freezer, OffsetDateTime timestamp) {
+        return evaluateWithHysteresis(temperature, profile, freezer, timestamp, Metric.TEMPERATURE);
+    }
+
+    @Override
+    public FreezerReading.Status evaluateHumidityStatus(BigDecimal humidity, ThresholdProfile profile, Freezer freezer,
+            OffsetDateTime timestamp) {
+        return evaluateWithHysteresis(humidity, profile, freezer, timestamp, Metric.HUMIDITY);
+    }
+
+    private FreezerReading.Status evaluateWithHysteresis(BigDecimal value, ThresholdProfile profile, Freezer freezer,
+            OffsetDateTime timestamp, Metric metric) {
+        FreezerReading.Status instantaneousStatus = classify(value, profile, metric);
+
+        if (instantaneousStatus == FreezerReading.Status.NORMAL || profile == null) {
+            return instantaneousStatus;
+        }
+
+        // Only escalate once the breach has persisted for minExcursionMinutes.
+        if (freezer == null || freezer.getId() == null || timestamp == null || profile.getMinExcursionMinutes() == null
+                || profile.getMinExcursionMinutes() <= 0) {
+            return instantaneousStatus;
+        }
+
+        return applyMinExcursionHysteresis(freezer, timestamp, profile, instantaneousStatus, metric);
+    }
+
+    /**
+     * Escalates only once every reading in a continuous breaching streak leading up
+     * to {@code timestamp} spans at least {@code minExcursionMinutes}.
+     *
+     * <p>
+     * {@code maxDurationMinutes} is a separate field left unwired here - its
+     * intended semantics (hard cutoff? auto-acknowledge window?) are ambiguous from
+     * the existing code/tests; see
+     * {@link ThresholdProfile#getMaxDurationMinutes()}.
+     */
+    private FreezerReading.Status applyMinExcursionHysteresis(Freezer freezer, OffsetDateTime timestamp,
+            ThresholdProfile profile, FreezerReading.Status instantaneousStatus, Metric metric) {
+        int minExcursionMinutes = profile.getMinExcursionMinutes();
+        List<FreezerReading> priorReadings;
+        try {
+            priorReadings = loadPriorReadings(freezer.getId(), timestamp, minExcursionMinutes);
+        } catch (Exception ex) {
+            LOGGER.warn("Unable to load recent readings for hysteresis check on freezer {}: {}", freezer.getId(),
+                    ex.getMessage());
+            return instantaneousStatus;
+        }
+
+        // Walk backward accumulating a continuous same-or-worse-severity streak,
+        // stopping at the first non-breaching or transmission-failed reading.
+        OffsetDateTime earliestContinuousBreachTime = timestamp;
+        for (int i = priorReadings.size() - 1; i >= 0; i--) {
+            FreezerReading reading = priorReadings.get(i);
+            if (Boolean.FALSE.equals(reading.getTransmissionOk())) {
+                break;
+            }
+            FreezerReading.Status pastStatus = classify(metric.readFrom(reading), profile, metric);
+            boolean breaching = instantaneousStatus == FreezerReading.Status.CRITICAL
+                    ? pastStatus == FreezerReading.Status.CRITICAL
+                    : (pastStatus == FreezerReading.Status.WARNING || pastStatus == FreezerReading.Status.CRITICAL);
+            if (!breaching) {
+                break;
+            }
+            earliestContinuousBreachTime = reading.getRecordedAt();
+        }
+
+        long breachDurationMinutes = java.time.Duration.between(earliestContinuousBreachTime, timestamp).toMinutes();
+        if (breachDurationMinutes >= minExcursionMinutes) {
+            return instantaneousStatus;
+        }
+        return FreezerReading.Status.NORMAL;
+    }
+
+    /**
+     * Readings recorded before {@code timestamp} that the breach streak is measured
+     * over.
+     *
+     * <p>
+     * The poll interval is configured independently of the profile and can be wider
+     * than any profile-derived window, so a window that comes back empty falls back
+     * to the immediately preceding reading however old it is. Without that fallback
+     * a device polled less often than {@code minExcursionMinutes * 2} accumulates
+     * no breach duration on any poll and never alerts.
+     */
+    private List<FreezerReading> loadPriorReadings(Long freezerId, OffsetDateTime timestamp, int minExcursionMinutes) {
+        OffsetDateTime lookupStart = timestamp.minusMinutes((long) minExcursionMinutes * 2);
+        List<FreezerReading> windowReadings = freezerReadingService.getReadingsBetween(freezerId, lookupStart,
+                timestamp);
+        if (windowReadings != null && !windowReadings.isEmpty()) {
+            return windowReadings;
+        }
+        return freezerReadingService.getLatestReading(freezerId)
+                .filter(reading -> reading.getRecordedAt() != null && reading.getRecordedAt().isBefore(timestamp))
+                .map(List::of).orElseGet(List::of);
+    }
+
+    /**
+     * The worse of the two metrics' classifications: a missing temperature read
+     * still lets a humidity breach set the status.
+     */
+    private FreezerReading.Status evaluateInstantaneousStatus(BigDecimal temperature, BigDecimal humidity,
+            ThresholdProfile profile) {
+        if (profile == null) {
             return FreezerReading.Status.NORMAL;
         }
 
-        boolean critical = isCriticalTemperature(temperature, profile) || isCriticalHumidity(humidity, profile);
-        if (critical) {
+        FreezerReading.Status temperatureStatus = classify(temperature, profile, Metric.TEMPERATURE);
+        FreezerReading.Status humidityStatus = classify(humidity, profile, Metric.HUMIDITY);
+
+        if (temperatureStatus == FreezerReading.Status.CRITICAL || humidityStatus == FreezerReading.Status.CRITICAL) {
             return FreezerReading.Status.CRITICAL;
         }
-
-        boolean warning = isWarningTemperature(temperature, profile) || isWarningHumidity(humidity, profile);
-        if (warning) {
+        if (temperatureStatus == FreezerReading.Status.WARNING || humidityStatus == FreezerReading.Status.WARNING) {
             return FreezerReading.Status.WARNING;
         }
-
         return FreezerReading.Status.NORMAL;
+    }
+
+    private FreezerReading.Status classify(BigDecimal value, ThresholdProfile profile, Metric metric) {
+        if (profile == null || value == null) {
+            return FreezerReading.Status.NORMAL;
+        }
+        if (metric == Metric.TEMPERATURE) {
+            if (isCriticalTemperature(value, profile)) {
+                return FreezerReading.Status.CRITICAL;
+            }
+            return isWarningTemperature(value, profile) ? FreezerReading.Status.WARNING : FreezerReading.Status.NORMAL;
+        }
+        if (isCriticalHumidity(value, profile)) {
+            return FreezerReading.Status.CRITICAL;
+        }
+        return isWarningHumidity(value, profile) ? FreezerReading.Status.WARNING : FreezerReading.Status.NORMAL;
+    }
+
+    private enum Metric {
+        TEMPERATURE {
+            @Override
+            BigDecimal readFrom(FreezerReading reading) {
+                return reading.getTemperatureCelsius();
+            }
+        },
+        HUMIDITY {
+            @Override
+            BigDecimal readFrom(FreezerReading reading) {
+                return reading.getHumidityPercentage();
+            }
+        };
+
+        abstract BigDecimal readFrom(FreezerReading reading);
     }
 
     private boolean isCriticalTemperature(BigDecimal temperature, ThresholdProfile profile) {
@@ -64,16 +212,10 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
     }
 
     private boolean isWarningTemperature(BigDecimal temperature, ThresholdProfile profile) {
-        // Warning range is between warning and critical thresholds
-        // Inclusive of warning boundary, exclusive of critical boundary
-        boolean warningLow = profile.getWarningMin() != null && profile.getCriticalMin() != null
-                && temperature.compareTo(profile.getCriticalMin()) >= 0
-                && temperature.compareTo(profile.getWarningMin()) <= 0;
-
-        boolean warningHigh = profile.getWarningMax() != null && profile.getCriticalMax() != null
-                && temperature.compareTo(profile.getWarningMax()) >= 0
-                && temperature.compareTo(profile.getCriticalMax()) < 0;
-
+        // No bound against critical needed: isCriticalTemperature runs first, so a
+        // value beyond critical never reaches here.
+        boolean warningLow = profile.getWarningMin() != null && temperature.compareTo(profile.getWarningMin()) <= 0;
+        boolean warningHigh = profile.getWarningMax() != null && temperature.compareTo(profile.getWarningMax()) >= 0;
         return warningLow || warningHigh;
     }
 
@@ -92,5 +234,30 @@ public class ThresholdEvaluationServiceImpl implements ThresholdEvaluationServic
         }
         return (profile.getHumidityWarningMin() != null && humidity.compareTo(profile.getHumidityWarningMin()) < 0)
                 || (profile.getHumidityWarningMax() != null && humidity.compareTo(profile.getHumidityWarningMax()) > 0);
+    }
+
+    @Override
+    public BigDecimal deriveTargetTemperature(ThresholdProfile profile) {
+        if (profile == null) {
+            return null;
+        }
+        if (profile.getWarningMin() != null && profile.getWarningMax() != null) {
+            return profile.getWarningMin().add(profile.getWarningMax()).divide(BigDecimal.valueOf(2), 2,
+                    java.math.RoundingMode.HALF_UP);
+        }
+        if (profile.getCriticalMin() != null && profile.getCriticalMax() != null) {
+            return profile.getCriticalMin().add(profile.getCriticalMax()).divide(BigDecimal.valueOf(2), 2,
+                    java.math.RoundingMode.HALF_UP);
+        }
+        if (profile.getWarningMax() != null) {
+            return profile.getWarningMax();
+        }
+        if (profile.getCriticalMax() != null) {
+            return profile.getCriticalMax();
+        }
+        if (profile.getWarningMin() != null) {
+            return profile.getWarningMin();
+        }
+        return profile.getCriticalMin();
     }
 }

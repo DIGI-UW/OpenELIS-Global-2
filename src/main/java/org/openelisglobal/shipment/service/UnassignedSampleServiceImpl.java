@@ -153,7 +153,7 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
                 throw new IllegalStateException("Cannot cancel a referral already assigned to a box");
             }
 
-            referral.setStatus(ReferralStatus.CANCELED);
+            referral.setStatus(ReferralStatus.CANCELLED);
             referral.setCancelDate(new Timestamp(System.currentTimeMillis()));
             referral.setCancelReason(reason);
             referral.setSysUserId(currentUserId);

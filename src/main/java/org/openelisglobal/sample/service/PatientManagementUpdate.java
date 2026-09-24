@@ -403,6 +403,14 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
         if (!GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
             patientID = patientInfo.getPatientPK();
+
+            // A non-blank patientPK always identifies an existing patient record.
+            // Never trust an "ADD" (or missing/corrupted) status over it - doing so
+            // discards the ID and inserts a duplicate person/patient row for a
+            // patient that was already found and selected via search.
+            if (patientUpdateStatus != PatientUpdateStatus.NO_ACTION) {
+                patientUpdateStatus = PatientUpdateStatus.UPDATE;
+            }
         }
 
         // For NO_ACTION, load patient/person objects so they're available for

@@ -3,6 +3,7 @@ package org.openelisglobal.qc.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.qc.dao.QCResultDAO;
@@ -75,7 +76,8 @@ public class QCChartDataServiceImpl implements QCChartDataService {
     @Transactional(readOnly = true)
     public QCExportModel getExportModel(String instrumentId, String testId, String controlLevel, Timestamp start,
             Timestamp end, int maxRows) {
-        String instrumentName = analyzerService.getWithType(instrumentId).map(Analyzer::getName).orElse(instrumentId);
+        String instrumentName = analyzerService.getWithBinding(instrumentId).map(Analyzer::getName)
+                .orElse(instrumentId);
 
         // Scope to ACTIVE lots, matching the on-screen QC chart/dashboard workflow
         // (getActiveControlLots*). An ACTIVE lot is guaranteed to have a
@@ -99,7 +101,7 @@ public class QCChartDataServiceImpl implements QCChartDataService {
             if (results.isEmpty()) {
                 continue;
             }
-            // Cap total run rows across lots (CSV bound; §01 #4). The PDF is scope-
+            // Cap total run rows across lots (CSV bound). The PDF is scope-
             // bounded so this rarely triggers there.
             if (totalRuns + results.size() > maxRows) {
                 results = new ArrayList<>(results.subList(0, Math.max(0, maxRows - totalRuns)));
@@ -109,7 +111,9 @@ public class QCChartDataServiceImpl implements QCChartDataService {
             List<QCRuleViolation> violations = getViolationsForResults(resultIds);
             QCStatistics stats = statisticsService.getLatestStatistics(lot.getId());
             SigmaMetrics.SigmaResult sigma = computeSigmaForLot(lot, stats);
-            sections.add(new LotSection(lot, resolveTestName(lot.getTestId()), results, violations, stats, sigma));
+            String testName = testService.getLabelOrDefault(lot.getTestId(), Test::getLocalizedName,
+                    Objects.toString(lot.getTestId(), ""));
+            sections.add(new LotSection(lot, testName, results, violations, stats, sigma));
             totalRuns += results.size();
             totalViolations += violations.size();
             if (truncated) {
@@ -135,17 +139,5 @@ public class QCChartDataServiceImpl implements QCChartDataService {
         }
         return SigmaMetrics.compute(stats == null ? null : stats.getMean(),
                 stats == null ? null : stats.getStandardDeviation(), tea);
-    }
-
-    private String resolveTestName(String testId) {
-        if (testId == null) {
-            return "";
-        }
-        Test test = testService.getTestById(testId);
-        if (test == null) {
-            return testId;
-        }
-        String name = test.getLocalizedName();
-        return (name == null || name.isBlank()) ? testId : name;
     }
 }

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!--
+    Shrink vector_pool.external_id from VARCHAR(255) to VARCHAR(64).
+
+    Pool label format:  <ACCESSION>-P<NN>[-S<N>[-S<N>[-S<N>]]]
+    Max components:
+      accession_number  VARCHAR(20)  →  20 chars
+      -P99                           →   4 chars
+      -S99  ×  3 sub-pool levels     →  12 chars  (MAX_DECON_DEPTH = 4)
+      Total worst case               →  36 chars
+
+    VARCHAR(64) provides 28 chars of headroom while keeping the column
+    meaningfully constrained.  Application code in VectorPoolLabelServiceImpl
+    enforces the same limit before any INSERT/UPDATE.
+  -->
+  <changeSet id="037-vector-pool-external-id-resize" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists schemaName="clinlims" tableName="vector_pool" columnName="external_id"/>
+    </preConditions>
+    <modifyDataType schemaName="clinlims" tableName="vector_pool"
+                    columnName="external_id" newDataType="VARCHAR(64)"/>
+    <rollback>
+      <modifyDataType schemaName="clinlims" tableName="vector_pool"
+                      columnName="external_id" newDataType="VARCHAR(255)"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

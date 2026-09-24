@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Integration tests for the QA Overview aggregation service (OGC-694 WS-F).
+ * Integration tests for the QA Overview aggregation service (OGC-694).
  *
  * <p>
  * QC fixture rows (instruments, results, violations) come from
@@ -54,8 +54,11 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
+        // Empty the activity tables first: clearing history truncates with CASCADE,
+        // and an analyzer confirmation table now carries a foreign key to it, so the
+        // cascade reaches the QC tables. Seeding QC afterwards keeps those rows.
         executeDataSetWithStateManagement("testdata/qa-overview-clean.xml");
+        executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
         jdbc = new JdbcTemplate(dataSource);
         seedTimeline();
     }

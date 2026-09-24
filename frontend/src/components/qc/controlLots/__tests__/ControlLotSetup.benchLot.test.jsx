@@ -25,7 +25,7 @@ const renderSetup = () =>
     </BrowserRouter>,
   );
 
-describe("ControlLotSetup — bench control lots (OGC-1147 FR-B3)", () => {
+describe("ControlLotSetup — bench control lots (OGC-1147)", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
     getFromOpenElisServer.mockImplementation((url, callback) => {

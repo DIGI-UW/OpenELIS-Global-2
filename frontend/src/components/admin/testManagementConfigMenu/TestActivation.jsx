@@ -1,18 +1,18 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
   Checkbox,
   Modal,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -24,6 +24,58 @@ import {
   SortableTestList,
   SortableSampleTypeList,
 } from "./sortableListComponent/SortableList";
+import ServerDataState from "../../utils/ServerDataState";
+
+const TEST_ACTIVATION_ENDPOINT = "/rest/TestActivation";
+const NO_CHANGES = {
+  activateSample: [],
+  deactivateSample: [],
+  activateTest: [],
+  deactivateTest: [],
+};
+
+const hasPendingChanges = (changes) =>
+  Object.values(changes).some(
+    (change) => Array.isArray(change) && change.length > 0,
+  );
+
+// The two orderings the screen starts from, read off what is stored. Shared
+// so first showing them and going back to them cannot drift apart.
+const sampleTypeSortings = (data) => {
+  let sortOrder = 0;
+
+  const activeList = data?.activeTestList || [];
+  const inactiveList = data?.inactiveTestList || [];
+
+  const activatedSamples = activeList.map((sample) => ({
+    id: Number(sample.sampleType.id),
+    value: sample.sampleType.value,
+    activated: false,
+    sortOrder: sortOrder++,
+  }));
+
+  const allSampleTypeMap = new Map();
+
+  [...activeList, ...inactiveList].forEach((sample) => {
+    const id = Number(sample.sampleType.id);
+    if (!allSampleTypeMap.has(id)) {
+      allSampleTypeMap.set(id, sample.sampleType);
+    }
+  });
+
+  sortOrder = 0;
+
+  const allSamples = Array.from(allSampleTypeMap.values()).map(
+    (sampleType) => ({
+      id: Number(sampleType.id),
+      value: sampleType.value,
+      activated: false,
+      sortOrder: sortOrder++,
+    }),
+  );
+
+  return { activatedSamples, allSamples };
+};
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -44,11 +96,12 @@ function TestActivation() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
-
-  const [isLoading, setIsLoading] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [testActivationData, setTestActivationData] = useState({});
+
+  const testActivationQuery = useServerData(TEST_ACTIVATION_ENDPOINT);
+  const { data: storedTestActivationData } = testActivationQuery;
+  const [testActivationData, setTestActivationData] = useState();
+  const invalidateServerData = useInvalidateServerData();
   const [changedTestActivationData, setChangedTestActivationData] = useState(
     {},
   );
@@ -64,20 +117,23 @@ function TestActivation() {
     sampleTypesWithIdValueActivatedSorting,
     setSampleTypesWithIdValueActivatedSorting,
   ] = useState([]);
-  const [jsonChangeList, setJsonChangeList] = useState({
-    activateSample: [],
-    deactivateSample: [],
-    activateTest: [],
-    deactivateTest: [],
-  });
+  const [jsonChangeList, setJsonChangeList] = useState(NO_CHANGES);
 
-  function handleTestActivationData(res) {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestActivationData(res);
-      setChangedTestActivationData(res);
-    }
+  // Everything the user has changed but not saved. Reloading the document is
+  // what used to drop it, so the screen drops it itself now, reading the
+  // orderings back off what is stored rather than waiting for a refetch that
+  // returns the same thing and so changes nothing.
+  function discardPendingChanges() {
+    const { activatedSamples, allSamples } =
+      sampleTypeSortings(testActivationData);
+    setChangedTestActivationData(testActivationData);
+    setSampleTypesWithIdValueActivatedSorting(activatedSamples);
+    setSampleTypesWithIdValueSorting(allSamples);
+    setSampleTypeIdToListMapTests([]);
+    setTestArrangementArray([]);
+    setSampleTypeArrangementActivate(false);
+    setJsonChangeList(NO_CHANGES);
+    setIsConfirmModalOpen(false);
   }
 
   const handleActiveTestListCheckboxChangeActiveTests = (
@@ -601,7 +657,6 @@ function TestActivation() {
   };
 
   function testActivationPostCall() {
-    setIsLoading(true);
     postToOpenElisServerJsonResponse(
       `/rest/TestActivation`,
       JSON.stringify({
@@ -618,7 +673,6 @@ function TestActivation() {
 
   function testActivationPostCallback(res) {
     if (res) {
-      setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -629,9 +683,8 @@ function TestActivation() {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      discardPendingChanges();
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -639,65 +692,33 @@ function TestActivation() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/TestActivation`, (res) => {
-      handleTestActivationData(res);
-    });
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
+  const activationDraftIsDirty = hasPendingChanges(jsonChangeList);
 
   useEffect(() => {
-    if (testActivationData) {
-      let sortOrder = 0;
-
-      const activeList = testActivationData.activeTestList || [];
-      const inactiveList = testActivationData.inactiveTestList || [];
-
-      const activatedSamples = activeList.map((sample) => ({
-        id: Number(sample.sampleType.id),
-        value: sample.sampleType.value,
-        activated: false,
-        sortOrder: sortOrder++,
-      }));
-
-      setSampleTypesWithIdValueActivatedSorting(activatedSamples);
-
-      const allSampleTypeMap = new Map();
-
-      [...activeList, ...inactiveList].forEach((sample) => {
-        const id = Number(sample.sampleType.id);
-        if (!allSampleTypeMap.has(id)) {
-          allSampleTypeMap.set(id, sample.sampleType);
-        }
-      });
-
-      sortOrder = 0;
-
-      const allSamples = Array.from(allSampleTypeMap.values()).map(
-        (sampleType) => ({
-          id: Number(sampleType.id),
-          value: sampleType.value,
-          activated: false,
-          sortOrder: sortOrder++,
-        }),
-      );
-
-      setSampleTypesWithIdValueSorting(allSamples);
-    }
-  }, [testActivationData]);
+    if (!storedTestActivationData || activationDraftIsDirty) return;
+    // Keep both the visible draft and its comparison baseline stable while
+    // editing, even if another screen invalidates this cached read.
+    setTestActivationData(storedTestActivationData);
+    const { activatedSamples, allSamples } = sampleTypeSortings(
+      storedTestActivationData,
+    );
+    setChangedTestActivationData(storedTestActivationData);
+    setSampleTypesWithIdValueActivatedSorting(activatedSamples);
+    setSampleTypesWithIdValueSorting(allSamples);
+  }, [storedTestActivationData, activationDraftIsDirty]);
 
   const handleActiveSampleOnChangeSetJsonChangeList = (sampleTypeId) => {
+    const sampleType = sampleTypesWithIdValueSorting.find(
+      (item) => String(item.id) === String(sampleTypeId),
+    );
+
+    if (!sampleType) {
+      return;
+    }
+
     let updatedSamples = [];
 
     setSampleTypesWithIdValueSorting((prev) => {
@@ -706,15 +727,6 @@ function TestActivation() {
       );
       return updatedSamples;
     });
-
-    const sampleType = sampleTypesWithIdValueSorting.find(
-      (item) => String(item.id) === String(sampleTypeId),
-    );
-
-    if (!sampleType) {
-      window.location.reload();
-      return;
-    }
 
     const alreadyExists = sampleTypesWithIdValueActivatedSorting.some(
       (item) => String(item.id) === String(sampleTypeId),
@@ -961,13 +973,8 @@ function TestActivation() {
     return sampleTypeValues;
   };
 
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
+  if (!testActivationData)
+    return <ServerDataState query={testActivationQuery} />;
 
   return (
     <>
@@ -1022,7 +1029,7 @@ function TestActivation() {
                 <FormattedMessage id="label.button.submit" />
               </Button>{" "}
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => discardPendingChanges()}
                 kind="tertiary"
                 type="button"
               >
@@ -1193,7 +1200,7 @@ function TestActivation() {
                 <FormattedMessage id="label.button.submit" />
               </Button>{" "}
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => discardPendingChanges()}
                 kind="tertiary"
                 type="button"
               >
@@ -1215,8 +1222,7 @@ function TestActivation() {
           testActivationPostCall();
         }}
         onRequestClose={() => {
-          setIsConfirmModalOpen(false);
-          window.location.reload();
+          discardPendingChanges();
         }}
         preventCloseOnClickOutside={true}
         shouldSubmitOnEnter={true}

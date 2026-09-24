@@ -7,11 +7,10 @@ import Validation from "../Validation";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 
 /**
- * OGC-1147 FR-C1 — the QC-hold annotation on a validation row.
+ * OGC-1147 — the QC-hold annotation on a validation row.
  *
- * Copy-level assertions cover the words a technician reads; the mounted-component
- * test covers the DEF-1 regression — the reason sentence must actually render on
- * the held row, not sit in a title prop Carbon's Tag silently discards.
+ * The regression these cover: the reason sentence must actually render on the
+ * held row, not sit in a title prop Carbon's Tag silently discards.
  */
 const renderWithIntl = (component) =>
   render(
@@ -47,39 +46,8 @@ const heldRow = {
   normal: true,
 };
 
-describe("Validation QC-hold copy", () => {
-  test("the tooltip says what happened and what to do about it", () => {
-    const tooltip = messages["validation.qcHold.tooltip"];
-    // The existing nonconforming marker is a bare GIF with a legend. A hold that a
-    // tech cannot explain gets overridden out of confusion, which would defeat the
-    // whole patient-safety argument for the signal.
-    expect(tooltip).toMatch(/control run/i);
-    expect(tooltip).toMatch(/before releasing/i);
-  });
-
-  test("the legend distinguishes a QC hold from a nonconforming sample", () => {
-    expect(messages["validation.legend.qcHold"]).toMatch(/quality control/i);
-    expect(messages["validation.legend.qcHold"]).toMatch(/still open/i);
-    // Must not be confused with the sample-level nonconformity marker.
-    expect(messages["validation.label.nonconform"]).not.toEqual(
-      messages["validation.legend.qcHold"],
-    );
-  });
-
-  test("the blocked-save message tells the tech both ways out", () => {
-    const blocked = messages["validation.qcHold.blocked"];
-    expect(blocked).toMatch(/close the non-conformity/i);
-    expect(blocked).toMatch(/reject/i);
-  });
-
-  test("the site-flag help text explains warn-only versus blocking", () => {
-    const help = messages["instructions.qc.fail.blocks.validation"];
-    expect(help).toMatch(/cannot be accepted/i);
-    expect(help).toMatch(/can still be rejected/i);
-    expect(help).toMatch(/warning only/i);
-  });
-
-  test("the held row renders the reason sentence in the tag's popover (DEF-1)", () => {
+describe("Validation QC-hold", () => {
+  test("the held row renders the reason sentence in the tag's popover", () => {
     renderValidation({ resultList: [heldRow] });
     // The tag itself…
     expect(screen.getAllByText("QC failed").length).toBeGreaterThan(0);

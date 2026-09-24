@@ -126,6 +126,9 @@ public class UnassignedSampleItemServiceImpl implements UnassignedSampleItemServ
                 if (testDTO != null) {
                     referralTests.add(testDTO);
                 }
+                if (dto.getDestinationFacilityId() == null && referral.getOrganization() != null) {
+                    dto.setDestinationFacilityId(referral.getOrganization().getId());
+                }
             }
             dto.setReferralTests(referralTests);
 
@@ -179,6 +182,9 @@ public class UnassignedSampleItemServiceImpl implements UnassignedSampleItemServ
                 ReferralTestDTO testDTO = buildReferralTestDTO(referral);
                 if (testDTO != null) {
                     referralTests.add(testDTO);
+                }
+                if (dto.getDestinationFacilityId() == null && referral.getOrganization() != null) {
+                    dto.setDestinationFacilityId(referral.getOrganization().getId());
                 }
             }
 

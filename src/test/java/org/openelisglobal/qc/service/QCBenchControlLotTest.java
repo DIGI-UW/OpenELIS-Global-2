@@ -18,6 +18,7 @@ import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.qc.builder.BenchQCCaptureFormBuilder;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.form.QCControlLotForm;
 import org.openelisglobal.qc.valueholder.QCControlLot;
@@ -97,7 +98,7 @@ public class QCBenchControlLotTest extends BaseWebContextSensitiveTest {
 
         try {
             controlLotService.createControlLot(lot);
-            fail("expected a bench lot on INITIAL_RUNS to be refused — nothing accumulates runs for it (D3)");
+            fail("expected a bench lot on INITIAL_RUNS to be refused — nothing accumulates runs for it");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains("must use the MANUFACTURER_FIXED"));
         }
@@ -214,14 +215,9 @@ public class QCBenchControlLotTest extends BaseWebContextSensitiveTest {
     public void manualQuantitativeCapture_againstABenchLot_computesAZScore() {
         QCControlLot bench = controlLotService.createControlLot(benchLot("LOT-BENCH-CAPTURE", 100.0, 5.0));
 
-        BenchQCCaptureForm capture = new BenchQCCaptureForm();
-        capture.setSource(QCSource.MANUAL);
-        capture.setTestId(TEST_ID);
-        capture.setControlLotId(bench.getId());
-        capture.setResultValue(new BigDecimal("112.50000"));
-        capture.setUnitOfMeasure("mg/dL");
-        capture.setQualitativeOutcome(QCQualitativeOutcome.PASS);
-        capture.setRunDateTime(LocalDateTime.now());
+        BenchQCCaptureForm capture = BenchQCCaptureFormBuilder.create(QCSource.MANUAL).withTestId(TEST_ID)
+                .withControlLotId(bench.getId()).withResultValue(new BigDecimal("112.50000")).withUnitOfMeasure("mg/dL")
+                .withOutcome(QCQualitativeOutcome.PASS).withRunDateTime(LocalDateTime.now()).build();
 
         QCResult saved = qcResultService.createBenchQCResult(capture, 1);
 

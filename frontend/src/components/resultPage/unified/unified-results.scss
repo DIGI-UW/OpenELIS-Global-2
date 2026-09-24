@@ -183,7 +183,7 @@
   width: 2.5rem;
 }
 
-/* Gallery parity — expand control matches the mockup's icon button */
+/* Expand control rendered as an icon button, matching the design */
 .unifiedExpandButton.cds--btn {
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
@@ -608,7 +608,7 @@
   font-size: 0.75rem;
 }
 
-/* OGC-1025 (R6) — bench control capture */
+/* OGC-1025 — bench control capture */
 .unifiedQcCapture {
   display: flex;
   flex-direction: column;
@@ -676,4 +676,52 @@
 .unifiedResultsValueCell .unifiedResultsReadOnlyValue {
   white-space: normal;
   word-break: break-word;
+}
+
+.unifiedResultsPatientPanel {
+  margin-top: 0.5rem;
+}
+
+.unifiedResultsPatientPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.unifiedResultsPatientSearch {
+  margin-top: 1rem;
+}
+
+// Toolbar: every column bottom-aligns its control, and the buttons take the
+// input height, so search, lab unit, date and both buttons sit on one level.
+.unifiedResultsPage .unifiedResultsToolbarColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.unifiedResultsPage .unifiedResultsToolbarColumn > .cds--label {
+  display: block;
+}
+
+.unifiedResultsPage .unifiedResultsToolbarColumn .cds--btn {
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding-block: 0;
+  align-items: center;
+}
+
+// Status filter chips sit right beneath the toolbar row; give the row its
+// own breathing room so "All" / "Not Started" don't collide with the
+// Search and Load buttons above.
+.unifiedResultsPage .unifiedResultsChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.unifiedResultsPage .unifiedResultsChip {
+  cursor: pointer;
 }

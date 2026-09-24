@@ -7,24 +7,18 @@ import org.openelisglobal.common.dao.BaseDAO;
 
 public interface TestAccreditationDAO extends BaseDAO<TestAccreditation, Long> {
 
-    /** Every enrollment row. */
-    List<TestAccreditation> getAll();
-
-    /** Enrollment rows for one body. */
-    List<TestAccreditation> getByBody(Long accreditingBodyId);
-
-    /** Enrollment rows for one test — backs the {@code ?testId=} deep link. */
-    List<TestAccreditation> getByTest(String testId);
-
     /**
      * Enrollment rows for any of these tests — one query per rendered patient
-     * report, which is why the report resolver never loops per test.
+     * report, which is why the report resolver never loops per test. Every other
+     * lookup this entity needs is a plain property match, so it goes through
+     * {@link BaseDAO#getAllMatching}.
      */
     List<TestAccreditation> getByTestIds(Collection<String> testIds);
 
-    /** The (test, body) row if it exists, else null. Enforces FR-19 uniqueness. */
-    TestAccreditation getByTestAndBody(String testId, Long accreditingBodyId);
-
-    /** Whether any test is still enrolled under this body (blocks body delete). */
-    long countByBody(Long accreditingBodyId);
+    /**
+     * Enrolled-test count per accrediting body id, for the bodies list column and
+     * the summary. One grouped query rather than N per-body queries: that list
+     * renders every body's total in a single page load.
+     */
+    List<Object[]> countEnrolledTestsByBody();
 }

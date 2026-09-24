@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -35,6 +36,13 @@ public class TestSectionCreateController extends BaseController {
 
     public static final String NAME_SEPARATOR = "$";
 
+    /**
+     * Domain assigned to lab units created through this legacy MVC page. The
+     * lab-unit domain selector (OGC-1020) exists only on the React/REST create
+     * screen, so this page keeps its pre-existing, clinical-only behaviour.
+     */
+    private static final String DEFAULT_DOMAIN = "CLINICAL";
+
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
@@ -45,6 +53,20 @@ public class TestSectionCreateController extends BaseController {
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
+    }
+
+    /**
+     * Seeds {@code domain} before binding and validation. {@code domain} is
+     * {@code @NotBlank}/{@code @Pattern}-constrained on the shared
+     * {@link TestSectionCreateForm} but is deliberately absent from
+     * {@link #ALLOWED_FIELDS} (this page renders no domain selector), so without
+     * the seed every POST would fail validation and forward to FWD_FAIL_INSERT.
+     */
+    @ModelAttribute("form")
+    public TestSectionCreateForm form() {
+        TestSectionCreateForm form = new TestSectionCreateForm();
+        form.setDomain(DEFAULT_DOMAIN);
+        return form;
     }
 
     @RequestMapping(value = "/TestSectionCreate", method = RequestMethod.GET)
@@ -92,7 +114,7 @@ public class TestSectionCreateController extends BaseController {
 
         Localization localization = createLocalization(form.getTestUnitFrenchName(), identifyingName, userId);
 
-        TestSection testSection = createTestSection(identifyingName, userId);
+        TestSection testSection = createTestSection(identifyingName, form.getDomain(), userId);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -140,7 +162,7 @@ public class TestSectionCreateController extends BaseController {
         return roleModule;
     }
 
-    private TestSection createTestSection(String identifyingName, String userId) {
+    private TestSection createTestSection(String identifyingName, String domain, String userId) {
         TestSection testSection = new TestSection();
         testSection.setDescription(identifyingName);
         testSection.setTestSectionName(identifyingName);
@@ -149,6 +171,7 @@ public class TestSectionCreateController extends BaseController {
         testSection.setNameKey("testSection." + identifyingNameKey);
 
         testSection.setSortOrderInt(Integer.MAX_VALUE);
+        testSection.setDomain(GenericValidator.isBlankOrNull(domain) ? DEFAULT_DOMAIN : domain);
         testSection.setSysUserId(userId);
         return testSection;
     }

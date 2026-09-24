@@ -16,6 +16,7 @@ package org.openelisglobal.resultvalidation.bean;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -36,9 +37,15 @@ public class AnalysisItem implements Serializable {
     @ValidAccessionNumber(groups = { ResultValidationForm.ResultValidation.class })
     private String accessionNumber;
 
+    /** Set for pool-level analyses so the validation UI can render the pool tag. */
+    private String vectorPoolId;
+    private int vectorPoolMemberCount;
+    private String sampleType;
+
     private String patientName;
 
     private String patientInfo;
+    private String expandedUncertainty;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
@@ -80,8 +87,11 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String testResultComponentId;
 
-    private double lowerCritical;
-    private double higherCritical;
+    private Double lowerCritical;
+    private Double higherCritical;
+    // NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side against the
+    // patient-conditional limit; the same flag Results Entry shows (OGC-1121).
+    private String resultFlag;
     private String normalRange;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
@@ -161,6 +171,10 @@ public class AnalysisItem implements Serializable {
     private List<IdValuePair> methods;
     private List<IdValuePair> referralOrganizations;
     private List<IdValuePair> referralReasons;
+    /**
+     * The test was sent to a reference laboratory; this result came back from it.
+     */
+    private boolean referredOut = false;
 
     private List<IdValuePair> dictionaryResults;
 
@@ -178,8 +192,8 @@ public class AnalysisItem implements Serializable {
     private boolean nonconforming = false;
 
     /**
-     * The QC-fail signal (OGC-1147 FR-C1): a control covering this analysis failed
-     * and the resulting non-conformity is still open. Distinct from
+     * The QC-fail signal (OGC-1147): a control covering this analysis failed and
+     * the resulting non-conformity is still open. Distinct from
      * {@link #nonconforming}, which is a sample-level QA event — this one is about
      * the run's quality control.
      */
@@ -203,6 +217,70 @@ public class AnalysisItem implements Serializable {
     private boolean valid = true;
 
     private boolean isNormal;
+
+    private String collectionDate;
+
+    private String timeHolding;
+
+    private String resultDate;
+
+    private boolean modified = false;
+
+    private boolean nceOpen = false;
+
+    private boolean ackPending = false;
+
+    private boolean critical = false;
+
+    private String qcStatus;
+
+    /**
+     * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
+     * of its analysis satisfies {@code ValidationSignals.isClear}. The page reads
+     * it and never derives a lane of its own.
+     */
+    private boolean clear = false;
+
+    private String criticalRange;
+
+    private String enteredBy;
+
+    private String enteredDate;
+
+    private String componentLabel;
+
+    private Integer componentDisplayOrder;
+
+    private String methodName;
+
+    private String analyzerName;
+
+    private String noteVisibility;
+
+    private String noteContext;
+
+    private List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes;
+
+    /**
+     * OGC-1030 (FR-J1) — analysis.lastupdated as epoch millis when the row was
+     * served; round-tripped to detect stale pages.
+     */
+    private String analysisLastupdated;
+
+    /** OGC-1030 (FR-D2) — the specimen the inline NCE form files against. */
+    private String sampleItemId;
+
+    /**
+     * OGC-1030 (FR-A4) — released at result entry without a validator; read-only in
+     * the queue.
+     */
+    private boolean autoValidated = false;
+
+    /**
+     * OGC-1030 (FR-D2) — the NCE number filed when rejecting, recorded in the
+     * rejection note.
+     */
+    private String nceNumber;
 
     public String getRejectReasonId() {
         return rejectReasonId;
@@ -245,6 +323,30 @@ public class AnalysisItem implements Serializable {
 
     public String getAccessionNumber() {
         return accessionNumber;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public int getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(int vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
     }
 
     public void setResult(String result) {
@@ -591,6 +693,14 @@ public class AnalysisItem implements Serializable {
         this.referralReasons = referralReasons;
     }
 
+    public boolean isReferredOut() {
+        return referredOut;
+    }
+
+    public void setReferredOut(boolean referredOut) {
+        this.referredOut = referredOut;
+    }
+
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
     }
@@ -799,20 +909,196 @@ public class AnalysisItem implements Serializable {
         this.isNormal = isNormal;
     }
 
-    public double getLowerCritical() {
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
+
+    public boolean isNceOpen() {
+        return nceOpen;
+    }
+
+    public void setNceOpen(boolean nceOpen) {
+        this.nceOpen = nceOpen;
+    }
+
+    public boolean isAckPending() {
+        return ackPending;
+    }
+
+    public void setAckPending(boolean ackPending) {
+        this.ackPending = ackPending;
+    }
+
+    public boolean isCritical() {
+        return critical;
+    }
+
+    public void setCritical(boolean critical) {
+        this.critical = critical;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public boolean isClear() {
+        return clear;
+    }
+
+    public void setClear(boolean clear) {
+        this.clear = clear;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
+    }
+
+    public String getEnteredBy() {
+        return enteredBy;
+    }
+
+    public void setEnteredBy(String enteredBy) {
+        this.enteredBy = enteredBy;
+    }
+
+    public String getEnteredDate() {
+        return enteredDate;
+    }
+
+    public void setEnteredDate(String enteredDate) {
+        this.enteredDate = enteredDate;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
+    }
+
+    public Integer getComponentDisplayOrder() {
+        return componentDisplayOrder;
+    }
+
+    public void setComponentDisplayOrder(Integer componentDisplayOrder) {
+        this.componentDisplayOrder = componentDisplayOrder;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    public String getAnalyzerName() {
+        return analyzerName;
+    }
+
+    public void setAnalyzerName(String analyzerName) {
+        this.analyzerName = analyzerName;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "E" send with result, "I" internal; blank = legacy
+     * inference.
+     */
+    public String getNoteVisibility() {
+        return noteVisibility;
+    }
+
+    public void setNoteVisibility(String noteVisibility) {
+        this.noteVisibility = noteVisibility;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "VALIDATION" or "MODIFICATION"; blank = legacy "Result
+     * Note".
+     */
+    public String getNoteContext() {
+        return noteContext;
+    }
+
+    public void setNoteContext(String noteContext) {
+        this.noteContext = noteContext;
+    }
+
+    public List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> getAnalysisNotes() {
+        return analysisNotes == null ? new ArrayList<>() : analysisNotes;
+    }
+
+    public void setAnalysisNotes(List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes) {
+        this.analysisNotes = analysisNotes;
+    }
+
+    public String getAnalysisLastupdated() {
+        return analysisLastupdated;
+    }
+
+    public void setAnalysisLastupdated(String analysisLastupdated) {
+        this.analysisLastupdated = analysisLastupdated;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
+    }
+
+    public boolean isAutoValidated() {
+        return autoValidated;
+    }
+
+    public void setAutoValidated(boolean autoValidated) {
+        this.autoValidated = autoValidated;
+    }
+
+    public String getNceNumber() {
+        return nceNumber;
+    }
+
+    public void setNceNumber(String nceNumber) {
+        this.nceNumber = nceNumber;
+    }
+
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
     }
 
     public String getGenscreenResult() {
@@ -845,5 +1131,37 @@ public class AnalysisItem implements Serializable {
 
     public void setPatientInfo(String patientInfo) {
         this.patientInfo = patientInfo;
+    }
+
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
+    }
+
+    public String getResultDate() {
+        return resultDate;
+    }
+
+    public void setResultDate(String resultDate) {
+        this.resultDate = resultDate;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
     }
 }

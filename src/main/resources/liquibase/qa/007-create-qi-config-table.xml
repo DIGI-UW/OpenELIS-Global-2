@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-709 [QA-C.3] QI Configuration — the config spine for the QI dashboard.
+    OGC-709 QI Configuration — the config spine for the QI dashboard.
 
     A row is either an indicator-wide default (test_category_id IS NULL) or a
     per-test-section override. Consumers (OGC-710/711/712) resolve thresholds
@@ -49,7 +49,7 @@
         <sql>
             ALTER TABLE clinlims.qi_config
             ADD CONSTRAINT qi_config_indicator_chk
-            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE'))
+            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK'))
         </sql>
 
         <addForeignKeyConstraint
@@ -96,81 +96,35 @@
         </rollback>
     </changeSet>
 
-    <!-- Shipped default config for the 4 dashboard indicators (prod baseline, not
-         dev data): every install must boot with the indicators enabled and sane
-         defaults, exactly as qa/004 seeds the permission model. NCE ships without
-         numeric thresholds until OGC-712 defines its bands. -->
-    <changeSet author="openelisglobal" id="qi-config-003-seed-default-indicators">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.qi_config WHERE indicator_key = 'TAT' AND test_category_id IS NULL</sqlCheck>
-        </preConditions>
-        <comment>Seed default rows for TAT, REJECTION, AMENDMENT, NCE. last_updated (the
-        BaseObject @Version column) MUST be set non-null, else Hibernate treats a
-        seeded row as stale/unsaved on the first optimistic-locked update.</comment>
-        <insert schemaName="clinlims" tableName="qi_config">
-            <column name="id" valueSequenceNext="qi_config_id_seq"/>
-            <column name="indicator_key" value="TAT"/>
-            <column name="is_enabled" valueBoolean="true"/>
-            <column name="target_threshold" valueNumeric="90"/>
-            <column name="action_threshold" valueNumeric="80"/>
-            <column name="lastupdated" valueDate="now()"/>
-            <column name="last_updated" valueDate="now()"/>
-        </insert>
-        <insert schemaName="clinlims" tableName="qi_config">
-            <column name="id" valueSequenceNext="qi_config_id_seq"/>
-            <column name="indicator_key" value="REJECTION"/>
-            <column name="is_enabled" valueBoolean="true"/>
-            <column name="target_threshold" valueNumeric="2"/>
-            <column name="action_threshold" valueNumeric="5"/>
-            <column name="lastupdated" valueDate="now()"/>
-            <column name="last_updated" valueDate="now()"/>
-        </insert>
-        <insert schemaName="clinlims" tableName="qi_config">
-            <column name="id" valueSequenceNext="qi_config_id_seq"/>
-            <column name="indicator_key" value="AMENDMENT"/>
-            <column name="is_enabled" valueBoolean="true"/>
-            <column name="target_threshold" valueNumeric="0.5"/>
-            <column name="action_threshold" valueNumeric="2"/>
-            <column name="lastupdated" valueDate="now()"/>
-            <column name="last_updated" valueDate="now()"/>
-        </insert>
-        <insert schemaName="clinlims" tableName="qi_config">
-            <column name="id" valueSequenceNext="qi_config_id_seq"/>
-            <column name="indicator_key" value="NCE"/>
-            <column name="is_enabled" valueBoolean="true"/>
-            <column name="lastupdated" valueDate="now()"/>
-            <column name="last_updated" valueDate="now()"/>
-        </insert>
+    <!-- Shipped default config for the five dashboard indicators (prod baseline,
+         not dev data): every install boots with the indicators configured. Rows are
+         keyed on (indicator_key, no test section) and inserted only when absent, so
+         this is safe to re-run. TAT thresholds are mean-TAT HOURS, lower-is-better;
+         NCE ships without numeric thresholds until its bands are defined; CALLBACK
+         ships disabled because critical-callback compliance is a programme a lab
+         opts into. last_updated (the BaseObject @Version column) MUST be non-null,
+         else Hibernate treats a seeded row as stale on its first update. -->
+    <changeSet author="openelisglobal" id="qi-config-004-seed-default-indicators">
+        <comment>Seed default rows for TAT, REJECTION, AMENDMENT, NCE, CALLBACK</comment>
+        <sql>
+            INSERT INTO clinlims.qi_config
+                (id, indicator_key, is_enabled, target_threshold, action_threshold, lastupdated, last_updated)
+            SELECT nextval('clinlims.qi_config_id_seq'), v.indicator_key, v.is_enabled,
+                   v.target_threshold, v.action_threshold, now(), now()
+            FROM (VALUES
+                ('TAT',       true,  24,   48),
+                ('REJECTION', true,  2,    5),
+                ('AMENDMENT', true,  0.5,  2),
+                ('NCE',       true,  NULL, NULL),
+                ('CALLBACK',  false, 100,  95)
+            ) AS v(indicator_key, is_enabled, target_threshold, action_threshold)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.qi_config c
+                WHERE c.indicator_key = v.indicator_key AND c.test_category_id IS NULL);
+        </sql>
         <rollback>
             <delete schemaName="clinlims" tableName="qi_config">
-                <where>indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE') AND test_category_id IS NULL</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- QI Configuration nav entry under the QI pillar. The route (SecureRoute)
-         enforces qa.manage.qi; the menu link follows the CAPA Register precedent
-         (qa/006) of a plain pillar-child row. -->
-    <changeSet author="openelisglobal" id="qa-030-add-menu-qa-qi-config">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_qa_qi_config'</sqlCheck>
-        </preConditions>
-        <comment>Adds QI Configuration under the Quality Indicators pillar</comment>
-        <insert tableName="menu" schemaName="clinlims">
-            <column name="id" valueSequenceNext="menu_seq" />
-            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_qa_qi')" />
-            <column name="presentation_order" value="30" />
-            <column name="element_id" value="menu_qa_qi_config" />
-            <column name="action_url" value="/qa/qi/config" />
-            <column name="display_key" value="sideNav.label.qa.qi.config" />
-            <column name="tool_tip_key" value="sideNav.label.qa.qi.config" />
-            <column name="new_window" valueBoolean="false" />
-            <column name="is_active" valueBoolean="true" />
-            <column name="hide_in_old_ui" valueBoolean="true" />
-        </insert>
-        <rollback>
-            <delete tableName="menu" schemaName="clinlims">
-                <where>element_id = 'menu_qa_qi_config'</where>
+                <where>indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK') AND test_category_id IS NULL</where>
             </delete>
         </rollback>
     </changeSet>

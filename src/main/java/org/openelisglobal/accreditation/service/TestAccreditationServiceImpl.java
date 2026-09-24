@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.openelisglobal.accreditation.dao.AccreditingBodyDAO;
@@ -22,6 +23,7 @@ import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,24 +75,24 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     @Transactional(readOnly = true)
     public List<TestAccreditationView> getEnrollmentViews(Long accreditingBodyId, String testId) {
-        List<TestAccreditation> rows;
+        // An empty filter map matches everything, which is what an unfiltered listing
+        // wants.
+        Map<String, Object> filters = new HashMap<>();
         if (accreditingBodyId != null) {
-            rows = baseObjectDAO.getByBody(accreditingBodyId);
-            if (testId != null && !testId.isBlank()) {
-                rows.removeIf(r -> !testId.equals(r.getTestId()));
-            }
-        } else if (testId != null && !testId.isBlank()) {
-            rows = baseObjectDAO.getByTest(testId);
-        } else {
-            rows = baseObjectDAO.getAll();
+            filters.put("accreditingBodyId", accreditingBodyId);
         }
+        if (testId != null && !testId.isBlank()) {
+            filters.put("testId", testId);
+        }
+        List<TestAccreditation> rows = baseObjectDAO.getAllMatching(filters);
 
         Map<Long, AccreditingBody> bodies = bodiesById();
+        Map<String, Test> tests = testsById(rows);
         LocalDate today = LocalDate.now();
 
         List<TestAccreditationView> views = new ArrayList<>();
         for (TestAccreditation row : rows) {
-            views.add(toView(row, bodies.get(row.getAccreditingBodyId()), today));
+            views.add(toView(row, bodies.get(row.getAccreditingBodyId()), tests.get(row.getTestId()), today));
         }
         // Group by body (logo order), then by test name, so the table reads the way
         // the bodies list does.
@@ -114,9 +116,9 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
         if (testService().getTestById(testId) == null) {
             throw new IllegalArgumentException("No test with id " + testId);
         }
-        // FR-19: the DB unique constraint is the backstop; checking here produces the
+        // The DB unique constraint is the backstop; checking here produces the
         // "already accredited by that body" message the UI links to the existing row.
-        if (baseObjectDAO.getByTestAndBody(testId, accreditingBodyId) != null) {
+        if (!baseObjectDAO.getAllMatching(Map.of("testId", testId, "accreditingBodyId", accreditingBodyId)).isEmpty()) {
             throw new IllegalArgumentException("This test is already accredited by that body");
         }
 
@@ -149,10 +151,13 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
         Map<Long, AccreditingBody> bodies = bodiesById();
         LocalDate today = LocalDate.now();
 
-        Map<Long, EqaCoverageView> rowsByBody = new LinkedHashMap<>();
         // getAll() is already the whole enrollment table; grouping here beats a
         // per-body query, and the table is one row per accredited test.
-        for (TestAccreditation enrollment : baseObjectDAO.getAll()) {
+        List<TestAccreditation> enrollments = baseObjectDAO.getAll();
+        Map<String, Test> tests = testsById(enrollments);
+
+        Map<Long, EqaCoverageView> rowsByBody = new LinkedHashMap<>();
+        for (TestAccreditation enrollment : enrollments) {
             AccreditingBody body = bodies.get(enrollment.getAccreditingBodyId());
             if (body == null) {
                 continue;
@@ -162,8 +167,8 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
             if (coveredTestIds.contains(enrollment.getTestId())) {
                 row.coveredTestCount++;
             } else {
-                row.gaps.add(
-                        new EqaCoverageView.GapTest(enrollment.getTestId(), testDisplayName(enrollment.getTestId())));
+                row.gaps.add(new EqaCoverageView.GapTest(enrollment.getTestId(),
+                        displayName(tests.get(enrollment.getTestId()))));
             }
         }
 
@@ -192,11 +197,11 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
         return map;
     }
 
-    private TestAccreditationView toView(TestAccreditation row, AccreditingBody body, LocalDate asOf) {
+    private TestAccreditationView toView(TestAccreditation row, AccreditingBody body, Test test, LocalDate asOf) {
         TestAccreditationView view = new TestAccreditationView();
         view.id = row.getId();
         view.testId = row.getTestId();
-        view.testName = testDisplayName(row.getTestId());
+        view.testName = displayName(test);
         view.accreditingBodyId = row.getAccreditingBodyId();
         view.effectiveFrom = row.getEffectiveFrom();
         if (body != null) {
@@ -209,10 +214,20 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
     }
 
     /**
-     * Resolved in-transaction; same helper the Test Catalog editor renders with.
+     * The tests these rows name, fetched once rather than one lookup per rendered
+     * row — the same batching the bodies get.
      */
-    private String testDisplayName(String testId) {
-        org.openelisglobal.test.valueholder.Test test = testService().getTestById(testId);
+    private Map<String, Test> testsById(List<TestAccreditation> rows) {
+        List<String> ids = rows.stream().map(TestAccreditation::getTestId).filter(Objects::nonNull).distinct().toList();
+        Map<String, Test> map = new HashMap<>();
+        for (Test test : testService().getTestsByIds(ids)) {
+            map.put(test.getId(), test);
+        }
+        return map;
+    }
+
+    /** Same helper the Test Catalog editor renders with. */
+    private String displayName(Test test) {
         return test == null ? null : TestServiceImpl.getLocalizedTestNameWithType(test);
     }
 

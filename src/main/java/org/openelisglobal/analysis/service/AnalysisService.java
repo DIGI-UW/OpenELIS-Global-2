@@ -40,6 +40,9 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
 
+    List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList);
+
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession);
 
@@ -113,17 +116,25 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before);
 
     /**
-     * Lab-unit-keyed affected-analysis window for bench controls (OGC-1147 FR-C1).
+     * Lab-unit-keyed affected-analysis window for bench controls (OGC-1147).
      */
     List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
             Timestamp lowDate, Timestamp highDate);
 
-    /** Lab-unit-keyed counterpart used for cap-reason accuracy (OGC-1147 FR-C1). */
+    /** Lab-unit-keyed counterpart used for cap-reason accuracy (OGC-1147). */
     boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before);
 
     List<Analysis> getAnalysesForStatusId(String statusId);
 
+    List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId);
+
+    List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId);
+
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
+
+    int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
+    int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
 
     List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test);
 
@@ -134,6 +145,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAllAnalysisByTestAndStatus(String testId, List<String> statusIdList);
 
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
+
+    List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId);
 
     List<Analysis> getAllAnalysisByTestsAndStatus(List<String> testIdList, List<String> statusIdList);
 
@@ -182,6 +195,10 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     Panel getPanel(Analysis analysis);
 
+    /**
+     * The analysis's own section when one is assigned, else the test's home
+     * section. Null only when neither is known.
+     */
     TestSection getTestSection(Analysis analysis);
 
     List<Analysis> getAllAnalysisByTestsAndStatus(List<String> list, List<String> analysisStatusList,
@@ -198,13 +215,24 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
 
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList);
+
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList,
+            boolean sortedByDateAndAccession);
+
+    List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList,
             boolean sortedByDateAndAccession);
 
     List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusList,
             boolean sortedByDateAndAccession);
 
+    List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber, List<String> statusList,
+            boolean sortedByDateAndAccession);
+
     int getCountAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList);
 
     int getCountAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber);
@@ -228,6 +256,38 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}. Returns 0 for an
+     * empty section list.
+     */
+    int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}. Returns 0 for
+     * an empty section list.
+     */
+    int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}. Returns 0
+     * for an empty section list.
+     */
+    int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}. Returns 0 for an
+     * empty section list.
+     */
+    int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds);
 
     /**
      * Analyses started on the given date with any of the statuses (same predicate

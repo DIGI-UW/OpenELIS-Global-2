@@ -1,32 +1,34 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../../languages/en.json";
 import AmendmentReport from "../AmendmentReport";
+import { renderQa } from "../../testUtils";
 
-vi.mock("../../../utils/Utils", () => ({
-  toLocalIsoDate: (d) =>
-    d instanceof Date
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      : d || "",
-  toLocalIsoDateTime: (value) => {
-    if (!value) return "\u2014";
-    const d = new Date(value);
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}`;
-  },
-  getFromOpenElisServer: vi.fn(),
-}));
+vi.mock("../../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    fetchFromOpenElisServer: vi.fn(),
+  };
+});
 
 // jsdom can't render @carbon/charts (SVG/resize observers) — stub it
 vi.mock("@carbon/charts-react", () => ({
   LineChart: () => <div data-testid="amendment-trend-chart" />,
 }));
 
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { fetchFromOpenElisServer } from "../../../utils/Utils";
+
+/** Serve each endpoint from `routes`; anything unlisted reads as unavailable. */
+const mockServer = (routes) =>
+  fetchFromOpenElisServer.mockImplementation((url) => {
+    const match = Object.keys(routes).find((fragment) =>
+      url.includes(fragment),
+    );
+    return match
+      ? Promise.resolve(routes[match])
+      : Promise.reject(new Error(`no data: ${url}`));
+  });
 
 const DETAIL = {
   totalCount: 2,
@@ -59,15 +61,10 @@ const DETAIL = {
 };
 
 const renderPage = async () => {
-  await act(async () =>
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <MemoryRouter>
-          <AmendmentReport />
-        </MemoryRouter>
-      </IntlProvider>,
-    ),
-  );
+  await act(async () => {
+    renderQa(<AmendmentReport />, { entries: ["/qa/qi/amendment"] });
+  });
+  await act(async () => {});
 };
 
 beforeEach(() => {
@@ -76,11 +73,7 @@ beforeEach(() => {
 
 describe("AmendmentReport", () => {
   test("renders amendment rows with prior and current values", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/amendment/detail")) {
-        callback(DETAIL);
-      }
-    });
+    mockServer({ "/rest/reports/amendment/detail": DETAIL });
     await renderPage();
 
     expect(
@@ -101,20 +94,25 @@ describe("AmendmentReport", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
 
     // paged fetch with default window
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("/rest/reports/amendment/detail?fromDate="),
-      expect.any(Function),
+      expect.anything(),
     );
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("page=0&pageSize=25"),
-      expect.any(Function),
+      expect.anything(),
     );
   });
 
   test("renders calm empty state when there are no amendments", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) =>
-      callback({ totalCount: 0, page: 0, pageSize: 25, items: [] }),
-    );
+    mockServer({
+      "/rest/reports/amendment/": {
+        totalCount: 0,
+        page: 0,
+        pageSize: 25,
+        items: [],
+      },
+    });
     await renderPage();
 
     expect(
@@ -128,7 +126,7 @@ describe("AmendmentReport", () => {
   });
 
   test("renders error state when the endpoint returns no data", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => callback());
+    mockServer({});
     await renderPage();
 
     // trend section and detail table each surface the error independently
@@ -166,16 +164,11 @@ describe("AmendmentReport", () => {
       action: 5,
       direction: "LOWER_BETTER",
     };
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/amendment/detail")) {
-        callback(DETAIL);
-      } else if (url.includes("/rest/reports/amendment/trend")) {
-        callback(TREND);
-      } else if (url.includes("/rest/reports/amendment/breakdown")) {
-        callback(BREAKDOWN);
-      } else if (url.includes("/rest/qi-config/resolve")) {
-        callback(CONFIG);
-      }
+    mockServer({
+      "/rest/reports/amendment/detail": DETAIL,
+      "/rest/reports/amendment/trend": TREND,
+      "/rest/reports/amendment/breakdown": BREAKDOWN,
+      "/rest/qi-config/resolve": CONFIG,
     });
     await renderPage();
 
@@ -197,21 +190,18 @@ describe("AmendmentReport", () => {
   });
 
   test("rate tag stays gray when the indicator has no thresholds", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/reports/amendment/trend")) {
-        callback({
-          points: [
-            {
-              period: "2026-07-01",
-              amendedCount: 1,
-              releasedCount: 40,
-              ratePercent: 2.5,
-            },
-          ],
-        });
-      } else if (url.includes("/rest/qi-config/resolve")) {
-        callback({ indicatorKey: "AMENDMENT", enabled: true });
-      }
+    mockServer({
+      "/rest/reports/amendment/trend": {
+        points: [
+          {
+            period: "2026-07-01",
+            amendedCount: 1,
+            releasedCount: 40,
+            ratePercent: 2.5,
+          },
+        ],
+      },
+      "/rest/qi-config/resolve": { indicatorKey: "AMENDMENT", enabled: true },
     });
     await renderPage();
 

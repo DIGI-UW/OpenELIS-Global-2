@@ -24,13 +24,7 @@ import { Download, DocumentPdf } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";
 import { toLocalIsoDate } from "../../utils/Utils";
-
-const LEVEL_OPTIONS = [
-  { id: "ALL", labelKey: "qc.chart.filter.allLevels" },
-  { id: "LOW", labelKey: "qc.chart.filter.levelLow" },
-  { id: "NORMAL", labelKey: "qc.chart.filter.levelNormal" },
-  { id: "HIGH", labelKey: "qc.chart.filter.levelHigh" },
-];
+import { controlLevelItems } from "../charts/controlLotChart";
 
 const QCExportModal = ({ open, onClose, instruments = [] }) => {
   const intl = useIntl();
@@ -70,10 +64,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
     onClose();
   };
 
-  const levelItems = LEVEL_OPTIONS.map((o) => ({
-    id: o.id,
-    label: intl.formatMessage({ id: o.labelKey }),
-  }));
+  const levelItems = controlLevelItems(intl);
 
   return (
     <ComposedModal
@@ -90,7 +81,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
         <Dropdown
           id="qc-export-instrument"
           titleText={intl.formatMessage({
-            id: "qc.dashboard.export.instrument",
+            id: "qc.dashboard.alerts.col.instrument",
           })}
           label={intl.formatMessage({
             id: "qc.dashboard.export.selectInstrument",
@@ -107,7 +98,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
         />
         <Dropdown
           id="qc-export-level"
-          titleText={intl.formatMessage({ id: "qc.dashboard.export.level" })}
+          titleText={intl.formatMessage({ id: "qc.charts.controlLevel" })}
           label={intl.formatMessage({ id: "qc.chart.filter.allLevels" })}
           items={levelItems}
           itemToString={(item) => item?.label || ""}
@@ -125,7 +116,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
             id="qc-export-start"
             placeholder="yyyy-mm-dd"
             labelText={intl.formatMessage({
-              id: "qc.dashboard.export.startDate",
+              id: "reports.startDate",
             })}
             data-testid="qc-export-start-date"
           />
@@ -133,7 +124,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
             id="qc-export-end"
             placeholder="yyyy-mm-dd"
             labelText={intl.formatMessage({
-              id: "qc.dashboard.export.endDate",
+              id: "reports.endDate",
             })}
             data-testid="qc-export-end-date"
           />
@@ -154,7 +145,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
           onClick={onClose}
           data-testid="qc-export-cancel"
         >
-          {intl.formatMessage({ id: "qc.dashboard.export.cancel" })}
+          {intl.formatMessage({ id: "button.cancel" })}
         </Button>
         <Button
           kind="tertiary"
@@ -163,7 +154,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
           onClick={() => doExport("csv")}
           data-testid="qc-export-csv"
         >
-          {intl.formatMessage({ id: "qc.dashboard.export.csv" })}
+          {intl.formatMessage({ id: "reports.tat.exportCsv" })}
         </Button>
         <Button
           kind="primary"
@@ -172,7 +163,7 @@ const QCExportModal = ({ open, onClose, instruments = [] }) => {
           onClick={() => doExport("pdf")}
           data-testid="qc-export-pdf"
         >
-          {intl.formatMessage({ id: "qc.dashboard.export.pdf" })}
+          {intl.formatMessage({ id: "common.exportPdf" })}
         </Button>
       </ModalFooter>
     </ComposedModal>

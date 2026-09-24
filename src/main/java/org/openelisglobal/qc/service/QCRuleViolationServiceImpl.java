@@ -105,22 +105,14 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
                     "Error creating alert for violation " + violation.getId() + ": " + e.getMessage());
         }
 
-        // NCE FRS trigger #10 (OGC-701): rejection-severity violations auto-create
-        // an NCE. Runs in its own transaction and is idempotent, so a single retry
-        // covers an NCE-number collision; failure never blocks violation creation.
+        // OGC-701: rejection-severity violations auto-create an NCE. It runs in its
+        // own transaction, so a failure never blocks violation creation.
         if ("REJECTION".equals(violation.getSeverity())) {
             try {
                 qcViolationNceService.createNceForViolation(violation);
             } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getName(), "createViolation",
-                        "Retrying NCE auto-creation for violation " + violation.getId() + ": " + e.getMessage());
-                try {
-                    qcViolationNceService.createNceForViolation(violation);
-                } catch (Exception retryFailure) {
-                    LogEvent.logError(this.getClass().getName(), "createViolation",
-                            "Error auto-creating NCE for violation " + violation.getId() + ": "
-                                    + retryFailure.getMessage());
-                }
+                LogEvent.logError(this.getClass().getName(), "createViolation",
+                        "Error auto-creating NCE for violation " + violation.getId() + ": " + e.getMessage());
             }
         }
 
@@ -267,17 +259,7 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
             }
         }
 
-        if (violation.getTestId() != null) {
-            try {
-                Test test = testService.get(String.valueOf(violation.getTestId()));
-                if (test != null) {
-                    form.setTestName(test.getName());
-                }
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getName(), "toForm",
-                        "Could not resolve test name for ID " + violation.getTestId());
-            }
-        }
+        form.setTestName(testService.getLabelOrDefault(violation.getTestId(), Test::getName, null));
 
         if (violation.getResolvedByUserId() != null) {
             try {

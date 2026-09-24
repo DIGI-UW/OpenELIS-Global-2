@@ -25,8 +25,13 @@ const TRIGGER_TYPES = [
   "COMPLIANCE_BREACH",
 ];
 
+/** Scope value standing for "every component" / "every specimen". */
+const ANY = "";
+
 const blankRule = () => ({
   name: "",
+  componentId: ANY,
+  sampleTypeId: ANY,
   triggerType: "ALL",
   triggerValue: "",
   notifySms: false,
@@ -57,6 +62,11 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [roles, setRoles] = useState([]);
+  // A rule names a measurement, and on a multi-component test the test name
+  // does not: Ct Value and the coded PCR Result beside it are different things
+  // to alert on.
+  const [components, setComponents] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
 
   useEffect(() => {
     if (!open) {
@@ -67,7 +77,20 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
     getFromOpenElisServer(`/rest/test-catalog/${testId}/alerts/roles`, (data) =>
       setRoles(Array.isArray(data) ? data : []),
     );
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/components`,
+      (data) => setComponents(Array.isArray(data) ? data : []),
+    );
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/sample-types`,
+      (data) => setSampleTypes(Array.isArray(data) ? data : []),
+    );
   }, [open, rule, testId]);
+
+  // A test with one component has nothing to disambiguate, so the picker stays
+  // out of the way; the rule is unscoped and means what it always meant.
+  const multiComponent = components.length > 1;
+  const multiSpecimen = sampleTypes.length > 1;
 
   const set = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -105,6 +128,8 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
     // (id, testId, lastupdated) from the GET representation on edit
     const payload = JSON.stringify({
       name: form.name,
+      componentId: form.componentId || null,
+      sampleTypeId: form.sampleTypeId || null,
       triggerType: form.triggerType,
       triggerValue: form.triggerValue,
       notifySms: form.notifySms,
@@ -154,6 +179,76 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
           onChange={(e) => set("name", e.target.value)}
           invalid={!!error && !form.name.trim()}
         />
+
+        {multiComponent && (
+          <Dropdown
+            id="alert-component"
+            titleText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.component",
+            })}
+            helperText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.componentHelp",
+            })}
+            label={intl.formatMessage({
+              id: "label.testCatalog.alerts.scope.anyComponent",
+            })}
+            items={[
+              { id: ANY, value: ANY },
+              ...components.map((c) => ({ id: c.id, value: c.value })),
+            ]}
+            itemToString={(item) =>
+              item && item.id
+                ? item.value
+                : intl.formatMessage({
+                    id: "label.testCatalog.alerts.scope.anyComponent",
+                  })
+            }
+            selectedItem={
+              [
+                { id: ANY, value: ANY },
+                ...components.map((c) => ({ id: c.id, value: c.value })),
+              ].find((i) => i.id === (form.componentId || ANY)) || null
+            }
+            onChange={({ selectedItem }) =>
+              set("componentId", selectedItem ? selectedItem.id : ANY)
+            }
+          />
+        )}
+
+        {multiSpecimen && (
+          <Dropdown
+            id="alert-sample-type"
+            titleText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.sampleType",
+            })}
+            helperText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.sampleTypeHelp",
+            })}
+            label={intl.formatMessage({
+              id: "label.testCatalog.alerts.scope.anySampleType",
+            })}
+            items={[
+              { id: ANY, value: ANY },
+              ...sampleTypes.map((t) => ({ id: t.id, value: t.value })),
+            ]}
+            itemToString={(item) =>
+              item && item.id
+                ? item.value
+                : intl.formatMessage({
+                    id: "label.testCatalog.alerts.scope.anySampleType",
+                  })
+            }
+            selectedItem={
+              [
+                { id: ANY, value: ANY },
+                ...sampleTypes.map((t) => ({ id: t.id, value: t.value })),
+              ].find((i) => i.id === (form.sampleTypeId || ANY)) || null
+            }
+            onChange={({ selectedItem }) =>
+              set("sampleTypeId", selectedItem ? selectedItem.id : ANY)
+            }
+          />
+        )}
 
         <RadioButtonGroup
           legendText={intl.formatMessage({

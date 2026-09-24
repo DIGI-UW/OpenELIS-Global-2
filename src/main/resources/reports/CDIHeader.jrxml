@@ -26,7 +26,7 @@
 	<parameter name="leftHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="rightHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="imagesPath" class="java.lang.String"/>
-	<!-- OGC-686 (QA-D.4b): accreditation logos and notes line. Fixed slots, filled
+	<!-- OGC-686: accreditation logos and notes line. Fixed slots, filled
 	     in display order by AccreditationReportService; every one may be null, in
 	     which case nothing prints and the band is unchanged. -->
 	<parameter name="accredLogo1" class="java.io.InputStream" isForPrompting="false"/>
@@ -90,7 +90,7 @@
 					<imageExpression><![CDATA[$P{leftHeaderImage}]]></imageExpression>
 				</image>
 			</elementGroup>
-			<!-- OGC-686 FR-31/32: accreditation logos sit in the free strip between
+			<!-- OGC-686: accreditation logos sit in the free strip between
 			     the report title and the lab-manager line, so the band height never
 			     changes and an un-accredited report looks exactly as before. The
 			     strip is only 22pt tall — the notes line shares it to the left
@@ -113,7 +113,7 @@
 				</reportElement>
 				<imageExpression><![CDATA[$P{accredLogo3}]]></imageExpression>
 			</image>
-			<!-- FR-33: the notes line names every in-force body with an accredited
+			<!-- The notes line names every in-force body with an accredited
 			     test on the report, whether or not its logo cleared the gate. Two
 			     lines' worth of room at font 6, so three body names still fit. -->
 			<textField isBlankWhenNull="true">

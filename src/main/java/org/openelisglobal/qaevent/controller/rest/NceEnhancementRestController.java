@@ -13,6 +13,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.openelisglobal.qaevent.bean.CapaRegisterItem;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
@@ -99,8 +100,7 @@ public class NceEnhancementRestController extends BaseRestController {
 
     private static final int USER_AUTOCOMPLETE_RESULT_LIMIT = 25;
 
-    // ponytail: cap 500; add server-side pagination/filter if CAPA volume ever
-    // exceeds it.
+    // Add server-side pagination if CAPA volume ever exceeds this cap.
     private static final int CAPA_REGISTER_LIMIT = 500;
 
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -114,7 +114,7 @@ public class NceEnhancementRestController extends BaseRestController {
      * their parent NCE.
      */
     @GetMapping(value = "/capa-register", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public ResponseEntity<List<CapaRegisterItem>> getCapaRegister() {
         return ResponseEntity.ok(nceActionLogService.getCapaRegister(CAPA_REGISTER_LIMIT));
     }
@@ -256,10 +256,9 @@ public class NceEnhancementRestController extends BaseRestController {
             item.notesCount = noteDTOs.size();
 
             // Fetch corrective/preventive actions (CAPA) so the dashboard CAPA
-            // tab/count reflects nce_action_log (the C.2 register reads the same rows).
-            // ponytail: per-NCE fetch matches this loop's existing per-NCE style
-            // (specimens/attachments/history) and is N+1; switch to a bulk grouped
-            // query like getCapaRegister if NCE volume ever makes it hurt.
+            // tab/count reflects nce_action_log (the CAPA Register reads the same rows).
+            // N+1: one query per NCE. Switch to a bulk grouped query like
+            // getCapaRegister if NCE volume ever makes this slow.
             List<NceActionLog> actionLogs = nceActionLogService.getNceActionLogByNceId(event.getId());
             List<ActionLogDTO> actionLogDTOs = new ArrayList<>();
             for (NceActionLog log : actionLogs) {
@@ -380,9 +379,19 @@ public class NceEnhancementRestController extends BaseRestController {
 
         String activity = historyRequest.activity != null ? historyRequest.activity : "NOTE_ADDED";
 
-        // If acknowledging, update NCE status from Pending to Under Investigation
+        // Status transitions driven by activity
+        boolean statusChanged = false;
         if ("ACKNOWLEDGED".equals(activity) && "Pending".equals(event.getStatus())) {
             event.setStatus("Under Investigation");
+            statusChanged = true;
+        } else if ("INVESTIGATION_STARTED".equals(activity) && "Under Investigation".equals(event.getStatus())) {
+            event.setStatus("Corrective Action");
+            statusChanged = true;
+        } else if ("CLOSED".equals(activity) && "Corrective Action".equals(event.getStatus())) {
+            event.setStatus("Closed");
+            statusChanged = true;
+        }
+        if (statusChanged) {
             event.setSysUserId(sysUserId);
             ncEventService.update(event);
         }

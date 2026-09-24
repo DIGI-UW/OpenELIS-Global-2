@@ -114,7 +114,7 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
-  /** the worklist's lab unit — scopes OGC-1025 control capture (FR-C1). */
+  /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
   loadedAnalyzerId?: string;
@@ -132,7 +132,11 @@ interface ExpandedPanelProps {
   onNoteDraftChange: (draft: NoteDraft) => void;
   onDilutionDraftChange: (draft: DilutionDraft) => void;
   actions: React.ReactNode;
-  /** OGC-1023 (R4): gates "Report Non-Conformity" and result rejection. */
+  /**
+   * OGC-1023 (R4): gates result rejection only. Reporting a non-conformity is
+   * always available, matching the legacy Results page where the configuration
+   * adds/removes the reject column and nothing else.
+   */
   allowResultRejection: boolean;
   nceOpen: boolean;
   onNceOpenChange: (open: boolean) => void;
@@ -140,6 +144,8 @@ interface ExpandedPanelProps {
   referralReasons: IdValue[];
   referralDraft: ReferralDraft | null;
   onReferralDraftChange: (draft: ReferralDraft | null) => void;
+  referenceLabReportDate?: string;
+  onReferenceLabReportDateChange?: (value: string) => void;
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
@@ -202,6 +208,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   referralReasons,
   referralDraft,
   onReferralDraftChange,
+  referenceLabReportDate = "",
+  onReferenceLabReportDateChange = () => {},
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
@@ -465,17 +473,15 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
         <div className="unifiedWorkZoneActions">
           {actions}
-          {allowResultRejection && (
-            <Button
-              kind="tertiary"
-              size="sm"
-              className="unifiedNceButton"
-              onClick={() => onNceOpenChange(!nceOpen)}
-              data-testid={`nce-toggle-${rowKey}`}
-            >
-              <FormattedMessage id="label.results.nce.report" />
-            </Button>
-          )}
+          <Button
+            kind="tertiary"
+            size="sm"
+            className="unifiedNceButton"
+            onClick={() => onNceOpenChange(!nceOpen)}
+            data-testid={`nce-toggle-${rowKey}`}
+          >
+            <FormattedMessage id="label.results.nce.report" />
+          </Button>
           {allowResultRejection && (
             <Button
               kind="ghost"
@@ -488,9 +494,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
               <FormattedMessage id="label.results.reject.result" />
             </Button>
           )}
+          {/* A referred test cannot be referred again: the save has no way to
+              amend an existing referral, so a second click would raise a rival
+              one. The referral is edited or cancelled from Referred Out. */}
           <Button
             kind="ghost"
             size="sm"
+            disabled={row.referredOut}
             onClick={() =>
               onReferralDraftChange(
                 referralDraft ? null : emptyReferralDraft(todayForReferral()),
@@ -498,7 +508,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             }
             data-testid={`referral-toggle-${rowKey}`}
           >
-            {row.referredOut || referralDraft ? (
+            {row.referredOut ? (
+              <FormattedMessage id="label.results.referredOut" />
+            ) : referralDraft ? (
               <FormattedMessage id="label.results.referral.editing" />
             ) : (
               <FormattedMessage id="label.results.referral.refer" />
@@ -553,10 +565,31 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             onCancel={() => onReferralDraftChange(null)}
           />
         )}
+
+        {/* Typing in a result the reference laboratory reported: its own report
+            date belongs to the referral, not to this laboratory's entry date,
+            and the External Referrals report prints it. */}
+        {row.referredOut && (
+          <div data-testid={`referral-report-date-row-${rowKey}`}>
+            <TextInput
+              id={`referral-report-date-${rowKey}`}
+              labelText={intl.formatMessage({
+                id: "label.results.referral.reportDate",
+              })}
+              placeholder={intl.formatMessage({
+                id: "label.results.referral.reportDate.placeholder",
+              })}
+              value={referenceLabReportDate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onReferenceLabReportDateChange(e.target.value)
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* Inline NCE (FR-E1/E2) — the shipped form, embedded, auto-linked to
-          this sample + result; gated by allowResultRejection */}
+          this sample + result */}
       {nceOpen && (
         <div className="unifiedNceEmbed" data-testid={`nce-${rowKey}`}>
           <InlineNceForm
@@ -584,26 +617,28 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                   ["REJECT", "label.results.nce.disposition.reject"],
                   ["RETEST", "label.results.nce.disposition.retest"],
                 ] as [NceDisposition, string][]
-              ).map(([value, labelKey]) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={`unifiedDispositionTile${
-                    nceDisposition === value
-                      ? " unifiedDispositionTile--selected"
-                      : ""
-                  }`}
-                  onClick={() => onNceDispositionChange(value)}
-                  data-testid={`disposition-${value}`}
-                >
-                  <strong>
-                    <FormattedMessage id={labelKey} />
-                  </strong>
-                  <span className="unifiedBucketText">
-                    <FormattedMessage id={`${labelKey}.detail`} />
-                  </span>
-                </button>
-              ))}
+              )
+                .filter(([value]) => value !== "REJECT" || allowResultRejection)
+                .map(([value, labelKey]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`unifiedDispositionTile${
+                      nceDisposition === value
+                        ? " unifiedDispositionTile--selected"
+                        : ""
+                    }`}
+                    onClick={() => onNceDispositionChange(value)}
+                    data-testid={`disposition-${value}`}
+                  >
+                    <strong>
+                      <FormattedMessage id={labelKey} />
+                    </strong>
+                    <span className="unifiedBucketText">
+                      <FormattedMessage id={`${labelKey}.detail`} />
+                    </span>
+                  </button>
+                ))}
             </div>
             {nceDisposition === "REJECT" && (
               <Select

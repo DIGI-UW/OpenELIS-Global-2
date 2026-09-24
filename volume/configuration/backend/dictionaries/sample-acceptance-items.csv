@@ -1,0 +1,7 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en
+SampleAcceptanceItem,containerIntact,Container intact / undamaged,Y,1,,Container intact / undamaged
+SampleAcceptanceItem,labelLegible,Label legible and matches request,Y,2,,Label legible and matches request
+SampleAcceptanceItem,volumeAdequate,Sample volume adequate,Y,3,,Sample volume adequate
+SampleAcceptanceItem,coldChain,Cold chain maintained,Y,4,,Cold chain maintained
+SampleAcceptanceItem,transit,Acceptable transit time / condition,Y,5,,Acceptable transit time / condition
+SampleAcceptanceItem,paperwork,Required paperwork present and complete,Y,6,,Required paperwork present and complete

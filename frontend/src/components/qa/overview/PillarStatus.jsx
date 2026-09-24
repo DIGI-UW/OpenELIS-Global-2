@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { ClickableTile, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
@@ -7,10 +7,10 @@ import ComingSoon from "./ComingSoon";
 import {
   countCriticalPending,
   countInCorrectiveAction,
-  fetchNceList,
+  useNceList,
 } from "./nceOverview";
-import { fetchOverviewSummary, fetchTatRollup } from "./overviewData";
-import useQiEnabled from "../qi/useQiEnabled";
+import { useOverviewSummary, useTatRollup } from "./overviewData";
+import useQiConfig from "../qi/useQiConfig";
 
 export const STATUS_ICON = { green: "✓", amber: "⚠", red: "✗" };
 
@@ -99,7 +99,7 @@ const qmsPillar = (intl, nceList) => {
 };
 
 /**
- * Pillar Status chips (OGC-694 WS-F): QC and QMS light up from live rollups,
+ * Pillar Status chips (OGC-694): QC and QMS light up from live rollups,
  * QI from the shared TAT rollup; EQA stays a placeholder until Phase E
  * (OGC-721).
  */
@@ -107,25 +107,13 @@ const PillarStatus = () => {
   const intl = useIntl();
   const history = useHistory();
   const title = intl.formatMessage({ id: "qa.overview.section.pillars" });
-  // undefined = loading, null = fetch yielded no data
-  const [summary, setSummary] = useState();
-  const [nceList, setNceList] = useState();
-  const [tat, setTat] = useState();
+  const { loading: summaryLoading, summary } = useOverviewSummary();
+  const { loading: nceLoading, nceList } = useNceList();
+  const { loading: tatLoading, tat } = useTatRollup();
   // OGC-711: the QI pillar is sourced from the TAT indicator, so disabling TAT
   // must stop it lighting the chip. (QC/EQA/QMS are other pillars — not gated on
   // a QI indicator's toggle.)
-  const { isEnabled } = useQiEnabled(["TAT"]);
-  const tatEnabled = isEnabled("TAT");
-
-  useEffect(() => {
-    let mounted = true;
-    fetchOverviewSummary((data) => mounted && setSummary(data));
-    fetchNceList((list) => mounted && setNceList(list));
-    fetchTatRollup((data) => mounted && setTat(data));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { enabled: tatEnabled } = useQiConfig("TAT");
 
   const qc = qcPillar(intl, summary);
   const qi = tatEnabled
@@ -144,7 +132,7 @@ const PillarStatus = () => {
       <div className="qa-cs-grid qa-cs-grid-pillars">
         <PillarChip
           titleKey="sideNav.label.qa.qc"
-          loading={summary === undefined}
+          loading={summaryLoading}
           status={qc.status}
           text={qc.text}
           onClick={() => history.push("/qa/qc/dashboard")}
@@ -152,14 +140,14 @@ const PillarStatus = () => {
         <ComingSoon titleKey="banner.menu.eqa" ticket="OGC-721" />
         <PillarChip
           titleKey="sideNav.label.qa.qi"
-          loading={tatEnabled && tat === undefined}
+          loading={tatEnabled && tatLoading}
           status={qi.status}
           text={qi.text}
           onClick={() => history.push("/qa/qi/dashboard")}
         />
         <PillarChip
           titleKey="sideNav.label.qa.qms"
-          loading={nceList === undefined}
+          loading={nceLoading}
           status={qms.status}
           text={qms.text}
           onClick={() => history.push("/NceDashboard")}

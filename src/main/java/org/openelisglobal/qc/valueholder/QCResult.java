@@ -13,18 +13,17 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * <p>
  * Since OGC-1147 this is the single store for all three QC sources (see
  * {@link QCSource}): analyzer-transmitted results, bench quantitative controls,
- * and RDT control lines. That is build-time decision D1(a) — the FRS's default
- * option routed non-analyzer runs through a "shared QcRun table" that has never
- * existed in this codebase. Keeping one store means the Levey-Jennings chart,
- * dashboard, export, rule engine and auto-NCE bridge all keep working
- * unchanged.
+ * and RDT control lines. A separate "shared QcRun table" was considered for
+ * non-analyzer runs and rejected — it never existed in this codebase. Keeping
+ * one store means the Levey-Jennings chart, dashboard, export, rule engine and
+ * auto-NCE bridge all keep working unchanged.
  *
  * <p>
  * Consequently {@code controlLotId}, {@code instrumentId} and
  * {@code resultValue} are nullable: a bench run has no analyzer, an RDT
  * cassette has no levelled control lot, and a qualitative outcome has no number
- * (FR-A3). The {@code chk_qc_result_source_shape} database constraint is what
- * keeps the combinations legal — every quantitative row still has a value, so
+ * . The {@code chk_qc_result_source_shape} database constraint is what keeps
+ * the combinations legal — every quantitative row still has a value, so
  * existing readers of {@code resultValue} are unaffected.
  */
 @Entity
@@ -37,11 +36,10 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    // Nullable since OGC-1147: an RDT cassette is identified by controlLabel rather
-    // than
-    // by a levelled control-material record. Manual quantitative runs should still
-    // carry
-    // a lot — that is where the fixed mean/SD used for the z-score lives (D3).
+    // Nullable since OGC-1147: an RDT cassette is identified by controlLabel
+    // rather than by a levelled control-material record. Manual quantitative runs
+    // should still carry a lot, which is where the fixed mean/SD used for the
+    // z-score lives.
     @Column(name = "control_lot_id", length = 36)
     private String controlLotId;
 
@@ -66,14 +64,13 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "source", nullable = false, length = 10)
     private QCSource source = QCSource.ASTM;
 
-    // D2: qualitative outcomes get their own column — never a magic number in
+    // Qualitative outcomes get their own column, never a magic number in
     // resultValue.
     @Enumerated(EnumType.STRING)
     @Column(name = "qualitative_outcome", length = 10)
     private QCQualitativeOutcome qualitativeOutcome;
 
-    // FR-B2 snapshot of the target in force when this control was captured, so a
-    // later
+    // Snapshot of the target in force when this control was captured, so a later
     // edit to a configured target (OGC-1148) can never rewrite QC history.
     @Column(name = "expected_value", precision = 15, scale = 5)
     private BigDecimal expectedValue;
@@ -81,14 +78,13 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "uncertainty", precision = 15, scale = 5)
     private BigDecimal uncertainty;
 
-    // Lab unit (test_section). FR-C1 scopes the QC-fail signal by test AND lab
-    // unit, and a
-    // bench run has no analyzer to scope by instead.
+    // Lab unit (test_section). The QC-fail signal is scoped by test AND lab unit,
+    // and a bench run has no analyzer to scope by instead.
     @Column(name = "test_section_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testSectionId;
 
-    // Kit or control designation for RDT runs (FR-A3).
+    // Kit or control designation for RDT runs.
     @Column(name = "control_label", length = 120)
     private String controlLabel;
 

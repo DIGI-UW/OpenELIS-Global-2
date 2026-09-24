@@ -1,12 +1,9 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../languages/en.json";
-import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import Accreditation from "./Accreditation";
+import { renderQa } from "../testUtils";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
@@ -133,22 +130,7 @@ const renderPage = ({
   roles = [],
   entry = "/qa/qms/accreditation",
 } = {}) =>
-  render(
-    <IntlProvider locale="en" messages={messages}>
-      <UserSessionDetailsContext.Provider
-        value={{
-          userSessionDetails: { authenticated: true, roles, permissions },
-          errorLoadingSessionDetails: false,
-          isCheckingLogin: () => false,
-          logout: vi.fn(),
-        }}
-      >
-        <MemoryRouter initialEntries={[entry]}>
-          <Accreditation />
-        </MemoryRouter>
-      </UserSessionDetailsContext.Provider>
-    </IntlProvider>,
-  );
+  renderQa(<Accreditation />, { permissions, roles, entries: [entry] });
 
 const fetchCount = (fragment) =>
   getFromOpenElisServer.mock.calls.filter((c) => c[0].includes(fragment))

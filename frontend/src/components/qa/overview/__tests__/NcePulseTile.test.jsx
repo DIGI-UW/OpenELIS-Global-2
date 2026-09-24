@@ -1,17 +1,17 @@
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter, Route } from "react-router-dom";
-import messages from "../../../../languages/en.json";
+import { Route } from "react-router-dom";
 import NcePulseTile from "../NcePulseTile";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { renderQa } from "../../testUtils";
+import { fetchFromOpenElisServer } from "../../../utils/Utils";
 
 vi.mock("../../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    getFromOpenElisServer: vi.fn(),
+    fetchFromOpenElisServer: vi.fn(),
   };
 });
 
@@ -23,33 +23,41 @@ const nce = (id, severity, status) => ({
 });
 
 const mockNceList = (list) => {
-  getFromOpenElisServer.mockImplementation((url, callback) => {
-    if (url.includes("/rest/nce/dashboard")) {
-      callback({ nceList: list });
-    }
-  });
+  fetchFromOpenElisServer.mockImplementation((url) =>
+    url.includes("/rest/nce/dashboard")
+      ? Promise.resolve({ nceList: list })
+      : Promise.resolve({ enabled: true }),
+  );
 };
 
 let testLocation;
+let testHistory;
 const renderTile = async () => {
+  cleanup(); // a test that renders twice compares tiles, not documents
   testLocation = undefined;
-  await act(async () =>
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <MemoryRouter initialEntries={["/qa/overview"]}>
-          <NcePulseTile />
-          <Route
-            path="*"
-            render={({ location }) => {
-              testLocation = location;
-              return null;
-            }}
-          />
-        </MemoryRouter>
-      </IntlProvider>,
-    ),
+  await act(async () => {
+    renderQa(
+      <>
+        <NcePulseTile />
+        <Route
+          path="*"
+          render={({ location, history }) => {
+            testLocation = location;
+            testHistory = history;
+            return null;
+          }}
+        />
+      </>,
+      { entries: ["/qa/overview"] },
+    );
+  });
+  // The tile captions itself only once the register read has settled.
+  await waitFor(() =>
+    expect(screen.getAllByText("critical pending").length).toBeGreaterThan(0),
   );
 };
+
+const tile = () => screen.getByTestId("qa-overview-tile-nce");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -67,8 +75,8 @@ describe("NcePulseTile", () => {
     ]);
     await renderTile();
 
-    const count = screen.getByText("2");
-    expect(count).toHaveClass("qa-live-count", "qa-live-amber");
+    expect(tile()).toHaveTextContent("2");
+    expect(tile().className).toContain("qi-tile--amber");
     expect(screen.getByText("critical pending")).toBeInTheDocument();
     expect(screen.getByText("2 in corrective action")).toBeInTheDocument();
   });
@@ -76,22 +84,27 @@ describe("NcePulseTile", () => {
   test("zero critical pending renders green, five or more renders red", async () => {
     mockNceList([nce("1", "MAJOR", "Pending"), nce("2", "CRITICAL", "Closed")]);
     await renderTile();
-    expect(screen.getByText("0")).toHaveClass("qa-live-green");
+    expect(tile()).toHaveTextContent("0");
+    expect(tile().className).toContain("qi-tile--green");
 
     mockNceList(
       ["1", "2", "3", "4", "5"].map((id) => nce(id, "CRITICAL", "Pending")),
     );
     await renderTile();
-    expect(screen.getByText("5")).toHaveClass("qa-live-red");
+    expect(tile()).toHaveTextContent("5");
+    expect(tile().className).toContain("qi-tile--red");
   });
 
-  test("shows an em dash without a color band when the endpoint returns no data", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => callback());
+  test("shows an em dash without a color band when the register is unavailable", async () => {
+    fetchFromOpenElisServer.mockImplementation((url) =>
+      url.includes("/rest/nce/dashboard")
+        ? Promise.reject(new Error("unavailable"))
+        : Promise.resolve({ enabled: true }),
+    );
     await renderTile();
 
-    const count = screen.getByText("—");
-    expect(count).toHaveClass("qa-live-count");
-    expect(count).not.toHaveClass("qa-live-green", "qa-live-amber");
+    expect(tile()).toHaveTextContent("—");
+    expect(tile().className).toContain("qi-tile--blue");
   });
 
   test("click drills through to the NCE register pre-filtered to critical + pending", async () => {
@@ -101,5 +114,22 @@ describe("NcePulseTile", () => {
     fireEvent.click(screen.getByText("NCE Pulse"));
     expect(testLocation.pathname).toBe("/NceDashboard");
     expect(testLocation.search).toBe("?severity=CRITICAL&status=Pending");
+  });
+
+  test("the whole tile navigates once, and the detail link is its keyboard route", async () => {
+    mockNceList([nce("1", "CRITICAL", "Pending")]);
+    await renderTile();
+
+    const link = screen.getByRole("link", { name: /View detail/ });
+    expect(link).toHaveAttribute(
+      "href",
+      "/NceDashboard?severity=CRITICAL&status=Pending",
+    );
+    // Following the link must not also fire the tile's own navigation: one
+    // click, one history entry.
+    const before = testHistory.length;
+    fireEvent.click(link);
+    expect(testLocation.pathname).toBe("/NceDashboard");
+    expect(testHistory.length).toBe(before + 1);
   });
 });

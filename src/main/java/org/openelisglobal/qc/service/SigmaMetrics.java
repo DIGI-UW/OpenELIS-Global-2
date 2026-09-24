@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  *
  * <p>
  * Pure function of the stored control statistics plus the per-test TEa; no
- * state, so no service/bean. C.1 / OGC-704.
+ * state, so no service/bean. OGC-704.
  */
 public final class SigmaMetrics {
 
@@ -22,37 +22,41 @@ public final class SigmaMetrics {
     private SigmaMetrics() {
     }
 
-    /** Immutable result; cv/sigma are null when not calculable. */
+    /**
+     * Immutable result. CV depends only on mean/SD, so it is present whenever those
+     * are usable, including when sigma is NOT_CALCULABLE for want of a TEa; sigma
+     * is null unless the category is calculable.
+     */
     public record SigmaResult(Double cv, Double sigma, String category) {
     }
 
     /**
-     * @param mean control mean (from qc_statistics)
-     * @param sd   control standard deviation (from qc_statistics)
-     * @param tea  per-test total allowable error, percent (null when unset)
-     * @return cv/sigma/category; NOT_CALCULABLE with null cv/sigma when any input
-     *         is missing or non-positive (an SD of 0 already implies < 2 usable
-     *         points, so no separate N guard is needed)
+     * Coefficient of variation as a percent: {@code SD / mean * 100}. Returns null
+     * when mean/SD are missing or mean is non-positive (divide-by-zero guard).
      */
-    /**
-     * Coefficient of variation as a percent: {@code SD / mean * 100}. Depends only
-     * on the control mean/SD (independent of TEa), so it is available even when the
-     * full sigma metric is NOT_CALCULABLE. Returns null when mean/SD are missing or
-     * mean is non-positive (divide-by-zero guard).
-     */
-    public static Double cv(BigDecimal mean, BigDecimal sd) {
+    private static Double cv(BigDecimal mean, BigDecimal sd) {
         if (mean == null || sd == null || mean.signum() <= 0 || sd.signum() < 0) {
             return null;
         }
         return sd.doubleValue() / mean.doubleValue() * 100.0;
     }
 
+    /**
+     * @param mean control mean (from qc_statistics)
+     * @param sd   control standard deviation (from qc_statistics)
+     * @param tea  per-test total allowable error, percent (null when unset)
+     * @return cv/sigma/category; NOT_CALCULABLE with a null sigma when TEa is
+     *         missing or non-positive, and additionally a null cv when mean/SD are
+     *         missing or non-positive (an SD of 0 already implies < 2 usable
+     *         points, so no separate N guard is needed)
+     */
     public static SigmaResult compute(BigDecimal mean, BigDecimal sd, Double tea) {
         Double coefficientOfVariation = cv(mean, sd);
         // Sigma additionally requires TEa and a non-zero CV; without them the sigma
-        // metric is NOT_CALCULABLE (CV itself may still be computable — see cv()).
+        // metric is NOT_CALCULABLE, but the CV is still carried through when it could
+        // be computed at all.
         if (tea == null || tea <= 0 || coefficientOfVariation == null || coefficientOfVariation <= 0) {
-            return new SigmaResult(null, null, NOT_CALCULABLE);
+            return new SigmaResult(coefficientOfVariation, null, NOT_CALCULABLE);
         }
         double sigma = tea / coefficientOfVariation; // bias = 0
         return new SigmaResult(coefficientOfVariation, sigma, classify(sigma));

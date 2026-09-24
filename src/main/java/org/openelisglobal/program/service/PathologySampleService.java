@@ -20,6 +20,8 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     Long getCountWithStatus(List<PathologyStatus> statuses);
 
+    Long getCountWithOpenRequests();
+
     Long getCountWithStatusBetweenDates(List<PathologyStatus> statuses, Timestamp from, Timestamp to);
 
     void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form);

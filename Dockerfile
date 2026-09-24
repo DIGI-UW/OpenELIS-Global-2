@@ -41,22 +41,23 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ##
 # Build the Project
 #
-# NOTE: Each step restores dataexport artifacts into the cache mount if missing.
-# When BuildKit restores cached layers from GHA, the --mount=type=cache volume
-# starts empty (it is not part of the layer blob). Without this restore step,
-# the main project build cannot resolve org.itech:dataexport-* dependencies.
+# NOTE: Each step overlays dataexport artifacts into the cache mount. The
+# org/itech directory may already exist without the required dataexport
+# versions, so checking only for that parent directory is insufficient.
 #
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
+    mkdir -p /root/.m2/repository/org/itech \
+    && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
     && mvn dependency:go-offline
 
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
+    mkdir -p /root/.m2/repository/org/itech \
+    && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
     && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##

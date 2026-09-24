@@ -13,8 +13,8 @@ import java.time.temporal.ChronoUnit;
  * per-enrolled-test status and no "majority of rows" heuristic.
  *
  * <p>
- * The {@value #EXPIRING_WINDOW_DAYS}-day warning window matches FRS FR-15/17/22
- * and the mockup. One constant, one place, so the page chip, the summary banner
+ * The {@value #EXPIRING_WINDOW_DAYS}-day warning window is the agreed expiry
+ * warning period. One constant, one place, so the page chip, the summary banner
  * and the QA Overview answer can never drift apart.
  */
 public enum AccreditationStatus {
@@ -57,7 +57,7 @@ public enum AccreditationStatus {
     }
 
     /**
-     * Whether a body in this status may be claimed on a patient report (FR-30).
+     * Whether a body in this status may be claimed on a patient report.
      *
      * <p>
      * EXPIRING is still a valid accreditation — the warning is for the lab's

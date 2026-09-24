@@ -1,24 +1,27 @@
-import { getFromOpenElisServer } from "../../utils/Utils";
-import { dedupedFetch } from "./overviewData";
+import { useServerData } from "../../utils/useServerData";
 
 /**
- * Shared NCE client-filter util for the QA Overview (OGC-699 WS-C).
+ * Shared NCE client-filter util for the QA Overview (OGC-699).
  *
  * There is no acknowledgment column on nce_event: acknowledging an NCE
  * transitions status "Pending" -> "Under Investigation" (NceEnhancement
  * REST controller), so "critical pending acknowledgment" is exactly
- * severity CRITICAL + status Pending. WS-F reuses these predicates for
+ * severity CRITICAL + status Pending. The overview aggregators reuse these predicates for
  * the QMS pillar chip and This-Week counters.
  */
 
 export const NCE_DRILL_URL = "/NceDashboard?severity=CRITICAL&status=Pending";
 
-// Overview slots mounting together share one request (see dedupedFetch).
-export const fetchNceList = dedupedFetch((resolve) => {
-  getFromOpenElisServer("/rest/nce/dashboard", (data) =>
-    resolve(data && Array.isArray(data.nceList) ? data.nceList : null),
-  );
-});
+export const NCE_LIST_URL = "/rest/nce/dashboard";
+
+// Overview slots mounting together share this one cached request.
+export const useNceList = () => {
+  const query = useServerData(NCE_LIST_URL);
+  return {
+    loading: query.isLoading,
+    nceList: Array.isArray(query.data?.nceList) ? query.data.nceList : null,
+  };
+};
 
 export const countCriticalPending = (list) =>
   list.filter((nce) => nce.severity === "CRITICAL" && nce.status === "Pending")
@@ -36,7 +39,7 @@ export const countInCorrectiveAction = (list) =>
 export const countEffectivenessReviewsDue = (list) =>
   list.filter((nce) => nce.status === "CAPA" && !nce.effective).length;
 
-// ponytail: v1 hard-coded thresholds (0 green, 1-4 amber, >=5 red) per
-// OGC-699; per-lab configuration arrives with QI config in v8.
+// Thresholds from OGC-699: 0 green, 1-4 amber, 5+ red. Make them
+// configurable in QI config if labs ever need their own.
 export const pulseColor = (count) =>
   count === 0 ? "green" : count < 5 ? "amber" : "red";

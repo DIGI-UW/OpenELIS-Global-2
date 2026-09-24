@@ -9,102 +9,55 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import javax.sql.DataSource;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.accreditation.dto.AccreditationReportData;
 import org.openelisglobal.accreditation.service.AccreditationReportService;
-import org.openelisglobal.accreditation.service.AccreditingBodyService;
-import org.openelisglobal.accreditation.service.TestAccreditationService;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
 import org.openelisglobal.accreditation.valueholder.LogoVisibilityMode;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.image.valueholder.Image;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-686 [QA-D.4a] — the FR-29 report gate, against a real DB (no mocks).
+ * OGC-686 — the patient-report accreditation gate, against a real DB (no
+ * mocks).
  *
  * <p>
- * These are the vectors the mockup's report preview encodes, run against the
- * real resolver: which bodies get a logo, which only get named in the notes
- * line, and which are excluded outright. The two that matter most for a
- * compliance artifact are the reprint case (a body that has expired since the
- * report was released must still print exactly as it did) and the distinct-test
- * case (a test repeated across samples must not inflate a percentage gate).
+ * These are the report-preview scenarios, run against the real resolver: which
+ * bodies get a logo, which only get named in the notes line, and which are
+ * excluded outright. The two that matter most for a compliance artifact are the
+ * reprint case (a body that has expired since the report was released must
+ * still print exactly as it did) and the distinct-test case (a test repeated
+ * across samples must not inflate a percentage gate).
  *
  * <p>
  * Jasper is not involved: the resolver returns bytes and a string, and the
  * report layer does nothing with them but put them in the parameter map.
  */
-public class AccreditationReportServiceIntegrationTest extends BaseWebContextSensitiveTest {
+public class AccreditationReportServiceIntegrationTest extends AccreditationIntegrationTestBase {
 
-    private static final String TEST_GLUCOSE = "9101";
-    private static final String TEST_SODIUM = "9102";
-    private static final String USER = "1";
     private static final LocalDate TODAY = LocalDate.now();
 
     @Autowired
     private AccreditationReportService accreditationReportService;
 
     @Autowired
-    private AccreditingBodyService accreditingBodyService;
-
-    @Autowired
-    private TestAccreditationService testAccreditationService;
-
-    @Autowired
     private ImageService imageService;
 
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbc;
-
-    @Before
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
-        executeDataSetWithStateManagement("testdata/accreditation.xml");
-        clean();
-    }
-
-    @After
-    public void tearDown() {
-        clean();
-    }
-
-    private void clean() {
-        jdbc.update("DELETE FROM clinlims.test_accreditation");
-        jdbc.update("DELETE FROM clinlims.accrediting_body");
-    }
-
     @Test
-    public void noTestsOnReport_resolvesToNothing() {
+    public void aReportCarryingNoAccreditedTestResolvesToNothing() {
         Long body = createBody("ISO15189", "ISO 15189", TODAY.plusYears(1), LogoVisibilityMode.ANY_ACCREDITED_TEST,
                 (short) 80, (short) 0);
         enrollWithLogo(body, TEST_GLUCOSE);
 
-        AccreditationReportData resolved = accreditationReportService.resolve(Collections.emptyList(), TODAY);
+        // An empty report and a report of unaccredited tests are the same answer:
+        // the enrolled body is present, and still contributes nothing.
+        for (List<String> onReport : List.of(Collections.<String>emptyList(), List.of(TEST_SODIUM))) {
+            AccreditationReportData resolved = accreditationReportService.resolve(onReport, TODAY);
 
-        assertTrue(resolved.getLogos().isEmpty());
-        assertNull(resolved.getNotesLine());
-    }
-
-    @Test
-    public void noAccreditedTestOnReport_resolvesToNothing() {
-        Long body = createBody("ISO15189", "ISO 15189", TODAY.plusYears(1), LogoVisibilityMode.ANY_ACCREDITED_TEST,
-                (short) 80, (short) 0);
-        enrollWithLogo(body, TEST_GLUCOSE);
-
-        AccreditationReportData resolved = accreditationReportService.resolve(List.of(TEST_SODIUM), TODAY);
-
-        assertTrue(resolved.getLogos().isEmpty());
-        assertNull(resolved.getNotesLine());
+            assertTrue(String.valueOf(onReport), resolved.getLogos().isEmpty());
+            assertNull(String.valueOf(onReport), resolved.getNotesLine());
+        }
     }
 
     @Test
@@ -271,11 +224,4 @@ public class AccreditationReportServiceIntegrationTest extends BaseWebContextSen
         return accreditingBodyService.createBody(input, USER).getId();
     }
 
-    private AccreditingBody body(String code, String name, LocalDate expiresOn) {
-        AccreditingBody b = new AccreditingBody();
-        b.setCode(code);
-        b.setName(name);
-        b.setExpiresOn(expiresOn);
-        return b;
-    }
 }

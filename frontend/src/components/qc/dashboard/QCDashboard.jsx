@@ -28,7 +28,10 @@ import {
 } from "@carbon/react";
 import { Renew, Download } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasPermissionOrGlobalAdmin,
+} from "../../utils/Utils";
 import ActiveViolationsBanner from "./ActiveViolationsBanner";
 import QCSummaryTiles from "./QCSummaryTiles";
 import InstrumentsTab from "./InstrumentsTab";
@@ -55,7 +58,12 @@ const QCDashboard = ({ initialTab = 0 }) => {
   const [showExport, setShowExport] = useState(false);
 
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canExport = hasQaPermission(userSessionDetails, "qa.view.qc");
+  // The real gate is the backend @PreAuthorize(qa.view.qc); this only hides the
+  // entry point from users who would get a 403 anyway.
+  const canExport = hasPermissionOrGlobalAdmin(
+    userSessionDetails,
+    "qa.view.qc",
+  );
 
   const loadDashboardData = useCallback(() => {
     setLoading(true);
@@ -148,7 +156,7 @@ const QCDashboard = ({ initialTab = 0 }) => {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
               { label: "qc.dashboard.title", link: "" },
             ]}
           />
@@ -183,7 +191,7 @@ const QCDashboard = ({ initialTab = 0 }) => {
               onClick={() => setShowExport(true)}
               data-testid="qc-dashboard-export-button"
             >
-              {intl.formatMessage({ id: "qc.dashboard.export.button" })}
+              {intl.formatMessage({ id: "reports.export" })}
             </Button>
           )}
           <Button

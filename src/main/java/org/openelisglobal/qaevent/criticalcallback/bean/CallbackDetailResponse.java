@@ -1,14 +1,10 @@
 package org.openelisglobal.qaevent.criticalcallback.bean;
 
-import java.util.List;
 import java.util.Map;
+import org.openelisglobal.reports.qi.PagedResponse;
 
-public class CallbackDetailResponse {
+public class CallbackDetailResponse extends PagedResponse<CallbackEvent> {
 
-    private List<CallbackEvent> items;
-    private int totalCount;
-    private int page;
-    private int pageSize;
     /**
      * Time-to-acknowledge histogram over the whole window (not just the page):
      * CONFIRMED results bucketed by minutes from release ("0-5", "5-15", "15-30",
@@ -21,38 +17,6 @@ public class CallbackDetailResponse {
      * Insertion-ordered.
      */
     private Map<String, Long> failureCounts;
-
-    public List<CallbackEvent> getItems() {
-        return items;
-    }
-
-    public void setItems(List<CallbackEvent> items) {
-        this.items = items;
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(int totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    public int getPage() {
-        return page;
-    }
-
-    public void setPage(int page) {
-        this.page = page;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
 
     public Map<String, Long> getAckDistribution() {
         return ackDistribution;

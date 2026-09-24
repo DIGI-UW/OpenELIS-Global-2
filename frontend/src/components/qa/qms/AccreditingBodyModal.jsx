@@ -21,7 +21,7 @@ import {
   putToOpenElisServerFullResponse,
   toLocalIsoDate,
 } from "../../utils/Utils";
-import config from "../../../config.json";
+import { accreditationLogoUrl } from "../common/AccreditationStatusTag";
 
 const VISIBILITY_MODES = ["ANY_ACCREDITED_TEST", "PERCENTAGE"];
 const MAX_LOGO_BYTES = 500 * 1024;
@@ -38,7 +38,7 @@ const blankBody = () => ({
 });
 
 /**
- * Add/Edit Accrediting Body (OGC-686, D.2). The certificate carries one expiry for
+ * Add/Edit Accrediting Body (OGC-686). The certificate carries one expiry for
  * the whole scope, so expiry lives here and not on the individual test enrollments.
  * `code` is immutable once created — the backend rejects a change with a 400. The
  * logo is uploaded as a separate multipart call after the body exists, since the
@@ -212,7 +212,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         <TextInput
           id="accreditation-body-code"
           labelText={intl.formatMessage({
-            id: "qa.qms.accreditation.body.field.code",
+            id: "common.code",
           })}
           helperText={intl.formatMessage({
             id: "qa.qms.accreditation.body.field.codeHelper",
@@ -225,7 +225,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         <TextInput
           id="accreditation-body-name"
           labelText={intl.formatMessage({
-            id: "qa.qms.accreditation.body.field.name",
+            id: "common.name",
           })}
           value={form.name}
           onChange={(e) => set("name", e.target.value)}
@@ -286,7 +286,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         <NumberInput
           id="accreditation-body-order"
           label={intl.formatMessage({
-            id: "qa.qms.accreditation.body.field.displayOrder",
+            id: "label.testCatalog.sampleResults.displayOrder",
           })}
           min={0}
           value={form.displayOrder}
@@ -296,7 +296,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         <Toggle
           id="accreditation-body-active"
           labelText={intl.formatMessage({
-            id: "qa.qms.accreditation.body.field.active",
+            id: "common.active",
           })}
           labelA={intl.formatMessage({ id: "label.no" })}
           labelB={intl.formatMessage({ id: "label.yes" })}
@@ -307,7 +307,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         {isEdit && form.logoImageId && (
           <div>
             <img
-              src={`${config.serverBaseUrl}/rest/accreditation/logo/${form.logoImageId}`}
+              src={accreditationLogoUrl(form.logoImageId)}
               alt=""
               style={{ height: "3rem" }}
             />

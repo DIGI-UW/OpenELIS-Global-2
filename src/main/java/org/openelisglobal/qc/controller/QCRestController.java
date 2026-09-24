@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
@@ -51,6 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/qc")
+@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
 public class QCRestController extends BaseRestController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "id", "productName", "lotNumber", "manufacturer",
@@ -88,8 +90,8 @@ public class QCRestController extends BaseRestController {
      * control-chart tab).
      * <li>{@code testId} alone — active <em>bench</em> lots for that test, i.e. the
      * ones with no analyzer, which is what a manual quantitative capture picks from
-     * (OGC-1147 FR-B3). Deliberately not "all lots for this test regardless of
-     * analyzer": a bench run cannot use an analyzer lot's limits.
+     * (OGC-1147). Deliberately not "all lots for this test regardless of analyzer":
+     * a bench run cannot use an analyzer lot's limits.
      * </ul>
      */
     @GetMapping("/controlLots")
@@ -495,10 +497,6 @@ public class QCRestController extends BaseRestController {
     // ==================== Dashboard Endpoints (T120/T121) ====================
 
     /**
-     * Get dashboard summary with aggregate violation counts. GET
-     * /rest/qc/dashboard/summary?months=1
-     */
-    /**
      * Bench QC activity, grouped by lab unit and test.
      * /rest/qc/dashboard/bench?months=1[&amp;source=MANUAL|RDT]
      *
@@ -506,22 +504,15 @@ public class QCRestController extends BaseRestController {
      * A separate listing rather than a source filter over
      * {@code /dashboard/instruments}: that endpoint's rows <i>are</i> analyzers,
      * and a manual or RDT control has none, so filtering it by source can only ever
-     * return an empty instrument list (OGC-1147 FR-D1).
+     * return an empty instrument list (OGC-1147).
      */
     @GetMapping("/dashboard/bench")
-    @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QC)
     public ResponseEntity<List<BenchQcSummaryRow>> getBenchQcSummary(
             @RequestParam(value = "months", defaultValue = "1") int months,
             @RequestParam(value = "source", required = false) String source) {
         try {
-            QCSource parsed = null;
-            if (StringUtils.isNotBlank(source) && !"ALL".equalsIgnoreCase(source)) {
-                parsed = QCSource.valueOf(source.toUpperCase());
-                if (!parsed.isBenchEntered()) {
-                    // ASTM belongs to the instrument tiles, not this listing.
-                    return ResponseEntity.badRequest().build();
-                }
-            }
+            QCSource parsed = QCSource.parseBenchFilter(source);
             Timestamp[] range = computeDateRange(months);
             return ResponseEntity.ok(dashboardService.getBenchQcSummary(range[0], range[1], parsed));
         } catch (IllegalArgumentException e) {

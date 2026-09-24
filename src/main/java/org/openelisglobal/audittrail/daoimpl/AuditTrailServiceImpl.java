@@ -65,7 +65,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     // before data did not contain anything. Note: This requires making the changes
     // column (in history table) nullable
     @Override
-    public void saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
+    public String saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
 
         ReferenceTables referenceTables = new ReferenceTables();
         referenceTables.setTableName(tableName);
@@ -74,7 +74,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         // bugzilla 2111: if keepHistory is N then return - don't throw exception
         if (referenceTable != null && !referenceTable.getKeepHistory().equals(IActionConstants.YES)) {
             LogEvent.logDebug("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: REF TABLE KEEP_HISTORY IS N");
-            return;
+            return null;
         }
         // if logging failes an exception should be thrown so that INSERT/UPDATE is
         // rolled back
@@ -111,10 +111,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             hist.setTimestamp(timestamp);
             hist.setActivity(IActionConstants.AUDIT_TRAIL_INSERT);
             hist.setReferenceTable(referenceTable.getId());
-            insertData(hist);
+            String historyId = insertData(hist);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveNewHistory",
                     "Created INSERT history record for table: " + tableName + ", referenceId: " + referenceId);
+            return historyId;
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error occurred logging INSERT", e);
@@ -539,8 +540,13 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 m1 = existingObject.getClass().getMethod("getCompletedDate", new Class[0]);
                 o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
-                o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                // newObject is null for DELETE events — skip the new-side
+                // reflection. The downstream comparison will treat the new
+                // value as empty, which is the right semantics for a delete.
+                if (newObject != null) {
+                    m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
+                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                }
             }
             if (fieldName.equals("sample")) {
                 fieldName = "collectionDate";
@@ -548,8 +554,10 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     m1 = existingObject.getClass().getMethod("getCollectionDate", new Class[0]);
                     o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                    m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
-                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    if (newObject != null) {
+                        m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
+                        o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    }
                 } catch (NoSuchMethodException e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "processLabelValueFixes",
                             "ignoring NoSuchMethodException getCollectionDate() for object of type: "
@@ -1451,7 +1459,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      *
      * @param history the history object being saved
      */
-    private void insertData(History history) throws LIMSRuntimeException {
-        historyService.insert(history);
+    private String insertData(History history) throws LIMSRuntimeException {
+        return historyService.insert(history);
     }
 }

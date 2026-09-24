@@ -1,0 +1,167 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- OGC-1192: patientless (environmental) samples on the order dashboard
+        and in SampleEdit. 25 samples; only DASH-0025 (id 9125, the newest) is environmental
+        and it has no sample_human row. The count matters: the dashboard used to
+        page the OLDEST page.defaultPageSize+1 (=21) samples, so DASH-0025 was invisible. -->
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+    <!-- status names must match StatusService.addTo*Map(): "SampleEntered"
+        is SampleStatus.Entered, which SampleEdit requires on sample items. -->
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="SampleEntered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="4" description="Not Tested"
+        code="4" status_type="ANALYSIS" name="Not Tested"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+    <sample id="9101" accession_number="DASH-0001" domain="H"
+        status_id="1" received_date="2025-06-02 00:00:00.0"
+        entered_date="2025-06-02 00:00:00.0"
+        collection_date="2025-06-02 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-02 12:00:00" />
+    <sample id="9102" accession_number="DASH-0002" domain="H"
+        status_id="1" received_date="2025-06-03 00:00:00.0"
+        entered_date="2025-06-03 00:00:00.0"
+        collection_date="2025-06-03 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-03 12:00:00" />
+    <sample id="9103" accession_number="DASH-0003" domain="H"
+        status_id="1" received_date="2025-06-04 00:00:00.0"
+        entered_date="2025-06-04 00:00:00.0"
+        collection_date="2025-06-04 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-04 12:00:00" />
+    <sample id="9104" accession_number="DASH-0004" domain="H"
+        status_id="1" received_date="2025-06-05 00:00:00.0"
+        entered_date="2025-06-05 00:00:00.0"
+        collection_date="2025-06-05 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-05 12:00:00" />
+    <sample id="9105" accession_number="DASH-0005" domain="H"
+        status_id="1" received_date="2025-06-06 00:00:00.0"
+        entered_date="2025-06-06 00:00:00.0"
+        collection_date="2025-06-06 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-06 12:00:00" />
+    <sample id="9106" accession_number="DASH-0006" domain="H"
+        status_id="1" received_date="2025-06-07 00:00:00.0"
+        entered_date="2025-06-07 00:00:00.0"
+        collection_date="2025-06-07 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-07 12:00:00" />
+    <sample id="9107" accession_number="DASH-0007" domain="H"
+        status_id="1" received_date="2025-06-08 00:00:00.0"
+        entered_date="2025-06-08 00:00:00.0"
+        collection_date="2025-06-08 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-08 12:00:00" />
+    <sample id="9108" accession_number="DASH-0008" domain="H"
+        status_id="1" received_date="2025-06-09 00:00:00.0"
+        entered_date="2025-06-09 00:00:00.0"
+        collection_date="2025-06-09 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-09 12:00:00" />
+    <sample id="9109" accession_number="DASH-0009" domain="H"
+        status_id="1" received_date="2025-06-10 00:00:00.0"
+        entered_date="2025-06-10 00:00:00.0"
+        collection_date="2025-06-10 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample id="9110" accession_number="DASH-0010" domain="H"
+        status_id="1" received_date="2025-06-11 00:00:00.0"
+        entered_date="2025-06-11 00:00:00.0"
+        collection_date="2025-06-11 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-11 12:00:00" />
+    <sample id="9111" accession_number="DASH-0011" domain="H"
+        status_id="1" received_date="2025-06-12 00:00:00.0"
+        entered_date="2025-06-12 00:00:00.0"
+        collection_date="2025-06-12 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-12 12:00:00" />
+    <sample id="9112" accession_number="DASH-0012" domain="H"
+        status_id="1" received_date="2025-06-13 00:00:00.0"
+        entered_date="2025-06-13 00:00:00.0"
+        collection_date="2025-06-13 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-13 12:00:00" />
+    <sample id="9113" accession_number="DASH-0013" domain="H"
+        status_id="1" received_date="2025-06-14 00:00:00.0"
+        entered_date="2025-06-14 00:00:00.0"
+        collection_date="2025-06-14 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-14 12:00:00" />
+    <sample id="9114" accession_number="DASH-0014" domain="H"
+        status_id="1" received_date="2025-06-15 00:00:00.0"
+        entered_date="2025-06-15 00:00:00.0"
+        collection_date="2025-06-15 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-15 12:00:00" />
+    <sample id="9115" accession_number="DASH-0015" domain="H"
+        status_id="1" received_date="2025-06-16 00:00:00.0"
+        entered_date="2025-06-16 00:00:00.0"
+        collection_date="2025-06-16 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-16 12:00:00" />
+    <sample id="9116" accession_number="DASH-0016" domain="H"
+        status_id="1" received_date="2025-06-17 00:00:00.0"
+        entered_date="2025-06-17 00:00:00.0"
+        collection_date="2025-06-17 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-17 12:00:00" />
+    <sample id="9117" accession_number="DASH-0017" domain="H"
+        status_id="1" received_date="2025-06-18 00:00:00.0"
+        entered_date="2025-06-18 00:00:00.0"
+        collection_date="2025-06-18 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-18 12:00:00" />
+    <sample id="9118" accession_number="DASH-0018" domain="H"
+        status_id="1" received_date="2025-06-19 00:00:00.0"
+        entered_date="2025-06-19 00:00:00.0"
+        collection_date="2025-06-19 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-19 12:00:00" />
+    <sample id="9119" accession_number="DASH-0019" domain="H"
+        status_id="1" received_date="2025-06-20 00:00:00.0"
+        entered_date="2025-06-20 00:00:00.0"
+        collection_date="2025-06-20 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-20 12:00:00" />
+    <sample id="9120" accession_number="DASH-0020" domain="H"
+        status_id="1" received_date="2025-06-21 00:00:00.0"
+        entered_date="2025-06-21 00:00:00.0"
+        collection_date="2025-06-21 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-21 12:00:00" />
+    <sample id="9121" accession_number="DASH-0021" domain="H"
+        status_id="1" received_date="2025-06-22 00:00:00.0"
+        entered_date="2025-06-22 00:00:00.0"
+        collection_date="2025-06-22 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-22 12:00:00" />
+    <sample id="9122" accession_number="DASH-0022" domain="H"
+        status_id="1" received_date="2025-06-23 00:00:00.0"
+        entered_date="2025-06-23 00:00:00.0"
+        collection_date="2025-06-23 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-23 12:00:00" />
+    <sample id="9123" accession_number="DASH-0023" domain="H"
+        status_id="1" received_date="2025-06-24 00:00:00.0"
+        entered_date="2025-06-24 00:00:00.0"
+        collection_date="2025-06-24 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-24 12:00:00" />
+    <sample id="9124" accession_number="DASH-0024" domain="H"
+        status_id="1" received_date="2025-06-25 00:00:00.0"
+        entered_date="2025-06-25 00:00:00.0"
+        collection_date="2025-06-25 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-25 12:00:00" />
+    <sample id="9125" accession_number="DASH-0025" domain="E"
+        status_id="1" received_date="2025-06-26 00:00:00.0"
+        entered_date="2025-06-26 00:00:00.0"
+        collection_date="2025-06-26 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-26 12:00:00" />
+    <sample_item id="9125" sort_order="1" status_id="1"
+        samp_id="9125" typeosamp_id="1" collection_date="2025-06-26 10:00:00"
+        lastupdated="2025-06-26 12:00:00" />
+    <analysis id="9125" sampitem_id="9125" test_id="1"
+        test_sect_id="1" revision="0" status_id="4"
+        lastupdated="2025-06-26 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+</dataset>

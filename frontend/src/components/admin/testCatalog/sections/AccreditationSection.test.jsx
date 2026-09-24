@@ -1,5 +1,5 @@
 /**
- * AccreditationSection — OGC-686 (QA-D.3).
+ * AccreditationSection — OGC-686.
  *
  * The per-test view of accreditation: which bodies accredit this test, add and
  * remove. Covers render, the empty and error states, the permission gate, that
@@ -8,7 +8,10 @@
  */
 
 // ========== MOCKS (before imports) ==========
-vi.mock("../../../utils/Utils", () => ({
+// Only the server calls are stubbed; the permission gate runs for real, so the
+// test exercises the same check the app does.
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServer: vi.fn(),
   deleteFromOpenElisServer: vi.fn(),
@@ -20,6 +23,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import AccreditationSection from "./AccreditationSection";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import {
@@ -83,18 +87,20 @@ const renderSection = ({
   roles = [],
 } = {}) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <UserSessionDetailsContext.Provider
-        value={{
-          userSessionDetails: { authenticated: true, roles, permissions },
-          errorLoadingSessionDetails: false,
-          isCheckingLogin: () => false,
-          logout: vi.fn(),
-        }}
-      >
-        <AccreditationSection testId="42" />
-      </UserSessionDetailsContext.Provider>
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        <UserSessionDetailsContext.Provider
+          value={{
+            userSessionDetails: { authenticated: true, roles, permissions },
+            errorLoadingSessionDetails: false,
+            isCheckingLogin: () => false,
+            logout: vi.fn(),
+          }}
+        >
+          <AccreditationSection testId="42" />
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 const openModal = () => document.querySelector(".cds--modal.is-visible");

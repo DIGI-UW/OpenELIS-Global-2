@@ -121,6 +121,12 @@ const AlertsDashboard = () => {
               })}
             />
             <SelectItem
+              value="REQUIRED_BY_DEADLINE"
+              text={intl.formatMessage({
+                id: "alerts.type.required_by_deadline",
+              })}
+            />
+            <SelectItem
               value="SAMPLE_EXPIRATION"
               text={intl.formatMessage({ id: "alerts.type.sample_expiration" })}
             />
@@ -132,6 +138,12 @@ const AlertsDashboard = () => {
               value="CRITICAL_UNACKNOWLEDGED"
               text={intl.formatMessage({
                 id: "alerts.type.critical_unacknowledged",
+              })}
+            />
+            <SelectItem
+              value="MICROBIOLOGY_CRITICAL"
+              text={intl.formatMessage({
+                id: "alerts.type.microbiology_critical",
               })}
             />
           </Select>

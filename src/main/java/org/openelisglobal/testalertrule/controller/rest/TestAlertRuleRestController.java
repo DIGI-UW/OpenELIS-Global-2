@@ -12,6 +12,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testalertrule.service.TestAlertRuleService;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,11 +53,40 @@ public class TestAlertRuleRestController extends BaseRestController {
 
     private final RoleService roleService;
 
+    private final TestResultComponentService testResultComponentService;
+
+    private final TypeOfSampleService typeOfSampleService;
+
     public TestAlertRuleRestController(TestAlertRuleService alertRuleService, TestService testService,
-            RoleService roleService) {
+            RoleService roleService, TestResultComponentService testResultComponentService,
+            TypeOfSampleService typeOfSampleService) {
         this.alertRuleService = alertRuleService;
         this.testService = testService;
         this.roleService = roleService;
+        this.testResultComponentService = testResultComponentService;
+        this.typeOfSampleService = typeOfSampleService;
+    }
+
+    /**
+     * The components a rule on this test may name, so the editor can offer them. A
+     * single-component test returns its one component and the UI can stay simple; a
+     * multi-component test has to be explicit about which measurement the rule is
+     * about.
+     */
+    @GetMapping(value = "/components", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdValuePair> components(@PathVariable String testId) {
+        requireTest(testId);
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .map(c -> new IdValuePair(c.getId(), c.getLabel() == null ? c.getCode() : c.getLabel()))
+                .collect(Collectors.toList());
+    }
+
+    /** The specimens this test runs on, for the rule's specimen scope. */
+    @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdValuePair> sampleTypes(@PathVariable String testId) {
+        requireTest(testId);
+        return typeOfSampleService.getTypeOfSampleForTest(testId).stream()
+                .map(t -> new IdValuePair(t.getId(), t.getLocalizedName())).collect(Collectors.toList());
     }
 
     /**
@@ -76,6 +107,10 @@ public class TestAlertRuleRestController extends BaseRestController {
         public Boolean enabled;
         public String triggerType;
         public String triggerValue;
+        /** Result component the rule watches; null watches every component. */
+        public String componentId;
+        /** Specimen the rule watches; null watches every specimen. */
+        public String sampleTypeId;
         public Boolean notifySms;
         public Boolean notifyEmail;
         public Boolean notifyOrderingPhysician;
@@ -99,6 +134,8 @@ public class TestAlertRuleRestController extends BaseRestController {
         public Boolean enabled;
         public String triggerType;
         public String triggerValue;
+        public String componentId;
+        public String sampleTypeId;
         public Boolean notifySms;
         public Boolean notifyEmail;
         public Boolean notifyOrderingPhysician;
@@ -117,6 +154,8 @@ public class TestAlertRuleRestController extends BaseRestController {
             dto.enabled = rule.getEnabled();
             dto.triggerType = rule.getTriggerType();
             dto.triggerValue = rule.getTriggerValue();
+            dto.componentId = rule.getComponentId();
+            dto.sampleTypeId = rule.getSampleTypeId();
             dto.notifySms = rule.getNotifySms();
             dto.notifyEmail = rule.getNotifyEmail();
             dto.notifyOrderingPhysician = rule.getNotifyOrderingPhysician();
@@ -151,6 +190,7 @@ public class TestAlertRuleRestController extends BaseRestController {
             HttpServletRequest request) {
         requireTest(testId);
         validate(body);
+        validateScope(testId, body);
 
         TestAlertRule rule = new TestAlertRule();
         rule.setTestId(testId);
@@ -165,6 +205,7 @@ public class TestAlertRuleRestController extends BaseRestController {
             @RequestBody AlertRuleRequest body, HttpServletRequest request) {
         TestAlertRule rule = requireRule(testId, ruleId);
         validate(body);
+        validateScope(testId, body);
         apply(rule, body);
         rule.setSysUserId(ControllerUtills.getSysUserId(request));
         alertRuleService.update(rule);
@@ -209,8 +250,34 @@ public class TestAlertRuleRestController extends BaseRestController {
         }
     }
 
+    /**
+     * A rule may only name a component of its own test and a specimen that test
+     * actually runs on. Without this the API accepts a rule that can never match
+     * anything — it looks configured and silently never fires.
+     */
+    private void validateScope(String testId, AlertRuleRequest body) {
+        if (body.componentId != null && !body.componentId.isBlank()) {
+            boolean belongs = testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                    .anyMatch(c -> body.componentId.equals(c.getId()));
+            if (!belongs) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "componentId is not an active component of this test: " + body.componentId);
+            }
+        }
+        if (body.sampleTypeId != null && !body.sampleTypeId.isBlank()) {
+            boolean runsOn = typeOfSampleService.getTypeOfSampleForTest(testId).stream()
+                    .anyMatch(t -> body.sampleTypeId.equals(t.getId()));
+            if (!runsOn) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "sampleTypeId is not a specimen this test runs on: " + body.sampleTypeId);
+            }
+        }
+    }
+
     private void apply(TestAlertRule rule, AlertRuleRequest body) {
         rule.setName(body.name);
+        rule.setComponentId(body.componentId == null || body.componentId.isBlank() ? null : body.componentId);
+        rule.setSampleTypeId(body.sampleTypeId == null || body.sampleTypeId.isBlank() ? null : body.sampleTypeId);
         rule.setEnabled(body.enabled == null ? Boolean.TRUE : body.enabled);
         rule.setTriggerType(body.triggerType);
         rule.setTriggerValue("SPECIFIC_VALUE".equals(body.triggerType) ? body.triggerValue : null);

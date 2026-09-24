@@ -12,46 +12,38 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
   DataTableSkeleton,
 } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
+import { Link } from "react-router-dom";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
+  hasPermissionOrGlobalAdmin,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
+import AccreditationStatusTag from "../../../qa/common/AccreditationStatusTag";
 
 /**
- * OGC-686 (QA-D.3) — Accreditation section: which bodies accredit this test.
+ * OGC-686 — Accreditation section: which bodies accredit this test.
  *
  * The other direction of the same data the QMS page at /qa/qms/accreditation
  * manages, so it reuses that API rather than growing a per-test one: the page
  * answers "which tests does this body cover?", this answers "who accredits this
  * test?". Expiry belongs to the body, so this section never edits a date — it
  * shows the owning body's status and links out for anything else.
- *
- * ponytail: plain Table, not DataTable — Carbon's DataTable re-derives rows in
- * an effect and lags a render behind its prop, which is a whole class of bug
- * this handful of rows has no use for.
  */
 const AccreditationSection = ({ testId }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  // The real gate is @PreAuthorize on the write endpoints; this only hides
-  // controls from users who would get a 403 anyway.
-  //
-  // Today it never actually hides anything: App.jsx gates /admin on
-  // Roles.GLOBAL_ADMIN, and GLOBAL_ADMIN satisfies this check, so everyone who
-  // can reach this section passes it. Kept deliberately — the day /admin (or a
-  // future home for the test-catalog editor) accepts a permission instead of a
-  // role, the write controls stay closed by default rather than silently
-  // opening to every viewer.
-  const canManage =
-    userSessionDetails?.permissions?.includes("qa.manage.accreditation") ||
-    userSessionDetails?.roles?.includes("Global Administrator");
+  // Redundant while /admin is role-gated, kept so the write controls stay shut
+  // if this editor ever moves somewhere a permission decides who gets in.
+  const canManage = hasPermissionOrGlobalAdmin(
+    userSessionDetails,
+    "qa.manage.accreditation",
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -97,24 +89,6 @@ const AccreditationSection = ({ testId }) => {
   const addableBodies = bodies.filter(
     (b) => !enrolledBodyIds.includes(String(b.id)) && b.active,
   );
-
-  // Same tag colours and the same labels as the QMS page — one status shown two
-  // ways would read as two different things.
-  const statusTag = (status) => {
-    const type = {
-      ACTIVE: "green",
-      EXPIRING: "magenta",
-      EXPIRED: "red",
-      INACTIVE: "gray",
-    }[status];
-    return status ? (
-      <Tag type={type}>
-        {intl.formatMessage({ id: `qa.qms.accreditation.status.${status}` })}
-      </Tag>
-    ) : (
-      "—"
-    );
-  };
 
   const submitAdd = () => {
     const bodyId = selectedBodyId;
@@ -247,22 +221,22 @@ const AccreditationSection = ({ testId }) => {
               <TableRow>
                 <TableHeader>
                   {intl.formatMessage({
-                    id: "label.testCatalog.accreditation.col.body",
+                    id: "qa.qms.accreditation.enrollment.column.body",
                   })}
                 </TableHeader>
                 <TableHeader>
                   {intl.formatMessage({
-                    id: "label.testCatalog.accreditation.col.expires",
+                    id: "qa.qms.accreditation.enrollment.column.expires",
                   })}
                 </TableHeader>
                 <TableHeader>
                   {intl.formatMessage({
-                    id: "label.testCatalog.accreditation.col.status",
+                    id: "common.status",
                   })}
                 </TableHeader>
                 <TableHeader>
                   {intl.formatMessage({
-                    id: "label.testCatalog.accreditation.col.actions",
+                    id: "common.actions",
                   })}
                 </TableHeader>
               </TableRow>
@@ -272,7 +246,9 @@ const AccreditationSection = ({ testId }) => {
                 <TableRow key={e.id} data-testid={`accreditation-${e.id}`}>
                   <TableCell>{`${e.bodyCode} — ${e.bodyName}`}</TableCell>
                   <TableCell>{e.bodyExpiresOn || "—"}</TableCell>
-                  <TableCell>{statusTag(e.status)}</TableCell>
+                  <TableCell>
+                    <AccreditationStatusTag status={e.status} />
+                  </TableCell>
                   <TableCell>
                     {canManage && (
                       <Button
@@ -295,11 +271,11 @@ const AccreditationSection = ({ testId }) => {
         </TableContainer>
       )}
 
-      <a href={`/qa/qms/accreditation?testId=${testId}`}>
+      <Link to={`/qa/qms/accreditation?testId=${testId}`}>
         {intl.formatMessage({
           id: "label.testCatalog.accreditation.manageLink",
         })}
-      </a>
+      </Link>
 
       <Modal
         open={addOpen}
@@ -315,7 +291,7 @@ const AccreditationSection = ({ testId }) => {
         <Dropdown
           id="accreditation-body-select"
           titleText={intl.formatMessage({
-            id: "label.testCatalog.accreditation.col.body",
+            id: "qa.qms.accreditation.enrollment.column.body",
           })}
           label={intl.formatMessage({
             id: "label.testCatalog.accreditation.selectBody",
@@ -337,7 +313,7 @@ const AccreditationSection = ({ testId }) => {
           id: "label.testCatalog.accreditation.remove",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "label.testCatalog.accreditation.remove.confirm",
+          id: "common.remove",
         })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         onRequestClose={() => setDeleteTarget(null)}

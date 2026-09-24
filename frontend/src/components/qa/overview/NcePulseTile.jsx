@@ -1,73 +1,50 @@
-import React, { useEffect, useState } from "react";
-import { ClickableTile, SkeletonText } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
-import { useHistory } from "react-router-dom";
+import React from "react";
+import { useIntl } from "react-intl";
+import QITile from "../qi/QITile";
+import useQiConfig from "../qi/useQiConfig";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
   countInCorrectiveAction,
-  fetchNceList,
   pulseColor,
+  useNceList,
 } from "./nceOverview";
 
 /**
  * NCE Pulse — current-state count of critical NCEs pending acknowledgment
- * (OGC-699). Deliberately not a trend: no sparkline. Standalone so the QI
- * Dashboard (WS-B) can render the same tile.
+ * (OGC-699). Deliberately not a trend: no sparkline.
  */
 const NcePulseTile = () => {
-  const history = useHistory();
-  // undefined = loading, null = fetch yielded no data
-  const [nceList, setNceList] = useState();
+  const intl = useIntl();
+  const { enabled } = useQiConfig("NCE");
+  const { loading, nceList } = useNceList();
 
-  useEffect(() => {
-    let mounted = true;
-    fetchNceList((list) => {
-      if (mounted) {
-        setNceList(list);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  if (!enabled) {
+    return null;
+  }
 
   const count = nceList ? countCriticalPending(nceList) : null;
 
   return (
-    <ClickableTile
-      className="qa-live-tile"
-      onClick={() => history.push(NCE_DRILL_URL)}
-    >
-      <div className="qa-cs-title">
-        <FormattedMessage id="qa.overview.tile.ncePulse" />
-      </div>
-      {nceList === undefined ? (
-        <SkeletonText heading width="40%" />
-      ) : (
-        <>
-          <div
-            className={
-              "qa-live-count" +
-              (count != null ? ` qa-live-${pulseColor(count)}` : "")
-            }
-          >
-            {count != null ? count : "—"}
-          </div>
-          <div className="qa-live-caption">
-            <FormattedMessage id="qa.overview.ncePulse.criticalPending" />
-          </div>
-          {nceList && (
-            <div className="qa-live-caption">
-              <FormattedMessage
-                id="qa.overview.ncePulse.inCorrectiveAction"
-                values={{ count: countInCorrectiveAction(nceList) }}
-              />
-            </div>
-          )}
-        </>
-      )}
-    </ClickableTile>
+    <QITile
+      testId="qa-overview-tile-nce"
+      titleKey="qa.qi.dashboard.tile.ncePulse.label"
+      accent={count != null ? pulseColor(count) : "blue"}
+      loading={loading}
+      primary={count != null ? String(count) : "—"}
+      targetLine={intl.formatMessage({
+        id: "qa.qi.dashboard.tile.ncePulse.criticalPending",
+      })}
+      secondary={
+        nceList
+          ? intl.formatMessage(
+              { id: "qa.qi.dashboard.tile.ncePulse.inCorrectiveAction" },
+              { count: countInCorrectiveAction(nceList) },
+            )
+          : null
+      }
+      detailPath={NCE_DRILL_URL}
+    />
   );
 };
 

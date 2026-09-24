@@ -110,9 +110,10 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     @Override
     public List<String> getAllAssignedSampleItemIds() {
         try {
-            // EQA panel material carries no sample item (T-40), and a NULL inside the
-            // NOT IN list this feeds would make the unassigned-sample search return
-            // nothing at all.
+            // The nulls have to be filtered here, not by the caller: this list is used to
+            // exclude assigned items with NOT IN, and a null in a NOT IN is never true in
+            // SQL, so one null row would hide every unassigned sample in the site. EQA
+            // panel material is exactly such a row: it carries no sample item.
             String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi WHERE bsi.sampleItem IS NOT NULL";
             Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
             return query.list();

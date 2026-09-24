@@ -137,9 +137,9 @@ public class QCControlLotServiceTest {
     }
 
     /**
-     * GAP-5: a second live lot with the same (lotNumber, testId, controlLevel) must
-     * be refused before insert — duplicate rows split the lot's statistics between
-     * two controlLotIds.
+     * A second live lot with the same (lotNumber, testId, controlLevel) must be
+     * refused before insert — duplicate rows split the lot's statistics between two
+     * controlLotIds.
      */
     @Test
     public void testCreateControlLot_DuplicateLiveLot_ShouldThrowAndNotInsert() {
@@ -166,7 +166,7 @@ public class QCControlLotServiceTest {
     }
 
     /**
-     * GAP-5: on update, the lot's own row is not a duplicate of itself.
+     * On update, the lot's own row is not a duplicate of itself.
      */
     @Test
     public void testUpdateControlLot_OnlyMatchIsItself_ShouldNotThrow() {
@@ -180,9 +180,10 @@ public class QCControlLotServiceTest {
         when(statisticsDAO.findLatestByControlLot("self-lot"))
                 .thenReturn(new org.openelisglobal.qc.valueholder.QCStatistics());
 
-        QCControlLot result = controlLotService.createControlLot(lot);
+        controlLotService.createControlLot(lot);
 
-        assertNotNull("Save must succeed when the only key match is the lot itself", result);
+        // The write going through is the claim; the returned lot is the one this
+        // test handed the stubbed DAO, so it says nothing.
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
     }
 

@@ -58,34 +58,27 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
     List<String> findDistinctInstrumentIds() throws LIMSRuntimeException;
 
     /**
-     * Get the most recent accepted (in-control) result for an instrument and test
-     * strictly before the given time. Bounds the affected-samples window when a
-     * violation auto-creates an NCE. At most one result is returned.
+     * Get the most recent accepted (in-control) result for a test strictly before
+     * the given time, in one of two scopes: an analyzer when {@code instrumentId}
+     * is given, or else the lab unit named by {@code testSectionId}, where only
+     * bench-entered runs count because a manual or RDT control has no analyzer to
+     * key on (OGC-1147). Bounds the affected-samples window when a violation
+     * auto-creates an NCE. At most one result is returned.
      */
-    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before)
+    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testSectionId, String testId, Timestamp before)
             throws LIMSRuntimeException;
 
     /**
-     * The bench counterpart of {@link #findLatestAcceptedBefore}: the most recent
-     * in-control MANUAL or RDT result for a test in a lab unit, strictly before the
-     * given time. Bounds the affected-analysis window for a failed bench control,
-     * which has no analyzer to key on (OGC-1147 FR-C1). At most one result.
-     */
-    List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before)
-            throws LIMSRuntimeException;
-
-    /**
-     * Bench QC activity for a window, grouped by lab unit and test (OGC-1147
-     * FR-D1). Returns {testSectionId, testId, source, totalRuns, failedRuns,
-     * lastRun}. A null {@code source} covers both MANUAL and RDT.
+     * Bench QC activity for a window, grouped by lab unit and test (OGC-1147).
+     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun}. A
+     * null {@code source} covers both MANUAL and RDT.
      */
     List<Object[]> summariseBenchQc(Timestamp startDate, Timestamp endDate, QCSource source)
             throws LIMSRuntimeException;
 
     /**
      * Flat list of bench control runs in a window, newest first, capped at
-     * {@code maxRows} (OGC-1147 FR-D5). A null {@code source} covers MANUAL and
-     * RDT.
+     * {@code maxRows} (OGC-1147). A null {@code source} covers MANUAL and RDT.
      */
     List<QCResult> findBenchResults(Timestamp startDate, Timestamp endDate, QCSource source, int maxRows)
             throws LIMSRuntimeException;

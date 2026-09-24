@@ -3,7 +3,7 @@ package org.openelisglobal.qa.service;
 import org.openelisglobal.qa.dto.QaOverviewSummary;
 
 /**
- * Aggregation service for the QA Overview page (OGC-694 WS-F).
+ * Aggregation service for the QA Overview page (OGC-694).
  */
 public interface QaOverviewService {
 

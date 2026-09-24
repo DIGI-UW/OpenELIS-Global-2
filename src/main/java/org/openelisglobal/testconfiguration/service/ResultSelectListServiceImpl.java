@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.commons.validator.GenericValidator;
+import org.hibernate.Hibernate;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -87,7 +89,9 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
         }
         for (String id : ids) {
             Dictionary dictionary = dictionaryService.getDictionaryById(id);
-            dictionaries.add(dictionary);
+            if (dictionary != null) {
+                dictionaries.add(dictionary);
+            }
         }
         return dictionaries;
     }
@@ -174,21 +178,44 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
     }
 
     @Override
+    public Localization getLocalizationForResultSelectOption(String id) {
+        Dictionary dictionary = GenericValidator.isBlankOrNull(id) ? null : dictionaryService.getDictionaryById(id);
+        Localization localization = dictionary != null ? dictionary.getLocalizedDictionaryName() : null;
+        Hibernate.initialize(localization);
+        return localization;
+    }
+
+    @Override
     public boolean renameOption(ResultSelectListRenameForm form, String currentUserId) {
         try {
             Dictionary dictionary = dictionaryService.getDictionaryById(form.getResultSelectOptionId());
 
             Localization localization = dictionary.getLocalizedDictionaryName();
-            if (localization == null) {
+            boolean isNewLocalization = localization == null;
+            if (isNewLocalization) {
                 localization = new Localization();
+                localization.setDescription("dictionary name");
             }
-            localization.setEnglish(form.getNameEnglish());
-            localization.setFrench(form.getNameFrench());
+            // A blank field means the screen is not renaming that language, so leave
+            // it as it stands rather than storing an empty translation.
+            if (!GenericValidator.isBlankOrNull(form.getNameEnglish())) {
+                localization.setLocalizedValue("en", form.getNameEnglish().trim());
+            }
+            if (!GenericValidator.isBlankOrNull(form.getNameFrench())) {
+                localization.setLocalizedValue("fr", form.getNameFrench().trim());
+            }
             localization.setSysUserId(currentUserId);
-            localizationService.save(localization);
+            localization = localizationService.save(localization);
 
-            dictionary.setDictEntry(form.getNameEnglish());
-            dictionary.setLocalAbbreviation(form.getNameEnglish());
+            if (isNewLocalization) {
+                // Without this the new row is an orphan: the option keeps its old
+                // displayed name however many times it is renamed.
+                dictionary.setLocalizedDictionaryName(localization);
+            }
+            if (!GenericValidator.isBlankOrNull(form.getNameEnglish())) {
+                dictionary.setDictEntry(form.getNameEnglish().trim());
+                dictionary.setLocalAbbreviation(form.getNameEnglish().trim());
+            }
             dictionary.setSysUserId(currentUserId);
             dictionaryService.save(dictionary);
             return true;

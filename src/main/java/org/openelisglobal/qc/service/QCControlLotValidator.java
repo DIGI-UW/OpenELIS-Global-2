@@ -41,12 +41,12 @@ public class QCControlLotValidator {
     }
 
     /**
-     * GAP-5: capture, statistics and charting all key on controlLotId, so two live
-     * rows for "the same" lot silently split its statistics between them. The
-     * uniqueness key is (lotNumber, testId, controlLevel): the same physical lot
-     * number legitimately recurs across different tests, and EXPIRED (retired) lots
-     * never block reuse. Mirrored by the partial unique index
-     * uq_qc_control_lot_active (qc-028) per the inversion-test convention.
+     * Capture, statistics and charting all key on controlLotId, so two live rows
+     * for "the same" lot silently split its statistics between them. The uniqueness
+     * key is (lotNumber, testId, controlLevel): the same physical lot number
+     * legitimately recurs across different tests, and EXPIRED (retired) lots never
+     * block reuse. Mirrored by the partial unique index uq_qc_control_lot_active
+     * (qc-028) per the inversion-test convention.
      */
     private void validateNoDuplicateLot(QCControlLot lot) {
         if (StringUtils.isBlank(lot.getLotNumber()) || StringUtils.isBlank(lot.getTestId())) {
@@ -66,10 +66,9 @@ public class QCControlLotValidator {
     /**
      * A bench lot has no analyzer, so nothing accumulates runs on its behalf:
      * INITIAL_RUNS and ROLLING both wait for enough results to establish statistics
-     * from, which is the 20-run establishment protocol OGC-1147 decision D3
-     * rejected for manual methods. Configured either way the lot would sit in
-     * ESTABLISHMENT forever and silently never plot, so refuse it at configuration
-     * time instead.
+     * from — a 20-run establishment protocol that manual methods deliberately do
+     * not use (OGC-1147). Configured either way the lot would sit in ESTABLISHMENT
+     * forever and silently never plot, so refuse it at configuration time instead.
      */
     private void validateBenchLotUsesFixedTargets(QCControlLot lot) {
         if (StringUtils.isNotBlank(lot.getInstrumentId())) {

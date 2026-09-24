@@ -1,12 +1,18 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
+import { StorageManagement } from "../../../fixtures/storage-management";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * Storage CRUD — Rooms.
  *
  * Rooms are the top of the storage hierarchy, so these flows are
- * self-seeding: each test creates its own room via the UI, then
+ * self-seeding: each test creates its own room through the UI, then
  * operates on that row. No fixture preconditions required.
+ *
+ * Creating and editing a location are both modals on the Storage Management
+ * dashboard now; the /Storage/rooms/new and /Storage/rooms/{id}/edit pages
+ * are gone.
  *
  * Selector strategy follows .specify/guides/playwright-best-practices.md:
  *   - getByRole / getByLabel first
@@ -28,71 +34,78 @@ function makeShortCode(prefix: string): string {
 }
 
 async function createRoom(page: Page, suffix: string) {
+  const storage = new StorageManagement(page);
   const roomName = `PW Room ${suffix}`;
   const roomCode = makeShortCode("PR");
 
-  await test.step(`create room "${roomName}"`, async () => {
-    await page.goto("/Storage/rooms/new", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/Storage\/rooms\/new/);
+  await test.step(`create room "${roomName}" from the Add Room modal`, async () => {
+    await storage.gotoLevel("rooms");
 
-    await page.getByLabel("Name", { exact: true }).fill(roomName);
-    await page.getByLabel("Code", { exact: true }).fill(roomCode);
-    await page.getByRole("button", { name: "Add" }).click();
+    const dialog = await storage.openAddModal("Add Room");
+    await dialog.getByLabel("Name", { exact: true }).fill(roomName);
+    await dialog.getByLabel("Code", { exact: true }).fill(roomCode);
+    await dialog.getByRole("button", { name: "Create", exact: true }).click();
 
+    await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
+    // The container refreshes the table in place rather than navigating.
     await expect(page).toHaveURL(/\/Storage\/rooms\?t=\d+/);
-    await expect(page.getByRole("heading", { name: "Rooms" })).toBeVisible();
-    await expect(page.locator("tbody tr", { hasText: roomName })).toBeVisible();
+    await storage.expectLevelSelected("rooms");
+    await expect(storage.row(roomName)).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
-  return { roomName, roomCode };
-}
-
-async function openRowActions(page: Page, rowText: string) {
-  const row = page.locator("tbody tr", { hasText: rowText });
-  await expect(row).toBeVisible();
-  const overflowMenu = row.locator(".cds--overflow-menu");
-  await expect(overflowMenu).toBeVisible();
-  await overflowMenu.click();
+  return { storage, roomName, roomCode };
 }
 
 test.describe("Storage CRUD — Rooms", () => {
   test("add room flow", async ({ page }) => {
     const suffix = Date.now().toString(36);
-    const { roomName } = await createRoom(page, suffix);
-    await expect(page.locator("tbody tr", { hasText: roomName })).toBeVisible();
+    const { storage, roomName } = await createRoom(page, suffix);
+    await expect(storage.row(roomName)).toBeVisible();
   });
 
   test("edit room flow via overflow menu", async ({ page }) => {
     const suffix = `${Date.now().toString(36)}-edit`;
-    const { roomName } = await createRoom(page, suffix);
+    const { storage, roomName } = await createRoom(page, suffix);
+    const renamedRoom = `${roomName} Renamed`;
 
-    await test.step("open edit page from overflow menu", async () => {
-      await page.goto("/Storage/rooms", { waitUntil: "domcontentloaded" });
-      await expect(page.getByRole("heading", { name: "Rooms" })).toBeVisible();
-      await openRowActions(page, roomName);
-      await page.getByRole("menuitem", { name: "Edit" }).click();
+    await test.step("edit modal opens preloaded with the row's values", async () => {
+      await storage.gotoLevel("rooms");
+      const dialog = await storage.openEditModal(roomName, "Edit Room");
+      const nameField = dialog.getByLabel("Name", { exact: true });
+      await expect(nameField).toHaveValue(roomName);
+
+      await nameField.fill(renamedRoom);
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
     });
 
-    await test.step("verify edit page rendered", async () => {
-      await expect(page).toHaveURL(/\/Storage\/rooms\/\d+\/edit/);
-      await expect(
-        page.getByRole("heading", { name: /edit\s+room/i }),
-      ).toBeVisible();
+    await test.step("the new name replaces the old one in the table", async () => {
+      // The container refreshes the table in place rather than navigating.
+      await expect(page).toHaveURL(/\/Storage\/rooms\?t=\d+/);
+      await expect(storage.row(renamedRoom)).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+    });
+
+    await test.step("the rename survives a reload, so it really persisted", async () => {
+      await storage.gotoLevel("rooms");
+      await expect(storage.row(renamedRoom)).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
     });
   });
 
   test("delete room flow with cascade summary", async ({ page }) => {
     const suffix = `${Date.now().toString(36)}-delete`;
-    const { roomName } = await createRoom(page, suffix);
+    const { storage, roomName } = await createRoom(page, suffix);
 
     await test.step("open delete confirm modal", async () => {
-      await page.goto("/Storage/rooms", { waitUntil: "domcontentloaded" });
-      await expect(page.getByRole("heading", { name: "Rooms" })).toBeVisible();
-      await openRowActions(page, roomName);
+      await storage.gotoLevel("rooms");
+      await storage.openRowActions(roomName);
       await page.getByRole("menuitem", { name: "Delete" }).click();
     });
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", { name: "Delete Room" });
 
     await test.step("confirm cascade summary renders and Delete is gated", async () => {
       await expect(dialog).toBeVisible();
@@ -111,10 +124,8 @@ test.describe("Storage CRUD — Rooms", () => {
     });
 
     await test.step("row removed from listing", async () => {
-      await expect(dialog).toBeHidden();
-      await expect(page.locator("tbody tr", { hasText: roomName })).toHaveCount(
-        0,
-      );
+      await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
+      await expect(storage.row(roomName)).toHaveCount(0);
     });
   });
 });

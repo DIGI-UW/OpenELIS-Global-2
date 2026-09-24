@@ -1,59 +1,52 @@
-import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
+import { toLocalIsoDate } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
+import { isoDaysFromToday, weekStart } from "../common/qaDates";
 
 /**
- * Shared data helpers for the QA Overview aggregators (OGC-694 WS-F).
+ * Shared data hooks for the QA Overview aggregators (OGC-694).
  *
- * Server aggregates (QC, EQA, audit, e-sig) come from one deduped fetch of
- * /rest/qa/overview/summary. NCE-derived counters reuse the nceOverview.js
- * fetch and are computed client-side — the dashboard payload already carries
- * every event's full history, so no new backend is needed for them.
+ * Every read goes through useServerData, so the slots that mount together —
+ * five tiles, the attention queue, the pillar chips, the inspector answers —
+ * share one request per endpoint instead of each firing their own. NCE-derived
+ * counters are computed client-side from that one dashboard payload, which
+ * already carries every event's full history.
  */
 
-/**
- * Dedupe a callback-style fetch: overview slots mounting together share one
- * request; the cache clears on settle (identity-guarded so the reset survives
- * synchronous callbacks) and a fresh mount refetches current data.
- */
-export const dedupedFetch = (run) => {
-  let inflight = null;
-  return (callback) => {
-    if (!inflight) {
-      const request = new Promise(run);
-      inflight = request;
-      request.then(() => {
-        if (inflight === request) {
-          inflight = null;
-        }
-      });
-    }
-    inflight.then(callback);
+export const OVERVIEW_SUMMARY_URL = "/rest/qa/overview/summary";
+
+export const useOverviewSummary = () => {
+  const query = useServerData(OVERVIEW_SUMMARY_URL);
+  return {
+    loading: query.isLoading,
+    summary: query.data?.week ? query.data : null,
   };
 };
 
-export const fetchOverviewSummary = dedupedFetch((resolve) => {
-  getFromOpenElisServer("/rest/qa/overview/summary", (data) =>
-    resolve(data && data.week ? data : null),
-  );
-});
-
-// D.2 accreditation portfolio summary (OGC-686): counts per status plus
+// Accreditation portfolio summary (OGC-686): counts per status plus
 // worstStatus, which is null when no non-inactive body exists.
-export const fetchAccreditationSummary = dedupedFetch((resolve) => {
-  getFromOpenElisServer("/rest/accreditation/summary", (data) =>
-    resolve(data && typeof data.totalBodies === "number" ? data : null),
-  );
-});
+export const useAccreditationSummary = () => {
+  const query = useServerData("/rest/accreditation/summary");
+  return {
+    loading: query.isLoading,
+    accreditation:
+      typeof query.data?.totalBodies === "number" ? query.data : null,
+  };
+};
 
-// C.4 critical-callback compliance summary for a window (OGC-714/715):
+// Critical-callback compliance summary for a window (OGC-714/715):
 // {enabled, criticalCount, confirmedCount, compliancePercent, target}. When
 // the CALLBACK indicator is disabled the response says enabled=false —
-// callers hide their surface (same cascade as the QI Dashboard tile).
-export const fetchCallbackSummary = (fromDate, toDate, callback) => {
-  getFromOpenElisServer(
-    `/rest/critical-callback/summary?fromDate=${fromDate}&toDate=${toDate}`,
-    (res) => callback(res ?? null),
+// callers hide their surface (same cascade as the QI Dashboard tile). Pass a
+// falsy window to hold the read until the caller knows which week to ask for.
+export const callbackSummaryUrl = (fromDate, toDate) =>
+  `/rest/critical-callback/summary?fromDate=${fromDate}&toDate=${toDate}`;
+
+export const useCallbackSummary = (fromDate, toDate) => {
+  const query = useServerData(
+    fromDate && toDate ? callbackSummaryUrl(fromDate, toDate) : null,
   );
+  return { loading: query.isLoading, callbacks: query.data ?? null };
 };
 
 // ---- Week window ----
@@ -61,23 +54,16 @@ export const fetchCallbackSummary = (fromDate, toDate, callback) => {
 // Local-Monday fallback, used only when the summary fetch yields no server
 // boundary; when the summary is available its week.weekStart/weekStartInstant
 // win so all This-Week counters share the server's window.
-export const weekStart = (now = new Date()) => {
-  const d = new Date(now);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+export { weekStart };
 
-const pad = (n) => String(n).padStart(2, "0");
-const isoDate = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-// ---- NCE weekly counters (over the nceOverview.fetchNceList payload) ----
+// ---- NCE weekly counters (over the nceOverview.useNceList payload) ----
 
 // reportDate is a plain yyyy-mm-dd string; compare as strings to avoid
 // UTC-midnight parsing skew at the Monday boundary.
-export const newNcesThisWeek = (list, weekStartDate = isoDate(weekStart())) =>
-  list.filter((nce) => nce.reportDate && nce.reportDate >= weekStartDate);
+export const newNcesThisWeek = (
+  list,
+  weekStartDate = toLocalIsoDate(weekStart()),
+) => list.filter((nce) => nce.reportDate && nce.reportDate >= weekStartDate);
 
 export const severityBreakdown = (list) => {
   const counts = { critical: 0, major: 0, minor: 0 };
@@ -109,9 +95,9 @@ export const ncesResolvedThisWeek = (
   weekStartMs = weekStart().getTime(),
 ) => list.filter((nce) => resolvedSince(nce, weekStartMs)).length;
 
-// ponytail: "CAPAs completed" is closed-count only (no effective/pending-review
-// split) until OGC-707 adds CAPA verification; a CAPA trail is any corrective
-// action or CAPA status mention in the event history.
+// "CAPAs completed" just counts closed CAPAs — no effectiveness check until
+// OGC-707 adds verification. A "CAPA trail" means the event history mentions
+// a corrective action or a CAPA status.
 const CAPA_RE = /capa|corrective/i;
 const hasCapaTrail = (nce) =>
   (nce.history || []).some(
@@ -142,43 +128,35 @@ export const nceActivityRows = (list, sinceMs) =>
       })),
   );
 
-// ---- TAT rollup for the QI pillar chip / inspector Q3 ----
+// ---- TAT rollup for the QI pillar chip / inspector Q3 / Today tile ----
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const TAT_WINDOW_DAYS = 30;
 
 const tatQuery = (from, to) =>
   `/rest/reports/tat/summary?fromDate=${from}&toDate=${to}` +
   `&segment=RECEIPT_TO_VALIDATION&calculationMode=CALENDAR&breakdownBy=LAB_UNIT`;
 
-export const fetchTatRollup = dedupedFetch((resolve) => {
-  const to = new Date();
-  const from = new Date(to.getTime() - TAT_WINDOW_DAYS * DAY_MS);
-  const priorTo = new Date(from.getTime() - DAY_MS);
-  const priorFrom = new Date(priorTo.getTime() - TAT_WINDOW_DAYS * DAY_MS);
-  let current;
-  let prior;
-  let pending = 2;
-  const finish = () => {
-    if (--pending > 0) return;
-    if (!current || !(current.totalCount > 0)) {
-      resolve(null);
-      return;
-    }
-    resolve({ mean: current.mean, ...tatDelta(current, prior) });
+/**
+ * Mean receipt-to-validation TAT over the last 30 days with its delta against
+ * the equal-length window before it. `tat` is null once loaded when the window
+ * has no completed runs at all.
+ */
+export const useTatRollup = () => {
+  const current = useServerData(
+    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(new Date())),
+  );
+  const prior = useServerData(
+    tatQuery(
+      isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
+      isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
+    ),
+  );
+  const loading = current.isLoading || prior.isLoading;
+  return {
+    loading,
+    tat:
+      !loading && current.data?.totalCount > 0
+        ? { mean: current.data.mean, ...tatDelta(current.data, prior.data) }
+        : null,
   };
-  getFromOpenElisServer(
-    tatQuery(toLocalIsoDate(from), toLocalIsoDate(to)),
-    (res) => {
-      current = res;
-      finish();
-    },
-  );
-  getFromOpenElisServer(
-    tatQuery(toLocalIsoDate(priorFrom), toLocalIsoDate(priorTo)),
-    (res) => {
-      prior = res;
-      finish();
-    },
-  );
-});
+};

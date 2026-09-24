@@ -66,10 +66,9 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
 
         // Seed default Westgard rule configs if none exist for this test+instrument.
         // Skipped for bench lots: westgard_rule_config is keyed (test_id,
-        // instrument_id)
-        // with instrument_id still NOT NULL, so there is nothing to key a bench config
-        // on. Consistent with D3 anyway — a manual method's limits come from the fixed
-        // manufacturer mean/SD, not from run-history rules.
+        // instrument_id) with instrument_id still NOT NULL, so there is nothing to
+        // key a bench config on. A manual method's limits come from the fixed
+        // manufacturer mean/SD anyway, not from run-history rules.
         if (persisted != null && StringUtils.isNotBlank(persisted.getInstrumentId())) {
             ensureRuleConfigsExist(persisted.getTestId(), persisted.getInstrumentId());
         }
