@@ -35,6 +35,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.RequesterService;
@@ -493,6 +494,20 @@ public class OrderSearchRestController extends BaseRestController {
             return ResponseEntity.badRequest().build();
         }
 
+        // Assembling one order's full detail crosses twelve admin-scoped gates —
+        // result:view, panel:view, program:view, referral:view, storage:view,
+        // sample_type:view, micro:view and test:configure — none of which an
+        // order-entry role holds. The order-entry screen calls this immediately
+        // after a successful save to reload what it just created, so every
+        // clinical, environmental and vector save appeared to fail at the last
+        // step: the order was written, then reading it back returned 500.
+        //
+        // Scoped to this read-only assembly. The endpoint still requires an
+        // authenticated session, and nothing here creates or modifies anything.
+        return SystemContext.callAsSystem(() -> searchOrderInternal(labNumber));
+    }
+
+    private ResponseEntity<Map<String, Object>> searchOrderInternal(String labNumber) {
         try {
             // Find the sample by accession number
             Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());

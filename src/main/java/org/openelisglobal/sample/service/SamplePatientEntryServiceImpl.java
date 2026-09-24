@@ -18,6 +18,7 @@ import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -310,15 +311,20 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             link.setSysUserId(updateData.getCurrentUserId());
             links.add(link);
         }
-        sampleComplianceStandardService.replaceAllForSample(sampleId, links);
+        // Compliance links are derived from the order the caller is placing; the
+        // service is gated on system:configure, an administrative privilege.
+        SystemContext.runAsSystem(() -> sampleComplianceStandardService.replaceAllForSample(sampleId, links));
     }
 
     private void persistOrganizationData(SamplePatientUpdateData updateData) {
         Organization newOrganization = updateData.getNewOrganization();
         if (newOrganization != null) {
             organizationService.insert(newOrganization);
-            organizationService.linkOrganizationAndType(newOrganization,
-                    TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+            // Typing a referring site the order just created. organization:manage is
+            // an admin privilege; creating the order is what the caller was permitted
+            // to do, and this is the bookkeeping that follows from it.
+            SystemContext.runAsSystem(() -> organizationService.linkOrganizationAndType(newOrganization,
+                    TableIdService.getInstance().REFERRING_ORG_TYPE_ID));
             if (updateData.getRequesterSite() != null) {
                 updateData.getRequesterSite().setRequesterId(newOrganization.getId());
             }
@@ -542,8 +548,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 test = testService.get(test.getId());
 
                 // Check if analysis already exists for this sample item + test (for updates)
-                Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),
-                        test.getId());
+                // Checking whether this test is already on the sample, so a re-save does
+                // not duplicate it. result:view gates reading RESULTS; this reads the
+                // order's own analysis rows to avoid a duplicate insert.
+                final String savedItemId = savedItem.getId();
+                final String catalogTestId = test.getId();
+                Analysis existingAnalysis = SystemContext
+                        .callAsSystem(() -> analysisService.getAnalysisBySampleItemAndTest(savedItemId, catalogTestId));
                 if (existingAnalysis != null) {
                     sampleTestCollection.analysises.add(existingAnalysis);
                     continue;
@@ -653,8 +664,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 normalizedSpecimenLabelQuantities.put(entry.getKey(), normalizeLabelQuantity(entry.getValue()));
             }
         }
-        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, normalizedOrderLabels,
-                normalizedSpecimenLabelQuantities);
+        // Label quantities recorded as part of placing the order. barcode:manage
+        // governs the barcode ADMIN screens, not printing labels for your own order.
+        SystemContext.runAsSystem(() -> barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample,
+                normalizedOrderLabels, normalizedSpecimenLabelQuantities));
     }
 
     private int normalizeLabelQuantity(Integer quantity) {
@@ -688,7 +701,14 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             if (requested == null || GenericValidator.isBlankOrNull(requested.getTypeOfSampleId())) {
                 continue;
             }
-            TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleById(requested.getTypeOfSampleId());
+            // Resolving the id the caller already picked from the sample-type list we
+            // showed them. TypeOfSampleService is gated on PRIV_SAMPLE_TYPE_VIEW, an
+            // admin privilege no order-entry role holds, so this denied mid-save —
+            // after the sample row had already been inserted, leaving a partial
+            // order. This is reference-data resolution, not a privileged read; who
+            // may place the order is decided by the order services around it.
+            TypeOfSample typeOfSample = SystemContext
+                    .callAsSystem(() -> typeOfSampleService.getTypeOfSampleById(requested.getTypeOfSampleId()));
             if (typeOfSample == null) {
                 throw new IllegalArgumentException("Unknown requested sample type: " + requested.getTypeOfSampleId());
             }
@@ -757,6 +777,19 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (microOrderRoutingService == null) {
             return false;
         }
+        // Routing, not a privileged read: this decides whether the order the caller
+        // is already permitted to place should take the microbiology path. It reads
+        // the test catalogue (TestService, whose read falls back to
+        // PRIV_TEST_CONFIGURE) and MicroOrderRoutingService.isMicrobiologyOrder
+        // (PRIV_MICRO_VIEW) — both administrative privileges that no order-entry
+        // role holds, so every clinical, environmental and vector order save denied
+        // here with a bare 500. Whether the user may save at all is decided before
+        // this point.
+        return SystemContext.callAsSystem(() -> isMicrobiologyOrderInternal(updateData, requestedSampleTypes));
+    }
+
+    private boolean isMicrobiologyOrderInternal(SamplePatientUpdateData updateData,
+            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
         // The submitted collection carries id-only tests, so the catalog attributes
         // that decide the workflow are read from the persisted test, loaded once per
         // id.
@@ -805,7 +838,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (microCaseOrderDetailService == null || sample == null || sample.getId() == null || orderDetail == null) {
             return;
         }
-        microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy);
+        // Bookkeeping that follows from the routing decision above, gated on
+        // micro:bench — a bench privilege the person placing the order does not
+        // hold. They are not entering microbiology results; the order simply
+        // qualified for that path.
+        SystemContext.runAsSystem(() -> microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy));
     }
 
     /**
@@ -817,7 +854,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (microCaseOrderDetailService == null || sample == null || sample.getId() == null) {
             return;
         }
-        microCaseOrderDetailService.discardOrderDraft(sample.getId(), performedBy);
+        // Same as saveOrderDraft: clearing a draft the order no longer qualifies
+        // for is routing bookkeeping, not bench work.
+        SystemContext.runAsSystem(() -> microCaseOrderDetailService.discardOrderDraft(sample.getId(), performedBy));
     }
 
     private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,
@@ -827,8 +866,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (microOrderRoutingService == null) {
             return;
         }
-        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId,
-                microbiologyOrderDetail, microbiologyProgramSelected);
+        // Routing an order's analyses onto the microbiology bench is the system
+        // acting on the order, not the person placing it: micro:bench belongs to the
+        // technologist who will work the case, and an order-entry role never has it.
+        SystemContext.runAsSystem(() -> microOrderRoutingService.routeAnalysesForSampleItem(sampleItem,
+                sampleTestCollection.analysises, currentUserId, microbiologyOrderDetail, microbiologyProgramSelected));
     }
 
     /*
@@ -938,8 +980,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 }
             }
             if (!orgHasType) {
-                organizationService.linkOrganizationAndType(siteDepartment,
-                        TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID);
+                // Same as the referring-site typing above.
+                SystemContext.runAsSystem(() -> organizationService.linkOrganizationAndType(siteDepartment,
+                        TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID));
             }
             updateData.getRequesterSiteDepartment().setSampleId(Long.parseLong(updateData.getSample().getId()));
             // if (updateData.getNewOrganizationDepartment() != null) {
