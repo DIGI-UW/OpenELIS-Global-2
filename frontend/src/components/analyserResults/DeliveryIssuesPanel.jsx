@@ -148,7 +148,11 @@ const DeliveryIssuesPanel = () => {
   }));
 
   return (
-    <Section data-testid="analyzer-delivery-issues">
+    <Section
+      level={3}
+      data-testid="analyzer-delivery-issues"
+      style={{ marginTop: "2rem" }}
+    >
       <Heading>
         {intl.formatMessage({ id: "analyzer.deliveryIssues.title" })}
       </Heading>
