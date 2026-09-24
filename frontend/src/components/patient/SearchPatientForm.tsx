@@ -558,7 +558,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
-          <TableContainer title="Patient Results" data-cy="patientResultsTable">
+          <TableContainer data-cy="patientResultsTable">
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
