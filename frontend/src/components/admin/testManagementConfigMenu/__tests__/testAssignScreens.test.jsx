@@ -67,6 +67,7 @@ describe.each(SCREENS)(
   ({ Screen, endPoint, listField, groupsField, selectId, sentGroupField }) => {
     let reload;
     let onServer;
+    const addNotification = vi.fn();
 
     // The grouped list arrives keyed by the group's printed id/value pair.
     const assignments = (groupName, tests) => ({
@@ -86,7 +87,7 @@ describe.each(SCREENS)(
                 value={{
                   notificationVisible: false,
                   setNotificationVisible: vi.fn(),
-                  addNotification: vi.fn(),
+                  addNotification,
                 }}
               >
                 <Screen />
@@ -108,6 +109,7 @@ describe.each(SCREENS)(
         url.startsWith(endPoint) ? callback(onServer) : callback(undefined),
       );
       postToOpenElisServerJsonResponse.mockReset();
+      addNotification.mockReset();
       reload = vi.fn();
       Object.defineProperty(window, "location", {
         configurable: true,
@@ -137,6 +139,48 @@ describe.each(SCREENS)(
         testId: "10",
         [sentGroupField]: "2",
       });
+    });
+
+    // OGC-1234 — a refusal arrives as an object carrying its HTTP status.
+    it("reports a refused move (500) as an error, never as saved", async () => {
+      renderScreen();
+      await pickGlucoseAndSerology();
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) =>
+          callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+      await waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({ kind: "error" }),
+        ),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+    });
+
+    it("reports a saved move with a save message, not a deactivated user", async () => {
+      renderScreen();
+      await pickGlucoseAndSerology();
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) => callback({}),
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+      await waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "success",
+            message: messages["save.success"],
+          }),
+        ),
+      );
     });
 
     it("reads the assignments again once the move is saved, without reloading", async () => {

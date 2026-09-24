@@ -59,6 +59,7 @@ const namesIn = (ul) =>
 
 describe("PanelTestAssign", () => {
   let reload;
+  const addNotification = vi.fn();
   let onServer;
 
   const renderScreen = () =>
@@ -70,7 +71,7 @@ describe("PanelTestAssign", () => {
               value={{
                 notificationVisible: false,
                 setNotificationVisible: vi.fn(),
-                addNotification: vi.fn(),
+                addNotification,
               }}
             >
               <PanelTestAssign />
@@ -106,6 +107,7 @@ describe("PanelTestAssign", () => {
       return callback(undefined);
     });
     postToOpenElisServerJsonResponse.mockReset();
+    addNotification.mockReset();
     reload = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -188,5 +190,43 @@ describe("PanelTestAssign", () => {
 
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  // OGC-1234 — a refusal arrives as an object carrying its HTTP status.
+  it("reports a refused move (500) as an error, never as saved", async () => {
+    await pickRenal();
+    await moveUreaToAssigned();
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+  });
+
+  it("reports a saved move with a save message, not a deactivated user", async () => {
+    await pickRenal();
+    await moveUreaToAssigned();
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback({}),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: messages["save.success"],
+        }),
+      ),
+    );
   });
 });

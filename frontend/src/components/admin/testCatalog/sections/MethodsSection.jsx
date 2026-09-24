@@ -25,17 +25,9 @@ import {
   deleteFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { requestFailed } from "../../../utils/requestOutcome";
 
 const CODE_REGEX = /^[A-Z0-9]{3,10}$/;
-
-/**
- * OGC-1234 — postToOpenElisServerJsonResponse never hands its callback a falsy
- * value: a refusal arrives as an object carrying the HTTP status (0 for a
- * network failure). A success body is a DTO or a list, which has no status.
- */
-const requestFailed = (res) =>
-  !res ||
-  (typeof res.status === "number" && (res.status === 0 || res.status >= 400));
 
 const failureMessageKey = (res, conflictKey) => {
   const status = res && res.status;
@@ -386,6 +378,7 @@ export default function MethodsSection({ testId }) {
               id: "admin.testCatalog.methods.inline.nameEnglish",
             })}
             value={createNameEn}
+            maxLength={20}
             onChange={(e) => setCreateNameEn(e.target.value)}
           />
           <TextInput

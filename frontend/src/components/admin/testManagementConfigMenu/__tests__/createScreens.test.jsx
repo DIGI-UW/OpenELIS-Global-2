@@ -256,3 +256,105 @@ describe("SampleTypeCreate refusal", () => {
     expect(document.getElementById("eng")).toHaveValue("QA<b>RV</b>");
   });
 });
+
+/**
+ * OGC-1234 — a refusal arrives as an object carrying its HTTP status, never as
+ * a falsy value; every create screen reports it as an error, not as a create.
+ */
+describe.each(SCREENS)("$name refusal", ({ Screen, endPoint, read, fill }) => {
+  it("reports a refused create (500) as an error, never as created", async () => {
+    const addNotification = vi.fn();
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      url.startsWith(endPoint)
+        ? callback(read(["Blood"]))
+        : callback(undefined),
+    );
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification,
+              }}
+            >
+              <Screen />
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Blood")).toBeInTheDocument();
+
+    await fill();
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+    expect(document.getElementById("eng")).toHaveValue("Serum");
+  });
+});
+
+describe("SampleTypeCreate success", () => {
+  it("reports a created sample type as such, not as a deactivated user", async () => {
+    const addNotification = vi.fn();
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({
+        existingSampleTypeList: [{ value: "Blood" }],
+        inactiveSampleTypeList: [],
+      }),
+    );
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback({ sampleTypeEnglishName: "Serum" }),
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification,
+              }}
+            >
+              <SampleTypeCreate />
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Blood")).toBeInTheDocument();
+
+    await type("eng", "Serum");
+    await type("fr", "Serum FR");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: messages["message.sampleType.add.success"],
+        }),
+      ),
+    );
+  });
+});

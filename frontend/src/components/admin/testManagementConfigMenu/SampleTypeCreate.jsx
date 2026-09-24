@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -70,17 +71,13 @@ function SampleTypeCreate() {
   };
 
   const handlePostSampleTypeCreateListCallBack = (res, actions) => {
-    const failed =
-      !res ||
-      (typeof res.status === "number" &&
-        (res.status === 0 || res.status >= 400));
-    if (!failed) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.delete.success",
+          id: "message.sampleType.add.success",
         }),
         kind: NotificationKinds.success,
       });

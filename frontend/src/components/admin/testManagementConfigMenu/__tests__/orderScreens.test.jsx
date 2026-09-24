@@ -241,3 +241,91 @@ describe.each(SCREENS)("$name", ({ Screen, endPoint, listField }) => {
     ]);
   });
 });
+
+/**
+ * OGC-1234 — a refusal reaches the callback as an object carrying its HTTP
+ * status, never as a falsy value; the screens used to read it as a save.
+ */
+describe.each(SCREENS)(
+  "$name save outcome",
+  ({ Screen, endPoint, listField }) => {
+    const addNotification = vi.fn();
+    const renderScreen = () =>
+      render(
+        <MemoryRouter>
+          <IntlProvider locale="en" messages={messages}>
+            <QueryClientProvider client={createQueryClient()}>
+              <NotificationContext.Provider
+                value={{
+                  notificationVisible: false,
+                  setNotificationVisible: vi.fn(),
+                  addNotification,
+                }}
+              >
+                <Screen />
+              </NotificationContext.Provider>
+            </QueryClientProvider>
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+
+    beforeEach(() => {
+      addNotification.mockReset();
+      getFromOpenElisServer.mockReset();
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        url.startsWith(endPoint)
+          ? callback({
+              [listField]: ["Chemistry", "Haematology"].map((name, index) => ({
+                id: String(index + 1),
+                value: name,
+                sortOrder: index,
+              })),
+            })
+          : callback(undefined),
+      );
+      postToOpenElisServerJsonResponse.mockReset();
+    });
+
+    const saveReorder = async () => {
+      renderScreen();
+      expect(await screen.findByText("Chemistry")).toBeInTheDocument();
+      dragFirstOntoSecond();
+      await userEvent.click(screen.getByRole("button", { name: "Next" }));
+      await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+    };
+
+    it("reports a refused save (500) as an error and keeps the pending order", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) =>
+          callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+      );
+      await saveReorder();
+
+      await waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({ kind: "error" }),
+        ),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(shownOrder()).toEqual(["Haematology", "Chemistry"]);
+    });
+
+    it("reports a saved order with a save message, not a deactivated user", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, callback) => callback({}),
+      );
+      await saveReorder();
+
+      await waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "success",
+            message: messages["save.success"],
+          }),
+        ),
+      );
+    });
+  },
+);

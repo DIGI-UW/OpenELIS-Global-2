@@ -10,6 +10,7 @@ import {
   Modal,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -93,7 +94,7 @@ function ResultSelectListAdd() {
   }, [loincCode]);
 
   const handlePostResultSelectListCallBack = (res) => {
-    if (res) {
+    if (!requestFailed(res)) {
       if (res?.tests && res?.testDictionary) {
         setResultTestsList(res?.tests);
         setResultTestsDirectory(res?.testDictionary);
@@ -128,7 +129,7 @@ function ResultSelectListAdd() {
   };
 
   const handlePostSaveResultSelectListCallBack = (res) => {
-    if (res) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
