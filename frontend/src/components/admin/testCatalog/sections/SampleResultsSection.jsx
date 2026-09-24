@@ -33,20 +33,35 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 
 /**
- * OGC-1234 — the source test's components as unsaved rows of this test. Ids
- * are dropped so the save inserts them (or reuses this test's row with the
- * same code) and soft-deletes every current component, option and
- * interpretation that the source does not have: Copy replaces, it never
- * merges.
+ * OGC-1234 — the source test's components as unsaved rows of this test. Copy
+ * replaces, it never merges: the save inserts what the source has and
+ * soft-deletes every current component, option and interpretation it does
+ * not. A source option whose value this test's component (same code) already
+ * offers keeps that option's id, so the save updates the row in place instead
+ * of leaving an inactive twin that result lookups by value can still match.
  */
-const stageCopiedComponents = (sourceComponents) =>
-  sourceComponents.map(({ id: _id, ...component }) => ({
-    ...component,
-    options: (component.options || []).map(({ id: _id, ...option }) => option),
-    interpretations: (component.interpretations || []).map(
-      ({ id: _id, ...interpretation }) => interpretation,
-    ),
-  }));
+const stageCopiedComponents = (sourceComponents, currentComponents) =>
+  sourceComponents.map(({ id: _id, ...component }) => {
+    const current = (currentComponents || []).find(
+      (c) => c.code === component.code,
+    );
+    const currentOptionIds = new Map(
+      ((current && current.options) || [])
+        .filter((o) => o.id)
+        .map((o) => [o.value, o.id]),
+    );
+    return {
+      ...component,
+      options: (component.options || []).map(({ id: _id, ...option }) =>
+        currentOptionIds.has(option.value)
+          ? { ...option, id: currentOptionIds.get(option.value) }
+          : option,
+      ),
+      interpretations: (component.interpretations || []).map(
+        ({ id: _id, ...interpretation }) => interpretation,
+      ),
+    };
+  });
 
 /**
  * OGC-949 M5 / OGC-749 — Sample & Results section.
@@ -703,7 +718,9 @@ const SampleResultsSection = ({ testId }) => {
           );
           return;
         }
-        setComponents(stageCopiedComponents(res.components));
+        setComponents((current) =>
+          stageCopiedComponents(res.components, current),
+        );
         setAdvancedTypesOpen({});
         setOptionSearch({});
         setUnitForm(null);

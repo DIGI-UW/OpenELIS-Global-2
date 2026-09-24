@@ -881,6 +881,39 @@ describe("SampleResultsSection", () => {
       ).toBeInTheDocument();
     });
 
+    it("an option value this test already has keeps its id, so the save updates it instead of leaving an inactive twin", async () => {
+      mockServer({
+        testId: "9",
+        components: [
+          {
+            id: "S9",
+            code: "SYS",
+            label: "Systolic source",
+            displayOrder: 1,
+            resultType: "D",
+            options: [
+              { id: "SO9", value: "Male", sortOrder: 1 },
+              { id: "SO10", value: "Female", sortOrder: 2 },
+            ],
+            interpretations: [],
+          },
+        ],
+      });
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+      fireEvent.click(saveButton());
+
+      const [staged] = savedPayload().components;
+      expect(staged.id).toBeUndefined();
+      expect(staged.options).toEqual([
+        expect.objectContaining({ id: "O1", value: "Male" }),
+        expect.not.objectContaining({ id: expect.anything() }),
+      ]);
+      expect(staged.options[1].value).toBe("Female");
+    });
+
     it("discarding the staged copy reloads this test's own configuration", async () => {
       mockServer(SOURCE);
       const { container } = await renderWithNotifications();
