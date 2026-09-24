@@ -210,7 +210,7 @@ function PathologyDashboard() {
         ? "IN_PROGRESS"
         : filters.statuses.length > 1
           ? "All"
-          : filters.statuses[0].id;
+          : filters.statuses[0]?.id || "IN_PROGRESS";
 
     return selectedValue;
   };

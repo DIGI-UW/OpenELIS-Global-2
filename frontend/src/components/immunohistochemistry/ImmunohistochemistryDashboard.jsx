@@ -388,7 +388,9 @@ function ImmunohistochemistryDashboard() {
                     id: "label.filters.status",
                   })}
                   value={
-                    filters.statuses.length > 1 ? "All" : filters.statuses[0].id
+                    filters.statuses.length > 1
+                      ? "All"
+                      : filters.statuses[0]?.id || "IN_PROGRESS"
                   }
                   onChange={setStatusFilter}
                   noLabel
