@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +20,10 @@ import org.springframework.stereotype.Service;
 public class BridgeOutboxClient {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
-    private static final int LIST_LIMIT = 200;
+    // The Bridge caps one page at 1000 rows; MAX_PAGES bounds the loop if a
+    // Bridge ever ignores the offset and keeps returning full pages.
+    private static final int PAGE_SIZE = 1000;
+    private static final int MAX_PAGES = 10;
     // Bridge receipt IDs look like recv-v1:<sha256>; anything else that could
     // change the request path is refused.
     private static final Pattern ENTRY_ID = Pattern.compile("^[A-Za-z0-9_:-]+$");
@@ -34,9 +38,18 @@ public class BridgeOutboxClient {
     }
 
     public List<JsonNode> list(String state) {
-        JsonNode body = send("GET", outboxUrl() + "?state=" + state + "&limit=" + LIST_LIMIT);
         List<JsonNode> rows = new ArrayList<>();
-        body.path("rows").forEach(rows::add);
+        for (int page = 0; page < MAX_PAGES; page++) {
+            JsonNode body = send("GET",
+                    outboxUrl() + "?state=" + state + "&limit=" + PAGE_SIZE + "&offset=" + page * PAGE_SIZE);
+            JsonNode pageRows = body.path("rows");
+            pageRows.forEach(rows::add);
+            if (pageRows.size() < PAGE_SIZE) {
+                return rows;
+            }
+        }
+        LogEvent.logWarn(getClass().getSimpleName(), "list",
+                "Stopped reading the Bridge outbox for state " + state + " after " + MAX_PAGES * PAGE_SIZE + " rows");
         return rows;
     }
 

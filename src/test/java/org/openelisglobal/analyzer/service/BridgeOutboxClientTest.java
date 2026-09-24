@@ -35,9 +35,9 @@ public class BridgeOutboxClientTest {
 
     @Test
     public void listsOneOutboxStateWithTheBridgeFilter() throws Exception {
-        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=200"), eq(TIMEOUT)))
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, """
-                        {"limit":200,"offset":0,"count":1,"rows":[{"id":"ob-1","state":"DMQ","connectionId":"conn-7",
+                        {"limit":1000,"offset":0,"count":1,"rows":[{"id":"ob-1","state":"DMQ","connectionId":"conn-7",
                         "failureReason":"OE_REJECTED","lastHttpStatus":422,"attempts":5}]}"""));
 
         List<JsonNode> rows = client.list("DMQ");
@@ -45,6 +45,40 @@ public class BridgeOutboxClientTest {
         assertEquals(1, rows.size());
         assertEquals("ob-1", rows.get(0).path("id").asText());
         assertEquals("OE_REJECTED", rows.get(0).path("failureReason").asText());
+    }
+
+    @Test
+    public void readsEveryPageOfALargeBacklog() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
+                .thenReturn(page(0, 1000));
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=1000"), eq(TIMEOUT)))
+                .thenReturn(page(1000, 3));
+
+        List<JsonNode> rows = client.list("DMQ");
+
+        assertEquals(1003, rows.size());
+        assertEquals("ob-1002", rows.get(1002).path("id").asText());
+    }
+
+    @Test
+    public void stopsPagingWhenTheBridgeIgnoresTheOffset() throws Exception {
+        when(httpClient.get(org.mockito.ArgumentMatchers.startsWith(BASE_URL + "/admin/outbox?state=DMQ&limit=1000"),
+                eq(TIMEOUT))).thenReturn(page(0, 1000));
+
+        List<JsonNode> rows = client.list("DMQ");
+
+        assertEquals(10_000, rows.size());
+        verify(httpClient, org.mockito.Mockito.times(10)).get(
+                org.mockito.ArgumentMatchers.startsWith(BASE_URL + "/admin/outbox?state=DMQ"), eq(TIMEOUT));
+    }
+
+    private static BridgeHttpClient.BridgeResponse page(int firstId, int size) {
+        StringBuilder rows = new StringBuilder();
+        for (int index = 0; index < size; index++) {
+            rows.append(index == 0 ? "" : ",").append("{\"id\":\"ob-").append(firstId + index)
+                    .append("\",\"state\":\"DMQ\"}");
+        }
+        return new BridgeHttpClient.BridgeResponse(200, "{\"rows\":[" + rows + "]}");
     }
 
     @Test
@@ -77,7 +111,7 @@ public class BridgeOutboxClientTest {
 
     @Test
     public void reportsAnUnreachableBridge() throws Exception {
-        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=RETRYING&limit=200"), eq(TIMEOUT)))
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=RETRYING&limit=1000&offset=0"), eq(TIMEOUT)))
                 .thenThrow(new IOException("Connection refused"));
 
         BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
