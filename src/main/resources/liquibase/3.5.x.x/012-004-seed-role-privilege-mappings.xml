@@ -291,6 +291,18 @@
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
             WHERE r.name = 'Cytopathologist' AND p.name = 'order:view'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            -- Cytology sign-off runs on result:pathology-sign-off. CytologySampleService
+            -- gates assignTechnician and assignCytoPathologist on
+            -- PRIV_RESULT_PATHOLOGY_SIGN_OFF, so without this grant a Cytopathologist
+            -- is denied their own core action while a Pathologist can perform it.
+            -- One privilege spans both disciplines; the earlier
+            -- result:cytopathology-sign-off was seeded and granted but never enforced
+            -- anywhere, so it was removed rather than wired up as a second gate.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:pathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== REPORTS ==================== -->

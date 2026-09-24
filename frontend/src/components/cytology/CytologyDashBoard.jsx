@@ -136,7 +136,7 @@ function CytologyDashboard() {
       cell.info.header === "assignedCytoPathologist" &&
       !cell.value &&
       status === "READY_FOR_CYTOPATHOLOGIST" &&
-      hasPrivilege(userSessionDetails, Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF)
+      hasPrivilege(userSessionDetails, Privileges.RESULT_PATHOLOGY_SIGN_OFF)
     ) {
       return (
         <TableCell key={cell.id}>

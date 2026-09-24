@@ -317,10 +317,7 @@ function CytologyCaseView() {
 
   const setInitialPathologySampleInfo = (e) => {
     if (
-      hasPrivilege(
-        userSessionDetails,
-        Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF,
-      ) &&
+      hasPrivilege(userSessionDetails, Privileges.RESULT_PATHOLOGY_SIGN_OFF) &&
       !e.assignedPathologistId &&
       e.status === "READY_FOR_CYTOPATHOLOGIST"
     ) {
@@ -941,7 +938,7 @@ function CytologyCaseView() {
         <Column lg={16} md={8} sm={4}></Column>
         {hasPrivilege(
           userSessionDetails,
-          Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF,
+          Privileges.RESULT_PATHOLOGY_SIGN_OFF,
         ) &&
           initialMount && (
             <>
