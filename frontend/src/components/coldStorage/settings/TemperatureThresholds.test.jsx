@@ -14,11 +14,21 @@ vi.mock("../api", () => ({
   updateDeviceThresholds: vi.fn(),
 }));
 
+// The component now authorises on coldstorage:manage rather than on a role name, so the
+// harness derives the privilege the way the backend does: an admin session
+// carries it, other roles do not. Test bodies keep naming roles because that is
+// how a reader thinks about "admin vs Reception".
+const ADMIN_PRIVILEGES = ["coldstorage:manage"];
+const privilegesFor = (roles = []) =>
+  roles.includes("Global Administrator") ? ADMIN_PRIVILEGES : [];
+
 const renderFor = (roles) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <UserSessionDetailsContext.Provider
-        value={{ userSessionDetails: { roles } }}
+        value={{
+          userSessionDetails: { roles, privileges: privilegesFor(roles) },
+        }}
       >
         <NotificationContext.Provider
           value={{

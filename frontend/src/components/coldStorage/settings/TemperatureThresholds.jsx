@@ -17,7 +17,7 @@ import {
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../../utils/Utils";
+import { hasPrivilege, Privileges } from "../../utils/Utils";
 
 function TemperatureThresholds() {
   const intl = useIntl();
@@ -26,7 +26,10 @@ function TemperatureThresholds() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // PUT /devices/{id}/thresholds requires ADMIN, so a non-admin who clicks
   // Save gets a failed request back.
-  const canManageThresholds = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const canManageThresholds = hasPrivilege(
+    userSessionDetails,
+    Privileges.COLDSTORAGE_MANAGE,
+  );
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);

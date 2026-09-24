@@ -27,7 +27,7 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import { storageLevel } from "../storageLevels";
-import { hasRole, Roles } from "../../utils/Utils";
+import { hasPrivilege, Privileges } from "../../utils/Utils";
 
 /**
  * StorageResourcePage — shared shell for the five per-resource storage
@@ -53,7 +53,10 @@ export default function StorageResourcePage({
   const history = useHistory();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isGlobalAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const isGlobalAdmin = hasPrivilege(
+    userSessionDetails,
+    Privileges.STORAGE_MANAGE,
+  );
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 

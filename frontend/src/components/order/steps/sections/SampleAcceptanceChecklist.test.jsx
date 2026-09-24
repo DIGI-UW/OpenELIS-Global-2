@@ -17,7 +17,13 @@ const { apiMock, notificationMock, sessionValue } = vi.hoisted(() => ({
     addNotification: undefined,
     setNotificationVisible: undefined,
   },
-  sessionValue: { userSessionDetails: { roles: ["Reception"] } },
+  sessionValue: {
+    userSessionDetails: {
+      roles: ["Reception"],
+      // canResample now follows order:edit rather than a role list.
+      privileges: ["order:edit"],
+    },
+  },
 }));
 
 vi.mock("../../api/sampleAcceptanceApi", () => ({
@@ -115,7 +121,10 @@ beforeEach(() => {
   apiMock.resampleSample = vi.fn();
   notificationMock.addNotification = vi.fn();
   notificationMock.setNotificationVisible = vi.fn();
-  sessionValue.userSessionDetails = { roles: ["Reception"] };
+  sessionValue.userSessionDetails = {
+    roles: ["Reception"],
+    privileges: ["order:edit"],
+  };
 });
 
 describe("SampleAcceptanceChecklist", () => {
@@ -225,8 +234,9 @@ describe("SampleAcceptanceChecklist", () => {
     ).toBeInTheDocument();
   });
 
-  test("hides Resample when the user lacks an authorising role", async () => {
-    sessionValue.userSessionDetails = { roles: ["Reports"] };
+  test("hides Resample when the user lacks the authorising privilege", async () => {
+    // Reports holds no order:edit, so Resample must not be offered.
+    sessionValue.userSessionDetails = { roles: ["Reports"], privileges: [] };
     renderChecklist();
     await screen.findByText("Container intact");
     expect(

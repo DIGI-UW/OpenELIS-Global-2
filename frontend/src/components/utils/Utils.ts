@@ -686,6 +686,9 @@ export const Privileges = {
   RESULT_MODIFY: "result:modify",
   RESULT_VALIDATE: "result:validate",
   RESULT_PATHOLOGY_SIGN_OFF: "result:pathology-sign-off",
+  MICRO_VIEW: "micro:view",
+  MICRO_BENCH: "micro:bench",
+  MICRO_SUPERVISE: "micro:supervise",
   PATIENT_VIEW: "patient:view",
   PATIENT_CREATE: "patient:create",
   PATIENT_EDIT: "patient:edit",
@@ -775,6 +778,20 @@ export const hasPrivilege = (userSessionDetails, ...privileges) => {
  * SecureRoute grants access when the user holds the role OR its equivalent
  * privilege, so a Validation user (whose seeded set includes result:enter)
  * reaches Results pages without an explicit Results role assignment.
+ */
+/**
+ * Bridges a role name to the privilege that means the same capability.
+ *
+ * <p>App.jsx no longer guards any route on a role — all 85 role guards were
+ * converted to {@code privilege={Privileges.X}}, so nothing in the routing table
+ * depends on this map any more. It is kept because {@code computeRouteAccess}
+ * still accepts a {@code role} prop, so a caller passing one (including an
+ * external or future component) keeps working and keeps admitting
+ * privilege-holders rather than only exact role-name matches.
+ *
+ * <p>This is a compatibility shim, not part of the access model. Once nothing
+ * passes {@code role} at all, it and the {@code role} branch of
+ * computeRouteAccess can both go.
  */
 export const RoleEquivalentPrivileges = {
   Reception: [Privileges.ORDER_CREATE],

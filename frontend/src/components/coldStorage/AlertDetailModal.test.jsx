@@ -61,7 +61,12 @@ describe("AlertDetailModal delete confirmation", () => {
   const renderAsAdmin = () =>
     render(
       <UserSessionDetailsContext.Provider
-        value={{ userSessionDetails: { roles: [Roles.GLOBAL_ADMIN] } }}
+        value={{
+          userSessionDetails: {
+            roles: [Roles.GLOBAL_ADMIN],
+            privileges: ["coldstorage:manage"],
+          },
+        }}
       >
         <IntlProvider locale="en" messages={messages}>
           <AlertDetailModal alertId={7} open onClose={vi.fn()} />

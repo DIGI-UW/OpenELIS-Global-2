@@ -34,12 +34,15 @@ import {
 } from "./api";
 import { getActionTypes } from "./CorrectiveActions";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../utils/Utils";
+import { hasPrivilege, Privileges } from "../utils/Utils";
 import { formatDateTime as formatIsoDateTime } from "./shared/timeUtils";
 
 const AlertDetailModal = ({ intl, alertId, open, onClose }) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isAdminUser = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const isAdminUser = hasPrivilege(
+    userSessionDetails,
+    Privileges.COLDSTORAGE_MANAGE,
+  );
   const correctiveActionTypes = useMemo(() => getActionTypes(intl), [intl]);
   const [alert, setAlert] = useState(null);
   const [loading, setLoading] = useState(false);

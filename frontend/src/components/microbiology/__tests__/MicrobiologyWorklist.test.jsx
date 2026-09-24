@@ -14,7 +14,11 @@ const now = new Date(2026, 7, 4, 12, 0, 0);
 const renderWorklist = (
   service,
   initialEntry = "/Microbiology/worklist",
-  userSessionDetails = { roles: ["Global Administrator"] },
+  userSessionDetails = {
+    roles: ["Global Administrator"],
+    // WHONET export follows micro:view, which is what the dataset services gate on.
+    privileges: ["micro:view"],
+  },
 ) =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>

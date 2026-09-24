@@ -27,12 +27,24 @@ const notifyCtx = {
   addNotification: vi.fn(),
 };
 
+// StorageResourcePage now authorises on storage:manage rather than on the
+// Global Administrator role, so the harness derives it the way the backend
+// does. Test bodies still name roles, which is how the cases read.
+const privilegesFor = (roles = []) =>
+  roles.includes("Global Administrator") ? ["storage:manage"] : [];
+
 const renderPage = (roles = ["Global Administrator"]) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <NotificationContext.Provider value={notifyCtx}>
         <UserSessionDetailsContext.Provider
-          value={{ userSessionDetails: { roles }, logout: vi.fn() }}
+          value={{
+            userSessionDetails: {
+              roles,
+              privileges: privilegesFor(roles),
+            },
+            logout: vi.fn(),
+          }}
         >
           <MemoryRouter initialEntries={["/Storage/racks"]}>
             <RacksPage />

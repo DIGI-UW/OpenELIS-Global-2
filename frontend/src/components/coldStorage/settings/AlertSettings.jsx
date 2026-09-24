@@ -33,7 +33,7 @@ import {
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../../utils/Utils";
+import { hasPrivilege, Privileges } from "../../utils/Utils";
 
 // Map UI alert types to backend NotificationNature enum values
 const getAlertTypes = (intl) => [
@@ -70,7 +70,10 @@ function AlertSettings() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // AlertNotificationConfigRestController is ADMIN-only at class level, so a
   // non-admin who clicks Save gets a failed request back.
-  const canManageAlertConfig = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const canManageAlertConfig = hasPrivilege(
+    userSessionDetails,
+    Privileges.COLDSTORAGE_MANAGE,
+  );
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
