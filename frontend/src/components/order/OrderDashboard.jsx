@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import { useHistory } from "react-router-dom";
 import { useWorkflowPrefix } from "./OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
@@ -81,7 +87,7 @@ const OrderDashboardContent = () => {
   const [dateRange, setDateRange] = useState({ start: null, end: null });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
-  const [totalItems, setTotalItems] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
   const isEnvOrVector = workflow === "environmental" || workflow === "vector";
@@ -97,8 +103,12 @@ const OrderDashboardContent = () => {
     { label: workflowLabel, link: workflowPrefix },
   ];
 
+  // Identifies the load in flight, so a superseded response is dropped.
+  const latestRequest = useRef(0);
+
   // Fetch orders
   const fetchOrders = useCallback(() => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
 
     const params = new URLSearchParams({
@@ -121,10 +131,14 @@ const OrderDashboardContent = () => {
       params.append("endDate", toLocalIso(new Date(dateRange.end)));
 
     getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) => {
+      if (requestId !== latestRequest.current) {
+        return;
+      }
       setIsLoading(false);
       if (response) {
-        setOrders(response.orders || []);
-        setTotalItems(response.totalCount || 0);
+        const pageOrders = response.orders || [];
+        setOrders(pageOrders);
+        setHasMore(pageOrders.length > 0);
       }
     });
   }, [page, pageSize, searchQuery, statusFilter, priorityFilter, dateRange]);
@@ -132,6 +146,12 @@ const OrderDashboardContent = () => {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  /** A narrowed list is shorter, so a filter change starts again from page 1. */
+  const applyFilter = (setFilter) => (value) => {
+    setFilter(value);
+    setPage(1);
+  };
 
   // Handlers
   const handleNewOrder = () => {
@@ -455,7 +475,7 @@ const OrderDashboardContent = () => {
                 itemToString={(item) => item?.label || ""}
                 selectedItem={STATUS_OPTIONS.find((s) => s.id === statusFilter)}
                 onChange={({ selectedItem }) =>
-                  setStatusFilter(selectedItem?.id || "all")
+                  applyFilter(setStatusFilter)(selectedItem?.id || "all")
                 }
               />
             </div>
@@ -473,7 +493,7 @@ const OrderDashboardContent = () => {
                   (p) => p.id === priorityFilter,
                 )}
                 onChange={({ selectedItem }) =>
-                  setPriorityFilter(selectedItem?.id || "all")
+                  applyFilter(setPriorityFilter)(selectedItem?.id || "all")
                 }
               />
             </div>
@@ -481,7 +501,10 @@ const OrderDashboardContent = () => {
               <DatePicker
                 datePickerType="single"
                 onChange={(dates) =>
-                  setDateRange((prev) => ({ ...prev, start: dates[0] }))
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    start: dates[0],
+                  }))
                 }
               >
                 <DatePickerInput
@@ -499,7 +522,10 @@ const OrderDashboardContent = () => {
               <DatePicker
                 datePickerType="single"
                 onChange={(dates) =>
-                  setDateRange((prev) => ({ ...prev, end: dates[0] }))
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    end: dates[0],
+                  }))
                 }
               >
                 <DatePickerInput
@@ -545,7 +571,7 @@ const OrderDashboardContent = () => {
                       )}
                       onChange={(e) => {
                         onInputChange(e);
-                        setSearchQuery(e.target.value);
+                        applyFilter(setSearchQuery)(e.target.value);
                       }}
                     />
                   </TableToolbarContent>
@@ -610,7 +636,21 @@ const OrderDashboardContent = () => {
 
           {/* Pagination (DSH-9) */}
           <Pagination
-            totalItems={totalItems}
+            pagesUnknown
+            isLastPage={!hasMore}
+            totalItems={(page - 1) * pageSize + orders.length}
+            itemText={() =>
+              intl.formatMessage(
+                { id: "pagination.items-on-page" },
+                { count: orders.length },
+              )
+            }
+            itemRangeText={() =>
+              intl.formatMessage(
+                { id: "pagination.items-on-page" },
+                { count: orders.length },
+              )
+            }
             pageSize={pageSize}
             pageSizes={PAGE_SIZES}
             page={page}

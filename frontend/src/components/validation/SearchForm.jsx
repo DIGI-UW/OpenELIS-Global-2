@@ -111,15 +111,9 @@ const SearchForm = (props) => {
     if (!props.registerRefresh) {
       return;
     }
-    props.registerRefresh(
-      url
-        ? () => {
-            setIsLoading(true);
-            getFromOpenElisServer(url, validationResults);
-          }
-        : null,
-    );
-  }, [url, props.registerRefresh]);
+    props.registerRefresh(url ? refreshResults : null);
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerRefresh, props.registerPageLoader]);
 
   const handleSubmit = (values) => {
     setNextPage(null);
@@ -166,14 +160,30 @@ const SearchForm = (props) => {
 
   const handleChange = () => {};
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, validationResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, validationResults);
   };
 
-  const loadPreviousResultsPage = () => {
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
+
+  /**
+   * Re-runs the search, so the server rebuilds its pages, and reopens the page
+   * the user was on when the rebuilt queue still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, validationResults);
+    getFromOpenElisServer(url, (data) => {
+      const totalPages = Number(data?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, validationResults);
+      } else {
+        validationResults(data);
+      }
+    });
   };
   const fetchTestSections = (response) => {
     setTestSections(response);

@@ -4896,6 +4896,7 @@
   "pagination.forward": "Next Page",
   "pagination.item": "{min}-{max}",
   "pagination.item-range": "{min}-{max} of {total} items",
+  "pagination.items-on-page": "{count} {count, plural, one {item} other {items}} on this page",
   "pagination.items-per-page": "Items per page",
   "pagination.itemsPerPage": "Items per page:",
   "pagination.nextPage": "Next page",

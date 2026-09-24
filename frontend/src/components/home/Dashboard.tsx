@@ -35,8 +35,11 @@ import {
   EmailNew,
   Time,
   WarningSquareFilled,
+  ArrowLeft,
+  ArrowRight,
 } from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
+import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
 
 // Map each metric type to a representative icon shown in the top-left of its card.
 const TILE_ICONS: Record<string, any> = {
@@ -123,8 +126,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
   const componentMounted = useRef(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
   // Identifies the tile load in flight, so a superseded response is dropped.
   const latestRequest = useRef(0);
@@ -147,7 +156,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   useEffect(() => {
     if (selectedTile != null) {
       const requestId = ++latestRequest.current;
-      setPage(1);
       setLoading(true);
       if (selectedTile.type == "AVERAGE_TURN_AROUND_TIME") {
         getFromOpenElisServer(
@@ -176,11 +184,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     };
   }, [selectedTile]);
 
-  // A narrowed list is shorter, so the page the user was on may no longer exist.
-  useEffect(() => {
-    setPage(1);
-  }, [selectedTestSection]);
-
   useEffect(() => {
     if (!userSessionDetails?.loginName) return;
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
@@ -194,37 +197,28 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     });
   }, [userSessionDetails]);
 
-  // The server splits the list into pages of its own. The table below pages it
-  // again, so with a table page size as large as the server's, every order past
-  // the first server page was unreachable: the next button had nothing left to
-  // show. Pull the remaining server pages in and hand the table the full list.
-  const loadRemainingResultPages = (
-    loadedItems: any[],
-    pageToLoad: number,
-    totalPages: number,
-    requestId: number,
-  ) => {
+  /**
+   * One server page of the open tile's list, the same request for the arrows
+   * above the table and for Carbon's pagination below it.
+   */
+  const loadResultsPage = (pageNumber: number | string) => {
+    const requestId = ++latestRequest.current;
+    setLoading(true);
     getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + pageToLoad,
-      (res) => {
-        if (requestId !== latestRequest.current) {
-          return;
-        }
-        const items = loadedItems.concat(res?.displayItems ?? []);
-        setData(items);
-        if (pageToLoad < totalPages) {
-          loadRemainingResultPages(
-            items,
-            pageToLoad + 1,
-            totalPages,
-            requestId,
-          );
-        } else {
-          setLoading(false);
-        }
-      },
+      "/rest/home-dashboard/" + selectedTile.type + "?page=" + pageNumber,
+      (res) => loadData(res, requestId),
     );
   };
+
+  const currentApiPage = Number(paging?.currentPage) || 1;
+  const totalApiPages = Number(paging?.totalPages) || 1;
+  const pagination = totalApiPages > 1;
+  const nextPage = currentApiPage < totalApiPages ? currentApiPage + 1 : null;
+  const previousPage = currentApiPage > 1 ? currentApiPage - 1 : null;
+
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
 
   const loadCount = (data) => {
     if (componentMounted.current) {
@@ -245,17 +239,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         ? res.displayItems
         : [];
     setData(items);
-    setPage(1);
-
-    // The rest of the server's pages belong to the same list, so fetch them
-    // before handing over to the table's own pagination.
-    const totalPages = parseInt(res?.paging?.totalPages) || 1;
-    const currentPage = parseInt(res?.paging?.currentPage) || 1;
-    if (totalPages > currentPage) {
-      loadRemainingResultPages(items, currentPage + 1, totalPages, requestId);
-    } else {
-      setLoading(false);
-    }
+    setPaging(res?.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(res?.paging, items.length, previous),
+    );
+    setLoading(false);
   };
 
   const loadTimeMetrics = (data) => {
@@ -417,15 +405,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setSelectedTile(tile);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
   const renderCell = (cell, row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
@@ -602,6 +581,43 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
+                    {pagination && (
+                      <Grid>
+                        <Column lg={14} />
+                        <Column
+                          lg={2}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "10px",
+                            width: "110%",
+                          }}
+                        >
+                          <Link>
+                            {currentApiPage} / {totalApiPages}
+                          </Link>
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <Button
+                              hasIconOnly
+                              id="loadpreviousresults"
+                              onClick={loadPreviousResultsPage}
+                              disabled={previousPage == null}
+                              renderIcon={ArrowLeft}
+                              iconDescription="previous"
+                            ></Button>
+                            <Button
+                              hasIconOnly
+                              id="loadnextresults"
+                              onClick={loadNextResultsPage}
+                              disabled={nextPage == null}
+                              renderIcon={ArrowRight}
+                              iconDescription="next"
+                            ></Button>
+                          </div>
+                        </Column>
+                      </Grid>
+                    )}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
@@ -659,14 +675,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       </Grid>
                     )}
                     <DataTable
-                      rows={data
-                        .filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        )
-                        .slice((page - 1) * pageSize, page * pageSize)}
+                      rows={data.filter((item) =>
+                        tilesWithTabs.includes(selectedTile.type) &&
+                        selectedTestSection != "all"
+                          ? item.testSection === selectedTestSection
+                          : true,
+                      )}
                       headers={
                         selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
                           ? orderHeaders
@@ -713,54 +727,18 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       )}
                     </DataTable>
                     <Pagination
-                      onChange={handlePageChange}
-                      page={page}
-                      pageSize={pageSize}
-                      pageSizes={[10, 20, 30, 50, 100]}
-                      totalItems={
-                        data.filter((item) =>
+                      {...serverPaginationProps({
+                        paging,
+                        rowsOnPage: data.filter((item) =>
                           tilesWithTabs.includes(selectedTile.type) &&
                           selectedTestSection != "all"
                             ? item.testSection === selectedTestSection
                             : true,
-                        ).length
-                      }
-                      forwardText={intl.formatMessage({
-                        id: "pagination.forward",
+                        ).length,
+                        pageSize: serverPageSize,
+                        onPageRequest: loadResultsPage,
+                        intl,
                       })}
-                      backwardText={intl.formatMessage({
-                        id: "pagination.backward",
-                      })}
-                      itemRangeText={(min, max, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.item-range" },
-                          { min: min, max: max, total: total },
-                        )
-                      }
-                      itemsPerPageText={intl.formatMessage({
-                        id: "pagination.items-per-page",
-                      })}
-                      itemText={(min, max) =>
-                        intl.formatMessage(
-                          { id: "pagination.item" },
-                          { min: min, max: max },
-                        )
-                      }
-                      pageNumberText={intl.formatMessage({
-                        id: "pagination.page-number",
-                      })}
-                      pageRangeText={(_current, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.page-range" },
-                          { total: total },
-                        )
-                      }
-                      pageText={(page, pagesUnknown) =>
-                        intl.formatMessage(
-                          { id: "pagination.page" },
-                          { page: pagesUnknown ? "" : page },
-                        )
-                      }
                     />
                   </Column>
                 </Grid>

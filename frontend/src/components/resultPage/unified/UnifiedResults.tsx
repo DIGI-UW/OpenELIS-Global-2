@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from "react";
 import {
   ActionableNotification,
@@ -32,6 +33,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import {
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../../utils/serverPaging";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -147,6 +152,7 @@ interface StatusOption {
  */
 interface WorklistResponse {
   testResult?: WorklistRow[];
+  paging?: { currentPage?: string | number; totalPages?: string | number };
   status?: number;
   error?: string;
 }
@@ -191,8 +197,16 @@ const UnifiedResults: React.FC = () => {
   const [editingAnalysisId, setEditingAnalysisId] = useState<string | null>(
     null,
   );
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(25);
+  // The server's page announcement for the worklist shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
+  // The worklist request last sent, so a page of it can be asked for.
+  const worklistUrl = useRef<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   // ---- R2 (OGC-1021) panel state ----
@@ -296,6 +310,10 @@ const UnifiedResults: React.FC = () => {
       setLoadError(false);
       const loaded = (results?.testResult || []).filter((r) => r.analysisId);
       setRows(loaded);
+      setPaging(results?.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(results?.paging, loaded.length, previous),
+      );
       const states: Record<string, RowEditState> = {};
       for (const row of loaded) {
         // one analysis may render N component rows (FR-A′1) — each row keeps
@@ -325,10 +343,24 @@ const UnifiedResults: React.FC = () => {
       setExpandedRowKey(null);
       setStaleInfo({});
       setEditingAnalysisId(null);
-      setPage(1);
       setLoading(false);
     },
     [],
+  );
+
+  /** One server page of the worklist last requested, asked for by Carbon's pagination. */
+  const loadWorklistPage = useCallback(
+    (pageNumber: number) => {
+      if (!worklistUrl.current) {
+        return;
+      }
+      setLoading(true);
+      getFromOpenElisServer(
+        worklistUrl.current + "&page=" + pageNumber,
+        applyLoadedRows,
+      );
+    },
+    [applyLoadedRows],
   );
 
   /**
@@ -364,10 +396,8 @@ const UnifiedResults: React.FC = () => {
       }
       params.set("doRange", "false");
       params.set("finished", "false");
-      getFromOpenElisServer(
-        "/rest/LogbookResults?" + params.toString(),
-        applyLoadedRows,
-      );
+      worklistUrl.current = "/rest/LogbookResults?" + params.toString();
+      getFromOpenElisServer(worklistUrl.current, applyLoadedRows);
       // FRS: the selected Lab Unit (and filters) are the page's primary
       // state — keep them in the URL so refresh and share links reproduce
       // the same worklist
@@ -494,10 +524,7 @@ const UnifiedResults: React.FC = () => {
     [rows, statusFilter],
   );
 
-  const pagedRows = useMemo(
-    () => filteredRows.slice((page - 1) * pageSize, page * pageSize),
-    [filteredRows, page, pageSize],
-  );
+  const pagedRows = filteredRows;
 
   const visibleAnalysisIds = useMemo(
     () => pagedRows.map((row) => row.analysisId),
@@ -1619,20 +1646,13 @@ const UnifiedResults: React.FC = () => {
             </Table>
           </TableContainer>
           <Pagination
-            page={page}
-            pageSize={pageSize}
-            pageSizes={[25, 50, 100]}
-            totalItems={filteredRows.length}
-            onChange={({
-              page: newPage,
-              pageSize: newPageSize,
-            }: {
-              page: number;
-              pageSize: number;
-            }) => {
-              setPage(newPage);
-              setPageSize(newPageSize);
-            }}
+            {...serverPaginationProps({
+              paging,
+              rowsOnPage: filteredRows.length,
+              pageSize: serverPageSize,
+              onPageRequest: loadWorklistPage,
+              intl,
+            })}
           />
         </Column>
       </Grid>

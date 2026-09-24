@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
 import {
   Tile,
   DataTable,
@@ -44,8 +45,9 @@ const ProgramDashboard = () => {
     totalPages: 1,
   });
   const [tableRows, setTableRows] = useState([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
   const [searchTerm, setSearchTerm] = useState("");
   const intl = useIntl();
 
@@ -88,7 +90,9 @@ const ProgramDashboard = () => {
       }));
 
       setTableRows(formatted);
-      setPage(1);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(paging, formatted.length, previous),
+      );
     });
   };
 
@@ -99,7 +103,7 @@ const ProgramDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashBoard(page, searchTerm);
+    fetchDashBoard(1, searchTerm);
   }, [searchTerm]);
 
   const headers = [
@@ -132,12 +136,7 @@ const ProgramDashboard = () => {
     },
   ];
 
-  const displayedRows = tableRows.slice((page - 1) * pageSize, page * pageSize);
-
-  const handlePageChange = ({ page: newPage, pageSize: newSize }) => {
-    setPage(newPage);
-    if (newSize !== pageSize) setPageSize(newSize);
-  };
+  const displayedRows = tableRows;
 
   const tileList = [
     {
@@ -279,11 +278,14 @@ const ProgramDashboard = () => {
                   </TableContainer>
 
                   <Pagination
-                    page={page}
-                    pageSize={pageSize}
-                    totalItems={tableRows.length}
-                    pageSizes={[2, 5, 10, 20]}
-                    onChange={handlePageChange}
+                    {...serverPaginationProps({
+                      paging: summary,
+                      rowsOnPage: tableRows.length,
+                      pageSize: serverPageSize,
+                      onPageRequest: (pageNumber) =>
+                        fetchDashBoard(pageNumber, searchTerm),
+                      intl,
+                    })}
                   />
                 </>
               )}

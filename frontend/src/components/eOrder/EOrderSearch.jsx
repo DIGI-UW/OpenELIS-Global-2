@@ -21,6 +21,8 @@ const EOrderSearch = ({
     console.debug("set EOrders default");
   },
   eOrderRef,
+  onPageReceived,
+  registerPageLoader,
 }) => {
   const intl = useIntl();
 
@@ -91,6 +93,7 @@ const EOrderSearch = ({
 
   const parseEOrders = (response) => {
     setSearchCompleted(true);
+    onPageReceived?.(response);
     if (response && response.paging) {
       const { totalPages, currentPage } = response.paging;
       if (totalPages > 1) {
@@ -142,21 +145,22 @@ const EOrderSearch = ({
     setLoading(false);
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page of the current search, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setLoading(true);
     getFromOpenElisServer(
-      "/rest/ElectronicOrders?page=" + nextPage,
+      "/rest/ElectronicOrders?page=" + pageNumber,
       parseEOrders,
     );
   };
 
-  const loadPreviousResultsPage = () => {
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/ElectronicOrders?page=" + previousPage,
-      parseEOrders,
-    );
-  };
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
+
+  useEffect(() => {
+    registerPageLoader?.(loadResultsPage);
+  }, [registerPageLoader]);
 
   return (
     <>

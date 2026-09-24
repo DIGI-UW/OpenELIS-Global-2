@@ -16,6 +16,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { serverPageSizeOf } from "../utils/serverPaging";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -57,6 +58,9 @@ const Index = () => {
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
   const [searchTermToPage, setSearchTermToPage] = useState([]);
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
   const [labNumber, setLabNumber] = useState("");
   const location = useLocation();
   const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
@@ -81,13 +85,23 @@ const Index = () => {
     }
   }, [url]);
 
-  /** Rereads the worklist the address bar names, after a write changes it. */
-  const refreshResults = () => {
+  /**
+   * Rereads the worklist the address bar names, after a write changes it, and
+   * reopens the page the user was on when the reread worklist still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     if (!url) {
       return;
     }
     setIsLoading(true);
-    getFromOpenElisServer(url, handleResults);
+    getFromOpenElisServer(url, (data) => {
+      const totalPages = Number(data?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+      } else {
+        handleResults(data);
+      }
+    });
   };
 
   const extractUniqueGroups = (data) => {
@@ -101,15 +115,15 @@ const Index = () => {
     });
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows, the lab number search and Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, handleResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
-  const loadPreviousResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, handleResults);
-  };
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
 
   const handleResults = (data) => {
     if (data) {
@@ -123,6 +137,9 @@ const Index = () => {
       const totalPages = Number(data.paging?.totalPages) || 1;
       const currentPage = Number(data.paging?.currentPage) || 1;
       const hasMultiplePages = totalPages > 1;
+      setServerPageSize((previous) =>
+        serverPageSizeOf(data.paging, data.resultList?.length ?? 0, previous),
+      );
       setSearchTermToPage(
         Array.isArray(data.paging?.searchTermToPage)
           ? data.paging.searchTermToPage
@@ -220,11 +237,7 @@ const Index = () => {
                   if (!pageMapping) {
                     return;
                   }
-                  setIsLoading(true);
-                  getFromOpenElisServer(
-                    url + "&page=" + pageMapping.value,
-                    handleResults,
-                  );
+                  loadResultsPage(pageMapping.value);
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
@@ -274,6 +287,8 @@ const Index = () => {
           results={results}
           sampleGroup={sampleGroup}
           refreshResults={refreshResults}
+          serverPageSize={serverPageSize}
+          loadPage={loadResultsPage}
         />
       </div>
     </>

@@ -79,15 +79,19 @@ export default function WorkplanSearchForm(props) {
     }
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, getTestsList);
+    getFromOpenElisServer(url + "&page=" + pageNumber, getTestsList);
   };
 
-  const loadPreviousResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, getTestsList);
-  };
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
+
+  useEffect(() => {
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerPageLoader]);
 
   useEffect(() => {
     mounted.current = true;

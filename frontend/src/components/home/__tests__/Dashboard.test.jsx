@@ -93,23 +93,53 @@ describe("Home dashboard order list", () => {
     vi.clearAllMocks();
   });
 
-  it("pages past the first 100 orders instead of disabling next", async () => {
+  it("walks the server's pages one request at a time from Carbon and from the arrows", async () => {
     const user = userEvent.setup();
     renderDashboard();
 
     await openInProgressTile(user);
 
-    expect(await screen.findByText("1-100 of 150 items")).toBeInTheDocument();
+    const pageRequests = () =>
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter(
+          (url) => url.includes("ORDERS_IN_PROGRESS") && url.includes("page="),
+        );
+
+    expect(
+      await screen.findByText("100 items on this page"),
+    ).toBeInTheDocument();
     expect(screen.getByText("ACC0000000000001")).toBeInTheDocument();
     expect(screen.queryByText("ACC0000000000150")).not.toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([]);
 
     const nextPage = screen.getByRole("button", { name: "Next Page" });
     expect(nextPage).toBeEnabled();
-
     await user.click(nextPage);
 
-    expect(await screen.findByText("101-150 of 150 items")).toBeInTheDocument();
+    expect(
+      await screen.findByText("50 items on this page"),
+    ).toBeInTheDocument();
     expect(screen.getByText("ACC0000000000150")).toBeInTheDocument();
     expect(screen.queryByText("ACC0000000000001")).not.toBeInTheDocument();
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=2",
+    ]);
+    expect(screen.getByRole("button", { name: "Next Page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "next" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "previous" }));
+
+    expect(
+      await screen.findByText("100 items on this page"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ACC0000000000001")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(pageRequests()).toEqual([
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=2",
+      "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=1",
+    ]);
   });
 });

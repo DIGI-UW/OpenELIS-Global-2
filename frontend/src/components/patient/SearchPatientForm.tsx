@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import { serverPageSizeOf, serverPaginationProps } from "../utils/serverPaging";
 import {
   Form,
   TextInput,
@@ -67,8 +68,14 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     PatientRecord[]
   >([]);
   const [importStatus, setImportStatus] = useState<ImportStatus>({});
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [nextPage, setNextPage] = useState<Nullable<string>>(null);
   const [isToggled, setIsToggled] = useState(false);
@@ -166,7 +173,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
-    setPage(1);
     setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
@@ -201,15 +207,15 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setUrl(searchEndPoint);
   };
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber: number | string | null) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, fetchPatientResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, fetchPatientResults);
   };
 
-  const loadPreviousResultsPage = () => {
-    setLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, fetchPatientResults);
-  };
+  const loadNextResultsPage = () => loadResultsPage(nextPage);
+
+  const loadPreviousResultsPage = () => loadResultsPage(previousPage);
 
   const toggle = () => {
     setIsToggled((prev) => !prev);
@@ -249,6 +255,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       });
       setNotificationVisible(true);
     }
+    setPaging(res.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(res.paging, patientsResults.length, previous),
+    );
     if (res.paging) {
       const { totalPages, currentPage } = res.paging as {
         totalPages: string;
@@ -326,15 +336,6 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
   };
 
-  const handlePageChange = (pageInfo: { page: number; pageSize: number }) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const patientId = params.get("patientId");
@@ -638,156 +639,129 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows
-                  .slice((page - 1) * pageSize, page * pageSize)
-                  .map((row) => {
-                    const dataSourceName = row.cells.find(
-                      (cell) => cell.info.header === "dataSourceName",
-                    )?.value;
-                    const firstName =
-                      row.cells.find((cell) => cell.info.header === "firstName")
-                        ?.value || "";
-                    const lastName =
-                      row.cells.find((cell) => cell.info.header === "lastName")
-                        ?.value || "";
-                    const patientName =
-                      `${firstName} ${lastName}`.trim() || "Patient";
-                    const sourcePatient = patientSearchResults.find(
-                      (p) => p.patientID === row.id,
-                    );
-                    const isMerged = sourcePatient?.isMerged === true;
-                    const mergedIntoLabel =
-                      sourcePatient?.mergedIntoNationalId ||
-                      sourcePatient?.mergedIntoPatientId;
+                {rows.map((row) => {
+                  const dataSourceName = row.cells.find(
+                    (cell) => cell.info.header === "dataSourceName",
+                  )?.value;
+                  const firstName =
+                    row.cells.find((cell) => cell.info.header === "firstName")
+                      ?.value || "";
+                  const lastName =
+                    row.cells.find((cell) => cell.info.header === "lastName")
+                      ?.value || "";
+                  const patientName =
+                    `${firstName} ${lastName}`.trim() || "Patient";
+                  const sourcePatient = patientSearchResults.find(
+                    (p) => p.patientID === row.id,
+                  );
+                  const isMerged = sourcePatient?.isMerged === true;
+                  const mergedIntoLabel =
+                    sourcePatient?.mergedIntoNationalId ||
+                    sourcePatient?.mergedIntoPatientId;
 
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-cy={`patient-result-row-${row.id}`}
-                      >
-                        <TableCell>
-                          {dataSourceName === "OpenElis" ? (
-                            <div
-                              style={{ display: "flex", flexDirection: "row" }}
-                            >
-                              <RadioButton
-                                data-cy="radioButton"
-                                name="radio-group"
-                                onClick={patientSelected}
-                                labelText=""
-                                id={row.id}
-                              />
-                              <AsyncAvatar
-                                patientId={row.id}
-                                hasPhoto={true}
-                                patientName={patientName}
-                              />
-                              {isMerged && (
-                                <Tag
-                                  type="magenta"
-                                  size="sm"
-                                  title={
-                                    mergedIntoLabel
-                                      ? `Merged into ${mergedIntoLabel}`
-                                      : "Merged"
-                                  }
-                                  style={{ marginLeft: "0.5rem" }}
+                  return (
+                    <TableRow
+                      key={row.id}
+                      data-cy={`patient-result-row-${row.id}`}
+                    >
+                      <TableCell>
+                        {dataSourceName === "OpenElis" ? (
+                          <div
+                            style={{ display: "flex", flexDirection: "row" }}
+                          >
+                            <RadioButton
+                              data-cy="radioButton"
+                              name="radio-group"
+                              onClick={patientSelected}
+                              labelText=""
+                              id={row.id}
+                            />
+                            <AsyncAvatar
+                              patientId={row.id}
+                              hasPhoto={true}
+                              patientName={patientName}
+                            />
+                            {isMerged && (
+                              <Tag
+                                type="magenta"
+                                size="sm"
+                                title={
+                                  mergedIntoLabel
+                                    ? `Merged into ${mergedIntoLabel}`
+                                    : "Merged"
+                                }
+                                style={{ marginLeft: "0.5rem" }}
+                              >
+                                <FormattedMessage
+                                  id="patient.search.merged.tag"
+                                  defaultMessage="Merged"
+                                />
+                              </Tag>
+                            )}
+                          </div>
+                        ) : (
+                          <span></span>
+                        )}
+                      </TableCell>
+
+                      {row.cells.map((cell) => (
+                        <TableCell key={cell.id}>
+                          {cell.info.header === "dataSourceName" ? (
+                            <>
+                              <Tag
+                                type={
+                                  cell.value === "OpenElis"
+                                    ? "red"
+                                    : cell.value === "Open Client Registry"
+                                      ? "green"
+                                      : "gray"
+                                }
+                              >
+                                {cell.value}
+                              </Tag>
+                              &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+                              {dataSourceName === "Open Client Registry" ? (
+                                <Button
+                                  id={row.id}
+                                  kind="tertiary"
+                                  onClick={() => handlePatientImport(row.id)}
+                                  size="md"
+                                  disabled={importStatus[row.id]}
                                 >
-                                  <FormattedMessage
-                                    id="patient.search.merged.tag"
-                                    defaultMessage="Merged"
-                                  />
-                                </Tag>
+                                  <Person size={16} />
+                                  {importStatus[row.id] ? (
+                                    <span>
+                                      &nbsp;&nbsp;Patient Imported Successfully
+                                    </span>
+                                  ) : (
+                                    <span>&nbsp;&nbsp;Import Patient</span>
+                                  )}
+                                </Button>
+                              ) : (
+                                <span></span>
                               )}
-                            </div>
+                            </>
                           ) : (
-                            <span></span>
+                            cell.value
                           )}
                         </TableCell>
-
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header === "dataSourceName" ? (
-                              <>
-                                <Tag
-                                  type={
-                                    cell.value === "OpenElis"
-                                      ? "red"
-                                      : cell.value === "Open Client Registry"
-                                        ? "green"
-                                        : "gray"
-                                  }
-                                >
-                                  {cell.value}
-                                </Tag>
-                                &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
-                                {dataSourceName === "Open Client Registry" ? (
-                                  <Button
-                                    id={row.id}
-                                    kind="tertiary"
-                                    onClick={() => handlePatientImport(row.id)}
-                                    size="md"
-                                    disabled={importStatus[row.id]}
-                                  >
-                                    <Person size={16} />
-                                    {importStatus[row.id] ? (
-                                      <span>
-                                        &nbsp;&nbsp;Patient Imported
-                                        Successfully
-                                      </span>
-                                    ) : (
-                                      <span>&nbsp;&nbsp;Import Patient</span>
-                                    )}
-                                  </Button>
-                                ) : (
-                                  <span></span>
-                                )}
-                              </>
-                            ) : (
-                              cell.value
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
+                      ))}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
         )}
       </DataTable>
       <Pagination
-        onChange={handlePageChange}
-        page={page}
-        pageSize={pageSize}
-        pageSizes={[10, 20, 30, 50, 100]}
-        totalItems={patientSearchResults.length}
-        forwardText={intl.formatMessage({ id: "pagination.forward" })}
-        backwardText={intl.formatMessage({ id: "pagination.backward" })}
-        itemRangeText={(min, max, total) =>
-          intl.formatMessage(
-            { id: "pagination.item-range" },
-            { min: min, max: max, total: total },
-          )
-        }
-        itemsPerPageText={intl.formatMessage({
-          id: "pagination.items-per-page",
+        {...serverPaginationProps({
+          paging,
+          rowsOnPage: patientSearchResults.length,
+          pageSize: serverPageSize,
+          onPageRequest: loadResultsPage,
+          intl,
         })}
-        itemText={(min, max) =>
-          intl.formatMessage({ id: "pagination.item" }, { min: min, max: max })
-        }
-        pageNumberText={intl.formatMessage({
-          id: "pagination.page-number",
-        })}
-        pageRangeText={(_current, total) =>
-          intl.formatMessage({ id: "pagination.page-range" }, { total: total })
-        }
-        pageText={(page, pagesUnknown) =>
-          intl.formatMessage(
-            { id: "pagination.page" },
-            { page: pagesUnknown ? "" : page },
-          )
-        }
       />
     </>
   );
