@@ -2123,6 +2123,39 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         return 0;
     }
 
+    /**
+     * Same predicate as
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}, narrowed
+     * to a set of test sections, so the In Progress tile of a user assigned to part
+     * of the lab counts exactly the rows that user's list shows.
+     */
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String hql = "SELECT COUNT(*) From Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND a.testSection.id IN (:testSectionIds)" //
+                + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc");
+        }
+
+        return 0;
+    }
+
     @Override
     public int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds) {
         String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in ("

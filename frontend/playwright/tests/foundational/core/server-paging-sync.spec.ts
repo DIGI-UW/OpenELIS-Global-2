@@ -308,4 +308,46 @@ test.describe("Server paging through Carbon", () => {
     });
     await expect(main.locator("#loadpreviousresults")).toBeDisabled();
   });
+
+  test("the home dashboard asks the server for the test section its tab names", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const main = page.getByRole("main");
+    const tile = main
+      .locator(".dashboard-tile")
+      .filter({ hasText: /Progress/ });
+    await expect(tile.first()).toBeVisible({ timeout: NAV_TIMEOUT });
+
+    // The whole list first: the scope of the signed-in user, no section named.
+    const wholeList = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/home-dashboard/ORDERS_IN_PROGRESS") &&
+        !response.url().includes("testSectionId="),
+    );
+    await tile.first().click();
+    await wholeList;
+    const tabs = main.getByRole("tab");
+    await expect(tabs.first()).toBeVisible({ timeout: UI_TIMEOUT });
+    const tabCount = await tabs.count();
+    test.skip(tabCount < 2, "needs a test section the user is assigned to");
+
+    // A section tab is answered by the server, not by filtering the page in
+    // the browser, so the rows and the page count describe the same section.
+    const sectionList = page.waitForResponse((response) =>
+      /\/rest\/home-dashboard\/ORDERS_IN_PROGRESS\?testSectionId=\d+/.test(
+        response.url(),
+      ),
+    );
+    await tabs.nth(1).click();
+    const sectionResponse = await (await sectionList).json();
+    const items = sectionResponse.displayItems || [];
+    // What the server sent is what the table shows: no second filter in the
+    // browser, which is what used to leave pages holding nothing.
+    await expect
+      .poll(() => main.locator("table tbody tr").count(), {
+        timeout: UI_TIMEOUT,
+      })
+      .toBe(items.length);
+  });
 });

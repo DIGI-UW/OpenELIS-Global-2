@@ -102,6 +102,19 @@ interface Notification {
   addNotification: any;
 }
 
+const TILES_WITH_TABS = [
+  "ORDERS_IN_PROGRESS",
+  "ORDERS_READY_FOR_VALIDATION",
+  "ORDERS_COMPLETED_TODAY",
+  "ORDERS_REJECTED_TODAY",
+  "UN_PRINTED_RESULTS",
+  "DELAYED_TURN_AROUND",
+  "ORDERS_FOR_USER",
+  "ORDERS_PARTIALLY_COMPLETED_TODAY",
+];
+
+const ALL_SECTIONS = "all";
+
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
 
@@ -170,6 +183,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     return () => controller.abort();
   }, [metricsAttempt]);
 
+  /**
+   * The query the open tile's list is read with. The selected tab travels to
+   * the server, so the rows, the page count and the tile's number all describe
+   * the same population; filtering a server page in the browser used to leave
+   * pages that held nothing for the reader.
+   */
+  const listQuery = (params: string[] = []) => {
+    const query = [...params];
+    if (
+      TILES_WITH_TABS.includes(selectedTile?.type) &&
+      selectedTestSection &&
+      selectedTestSection !== ALL_SECTIONS
+    ) {
+      query.push("testSectionId=" + selectedTestSection);
+    }
+    return query.length > 0 ? "?" + query.join("&") : "";
+  };
+
   useEffect(() => {
     if (selectedTile != null) {
       const requestId = ++latestRequest.current;
@@ -183,29 +214,28 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         getFromOpenElisServer(
           "/rest/home-dashboard/" +
             selectedTile.type +
-            "?systemUserId=" +
-            selectedTile.id,
+            listQuery(["systemUserId=" + selectedTile.id]),
           (res) => loadData(res, requestId),
         );
       } else {
         getFromOpenElisServer(
-          "/rest/home-dashboard/" + selectedTile.type,
+          "/rest/home-dashboard/" + selectedTile.type + listQuery(),
           (res) => loadData(res, requestId),
         );
       }
     }
-  }, [selectedTile]);
+  }, [selectedTile, selectedTestSection]);
 
   useEffect(() => {
     if (!userSessionDetails?.loginName) return;
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      if (hasRole(userSessionDetails, "Global Administrator")) {
-        setSelectedTestSection("all");
-      } else {
-        setSelectedTestSection(sections[0]?.id);
-      }
+      setSelectedTestSection(
+        hasRole(userSessionDetails, "Global Administrator")
+          ? ALL_SECTIONS
+          : sections[0]?.id,
+      );
     });
   }, [userSessionDetails]);
 
@@ -217,7 +247,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     const requestId = ++latestRequest.current;
     setLoading(true);
     getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + pageNumber,
+      "/rest/home-dashboard/" +
+        selectedTile.type +
+        listQuery(["page=" + pageNumber]),
       (res) => loadData(res, requestId),
     );
   };
@@ -339,16 +371,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
   ];
 
-  const tilesWithTabs = [
-    "ORDERS_IN_PROGRESS",
-    "ORDERS_READY_FOR_VALIDATION",
-    "ORDERS_COMPLETED_TODAY",
-    "ORDERS_REJECTED_TODAY",
-    "UN_PRINTED_RESULTS",
-    "DELAYED_TURN_AROUND",
-    "ORDERS_FOR_USER",
-    "ORDERS_PARTIALLY_COMPLETED_TODAY",
-  ];
+  const tilesWithTabs = TILES_WITH_TABS;
 
   const handleMinimizeClick = () => {
     console.log("Icon clicked!");
@@ -362,7 +385,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     } else {
       setSelectedTile(null);
       hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection("all")
+        ? setSelectedTestSection(ALL_SECTIONS)
         : setSelectedTestSection(testSections[0]?.id);
     }
   };
@@ -607,65 +630,43 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
+                            <TabList
+                              style={{ width: "100%" }}
+                              aria-label="List of tabs"
+                              contained
+                            >
+                              {hasRole(
+                                userSessionDetails,
+                                "Global Administrator",
+                              ) ? (
                                 <Tab
-                                  onClick={() => setSelectedTestSection("all")}
+                                  onClick={() =>
+                                    setSelectedTestSection(ALL_SECTIONS)
+                                  }
                                 >
                                   <FormattedMessage id="all.label" />
                                 </Tab>
+                              ) : null}
 
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            ) : (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            )}
+                              {testSections?.map((item, id) => {
+                                return (
+                                  <Tab
+                                    key={id}
+                                    onClick={() =>
+                                      setSelectedTestSection(item.id)
+                                    }
+                                  >
+                                    {item.value}
+                                  </Tab>
+                                );
+                              })}
+                            </TabList>
                           </Tabs>
                         </Column>
                       </Grid>
                     )}
                     <DataTable
-                      rows={data.filter((item) =>
-                        tilesWithTabs.includes(selectedTile.type) &&
-                        selectedTestSection != "all"
-                          ? item.testSection === selectedTestSection
-                          : true,
-                      )}
+                      rows={data}
                       headers={
                         selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
                           ? orderHeaders
@@ -714,12 +715,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                     <Pagination
                       {...serverPaginationProps({
                         paging,
-                        rowsOnPage: data.filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        ).length,
+                        rowsOnPage: data.length,
                         pageSize: serverPageSize,
                         onPageRequest: loadResultsPage,
                         intl,
