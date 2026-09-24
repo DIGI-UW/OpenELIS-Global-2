@@ -55,6 +55,10 @@ interface SearchPatientFormProps {
   orderFormValues?: Record<string, unknown>;
   showPatientSearch?: boolean;
   patientSearchStatus?: boolean;
+  /** Prefix for every element id, so two search forms can share one page. */
+  idPrefix?: string;
+  /** Patients (by patientID) left out of the results, e.g. one already chosen elsewhere on the page. */
+  excludePatientIds?: string[];
   [key: string]: unknown;
 }
 
@@ -66,6 +70,8 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const fieldId = (name: string) =>
+    props.idPrefix ? `${props.idPrefix}-${name}` : name;
 
   const [dob, setDob] = useState("");
   const [patientSearchResults, setPatientSearchResults] = useState<
@@ -302,14 +308,17 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     setPrevlastName(event.target.value);
   }
 
-  const patientSelected = (e: React.MouseEvent<HTMLElement>) => {
-    const patientSelected = patientSearchResults.find((patient) => {
-      return patient.patientID == (e.target as HTMLElement).id;
-    });
-    const searchEndPoint =
-      "/rest/patient-details?patientID=" + patientSelected!.patientID;
+  const patientSelected = (patientId: string) => {
+    const searchEndPoint = "/rest/patient-details?patientID=" + patientId;
     getFromOpenElisServer(searchEndPoint, fetchPatientDetails);
   };
+
+  const excludedPatientIds = props.excludePatientIds || [];
+  const visibleResults = excludedPatientIds.length
+    ? patientSearchResults.filter(
+        (patient) => !excludedPatientIds.includes(String(patient.patientID)),
+      )
+    : patientSearchResults;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -356,7 +365,11 @@ function SearchPatientForm(props: SearchPatientFormProps) {
             <Grid>
               <Field name="guid">
                 {({ field }) => (
-                  <input type="hidden" name={field.name} id={field.name} />
+                  <input
+                    type="hidden"
+                    name={field.name}
+                    id={fieldId(field.name)}
+                  />
                 )}
               </Field>
               <Column lg={16} md={8} sm={4}>
@@ -376,7 +389,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.id",
                         defaultMessage: "Patient Id",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                     />
                   )}
                 </Field>
@@ -393,7 +406,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.prev.lab.no",
                         defaultMessage: "Previous Lab Number",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       value={values[field.name]}
                       onChange={(e, rawValue) => {
                         setFieldValue(field.name, rawValue);
@@ -418,7 +431,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.last.name",
                         defaultMessage: "Last Name",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
@@ -436,7 +449,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         id: "patient.first.name",
                         defaultMessage: "First Name",
                       })}
-                      id={field.name}
+                      id={fieldId(field.name)}
                       onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
@@ -450,7 +463,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                 <Field name="dateOfBirth">
                   {({ field }) => (
                     <CustomDatePicker
-                      id={"date-picker-default-id"}
+                      id={fieldId("date-picker-default-id")}
                       labelText={intl.formatMessage({
                         id: "patient.dob",
                         defaultMessage: "Date of Birth",
@@ -474,10 +487,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         defaultMessage: "Gender",
                       })}
                       name={field.name}
-                      id="search_patient_gender"
+                      id={fieldId("search_patient_gender")}
                     >
                       <RadioButton
-                        id="search-radio-1"
+                        id={fieldId("search-radio-1")}
                         labelText={intl.formatMessage({
                           id: "patient.male",
                           defaultMessage: "Male",
@@ -485,7 +498,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                         value="M"
                       />
                       <RadioButton
-                        id="search-radio-2"
+                        id={fieldId("search-radio-2")}
                         labelText={intl.formatMessage({
                           id: "patient.female",
                           defaultMessage: "Female",
@@ -502,7 +515,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
               </Column>
               <Column lg={4} md={4} sm={2}>
                 <Button
-                  id="local_search"
+                  id={fieldId("local_search")}
                   kind="tertiary"
                   type="submit"
                   data-cy="searchPatientButton"
@@ -513,7 +526,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
               </Column>
               <Column lg={4} md={4} sm={2}>
                 <Button
-                  id="external_search"
+                  id={fieldId("external_search")}
                   type="submit"
                   disabled={
                     configurationProperties.UseExternalPatientInfo === "false"
@@ -533,7 +546,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                     labelText="Client Registry Search"
                     labelA="false"
                     labelB="true"
-                    id="toggle-cr"
+                    id={fieldId("toggle-cr")}
                     toggled={isToggled}
                     onClick={() => {
                       toggle();
@@ -553,7 +566,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       </Formik>
       {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
-        rows={patientSearchResults}
+        rows={visibleResults}
         headers={patientSearchHeaderData}
         isSortable
       >
@@ -606,10 +619,10 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                           >
                             <RadioButton
                               data-cy="radioButton"
-                              name="radio-group"
-                              onClick={patientSelected}
+                              name={fieldId("radio-group")}
+                              onClick={() => patientSelected(String(row.id))}
                               labelText=""
-                              id={row.id}
+                              id={fieldId(String(row.id))}
                             />
                             <AsyncAvatar
                               patientId={row.id}
@@ -692,7 +705,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       <Pagination
         {...serverPaginationProps({
           paging,
-          rowsOnPage: patientSearchResults.length,
+          rowsOnPage: visibleResults.length,
           pageSize: serverPageSize,
           onPageRequest: loadResultsPage,
           intl,
