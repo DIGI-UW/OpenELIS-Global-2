@@ -156,6 +156,17 @@
             WHERE r.name = 'Reception' AND p.name = 'shipment:view'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
+            -- Label & Store is the third step of order entry: the person who took
+            -- the specimen records where it was put. That screen reads the storage
+            -- tree (rooms, shelves, racks, boxes), so without storage:view the step
+            -- 500s and a receptionist cannot finish the order they started.
+            -- Read only — creating, moving and deleting storage locations stay on
+            -- storage:manage, which Reception does not get.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
         </sql>
 
         <!-- ==================== RESULTS ==================== -->

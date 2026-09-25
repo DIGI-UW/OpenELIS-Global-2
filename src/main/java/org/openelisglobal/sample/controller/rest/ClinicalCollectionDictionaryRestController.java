@@ -2,6 +2,7 @@ package org.openelisglobal.sample.controller.rest;
 
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +44,8 @@ public class ClinicalCollectionDictionaryRestController {
 
     private ResponseEntity<List<Dictionary>> entriesFor(String categoryName) {
         try {
-            return ResponseEntity.ok(
-                    dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName", categoryName, true));
+            return ResponseEntity.ok(SystemContext.callAsSystem(() -> dictionaryService
+                    .getDictionaryEntrysByCategoryAbbreviation("categoryName", categoryName, true)));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

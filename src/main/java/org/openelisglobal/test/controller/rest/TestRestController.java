@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -35,6 +36,15 @@ public class TestRestController {
 
     @GetMapping(value = "/test-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getTestSampleTypes(@RequestParam String testIds) {
+        // Which specimen types a chosen test can be collected into — the collection
+        // step asks this to offer the right containers. It reads the test catalogue
+        // (result:view via TestService) and sample types (sample_type:view), both
+        // administrative, so for an order-entry role the call 500'd and the step
+        // could not show what to collect into.
+        return SystemContext.callAsSystem(() -> getTestSampleTypesInternal(testIds));
+    }
+
+    private ResponseEntity<Map<String, Object>> getTestSampleTypesInternal(String testIds) {
         try {
             List<Map<String, Object>> testsResult = new ArrayList<>();
 
