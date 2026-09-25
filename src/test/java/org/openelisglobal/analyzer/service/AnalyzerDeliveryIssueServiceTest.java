@@ -33,11 +33,14 @@ public class AnalyzerDeliveryIssueServiceTest {
     @Mock
     private AnalyzerService analyzerService;
 
+    @Mock
+    private AnalyzerDeliveryActionService deliveryActionService;
+
     private AnalyzerDeliveryIssueService service;
 
     @Before
     public void setUp() {
-        service = new AnalyzerDeliveryIssueServiceImpl(outboxClient, analyzerService);
+        service = new AnalyzerDeliveryIssueServiceImpl(outboxClient, analyzerService, deliveryActionService);
     }
 
     @Test
@@ -93,6 +96,40 @@ public class AnalyzerDeliveryIssueServiceTest {
 
         verify(outboxClient).retry("ob-1");
         verify(outboxClient).dismiss("ob-2");
+    }
+
+    @Test
+    public void retainsTheActingUserAndTheNamedAnalyzerForEachAction() throws Exception {
+        when(analyzerService.getAllWithBindings()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
+        when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
+                {"id":"ob-1","state":"DMQ","connectionId":"conn-7","attempts":5}""")));
+
+        service.retry("ob-1", "17");
+        service.dismiss("ob-1", "17");
+
+        verify(deliveryActionService).retain("ob-1", AnalyzerDeliveryActionService.RETRY, "12", "17");
+        verify(deliveryActionService).retain("ob-1", AnalyzerDeliveryActionService.DISMISS, "12", "17");
+    }
+
+    @Test
+    public void retainsTheActionWithoutAnAnalyzerWhenTheSenderIsUnrecognized() throws Exception {
+        when(analyzerService.getAllWithBindings()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
+        when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
+                {"id":"ob-9","state":"DMQ","sourceId":"10.9.9.9","attempts":0}""")));
+
+        service.dismiss("ob-9", "17");
+
+        verify(deliveryActionService).retain("ob-9", AnalyzerDeliveryActionService.DISMISS, null, "17");
+    }
+
+    @Test
+    public void stillActsAndAttributesWhenTheAnalyzerCannotBeResolved() {
+        when(analyzerService.getAllWithBindings()).thenThrow(new IllegalStateException("bridge listing unavailable"));
+
+        service.retry("ob-1", "17");
+
+        verify(outboxClient).retry("ob-1");
+        verify(deliveryActionService).retain("ob-1", AnalyzerDeliveryActionService.RETRY, null, "17");
     }
 
     private static Analyzer analyzer(String id, String name, String connectionId) {
