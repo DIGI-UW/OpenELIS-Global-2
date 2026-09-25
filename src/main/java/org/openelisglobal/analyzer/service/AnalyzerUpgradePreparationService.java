@@ -59,23 +59,27 @@ public class AnalyzerUpgradePreparationService {
         if (persisted.getBridgeConnectionId() != null)
             return new Prepared(id, json.createObjectNode());
         if (source.hasSerialSettings(id))
-            throw new IllegalArgumentException("Saved serial settings require review before transfer");
+            throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.serialSettings",
+                    "Saved serial settings require review before transfer");
         AnalyzerUpgradeSource old = source.source(id);
         var config = source.config(id);
         JsonNode saved;
         try {
             saved = config == null ? json.createObjectNode() : json.readTree(config.getConfig());
         } catch (Exception exception) {
-            throw new IllegalArgumentException("Saved analyzer configuration is invalid", exception);
+            throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.invalidConfiguration",
+                    "Saved analyzer configuration is invalid", exception);
         }
         BridgeAnalyzerProfile profile = selectProfile(persisted, old, selection);
         if (old.getColumnMappings() != null && !old.getColumnMappings().isBlank()) {
             try {
                 JsonNode columns = json.readTree(old.getColumnMappings());
                 if (!columns.isEmpty() && !columns.equals(profile.document().path("column_mapping")))
-                    throw new IllegalArgumentException("Saved file column mappings differ from the selected profile");
+                    throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.fileColumnsMismatch",
+                            "Saved file column mappings differ from the selected profile");
             } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
-                throw new IllegalArgumentException("Saved file column mappings are invalid", exception);
+                throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.invalidFileColumns",
+                        "Saved file column mappings are invalid", exception);
             }
         }
         ObjectNode values = connectionValues(old, saved, profile.document());
@@ -100,13 +104,14 @@ public class AnalyzerUpgradePreparationService {
         boolean shared = profiles.getAnalyzerUsageCount(pin.getId()) > (hadBinding ? 1 : 0);
         for (var mapping : source.mappings(id)) {
             if (mapping.getComponentId() != null)
-                throw new IllegalArgumentException(
+                throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.componentMapping",
                         "Saved component mapping requires review: " + mapping.getSourceCode());
             var current = tests.get(mapping.getSourceCode());
             boolean same = current != null && current.mappingState() == AnalyzerSiteBindingMappingState.BOUND
                     && Objects.equals(current.testId(), mapping.getTestId());
             if (shared && !same)
-                throw new IllegalArgumentException("Shared mappings differ for " + mapping.getSourceCode());
+                throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.sharedMapping",
+                        "Shared mappings differ for " + mapping.getSourceCode());
             if (!same) {
                 tests.put(mapping.getSourceCode(), new AnalyzerSiteBindingTestDraft(mapping.getSourceCode(),
                         AnalyzerSiteBindingMappingState.BOUND, mapping.getTestId()));
@@ -137,7 +142,8 @@ public class AnalyzerUpgradePreparationService {
         if (pin != null) {
             if (selection != null && (!pin.getProfileId().equals(selection.profileId())
                     || pin.getProfileRevision() != selection.revision()))
-                throw new IllegalArgumentException("Existing profile reference differs from the requested profile");
+                throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.profileMismatch",
+                        "Existing profile reference differs from the requested profile");
             return BridgeAnalyzerProfile
                     .from(catalog.getProfile(pin.getProfileId(), pin.getProfileRevision()).profile());
         }
@@ -146,14 +152,16 @@ public class AnalyzerUpgradePreparationService {
                     .from(catalog.getProfile(selection.profileId(), selection.revision()).profile());
         var type = source.type(old.getTypeId());
         if (type == null)
-            throw new IllegalArgumentException("Select a Bridge profile for this existing analyzer");
+            throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.selectProfile",
+                    "Select a Bridge profile for this existing analyzer");
         List<BridgeAnalyzerProfile> matches = catalog.getCatalog().profiles().stream()
                 .map(item -> BridgeAnalyzerProfile.from(item.profile())).filter(item -> "ACTIVE".equals(item.status()))
                 .filter(item -> type.getName().equalsIgnoreCase(item.displayName())
                         || type.getName().equals(item.profileId()))
                 .toList();
         if (matches.stream().map(BridgeAnalyzerProfile::profileId).distinct().count() != 1)
-            throw new IllegalArgumentException("Select an unambiguous Bridge profile for " + type.getName());
+            throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.selectProfile",
+                    "Select an unambiguous Bridge profile for " + type.getName());
         return matches.stream().max(Comparator.comparingInt(BridgeAnalyzerProfile::revision)).orElseThrow();
     }
 
@@ -186,7 +194,8 @@ public class AnalyzerUpgradePreparationService {
         values.retain(allowed);
         if (old.getFileFormat() != null && profile.path("configDefaults").hasNonNull("fileFormat")
                 && !old.getFileFormat().equalsIgnoreCase(profile.path("configDefaults").path("fileFormat").asText()))
-            throw new IllegalArgumentException("Saved file format differs from the selected profile");
+            throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.fileFormatMismatch",
+                    "Saved file format differs from the selected profile");
         return values;
     }
 

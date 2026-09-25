@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerUpgradePreparationService.ProfileSelection;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.ConfigurationImportRunService;
 import org.springframework.stereotype.Service;
 
@@ -47,12 +48,14 @@ public class AnalyzerUpgradeService {
                     var prepared = preparation.prepare(analyzer.getId(), selections.get(analyzer.getId()), actor);
                     var view = instances.ensureConnection(prepared.analyzerId(), prepared.values(), actor);
                     if (!view.connected())
-                        throw new IllegalStateException(view.connectionErrorKey());
+                        throw new AnalyzerUpgradePendingException("analyzer.upgrade.reason.bridgeConnection",
+                                view.connectionErrorKey());
                     outcomes.add(new Outcome(analyzer.getId(), analyzer.getName(), "MIGRATED", null));
                 } catch (RuntimeException exception) {
+                    LogEvent.logError("Analyzer upgrade pending for analyzer " + analyzer.getId(), exception);
                     outcomes.add(new Outcome(analyzer.getId(), analyzer.getName(), "PENDING",
-                            exception.getMessage() == null ? exception.getClass().getSimpleName()
-                                    : exception.getMessage()));
+                            exception instanceof AnalyzerUpgradePendingException pending ? pending.reasonKey()
+                                    : "analyzer.upgrade.reason.unexpected"));
                 }
             }
             return List.copyOf(outcomes);

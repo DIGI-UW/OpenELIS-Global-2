@@ -203,7 +203,7 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
         AnalyzerUpgradeService migration = migration(interrupted);
         var first = migration.migrate(Map.of(), "1").get(0);
         assertEquals("PENDING", first.status());
-        assertEquals("Interrupted before saving reference", migration.pending().get(0).reason());
+        assertEquals("analyzer.upgrade.reason.unexpected", migration.pending().get(0).reason());
         assertNull(analyzers.getWithBinding(id).orElseThrow().getBridgeConnectionId());
         assertEquals(1, connections.size());
         var second = migration.migrate(Map.of(), "1").get(0);

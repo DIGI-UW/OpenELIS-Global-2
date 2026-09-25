@@ -69,10 +69,14 @@ import messages from "../../../languages/en.json";
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component, localeMessages = messages) => {
+const renderWithIntl = (
+  component,
+  localeMessages = messages,
+  locale = "en",
+) => {
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={localeMessages}>
+      <IntlProvider locale={locale} messages={localeMessages}>
         {component}
       </IntlProvider>
     </BrowserRouter>,
@@ -139,7 +143,7 @@ describe("AnalyzersList", () => {
           analyzerId: "1",
           name: "Existing analyzer",
           status: "PENDING",
-          reason: "Bridge unavailable",
+          reason: "analyzer.upgrade.reason.bridgeConnection",
         },
       ]),
     );
@@ -149,7 +153,9 @@ describe("AnalyzersList", () => {
     });
     renderWithIntl(<AnalyzersList />);
     expect(
-      await screen.findByText(/Existing analyzer: Bridge unavailable/),
+      await screen.findByText(
+        `Existing analyzer: ${messages["analyzer.upgrade.reason.bridgeConnection"]}`,
+      ),
     ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Retry configuration transfer" }),
@@ -157,9 +163,49 @@ describe("AnalyzersList", () => {
     expect(retryAnalyzerUpgrade).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(
-        screen.queryByText(/Existing analyzer: Bridge unavailable/),
+        screen.queryByText(
+          `Existing analyzer: ${messages["analyzer.upgrade.reason.bridgeConnection"]}`,
+        ),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  test("localizes pending reasons and hides unknown server text", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [] }),
+    );
+    getAnalyzerUpgrade.mockImplementation((callback) =>
+      callback([
+        {
+          analyzerId: "1",
+          name: "GeneXpert",
+          status: "PENDING",
+          reason: "analyzer.upgrade.reason.serialSettings",
+        },
+        {
+          analyzerId: "2",
+          name: "FluoroCycler",
+          status: "PENDING",
+          reason: "Raw backend exception",
+        },
+      ]),
+    );
+    renderWithIntl(
+      <AnalyzersList />,
+      {
+        ...messages,
+        "analyzer.upgrade.reason.serialSettings":
+          "Paramètres série à vérifier.",
+        "analyzer.upgrade.reason.unexpected": "Échec du transfert.",
+      },
+      "fr",
+    );
+    expect(
+      await screen.findByText(
+        "GeneXpert: Paramètres série à vérifier.; FluoroCycler: Échec du transfert.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Raw backend exception/)).not.toBeInTheDocument();
   });
 
   afterEach(() => {

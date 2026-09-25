@@ -67,6 +67,19 @@ interface AnalyzerTableRow {
 const profileRevisionKey = (profileId: string, revision: number) =>
   `${profileId}@${revision}`;
 
+const upgradeReasonKeys = new Set([
+  "analyzer.upgrade.reason.serialSettings",
+  "analyzer.upgrade.reason.invalidConfiguration",
+  "analyzer.upgrade.reason.fileColumnsMismatch",
+  "analyzer.upgrade.reason.invalidFileColumns",
+  "analyzer.upgrade.reason.componentMapping",
+  "analyzer.upgrade.reason.sharedMapping",
+  "analyzer.upgrade.reason.profileMismatch",
+  "analyzer.upgrade.reason.selectProfile",
+  "analyzer.upgrade.reason.fileFormatMismatch",
+  "analyzer.upgrade.reason.bridgeConnection",
+]);
+
 const hasHeldResults = (analyzer: Analyzer) =>
   Number(analyzer.heldResultCount || 0) > 0;
 
@@ -505,7 +518,15 @@ const AnalyzersList = () => {
             { count: upgradePending.length },
           )}
           subtitle={upgradePending
-            .map((row) => `${row.name}${row.reason ? `: ${row.reason}` : ""}`)
+            .map(
+              (row) =>
+                `${row.name}: ${intl.formatMessage({
+                  id:
+                    row.reason && upgradeReasonKeys.has(row.reason)
+                      ? row.reason
+                      : "analyzer.upgrade.reason.unexpected",
+                })}`,
+            )
             .join("; ")}
           actionButtonLabel={intl.formatMessage({
             id: "analyzer.upgrade.retry",
