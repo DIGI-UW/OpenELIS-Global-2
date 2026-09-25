@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.10.0, 10 core principles)
+   governance (v1.11.2, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -59,11 +59,10 @@ mvn clean install -DskipTests
   Failsafe)
 
 **Exception — CI shared-build root project:** The E2E `shared-build` step in
-both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
-`-Dmaven.test.skip=true` on the root project build because the `test-jar`
-artifact must be produced for plugin compilation (GenericASTM, GenericFile,
-GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
-both flags.
+`e2e-playwright.yml` intentionally omits `-Dmaven.test.skip=true` on the root
+project build because the `test-jar` artifact must be produced for plugin
+compilation (GenericASTM, GenericFile, GenericHL7 depend on it). The
+`dataexport` and `plugins` sub-builds still use both flags.
 
 ### Pre-Commit Formatting (MANDATORY)
 
@@ -197,7 +196,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-04-06 **Constitution Version:** 1.10.0
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.11.2
 
 ## Recent Changes
 

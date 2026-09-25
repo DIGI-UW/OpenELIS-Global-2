@@ -29,8 +29,10 @@ guidelines:
 
 ## 4. Target Branch
 
-- Always create PRs against the develop branch unless specified otherwise
-- Reviewers will handle backporting to other branches if needed
+- Always create PRs against the develop branch, including urgent fixes
+- If a fix is needed on a released version, the release manager cherry-picks it
+  onto that line's release branch after it merges (see
+  [RELEASES.md](RELEASES.md))
 
 ## 5. Keep Updated
 

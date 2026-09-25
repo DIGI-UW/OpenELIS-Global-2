@@ -20,18 +20,18 @@ this process.
 
 ## Supported versions
 
-Security fixes are provided for supported lines below. Version numbers follow
-the project release scheme (for example `3.2.1.9`). See
+Security fixes are provided for the supported lines below. The current list of
+lines and their status is kept in [RELEASES.md](RELEASES.md). See
 [Releases](https://github.com/DIGI-UW/OpenELIS-Global-2/releases) for tags and
 installer assets.
 
-| Version / line                                                                                         | Supported   | Notes                                                                                 |
-| ------------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------- |
-| Latest [GitHub Release](https://github.com/DIGI-UW/OpenELIS-Global-2/releases) (current `3.2.x` patch) | Yes         | Production deployments should run a current release tag or installer build.           |
-| `main`                                                                                                 | Yes         | Production release branch; receives security backports from `develop`.                |
-| `develop`                                                                                              | Yes         | Integration branch; fixes land here first, then are backported to `main` for release. |
-| Older `3.2.x` patches superseded by a newer release                                                    | Best effort | Upgrade to the latest `3.2.x` release when possible.                                  |
-| `2.x` and earlier major versions                                                                       | No          | End of life; no security support unless explicitly listed in a release notice.        |
+| Version / line                                                                                         | Supported   | Notes                                                                                              |
+| ------------------------------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------- |
+| Latest [GitHub Release](https://github.com/DIGI-UW/OpenELIS-Global-2/releases) (current `3.2.x` patch) | Yes         | Production deployments should run a current release tag or installer build.                        |
+| `main`                                                                                                 | Yes         | Points at the latest release tag.                                                                  |
+| `develop`                                                                                              | Yes         | Integration branch; fixes land here first, then are cherry-picked onto supported release branches. |
+| Older `3.2.x` patches superseded by a newer release                                                    | Best effort | Upgrade to the latest `3.2.x` release when possible.                                               |
+| `2.x` and earlier major versions                                                                       | No          | End of life; no security support unless explicitly listed in a release notice.                     |
 
 If you are unsure whether your deployment is supported, include your **release
 tag**, **installer version**, or **`git describe` output** when you report.
@@ -116,7 +116,7 @@ Help us triage quickly:
 
 1. **Affected component** — OpenELIS app, analyzer bridge, FHIR path, plugin,
    etc.
-2. **Version** — release tag (for example `v3.2.1.9`), installer version, or
+2. **Version** — release tag (for example `3.2.3.0`), installer version, or
    commit SHA on `develop` / `main`.
 3. **Environment** — Docker vs installer, optional modules, bridge enabled or
    not.

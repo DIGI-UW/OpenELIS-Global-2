@@ -15,7 +15,7 @@ EOF
   exit 1
 }
 
-branch=master
+branch=main
 createInstaller=false
 while getopts :b:i opt; do
   case $opt in

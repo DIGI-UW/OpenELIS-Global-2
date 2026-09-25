@@ -21,6 +21,37 @@ are supported, and how the branches relate to them.
 | `release/<X.Y>.x` | One branch per release line, cut from `develop` before a release. It receives only fixes that are already merged to `develop`.                                |
 | `3.2.2.x`         | The legacy 3.2.2 line, named before the `release/` convention.                                                                                                |
 
+## Branch and tag protection
+
+Repository rulesets enforce the branch roles above.
+
+| Ruleset                             | Applies to                              | Rules                                      | Who can bypass       |
+| ----------------------------------- | --------------------------------------- | ------------------------------------------ | -------------------- |
+| main: history is immutable          | `main`                                  | No deletion, no force push                 | Nobody               |
+| main: only release managers move it | `main`                                  | Only bypass actors may create or update it | The release managers |
+| release tags are immutable          | Tags matching `[0-9]*` and `archive/**` | No deletion, no moving                     | Nobody               |
+
+`main` has no pull request or status check requirement. Every GitHub merge
+method creates a new commit, so a pull request could never make `main` equal to
+a release tag. The tag it moves to has already passed CI on `develop` or on its
+release branch.
+
+To move `main` to a new release, a release manager runs:
+
+```bash
+git push origin <tag>^{commit}:main
+```
+
+The push is refused unless the tag's commit descends from the current `main`. A
+tag from an older line, such as `3.2.2.1`, can never move `main`.
+
+When a GitHub Release is published, its target is the release tag or the release
+branch, never `main`.
+
+In an emergency, a repository admin can set a ruleset's enforcement to
+`disabled` and restore it afterwards. The change is recorded in the organization
+audit log.
+
 ## Version numbers
 
 From 3.3.0, versions follow [Semantic Versioning](https://semver.org/):

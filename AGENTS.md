@@ -126,7 +126,9 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (main development), `main` (production releases)
+- Branch strategy: `develop` (integration and default branch; all PRs target
+  it), `main` (the latest release; moves only to release tags). See
+  [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
@@ -862,8 +864,13 @@ scripts/dev-stack logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Main development branch (ALL PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (ALL PRs target this)
+- **`main`** - The latest release. It moves only to release tags and never
+  receives commits of its own.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`, cherry-picked by the release manager.
+
+See [RELEASES.md](RELEASES.md) for supported lines and versioning.
 
 **Feature Development (Principle IX):**
 
@@ -2242,7 +2249,9 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop` (unless hotfix to `main`)
+   - Always target `develop`, including hotfixes. Fixes for a released line are
+     cherry-picked onto its `release/<X.Y>.x` branch after they merge (see
+     [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
 
@@ -2308,15 +2317,14 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
-  tests (PR + push)
-- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
-  harness) with required Playwright gate (PR)
-- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
-  required frontend gate (PR)
-- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
-  deprecated Cypress gate (PR)
-- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
-  releases only)
+  tests; reports the required `01 Checkpoint - Backend` check
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks; reports
+  the required `02 Checkpoint - Frontend` check
+- `e2e-playwright.yml` (`03 - E2E`) — builds the E2E images; `e2e-tests.yml`
+  then runs Playwright (core + analyzer harness) and the deprecated Cypress
+  suite and reports the required `03 Checkpoint - E2E` check
+- `publish-images.yml` (`Publish Images`) — after `03 - E2E` passes, publishes
+  the tested images to Docker Hub (push to `develop`, and releases)
 
 ### Code Review Standards
 
@@ -2447,6 +2455,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
