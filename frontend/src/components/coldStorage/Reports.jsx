@@ -175,22 +175,23 @@ const formatRange = (min, max) => {
   return `${formatTemperature(min)} to ${formatTemperature(max)}`;
 };
 
-const mapAlertToExcursion = (alert) => {
-  const freezerId = alert.freezerId ?? alert.freezer;
+const toExcursionRow = (excursion) => {
+  const freezerId = excursion.freezerId ?? excursion.freezer;
   const durationSeconds =
-    alert.durationSeconds != null ? alert.durationSeconds : alert.duration;
+    excursion.durationSeconds != null
+      ? excursion.durationSeconds
+      : excursion.duration;
   return {
-    // Same id the PDF excursion report prints (FreezerExcursionReport).
-    id: `EXC-${freezerId}-${alert.firstReadingId}`,
+    id: excursion.excursionId,
     freezerId,
-    freezerName: alert.freezerName ?? `Freezer ${freezerId}`,
-    location: alert.locationName ?? "Unknown location",
-    startTime: formatDateTime(alert.startTime),
-    endTime: formatDateTime(alert.endTime),
+    freezerName: excursion.freezerName ?? `Freezer ${freezerId}`,
+    location: excursion.locationName ?? "Unknown location",
+    startTime: formatDateTime(excursion.startTime),
+    endTime: formatDateTime(excursion.endTime),
     duration: formatDuration(durationSeconds),
-    range: formatRange(alert.minTemperature, alert.maxTemperature),
-    severity: alert.severity ?? "UNKNOWN",
-    status: alert.status ?? "OPEN",
+    range: formatRange(excursion.minTemperature, excursion.maxTemperature),
+    severity: excursion.severity ?? "UNKNOWN",
+    status: excursion.status ?? "OPEN",
   };
 };
 
@@ -429,7 +430,7 @@ function Reports({ devices = [] }) {
             return;
           }
           const items = normalizeArray(data);
-          setExcursions(items.map((alert) => mapAlertToExcursion(alert)));
+          setExcursions(items.map(toExcursionRow));
         } catch (error) {
           if (controller.signal.aborted) {
             return;

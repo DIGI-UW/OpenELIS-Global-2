@@ -24,10 +24,8 @@ import org.springframework.scheduling.config.IntervalTask;
 import org.springframework.scheduling.config.ScheduledTask;
 
 /**
- * Under a fixed delay the next poll waited for the slowest device to finish
- * failing, so one unreachable device stretched every device's sampling interval
- * by its timeout (issue #4261). The test context runs no scheduler, so the
- * registration is read from Spring's own {@code @Scheduled} processor.
+ * The test context runs no scheduler, so a fresh {@code @Scheduled} processor
+ * registers the task for inspection.
  */
 public class ModbusPollingScheduleTest extends BaseWebContextSensitiveTest {
 

@@ -84,10 +84,6 @@ describe("TemperatureThresholds device fetch payloads", () => {
   });
 });
 
-/**
- * Humidity alerts fire against the device's assigned threshold profile, which
- * no screen showed (issue #4261).
- */
 describe("TemperatureThresholds humidity bands", () => {
   beforeEach(() => {
     fetchDevices.mockResolvedValue([

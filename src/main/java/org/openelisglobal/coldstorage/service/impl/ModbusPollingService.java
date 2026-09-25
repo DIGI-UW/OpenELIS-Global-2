@@ -60,13 +60,8 @@ public class ModbusPollingService {
      * Polls every active freezer concurrently on a small dedicated pool (see
      * {@link org.openelisglobal.coldstorage.config.FreezerPollingExecutorConfig}),
      * so one unreachable device costs the cycle its own timeout rather than
-     * delaying every other device. Scheduled at a fixed rate so that the time a
-     * cycle spends waiting on a failing device does not push back the next one;
-     * under a fixed delay it did, stretching every device's sampling interval by
-     * the slowest device's timeout. Fixed-rate runs never overlap, so the
-     * {@link CompletableFuture#join()} still keeps one cycle at a time: a cycle
-     * longer than the interval is followed at once by the next, and after an
-     * overrun spanning several intervals the missed cycles run back to back.
+     * delaying every other device. Fixed rate, not fixed delay, so a slow device's
+     * timeout does not push back the next cycle.
      */
     @Scheduled(initialDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.initial-delay:PT15S}').toMillis()}", fixedRateString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.poll-interval:PT5M}').toMillis()}")
     public void pollDevices() {

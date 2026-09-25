@@ -238,24 +238,17 @@ public class FreezerServiceImpl implements FreezerService {
         freezerDAO.update(freezer);
     }
 
-    /**
-     * Diffs two detached copies, never the managed entity, so the audit neither
-     * sees its own pending changes nor touches its lazy collections.
-     */
     private void audit(Freezer after, Freezer before, String sysUserId, String activity) {
         auditTrailService.saveHistory(auditCopy(after), before, sysUserId, activity, AUDIT_TABLE);
     }
 
     /**
-     * The reading and assignment collections are left out because the audit
-     * reflection stringifies a {@code List} field, which loads every reading the
-     * freezer has kept. Decimals are reduced to their plain minimal scale because
-     * the audit compares values as text, and a request's {@code 1} must equal the
-     * database's {@code 1.0000}.
+     * Excludes lazy collections and lastupdated and normalises decimal scale, or
+     * the text diff logs phantom changes.
      */
     private Freezer auditCopy(Freezer freezer) {
         Freezer copy = new Freezer();
-        BeanUtils.copyProperties(freezer, copy, "readings", "thresholdAssignments");
+        BeanUtils.copyProperties(freezer, copy, "readings", "thresholdAssignments", "lastupdated");
         BeanWrapper wrapper = PropertyAccessorFactory.forBeanPropertyAccess(copy);
         for (var property : wrapper.getPropertyDescriptors()) {
             String name = property.getName();

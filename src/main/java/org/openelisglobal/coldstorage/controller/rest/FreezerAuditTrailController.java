@@ -244,8 +244,7 @@ public class FreezerAuditTrailController extends BaseRestController {
 
     private Map<String, Object> createConfigurationChangeEvent(History history, Freezer freezer, String freezerName) {
         try {
-            // An insert row carries no changes, so it is classified before the empty
-            // check below.
+            // Classify inserts before the empty check: an insert row carries no changes.
             boolean created = IActionConstants.AUDIT_TRAIL_INSERT.equals(history.getActivity());
             String xmlChanges = history.getChanges() == null ? "" : new String(history.getChanges());
             Map<String, String> changes = xmlChanges.isEmpty() ? Map.of() : parseXmlChanges(xmlChanges);
@@ -331,10 +330,7 @@ public class FreezerAuditTrailController extends BaseRestController {
         }
     }
 
-    /**
-     * History records each changed field's value from before the change, so the
-     * description reports what it was.
-     */
+    /** History stores each field's pre-change value, so phrase it as "was". */
     private String buildChangeDescription(Map<String, String> changes, String freezerName) {
         StringBuilder desc = new StringBuilder();
 

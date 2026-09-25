@@ -30,11 +30,8 @@ import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Device configuration changes must reach the cold-storage Audit Trail (issue
- * #4261): nothing wrote FREEZER history, so the tab never showed who changed a
- * freezer's thresholds or registers. The test profile mocks
- * {@link AuditTrailService}, so the real writer is installed here, as
- * {@code P0AuditEmitSmokeTest} does.
+ * The test profile mocks {@link AuditTrailService}; the real one is swapped in
+ * so history is actually written.
  */
 public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
 
@@ -96,9 +93,8 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * The device form sends plain numbers, while the database hands back its
-     * column scale ({@code 1.0000}); a save that changes nothing must not read as a
-     * change.
+     * Keep the scales as {@code 1}: the database holds {@code 1.0000}, and that
+     * mismatch is the case under test.
      */
     @Test
     @WithMockUser(username = "admin", roles = "ADMIN")
@@ -113,6 +109,53 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
 
         assertEquals("An unchanged save should leave no history row", Integer.valueOf(0),
                 jdbcTemplate.queryForObject(FREEZER_HISTORY_COUNT, Integer.class, 100L));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    public void updateDevice_shouldAuditAChangedConnectionSetting() throws Exception {
+        String changedHost = "{\"name\":\"Test Freezer 1\",\"protocol\":\"TCP\",\"host\":\"10.0.0.9\",\"port\":502,"
+                + "\"slaveId\":1,\"temperatureRegister\":0,\"temperatureScale\":1,\"temperatureOffset\":-80,"
+                + "\"humidityRegister\":1,\"humidityScale\":1,\"humidityOffset\":0,\"pollingIntervalSeconds\":60,"
+                + "\"storageDevice\":{\"id\":1}}";
+
+        mockMvc.perform(put("/rest/coldstorage/devices/100?roomId=1").contentType(MediaType.APPLICATION_JSON)
+                .content(changedHost)).andExpect(status().isOk());
+
+        List<Map<String, Object>> events = auditTrail(100L);
+        assertEquals("One configuration change: " + events, 1, events.size());
+        assertEquals("CONFIGURATION_UPDATED", events.get(0).get("actionType"));
+        assertTrue("Details carry the previous host: " + events.get(0).get("details"),
+                ((String) events.get(0).get("details")).contains("<host>192.168.1.100</host>"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    public void auditTrail_shouldReportADeactivationAsADeactivation() throws Exception {
+        freezerService.setDeviceStatus(100L, false, "1");
+
+        List<Map<String, Object>> events = auditTrail(100L);
+
+        assertEquals("One status change: " + events, 1, events.size());
+        assertEquals("FREEZER_STATUS_CHANGED", events.get(0).get("actionType"));
+        assertEquals("Freezer deactivated", events.get(0).get("comment"));
+    }
+
+    /**
+     * Must change the target temperature: only the linked storage-device save
+     * flushes and bumps the version.
+     */
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    public void updateThresholds_shouldNotRecordTheVersionTimestampAsAChange() {
+        freezerService.updateThresholds(100L, new BigDecimal("-20"), new BigDecimal("-15"), new BigDecimal("5"), null,
+                "1");
+
+        String changes = jdbcTemplate.queryForObject("SELECT convert_from(h.changes, 'UTF8') FROM clinlims.history h"
+                + " JOIN clinlims.reference_tables rt ON rt.id = h.reference_table"
+                + " WHERE upper(rt.name) = 'FREEZER' AND h.reference_id = ?", String.class, 100L);
+        assertTrue("The threshold change is recorded: " + changes, changes.contains("targetTemperature"));
+        assertFalse("The version timestamp is not a configuration change: " + changes, changes.contains("lastupdated"));
     }
 
     @Test

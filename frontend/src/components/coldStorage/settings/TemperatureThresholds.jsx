@@ -47,7 +47,7 @@ function TemperatureThresholds() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [thresholds, setThresholds] = useState({});
-  const [profilesByDevice, setProfilesByDevice] = useState({});
+  const [statusByDevice, setStatusByDevice] = useState({});
 
   const loadDevices = useCallback(async () => {
     try {
@@ -76,9 +76,9 @@ function TemperatureThresholds() {
         (Array.isArray(statuses) ? statuses : []).forEach((status) => {
           byDevice[status.freezerId] = status;
         });
-        setProfilesByDevice(byDevice);
+        setStatusByDevice(byDevice);
       } catch {
-        setProfilesByDevice({});
+        setStatusByDevice({});
       }
     } catch (err) {
       notify({
@@ -98,7 +98,7 @@ function TemperatureThresholds() {
   }, [loadDevices]);
 
   const humidityBandsText = (deviceId) => {
-    const status = profilesByDevice[deviceId];
+    const status = statusByDevice[deviceId];
     if (!status) {
       return null;
     }

@@ -15,6 +15,7 @@ vi.mock("./api", () => ({
 }));
 
 const EXCURSION = {
+  excursionId: "EXC-47-1104",
   firstReadingId: 1104,
   freezerId: 47,
   freezerName: "Demo Vaccine Fridge",

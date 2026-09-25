@@ -254,6 +254,10 @@ public class AlertNotificationService {
         return message.toString();
     }
 
+    /**
+     * Runs off-request, so MessageUtil resolves the site-default locale; do not
+     * look up a request locale.
+     */
     private void appendLine(StringBuilder message, String labelKey, Object value) {
         message.append(MessageUtil.getMessage(labelKey)).append(": ").append(value).append("\n");
     }

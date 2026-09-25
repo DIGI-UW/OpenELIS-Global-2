@@ -192,7 +192,8 @@ public class FreezerDeviceController extends BaseRestController {
         BigDecimal targetTemperature = thresholdEvaluationService.deriveTargetTemperature(profile);
         FreezerStatusResponse response = FreezerStatusResponse.from(freezer, latest, targetTemperature,
                 modbusPollIntervalSeconds * STALE_AFTER_MISSED_POLLS);
-        response.applyProfile(profile);
+        // Bands follow the profile active now: the next reading is judged against it.
+        response.applyProfile(latest == null ? profile : resolveActiveProfile(freezer, OffsetDateTime.now()));
         return response;
     }
 
@@ -228,7 +229,6 @@ public class FreezerDeviceController extends BaseRestController {
         private BigDecimal humidityCriticalMin;
         private BigDecimal humidityCriticalMax;
 
-        /** Read-only view of the profile humidity alerting evaluates against. */
         void applyProfile(ThresholdProfile profile) {
             if (profile == null) {
                 return;

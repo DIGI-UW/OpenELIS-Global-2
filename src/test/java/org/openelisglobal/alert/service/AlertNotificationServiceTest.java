@@ -207,12 +207,10 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
                 recorder.sent.get(0).getSubject().contains("FREEZER_OFFLINE"));
         Assert.assertTrue("Message should carry the offline reason",
                 recorder.sent.get(0).getMessage().contains("not responding to monitoring polls"));
+        Assert.assertTrue("A freezer id with no freezer behind it falls back to the id",
+                recorder.sent.get(0).getMessage().contains("Freezer (ID: 7)"));
     }
 
-    /**
-     * Whoever is on call needs the device's name, not its database id, and a
-     * timestamp to the second.
-     */
     @Test
     public void handleAlertCreated_namesTheFreezerAndPrintsTheTimeToTheSecond() throws Exception {
         executeDataSetWithStateManagement("testdata/freezer.xml");
@@ -231,6 +229,8 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
         Assert.assertEquals(1, recorder.sent.size());
         String body = recorder.sent.get(0).getMessage();
+        Assert.assertTrue("Labels should resolve from the message bundle: " + body,
+                body.contains("Alert Type: FREEZER_TEMPERATURE"));
         Assert.assertTrue("Body should name the freezer: " + body, body.contains("Test Freezer 1"));
         Assert.assertFalse("Body should not identify the freezer by database id: " + body, body.contains("ID: 100"));
         Assert.assertTrue("Time should be printed to the second: " + body, body.contains("2026-09-10 10:59:11 +03:00"));

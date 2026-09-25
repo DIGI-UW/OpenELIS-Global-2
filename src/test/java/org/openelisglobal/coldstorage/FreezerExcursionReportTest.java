@@ -96,11 +96,6 @@ public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
         assertEquals(0, new BigDecimal("-17.0").compareTo(excursions.get(1).getMinTemperature()));
     }
 
-    /**
-     * An excursion is derived from readings, so the id it carries is its first
-     * breaching reading's; naming it an alert id showed operators an alert number
-     * that matched no alert.
-     */
     @Test
     @WithMockUser(roles = "ADMIN")
     public void excursionsEndpoint_shouldIdentifyAnExcursionByItsFirstReading() throws Exception {
@@ -113,6 +108,7 @@ public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
                 + windowStart.withOffsetSameInstant(ZoneOffset.UTC) + "&end="
                 + windowEnd.withOffsetSameInstant(ZoneOffset.UTC)).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].firstReadingId").value(firstBreach.getId()))
+                .andExpect(jsonPath("$[0].excursionId").value("EXC-" + freezer.getId() + "-" + firstBreach.getId()))
                 .andExpect(jsonPath("$[0].alertId").doesNotExist());
     }
 
