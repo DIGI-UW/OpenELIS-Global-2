@@ -1,0 +1,46 @@
+{
+  "$schema": "https://openelis-global.org/contracts/analyzer/v1/analyzer-profile.schema.json",
+  "schemaVersion": "1.0",
+  "profileMeta": {
+    "id": "site.synthetic-file",
+    "displayName": "Synthetic CSV analyzer",
+    "version": "1.0",
+    "confidence": "LOW"
+  },
+  "category": "MOLECULAR",
+  "protocol": { "name": "FILE", "format": "CSV" },
+  "capabilities": {
+    "inboundResults": true,
+    "outboundOrders": false,
+    "connectionTest": true
+  },
+  "configDefaults": {
+    "fileFormat": "CSV",
+    "filePattern": "*.csv",
+    "hasHeader": true,
+    "delimiter": ","
+  },
+  "supported_extensions": [".csv"],
+  "column_mapping": {
+    "Sample": "sampleId",
+    "Target": "testCode",
+    "Value": "result",
+    "Task": "qcTask"
+  },
+  "result_value_order": ["result"],
+  "connectionFields": [
+    {
+      "key": "directory",
+      "labelKey": "analyzer.connection.field.directory",
+      "inputKind": "FILE_PATH",
+      "required": true,
+      "choices": []
+    }
+  ],
+  "controlResultRecognition": {
+    "mode": "RULES",
+    "rules": {
+      "specimen-prefix": { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "QC-" }
+    }
+  }
+}

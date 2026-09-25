@@ -17,6 +17,7 @@ import {
   getAnalyzerTypeCatalog,
   getAnalyzerTypeControlRecognition,
   getAnalyzerTypeDraft,
+  updateAnalyzerTypeDraft,
   getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
   updateAnalyzerTypeControlRecognition,
@@ -34,6 +35,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeControlRecognition: vi.fn(),
   getAnalyzerTypeDraft: vi.fn(),
+  updateAnalyzerTypeDraft: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
   updateAnalyzerTypeControlRecognition: vi.fn(),
@@ -281,7 +283,14 @@ describe("AnalyzerTypeManagement", () => {
       });
     });
     getAnalyzerTypeControlRecognition.mockImplementation((draftId, callback) =>
-      callback(recognitionDraft(draftId)),
+      callback(
+        draftId === "draft-create"
+          ? {
+              ...recognitionDraft(draftId),
+              validationIssues: ["protocol is required"],
+            }
+          : recognitionDraft(draftId),
+      ),
     );
     updateAnalyzerTypeControlRecognition.mockImplementation(
       (draftId, update, callback) =>
@@ -500,6 +509,18 @@ describe("AnalyzerTypeManagement", () => {
       expect(window.location.search).toContain("draft=draft-create"),
     );
     expect(screen.getByText("Profile draft created")).toBeVisible();
+    expect(
+      within(screen.getByRole("dialog", { name: "Create Profile" })).getByRole(
+        "combobox",
+        { name: "Protocol" },
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole("dialog", { name: "Create Profile" })).getByRole(
+        "button",
+        { name: "Publish Profile" },
+      ),
+    ).toBeDisabled();
   });
 
   it("duplicates and explicitly publishes an active profile without choosing its identity", async () => {

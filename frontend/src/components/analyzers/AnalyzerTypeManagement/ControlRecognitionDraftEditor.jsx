@@ -63,7 +63,7 @@ const validForm = (form) => {
   );
 };
 
-const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
+const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
   const intl = useIntl();
   const nextClientKey = useRef(1);
   const [draft, setDraft] = useState(null);
@@ -100,6 +100,7 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
   const publishable =
     Boolean(draft) &&
     !loading &&
+    !saving &&
     !dirty &&
     valid &&
     (draft.validationIssues || []).length === 0;
@@ -108,11 +109,12 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
     onStateChange?.({
       loaded: Boolean(draft) && !loading,
       dirty,
+      saving,
       valid,
       publishable,
       validationIssues: draft?.validationIssues || [],
     });
-  }, [dirty, draft, loading, onStateChange, publishable, valid]);
+  }, [dirty, draft, loading, onStateChange, publishable, saving, valid]);
 
   const changeMode = (mode) => {
     setSaved(false);
@@ -231,6 +233,7 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
       setForm(nextForm);
       setBaseline(JSON.stringify(toUpdate(nextForm)));
       setSaved(true);
+      onSaved?.();
     });
   };
 
