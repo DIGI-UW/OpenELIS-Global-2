@@ -70,7 +70,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
-                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO);
+                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO,
+                org.mockito.Mockito
+                        .mock(org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService.class));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         analyzer = analyzer("site.mock-hematology", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))

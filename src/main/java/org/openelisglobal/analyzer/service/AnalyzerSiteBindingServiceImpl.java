@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -43,10 +42,12 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
     private final AuditTrailService auditTrailService;
     private final TestService testService;
     private final TestResultService testResultService;
+    private final AnalyzerMappingDefaults mappingDefaults;
 
     public AnalyzerSiteBindingServiceImpl(AnalyzerSiteBindingDAO bindingDAO, AnalyzerSiteBindingRevisionDAO revisionDAO,
             AnalyzerSiteBindingTestDAO testDAO, AnalyzerSiteBindingResultDAO resultDAO,
-            AuditTrailService auditTrailService, TestService testService, TestResultService testResultService) {
+            AuditTrailService auditTrailService, TestService testService, TestResultService testResultService,
+            AnalyzerMappingDefaults mappingDefaults) {
         this.bindingDAO = bindingDAO;
         this.revisionDAO = revisionDAO;
         this.testDAO = testDAO;
@@ -54,6 +55,7 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         this.auditTrailService = auditTrailService;
         this.testService = testService;
         this.testResultService = testResultService;
+        this.mappingDefaults = mappingDefaults;
     }
 
     @Override
@@ -106,7 +108,9 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         binding.setCreatedBy(actor);
         binding.setSysUserId(actor);
         bindingDAO.insert(binding);
-        return persistRevision(binding, null, 1, unresolvedDraft(profile), actor);
+        AnalyzerSiteBindingDraft draft = mappingDefaults.resolve(profile);
+        validateDraft(draft);
+        return persistRevision(binding, null, 1, draft, actor);
     }
 
     private AnalyzerSiteBindingSnapshot loadLatest(AnalyzerSiteBinding binding) {
@@ -163,23 +167,6 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         entity.setTestResultId(row.testResultId());
         resultDAO.insert(entity);
         return entity;
-    }
-
-    private AnalyzerSiteBindingDraft unresolvedDraft(BridgeAnalyzerProfile profile) {
-        List<AnalyzerSiteBindingTestDraft> tests = new ArrayList<>();
-        List<AnalyzerSiteBindingResultDraft> results = new ArrayList<>();
-        for (BridgeAnalyzerProfile.TestDefinition test : profile.testDefinitions()) {
-            String sourceRowKey = requireText(test.analyzerCode(), "analyzer code");
-            tests.add(new AnalyzerSiteBindingTestDraft(sourceRowKey, AnalyzerSiteBindingMappingState.UNRESOLVED, null));
-            for (String value : test.resultValues()) {
-                String rawValue = requireText(value, "result value");
-                results.add(new AnalyzerSiteBindingResultDraft(sourceRowKey, rawValue,
-                        AnalyzerSiteBindingMappingState.UNRESOLVED, null));
-            }
-        }
-        AnalyzerSiteBindingDraft draft = new AnalyzerSiteBindingDraft(tests, results);
-        validateDraft(draft);
-        return draft;
     }
 
     private static void validateProfileIdentity(AnalyzerProfileBinding selected, BridgeAnalyzerProfile profile) {

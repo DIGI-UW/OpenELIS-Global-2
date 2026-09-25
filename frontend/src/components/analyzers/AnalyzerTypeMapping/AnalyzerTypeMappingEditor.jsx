@@ -300,18 +300,15 @@ const AnalyzerTypeMappingEditor = () => {
     [draftTests, mapping?.bindingFingerprint],
   );
 
-  const complete = useMemo(
+  const confirmable = useMemo(
     () =>
       draftTests.length > 0 &&
       draftTests.every(
         (test) =>
-          test.mappingState !== "UNRESOLVED" &&
           (test.mappingState !== "BOUND" || Boolean(test.selectedTest)) &&
           test.results.every(
             (result) =>
-              result.mappingState !== "UNRESOLVED" &&
-              (result.mappingState !== "BOUND" ||
-                Boolean(result.selectedOption)),
+              result.mappingState !== "BOUND" || Boolean(result.selectedOption),
           ),
       ),
     [draftTests],
@@ -323,6 +320,9 @@ const AnalyzerTypeMappingEditor = () => {
       testsBound: draftTests.filter((test) => test.mappingState === "BOUND")
         .length,
       testsTotal: draftTests.length,
+      unresolved:
+        draftTests.filter((test) => test.mappingState === "UNRESOLVED").length +
+        results.filter((result) => result.mappingState === "UNRESOLVED").length,
       resultsBound: results.filter((result) => result.mappingState === "BOUND")
         .length,
       resultsTotal: results.length,
@@ -358,16 +358,19 @@ const AnalyzerTypeMappingEditor = () => {
   };
 
   const confirm = () => {
-    if (!complete || dirty || confirming || !mapping?.bindingFingerprint) {
+    if (!confirmable || dirty || confirming || !mapping?.bindingFingerprint) {
       return;
     }
     const confirmedRows = [];
     const excludedRows = [];
     draftTests.forEach((test) => {
-      const destination =
-        test.mappingState === "BOUND" ? confirmedRows : excludedRows;
-      destination.push({ sourceRowKey: test.sourceRowKey, rawValue: null });
+      if (test.mappingState !== "UNRESOLVED") {
+        const destination =
+          test.mappingState === "BOUND" ? confirmedRows : excludedRows;
+        destination.push({ sourceRowKey: test.sourceRowKey, rawValue: null });
+      }
       test.results.forEach((result) => {
+        if (result.mappingState === "UNRESOLVED") return;
         const resultDestination =
           result.mappingState === "BOUND" ? confirmedRows : excludedRows;
         resultDestination.push({
@@ -598,15 +601,34 @@ const AnalyzerTypeMappingEditor = () => {
                     key={test.sourceRowKey}
                     open={
                       test.mappingState === "UNRESOLVED" ||
+                      test.results.some(
+                        (result) => result.mappingState === "UNRESOLVED",
+                      ) ||
                       test.rawCode === focusTest
                     }
                     title={
                       <div className="analyzer-type-mapping__row-title">
                         <strong>{test.rawCode}</strong>
                         <span>{test.testNameHint}</span>
-                        <Tag type={stateTagType(test.mappingState)} size="sm">
+                        <Tag
+                          type={stateTagType(
+                            test.results.some(
+                              (result) => result.mappingState === "UNRESOLVED",
+                            )
+                              ? "UNRESOLVED"
+                              : test.mappingState,
+                          )}
+                          size="sm"
+                        >
                           <FormattedMessage
-                            id={stateMessageId(test.mappingState)}
+                            id={stateMessageId(
+                              test.results.some(
+                                (result) =>
+                                  result.mappingState === "UNRESOLVED",
+                              )
+                                ? "UNRESOLVED"
+                                : test.mappingState,
+                            )}
                           />
                         </Tag>
                       </div>
@@ -954,6 +976,17 @@ const AnalyzerTypeMappingEditor = () => {
             />
           )}
 
+          {counts.unresolved > 0 && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage(
+                { id: "analyzerType.mappingEditor.partial" },
+                { count: counts.unresolved },
+              )}
+            />
+          )}
           <div className="analyzer-type-mapping__actions">
             <div>
               {dirty && (
@@ -961,7 +994,7 @@ const AnalyzerTypeMappingEditor = () => {
                   <FormattedMessage id="analyzerType.mappingEditor.unsaved" />
                 </span>
               )}
-              {!complete && !dirty && (
+              {!confirmable && !dirty && (
                 <span>
                   <FormattedMessage id="analyzerType.mappingEditor.incomplete" />
                 </span>
@@ -977,7 +1010,7 @@ const AnalyzerTypeMappingEditor = () => {
                 <FormattedMessage id="analyzerType.mappingEditor.save" />
               </Button>
               <Button
-                disabled={!complete || dirty || confirming}
+                disabled={!confirmable || dirty || confirming}
                 onClick={confirm}
               >
                 <FormattedMessage id="analyzerType.mappingEditor.confirm" />

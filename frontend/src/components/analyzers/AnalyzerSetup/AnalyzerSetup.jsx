@@ -253,10 +253,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
       resultsReady,
       resultsTotal: resultRows.length,
       complete:
-        mapping.tests.length > 0 &&
-        testsReady === mapping.tests.length &&
-        resultsReady === resultRows.length &&
-        mapping.confirmation?.state === "CURRENT",
+        mapping.tests.length > 0 && mapping.confirmation?.state === "CURRENT",
     };
   }, [mapping]);
 

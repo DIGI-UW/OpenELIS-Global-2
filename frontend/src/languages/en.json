@@ -920,6 +920,7 @@
   "analyzerType.mappingEditor.excludeResult.short": "Do not receive",
   "analyzerType.mappingEditor.excludeResult": "Do not receive {value}",
   "analyzerType.mappingEditor.excludeTest": "Do not receive {code}",
+  "analyzerType.mappingEditor.partial": "{count} unresolved mappings. You can confirm and connect; affected results will be saved for correction before use.",
   "analyzerType.mappingEditor.incomplete": "Resolve or explicitly exclude every source row before confirmation.",
   "analyzerType.mappingEditor.loading": "Loading Analyzer Type mappings",
   "analyzerType.mappingEditor.normalized": "Normalized identity",

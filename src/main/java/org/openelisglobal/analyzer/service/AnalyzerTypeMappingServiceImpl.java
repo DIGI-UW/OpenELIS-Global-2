@@ -16,6 +16,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,9 +61,14 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService.getProfile(profileId,
                 profileRevision);
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        AnalyzerSiteBindingDraft draft = validateUpdate(profile, update);
+        if (update == null) {
+            throw new IllegalArgumentException("Mapping update is required");
+        }
         Optional<AnalyzerSiteBindingSnapshot> current = findBinding(profile.profileId(), profile.revision());
         validateLoadedFingerprint(current.orElse(null), update.baseBindingFingerprint());
+        AnalyzerSiteBindingDraft draft = validateUpdate(profile, current.orElse(null),
+                analyzerResultsService.findHeldMappingResultsByProfile(profile.profileId(), profile.revision()),
+                update);
 
         AnalyzerProfileBinding profileBinding = profileBindingService.resolveActiveRevision(profile.profileId(),
                 profile.revision(), actor);
@@ -99,13 +105,29 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 .collect(Collectors.toMap(
                         row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()),
                         Function.identity()));
-        Set<ResultSourceKey> observedHeldValues = analyzerResultsService
-                .findHeldResultValuesByProfile(profile.profileId(), profile.revision()).stream()
+        List<AnalyzerResults> observed = analyzerResultsService.findHeldMappingResultsByProfile(profile.profileId(),
+                profile.revision());
+        Set<ResultSourceKey> observedHeldValues = observed.stream()
+                .filter(row -> !"N".equals(row.getResultType())
+                        || AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE.equals(row.getImportIssueReason())
+                        || AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY.equals(row.getImportIssueReason())
+                        || AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING.equals(row.getImportIssueReason()))
                 .filter(row -> row.getRawTestCode() != null && row.getRawResultValue() != null)
                 .map(row -> new ResultSourceKey(row.getRawTestCode(), row.getRawResultValue()))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        List<AnalyzerTypeMappingView.TestRow> rows = profile.testDefinitions().stream()
+        Map<String, BridgeAnalyzerProfile.TestDefinition> definitions = new LinkedHashMap<>();
+        profile.testDefinitions().forEach(definition -> definitions.put(definition.analyzerCode(), definition));
+        for (AnalyzerResults row : observed) {
+            if (row.getRawTestCode() != null && !row.getRawTestCode().isBlank()) {
+                definitions.putIfAbsent(row.getRawTestCode(),
+                        new BridgeAnalyzerProfile.TestDefinition(row.getRawTestCode(), List.of(), null, null,
+                                row.getUnits(), row.getResultType(), List.of(), null));
+            }
+        }
+        currentTests.keySet().forEach(source -> definitions.putIfAbsent(source,
+                new BridgeAnalyzerProfile.TestDefinition(source, List.of(), null, null, null, null, List.of(), null)));
+        List<AnalyzerTypeMappingView.TestRow> rows = definitions.values().stream()
                 .map(definition -> composeTestRow(definition, currentTests.get(definition.analyzerCode()),
                         currentResults, observedHeldValues, activeTests, activeTestsById))
                 .toList();
@@ -121,22 +143,19 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
 
     private static void validateConfirmable(AnalyzerTypeMappingView view) {
         for (AnalyzerTypeMappingView.TestRow test : view.tests()) {
-            if (test.mappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
-                    || test.mappingState() == AnalyzerSiteBindingMappingState.BOUND && test.selectedTest() == null) {
-                throw new IllegalArgumentException("Every test row must have a current binding or exclusion");
+            if (test.mappingState() == AnalyzerSiteBindingMappingState.BOUND && test.selectedTest() == null) {
+                throw new IllegalArgumentException("Bound test rows must reference a current catalog Test");
             }
             for (AnalyzerTypeMappingView.ResultRow result : test.results()) {
-                if (result.mappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
-                        || result.mappingState() == AnalyzerSiteBindingMappingState.BOUND
-                                && result.selectedOption() == null) {
-                    throw new IllegalArgumentException("Every result row must have a current binding or exclusion");
+                if (result.mappingState() == AnalyzerSiteBindingMappingState.BOUND && result.selectedOption() == null) {
+                    throw new IllegalArgumentException("Bound result rows must reference a current Result Option");
                 }
             }
         }
     }
 
     private static AnalyzerSiteBindingDraft validateUpdate(BridgeAnalyzerProfile profile,
-            AnalyzerTypeMappingUpdate update) {
+            AnalyzerSiteBindingSnapshot current, List<AnalyzerResults> observed, AnalyzerTypeMappingUpdate update) {
         if (update == null) {
             throw new IllegalArgumentException("Mapping update is required");
         }
@@ -144,26 +163,38 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         Set<String> expectedTests = profile.testDefinitions().stream()
                 .map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (current != null) {
+            current.tests().forEach(row -> expectedTests.add(row.getId().getSourceRowKey()));
+        }
+        Set<String> allowedTests = new LinkedHashSet<>(expectedTests);
+        observed.stream().map(AnalyzerResults::getRawTestCode).filter(java.util.Objects::nonNull)
+                .forEach(allowedTests::add);
         Set<String> actualTests = draft.tests().stream().filter(row -> row != null && row.sourceRowKey() != null)
                 .map(AnalyzerSiteBindingTestDraft::sourceRowKey).collect(Collectors.toCollection(LinkedHashSet::new));
-        if (draft.tests().size() != expectedTests.size() || !actualTests.equals(expectedTests)) {
-            throw new IllegalArgumentException("Mapping update test rows must exactly match profile revision");
+        if (draft.tests().size() != actualTests.size() || !actualTests.containsAll(expectedTests)
+                || !allowedTests.containsAll(actualTests)) {
+            throw new IllegalArgumentException(
+                    "Mapping update must retain declared and saved tests and may add only received test codes");
         }
 
         Set<ResultSourceKey> expectedResults = profile.testDefinitions().stream()
                 .flatMap(definition -> definition.resultValues().stream()
                         .map(value -> new ResultSourceKey(definition.analyzerCode(), value)))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (current != null) {
+            current.results().forEach(row -> expectedResults
+                    .add(new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue())));
+        }
         Set<ResultSourceKey> actualResults = draft.results().stream()
                 .filter(row -> row != null && row.sourceRowKey() != null && row.rawValue() != null)
                 .map(row -> new ResultSourceKey(row.sourceRowKey(), row.rawValue()))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         boolean hasDuplicateResults = draft.results().size() != actualResults.size();
         boolean omitsProfileDefault = !actualResults.containsAll(expectedResults);
-        boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !expectedTests.contains(row.sourceRowKey()));
+        boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !actualTests.contains(row.sourceRowKey()));
         if (hasDuplicateResults || omitsProfileDefault || hasUnknownTest) {
             throw new IllegalArgumentException(
-                    "Mapping update must retain profile result rows and may add values only to profile tests");
+                    "Mapping update must retain declared and saved result rows and may add values only to included tests");
         }
         return draft;
     }
@@ -229,7 +260,8 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
 
     private static boolean matches(BridgeAnalyzerProfile.TestDefinition definition,
             AnalyzerMappingCatalogService.TestOption option) {
-        if (option.loincCodes().contains(definition.loinc()) || equalText(option.code(), definition.analyzerCode())
+        if (definition.loinc() != null && option.loincCodes().contains(definition.loinc())
+                || equalText(option.code(), definition.analyzerCode())
                 || equalText(option.name(), definition.testNameHint())) {
             return true;
         }

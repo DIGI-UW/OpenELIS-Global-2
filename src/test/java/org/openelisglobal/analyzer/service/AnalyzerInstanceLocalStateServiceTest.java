@@ -52,7 +52,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
         service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService,
-                analyzerResultsService);
+                analyzerResultsService, org.mockito.Mockito
+                        .mock(org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService.class));
     }
 
     @Test

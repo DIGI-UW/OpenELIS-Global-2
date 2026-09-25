@@ -183,7 +183,7 @@ public class AnalyzerTypeMappingServiceTest {
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
                 .thenReturn(Optional.of(profileBinding));
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBinding));
-        when(analyzerResultsService.findHeldResultValuesByProfile("site.mock-analyzer", 2)).thenReturn(List.of(held));
+        when(analyzerResultsService.findHeldMappingResultsByProfile("site.mock-analyzer", 2)).thenReturn(List.of(held));
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive"),
