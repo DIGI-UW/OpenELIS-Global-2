@@ -451,7 +451,7 @@ describe("AnalyzerConnectionSetup", () => {
       ).not.toBeInTheDocument();
       await userEvent.selectOptions(
         screen.getByLabelText("Transport"),
-        "RS-232",
+        "Serial (RS-232)",
       );
       expect(
         screen.queryByText("Destination: bench.example.test, port 6501"),
