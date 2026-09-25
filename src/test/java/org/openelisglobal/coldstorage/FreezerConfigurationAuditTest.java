@@ -70,6 +70,9 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
     @After
     public void restoreAuditTrailService() {
         ReflectionTestUtils.setField(freezerServiceTarget, "auditTrailService", mockedAuditTrailService);
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE sys_user_id = 9401");
+        jdbcTemplate.update("UPDATE clinlims.storage_device SET sys_user_id = '1' WHERE sys_user_id = '9401'");
+        jdbcTemplate.update("DELETE FROM clinlims.system_user WHERE id = 9401");
     }
 
     @Test
@@ -127,6 +130,25 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
         assertEquals("CONFIGURATION_UPDATED", events.get(0).get("actionType"));
         assertTrue("Details carry the previous host: " + events.get(0).get("details"),
                 ((String) events.get(0).get("details")).contains("<host>192.168.1.100</host>"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    public void renamingTheStorageDevice_shouldAuditTheFreezerRenameAsTheActingUser() throws Exception {
+        ensureAuditSystemUser();
+        jdbcTemplate.update("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name,"
+                + " is_active, is_employee, lastupdated) VALUES (9401, '9401', 'fzcreator', 'Creator', 'Device',"
+                + " 'Y', 'Y', now()) ON CONFLICT (id) DO NOTHING");
+        jdbcTemplate.update("UPDATE clinlims.storage_device SET sys_user_id = '9401' WHERE id = 1");
+
+        mockMvc.perform(put("/rest/storage/devices/1").contentType(MediaType.APPLICATION_JSON).content(
+                "{\"name\":\"Renamed Freezer\",\"type\":\"freezer\",\"code\":\"FSD001\",\"parentRoomId\":\"1\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("The rename is performed by the signed-in user, not the device's creator", "1",
+                jdbcTemplate.queryForObject("SELECT h.sys_user_id::text FROM clinlims.history h"
+                        + " JOIN clinlims.reference_tables rt ON rt.id = h.reference_table"
+                        + " WHERE upper(rt.name) = 'FREEZER' AND h.reference_id = ?", String.class, 100L));
     }
 
     @Test

@@ -511,7 +511,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             // Sync device name to Freezer monitoring if linked
             if (shouldEnableMonitoring(updatedDevice)) {
-                syncDeviceNameToFreezer(updatedDevice);
+                syncDeviceNameToFreezer(updatedDevice, getSysUserId());
             }
 
             return ResponseEntity.ok(toDeviceResponse(updatedDevice));
@@ -1492,7 +1492,7 @@ public class StorageLocationRestController extends BaseRestController {
                 device.getId());
     }
 
-    private void syncDeviceNameToFreezer(StorageDevice device) {
+    private void syncDeviceNameToFreezer(StorageDevice device, String sysUserId) {
         if (freezerService == null) {
             return;
         }
@@ -1508,7 +1508,7 @@ public class StorageLocationRestController extends BaseRestController {
                 if (!freezer.getName().equals(device.getName())) {
                     freezer.setName(device.getName()); // Sync name
                     freezerService.updateFreezer(freezer.getId(), freezer, device.getParentRoom().getId().longValue(),
-                            device.getSysUserId());
+                            sysUserId);
                     logger.info("Synced device name to Freezer: {} (ID: {})", device.getName(), device.getId());
                 }
             }

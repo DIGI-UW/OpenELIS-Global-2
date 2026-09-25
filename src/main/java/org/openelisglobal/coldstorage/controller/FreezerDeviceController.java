@@ -187,13 +187,12 @@ public class FreezerDeviceController extends BaseRestController {
 
     private FreezerStatusResponse toStatusResponse(Freezer freezer) {
         FreezerReading latest = freezerReadingService.getLatestReading(freezer.getId()).orElse(null);
-        ThresholdProfile profile = resolveActiveProfile(freezer,
-                latest != null ? latest.getRecordedAt() : OffsetDateTime.now());
+        // The profile active now, which judges the next reading.
+        ThresholdProfile profile = resolveActiveProfile(freezer, OffsetDateTime.now());
         BigDecimal targetTemperature = thresholdEvaluationService.deriveTargetTemperature(profile);
         FreezerStatusResponse response = FreezerStatusResponse.from(freezer, latest, targetTemperature,
                 modbusPollIntervalSeconds * STALE_AFTER_MISSED_POLLS);
-        // Bands follow the profile active now: the next reading is judged against it.
-        response.applyProfile(latest == null ? profile : resolveActiveProfile(freezer, OffsetDateTime.now()));
+        response.applyProfile(profile);
         return response;
     }
 

@@ -74,6 +74,7 @@ public class FreezerDeviceControllerStatusTest extends BaseWebContextSensitiveTe
         thresholdProfileService.assignProfile(100L, 101L, latestReadingAt.plusDays(1), null, false);
 
         performGet("/rest/coldstorage/status").andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.freezerId == 100)].thresholdProfileName").value("Standard Freezer Profile"));
+                .andExpect(jsonPath("$[?(@.freezerId == 100)].thresholdProfileName").value("Standard Freezer Profile"))
+                .andExpect(jsonPath("$[?(@.freezerId == 100)].targetTemperatureCelsius").value(-20.0));
     }
 }
