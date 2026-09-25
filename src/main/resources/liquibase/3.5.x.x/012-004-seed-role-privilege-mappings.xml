@@ -820,4 +820,42 @@
         </rollback>
     </changeSet>
 
+    <!--
+      patient:view for Validation.
+
+      A validator reviews a result against the patient it belongs to: the
+      validation screens render patientName (Validation.jsx,
+      ValidationReviewPanel.jsx) and AccessionValidationRestController resolves it
+      through SampleHumanService.getPatientForSample for every row. Without the
+      privilege all five Validation screens (Routine, By Order, By Range, By Date,
+      Study) returned 403, because they share the one AccessionValidation endpoint.
+
+      Same gate and same reasoning as 012-004i for Results; the other privileges
+      that path touches (analyte:view, report:run, system_user:view) are resolved
+      at bean-construction time, when system context applies, or are already
+      caught.
+    -->
+    <changeSet author="openelis" id="012-004l-grant-patient-view-to-validation">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Validation so a validator can see whose result they review (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Validation'
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Validation' AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

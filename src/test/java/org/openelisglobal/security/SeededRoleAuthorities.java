@@ -30,7 +30,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  * Under privilege-based RBAC a {@code ROLE_*} authority alone satisfies no
  * service gate; the gates check {@code PRIV_*}. A slice test that builds its
  * user with {@code user("x").roles("RESULTS")} therefore describes a user who
- * can reach nothing, and its 200-expectations fail at the first gated service —
+ * can reach nothing, and its 200-expectations fail at the first gated service -
  * not because the gate is wrong but because the fixture predates it. Building
  * the user from {@link #role(String)} instead gives it exactly what the seed
  * grants that role, so the test asserts the real policy: if it still gets a
@@ -42,8 +42,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  * ({@link CustomUserDetailsService#toRoleAuthority} / {@code toPrivAuthority}),
  * so {@code role("RESULTS")} and {@code role("Results")} are the same user.
  * Both seed row shapes are read: {@code r.name = 'X' AND p.name = 'y'} and
- * {@code p.name IN ('y', 'z')}. Global Admin is not a seeded mapping —
- * production grants it everything via the {@code "*"} sentinel — so
+ * {@code p.name IN ('y', 'z')}. Global Admin is not a seeded mapping -
+ * production grants it everything via the {@code "*"} sentinel, so
  * {@link #admin()} carries every privilege constant, exactly as the integration
  * super-user does.
  */
@@ -51,8 +51,19 @@ public final class SeededRoleAuthorities {
 
     static final Path SEED_DIR = Paths.get("src/main/resources/liquibase/3.5.x.x");
 
-    private static final Pattern ROLE_TERM = Pattern.compile("r\\.name\\s*(?:=\\s*'([^']+)'|IN\\s*\\(([^)]*)\\))");
-    private static final Pattern PRIV_TERM = Pattern.compile("p\\.name\\s*(?:=\\s*'([^']+)'|IN\\s*\\(([^)]*)\\))");
+    // system_role.name is character(30), i.e. blank-padded, so seed changesets
+    // legitimately write "trim(r.name) = 'X'" (012-009 and the 012-004 additions
+    // do).
+    // The optional trim( wrapper below is what makes those rows visible here:
+    // without
+    // it this class silently under-reported, and a test built from
+    // role("Validation")
+    // failed on a privilege the seed really does grant, which reads as a product
+    // bug.
+    private static final Pattern ROLE_TERM = Pattern
+            .compile("(?:trim\\s*\\(\\s*)?r\\.name\\s*\\)?\\s*(?:=\\s*'([^']+)'|IN\\s*\\(([^)]*)\\))");
+    private static final Pattern PRIV_TERM = Pattern
+            .compile("(?:trim\\s*\\(\\s*)?p\\.name\\s*\\)?\\s*(?:=\\s*'([^']+)'|IN\\s*\\(([^)]*)\\))");
     private static final Pattern QUOTED = Pattern.compile("'([^']+)'");
 
     private static final Map<String, Set<String>> GRANTS = load();

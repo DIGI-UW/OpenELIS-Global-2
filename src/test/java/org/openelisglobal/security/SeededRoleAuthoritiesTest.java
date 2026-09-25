@@ -26,6 +26,25 @@ public class SeededRoleAuthoritiesTest {
                 SeededRoleAuthorities.grants().values().stream().mapToInt(Set::size).sum() >= 50);
     }
 
+    /**
+     * {@code system_role.name} is {@code character(30)} and therefore blank-padded,
+     * so seed changesets compare it with {@code trim(r.name) = 'X'} (012-009 and
+     * the 012-004 grant additions). The parser must see those rows.
+     *
+     * <p>
+     * It did not, and the failure was silent in the worst way: a role simply
+     * appeared to lack a privilege the seed really grants, so a test built from
+     * {@code role(...)} failed at a gate and read as a product bug rather than a
+     * fixture one. esig:use and Validation's patient:view were both invisible.
+     */
+    @Test
+    public void readsGrantsWrittenWithTrimmedRoleNames() {
+        assertTrue("012-004k grants esig:use to Results with trim(r.name)",
+                SeededRoleAuthorities.grants().get("Results").contains("esig:use"));
+        assertTrue("012-004l grants patient:view to Validation with trim(r.name)",
+                SeededRoleAuthorities.grants().get("Validation").contains("patient:view"));
+    }
+
     @Test
     public void springRoleAndSeedNameAreTheSameUser() {
         assertEquals(names(SeededRoleAuthorities.role("Results")), names(SeededRoleAuthorities.role("RESULTS")));
