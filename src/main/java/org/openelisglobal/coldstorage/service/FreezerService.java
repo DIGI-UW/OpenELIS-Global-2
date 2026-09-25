@@ -31,7 +31,7 @@ public interface FreezerService {
     Freezer updateThresholds(Long id, BigDecimal targetTemperature, BigDecimal warningThreshold,
             BigDecimal criticalThreshold, Integer pollingIntervalSeconds, String sysUserId);
 
-    void setDeviceStatus(Long id, Boolean active);
+    void setDeviceStatus(Long id, Boolean active, String sysUserId);
 
-    void deleteFreezer(Long id);
+    void deleteFreezer(Long id, String sysUserId);
 }

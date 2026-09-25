@@ -162,15 +162,16 @@ public class FreezerDeviceController extends BaseRestController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/toggle-status")
-    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request) {
-        freezerService.setDeviceStatus(id, request.getActive());
+    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        freezerService.setDeviceStatus(id, request.getActive(), getSysUserId(httpRequest));
         return ResponseEntity.ok().build();
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/delete")
-    public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
-        freezerService.deleteFreezer(id);
+    public ResponseEntity<Void> deleteDevice(@PathVariable Long id, jakarta.servlet.http.HttpServletRequest request) {
+        freezerService.deleteFreezer(id, getSysUserId(request));
         return ResponseEntity.ok().build();
     }
 
