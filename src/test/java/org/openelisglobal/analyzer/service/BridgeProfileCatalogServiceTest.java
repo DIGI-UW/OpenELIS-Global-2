@@ -170,6 +170,17 @@ public class BridgeProfileCatalogServiceTest {
         assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
     }
 
+    @Test
+    public void getCatalogRejectsRulesWithoutAnExplicitConditionsList() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.remove("conditions");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
+    }
+
     private static String validCatalog() {
         return """
                 {
