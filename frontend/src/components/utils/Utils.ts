@@ -139,7 +139,7 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
     })
     .catch((error) => {
       if (error.name === "AbortError" || signal?.aborted) {
-        return; // Component is unmounting — don't call callback
+        return; // Component is unmounting, don't call callback
       }
       console.error(error);
       callback(undefined);
@@ -354,7 +354,7 @@ export const postToOpenElisServerJsonResponse = <
       if (!response.ok) {
         // For error responses, try to parse JSON. If the body is empty
         // (older endpoints return .build() with no payload) the parse will
-        // fail — preserve the HTTP status so callers can still distinguish
+        // fail, preserve the HTTP status so callers can still distinguish
         // a 409 from a network error.
         return response
           .text()
@@ -663,7 +663,7 @@ export const hasRole = (
 };
 
 /**
- * Privilege name constants — mirrors Privileges.java (spec 012 T036). The
+ * Privilege name constants, mirrors Privileges.java (spec 012 T036). The
  * /session payload's `privileges` array uses these raw names; gate UI with
  * hasPrivilege() against them instead of role-name strings.
  */
@@ -761,7 +761,7 @@ export const Privileges = {
 
 /**
  * Checks the resolved privilege set from /session (spec 012 T035). Global
- * Administrator needs no special-casing — the backend expands the sentinel to
+ * Administrator needs no special-casing, the backend expands the sentinel to
  * the full catalog before it reaches the client.
  */
 export const hasPrivilege = (userSessionDetails, ...privileges) => {
@@ -782,7 +782,7 @@ export const hasPrivilege = (userSessionDetails, ...privileges) => {
 /**
  * Bridges a role name to the privilege that means the same capability.
  *
- * <p>App.jsx no longer guards any route on a role — all 85 role guards were
+ * <p>App.jsx no longer guards any route on a role, all 85 role guards were
  * converted to {@code privilege={Privileges.X}}, so nothing in the routing table
  * depends on this map any more. It is kept because {@code computeRouteAccess}
  * still accepts a {@code role} prop, so a caller passing one (including an
@@ -819,11 +819,168 @@ export const RoleEquivalentPrivileges = {
  * - A labUnitRole is satisfied by holding the named lab-unit role (or the
  *   AllLabUnits wildcard).
  * - When a route names BOTH an explicit role/privilege AND a labUnitRole,
- *   EITHER one grants access (OR) — e.g. the Pathology dashboard is reachable
+ *   EITHER one grants access (OR), e.g. the Pathology dashboard is reachable
  *   both by a global Pathologist (role / sign-off privilege) and by a
  *   technician assigned the Pathology unit's Results lab role. When only one
  *   dimension is named, the unnamed dimension is trivially satisfied (AND).
  */
+/**
+ * The privilege each guarded route in App.jsx requires, keyed by its `path`.
+ *
+ * The sidebar is built from /rest/menu, which returns every menu row the
+ * installation has configured, with no reference to the caller's privileges.
+ * SecureRoute then refuses the ones the user cannot open, so roughly half of
+ * each role's menu led to a blank screen: Reception saw 74 such entries,
+ * Results and Validation 88 each, Reports 55. `menuEntryVisible` below uses
+ * this map to hide exactly what SecureRoute would refuse.
+ *
+ * This duplicates App.jsx, so it is pinned: `menuRouteGuards.test.js` fails if
+ * a `<SecureRoute privilege=...>` is added, removed or changed without the
+ * corresponding entry here. Keep the two in step rather than letting the menu
+ * drift back into promising what it cannot deliver.
+ */
+export const ROUTE_PRIVILEGES = {
+  "/analyzers/qc/charts/:analyzerId": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/control-lots": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/control-lots/:id": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/control-lots/new": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/db": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/instruments/:instrumentId": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/qc/rule-config": Privileges.ANALYZER_CONFIGURE,
+  "/analyzers/:id/mappings": Privileges.ANALYZER_IMPORT,
+  "/analyzers/custom-field-types": Privileges.ANALYZER_IMPORT,
+  "/analyzers/types/:profileId/mapping": Privileges.ANALYZER_IMPORT,
+  "/Aliquot": Privileges.ORDER_CREATE,
+  "/ElectronicOrders": Privileges.ORDER_CREATE,
+  "/GenericSample/Edit": Privileges.ORDER_CREATE,
+  "/GenericSample/Import": Privileges.ORDER_CREATE,
+  "/GenericSample/Order": Privileges.ORDER_CREATE,
+  "/ModifyOrder": Privileges.ORDER_CREATE,
+  "/PatientHistory": Privileges.ORDER_CREATE,
+  "/PatientManagement/:patientId?": Privileges.ORDER_CREATE,
+  "/PatientMerge": Privileges.ORDER_CREATE,
+  "/PatientResults/:patientId": Privileges.ORDER_CREATE,
+  "/PrintBarcode": Privileges.ORDER_CREATE,
+  "/SampleBatchEntrySetup": Privileges.ORDER_CREATE,
+  "/SampleEdit": Privileges.ORDER_CREATE,
+  "/SamplePatientEntry": Privileges.ORDER_CREATE,
+  "/genericProgram": Privileges.ORDER_CREATE,
+  "/order/enter": Privileges.ORDER_CREATE,
+  "/order/environmental": Privileges.ORDER_CREATE,
+  "/order/vector": Privileges.ORDER_CREATE,
+  "/programView/:programSampleId": Privileges.ORDER_CREATE,
+  "/LaporanHasil": Privileges.REPORT_RUN,
+  "/Report": Privileges.REPORT_RUN,
+  "/RoutineReport": Privileges.REPORT_RUN,
+  "/RoutineReports": Privileges.REPORT_RUN,
+  "/StudyReport": Privileges.REPORT_RUN,
+  "/StudyReports": Privileges.REPORT_RUN,
+  "/TATReport": Privileges.REPORT_RUN,
+  "/VectorManualEntry": Privileges.REPORT_RUN,
+  "/VectorSurveillanceReport": Privileges.REPORT_RUN,
+  "/AccessionResults": Privileges.RESULT_ENTER,
+  "/EnvironmentalDashboard": Privileges.RESULT_ENTER,
+  "/GenericSample/Results": Privileges.RESULT_ENTER,
+  "/LogbookResults": Privileges.RESULT_ENTER,
+  "/NoteBookInstanceEditForm/:notebookentryid": Privileges.RESULT_ENTER,
+  "/NoteBookInstanceEntryForm/:notebookid": Privileges.RESULT_ENTER,
+  "/NotebookSampleOrder/:notebookId": Privileges.RESULT_ENTER,
+  "/NotebookSampleOrder/:notebookId/:notebookEntryId": Privileges.RESULT_ENTER,
+  "/PatientResults": Privileges.RESULT_ENTER,
+  "/RangeResults": Privileges.RESULT_ENTER,
+  "/Results": Privileges.RESULT_ENTER,
+  "/StatusResults": Privileges.RESULT_ENTER,
+  "/WorkPlanByTestSection": Privileges.RESULT_ENTER,
+  "/WorkplanByPanel": Privileges.RESULT_ENTER,
+  "/WorkplanByPriority": Privileges.RESULT_ENTER,
+  "/WorkplanByTest": Privileges.RESULT_ENTER,
+  "/result": Privileges.RESULT_ENTER,
+  "/vector/deconvolution": Privileges.RESULT_ENTER,
+  "/vector/identification": Privileges.RESULT_ENTER,
+  "/ImmunohistochemistryCaseView/:immunohistochemistrySampleId":
+    Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  "/ImmunohistochemistryDashboard": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  "/PathologyCaseView/:pathologySampleId": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  "/PathologyDashboard": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  "/AccessionValidation": Privileges.RESULT_VALIDATE,
+  "/AccessionValidationRange": Privileges.RESULT_VALIDATE,
+  "/ResultValidation": Privileges.RESULT_VALIDATE,
+  "/ResultValidationByTestDate": Privileges.RESULT_VALIDATE,
+  "/validation": Privileges.RESULT_VALIDATE,
+  "/RoleManagement": Privileges.ROLE_MANAGE,
+  "/AuditTrailReport": Privileges.SYSTEM_CONFIGURE,
+  "/MasterListsPage": Privileges.SYSTEM_CONFIGURE,
+  "/NoteBookEntryForm": Privileges.SYSTEM_CONFIGURE,
+  "/NoteBookEntryForm/:notebookid": Privileges.SYSTEM_CONFIGURE,
+  "/admin": Privileges.SYSTEM_CONFIGURE,
+  "/analyzers/:id/edit": Privileges.SYSTEM_CONFIGURE,
+  "/analyzers/:id/qc-rules": Privileges.SYSTEM_CONFIGURE,
+  "/analyzers/new": Privileges.SYSTEM_CONFIGURE,
+};
+
+/**
+ * Whether a menu SUBTREE contains anything this user can open.
+ *
+ * The menu nests three deep (Reports -> Aggregate -> a report), so checking
+ * only immediate children would leave an empty parent whose every grandchild
+ * is hidden. Recursing keeps a section visible exactly while something inside
+ * it is reachable.
+ */
+export const menuSubtreeVisible = (menuItem, userSessionDetails) => {
+  if (!menuItem?.menu?.isActive) {
+    return false;
+  }
+  const childVisible = (menuItem.childMenus || []).some((child) =>
+    menuSubtreeVisible(child, userSessionDetails),
+  );
+  if (childVisible) {
+    return true;
+  }
+  // A section header carries no actionURL, and menuEntryVisible treats "no
+  // route" as unguarded. Answering true here would keep every empty section,
+  // so a parent with no openable route of its own stands or falls with its
+  // children.
+  const actionURL = menuItem.menu.actionURL;
+  if (!actionURL || actionURL.length <= 1) {
+    return false;
+  }
+  return menuEntryVisible(actionURL, userSessionDetails);
+};
+
+/**
+ * Whether a menu entry should be shown, given the user's session.
+ *
+ * Mirrors SecureRoute: an unguarded route is open to any authenticated user, a
+ * guarded one needs its privilege (or a role that implies it, via
+ * computeRouteAccess). Query strings are stripped because menu rows carry them
+ * (`/SampleEdit?type=readwrite`) while route paths do not, and `:param`
+ * segments are matched by prefix for the same reason.
+ *
+ * Returning true for anything unrecognised is deliberate: a menu row whose
+ * route is not in the map is one SecureRoute does not guard either, so hiding
+ * it would remove a working link.
+ */
+export const menuEntryVisible = (actionURL, userSessionDetails) => {
+  if (!actionURL) {
+    return true;
+  }
+  const path = actionURL.split("?")[0];
+  let privilege = ROUTE_PRIVILEGES[path];
+  if (!privilege) {
+    // A parameterised route ("/PathologyCaseView/:id") never matches a menu
+    // row literally; match the portion before the first parameter instead.
+    const match = Object.keys(ROUTE_PRIVILEGES).find((route) => {
+      const base = route.split("/:")[0];
+      return base.length > 1 && (path === base || path.startsWith(base + "/"));
+    });
+    privilege = match ? ROUTE_PRIVILEGES[match] : undefined;
+  }
+  if (!privilege) {
+    return true;
+  }
+  return computeRouteAccess(userSessionDetails, { privilege });
+};
+
 export const computeRouteAccess = (userDetails, props = {}) => {
   const requestedRoles = [].concat(props.role || []);
   const equivalentPrivileges = requestedRoles.flatMap(
@@ -928,7 +1085,7 @@ export const convertAlphaNumLabNumForDisplay = (
   }
   if (labNumber.length > 15) {
     // Longer-than-15 accessions (e.g. 20-char SiteYearNum like
-    // DEV01263000000000001) aren't reformatted — they're opaque IDs.
+    // DEV01263000000000001) aren't reformatted, they're opaque IDs.
     // Return as-is without warning; legacy dashed formatting below is only
     // for the old 12-char Tacoma-style lab numbers.
     return labNumber;

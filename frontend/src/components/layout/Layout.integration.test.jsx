@@ -11,7 +11,12 @@ import messages from "../../languages/en.json";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 // Mock Utils
-vi.mock("../utils/Utils", () => ({
+// Stub only the network calls. The rest of Utils must stay real: the sidebar
+// now asks menuSubtreeVisible which rows this user may open, and a bare factory
+// mock would drop that export (and ROUTE_PRIVILEGES with it), failing the
+// render before any assertion here runs.
+vi.mock("../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
   getFromOpenElisServerV2: vi.fn().mockResolvedValue({}),
 }));
@@ -103,10 +108,30 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     });
   });
 
+  // Privilege-based RBAC: the sidebar hides rows the user could not open (see
+  // menuSubtreeVisible / ROUTE_PRIVILEGES in Utils.ts), so a session fixture
+  // listing roles but no privileges describes a user who can reach nothing, and
+  // these specs would assert against an empty nav instead of the rendering
+  // behaviour they are about. The privilege list below is deliberately broad for
+  // that reason; menuRouteGuards.test.js is where the filtering itself is tested.
   test("CRITICAL: renders without infinite loop when authenticated", async () => {
     const mockUserSessionDetails = {
       authenticated: true,
       roles: ["ROLE_USER"],
+
+      privileges: [
+        "order:create",
+        "order:view",
+        "order:edit",
+        "patient:view",
+        "result:enter",
+        "result:view",
+        "result:validate",
+        "storage:view",
+        "system:configure",
+        "catalogue:view",
+        "report:run",
+      ],
       userId: "1",
     };
 
@@ -156,6 +181,20 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const mockUserSessionDetails = {
       authenticated: true,
       roles: ["ROLE_USER"],
+
+      privileges: [
+        "order:create",
+        "order:view",
+        "order:edit",
+        "patient:view",
+        "result:enter",
+        "result:view",
+        "result:validate",
+        "storage:view",
+        "system:configure",
+        "catalogue:view",
+        "report:run",
+      ],
       userId: "1",
     };
 
@@ -187,6 +226,20 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const mockUserSessionDetails = {
       authenticated: true,
       roles: ["ROLE_USER"],
+
+      privileges: [
+        "order:create",
+        "order:view",
+        "order:edit",
+        "patient:view",
+        "result:enter",
+        "result:view",
+        "result:validate",
+        "storage:view",
+        "system:configure",
+        "catalogue:view",
+        "report:run",
+      ],
       userId: "1",
     };
 
@@ -212,6 +265,20 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const mockUserSessionDetails = {
       authenticated: true,
       roles: ["ROLE_USER"],
+
+      privileges: [
+        "order:create",
+        "order:view",
+        "order:edit",
+        "patient:view",
+        "result:enter",
+        "result:view",
+        "result:validate",
+        "storage:view",
+        "system:configure",
+        "catalogue:view",
+        "report:run",
+      ],
       userId: "1",
     };
 
@@ -248,6 +315,20 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const mockUserSessionDetails = {
       authenticated: false,
       roles: [],
+
+      privileges: [
+        "order:create",
+        "order:view",
+        "order:edit",
+        "patient:view",
+        "result:enter",
+        "result:view",
+        "result:validate",
+        "storage:view",
+        "system:configure",
+        "catalogue:view",
+        "report:run",
+      ],
       userId: null,
     };
 
