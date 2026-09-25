@@ -3,13 +3,15 @@ name: 01 - Backend
 on:
   push:
     branches: [develop, 3.2.2.x]
+  release:
+    types: [published]
   pull_request:
   workflow_dispatch:
 
 jobs:
   # Gate the expensive Maven build behind a path filter. On pull_request,
   # skip backend-verify entirely when no backend-relevant files changed.
-  # On push to develop and workflow_dispatch the filter step is skipped
+  # On push to develop, release, and workflow_dispatch the filter step is skipped
   # and the `|| 'true'` fallback forces a full build so the JaCoCo badge
   # and Pages publish steps always run on merge.
   changes:
@@ -43,6 +45,7 @@ jobs:
               - 'docker-compose.letsencrypt.yml'
               - '.github/ci/ci.analyzer-harness.yml'
               - '.github/workflows/backend.yml'
+              - '.github/scripts/publish-checkpoints*.cjs'
 
   backend-verify:
     name: Build + Test
@@ -71,6 +74,9 @@ jobs:
 
       - name: check formatting
         run: mvn spotless:check
+
+      - name: Test publication checkpoint gate
+        run: node --test .github/scripts/publish-checkpoints.test.cjs
 
       - name: Initialize and build submodules
         run: |
