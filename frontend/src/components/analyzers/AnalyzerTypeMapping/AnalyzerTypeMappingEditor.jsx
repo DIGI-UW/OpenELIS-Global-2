@@ -465,6 +465,11 @@ const AnalyzerTypeMappingEditor = () => {
     returnTo: currentUrl,
   });
   const confirmation = mapping.confirmation || { state: "UNCONFIRMED" };
+  const recognitionConfigured =
+    (mapping.controlRecognition.mode === "NONE" &&
+      mapping.controlRecognition.affirmedNoControlResults) ||
+    (mapping.controlRecognition.mode === "RULES" &&
+      mapping.controlRecognition.conditions?.length > 0);
 
   return (
     <>
@@ -977,7 +982,9 @@ const AnalyzerTypeMappingEditor = () => {
                 <FormattedMessage id="analyzerType.mappingEditor.save" />
               </Button>
               <Button
-                disabled={!complete || dirty || confirming}
+                disabled={
+                  !complete || !recognitionConfigured || dirty || confirming
+                }
                 onClick={confirm}
               >
                 <FormattedMessage id="analyzerType.mappingEditor.confirm" />

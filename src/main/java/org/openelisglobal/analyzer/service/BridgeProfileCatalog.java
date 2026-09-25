@@ -29,6 +29,11 @@ public record BridgeProfileCatalog(String schemaVersion, String catalogFingerpri
             conditions = conditions == null ? null : List.copyOf(conditions);
         }
 
+        public boolean isConfigured() {
+            return "NONE".equals(mode) && affirmedNoControlResults
+                    || "RULES".equals(mode) && conditions != null && !conditions.isEmpty();
+        }
+
         public record Condition(String key, String kind, String sourceLabel, String value, String description,
                 String controlLevel, String controlType) {
         }
