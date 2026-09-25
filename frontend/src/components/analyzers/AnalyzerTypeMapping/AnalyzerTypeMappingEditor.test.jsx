@@ -303,6 +303,35 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("confirms partial mappings without excluding unresolved rows", async () => {
+    renderEditor();
+    const button = await screen.findByRole("button", {
+      name: "Confirm mappings and control recognition",
+    });
+    expect(button).toBeEnabled();
+    expect(
+      screen.getByText(/unresolved mappings.*saved for correction/),
+    ).toBeVisible();
+    await userEvent.click(button);
+    const request = confirmAnalyzerTypeMapping.mock.calls[0][2];
+    expect(request.confirmedRows).toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "DETECTED",
+    });
+    expect(request.confirmedRows).not.toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "NOT DETECTED",
+    });
+    expect(request.excludedRows).not.toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "NOT DETECTED",
+    });
+    expect(request.excludedRows).not.toContainEqual({
+      sourceRowKey: "RAW-B",
+      rawValue: null,
+    });
+  });
+
   it("renders explicit NONE recognition without server-authored technical details", async () => {
     getAnalyzerTypeMapping.mockImplementation(
       (_profileId, _revision, callback) =>
@@ -437,6 +466,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         "/TestCatalogEditor/9703/sample-results?returnTo=",
       ),
     );
+    expect(within(rawC).getByText("HIGH")).toBeVisible();
     const rawB = screen
       .getAllByTestId("analyzer-type-mapping-row")
       .find((row) => within(row).queryByText("RAW-B"));

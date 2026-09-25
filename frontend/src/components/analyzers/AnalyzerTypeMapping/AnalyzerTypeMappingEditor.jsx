@@ -768,6 +768,11 @@ const AnalyzerTypeMappingEditor = () => {
                               />
                             ) : resultOptions.length === 0 ? (
                               <div className="analyzer-type-mapping__catalog-action">
+                                {test.results.map((result) => (
+                                  <div key={result.rawValue}>
+                                    <code>{result.rawValue}</code>
+                                  </div>
+                                ))}
                                 <InlineNotification
                                   kind="warning"
                                   lowContrast

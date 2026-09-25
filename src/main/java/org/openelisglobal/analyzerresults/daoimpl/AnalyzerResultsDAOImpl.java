@@ -84,11 +84,9 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
-        return entityManager.unwrap(Session.class)
-                .createQuery(
-                        "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.importIssueReason IN (:reasons)",
-                        AnalyzerResults.class)
-                .setParameter("analyzerId", analyzerId)
+        return entityManager.unwrap(Session.class).createQuery(
+                "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.isReadOnly = true AND a.importIssueReason IN (:reasons)",
+                AnalyzerResults.class).setParameter("analyzerId", analyzerId)
                 .setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES).list();
     }
 

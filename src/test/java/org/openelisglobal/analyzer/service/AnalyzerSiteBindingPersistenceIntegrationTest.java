@@ -261,7 +261,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
             AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
                     revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, mock(TestService.class),
-                    mock(TestResultService.class), new AnalyzerMappingDefaults(mock(AnalyzerMappingCatalogService.class), mock(TestResultService.class)));
+                    mock(TestResultService.class), new AnalyzerMappingDefaults(
+                            mock(AnalyzerMappingCatalogService.class), mock(TestResultService.class)));
 
             String profileId = "site.revert." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();

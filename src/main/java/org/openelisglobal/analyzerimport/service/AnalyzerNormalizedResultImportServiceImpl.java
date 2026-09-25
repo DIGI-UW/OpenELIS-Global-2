@@ -200,16 +200,16 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setLotNumber(result.lotNumber());
         row.setControlLevel(result.controlLevel());
         copySourceContext(row, contract, result);
-        if (!mappingConfirmed) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
-            return Optional.of(row);
-        }
-
         AnalyzerSiteBindingTest testMapping = testsBySource.get(result.rawTestCode());
         if (testMapping == null) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
             return Optional.of(row);
         }
+        if (!mappingConfirmed) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
+            return Optional.of(row);
+        }
+
         if (testMapping.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED) {
             return Optional.empty();
         }

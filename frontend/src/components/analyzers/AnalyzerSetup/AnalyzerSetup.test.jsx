@@ -640,6 +640,43 @@ describe("AnalyzerSetup Instrument step", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("allows a confirmed partial mapping to continue without hiding unresolved counts", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    getAnalyzerTypeMapping.mockImplementation((_id, _revision, callback) =>
+      callback({
+        ...currentMapping,
+        tests: [
+          {
+            ...currentMapping.tests[0],
+            mappingState: "UNRESOLVED",
+            testId: null,
+            selectedTest: null,
+            results: currentMapping.tests[0].results.map((result) => ({
+              ...result,
+              mappingState: "UNRESOLVED",
+              resultOptionId: null,
+              selectedOption: null,
+            })),
+          },
+        ],
+      }),
+    );
+    const history = renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+    const button = await screen.findByRole("button", {
+      name: "Continue to Connect",
+    });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalled();
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "connect",
+    );
+  });
+
   it("stays on Verify and explains when the reviewed mapping revision changed", async () => {
     const entry = `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
     getAnalyzer.mockImplementation((_id, callback) =>
