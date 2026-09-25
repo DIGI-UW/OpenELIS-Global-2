@@ -3,10 +3,13 @@ package org.openelisglobal.coldstorage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,6 +23,7 @@ import org.openelisglobal.reports.action.implementation.FreezerExcursionReport;
 import org.openelisglobal.reports.action.implementation.reportBeans.FreezerExcursionReportData;
 import org.openelisglobal.reports.form.ReportForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
@@ -36,6 +40,7 @@ public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        super.setUp();
         executeDataSetWithStateManagement("testdata/freezer.xml");
         freezer = freezerService.findById(100L).orElse(null);
         assertNotNull("Test freezer should exist", freezer);
@@ -89,6 +94,26 @@ public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
         assertEquals("Two excursions, one either side of the outage: " + describe(excursions), 2, excursions.size());
         assertEquals(0, new BigDecimal("-18.0").compareTo(excursions.get(0).getMinTemperature()));
         assertEquals(0, new BigDecimal("-17.0").compareTo(excursions.get(1).getMinTemperature()));
+    }
+
+    /**
+     * An excursion is derived from readings, so the id it carries is its first
+     * breaching reading's; naming it an alert id showed operators an alert number
+     * that matched no alert.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    public void excursionsEndpoint_shouldIdentifyAnExcursionByItsFirstReading() throws Exception {
+        saveReading(60, new BigDecimal("-80.0"), FreezerReading.Status.NORMAL, true);
+        FreezerReading firstBreach = saveReading(50, new BigDecimal("-18.0"), FreezerReading.Status.CRITICAL, true);
+        saveReading(40, new BigDecimal("-15.0"), FreezerReading.Status.CRITICAL, true);
+        saveReading(30, new BigDecimal("-80.0"), FreezerReading.Status.NORMAL, true);
+
+        performGet("/rest/coldstorage/reports/excursions?freezerId=" + freezer.getId() + "&start="
+                + windowStart.withOffsetSameInstant(ZoneOffset.UTC) + "&end="
+                + windowEnd.withOffsetSameInstant(ZoneOffset.UTC)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].firstReadingId").value(firstBreach.getId()))
+                .andExpect(jsonPath("$[0].alertId").doesNotExist());
     }
 
     /**
@@ -147,10 +172,10 @@ public class FreezerExcursionReportTest extends BaseWebContextSensitiveTest {
         return rows.stream().map(r -> r.getSeverity() + " " + r.getTemperatureRange()).toList().toString();
     }
 
-    private void saveReading(int minutesAgo, BigDecimal temperature, FreezerReading.Status status,
+    private FreezerReading saveReading(int minutesAgo, BigDecimal temperature, FreezerReading.Status status,
             boolean transmissionOk) {
-        freezerReadingService.saveReading(freezer, OffsetDateTime.now().minusMinutes(minutesAgo), temperature, null,
-                null, status, transmissionOk, transmissionOk ? null : "timeout");
+        return freezerReadingService.saveReading(freezer, OffsetDateTime.now().minusMinutes(minutesAgo), temperature,
+                null, null, status, transmissionOk, transmissionOk ? null : "timeout");
     }
 
     private String describe(List<FreezerExcursionData> excursions) {

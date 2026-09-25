@@ -176,13 +176,12 @@ const formatRange = (min, max) => {
 };
 
 const mapAlertToExcursion = (alert) => {
-  const alertId = alert.alertId ?? alert.id;
   const freezerId = alert.freezerId ?? alert.freezer;
   const durationSeconds =
     alert.durationSeconds != null ? alert.durationSeconds : alert.duration;
   return {
-    id: `ALERT-${alertId}`,
-    alertId,
+    // Same id the PDF excursion report prints (FreezerExcursionReport).
+    id: `EXC-${freezerId}-${alert.firstReadingId}`,
     freezerId,
     freezerName: alert.freezerName ?? `Freezer ${freezerId}`,
     location: alert.locationName ?? "Unknown location",

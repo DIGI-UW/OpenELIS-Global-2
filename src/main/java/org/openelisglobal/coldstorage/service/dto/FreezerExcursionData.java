@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class FreezerExcursionData {
-    private Long alertId;
+    private Long firstReadingId;
     private Long freezerId;
     private String freezerName;
     private String locationName;
