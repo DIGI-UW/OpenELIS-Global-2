@@ -77,6 +77,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL || "https://localhost",
     ignoreHTTPSErrors: true,
+    // Story assertions use the source English copy, not regional translations.
+    locale: "en",
 
     // Evidence collection
     trace: "retain-on-failure",
