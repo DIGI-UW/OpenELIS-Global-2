@@ -209,7 +209,16 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     void updateAnalysises(List<Analysis> cancelAnalysis, List<Analysis> newAnalysis, String sysUserId);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
+    /**
+     * Clears the "corrected since patient report" flag once a report has printed
+     * the correction. Report bookkeeping, not result entry: {@code PatientReport}
+     * is its only caller in the codebase, it writes no result value, and it
+     * deliberately skips the audit trail because nothing clinically meaningful
+     * changed. Gating it on PRIV_RESULT_ENTER denied the Reports role - whose job
+     * is running that very report - at the end of generating it, after the PDF had
+     * been assembled.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_REPORT_RUN')")
     void updateAllNoAuditTrail(List<Analysis> updatedAnalysis);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")

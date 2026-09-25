@@ -858,4 +858,138 @@
         </rollback>
     </changeSet>
 
+    <!--
+      organization:view for Reports.
+
+      The patient reports offer "Generate Reports By Site": PatientReport sets
+      useSiteSearch, populates a referring-site list and filters by site and
+      department (findReportSamplesForSite). The department picklist calls
+      /rest/departments-for-site, which reads
+      OrganizationService.getOrganizationsByParentId (organization:view).
+
+      Without the privilege that call 403'd, and because the React form maps over
+      the response without a null guard (PatientStatusReport.jsx), the denial threw
+      inside Formik and WHITE-SCREENED the whole report page. So the symptom was a
+      blank page, not a permission message.
+
+      012-004c already granted organization:view to Results and Validation for
+      their referral-lab picklist; Reports was missed despite being the role whose
+      job is running these reports.
+    -->
+    <changeSet author="openelis" id="012-004m-grant-organization-view-to-reports">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant organization:view to Reports for the by-site report filter (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reports'
+              AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reports' AND p.name = 'organization:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      site_info:view for the roles that generate reports.
+
+      Report.createReportParameters - the abstract base of all 18 report types -
+      puts the lab's header logos into every report via
+      ImageService.getImageBySiteInfoName, which is gated on PRIV_SITE_INFO_VIEW.
+      That privilege was seeded but granted to NO role, so no non-administrator
+      could generate any report at all: the request 403'd after the form had been
+      filled in. Global Administrator was unaffected, because its "*" sentinel
+      expands to whatever privileges exist in the table, which is exactly why the
+      gap survived.
+
+      012-009 renamed the row from siteinfo:view to site_info:view so the gate's
+      PRIV_SITE_INFO_VIEW authority would match it; granting it was never done.
+      This completes that fix.
+
+      Scope, established by inspection rather than assumption: Reports and EQA
+      Coordinator hold report:run, and the Pathologist and Cytopathologist case
+      views POST to /rest/ReportPrint directly (PathologyCaseView.jsx,
+      CytologyCaseView.jsx). Results and Validation offer no printed report, so
+      they are not granted it. This is a READ of the configured site images;
+      editing site information remains administrative.
+    -->
+    <changeSet author="openelis" id="012-004n-grant-site-info-view-to-report-runners">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant site_info:view to the roles that generate reports (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Reports', 'EQA Coordinator', 'Pathologist', 'Cytopathologist')
+              AND p.name = 'site_info:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Reports', 'EQA Coordinator', 'Pathologist', 'Cytopathologist')
+                  AND p.name = 'site_info:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      The domain reads the Reports role's own menu implies.
+
+      Reports is offered 40+ reports spanning every domain, but held only eight
+      privileges, so generating most of them denied. These are not incidental
+      lookups: referral:view IS the Referred Out report, nce:view IS the two
+      non-conformity reports, provider:view and sample_requester:view are the
+      header of every patient report (provider name, requesting organisation),
+      coldstorage:view and alert:view are the freezer audit and excursion reports,
+      analyte:view is the HIV indicator report, and sample_status:view is the
+      sample status printed on the reports.
+
+      Established by auditing all 96 classes under reports/action/implementation
+      against the role's seeded privileges, not by hitting them one at a time.
+
+      Every one is a :view read of data the report already prints. Reports gains
+      no ability to change anything: the corresponding :manage/:edit privileges
+      are untouched, and the one WRITE on this path (marking analyses as printed)
+      is handled on its own method rather than by granting result:enter here.
+    -->
+    <changeSet author="openelis" id="012-004o-grant-report-domain-reads">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the domain reads the Reports role's reports require (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reports'
+              AND p.name IN ('provider:view', 'sample_requester:view', 'referral:view', 'nce:view',
+                             'sample_status:view', 'analyte:view', 'coldstorage:view', 'alert:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reports'
+                  AND p.name IN ('provider:view', 'sample_requester:view', 'referral:view', 'nce:view',
+                                 'sample_status:view', 'analyte:view', 'coldstorage:view', 'alert:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
