@@ -6,8 +6,10 @@
     <changeSet id="fixture-unmigrated-analyzer-data"
         author="openelis">
         <sql>
-            INSERT INTO analyzer (id, name, is_active, status, ip_address, port, import_directory)
-            VALUES (900011, 'Unmigrated fixture', TRUE, 'PENDING_REGISTRATION', '192.0.2.11', 5000, '/upgrade/incoming');
+            INSERT INTO analyzer (id, name, is_active, status, ip_address, port,
+            import_directory)
+            VALUES (900011, 'Unmigrated fixture', TRUE, 'PENDING_REGISTRATION',
+            '192.0.2.11', 5000, '/upgrade/incoming');
             INSERT INTO analyzer_plugin_config (analyzer_id, config)
             VALUES (900011, '{"instrumentSetting":"preserve-me"}');
         </sql>
