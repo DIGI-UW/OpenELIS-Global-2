@@ -8,7 +8,10 @@
     "confidence": "LOW"
   },
   "category": "MOLECULAR",
-  "protocol": { "name": "FILE", "format": "CSV" },
+  "protocol": {
+    "name": "FILE",
+    "format": "CSV"
+  },
   "capabilities": {
     "inboundResults": true,
     "outboundOrders": false,
@@ -40,7 +43,19 @@
   "controlResultRecognition": {
     "mode": "RULES",
     "rules": {
-      "specimen-prefix": { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "QC-" }
+      "specimen-prefix": {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "QC-"
+      }
     }
-  }
+  },
+  "default_test_mappings": [
+    {
+      "test_code": "TEST_VL",
+      "test_name_hint": "Synthetic viral load",
+      "loinc": "20447-9",
+      "unit": "copies/mL",
+      "result_type": "quantitative"
+    }
+  ]
 }

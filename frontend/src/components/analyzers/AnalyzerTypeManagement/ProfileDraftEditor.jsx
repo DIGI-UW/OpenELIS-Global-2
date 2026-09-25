@@ -7,11 +7,14 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { profileAuthoringMessage } from "./profileAuthoringMessages";
 import {
   getAnalyzerTypeDraft,
   updateAnalyzerTypeDraft,
 } from "../../../services/analyzerService";
 import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
+import ProfileStringList from "./ProfileStringList";
+import ProfileTestDefinitions from "./ProfileTestDefinitions";
 
 // These choices describe the published Bridge v1 contract, never instrument defaults.
 const FORMATS = ["CSV", "TSV", "XLS", "XLSX", "ODS", "XML"];
@@ -40,8 +43,7 @@ const columnsOf = (profile) =>
 
 const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const intl = useIntl();
-  const text = (key, values) =>
-    intl.formatMessage({ id: `analyzerType.editor.${key}` }, values);
+  const text = (key, values) => profileAuthoringMessage(intl, key, values);
   const [draft, setDraft] = useState(initialDraft);
   const [profile, setProfile] = useState(initialDraft.profile || {});
   const [columns, setColumns] = useState(columnsOf(initialDraft.profile));
@@ -413,6 +415,10 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
             )}
           </>
         )}
+        <ProfileTestDefinitions
+          rows={profile.default_test_mappings || []}
+          onChange={(rows) => change(["default_test_mappings"], rows)}
+        />
         <h4>{text("connectionFields")}</h4>
         <p>{text("connectionFieldsHelp")}</p>
         {connectionFields.map((field, index) => (
@@ -561,73 +567,6 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
           />
         )}
     </section>
-  );
-};
-
-const ProfileStringList = ({ id, label, values, choices, onChange }) => {
-  const intl = useIntl();
-  const text = (key) =>
-    intl.formatMessage({ id: `analyzerType.editor.${key}` });
-  return (
-    <fieldset aria-label={label}>
-      <legend>{label}</legend>
-      {values.map((value, index) => (
-        <div key={index}>
-          {choices ? (
-            <Select
-              id={`profile-list-${id}-${index}`}
-              labelText={`${label} ${index + 1}`}
-              value={value}
-              onChange={(event) =>
-                onChange(
-                  values.map((item, current) =>
-                    current === index ? event.target.value : item,
-                  ),
-                )
-              }
-            >
-              <SelectItem value="" text={text("choose")} />
-              {choices.map((choice) => (
-                <SelectItem
-                  key={choice}
-                  value={choice}
-                  text={text(`semantic.${choice}`)}
-                />
-              ))}
-            </Select>
-          ) : (
-            <TextInput
-              id={`profile-list-${id}-${index}`}
-              labelText={`${label} ${index + 1}`}
-              value={value}
-              onChange={(event) =>
-                onChange(
-                  values.map((item, current) =>
-                    current === index ? event.target.value : item,
-                  ),
-                )
-              }
-            />
-          )}
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() =>
-              onChange(values.filter((_, current) => current !== index))
-            }
-          >
-            {text("remove")}
-          </Button>
-        </div>
-      ))}
-      <Button
-        kind="tertiary"
-        size="sm"
-        onClick={() => onChange([...values, ""])}
-      >
-        {text("add")}
-      </Button>
-    </fieldset>
   );
 };
 

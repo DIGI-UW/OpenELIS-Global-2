@@ -409,6 +409,24 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     field.getByLabelText("Required during connection setup"),
     "true",
   );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Add analyzer test" }),
+  );
+  const testRow = within(
+    screen.getByRole("group", { name: "Analyzer test 1" }),
+  );
+  for (const [label, value] of [
+    ["Analyzer test code", "TEST_VL"],
+    ["Suggested test name", "Synthetic viral load"],
+    ["LOINC code", "20447-9"],
+    ["Reported units", "copies/mL"],
+  ]) {
+    await userEvent.type(testRow.getByRole("textbox", { name: label }), value);
+  }
+  await userEvent.selectOptions(
+    testRow.getByRole("combobox", { name: "Reported value type" }),
+    "quantitative",
+  );
   expect(
     screen.getByRole("button", { name: "Publish Profile" }),
   ).toBeDisabled();
@@ -461,4 +479,29 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     expect.any(Function),
   );
   expect(onSuccess).toHaveBeenCalledWith("create");
+});
+
+it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
+  const authored = clone(astmProfile);
+  delete authored.catalog;
+  authored.default_test_mappings[0].aliases = ["MTB", "MTB_ALT"];
+  mount(authored);
+  const row = within(screen.getByRole("group", { name: "Analyzer test 1" }));
+  const name = row.getByRole("textbox", { name: "Suggested test name" });
+  await userEvent.type(name, "Site tuberculosis assay");
+  const namedValues = within(
+    row.getByRole("group", { name: "Result values reported by this test" }),
+  );
+  await userEvent.click(namedValues.getByRole("button", { name: "Add value" }));
+  const inputs = namedValues.getAllByRole("textbox");
+  await userEvent.type(inputs[inputs.length - 1], "SITE REVIEW REQUIRED");
+  await save();
+  const expected = clone(authored);
+  expected.default_test_mappings[0].test_name_hint = "Site tuberculosis assay";
+  expected.default_test_mappings[0].values.push("SITE REVIEW REQUIRED");
+  expect(updateAnalyzerTypeDraft).toHaveBeenCalledWith(
+    "draft-file",
+    expected,
+    expect.any(Function),
+  );
 });
