@@ -103,6 +103,14 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     window.localStorage.clear();
   });
 
+  it("keeps a scientific-notation result on one line", () => {
+    renderPanel(row({ result: "1.5 x 10^4" }));
+
+    const value = screen.getByTestId("review-result-value");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
+  });
+
   it("leads with a read-only summary: Method and Analyzer as two fields, entered by/when, ranges, QC", () => {
     renderPanel(row());
 

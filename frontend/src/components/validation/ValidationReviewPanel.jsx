@@ -273,7 +273,12 @@ const ValidationReviewPanel = ({
             <span className="cds--label" style={LABEL_STYLE}>
               <FormattedMessage id="label.validation.review.result" />
             </span>
-            <strong>{displayResult(row)}</strong>
+            <strong
+              style={{ whiteSpace: "nowrap" }}
+              data-testid="review-result-value"
+            >
+              {displayResult(row)}
+            </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
           </div>

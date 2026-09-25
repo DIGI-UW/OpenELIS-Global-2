@@ -706,7 +706,12 @@ const Validation = (props) => {
                 style={{ padding: "2px", ...holdingStyle }}
                 data-testid={`validation-result-${row.id}`}
               >
-                {row.result}
+                <span
+                  style={{ whiteSpace: "nowrap" }}
+                  data-testid={`validation-result-value-${row.id}`}
+                >
+                  {row.result}
+                </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
             );
