@@ -166,7 +166,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION')")
     public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(required = false) String componentId) {
@@ -291,6 +291,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        // A test carrying a live referral is not referred again, and the bench has to
+        // be told rather than have the refer-out quietly dropped from the save.
+        if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
+            body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
         item.setModified(true);
         reuseExistingResultForComponent(item, analysis);
 
@@ -390,7 +397,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);

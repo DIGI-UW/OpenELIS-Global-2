@@ -1,12 +1,12 @@
 import React from "react";
-import { render as rtlRender, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import PolymorphicResultCell, {
   blocksSaveOnPrecision,
   enteredDecimalPlaces,
   exceedsConfiguredPrecision,
-  precisionStep,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 
@@ -31,7 +31,7 @@ const baseRow = {
 };
 
 describe("PolymorphicResultCell", () => {
-  it("numeric rows render a number input", () => {
+  it("numeric rows render a text input so scientific notation can be typed", () => {
     const { container } = render(
       <PolymorphicResultCell
         row={{ ...baseRow, resultType: "N", resultValue: "42" }}
@@ -39,9 +39,23 @@ describe("PolymorphicResultCell", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).not.toBeNull();
-    expect(input).toHaveValue(42);
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("42");
+  });
+
+  it("numeric rows report scientific notation as typed", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "N" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    const input = container.querySelector("input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "1.5×10⁵" } });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1.5×10⁵");
   });
 
   it("dictionary rows render a select with readable options", () => {
@@ -102,6 +116,76 @@ describe("PolymorphicResultCell", () => {
 });
 
 /**
+ * OGC-1185 — a test configured as Titer (T) could be ordered but never
+ * resulted: the cell had no case for it and fell through to a bare span, so
+ * the row offered no control and no Save.
+ */
+describe("titer rows", () => {
+  it("render a text input holding the dilution ratio as stored", () => {
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:10" }}
+        editable
+        onValueChange={() => {}}
+      />,
+    );
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("1:10");
+    expect(input).toHaveAttribute("placeholder", "e.g. 1:10");
+  });
+
+  it("report what was typed as the result value", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    fireEvent.change(container.querySelector("input") as HTMLInputElement, {
+      target: { value: "1:20" },
+    });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1:20");
+  });
+
+  it("show the stored ratio as plain text once saved", () => {
+    render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:40" }}
+        editable={false}
+        onValueChange={() => {}}
+      />,
+    );
+    expect(screen.getByText("1:40")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Every result type the platform declares (TypeOfTestResultServiceImpl
+ * .ResultType, and the set the Test Catalogue Editor offers) has to reach a
+ * control here. A type that falls through to the fallback span is a test that
+ * can be ordered but never resulted — the OGC-1185 shape, for any future type.
+ */
+describe("result type coverage", () => {
+  it.each(["R", "D", "T", "N", "A", "M", "C"])(
+    "renders an entry control for result type %s",
+    (resultType) => {
+      const { container } = render(
+        <PolymorphicResultCell
+          row={{ ...baseRow, resultType, dictionaryResults: [] }}
+          editable
+          onValueChange={() => {}}
+        />,
+      );
+      expect(container.innerHTML).not.toBe("<span></span>");
+      expect(container.firstElementChild).not.toBeNull();
+    },
+  );
+});
+
+/**
  * OGC-1179 #7 — the result cell is the worklist's primary control and carries
  * no visible label; the column header names it for a sighted reader, but a
  * screen-reader user tabbing the page landed on an unnamed combobox.
@@ -121,7 +205,7 @@ describe("PolymorphicResultCell accessible names", () => {
     />
   );
 
-  it.each(["N", "D", "A", "R"])("names the %s control", (resultType) => {
+  it.each(["N", "D", "A", "R", "T"])("names the %s control", (resultType) => {
     render(named(resultType));
     expect(
       screen.getByLabelText("Result for COVID-19 PCR — N2 (Ct)"),
@@ -156,11 +240,16 @@ describe("configured precision", () => {
     expect(exceedsConfiguredPrecision("not a number", 0)).toBe(false);
   });
 
-  it("offers a step matching the configured precision", () => {
-    expect(precisionStep(0)).toBe("1");
-    expect(precisionStep(1)).toBe("0.1");
-    expect(precisionStep(2)).toBe("0.01");
-    expect(precisionStep(undefined)).toBe("any");
+  it("judges scientific notation by the mantissa's places", () => {
+    expect(enteredDecimalPlaces("1.5e5")).toBe(1);
+    expect(enteredDecimalPlaces("1.5×10⁵")).toBe(1);
+    expect(enteredDecimalPlaces("3e2")).toBe(0);
+    expect(exceedsConfiguredPrecision("1.5e1", 1)).toBe(false);
+    expect(exceedsConfiguredPrecision("1.5e-7", 2)).toBe(false);
+    expect(exceedsConfiguredPrecision("1.55e1", 1)).toBe(true);
+    expect(exceedsConfiguredPrecision("1.234e5", 2)).toBe(true);
+    expect(exceedsConfiguredPrecision("1.5 x 10^5", 0)).toBe(false);
+    expect(exceedsConfiguredPrecision("3²", 2)).toBe(false);
   });
 
   it("marks the entry field invalid rather than accepting the divergence", () => {
@@ -178,8 +267,7 @@ describe("configured precision", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).toHaveAttribute("step", "1");
+    const input = container.querySelector('input[type="text"]');
     expect(input).toHaveAttribute("data-invalid");
   });
 
@@ -197,7 +285,7 @@ describe("configured precision", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
+    const input = container.querySelector('input[type="text"]');
     expect(input).not.toHaveAttribute("data-invalid");
   });
 });

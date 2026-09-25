@@ -26,15 +26,23 @@ import {
   postToOpenElisServerFullResponse,
   hasRole,
 } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
+import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { notificationVisible } = useContext(NotificationContext);
@@ -60,8 +68,14 @@ function ImmunohistochemistryDashboard() {
     ],
   });
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
+  // Identifies the load in flight: the search runs more than once while the
+  // filters settle, and a late answer must not pull the page back to 1.
+  const latestRequest = useRef(0);
 
   function formatDateToDDMMYYYY(date) {
     var day = date.getDate();
@@ -90,15 +104,6 @@ function ImmunohistochemistryDashboard() {
       " - " +
       formatDateToDDMMYYYY(currentDate)
     );
-  };
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
   };
   const tileList = [
     {
@@ -133,7 +138,7 @@ function ImmunohistochemistryDashboard() {
       "/rest/immunohistochemistry/assignTechnician?immunohistochemistrySampleId=" +
         immunohistochemistrySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
   };
 
@@ -145,7 +150,7 @@ function ImmunohistochemistryDashboard() {
       "/rest/immunohistochemistry/assignPathologist?immunohistochemistrySampleId=" +
         immunohistochemistrySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
   };
 
@@ -190,9 +195,11 @@ function ImmunohistochemistryDashboard() {
     }
   };
 
-  const setImmunohistochemistryEntriesWithIds = (entries) => {
+  /** One server page of cases and the page announcement it came with. */
+  const setImmunohistochemistryEntriesWithIds = (response) => {
     if (componentMounted.current) {
-      if (entries && entries.length > 0) {
+      const entries = response?.items || [];
+      if (entries.length > 0) {
         setImmunohistochemistryEntries(
           entries.map((entry) => {
             return { ...entry, id: "" + entry.immunohistochemistrySampleId };
@@ -201,6 +208,10 @@ function ImmunohistochemistryDashboard() {
       } else {
         setImmunohistochemistryEntries([]);
       }
+      setPaging(response?.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response?.paging, entries.length, previous),
+      );
       setLoading(false);
     }
   };
@@ -229,15 +240,47 @@ function ImmunohistochemistryDashboard() {
     );
   };
 
-  const refreshItems = () => {
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = (pageNumber) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
-      "/rest/immunohistochemistry/dashboard?" + filtersToParameters(),
-      setImmunohistochemistryEntriesWithIds,
+      "/rest/immunohistochemistry/dashboard?page=" + pageNumber,
+      (response) => {
+        if (requestId === latestRequest.current) {
+          setImmunohistochemistryEntriesWithIds(response);
+        }
+      },
     );
   };
 
+  /**
+   * Runs the search again and, when asked, reopens the page that was showing
+   * (an assignment changes a row, not the list) as long as it still exists.
+   */
+  const refreshItems = (pageToReopen) => {
+    const requestId = ++latestRequest.current;
+    getFromOpenElisServer(
+      "/rest/immunohistochemistry/dashboard?" + filtersToParameters(),
+      (response) => {
+        if (requestId !== latestRequest.current) {
+          return;
+        }
+        setImmunohistochemistryEntriesWithIds(response);
+        const reopen = Number(pageToReopen) || 1;
+        if (
+          reopen > 1 &&
+          reopen <= (Number(response?.paging?.totalPages) || 1)
+        ) {
+          loadPage(reopen);
+        }
+      },
+    );
+  };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
+
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    history.push("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {
@@ -357,7 +400,9 @@ function ImmunohistochemistryDashboard() {
                     id: "label.filters.status",
                   })}
                   value={
-                    filters.statuses.length > 1 ? "All" : filters.statuses[0].id
+                    filters.statuses.length > 1
+                      ? "All"
+                      : filters.statuses[0]?.id || "IN_PROGRESS"
                   }
                   onChange={setStatusFilter}
                   noLabel
@@ -379,11 +424,9 @@ function ImmunohistochemistryDashboard() {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              rows={immunohistochemistryEntries.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              rows={immunohistochemistryEntries}
               headers={[
                 {
                   key: "requestDate",
@@ -450,43 +493,13 @@ function ImmunohistochemistryDashboard() {
               )}
             </DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={immunohistochemistryEntries.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging,
+                rowsOnPage: immunohistochemistryEntries.length,
+                pageSize: serverPageSize,
+                onPageRequest: loadPage,
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
           </Column>
         </Grid>

@@ -70,7 +70,23 @@ public class QCResultCreatedEventListener {
             }
 
             // Update result_status: REJECTED if any REJECTION-severity violation, ACCEPTED
-            // otherwise
+            // otherwise.
+            //
+            // An EMPTY evaluation means "no rules ran", which is not the same as "in
+            // control" — so the status is left exactly as the writer set it. This matters
+            // beyond tidiness: a bench control (OGC-1147) can have no Westgard config at
+            // all, because westgard_rule_config is keyed on a non-null instrument_id.
+            // Overwriting there would flip a technician's own FAIL verdict to ACCEPTED,
+            // and findLatestAcceptedBenchResultBefore would then treat that failed
+            // control as the last in-control one when bounding the next failure's
+            // affected-results window — holding FEWER patient results than it should.
+            // The same reasoning protects an analyzer test that has no rules configured.
+            if (evaluationResults.isEmpty()) {
+                LogEvent.logInfo(this.getClass().getName(), "handleQCResultCreated",
+                        "No rules evaluated for result " + result.getId() + "; leaving status as written");
+                return;
+            }
+
             boolean hasRejection = evaluationResults.stream()
                     .anyMatch(r -> r.isViolated() && "REJECTION".equals(r.getSeverity()));
             String newStatus = hasRejection ? "REJECTED" : "ACCEPTED";

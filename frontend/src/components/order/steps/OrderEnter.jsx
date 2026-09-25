@@ -12,10 +12,10 @@ import {
   Switch,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
 import {
@@ -24,11 +24,13 @@ import {
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
-import LocationSection from "./sections/LocationSection";
+import VectorSection from "./sections/VectorSection";
+import CollectionConditionsSection from "./sections/CollectionConditionsSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import { isMicrobiologyOrderReady } from "../orderDataUtils";
 import "../order-workflow.scss";
 
 /**
@@ -57,6 +59,8 @@ const OrderEnter = () => {
     setSamples,
     labNumber,
     saveOrderEntry, // Step 1 uses saveOrderEntry (creates sample_type_requests, not sample_items)
+    isSubmitting,
+    fieldErrors,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -72,7 +76,7 @@ const OrderEnter = () => {
   const [workflowType, setWorkflowType] = useState(
     orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
       "clinical",
-  ); // "clinical" | "environmental"
+  ); // "clinical" | "environmental" | "vector"
   const [labUnitConfig, setLabUnitConfig] = useState(null);
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
@@ -165,7 +169,8 @@ const OrderEnter = () => {
 
   // Handle workflow type switch
   const handleWorkflowTypeChange = (index) => {
-    const newWorkflowType = index === 0 ? "clinical" : "environmental";
+    const newWorkflowType =
+      index === 0 ? "clinical" : index === 1 ? "environmental" : "vector";
     setWorkflowType(newWorkflowType);
 
     // Persist workflow type to orderData for backend storage
@@ -174,14 +179,13 @@ const OrderEnter = () => {
       ...prev,
       // Set top-level patientUpdateStatus for backend
       patientUpdateStatus:
-        newWorkflowType === "environmental"
+        newWorkflowType === "environmental" || newWorkflowType === "vector"
           ? "NO_ACTION"
           : prev.patientUpdateStatus,
       patientProperties: {
         ...prev.patientProperties,
-        // Also set inside patientProperties where backend reads it
         patientUpdateStatus:
-          newWorkflowType === "environmental"
+          newWorkflowType === "environmental" || newWorkflowType === "vector"
             ? "NO_ACTION"
             : prev.patientProperties?.patientUpdateStatus,
       },
@@ -200,18 +204,42 @@ const OrderEnter = () => {
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite =
     workflowType === "environmental"
-      ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
-      : !!(
-          orderData?.patientProperties?.lastName ||
-          orderData?.patientProperties?.nationalId
-        );
+      ? !!(
+          envFields.samplingSiteId ||
+          envFields.samplingSiteName ||
+          envFields.vecCollectionSiteId ||
+          envFields.vecCollectionSiteName
+        )
+      : workflowType === "vector"
+        ? !!(
+            envFields.vecCollectionSiteId ||
+            envFields.vecCollectionSiteName ||
+            envFields.vecOrganismGroupId
+          )
+        : !!(
+            orderData?.patientProperties?.lastName ||
+            orderData?.patientProperties?.nationalId
+          );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+  const microbiologyOrderReady = isMicrobiologyOrderReady(orderData, samples);
 
   // canProceed gates the Save / Save & Next buttons in the layout
   const canProceed =
     canSave &&
+    microbiologyOrderReady &&
     Object.values(phoneValidation).every((item) => item.status !== false);
+
+  const notifyIncompleteMicrobiologyOrder = () => {
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "microbiology.orderEntry.incomplete",
+      }),
+    });
+    setNotificationVisible(true);
+  };
 
   // Save handler - uses saveOrderEntry which creates sample_type_requests (not sample_items)
   const handleSave = async () => {
@@ -228,8 +256,12 @@ const OrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(false); // silent=false
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -249,10 +281,17 @@ const OrderEnter = () => {
   // Save and navigate to next step
   const handleSaveAndNext = async () => {
     if (!canSave) return; // canProceed gate on the button already covers this, but be safe
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(false); // silent=false
+      await saveOrderEntry();
       markStepComplete("enter");
-      history.push("/order/collect");
+      const isVector =
+        orderData?.sampleOrderItems?.environmentalFields?.workflowType ===
+        "vector";
+      history.push(isVector ? "/order/label" : "/order/collect");
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -278,8 +317,12 @@ const OrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(true); // silent=true
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -306,7 +349,6 @@ const OrderEnter = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={0}
       title="order.step.enter"
       canProceed={canProceed}
       onSave={handleSave}
@@ -316,7 +358,7 @@ const OrderEnter = () => {
           kind="tertiary"
           onClick={handleSaveAsDraft}
           size="md"
-          disabled={!canSave}
+          disabled={isSubmitting || !canSave}
         >
           <FormattedMessage
             id="button.save.draft"
@@ -326,6 +368,7 @@ const OrderEnter = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
         {/* Section 1: Lab Number */}
@@ -353,14 +396,18 @@ const OrderEnter = () => {
                   }
                   value={localLabNumber}
                   onChange={handleLabNumberChange}
+                  invalid={Boolean(fieldErrors?.["sampleOrderItems.labNo"])}
+                  invalidText={fieldErrors?.["sampleOrderItems.labNo"]}
                   placeholder={intl.formatMessage({
                     id: "order.labNumber.placeholder",
                     defaultMessage: "Enter or generate lab number",
                   })}
                   disabled={isReadOnly && !isEditMode}
                 />
-                <Link
+                <Button
                   className="generate-link"
+                  kind="ghost"
+                  size="sm"
                   onClick={handleGenerateLabNumber}
                   disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
                 >
@@ -375,7 +422,7 @@ const OrderEnter = () => {
                       defaultMessage="Generate"
                     />
                   )}
-                </Link>
+                </Button>
               </div>
               <p className="helper-text">
                 <FormattedMessage
@@ -458,7 +505,13 @@ const OrderEnter = () => {
             </h4>
             <ContentSwitcher
               onChange={({ index }) => handleWorkflowTypeChange(index)}
-              selectedIndex={workflowType === "clinical" ? 0 : 1}
+              selectedIndex={
+                workflowType === "clinical"
+                  ? 0
+                  : workflowType === "environmental"
+                    ? 1
+                    : 2
+              }
             >
               <Switch name="clinical">
                 <FormattedMessage
@@ -470,6 +523,12 @@ const OrderEnter = () => {
                 <FormattedMessage
                   id="workflow.environmental"
                   defaultMessage="Environmental / Other"
+                />
+              </Switch>
+              <Switch name="vector">
+                <FormattedMessage
+                  id="workflow.vector"
+                  defaultMessage="Vector Surveillance"
                 />
               </Switch>
             </ContentSwitcher>
@@ -492,9 +551,27 @@ const OrderEnter = () => {
           />
         )}
 
-        {/* Section 3: Location (Environmental) */}
+        {/* Section 3: Sampling Site (Environmental) */}
         {workflowType === "environmental" && (
-          <LocationSection
+          <VectorSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3b: Collection Conditions (Environmental only) */}
+        {workflowType === "environmental" && (
+          <CollectionConditionsSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3: Vector Surveillance */}
+        {workflowType === "vector" && (
+          <VectorSection
             orderData={orderData}
             setOrderData={setOrderData}
             isReadOnly={isReadOnly && !isEditMode}
@@ -505,6 +582,7 @@ const OrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
+          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
         />
 
@@ -522,6 +600,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
 
         {/* Section 7: Sample & Test Selection */}
@@ -531,6 +610,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
       </Stack>
     </OrderWorkflowLayout>

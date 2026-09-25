@@ -36,6 +36,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import "../ruleBuilderAccordion.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -219,34 +220,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const handleRuleAdd = () => {
     setCalculationList([...calculationList, CalculatedValueObj]);
-  };
-
-  const handleRuleRemove = (index, id) => {
-    if (id) {
-      postToOpenElisServer(
-        "/rest/deactivate-test-calculation/" + id,
-        {},
-        handleDelete,
-      );
-    }
-  };
-
-  const handleDelete = (status) => {
-    setNotificationVisible(true);
-    if (status == "200") {
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.success.msg" }),
-      });
-      window.location.reload();
-    } else {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.error.msg" }),
-      });
-    }
   };
 
   const addOperation = (index: number, type: OperationType) => {
@@ -888,7 +861,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                     </div>
                   </div>
                   <div style={{ marginTop: "1rem" }}>
-                    <Accordion>
+                    <Accordion className="ruleBuilderAccordion">
                       <AccordionItem
                         title={
                           <FormattedMessage

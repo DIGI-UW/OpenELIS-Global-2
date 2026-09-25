@@ -28,6 +28,8 @@ import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
+import { MICROBIOLOGY_REFERENCE_SECTIONS } from "./microbiologyReference/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -40,6 +42,27 @@ const renderNav = () =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("AdminSideNav — Test Catalog Management entry", () => {
+  it("builds every microbiology reference route from shared section config", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/MicrobiologyReference/organisms",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    MICROBIOLOGY_REFERENCE_SECTIONS.forEach(({ key }) => {
+      expect(
+        container
+          .querySelector(`[data-testid="microbiology-reference-${key}"]`)
+          .getAttribute("href"),
+      ).toBe(`/MasterListsPage/MicrobiologyReference/${key}`);
+    });
+    expect(
+      container
+        .querySelector('[data-testid="microbiology-reference-organisms"]')
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     const { container } = renderNav();
@@ -284,5 +307,101 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
         expect(s.getAttribute("aria-disabled")).toBe("true"),
       );
     });
+
+    it("greys the lab unit sections and names lab units, on the lab units list", () => {
+      mockLocation = {
+        pathname: "/MasterListsPage/LabUnitManagement",
+        search: "",
+      };
+      const { container } = renderNav();
+
+      const caption = container.querySelector(
+        '[data-cy="labUnitSectionsContext"]',
+      );
+      expect(caption).not.toBeNull();
+      expect(caption.textContent).toBe("Click a lab unit to edit its sections");
+
+      const sections = container.querySelectorAll(
+        '[data-cy^="labUnit-section-"]',
+      );
+      expect(sections.length).toBe(LAB_UNIT_SECTIONS.length);
+      sections.forEach((s) => {
+        expect(s.getAttribute("aria-disabled")).toBe("true");
+        expect(s.getAttribute("aria-describedby")).toBe("labUnitSectionsHelp");
+      });
+
+      // the test sections must not be borrowed here
+      expect(container.querySelector('[data-cy^="section-"]')).toBeNull();
+    });
+  });
+
+  it("makes the lab unit sections live routed links when editing a lab unit", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/LabUnitManagement/5/basic-info",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    LAB_UNIT_SECTIONS.forEach((key) => {
+      const item = container.querySelector(
+        `[data-cy="labUnit-section-${key}"]`,
+      );
+      expect(item).not.toBeNull();
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      expect(item.getAttribute("href")).toBe(
+        `/MasterListsPage/LabUnitManagement/5/${key}`,
+      );
+    });
+  });
+
+  it("labels the Lab Units entry as 'Lab Units Editor' off an editor route", () => {
+    mockLocation = { pathname: "/MasterListsPage/TestCatalogList", search: "" };
+    const { container } = renderNav();
+    expect(
+      container.querySelector('[data-cy="labUnitManagement"]').textContent,
+    ).toBe("Lab Units Editor");
+  });
+
+  it("offers no sections to pick from on the catalog import screen", () => {
+    // Importing a file edits no single record, so the greyed list that tells a
+    // reader to click a test would be an instruction the page cannot honour.
+    mockLocation = { pathname: "/MasterListsPage/CatalogImport", search: "" };
+    const { container } = renderNav();
+
+    expect(container.querySelectorAll('[aria-disabled="true"]')).toHaveLength(
+      0,
+    );
+    expect(
+      screen.queryByText(
+        messages["sidenav.label.admin.testCatalog.sectionsHelper"],
+      ),
+    ).not.toBeInTheDocument();
+    V1_SECTIONS.forEach((sectionKey) => {
+      expect(
+        container.querySelector(`[data-cy="section-${sectionKey}"]`),
+      ).toBeNull();
+    });
+    // The entity links the screen is reached from stay in place.
+    expect(container.querySelector('[data-cy="catalogImport"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-cy="testCatalogList"]'),
+    ).not.toBeNull();
+  });
+
+  it("keeps every admin nav link inside the admin route family", () => {
+    // Every item in this nav stays in the admin shell; a link out would swap
+    // the whole navigation underneath the reader.
+    mockLocation = { pathname: "/MasterListsPage", search: "" };
+    const { container } = renderNav();
+
+    expect(
+      Array.from(container.querySelectorAll("a[href]")).filter(
+        (a) =>
+          !a.getAttribute("href").startsWith("/MasterListsPage") &&
+          !a.getAttribute("href").startsWith("/admin") &&
+          a.getAttribute("target") !== "_blank" &&
+          a.getAttribute("href") !== "/Dashboard",
+      ),
+    ).toHaveLength(0);
   });
 });

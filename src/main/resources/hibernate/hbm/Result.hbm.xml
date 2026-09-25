@@ -42,7 +42,10 @@
             lazy="false">
             <column name="RESULT_TYPE" length="1" />
         </property>
-        <property name="value" type="java.lang.String">
+        <!-- Field access: getValue() normalizes written scientific notation for
+            callers that parse it, and Hibernate must persist what was entered rather
+            than that normalized form. -->
+        <property name="value" type="java.lang.String" access="field">
             <column name="VALUE" length="200" />
         </property>
         <property name="minNormal" type="java.lang.Double"
@@ -64,5 +67,22 @@
             class="org.openelisglobal.result.valueholder.Result" fetch="select">
             <column name="parent_id" precision="10" scale="0" />
         </many-to-one>
+        <property name="qcEvaluation">
+            <column name="qc_evaluation" length="10" />
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.result.valueholder.QcEvaluation</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="qcEvaluationDetail" type="java.lang.String">
+            <column name="qc_evaluation_detail" length="500" />
+        </property>
+        <property name="expandedUncertainty"
+            type="java.math.BigDecimal">
+            <column name="expanded_uncertainty" />
+        </property>
+        <property name="coverageFactor" type="java.math.BigDecimal">
+            <column name="coverage_factor" />
+        </property>
     </class>
 </hibernate-mapping>

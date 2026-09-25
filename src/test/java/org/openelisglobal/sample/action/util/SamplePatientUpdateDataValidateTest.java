@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.action.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -9,6 +10,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.validation.BeanPropertyBindingResult;
@@ -94,5 +96,99 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
         assertNotNull("samples-with-no-tests must surface as a FieldError on 'sampleOrderItems' "
                 + "(not a global ObjectError) so it lands in fieldErrors[]", err);
         assertEquals("errors.samples.with.no.tests", err.getCode());
+    }
+
+    /**
+     * Env/vector orders need at least one of Requesting Organization or Requestor
+     * contact. Neither is present here, so validateSample must reject.
+     */
+    @Test
+    public void envVectorWorkflow_missingOrgAndRequestor_surfacesFieldError() {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(nonEmptySampleTestCollection()));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true, sampleOrder, "environmental");
+
+        assertTrue("must reject when neither Requesting Organization nor Requestor is present", result.hasErrors());
+        FieldError err = result.getFieldError("sampleOrderItems");
+        assertNotNull(err);
+        assertEquals("errors.requester.org.or.requestor.required", err.getCode());
+    }
+
+    @Test
+    public void envVectorWorkflow_requestorOnly_passesOrgOrRequestorCheck() {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(nonEmptySampleTestCollection()));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+        sampleOrder.setRequestorFirstName("Jane");
+        sampleOrder.setRequestorLastName("Doe");
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true, sampleOrder, "environmental");
+
+        assertFalse("Requestor alone must satisfy the org-or-requestor requirement", result.hasErrors());
+    }
+
+    @Test
+    public void envVectorWorkflow_organizationOnly_passesOrgOrRequestorCheck() {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(nonEmptySampleTestCollection()));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+        sampleOrder.setReferringSiteId("42");
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true, sampleOrder, "environmental");
+
+        assertFalse("Requesting Organization alone must satisfy the org-or-requestor requirement", result.hasErrors());
+    }
+
+    @Test
+    public void clinicalWorkflow_missingOrgAndRequestor_doesNotTriggerCheck() {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(nonEmptySampleTestCollection()));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true, sampleOrder, "clinical");
+
+        assertFalse("the org-or-requestor check is env/vector-only and must not fire for clinical orders",
+                result.hasErrors());
+    }
+
+    private SampleTestCollection nonEmptySampleTestCollection() {
+        SampleAddService outer = new SampleAddService(null, "1", null, null);
+        return outer.new SampleTestCollection(null,
+                Collections.singletonList(new org.openelisglobal.test.valueholder.Test()), null, null, null, null,
+                null);
     }
 }

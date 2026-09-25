@@ -157,7 +157,10 @@ const EQAOrdersPage = () => {
   }));
 
   const handleEnterNewTest = () => {
-    history.push("/SamplePatientEntry?isEQA=true");
+    // EQA is a control on the shared order form, not a lane of its own, so
+    // this pushes into the clinical flow with that control pre-set rather
+    // than at the legacy screen's ?isEQA=true (OGC-1201 W).
+    history.push("/order/clinical/enter?eqa=true");
   };
 
   if (loading) {

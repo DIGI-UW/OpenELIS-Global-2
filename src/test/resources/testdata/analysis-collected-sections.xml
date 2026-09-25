@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Two test sections with NotStarted analyses in each, so the section-scoped
+        In Progress count can be told apart from the unscoped one. Section 1 also
+        carries a QC analysis, which neither count may include. -->
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <status_of_sample id="1" code="1" status_type="S"
+        description="Test Status" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Biochemistry"
+        description="Biochemistry" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="bio" domain="CLINICAL" />
+    <test_section id="2" name="Haematology"
+        description="Haematology" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="2"
+        name_localization_id="1" display_key="haem" domain="CLINICAL" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+    <test id="2" description="Haemoglobin" loinc="718-7" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="2" test_format_id="1" sort_order="2"
+        name="Haemoglobin" guid="test-hb-001" name_localization_id="1" />
+
+    <sample id="1" accession_number="SECT-TEST-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="2" sort_order="2" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <!-- Item 2 is a QC duplicate of item 1, so its analysis is excluded -->
+    <sample_item_qc_profile id="qc-dup-01"
+        sample_item_id="2" qc_type="DUPLICATE" parent_sample_item_id="1"
+        expected_value="0" sys_user_id="1" last_updated="2025-06-01 12:00:00" />
+
+    <!-- Section 1: two client analyses -->
+    <analysis id="1" sampitem_id="1" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <analysis id="2" sampitem_id="1" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <!-- Section 1: QC analysis, excluded from both counts -->
+    <analysis id="3" sampitem_id="2" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <!-- Section 2: one client analysis -->
+    <analysis id="4" sampitem_id="1" test_id="2" test_sect_id="2"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+</dataset>

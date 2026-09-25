@@ -1,17 +1,18 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
   TextInput,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -21,6 +22,8 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+
+const SAMPLE_TYPE_CREATE_ENDPOINT = "/rest/SampleTypeCreate";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -44,24 +47,17 @@ function SampleTypeCreate() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(true);
   const [bothFilled, setBothFilled] = useState(false);
-  const [sampleTypeCreateList, setSampleTypeCreateList] = useState({});
 
-  const componentMounted = useRef(false);
+  const { data: sampleTypeCreateList } = useServerData(
+    SAMPLE_TYPE_CREATE_ENDPOINT,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
-  const handleSampleTypeCreateList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setSampleTypeCreateList(res);
-    }
-  };
-
-  const handleSampleTypeCreateListCall = ({
-    englishLangPost,
-    frenchLangPost,
-  }) => {
+  const handleSampleTypeCreateListCall = (
+    actions,
+    { englishLangPost, frenchLangPost },
+  ) => {
     postToOpenElisServerJsonResponse(
       "/rest/SampleTypeCreate",
       JSON.stringify({
@@ -69,34 +65,39 @@ function SampleTypeCreate() {
         sampleTypeFrenchName: frenchLangPost,
       }),
       (res) => {
-        handlePostSampleTypeCreateListCallBack(res);
+        handlePostSampleTypeCreateListCallBack(res, actions);
       },
     );
   };
 
-  const handlePostSampleTypeCreateListCallBack = (res) => {
-    if (res) {
-      if (res) {
-        setIsLoading(false);
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
-        setNotificationVisible(true);
-      }
+  const handlePostSampleTypeCreateListCallBack = (res, actions) => {
+    if (!requestFailed(res)) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "message.sampleType.add.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      actions.resetForm();
+      setBothFilled(false);
+      invalidateServerData();
+      setNotificationVisible(true);
     } else {
+      actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id:
+            res && res.status === 400
+              ? "error.sampleType.create.invalidName"
+              : res && res.status === 409
+                ? "configuration.sampleType.create.duplicate"
+                : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
     }
@@ -116,16 +117,6 @@ function SampleTypeCreate() {
     return allSampleTypeValues.includes(name.trim().toLowerCase());
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/SampleTypeCreate`, handleSampleTypeCreateList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
   const validationSchema = Yup.object({
     englishLangPost: Yup.string()
       .required("fill this field")
@@ -144,14 +135,6 @@ function SampleTypeCreate() {
       )
       .trim(),
   });
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
 
   return (
     <>
@@ -206,7 +189,7 @@ function SampleTypeCreate() {
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
               if (bothFilled) {
-                handleSampleTypeCreateListCall(values);
+                handleSampleTypeCreateListCall(actions, values);
               } else {
                 setBothFilled(true);
                 actions.setSubmitting(false);
@@ -221,6 +204,7 @@ function SampleTypeCreate() {
               handleBlur,
               handleSubmit,
               isSubmitting,
+              resetForm,
             }) => (
               <Form onSubmit={handleSubmit}>
                 <Grid fullWidth={true}>
@@ -313,7 +297,8 @@ function SampleTypeCreate() {
                       type="button"
                       kind="tertiary"
                       onClick={() => {
-                        window.location.reload();
+                        resetForm();
+                        setBothFilled(false);
                       }}
                     >
                       {bothFilled ? (

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Environmental sample manifest fields on sample_item:
+    - container:        physical container used (e.g. "1L HDPE bottle") — from Sample Container dictionary
+    - location_details: specific point classification (e.g. "Inlet") — from Sample Location Type dictionary
+    - gps_latitude:     per-sample GPS latitude (overrides order-level GPS)
+    - gps_longitude:    per-sample GPS longitude (overrides order-level GPS)
+    All nullable; backwards-compatible.
+  -->
+
+  <changeSet id="3.5.0.0-sample-item-add-container" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="container" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="container" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-sample-item-add-location-details" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="location_details" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="location_details" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-sample-item-add-gps-latitude" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="gps_latitude" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="gps_latitude" type="VARCHAR(30)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-sample-item-add-gps-longitude" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="gps_longitude" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="gps_longitude" type="VARCHAR(30)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

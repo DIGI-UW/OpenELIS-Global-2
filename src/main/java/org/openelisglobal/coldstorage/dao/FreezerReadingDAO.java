@@ -13,4 +13,10 @@ public interface FreezerReadingDAO extends BaseDAO<FreezerReading, Long> {
     List<FreezerReading> findRecentByFreezer(Long freezerId, int limit);
 
     List<FreezerReading> findByFreezerWithin(Long freezerId, OffsetDateTime start, OffsetDateTime end);
+
+    /**
+     * Bulk-deletes readings recorded strictly before {@code cutoff}, for retention
+     * cleanup. Returns the number of rows deleted.
+     */
+    int deleteOlderThan(OffsetDateTime cutoff);
 }

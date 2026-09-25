@@ -196,7 +196,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (candidates.size() <= 1) {
             return false;
         }
-        if (IS_RETROCI && item.getAccessionNumber() != null && item.getAccessionNumber().startsWith("LDBS")
+        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null
+                && item.getAccessionNumber().startsWith("LDBS")
                 && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
             return false;
         }
@@ -918,7 +919,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber, String chosenTypeOfSampleId) {
-        if (IS_RETROCI && accessionNumber.startsWith("LDBS")) {
+        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")) {
             List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
                     .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
 
@@ -1001,17 +1002,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private final String DBS_SAMPLE_TYPE_ID;
 
     /**
-     * Constructor — resolves the DBS sample type ID when running in RetroCI mode.
+     * Resolves the DBS sample type ID when running in RetroCI mode. The type is
+     * matched on its local abbreviation first because a catalog import can rewrite
+     * the description; a missing type must not stop the application from starting.
      */
     public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        if (IS_RETROCI) {
-            TypeOfSample typeOfSample = new TypeOfSample();
-            typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain(Domain.CLINICAL.name());
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
-            DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
-        } else {
-            DBS_SAMPLE_TYPE_ID = null;
+        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
+    }
+
+    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
+        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
+                Domain.CLINICAL.name());
+        if (typeOfSample == null) {
+            TypeOfSample searchType = new TypeOfSample();
+            searchType.setDescription("DBS");
+            searchType.setDomain(Domain.CLINICAL.name());
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
         }
+        if (typeOfSample == null) {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+            return null;
+        }
+        return typeOfSample.getId();
     }
 }

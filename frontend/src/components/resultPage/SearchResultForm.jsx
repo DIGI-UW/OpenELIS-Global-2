@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import {
@@ -20,9 +27,17 @@ import {
   Select,
   SelectItem,
   Loading,
-  Link,
+  ActionableNotification,
+  Tag,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import ServerPageArrows from "../common/ServerPageArrows";
+import { Copy } from "@carbon/icons-react";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import SampleKindTag from "./SampleKindTag";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
@@ -32,7 +47,6 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import SendToAnalyzerButton from "../modifyOrder/SendToAnalyzerButton";
-import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -48,8 +62,17 @@ import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAss
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import { classifyNumericResult, numericResultStyle } from "./numericResultFlag";
+import {
+  exceedsDecimalPlaces,
+  normalizeScientificNotation,
+  roundMantissa,
+} from "./scientificNotation";
+import { FlagChip } from "./unified/flags";
+import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
-import { Warning } from "@carbon/icons-react";
+import CriticalCallbackModal from "./CriticalCallbackModal";
+import { Warning, Phone } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
@@ -73,18 +96,156 @@ function labNumberForLogbookSearch(accessionNumber) {
 }
 
 function ResultSearchPage() {
+  const intl = useIntl();
   const [originalResultForm, setOriginalResultForm] = useState({
     testResult: [],
   });
   const [resultForm, setResultForm] = useState(originalResultForm);
+  // A response replaces the complete work queue.  SearchResults has draft
+  // state for rows (including text inputs), so it gets a fresh editing session
+  // only at this response boundary, not on each individual field edit.
+  const [resultSetVersion, setResultSetVersion] = useState(0);
   const [searchBy, setSearchBy] = useState({ type: "", doRange: false });
   const [param, setParam] = useState("&accessionNumber=");
+
+  // ── Pool filter state (lifted here so SearchResultForm can render the controls
+  //    right-aligned beside the search button) ─────────────────────────────────
+  const [poolLotFilter, setPoolLotFilter] = useState("");
+  const [poolIdFilter, setPoolIdFilter] = useState("");
+
+  // Reset filters whenever a new result set arrives.
+  useEffect(() => {
+    setPoolLotFilter("");
+    setPoolIdFilter("");
+  }, [resultSetVersion]);
+
+  const allRows = resultForm?.testResult ?? [];
+
+  // Unique accession numbers that have at least one pool-anchored row.
+  const poolLotOptions = useMemo(() => {
+    const seen = new Set();
+    return allRows
+      .filter((r) => r.vectorPoolId)
+      .map((r) => r.accessionNumber)
+      .filter((acc) => acc && !seen.has(acc) && seen.add(acc));
+  }, [allRows]);
+
+  // Pool options for the currently-selected lot (or all lots if none chosen).
+  const poolOptions = useMemo(() => {
+    const base = poolLotFilter
+      ? allRows.filter((r) => r.accessionNumber === poolLotFilter)
+      : allRows;
+    const seen = new Map();
+    base
+      .filter((r) => r.vectorPoolId)
+      .forEach((r) => {
+        const key = String(r.vectorPoolId);
+        if (!seen.has(key)) {
+          seen.set(key, {
+            id: key,
+            label: r.vectorPoolLabel || "",
+            count: r.vectorPoolMemberCount,
+            type: r.sampleType,
+            accession: r.accessionNumber,
+          });
+        }
+      });
+    return [...seen.values()];
+  }, [allRows, poolLotFilter]);
+
+  const formatPoolLabel = (opt) => {
+    const suffix = opt.label || "";
+    let base;
+    if (!suffix) {
+      base = intl.formatMessage({
+        id: "result.pool.intake",
+        defaultMessage: "Intake pool",
+      });
+    } else if (/^-P\d+/.test(suffix)) {
+      const parts = suffix.slice(1).split("-"); // ["P01"] or ["P01","S2","S1"]
+      const poolNum = parseInt(parts[0].slice(1), 10);
+      const poolPart = intl.formatMessage(
+        { id: "result.pool.pool", defaultMessage: "Pool {n}" },
+        { n: String(poolNum).padStart(2, "0") },
+      );
+      const subParts = parts
+        .slice(1)
+        .map((seg, i) =>
+          intl.formatMessage(
+            { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+            { n: seg.slice(1) },
+          ),
+        );
+      base = [poolPart, ...subParts].join(" · ");
+    } else if (suffix.startsWith("-s")) {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.slice(2) },
+      );
+    } else {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.replace(/^[-.]/, "") },
+      );
+    }
+    const detail =
+      opt.count > 0 ? ` (${opt.count}${opt.type ? " " + opt.type : ""})` : "";
+    return opt.accession && !poolLotFilter
+      ? `${opt.accession} — ${base}${detail}`
+      : `${base}${detail}`;
+  };
+
+  // Rows visible in the table after applying active pool filters.
+  // Saving still operates on the full resultForm — only display is narrowed.
+  const filteredRowCount = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter)
+        .length;
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter).length;
+    return allRows.length;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+  // ── End pool filter ─────────────────────────────────────────────────────────
+
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
 
   const setResults = (resultForm) => {
     setOriginalResultForm(resultForm);
     setResultForm(resultForm);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(
+        resultForm.paging,
+        resultForm.testResult?.length ?? 0,
+        previous,
+      ),
+    );
+    setResultSetVersion((version) => version + 1);
   };
 
+  /**
+   * The results table re-runs the current search after a write instead of
+   * sending the browser back to the URL it is already on, and asks for a
+   * server page when Carbon's pagination moves. SearchResultForm owns the
+   * search and publishes both here whenever the endpoint changes.
+   */
+  const refreshRun = useRef(null);
+  const registerRefresh = useCallback((run) => {
+    refreshRun.current = run;
+  }, []);
+  const refreshResults = useCallback(
+    (pageToReopen) => refreshRun.current?.(pageToReopen),
+    [],
+  );
+  const pageLoader = useRef(null);
+  const registerPageLoader = useCallback((run) => {
+    pageLoader.current = run;
+  }, []);
+  const loadPage = useCallback(
+    (pageNumber) => pageLoader.current?.(pageNumber),
+    [],
+  );
   // Single-accession context → offer LIS-initiated dispatch of this order to an
   // analyzer. Derived from the active accession-number search param (set when the
   // page is loaded/searched by accession, e.g. /AccessionResults?accessionNumber=…);
@@ -104,6 +265,20 @@ function ResultSearchPage() {
         setParam={setParam}
         setSearchBy={setSearchBy}
         setResults={setResults}
+        registerRefresh={registerRefresh}
+        registerPageLoader={registerPageLoader}
+        poolLotOptions={poolLotOptions}
+        poolOptions={poolOptions}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
+        onPoolLotChange={(v) => {
+          setPoolLotFilter(v);
+          setPoolIdFilter("");
+        }}
+        onPoolIdChange={setPoolIdFilter}
+        formatPoolLabel={formatPoolLabel}
+        totalRows={allRows.length}
+        filteredRowCount={filteredRowCount}
       />
       {loadedAccession && hasResults && (
         <Grid>
@@ -115,11 +290,17 @@ function ResultSearchPage() {
         </Grid>
       )}
       <SearchResults
+        key={`result-set-${resultSetVersion}`}
         extraParams={param}
         searchBy={searchBy}
         results={resultForm}
         setResultForm={setResultForm}
         refreshOnSubmit={true}
+        refreshResults={refreshResults}
+        serverPageSize={serverPageSize}
+        loadPage={loadPage}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
       />
     </>
   );
@@ -148,40 +329,48 @@ export function SearchResultForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchResultFormValues,
   );
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const componentMounted = useRef(false);
 
   const setResultsWithId = (results) => {
-    if (results.testResult) {
-      var i = 0;
-      if (results.testResult) {
-        results.testResult.forEach((item) => (item.id = "" + i++));
-      }
-      props.setResults?.(results);
+    if (!results) {
       setLoading(false);
-      if (results.paging) {
-        var { totalPages, currentPage } = results.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
-      }
+      return;
+    }
+    if (results.testResult) {
+      // /AccessionResults is a patient-result view; QC duplicates/blanks belong
+      // on the QC review surfaces (/LogbookResults, /RangeResults) instead.
+      const visibleResults =
+        window.location.pathname === "/AccessionResults"
+          ? results.testResult.filter((row) => !row.qcType)
+          : results.testResult;
+      // Group each QC row directly beneath its client parent so the table
+      // reads as parent → children rather than scattering BLANKs to the end.
+      // Key 1: groupId binds QC rows (parentSampleItemId) to their parent
+      //   (own sampleItemId). Key 2: parent (qcType null) first within group.
+      //   Key 3: sequenceNumber for stable order across QC siblings.
+      const groupKey = (row) =>
+        parseInt(row.parentSampleItemId ?? row.sampleItemId, 10) ||
+        Number.MAX_SAFE_INTEGER;
+      const seqKey = (row) =>
+        parseInt(row.sequenceNumber, 10) || Number.MAX_SAFE_INTEGER;
+      const testResult = visibleResults
+        .slice()
+        .sort(
+          (a, b) =>
+            groupKey(a) - groupKey(b) ||
+            (a.qcType ? 1 : 0) - (b.qcType ? 1 : 0) ||
+            seqKey(a) - seqKey(b),
+        )
+        // The form payload addresses rows by position. Keep that compatibility
+        // value in the response-derived form without mutating the response.
+        .map((item, index) => ({
+          ...item,
+          id: String(index),
+          note: item.note ?? "",
+        }));
+      props.setResults?.({ ...results, testResult });
+      setLoading(false);
     } else {
       props.setResults?.({ testResult: [] });
       addNotification({
@@ -196,20 +385,29 @@ export function SearchResultForm(props) {
 
   const intl = useIntl();
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, setResultsWithId);
+    getFromOpenElisServer(url + "&page=" + pageNumber, setResultsWithId);
   };
 
-  const loadPreviousResultsPage = () => {
+  /**
+   * Re-runs the search, so the server rebuilds its pages, and reopens the page
+   * the user was on when the rebuilt list still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     setLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, setResultsWithId);
+    getFromOpenElisServer(url, (results) => {
+      const totalPages = Number(results?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, setResultsWithId);
+      } else {
+        setResultsWithId(results);
+      }
+    });
   };
 
   const getSelectedPatient = (patient) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setPatient(patient);
   };
   useEffect(() => {
@@ -254,15 +452,15 @@ export function SearchResultForm(props) {
       "&testSectionId=" +
       values.unitType +
       "&collectionDate=" +
-      values.collectionDate +
+      (values.collectionDate || "") +
       "&recievedDate=" +
-      values.recievedDate +
+      (values.recievedDate || "") +
       "&selectedTest=" +
-      values.testName +
+      (values.testName || "") +
       "&selectedSampleStatus=" +
-      values.sampleStatusType +
+      (values.sampleStatusType || "") +
       "&selectedAnalysisStatus=" +
-      values.analysisStatus +
+      (values.analysisStatus || "") +
       "&doRange=" +
       searchBy.doRange +
       "&finished=" +
@@ -304,11 +502,16 @@ export function SearchResultForm(props) {
   };
 
   const handleSubmit = (values) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     querySearch(values);
   };
+
+  useEffect(() => {
+    if (!props.registerRefresh) {
+      return;
+    }
+    props.registerRefresh(url ? refreshResults : null);
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerRefresh, props.registerPageLoader]);
 
   const getTests = (tests) => {
     if (componentMounted.current) {
@@ -333,9 +536,6 @@ export function SearchResultForm(props) {
   };
 
   const submitOnSelect = (e) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     var values = { unitType: e.target.value };
     handleSubmit(values);
   };
@@ -486,9 +686,6 @@ export function SearchResultForm(props) {
       setSearchFormValues(searchValues);
       querySearch(searchValues);
     }
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
   }, [searchBy]);
 
   return (
@@ -727,13 +924,129 @@ export function SearchResultForm(props) {
 
                 {searchBy.type !== "patient" && searchBy.type !== "unit" && (
                   <Column lg={16} md={8} sm={4}>
-                    <Button
-                      style={{ marginTop: "16px" }}
-                      type="submit"
-                      id="searchResults"
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "0.75rem",
+                        marginTop: "16px",
+                      }}
                     >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
+                      <Button type="submit" id="searchResults">
+                        <FormattedMessage id="label.button.search" />
+                      </Button>
+
+                      {props.poolLotOptions?.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-end",
+                            flexWrap: "wrap",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <Select
+                            id="pool-lot-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.lot",
+                              defaultMessage: "Lot",
+                            })}
+                            value={props.poolLotFilter}
+                            onChange={(e) =>
+                              props.onPoolLotChange(e.target.value)
+                            }
+                            size="sm"
+                            style={{ minWidth: 160 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allLots",
+                                defaultMessage: "All lots",
+                              })}
+                            />
+                            {props.poolLotOptions.map((acc) => (
+                              <SelectItem key={acc} value={acc} text={acc} />
+                            ))}
+                          </Select>
+
+                          <Select
+                            id="pool-id-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.pool",
+                              defaultMessage: "Pool",
+                            })}
+                            value={props.poolIdFilter}
+                            onChange={(e) =>
+                              props.onPoolIdChange(e.target.value)
+                            }
+                            disabled={
+                              !props.poolLotFilter &&
+                              props.poolOptions?.length === 0
+                            }
+                            size="sm"
+                            style={{ minWidth: 200 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allPools",
+                                defaultMessage: "All pools",
+                              })}
+                            />
+                            {props.poolOptions?.map((opt) => (
+                              <SelectItem
+                                key={opt.id}
+                                value={opt.id}
+                                text={props.formatPoolLabel(opt)}
+                              />
+                            ))}
+                          </Select>
+
+                          {(props.poolLotFilter || props.poolIdFilter) && (
+                            <>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                style={{ alignSelf: "flex-end" }}
+                                onClick={() => {
+                                  props.onPoolLotChange("");
+                                  props.onPoolIdChange("");
+                                }}
+                              >
+                                {intl.formatMessage({
+                                  id: "result.pool.filter.clear",
+                                  defaultMessage: "Clear filter",
+                                })}
+                              </Button>
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--cds-text-secondary, #525252)",
+                                  alignSelf: "flex-end",
+                                  paddingBottom: "0.5rem",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {intl.formatMessage(
+                                  {
+                                    id: "result.pool.filter.count",
+                                    defaultMessage:
+                                      "{shown} of {total} results",
+                                  },
+                                  {
+                                    shown: props.filteredRowCount,
+                                    total: props.totalRows,
+                                  },
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </Column>
                 )}
               </Grid>
@@ -782,52 +1095,6 @@ export function SearchResultForm(props) {
           </Grid>
         </>
       )}
-
-      {searchBy.type === "ReferredOutTests" && <ReferredOutTests />}
-
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={16}>
-              {" "}
-              <br /> <br />
-            </Column>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
     </>
   );
 }
@@ -839,15 +1106,15 @@ export function SearchResults(props) {
 
   const intl = useIntl();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
-  const [methods, setMethods] = useState([]);
+  const [methodsByTestId, setMethodsByTestId] = useState({});
+  const [defaultMethodByTestId, setDefaultMethodByTestId] = useState({});
   const [referralReasons, setReferralReasons] = useState([]);
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+  const [testDateOverrides, setTestDateOverrides] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -855,8 +1122,16 @@ export function SearchResults(props) {
   const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
   // Which analysisId's storage-picker modal is open (one at a time).
   const [storageModalRow, setStorageModalRow] = useState(null);
+  // Which row's critical-callback modal is open (one at a time; OGC-714).
+  const [callbackModalRow, setCallbackModalRow] = useState(null);
+  // Rows with a callback logged (keyed by row.id). Drives the needs-callback
+  // banner: seeded from the durable record (/rest/critical-callback/
+  // logged-results) when results load, updated in place on a new log.
+  const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
 
   const componentMounted = useRef(false);
+  const holdingTimeNotifiedRows = useRef(new Set());
+  const [uncertaintyFocusedId, setUncertaintyFocusedId] = useState(null);
   // Saved multiselect values per row, frozen once the user starts editing so
   // the Current Result column keeps showing what is persisted, not the
   // in-progress selection (multiSelectResultValues is the editable field).
@@ -869,7 +1144,7 @@ export function SearchResults(props) {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       loadReferalOrganizations,
     );
-    getFromOpenElisServer("/rest/displayList/METHODS", loadMethods);
+    // methods loaded per-test on demand (see loadMethodsForTest)
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       loadReferalReasons,
@@ -892,6 +1167,41 @@ export function SearchResults(props) {
 
   useEffect(() => {
     if (props.results.testResult) {
+      const uniqueTestIds = [
+        ...new Set(
+          props.results.testResult.map((r) => r.testId).filter(Boolean),
+        ),
+      ];
+      uniqueTestIds.forEach((testId) => loadMethodsForTest(testId));
+    }
+  }, [props.results.testResult]);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      const newlyExceeded = props.results.testResult.filter(
+        (row) =>
+          getHoldingStatus(row) === "exceeded" &&
+          !holdingTimeNotifiedRows.current.has(row.id),
+      );
+      if (newlyExceeded.length > 0) {
+        newlyExceeded.forEach((row) =>
+          holdingTimeNotifiedRows.current.add(row.id),
+        );
+        const testNames = newlyExceeded
+          .map((r) => r.testName || r.accessionNumber)
+          .filter(Boolean)
+          .join(", ");
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: testNames },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+
       let newValidationState = { ...validationState };
       props.results.testResult.forEach((row) => {
         if (row.resultType === "N") {
@@ -907,21 +1217,43 @@ export function SearchResults(props) {
           row.resultValue = validation.newValue;
           validation.style = {
             ...validation?.style,
-            borderColor: validation.isCritical
-              ? "orange"
-              : validation.isInvalid
-                ? "red"
-                : "",
-            background: validation.outsideValid
-              ? "#ffa0a0"
-              : validation.outsideNormal
-                ? "#ffffa0"
-                : "var(--cds-field)",
+            ...numericResultStyle(validation),
           };
         }
       });
       setValidationState(newValidationState);
     }
+  }, [props.results]);
+
+  // Seed the needs-callback banner from the durable record: saved results on
+  // this page that already have a callback logged (any session, any user) —
+  // a page reload must not resurrect the banner for already-called criticals.
+  useEffect(() => {
+    const rows = (props.results?.testResult || []).filter(
+      (row) => row.resultId,
+    );
+    if (rows.length === 0) {
+      return;
+    }
+    const ids = rows.map((row) => row.resultId).join(",");
+    getFromOpenElisServer(
+      `/rest/critical-callback/logged-results?resultIds=${ids}`,
+      (logged) => {
+        if (!componentMounted.current || !Array.isArray(logged)) {
+          return;
+        }
+        const loggedSet = new Set(logged.map(String));
+        const seeded = {};
+        rows.forEach((row) => {
+          if (loggedSet.has(String(row.resultId))) {
+            seeded[row.id] = true;
+          }
+        });
+        if (Object.keys(seeded).length > 0) {
+          setLoggedCallbackRows((prev) => ({ ...prev, ...seeded }));
+        }
+      },
+    );
   }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
@@ -930,10 +1262,21 @@ export function SearchResults(props) {
     }
   };
 
-  const loadMethods = (values) => {
-    if (componentMounted.current) {
-      setMethods(values);
-    }
+  const loadMethodsForTest = (testId) => {
+    if (!testId || methodsByTestId[testId]) return;
+    getFromOpenElisServer(`/rest/methods-for-test/${testId}`, (res) => {
+      if (componentMounted.current) {
+        const methods = res?.methods || res || [];
+        const defaultMethodId = res?.defaultMethodId || null;
+        setMethodsByTestId((prev) => ({ ...prev, [testId]: methods }));
+        if (defaultMethodId) {
+          setDefaultMethodByTestId((prev) => ({
+            ...prev,
+            [testId]: defaultMethodId,
+          }));
+        }
+      }
+    });
   };
 
   const loadReferalReasons = (values) => {
@@ -970,6 +1313,63 @@ export function SearchResults(props) {
     }
   };
 
+  const parseDisplayDate = (dateStr) => {
+    if (!dateStr) return NaN;
+    const isFrench = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+    const [datePart, timePart] = dateStr.trim().split(/\s+/);
+    const dateParts = datePart ? datePart.split("/") : [];
+    if (dateParts.length !== 3) return NaN;
+    // MM/dd/yyyy or dd/MM/yyyy
+    const [a, b, year] = dateParts.map(Number);
+    const month = isFrench ? b : a;
+    const day = isFrench ? a : b;
+    const [hours, minutes] = timePart
+      ? timePart.split(":").map(Number)
+      : [0, 0];
+    return new Date(year, month - 1, day, hours || 0, minutes || 0).getTime();
+  };
+
+  const getHoldingStatus = (row) => {
+    if (!row.timeHolding || !row.collectionDate) {
+      return null;
+    }
+    const effectiveTestDate = testDateOverrides[row.id] ?? row.testDate;
+    if (!effectiveTestDate) {
+      return null;
+    }
+    const holdingMinutes = parseInt(row.timeHolding, 10);
+    if (isNaN(holdingMinutes) || holdingMinutes <= 0) {
+      return null;
+    }
+    const collectionMs = parseDisplayDate(row.collectionDate);
+    const resultMs = parseDisplayDate(effectiveTestDate);
+    if (isNaN(collectionMs) || isNaN(resultMs)) {
+      return null;
+    }
+    const holdingMs = holdingMinutes * 60 * 1000;
+    const elapsedMs = resultMs - collectionMs;
+    const fraction = elapsedMs / holdingMs;
+    if (fraction > 1) return "exceeded";
+    if (fraction > 0.75) return "imminent";
+    if (fraction > 0.5) return "approaching";
+    return "on-time";
+  };
+
+  const HOLDING_STATUS_STYLE = {
+    "on-time": { outline: "2px solid #24a148", borderRadius: "4px" }, // green
+    approaching: { outline: "2px solid #8d8d8d", borderRadius: "4px" }, // warm-gray
+    imminent: { outline: "2px solid #FF6B00", borderRadius: "4px" }, // orange
+    exceeded: { outline: "2px solid #ee538b", borderRadius: "4px" }, // magenta
+  };
+
+  // Tints QC rows so they read as supporting context under their parent client sample.
+  const qcRowStyles = [
+    {
+      when: (row) => Boolean(row?.qcType),
+      style: { background: "#f4f4f4" },
+    },
+  ];
+
   var columns = [
     {
       id: "sampleInfo",
@@ -980,6 +1380,14 @@ export function SearchResults(props) {
       sortable: true,
       selector: (row) => row.accessionNumber,
       width: "16rem",
+    },
+    {
+      id: "sampleKind",
+      name: intl.formatMessage({ id: "column.name.sampleKind" }),
+      cell: (row) => <SampleKindTag qcType={row.qcType} />,
+      selector: (row) => row.qcType || "Client sample",
+      sortable: true,
+      width: "11rem",
     },
     {
       id: "testDate",
@@ -1001,6 +1409,7 @@ export function SearchResults(props) {
             return;
           }
           row.testDate = combined;
+          setTestDateOverrides((prev) => ({ ...prev, [row.id]: combined }));
           handleChange(
             {
               target: {
@@ -1062,6 +1471,33 @@ export function SearchResults(props) {
       width: "8rem",
     },
     {
+      id: "complianceStatus",
+      name: intl.formatMessage({ id: "column.name.statusPerRegulation" }),
+      omit: !props.results?.testResult?.some(
+        (r) => r.complianceStatuses?.length > 0,
+      ),
+      cell: (row) => {
+        if (!row.complianceStatuses?.length) return null;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {row.complianceStatuses.map((cs) => (
+              <Tag
+                key={cs.standardId}
+                type={cs.pass ? "green" : "red"}
+                size="sm"
+              >
+                {cs.pass
+                  ? intl.formatMessage({ id: "result.compliance.pass" })
+                  : intl.formatMessage({ id: "result.compliance.fail" })}{" "}
+                &mdash; {cs.standardName}
+              </Tag>
+            ))}
+          </div>
+        );
+      },
+      width: "18rem",
+    },
+    {
       id: "accept",
       name: intl.formatMessage({ id: "column.name.accept" }),
       cell: (row, index, column, id) => {
@@ -1080,6 +1516,14 @@ export function SearchResults(props) {
       width: "14rem",
     },
     {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
+    },
+    {
       id: "currentResult",
       name: intl.formatMessage({ id: "column.name.currentResult" }),
       cell: (row, index, column, id) => {
@@ -1095,6 +1539,41 @@ export function SearchResults(props) {
       },
       width: "25rem",
     },
+    {
+      id: "qcStatus",
+      name: intl.formatMessage({ id: "column.name.qcStatus" }),
+      cell: (row) => {
+        if (!row.qcType || !row.qcStatus) {
+          return "—";
+        }
+        const type =
+          row.qcStatus === "PASS"
+            ? "green"
+            : row.qcStatus === "FAIL"
+              ? "red"
+              : "gray";
+        const labelKey =
+          row.qcStatus === "PASS"
+            ? "label.qc.pass"
+            : row.qcStatus === "FAIL"
+              ? "label.qc.fail"
+              : null;
+        return (
+          <Tag size="sm" type={type}>
+            {labelKey ? intl.formatMessage({ id: labelKey }) : row.qcStatus}
+          </Tag>
+        );
+      },
+      selector: (row) => row.qcStatus || "",
+      width: "7rem",
+    },
+    {
+      id: "qcDetail",
+      name: intl.formatMessage({ id: "column.name.qcDetail" }),
+      cell: (row) => (row.qcType ? row.qcDetail || "—" : ""),
+      selector: (row) => row.qcDetail || "",
+      width: "16rem",
+    },
   ];
 
   const renderCell = (row, index, column, id) => {
@@ -1105,11 +1584,14 @@ export function SearchResults(props) {
     const sampleType = fullTestName.substring(splitIndex);
 
     console.debug("renderCell: index: " + index + ", id: " + id);
+    // DUPLICATE QC rows are visually nested under their parent client row.
+    const sampleInfoIndent =
+      row.qcType === "DUPLICATE" ? { paddingLeft: "1rem" } : {};
     switch (column.id) {
       case "sampleInfo":
         // return <input id={"results_" + id} type="text" size="6"></input>
         return (
-          <>
+          <div style={sampleInfoIndent}>
             <div>
               <Button
                 onClick={async () => {
@@ -1138,22 +1620,54 @@ export function SearchResults(props) {
               {(formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber) +
-                "-" +
-                row.sequenceNumber}
+                (row.vectorPoolId
+                  ? row.vectorPoolLabel || ""
+                  : "-" + row.sequenceNumber)}
               {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
+              {/* Pool-anchored result rows carry the pool size + animal so a
+                  reviewer scanning the table sees that multiple test rows
+                  belong to one pool. Rows already cluster by accession+sequence,
+                  so adjacent rows with the same vectorPoolId form a visual
+                  group. */}
+              {row.vectorPoolId && row.vectorPoolMemberCount > 0 && (
+                <>
+                  {" "}
+                  <Tag type="purple" size="sm">
+                    <FormattedMessage
+                      id="result.vectorPool.label"
+                      defaultMessage="Pool of {count} {animal}"
+                      values={{
+                        count: row.vectorPoolMemberCount,
+                        animal: row.sampleType || (
+                          <FormattedMessage
+                            id="sample.fallback.name"
+                            defaultMessage="Sample"
+                          />
+                        ),
+                      }}
+                    />
+                  </Tag>
+                </>
+              )}
               <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
-              <br></br>
-              <br></br>
+              {row.patientName ? (
+                <>
+                  {row.patientName} <br></br>
+                  {row.patientInfo}
+                  <br></br>
+                  <br></br>
+                </>
+              ) : null}
             </div>
-            <div>
-              <AsyncAvatar
-                patientId={row.patientId}
-                hasPhoto={true}
-                patientName={row.patientName || ""}
-              />
-            </div>
+            {row.patientName ? (
+              <div>
+                <AsyncAvatar
+                  patientId={row.patientId}
+                  hasPhoto={true}
+                  patientName={row.patientName || ""}
+                />
+              </div>
+            ) : null}
             {row.nonconforming && (
               <picture>
                 <img
@@ -1164,7 +1678,7 @@ export function SearchResults(props) {
                 />
               </picture>
             )}
-          </>
+          </div>
         );
       case "testName":
         return (
@@ -1185,6 +1699,20 @@ export function SearchResults(props) {
       case "accept":
         return (
           <div style={{ paddingRight: "2rem", marginRight: "1rem" }}>
+            <Field name="forceTechApproval">
+              {() => (
+                <Checkbox
+                  data-cy="checkTestResult"
+                  id={"testResult" + row.id + ".forceTechApproval"}
+                  name={"testResult[" + row.id + "].forceTechApproval"}
+                  labelText=""
+                  //defaultChecked={acceptAsIs}
+                  disabled={Boolean(row.qcType)}
+                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
+                />
+              )}
+            </Field>
+
             <AcceptUnconditionallyGuard
               rowId={row.id}
               accepted={!!acceptAsIs[row.id]}
@@ -1237,7 +1765,7 @@ export function SearchResults(props) {
               <TextArea
                 id={"testResult" + row.id + ".note"}
                 name={"testResult[" + row.id + "].note"}
-                //value={props.results.testResult[row.id]?.pastNotes}
+                value={row.note || ""}
                 disabled={false}
                 type="text"
                 labelText=""
@@ -1251,134 +1779,235 @@ export function SearchResults(props) {
           </>
         );
 
-      case "result":
+      case "result": {
+        const holdingStatus = getHoldingStatus(row);
+        const holdingStyle = holdingStatus
+          ? HOLDING_STATUS_STYLE[holdingStatus]
+          : {};
         switch (row.resultType) {
           case "D":
             return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
+              <div style={holdingStyle}>
+                <Select
+                  className="result"
+                  id={"resultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  noLabel={true}
+                  onChange={(e) => validateResults(e, row.id)}
+                  value={row.resultValue}
+                >
+                  {/* {...updateShadowResult(e, this, param.rowId)} */}
+                  <SelectItem text="" value="" />
+                  {row.dictionaryResults.map(
+                    (dictionaryResult, dictionaryResult_index) => (
+                      <SelectItem
+                        text={dictionaryResult.value}
+                        value={dictionaryResult.id}
+                        key={dictionaryResult_index}
+                      />
+                    ),
+                  )}
+                </Select>
+              </div>
             );
 
           case "M":
             return (
-              <ResultMultiSelect
-                id={`multiResultValue${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <ResultMultiSelect
+                  id={`multiResultValue${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "C":
             return (
-              <CascadingMultiSelect
-                id={`multiResult${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <CascadingMultiSelect
+                  id={`multiResult${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "N":
             return (
-              <TextInput
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                labelText=""
-                type="number"
-                value={row.resultValue}
-                style={validationState[row.id]?.style}
-                onBlur={(e) => {
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-                onChange={(e) => {
-                  handleChange(e, row.id);
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-              />
+              <>
+                <TextInput
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  labelText=""
+                  type="text"
+                  inputMode="text"
+                  value={row.resultValue}
+                  style={{ ...validationState[row.id]?.style, ...holdingStyle }}
+                  onBlur={(e) => {
+                    if (
+                      validationState[row.id]?.isInvalid &&
+                      configurationProperties.ALERT_FOR_INVALID_RESULTS
+                    ) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message:
+                          intl.formatMessage({
+                            id: "result.outOfValidRange.msg",
+                          }) +
+                          " " +
+                          row.testName +
+                          " : " +
+                          row.resultValue,
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                  onChange={(e) => {
+                    handleChange(e, row.id);
+                    if (
+                      validationState[row.id]?.isInvalid &&
+                      configurationProperties.ALERT_FOR_INVALID_RESULTS
+                    ) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message:
+                          intl.formatMessage({
+                            id: "result.outOfValidRange.msg",
+                          }) +
+                          " " +
+                          row.testName +
+                          " : " +
+                          row.resultValue,
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                />
+                {/* Callback is documented against a PERSISTED result: the
+                    button only renders once the critical value has been
+                    saved (row.resultId), so the modal can
+                    never substitute for Save. The modal itself is rendered
+                    once at form level (pagination-proof for the banner). */}
+                {validationState[row.id]?.isCritical && row.resultId && (
+                  <Button
+                    hasIconOnly
+                    kind="danger--tertiary"
+                    size="sm"
+                    style={{ marginTop: "0.25rem" }}
+                    renderIcon={Phone}
+                    data-testid="log-callback-button"
+                    iconDescription={intl.formatMessage({
+                      id: "qa.qi.callback.button",
+                    })}
+                    onClick={() => setCallbackModalRow(row.id)}
+                  />
+                )}
+                {validationState[row.id]?.flag === "CRITICAL" && (
+                  <div data-testid={`critical-flag-${row.id}`}>
+                    <FlagChip flag="CRITICAL" />
+                  </div>
+                )}
+              </>
             );
 
           case "R":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           case "A":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           default:
             return row.resultValue;
         }
+      }
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        const isFocused = uncertaintyFocusedId === row.id;
+        const hasValue = uVal !== "" && uVal !== null && uVal !== undefined;
+        if (!isFocused && hasValue) {
+          return (
+            <span
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                cursor: "text",
+                color: "var(--cds-text-primary, #161616)",
+                display: "inline-block",
+                minWidth: "4rem",
+              }}
+              onClick={() => setUncertaintyFocusedId(row.id)}
+            >
+              <span
+                style={{
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginRight: "0.125rem",
+                }}
+              >
+                {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+              </span>
+              {uVal}
+            </span>
+          );
+        }
+        return (
+          <TextInput
+            id={"expandedUncertainty" + row.id}
+            name={"testResult[" + row.id + "].expandedUncertainty"}
+            labelText=""
+            type="number"
+            min={0}
+            step={0.001}
+            autoFocus={isFocused}
+            defaultValue={uVal ?? ""}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const form = { ...props.results };
+              const rows = [...form.testResult];
+              rows[row.id] = {
+                ...rows[row.id],
+                expandedUncertainty: val,
+                isModified: "true",
+              };
+              form.testResult = rows;
+              props.setResultForm(form);
+              setUncertaintyFocusedId(null);
+            }}
+            invalid={hasValue && Number(uVal) < 0}
+            invalidText={intl.formatMessage({
+              id: "results.uncertainty.validation.negative",
+            })}
+          />
+        );
+      }
 
       case "currentResult":
         switch (row.resultType) {
@@ -1622,16 +2251,20 @@ export function SearchResults(props) {
                 id: "referral.label.testmethod",
               })}
               onChange={(e) => handleChange(e, data.id)}
-              value={data.testMethod}
+              value={
+                data.testMethod || defaultMethodByTestId[data.testId] || ""
+              }
             >
               <SelectItem text="" value="" />
-              {methods.map((method, method_index) => (
-                <SelectItem
-                  text={method.value}
-                  value={method.id}
-                  key={method_index}
-                />
-              ))}
+              {(methodsByTestId[data.testId] || []).map(
+                (method, method_index) => (
+                  <SelectItem
+                    text={method.value}
+                    value={method.id}
+                    key={method_index}
+                  />
+                ),
+              )}
             </Select>
           </Column>
           <Column lg={2}>
@@ -1794,10 +2427,10 @@ export function SearchResults(props) {
               </Button>
               <LocationPickerModal
                 isOpen={storageModalRow === data.id}
-                sample={{
-                  id: sampleItemId || data.accessionNumber,
-                  sampleAccessionNumber: data.accessionNumber,
-                  sampleType: data.sampleType || "",
+                occupantType="SAMPLE_ITEM"
+                occupant={{
+                  label: data.accessionNumber,
+                  type: data.sampleType || "",
                   status: data.sampleStatus || "Active",
                 }}
                 onConfirm={({ selection, position, reason, notes }) => {
@@ -1858,8 +2491,22 @@ export function SearchResults(props) {
   };
   const validateResults = (e, rowId) => {
     console.debug("validateResults:" + e.target.value);
-    // e.target.value;
     handleChange(e, rowId);
+    if (!holdingTimeNotifiedRows.current.has(rowId)) {
+      const row = props.results?.testResult?.find((r) => r.id === rowId);
+      if (row && getHoldingStatus(row) === "exceeded") {
+        holdingTimeNotifiedRows.current.add(rowId);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: row.testName || row.accessionNumber || rowId },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+    }
   };
 
   const validateNumericResults = (value, row) => {
@@ -1868,7 +2515,9 @@ export function SearchResults(props) {
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
     }
-    var actualValue = ("" + value).replace(/[<>]/g, "");
+    var actualValue = normalizeScientificNotation(
+      ("" + value).replace(/[<>]/g, ""),
+    );
     let validation = {
       isInvalid: false,
       outsideNormal: false,
@@ -1894,38 +2543,8 @@ export function SearchResults(props) {
     // }
     if (validation.isNaN) {
       return { ...validation };
-    } else if (
-      row.lowCritical != row.highCritical &&
-      actualValue > row.lowCritical &&
-      actualValue < row.highCritical
-    ) {
-      return { ...validation, isCritical: true };
-    } else if (
-      row.lowerAbnormalRange != row.upperAbnormalRange &&
-      (actualValue < row.lowerAbnormalRange ||
-        actualValue > row.upperAbnormalRange)
-    ) {
-      return { ...validation, isInvalid: true, outsideValid: true };
-      // resultBox.style.background = "#ffa0a0";
-      // resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = false;
-      // if( outOfValidRangeMsg ){
-      //   alert( outOfValidRangeMsg);
-      // }
-    } else if (
-      row.lowerNormalRange != row.upperNormalRange &&
-      (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
-    ) {
-      return { ...validation, outsideNormal: true };
-      // resultBox.style.background = "#ffffa0";
-      // resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = true;
-    } else {
-      return { ...validation, outsideNormal: false };
-      // resultBox.style.background = "#ffffff";
-      // resultBox.title = "";
-      // $("valid_" + row).value = true;
     }
+    return { ...validation, ...classifyNumericResult(actualValue, row) };
   };
 
   const validateNumberFormat = (value, row) => {
@@ -1935,14 +2554,11 @@ export function SearchResults(props) {
       greaterThanOrLessThan = value.charAt(0);
     }
     var actualValue = ("" + value).replace(/[<>]/g, "");
+    var parseableValue = normalizeScientificNotation(actualValue);
 
     let validation = { isInvalid: false };
     if (!actualValue) {
       return { ...validation, isInvalid: true, isBlank: true };
-      // resultBox.title = "";
-      // resultBox.style.background = "#ffffff";
-      // $("valid_" + row).value = false;
-      // return true;
     }
 
     if (actualValue.trim() == ".") {
@@ -1952,23 +2568,18 @@ export function SearchResults(props) {
       };
     }
 
-    if (isNaN(actualValue)) {
+    if (isNaN(parseableValue)) {
       return { ...validation, isInvalid: true, isNaN: true };
-      // $("valid_" + row).value = false;
-      // return false;
     }
 
-    if (!isNaN(row.significantDigits)) {
-      const valueStr = actualValue.toString();
-      if (valueStr.includes(".")) {
-        const decimalPlaces = valueStr.split(".")[1].length;
-        if (decimalPlaces > row.significantDigits) {
-          actualValue = parseFloat(actualValue).toFixed(row.significantDigits);
-        }
-      }
+    // The value is kept in the notation it was typed in; only a mantissa finer
+    // than the test reports to is rounded, and it is rounded in place.
+    if (exceedsDecimalPlaces(actualValue, row.significantDigits)) {
       validation = {
         ...validation,
-        newValue: greaterThanOrLessThan + actualValue,
+        newValue:
+          greaterThanOrLessThan +
+          roundMantissa(actualValue, row.significantDigits),
       };
     }
 
@@ -2120,11 +2731,37 @@ export function SearchResults(props) {
     if (isSubmitting) {
       return;
     }
+    const nonNumericRow = props.results.testResult.find(
+      (row) => row.resultType === "N" && validationState[row.id]?.isNaN,
+    );
+    if (nonNumericRow) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage(
+          { id: "result.notNumeric.msg" },
+          {
+            test: nonNumericRow.testName,
+            value: nonNumericRow.resultValue,
+          },
+        ),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setIsSubmitting(true);
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
+      if (getHoldingStatus(result) === "exceeded") {
+        const exceededNote = intl.formatMessage({
+          id: "holding.time.exceeded.note",
+        });
+        result.note = result.note
+          ? result.note + "\n" + exceededNote
+          : exceededNote;
+      }
       // attachments live in order_attachment now (OGC-811); round-tripping
       // the legacy inline resultFile would clone a result_file row per save
       delete result.resultFile;
@@ -2146,12 +2783,7 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        window.location.href =
-          "/result?type=" +
-          props.searchBy.type +
-          "&doRange=" +
-          props.searchBy.doRange +
-          props.extraParams;
+        props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
       }
     } else {
       addNotification({
@@ -2183,14 +2815,31 @@ export function SearchResults(props) {
     return message;
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
+  // Apply pool filters passed down from ResultSearchPage (display-only — the
+  // full props.results is still used for saving so nothing is dropped on submit).
+  const poolLotFilter = props.poolLotFilter || "";
+  const poolIdFilter = props.poolIdFilter || "";
+  const allRows = props.results?.testResult ?? [];
+  const displayRows = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter);
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter);
+    return allRows;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
+
+  // Saved criticals with no callback logged this session (OGC-714).
+  const needsCallback = allRows.filter(
+    (row) =>
+      validationState[row.id]?.isCritical &&
+      row.resultId &&
+      !loggedCallbackRows[row.id],
+  );
 
   return (
     <>
@@ -2216,6 +2865,51 @@ export function SearchResults(props) {
             </Column>
           </Grid>
         )}
+        {/* Persistent needs-callback banner (OGC-714). The v4 Results Entry
+            design reserves a banner for exactly this; this is the legacy-page
+            bridge. */}
+        {needsCallback.length > 0 && (
+          <ActionableNotification
+            kind="warning"
+            lowContrast
+            inline
+            hideCloseButton
+            // status, not the alertdialog default: Carbon's alertdialog
+            // grabs focus back to the banner on every render, making the
+            // callback modal (and the results grid) untypeable while the
+            // banner is visible.
+            role="status"
+            data-testid="callback-banner"
+            style={{ maxWidth: "none", marginBottom: "0.5rem" }}
+            title={intl.formatMessage({
+              id: "qa.qi.callback.banner.title",
+            })}
+            subtitle={intl.formatMessage(
+              { id: "qa.qi.callback.banner.subtitle" },
+              { count: needsCallback.length },
+            )}
+            actionButtonLabel={intl.formatMessage({
+              id: "qa.qi.callback.button",
+            })}
+            onActionButtonClick={() => {
+              const first = needsCallback[0];
+              document
+                .getElementById("ResultValue" + first.id)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setCallbackModalRow(first.id);
+            }}
+          />
+        )}
+        <CriticalCallbackModal
+          open={callbackModalRow != null}
+          resultRow={(props.results?.testResult || []).find(
+            (row) => row.id === callbackModalRow,
+          )}
+          onClose={() => setCallbackModalRow(null)}
+          onLogged={(row) =>
+            setLoggedCallbackRows((prev) => ({ ...prev, [row.id]: true }))
+          }
+        />
         <Formik
           initialValues={SearchResultFormValues}
           //validationSchema={}
@@ -2234,55 +2928,25 @@ export function SearchResults(props) {
               onChange={handleChange}
               //onBlur={handleBlur}
             >
+              {arrows.show && <ServerPageArrows {...arrows} />}
               <DataTable
-                data={props.results?.testResult?.slice(
-                  (page - 1) * pageSize,
-                  page * pageSize,
-                )}
+                data={displayRows}
+                keyField="id"
                 columns={columns}
                 isSortable
                 expandableRows
                 expandableRowsComponent={renderReferral}
+                conditionalRowStyles={qcRowStyles}
               ></DataTable>
               <Pagination
                 style={{ marginTop: "1.5rem" }}
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 50, 100]}
-                totalItems={props.results?.testResult?.length}
-                forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                backwardText={intl.formatMessage({ id: "pagination.backward" })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min: min, max: max, total: total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
+                {...serverPaginationProps({
+                  paging: props.results?.paging,
+                  rowsOnPage: displayRows.length,
+                  pageSize: props.serverPageSize,
+                  onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                  intl,
                 })}
-                itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min: min, max: max },
-                  )
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total: total },
-                  )
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
               />
 
               <ESignatureButton

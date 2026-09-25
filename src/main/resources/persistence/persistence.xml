@@ -16,6 +16,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.menu.valueholder.Menu</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
         <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
@@ -59,7 +60,6 @@
 
         <!-- Inventory Management entities -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
@@ -71,6 +71,34 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+        <class>org.openelisglobal.reports.dataexport.valueholder.ExportJob</class>
+
+        <!-- Microbiology MVP reference/config entities (OGC-782 M1) -->
+        <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun</class>
 
         <!-- External Quality Assurance entities (005-eqa-module) -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
@@ -95,6 +123,7 @@
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
         <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
@@ -120,14 +149,38 @@
         <!-- UOM type mapping (OGC-356 environmental workflow) -->
         <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>
 
+        <!-- Vector Surveillance entities -->
+        <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
+        <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
+        <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPool</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
+
+        <!-- V-03 Vector Testing & Identification entities -->
+        <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
+        <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
+
+        <!-- V-04 M3: Vector Surveillance Manual Entry Helper entities -->
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryFieldMap</class>
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntrySubmissionAudit</class>
+
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
+
+        <!-- Sample Acceptance Record (S-09 / OGC-580) -->
+        <class>org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord</class>
 
         <!-- Sample Type Request (OGC-356) -->
         <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
         <!-- Electronic Signature entities (21 CFR Part 11 Compliance) -->
         <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+
+        <!-- QI Configuration (OGC-709) -->
+        <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+
+        <!-- Critical Callback capture (OGC-714) -->
+        <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
 
         <!-- QC Westgard Rules entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
@@ -137,6 +190,21 @@
         <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
         <class>org.openelisglobal.qc.valueholder.QCAlert</class>
 
+        <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
+        <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
+
+        <!-- QC Result Evaluation entities (OGC-554 S-08) -->
+        <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
+        <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
+        <class>org.openelisglobal.testcatalog.valueholder.TestQcTarget</class>
+        <class>org.openelisglobal.configuration.valueholder.ConfigurationImportRun</class>
+        <class>org.openelisglobal.configuration.valueholder.UnresolvedReference</class>
+        <class>org.openelisglobal.configuration.valueholder.ReferenceAlias</class>
+        <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
+
         <!-- Barcode Label Presets (OGC-285 M2) -->
         <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
         <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
@@ -144,9 +212,46 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- Test Accreditation (OGC-686) -->
+        <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
+        <class>org.openelisglobal.accreditation.valueholder.TestAccreditation</class>
+        <!-- Questionnaire / QuestionnaireResponse local storage -->
+        <class>org.openelisglobal.questionnaire.valueholder.Questionnaire</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireAnswerOption</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItemInitial</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
+
+        <!-- Batch Workplan foundation (OGC-427 / OGC-811 M1) -->
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
+            <!--
+                Tomcat deploys this WAR twice into one JVM (/OpenELIS-Global and
+                /api/OpenELIS-Global, see conf/server.xml), and each context gets
+                its own classloader, EntityManagerFactory and Hibernate Search
+                backend over this one directory. A Lucene index allows a single
+                writer, so whichever context did not take the lock fails every
+                save with OverlappingFileLockException - after the row is
+                committed, so the caller sees a 500 for a patient that was
+                actually created. Patient search is served from the database, so
+                nothing reads this index; it is left unmaintained rather than
+                maintained unsafely. Rebuild it on demand with GET /rest/reindex,
+                and solve the double deployment before relying on it again.
+            -->
+            <property name="hibernate.search.automatic_indexing.enabled" value="false" />
+            <!--
+                And do not create or validate that index at start-up either: both
+                contexts try it, one loses the writer lock and logs an
+                OverlappingFileLockException on every boot. Nothing reads the
+                index, so there is nothing to manage.
+            -->
+            <property name="hibernate.search.schema_management.strategy" value="none" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />
             <property name="hibernate.search.backend.directory.root" value="/var/lib/lucene_index" />
             <property name="hibernate.search.backend.analysis.configurer" value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer"/>

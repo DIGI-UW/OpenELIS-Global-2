@@ -149,6 +149,24 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
         assertEquals(409, dup.getStatusCode().value());
     }
 
+    /**
+     * OGC-1234: method.name is VARCHAR(20): a longer English name used to fail the
+     * insert with a 500. It is refused as 422 before anything is written, and a
+     * 20-character name still goes through.
+     */
+    @org.junit.Test
+    public void inlineCreateEnglishNameOverTwentyCharacters_returns422AndWritesNothing() {
+        ResponseEntity<?> tooLong = controller.inlineCreateAndLink(String.valueOf(TEST_ID),
+                inlineReq("Twenty-one chars name", "SAMECODE"), authedRequest());
+        assertEquals(422, tooLong.getStatusCode().value());
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.method WHERE code = 'SAMECODE'", Integer.class));
+
+        ResponseEntity<?> twenty = controller.inlineCreateAndLink(String.valueOf(TEST_ID),
+                inlineReq("Twenty chars name ok", "SAMECODE"), authedRequest());
+        assertEquals(201, twenty.getStatusCode().value());
+    }
+
     @org.junit.Test
     public void updateLinkViaPatch_movesDefaultAndPersistsDate() {
         link(TEST_ID, "8003", true);

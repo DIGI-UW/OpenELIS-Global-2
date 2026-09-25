@@ -9,7 +9,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Button,
   Tag,
   Tile,
   Tabs,
@@ -78,7 +77,7 @@ const InstrumentDetailPage = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             { label: "..." },
           ]}
@@ -103,7 +102,7 @@ const InstrumentDetailPage = () => {
           },
           {
             label: intl.formatMessage({ id: "qc.dashboard.title" }),
-            link: "/analyzers/qc/db",
+            link: "/qa/qc/dashboard",
           },
           { label: instrument.instrumentName || instrumentId },
         ]}
@@ -188,14 +187,6 @@ const InstrumentDetailPage = () => {
           </TabPanels>
         </Tabs>
       </div>
-
-      <Button
-        kind="secondary"
-        onClick={() => history.push("/analyzers/qc/db")}
-        style={{ marginTop: "1rem" }}
-      >
-        {intl.formatMessage({ id: "qc.dashboard.title" })}
-      </Button>
     </div>
   );
 };

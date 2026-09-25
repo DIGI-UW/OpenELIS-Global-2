@@ -115,6 +115,12 @@ const AlertsDashboard = () => {
               text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
             />
             <SelectItem
+              value="REQUIRED_BY_DEADLINE"
+              text={intl.formatMessage({
+                id: "alerts.type.required_by_deadline",
+              })}
+            />
+            <SelectItem
               value="SAMPLE_EXPIRATION"
               text={intl.formatMessage({ id: "alerts.type.sample_expiration" })}
             />
@@ -126,6 +132,12 @@ const AlertsDashboard = () => {
               value="CRITICAL_UNACKNOWLEDGED"
               text={intl.formatMessage({
                 id: "alerts.type.critical_unacknowledged",
+              })}
+            />
+            <SelectItem
+              value="MICROBIOLOGY_CRITICAL"
+              text={intl.formatMessage({
+                id: "alerts.type.microbiology_critical",
               })}
             />
           </Select>
@@ -177,16 +189,26 @@ const AlertsDashboard = () => {
           </Select>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Search
-            id="alert-search"
-            labelText={intl.formatMessage({ id: "alerts.filter.search" })}
-            placeholder={intl.formatMessage({ id: "alerts.filter.search" })}
-            value={searchText}
-            onChange={(e) => {
-              setSearchText(e.target.value);
-              setPage(0);
-            }}
-          />
+          {/* Carbon hides a Search's own label, which left this field sitting a
+              label's height above the three Selects beside it. The form item is
+              what a Carbon field uses to stack its label and control, so the
+              four filters share one baseline. */}
+          <div className="cds--form-item">
+            <label className="cds--label" htmlFor="alert-search">
+              {intl.formatMessage({ id: "alerts.filter.search" })}
+            </label>
+            <Search
+              id="alert-search"
+              size="md"
+              labelText={intl.formatMessage({ id: "alerts.filter.search" })}
+              placeholder={intl.formatMessage({ id: "alerts.filter.search" })}
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
         </Column>
       </Grid>
 

@@ -10,6 +10,7 @@ import org.openelisglobal.testconfiguration.form.UomRenameEntryForm;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -58,13 +59,13 @@ public class UomRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/UomRenameEntry")
-    public UomRenameEntryForm updateUomRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateUomRenameEntry(HttpServletRequest request,
             @RequestBody @Valid UomRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setUomList(DisplayListService.getInstance().getList(DisplayListService.ListType.UNIT_OF_MEASURE));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
         String uomId = form.getUomId();
         String nameEnglish = form.getNameEnglish();
@@ -73,7 +74,7 @@ public class UomRenameEntryRestController extends BaseController {
         updateUomNames(uomId, nameEnglish, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updateUomNames(String uomId, String nameEnglish, String userId) {

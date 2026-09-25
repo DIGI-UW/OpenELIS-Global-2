@@ -137,10 +137,16 @@ Canonical directories:
 - `playwright/tests/demo/harness/`
 - `playwright/tests/foundational/core/`
 - `playwright/tests/foundational/harness/`
+- `playwright/tests/performance/core/`
 - `playwright/tests/manual-only/harness/`
 
 Only `demo/**` specs participate in auto-video CI evidence policy. `manual-only/**`
 specs never run in ordinary PR CI.
+
+`performance/**` specs are explicit qualification runs. They require
+`MICROBIOLOGY_QUALIFICATION_DISPOSABLE=true`, an exact `OGC782_COMMIT`, and a
+throwaway stack/database that is destroyed after evidence collection. They must
+not run against shared review or clinical data.
 
 ### File import wait tuning (`file-import-results.spec.ts`)
 

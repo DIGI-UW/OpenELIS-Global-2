@@ -91,6 +91,9 @@ projects/*/volume/
 **/playwright/.cache/
 **/playwright/.auth/
 **/test-results/
+# but the config-import test-results catalog is source, not a Playwright artifact
+!src/main/resources/configuration/test-results/
+!src/main/resources/configuration/test-results/**
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
@@ -125,6 +128,11 @@ e2e-evidence-*.zip
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+
+# Loose debug screenshots in the repo root (subdirectory assets are unaffected).
+/*.png
+/*.jpg
+/*.jpeg
 
 # Real analyzer files from Herbert's Madagascar mount (contain PII)
 # Keep as a working copy for local debugging; never commit.

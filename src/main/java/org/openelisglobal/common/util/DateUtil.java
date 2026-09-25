@@ -727,7 +727,7 @@ public class DateUtil {
     }
 
     public static String formatStringDate(String dateStr, String outputFormat) {
-        if (dateStr == null) {
+        if (dateStr == null || dateStr.isBlank()) {
             return "";
         }
         // Define the input date formats

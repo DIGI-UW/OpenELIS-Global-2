@@ -1,19 +1,23 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Count;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.Offset;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.SortSpec;
+import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
-import ca.uhn.fhir.rest.param.ReferenceParam;
-import ca.uhn.fhir.rest.param.StringParam;
+import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
@@ -25,9 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.Specimen;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
@@ -37,8 +39,11 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.fhir.search.searchparams.SpecimenSearchParams;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.search.service.SpecimenSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -47,6 +52,9 @@ public class SpecimenProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
+    @Autowired
+    private SpecimenSearchService specimenSearchService;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -116,6 +124,9 @@ public class SpecimenProvider implements IResourceProvider {
             throw new InternalErrorException("A required value was unexpectedly null while processing the request", e);
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Specimen", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while reading Specimen: " + e.getMessage());
@@ -177,6 +188,9 @@ public class SpecimenProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Specimen", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while creating Specimen: " + e.getMessage());
@@ -271,6 +285,9 @@ public class SpecimenProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Specimen", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while updating Specimen: " + e.getMessage());
@@ -319,6 +336,9 @@ public class SpecimenProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Specimen", e);
+            }
 
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Specimen: " + e.getMessage());
@@ -328,37 +348,44 @@ public class SpecimenProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchSpecimenBundle(@OptionalParam(name = Specimen.SP_IDENTIFIER) TokenAndListParam identifier,
-            @OptionalParam(name = Specimen.SP_SUBJECT) ReferenceParam subject,
+    public IBundleProvider searchSpecimens(@OptionalParam(name = Specimen.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = Specimen.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Specimen.SP_ACCESSION) TokenAndListParam accession,
+            @OptionalParam(name = Specimen.SP_PATIENT) ReferenceAndListParam patient,
+            @OptionalParam(name = Specimen.SP_SUBJECT) ReferenceAndListParam subject,
             @OptionalParam(name = Specimen.SP_TYPE) TokenAndListParam type,
             @OptionalParam(name = Specimen.SP_STATUS) TokenAndListParam status,
-            @OptionalParam(name = Specimen.SP_ACCESSION) TokenAndListParam accession,
             @OptionalParam(name = Specimen.SP_COLLECTED) DateRangeParam collected,
-            @OptionalParam(name = Specimen.SP_CONTAINER) TokenAndListParam container,
-            @OptionalParam(name = "_id") StringParam id,
-            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-
-            @IncludeParam(allow = { "ServiceRequest:" + ServiceRequest.SP_PATIENT,
-                    "ServiceRequest:" + ServiceRequest.SP_SUBJECT,
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER }) HashSet<Include> includes,
-
-            @IncludeParam(reverse = true, allow = { "Observation:based-on" }) HashSet<Include> revIncludes,
-
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
+            @Offset Integer offset, @Count Integer count,
+            @IncludeParam(allow = { FhirConstants.SPECIMEN_PATIENT_INCLUDE,
+                    FhirConstants.SPECIMEN_SUBJECT_INCLUDE }) HashSet<Include> includes,
+            @IncludeParam(reverse = true, allow = { FhirConstants.SERVICE_REQUEST_SPECIMEN_REV_INCLUDE,
+                    FhirConstants.OBSERVATION_SPECIMEN_REV_INCLUDE,
+                    FhirConstants.DIAGNOSTIC_REPORT_SPECIMEN_REV_INCLUDE }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
 
-        String methodName = "searchSpecimenBundle";
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Specimens (returning Bundle)");
+        String methodName = "searchSpecimens";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Specimens");
 
         try {
-
-            Bundle bundle = util.forwardSearchToFhirStore(request);
-
-            return bundle;
-
-        } catch (Exception e) {
+            SpecimenSearchParams params = new SpecimenSearchParams(id, identifier, accession,
+                    FhirProviderUtils.merge(patient, subject), type, status, collected, lastUpdated, sort, includes,
+                    revIncludes);
+            return FhirProviderUtils.withPaging(specimenSearchService.searchSpecimens(params), offset, count);
+        } catch (InvalidRequestException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
-                    "Error searching Practitioners: " + e.getMessage());
-            throw new InternalErrorException("Error searching Practitioners", e);
+                    "Invalid Specimen search parameter: " + e.getMessage());
+            throw new InvalidRequestException("Invalid Specimen search parameter: " + e.getMessage(), e);
+        } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Specimen", e);
+            }
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Error searching Specimens: " + e.getMessage());
+            throw new InternalErrorException("Error searching Specimens", e);
         }
     }
 }

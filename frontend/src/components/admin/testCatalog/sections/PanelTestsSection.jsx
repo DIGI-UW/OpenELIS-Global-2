@@ -70,10 +70,17 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
   // client-side by name or code as the user types. An optional sample-type
   // filter narrows the candidates server-side, so it composes with the
   // typeahead instead of competing with it; clearing it restores the full
-  // domain-compatible list.
+  // domain-compatible list. Nothing is fetched until the panel is known, and
+  // a response that arrives after the panel's domain or the filter has moved
+  // on is dropped (OGC-1232): the large Clinical list used to land after the
+  // empty Environmental one and be offered to an Environmental panel.
   useEffect(() => {
+    if (!panel?.id) {
+      return undefined;
+    }
+    let stale = false;
     const params = new URLSearchParams();
-    params.set("domain", panel?.domain || "CLINICAL");
+    params.set("domain", panel.domain || "CLINICAL");
     params.set("status", "active");
     params.set("page", "1");
     params.set("pageSize", "2000");
@@ -82,9 +89,16 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
     }
     getFromOpenElisServer(
       `/rest/test-catalog/tests?${params.toString()}`,
-      (res) => setCandidates(Array.isArray(res?.rows) ? res.rows : []),
+      (res) => {
+        if (!stale) {
+          setCandidates(Array.isArray(res?.rows) ? res.rows : []);
+        }
+      },
     );
-  }, [panel?.domain, sampleTypeFilter]);
+    return () => {
+      stale = true;
+    };
+  }, [panel?.id, panel?.domain, sampleTypeFilter]);
 
   // Sample types for the filter — the same source and response shape the
   // Sample Type → Associated Tests page reads.
@@ -118,10 +132,16 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
   const remove = (index) =>
     setMembers((current) => current.filter((_, i) => i !== index));
 
-  const notify = (kind, messageId) => {
+  const domainLabel = (value) =>
+    intl.formatMessage({
+      id: `label.domain.${value}`,
+      defaultMessage: value,
+    });
+
+  const notify = (kind, messageId, values) => {
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({ id: messageId }),
+      message: intl.formatMessage({ id: messageId }, values),
       kind,
     });
     setNotificationVisible(true);
@@ -144,6 +164,26 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
           if (body?.panel) {
             onSaved(body.panel);
           }
+          return;
+        }
+        // OGC-1232 — the domain guard names the tests it refused
+        let body = null;
+        if (response && response.status === 422) {
+          try {
+            body = await response.json();
+          } catch (e) {
+            body = null;
+          }
+        }
+        if (body && body.domainConflict) {
+          const conflict = body.domainConflict;
+          notify(NotificationKinds.error, "error.panel.tests.domainConflict", {
+            domain: domainLabel(conflict.domain),
+            count: (conflict.tests || []).length,
+            tests: (conflict.tests || [])
+              .map((t) => `${t.name} (${domainLabel(t.domain)})`)
+              .join(", "),
+          });
         } else {
           notify(NotificationKinds.error, "error.panel.save");
         }

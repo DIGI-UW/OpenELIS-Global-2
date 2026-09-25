@@ -148,15 +148,7 @@ public class AnalyzerResultsController extends BaseController {
     public AnalyzerResultsController(TypeOfSampleService typeOfSampleService) {
         this.typeOfSampleService = typeOfSampleService;
 
-        if (IS_RETROCI) {
-            TypeOfSample typeOfSample = new TypeOfSample();
-            typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain(Domain.CLINICAL.name());
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
-            DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
-        } else {
-            DBS_SAMPLE_TYPE_ID = null;
-        }
+        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
 
         analyzerNameToSubtitleKey.put(AnalyzerTestNameCache.COBAS_INTEGRA400_NAME, "banner.menu.results.cobas.integra");
         analyzerNameToSubtitleKey.put(AnalyzerTestNameCache.SYSMEX_XT2000_NAME, "banner.menu.results.sysmex");
@@ -166,6 +158,27 @@ public class AnalyzerResultsController extends BaseController {
         analyzerNameToSubtitleKey.put(AnalyzerTestNameCache.COBAS_TAQMAN, "banner.menu.results.cobas.taqman");
         analyzerNameToSubtitleKey.put(AnalyzerTestNameCache.COBAS_DBS, "banner.menu.results.cobasDBS");
         analyzerNameToSubtitleKey.put(AnalyzerTestNameCache.COBAS_C311, "banner.menu.results.cobasc311");
+    }
+
+    /**
+     * Resolves the DBS sample type by local abbreviation first because a catalog
+     * import can rewrite its description; a missing type must not stop startup.
+     */
+    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
+        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
+                Domain.CLINICAL.name());
+        if (typeOfSample == null) {
+            TypeOfSample searchType = new TypeOfSample();
+            searchType.setDescription("DBS");
+            searchType.setDomain(Domain.CLINICAL.name());
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
+        }
+        if (typeOfSample == null) {
+            LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "resolveDbsSampleTypeId",
+                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+            return null;
+        }
+        return typeOfSample.getId();
     }
 
     @RequestMapping(value = "/AnalyzerResults", method = RequestMethod.GET)

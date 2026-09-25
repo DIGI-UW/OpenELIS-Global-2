@@ -62,13 +62,57 @@ const toInt = (v) => {
   return Number.isNaN(n) ? null : n;
 };
 
+// Every editable field, with its label, in form order. The keys are the names
+// the group save accepts in its list of changed fields.
+const FIELD_LABELS = {
+  storageCondition: "label.testCatalog.storage.condition",
+  storageConditionCustom: "label.testCatalog.storage.conditionCustom",
+  storageDuration: "label.testCatalog.storage.duration",
+  storageDurationUnit: "label.testCatalog.storage.durationUnit",
+  stabilityNotes: "label.testCatalog.storage.stabilityNotes",
+  protectFromLight: "label.testCatalog.storage.protectFromLight",
+  doNotFreeze: "label.testCatalog.storage.doNotFreeze",
+  doNotRefrigerate: "label.testCatalog.storage.doNotRefrigerate",
+  disposalMethod: "label.testCatalog.storage.disposalMethod",
+  disposalTimeframe: "label.testCatalog.storage.disposalTimeframe",
+  disposalUnit: "label.testCatalog.storage.disposalUnit",
+  specialInstructions: "label.testCatalog.storage.specialInstructions",
+  overrideRestricted: "label.testCatalog.storage.overrideRestricted",
+};
+const FIELDS = Object.keys(FIELD_LABELS);
+const BOOLEAN_FIELDS = [
+  "protectFromLight",
+  "doNotFreeze",
+  "doNotRefrigerate",
+  "overrideRestricted",
+];
+const INTEGER_FIELDS = ["storageDuration", "disposalTimeframe"];
+
+const normalized = (config, field) => {
+  const v = config ? config[field] : null;
+  if (BOOLEAN_FIELDS.includes(field)) {
+    return !!v;
+  }
+  if (INTEGER_FIELDS.includes(field)) {
+    return toInt(v);
+  }
+  return v === undefined || v === null || v === "" ? null : v;
+};
+
+const fieldsThatDiffer = (a, b) =>
+  FIELDS.filter((f) => normalized(a, f) !== normalized(b, f));
+
 const StorageSection = ({ testId, groupTestIds }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
-  // Group mode (FR-8): edit shared storage across N tests. Load the first test's
-  // values as the shared starting point; save writes the full form to each test.
+  // Group mode (FR-8): edit shared storage across N tests. Every test is loaded;
+  // the form starts from the first test's values, fields that are not the same
+  // on every test are named in a warning, and a save writes only the fields the
+  // admin changed, so each test keeps its own value for the rest. A differing
+  // field the admin edited counts as changed even when it ends on the first
+  // test's value, so that value can be applied to every test.
   const isGroup = Array.isArray(groupTestIds) && groupTestIds.length > 0;
   const primaryId = isGroup ? groupTestIds[0] : testId;
   const groupKey = isGroup ? groupTestIds.join(",") : "";
@@ -77,22 +121,46 @@ const StorageSection = ({ testId, groupTestIds }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
+  const [baseline, setBaseline] = useState(null);
+  const [differingFields, setDifferingFields] = useState([]);
+  const [touched, setTouched] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
     setError(false);
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${primaryId}/storage`,
-      (res) => {
-        setLoading(false);
+    const ids = isGroup ? groupTestIds : [primaryId];
+    const configs = {};
+    let pending = ids.length;
+    let failed = false;
+    ids.forEach((id) => {
+      getFromOpenElisServer(`/rest/test-catalog/tests/${id}/storage`, (res) => {
         if (!res) {
+          failed = true;
+        }
+        configs[id] = res;
+        pending -= 1;
+        if (pending > 0) {
+          return;
+        }
+        setLoading(false);
+        if (failed) {
           setError(true);
           return;
         }
-        setForm(res);
-      },
-    );
+        const first = configs[ids[0]];
+        const differing = new Set();
+        ids.forEach((other) =>
+          fieldsThatDiffer(first, configs[other]).forEach((f) =>
+            differing.add(f),
+          ),
+        );
+        setDifferingFields(FIELDS.filter((f) => differing.has(f)));
+        setBaseline(first);
+        setTouched([]);
+        setForm(first);
+      });
+    });
   };
 
   useEffect(() => {
@@ -103,7 +171,17 @@ const StorageSection = ({ testId, groupTestIds }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, groupKey]);
 
-  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => {
+    setForm((prev) => ({ ...prev, ...patch }));
+    setTouched((prev) => [...new Set([...prev, ...Object.keys(patch)])]);
+  };
+
+  const valueChanged = form && baseline ? fieldsThatDiffer(baseline, form) : [];
+  const changedFields = FIELDS.filter(
+    (f) =>
+      valueChanged.includes(f) ||
+      (touched.includes(f) && differingFields.includes(f)),
+  );
 
   const handleSave = () => {
     setSaving(true);
@@ -115,7 +193,9 @@ const StorageSection = ({ testId, groupTestIds }) => {
     const url = isGroup
       ? "/rest/test-catalog/group/storage"
       : `/rest/test-catalog/tests/${testId}/storage`;
-    const payload = isGroup ? { testIds: groupTestIds, storage } : storage;
+    const payload = isGroup
+      ? { testIds: groupTestIds, storage, fields: changedFields }
+      : storage;
     putToOpenElisServer(url, JSON.stringify(payload), (status) => {
       setSaving(false);
       setNotificationVisible(true);
@@ -171,6 +251,25 @@ const StorageSection = ({ testId, groupTestIds }) => {
 
   return (
     <Stack gap={6} data-testid="storage-section">
+      {isGroup && differingFields.length > 0 && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="storage-differ-warning"
+          title={intl.formatMessage({
+            id: "state.testCatalog.differsAcrossTests",
+          })}
+          subtitle={intl.formatMessage(
+            { id: "label.testCatalog.group.storageDiffer" },
+            {
+              fields: differingFields
+                .map((f) => intl.formatMessage({ id: FIELD_LABELS[f] }))
+                .join(", "),
+            },
+          )}
+        />
+      )}
       {!isGroup && (
         <>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -365,7 +464,11 @@ const StorageSection = ({ testId, groupTestIds }) => {
       />
 
       <div>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button
+          kind="primary"
+          disabled={saving || (isGroup && changedFields.length === 0)}
+          onClick={handleSave}
+        >
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>

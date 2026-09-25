@@ -159,11 +159,46 @@ const PanelsSection = ({ testId, testDomain }) => {
             }
           });
         } else {
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "error.title" }),
-            message: intl.formatMessage({ id: "server.error.msg" }),
-          });
+          const genericFailure = () =>
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "error.title" }),
+              message: intl.formatMessage({ id: "server.error.msg" }),
+            });
+          // OGC-1232 — the domain guard names the panel that refused this test
+          const domainLabel = (value) =>
+            intl.formatMessage({
+              id: `label.domain.${value}`,
+              defaultMessage: value,
+            });
+          if (response && response.status === 422) {
+            response
+              .json()
+              .then((body) => {
+                const conflict = body && body.domainConflict;
+                if (!conflict) {
+                  genericFailure();
+                  return;
+                }
+                addNotification({
+                  kind: "error",
+                  title: intl.formatMessage({ id: "error.title" }),
+                  message: intl.formatMessage(
+                    { id: "error.testCatalog.panels.domainConflict" },
+                    {
+                      panelName: conflict.panelName,
+                      panelDomain: domainLabel(conflict.domain),
+                      testDomain: domainLabel(
+                        (conflict.tests && conflict.tests[0]?.domain) || "",
+                      ),
+                    },
+                  ),
+                });
+              })
+              .catch(genericFailure);
+          } else {
+            genericFailure();
+          }
           if (onDone) {
             onDone(false);
           }

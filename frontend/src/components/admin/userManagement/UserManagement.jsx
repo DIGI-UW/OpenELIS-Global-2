@@ -1,5 +1,12 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
+import {
   Heading,
   Loading,
   Grid,
@@ -19,10 +26,9 @@ import {
   Select,
   SelectItem,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { serverQuery } from "../../utils/queryClient";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -42,15 +48,19 @@ let breadcrumbs = [
   },
 ];
 
+// Every read of the user list shares this prefix, so one invalidation covers
+// the filtered, searched and paged variants alike.
+const USER_LIST_KEY = ["userManagement", "list"];
+
 function UserManagement() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
   const intl = useIntl();
 
+  const queryClient = useQueryClient();
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
@@ -65,14 +75,15 @@ function UserManagement() {
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [filters, setFilters] = useState([]);
-  const [startingRecNo, setStartingRecNo] = useState(1);
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [userManagementList, setUserManagementList] = useState();
   const [userManagementListShow, setUserManagementListShow] = useState([]);
-  const [testSectionsSelect, setTestSectionsSelect] = useState("");
   const [testSectionsShow, setTestSectionsShow] = useState({});
 
   function deleteDeactivateUserManagement(event) {
@@ -88,18 +99,6 @@ function UserManagement() {
       },
     );
   }
-
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-    setSelectedRowIds([]);
-  };
 
   useEffect(() => {
     const selectedIDsObject = {
@@ -130,9 +129,8 @@ function UserManagement() {
         }),
         kind: NotificationKinds.success,
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      setSelectedRowIds([]);
+      queryClient.invalidateQueries({ queryKey: USER_LIST_KEY });
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -140,58 +138,72 @@ function UserManagement() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      // A failed delete leaves the list as it was: reloading here would have
+      // discarded the filters and selection the user still needs.
     }
   }
 
-  const handlePageChange = ({ page, pageSize }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
-    setSelectedRowCombinedUserID([]);
-  };
-
-  const handleMenuItems = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setUserManagementList(res);
+  const handlePageChange = ({ page: newPage }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+      setSelectedRowCombinedUserID([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
+
+  // What the screen shows is a read of one endpoint, so the endpoint is the
+  // cache key: a write invalidates USER_LIST_KEY and the list is read again,
+  // which is what reloading the document used to accomplish.
+  const userListEndpoint = panelSearchTerm
+    ? `/rest/SearchUnifiedSystemUserMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}&filter=${filters.join(
+        ",",
+      )}&roleFilter=${roleFilter}`
+    : `/rest/SearchUnifiedSystemUserMenu?search=N&startingRecNo=${startingRecNo}&filter=${filters.join(
+        ",",
+      )}&roleFilter=${roleFilter}`;
+
+  const {
+    data: fetchedUserList,
+    isFetching: userListFetching,
+    isError: userListFailed,
+  } = useQuery({
+    ...serverQuery(USER_LIST_KEY.concat(userListEndpoint), userListEndpoint),
+    keepPreviousData: true,
+  });
 
   useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/SearchUnifiedSystemUserMenu?search=N&startingRecNo=${startingRecNo}&filter=${filters.join(
-        ",",
-      )}&roleFilter=${roleFilter}`,
-      handleMenuItems,
-    );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [roleFilter, filters, startingRecNo]);
-
-  const handleSearchedProviderMenuList = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setUserManagementList(res);
+    if (fetchedUserList) {
+      setUserManagementList(fetchedUserList);
     }
-  };
+  }, [fetchedUserList]);
 
+  // This screen calls useQuery directly rather than through useServerData
+  // (its cache key needs a distinct invalidation scope), so it does not pick
+  // up that hook's own notify-on-error handling and needs its own.
+  const userListFailureNotified = useRef(false);
   useEffect(() => {
-    getFromOpenElisServer(
-      `/rest/SearchUnifiedSystemUserMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}&filter=${filters.join(
-        ",",
-      )}&roleFilter=${roleFilter}`,
-      handleSearchedProviderMenuList,
-    );
-  }, [panelSearchTerm, roleFilter, filters, startingRecNo]);
+    if (userListFailed && !userListFailureNotified.current) {
+      userListFailureNotified.current = true;
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+      setNotificationVisible(true);
+    } else if (!userListFailed) {
+      userListFailureNotified.current = false;
+    }
+  }, [userListFailed]);
 
   useEffect(() => {
     if (userManagementListShow) {
@@ -219,6 +231,14 @@ function UserManagement() {
       setFromRecordCount(pagination.fromRecordCount);
       setToRecordCount(pagination.toRecordCount);
       setTotalRecordCount(pagination.totalRecordCount);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          pagination.fromRecordCount,
+          pagination.toRecordCount,
+          pagination.totalRecordCount,
+          previous,
+        ),
+      );
 
       const newUserManagementList = userManagementList.menuList.map((item) => {
         return {
@@ -290,8 +310,7 @@ function UserManagement() {
 
   const handlePanelSearchChange = (event) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value;
     setPanelSearchTerm(query);
     setSelectedRowIds([]);
@@ -300,17 +319,15 @@ function UserManagement() {
   useEffect(() => {
     if (isSearching && panelSearchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, panelSearchTerm]);
 
   function handleTestSectionsSelectChange(e) {
-    setTestSectionsSelect(e.target.value);
     setRoleFilter(e.target.value);
   }
 
-  if (!loading) {
+  if (userListFetching && !userManagementList) {
     return (
       <>
         <Loading />
@@ -353,8 +370,6 @@ function UserManagement() {
                   fromRecordCount={fromRecordCount}
                   toRecordCount={toRecordCount}
                   totalRecordCount={totalRecordCount}
-                  handlePreviousPage={handlePreviousPage}
-                  handleNextPage={handleNextPage}
                   deleteDeactivate={deleteDeactivateUserManagement}
                   id={selectedRowCombinedUserID[0]}
                   otherParmsInLink={`&startingRecNo=1&roleFilter=`}
@@ -400,11 +415,7 @@ function UserManagement() {
               <Select
                 id="filters"
                 labelText={<FormattedMessage id="menu.label.filter.role" />}
-                defaultValue={
-                  testSectionsShow && testSectionsShow.length > 0
-                    ? testSectionsShow[0].id
-                    : ""
-                }
+                value={roleFilter}
                 onChange={handleTestSectionsSelectChange}
               >
                 <SelectItem key="" value="" text="" />
@@ -430,6 +441,7 @@ function UserManagement() {
             <Column lg={8} md={8} sm={4}>
               <CustomCheckBox
                 id="only-active"
+                checked={filters.includes("isActive")}
                 label={<FormattedMessage id="menu.label.filter.active" />}
                 onChange={(isChecked) => {
                   if (isChecked) {
@@ -444,6 +456,7 @@ function UserManagement() {
               <br />
               <CustomCheckBox
                 id="only-administrator"
+                checked={filters.includes("isAdmin")}
                 label={<FormattedMessage id="menu.label.filter.admin" />}
                 onChange={(isChecked) => {
                   if (isChecked) {
@@ -461,11 +474,9 @@ function UserManagement() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
-                  rows={userManagementListShow.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )}
+                  rows={userManagementListShow}
                   headers={[
                     {
                       key: "select",
@@ -577,9 +588,10 @@ function UserManagement() {
                 <Pagination
                   onChange={handlePageChange}
                   page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20]}
-                  totalItems={userManagementListShow.length}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
                   forwardText={intl.formatMessage({
                     id: "pagination.forward",
                   })}

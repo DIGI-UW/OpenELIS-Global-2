@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.6.0.0-provider-title-code" author="OGC-1223">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="person"/>
+            <not>
+                <columnExists tableName="person" columnName="title_code"/>
+            </not>
+        </preConditions>
+        <comment>
+            A provider's honorific or cadre (Dr, Prof, HEO), held as the local abbreviation of a
+            providerTitle dictionary entry rather than free text, so the same rank is one value
+            everywhere. The column sits on person because person is the record a provider shares
+            with patients and requestor contacts; only the provider surfaces expose it today.
+        </comment>
+
+        <addColumn tableName="person">
+            <column name="title_code" type="VARCHAR(20)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-provider-title-dictionary-category" author="OGC-1223">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary_category"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'providerTitle'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            The category the titles live in. Entries themselves are seeded from
+            volume/configuration/backend/dictionaries/provider-title-dictionaries.csv so a
+            deployment can add its own cadres without a migration.
+        </comment>
+
+        <insert tableName="dictionary_category">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_category_seq')"/>
+            <column name="name" value="providerTitle"/>
+            <column name="description" value="Provider Title"/>
+            <column name="local_abbrev" value="PROVTTL"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-provider-title-seed" author="OGC-1223">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id
+                WHERE c.name = 'providerTitle'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            The honorifics every deployment starts with, so the field works on a fresh
+            install without the configuration tree. A site adds its own cadres (PNG's HEO
+            and RMO, for instance) through the Provider Titles page or a dictionaries CSV;
+            this only runs when the category is still empty.
+        </comment>
+
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Doctor"/>
+            <column name="local_abbrev" value="Dr"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="10"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Professor"/>
+            <column name="local_abbrev" value="Prof"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="20"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Sister"/>
+            <column name="local_abbrev" value="Sr"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="30"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Mister"/>
+            <column name="local_abbrev" value="Mr"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="40"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Mistress"/>
+            <column name="local_abbrev" value="Mrs"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="50"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert tableName="dictionary">
+            <column name="id" valueComputed="nextval('clinlims.dictionary_seq')"/>
+            <column name="dictionary_category_id"
+                valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'providerTitle')"/>
+            <column name="dict_entry" value="Ms"/>
+            <column name="local_abbrev" value="Ms"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="60"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

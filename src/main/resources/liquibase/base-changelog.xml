@@ -4,6 +4,8 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+  <!-- Upgrade guard: resync id sequences before any seed insert runs -->
+  <include file="liquibase/upgrade/000-resync-id-sequences.xml" />
   <include file="liquibase/2.0.x.x/base.xml" />
   <include file="liquibase/2.1.x.x/base.xml" />
   <include file="liquibase/2.2.x.x/base.xml" />
@@ -13,12 +15,14 @@
   <include file="liquibase/2.6.x.x/base.xml" />
   <include file="liquibase/2.7.x.x/base.xml" />
   <include file="liquibase/2.8.x.x/base.xml" />
+  <include file="liquibase/2.9.x.x/base.xml" />
   <include file="liquibase/3.1.x.x/base.xml" />
   <include file="liquibase/3.2.x.x/base.xml" />
   <include file="liquibase/3.3.x.x/base.xml" />
   <include file="liquibase/3.4.x.x/base.xml" />
   <include file="liquibase/3.4.14.x/base.xml" />
   <include file="liquibase/3.5.x.x/base.xml" />
+  <include file="liquibase/3.6.x.x/base.xml" />
   <!-- Analyzer QC Rule Migrations -->
   <include file="liquibase/analyzer/base.xml" />
   <!-- QC (Quality Control) Westgard Rules Feature -->
@@ -30,4 +34,32 @@
   <include file="liquibase/qc/007-add-qc-menu-items.xml" />
   <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
   <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
+  <!-- S-08: QC Result Evaluation (OGC-554) -->
+  <include file="liquibase/qc/010-create-sample-item-qc-profile.xml" />
+  <include file="liquibase/qc/011-add-test-qc-thresholds.xml" />
+  <include file="liquibase/qc/012-add-result-qc-evaluation.xml" />
+  <include file="liquibase/qc/013-create-validation-qc-acknowledgment.xml" />
+  <include file="liquibase/qc/014-register-validation-qc-ack-reference-table.xml" />
+
+  <!-- OGC-1147 Manual & RDT QC persistence -->
+  <include file="liquibase/qc/010-manual-rdt-qc.xml" />
+
+  <!-- QA menu tree, every row of it (OGC-688) -->
+  <include file="liquibase/qa/001-add-qa-menu-items.xml" />
+
+  <!-- QA permission registry and the QA Officer role -->
+  <include file="liquibase/qa/004-add-qa-permission-model.xml" />
+
+  <!-- QI configuration and its indicator defaults (OGC-709/710/714) -->
+  <include file="liquibase/qa/007-create-qi-config-table.xml" />
+
+  <!-- Critical callback capture (OGC-714) -->
+  <include file="liquibase/qa/008-create-critical-callback-table.xml" />
+
+  <!-- Indexes for the QI cohort queries: started_date (rejection) and
+       released_date (amendment, TAT, callback — polled by the evaluator) -->
+  <include file="liquibase/qa/011-analysis-date-indexes.xml" />
+
+  <!-- OGC-686: accrediting bodies + per-test accreditation -->
+  <include file="liquibase/qa/013-create-accreditation-tables.xml" />
 </databaseChangeLog>

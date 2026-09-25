@@ -37,9 +37,11 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../../utils/Utils";
 import AddDeviceModal from "../shared/AddDeviceModal";
 
-const getDeviceColumns = (intl) => [
+const getDeviceColumns = (intl, canManage) => [
   { key: "id", header: intl.formatMessage({ id: "coldStorage.device.id" }) },
   { key: "status", header: intl.formatMessage({ id: "coldStorage.status" }) },
   { key: "name", header: intl.formatMessage({ id: "coldStorage.name" }) },
@@ -63,10 +65,14 @@ const getDeviceColumns = (intl) => [
     key: "room",
     header: intl.formatMessage({ id: "coldStorage.device.roomFacility" }),
   },
-  {
-    key: "actions",
-    header: intl.formatMessage({ id: "coldStorage.actions" }),
-  },
+  ...(canManage
+    ? [
+        {
+          key: "actions",
+          header: intl.formatMessage({ id: "coldStorage.actions" }),
+        },
+      ]
+    : []),
 ];
 
 const DEVICE_TYPE_OPTIONS = [
@@ -93,6 +99,10 @@ function DeviceManagement() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // Device writes on FreezerDeviceController require ADMIN, so a non-admin who
+  // clicks one of these controls gets a failed request back.
+  const canManageDevices = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
@@ -150,7 +160,9 @@ function DeviceManagement() {
   const loadLocations = useCallback(async () => {
     try {
       const response = await fetchLocations();
-      setLocations(response || []);
+      // AddDeviceModal renders locations.map even while closed, so a non-array
+      // error body would throw during render.
+      setLocations(Array.isArray(response) ? response : []);
     } catch (err) {
       console.error("Failed to load locations:", err);
       notify({
@@ -168,7 +180,9 @@ function DeviceManagement() {
       setLoading(true);
       setError(null);
       const response = await fetchDevices(searchTerm);
-      setDevices(response || []);
+      // An error body arrives here parsed, and a non-array would throw in
+      // devices.filter during render.
+      setDevices(Array.isArray(response) ? response : []);
     } catch (err) {
       setError(
         intl.formatMessage({ id: "coldStorage.error.loadDevices" }) +
@@ -366,6 +380,15 @@ function DeviceManagement() {
         temperatureOffset: parseFloat(formData.temperatureOffset),
         humidityScale: parseFloat(formData.humidityScale),
         humidityOffset: parseFloat(formData.humidityOffset),
+        temperatureRegister2:
+          formData.temperatureRegister2 != null
+            ? parseInt(formData.temperatureRegister2)
+            : null,
+        temperatureScale2: parseFloat(formData.temperatureScale2),
+        temperatureOffset2: parseFloat(formData.temperatureOffset2),
+        registerCount: parseInt(formData.registerCount),
+        rs485DelayBeforeMs: parseInt(formData.rs485DelayBeforeMs),
+        rs485DelayAfterMs: parseInt(formData.rs485DelayAfterMs),
       };
       // Remove deviceType from top level (it's in storageDevice object)
       delete deviceData.deviceType;
@@ -485,45 +508,49 @@ function DeviceManagement() {
     port: device.port || "—",
     protocol: device.protocol || "—",
     room: device.room || device.locationName || "—",
-    actions: (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <IconButton
-          label={intl.formatMessage({ id: "coldStorage.device.edit" })}
-          kind="ghost"
-          size="sm"
-          onClick={() => handleEditDevice(device)}
-        >
-          <Edit />
-        </IconButton>
-        <IconButton
-          label={intl.formatMessage({
-            id: device.active
-              ? "coldStorage.device.deactivate"
-              : "coldStorage.device.activate",
-          })}
-          kind="ghost"
-          size="sm"
-          onClick={() => handleToggleStatus(device)}
-        >
-          <Power />
-        </IconButton>
-        <IconButton
-          label={intl.formatMessage({ id: "coldStorage.device.delete" })}
-          kind="ghost"
-          size="sm"
-          onClick={() => handleDeleteDevice(device)}
-        >
-          <TrashCan />
-        </IconButton>
-      </div>
-    ),
+    ...(canManageDevices
+      ? {
+          actions: (
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <IconButton
+                label={intl.formatMessage({ id: "coldStorage.device.edit" })}
+                kind="ghost"
+                size="sm"
+                onClick={() => handleEditDevice(device)}
+              >
+                <Edit />
+              </IconButton>
+              <IconButton
+                label={intl.formatMessage({
+                  id: device.active
+                    ? "coldStorage.device.deactivate"
+                    : "coldStorage.device.activate",
+                })}
+                kind="ghost"
+                size="sm"
+                onClick={() => handleToggleStatus(device)}
+              >
+                <Power />
+              </IconButton>
+              <IconButton
+                label={intl.formatMessage({ id: "coldStorage.device.delete" })}
+                kind="ghost"
+                size="sm"
+                onClick={() => handleDeleteDevice(device)}
+              >
+                <TrashCan />
+              </IconButton>
+            </div>
+          ),
+        }
+      : {}),
     _device: device,
   }));
 
   return (
     <div style={{ padding: "1rem 0" }}>
       {notificationVisible === true ? <AlertDialog /> : ""}
-      <DataTable rows={rows} headers={getDeviceColumns(intl)}>
+      <DataTable rows={rows} headers={getDeviceColumns(intl, canManageDevices)}>
         {({
           rows,
           headers,
@@ -575,13 +602,15 @@ function DeviceManagement() {
                   }
                   size="md"
                 />
-                <Button
-                  kind="primary"
-                  renderIcon={Add}
-                  onClick={handleAddDevice}
-                >
-                  <FormattedMessage id="coldStorage.addNewDevice" />
-                </Button>
+                {canManageDevices && (
+                  <Button
+                    kind="primary"
+                    renderIcon={Add}
+                    onClick={handleAddDevice}
+                  >
+                    <FormattedMessage id="coldStorage.addNewDevice" />
+                  </Button>
+                )}
               </TableToolbarContent>
             </TableToolbar>
             <Table {...getTableProps()}>

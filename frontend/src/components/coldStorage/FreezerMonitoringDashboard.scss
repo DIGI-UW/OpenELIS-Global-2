@@ -48,3 +48,77 @@
   color: #f1c21b;
   background-color: rgba(241, 194, 27, 0.1);
 }
+
+.oe-coldStorage-filterForm {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+
+  &--mobile {
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: stretch;
+    align-items: stretch;
+  }
+}
+
+.oe-coldStorage-filterSearch {
+  flex: 1 1 40%;
+  min-width: 15rem;
+
+  &--mobile {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+}
+
+.oe-coldStorage-activeAlertsSection {
+  margin-top: 2rem;
+}
+
+.oe-coldStorage-activeAlertsHeading {
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-activeAlertsTable {
+  max-height: 400px;
+}
+
+.oe-coldStorage-clickableRow {
+  cursor: pointer;
+}
+
+.oe-coldStorage-rowActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.oe-coldStorage-emptyAlertsTile {
+  padding: 1rem;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+.oe-coldStorage-filterControls {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  width: auto;
+  align-items: stretch;
+  justify-content: center;
+
+  &--mobile {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: stretch;
+  }
+}

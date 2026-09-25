@@ -36,6 +36,7 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -51,6 +52,7 @@ import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -73,6 +75,7 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.service.ReferralReasonService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openelisglobal.reports.form.ReportForm;
@@ -129,6 +132,7 @@ public abstract class PatientReport extends Report {
     protected SampleOrganizationService sampleOrganizationService = SpringContext
             .getBean(SampleOrganizationService.class);
     protected UserService userService = SpringContext.getBean(UserService.class);;
+    private Set<String> reportUserTestIds;
     private List<String> handledOrders;
     private List<Analysis> updatedAnalysis = new ArrayList<>();
 
@@ -189,6 +193,34 @@ public abstract class PatientReport extends Report {
 
     protected boolean useReportingDescription() {
         return true;
+    }
+
+    /**
+     * The analyses of one sample that the report's reader may see, keeping only
+     * tests in their Reports lab units.
+     *
+     * <p>
+     * The set of allowed tests is resolved once per report rather than once per
+     * sample: resolving it re-reads every test in the reader's lab units, so a
+     * patient with hundreds of samples read the whole catalogue hundreds of times
+     * and the report took minutes, long past the point where the browser gives up.
+     * A report instance serves a single request, so the set cannot go stale within
+     * one run.
+     */
+    protected List<Analysis> filterAnalysesForReportUser(List<Analysis> analyses) {
+        if (analyses == null) {
+            return new ArrayList<>();
+        }
+        if (reportUserTestIds == null) {
+            reportUserTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_REPORTS);
+        }
+        List<Analysis> allowed = new ArrayList<>(analyses.size());
+        for (Analysis analysis : analyses) {
+            if (analysis.getTest() != null && reportUserTestIds.contains(analysis.getTest().getId())) {
+                allowed.add(analysis);
+            }
+        }
+        return allowed;
     }
 
     protected String convertToAlphaNumericDisplay(Sample currentSample) {
@@ -279,6 +311,9 @@ public abstract class PatientReport extends Report {
                 sampleCompleteMap.put(convertToAlphaNumericDisplay(sample), Boolean.TRUE);
                 findCompletionDate();
                 findPatientFromSample();
+                if (currentPatient == null) {
+                    continue;
+                }
                 findContactInfo();
                 findPatientInfo();
                 createReportItems();
@@ -287,6 +322,9 @@ public abstract class PatientReport extends Report {
                 add1LineErrorMessage("report.error.message.noPrintableItems");
             } else {
                 postSampleBuild();
+                // OGC-686: after the last report item, so the test set is complete.
+                // Not in postSampleBuild — that is abstract in five subclasses.
+                addAccreditationParameters();
             }
         }
 
@@ -475,6 +513,13 @@ public abstract class PatientReport extends Report {
     protected void findPatientFromSample() {
         Patient patient = sampleHumanService.getPatientForSample(currentSample);
 
+        if (patient == null) {
+            STNumber = null;
+            patientDOB = null;
+            currentPatient = null;
+            return;
+        }
+
         if (currentPatient == null || !patient.getId().equals(patientService.getPatientId(currentPatient))) {
             STNumber = null;
             patientDOB = null;
@@ -550,6 +595,10 @@ public abstract class PatientReport extends Report {
         List<Result> resultList = analysisService.getResults(currentAnalysis);
 
         Test test = analysisService.getTest(currentAnalysis);
+        // OGC-686: the one place every printed analysis of this family passes
+        // through with its test in hand. The recorder filters to claimable statuses
+        // itself.
+        recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
         String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);
         if (note != null) {
@@ -608,6 +657,26 @@ public abstract class PatientReport extends Report {
         data.setResult(MessageUtil.getMessage("report.test.status.inProgress"));
     }
 
+    /**
+     * A result that came back from a reference laboratory prints on the patient
+     * report like any other, so the clinician has the value, but the report has to
+     * say who produced it. Returns the row's note with that attribution appended.
+     */
+    protected String noteWithReferralAttribution(String note, Referral referral) {
+        if (referral == null || referral.getOrganization() == null) {
+            return note;
+        }
+        String labName = referral.getOrganization().getOrganizationName();
+        if (GenericValidator.isBlankOrNull(labName)) {
+            return note;
+        }
+        // The note prints through Jasper's styled-text parser, which reads '<' and
+        // '&' as markup.
+        String attribution = MessageUtil.getMessage("report.referral.performedBy") + " "
+                + labName.replace("&", "&amp;").replace("<", "&lt;");
+        return GenericValidator.isBlankOrNull(note) ? attribution : note + "<br/>" + attribution;
+    }
+
     protected void setEmptyResult(ClinicalPatientData data) {
         data.setResult(MessageUtil.getMessage("report.test.status.inProgress"));
     }
@@ -632,8 +701,13 @@ public abstract class PatientReport extends Report {
         String resultValue = data.getResult();
         if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
             try {
-                resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(resultValue))) + ")log ";
-            } catch (IllegalFormatException e) {
+                // the printed value carries the notation the technologist wrote,
+                // so read the number it denotes before taking its log
+                resultValue += " ("
+                        + formatTwoDecimals(
+                                Math.log10(Double.parseDouble(StringUtil.normalizeScientificNotation(resultValue))))
+                        + ")log ";
+            } catch (IllegalFormatException | NumberFormatException e) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
                 // no-op
             }
@@ -663,6 +737,10 @@ public abstract class PatientReport extends Report {
                     } else if (Double.valueOf(result.getValue(true)) > result.getMaxNormal()) {
                         flag = "E";
                     }
+                }
+                String critical = criticalAlertFlag(result);
+                if (!GenericValidator.isBlankOrNull(critical)) {
+                    flag = critical;
                 }
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
                 boolean isAbnormal;
@@ -698,6 +776,27 @@ public abstract class PatientReport extends Report {
         }
 
         return "";
+    }
+
+    /**
+     * OGC-1121 — BB / EE mark a value beyond the authored critical bound of the
+     * result's own range, the tier the B / E letters cannot express. The result row
+     * carries no critical snapshot, so the bound is read from the range the catalog
+     * resolves for this analysis and patient today.
+     */
+    protected String criticalAlertFlag(Result result) {
+        if (currentAnalysis == null || result == null) {
+            return "";
+        }
+        try {
+            ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
+                    result, currentPatient);
+            return ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+        } catch (RuntimeException e) {
+            LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
+                    + result.getId() + ": the report prints the value without it", e);
+            return "";
+        }
     }
 
     protected String getRange(Result result) {
@@ -1073,9 +1172,11 @@ public abstract class PatientReport extends Report {
 
         if (doAnalysis) {
             testName = getTestName(hasParent);
-            // Not sure if it is a bug in escapeHtml but the wrong markup is
-            // generated
-            testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            if (escapesTestNameAsHtml()) {
+                // Not sure if it is a bug in escapeHtml but the wrong markup is
+                // generated
+                testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            }
         }
 
         if (FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour)) {
@@ -1178,6 +1279,16 @@ public abstract class PatientReport extends Report {
      */
     protected boolean appendSampleTypeToTestName() {
         return false;
+    }
+
+    /**
+     * Whether this report's template renders the Test column as HTML. The patient
+     * templates do, so an accented name has to arrive escaped. A template that
+     * prints the column as plain text must turn this off, or it shows the escape
+     * sequence itself rather than the character.
+     */
+    protected boolean escapesTestNameAsHtml() {
+        return true;
     }
 
     private String getTestName(boolean indent) {

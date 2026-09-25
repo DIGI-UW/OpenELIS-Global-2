@@ -7,6 +7,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.valueholder.Test;
 
@@ -19,6 +20,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     void getData(ResultLimit resultLimit) throws LIMSRuntimeException;
 
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
+
+    /**
+     * The test's numeric reference ranges: the rows the Ranges editor lists and
+     * {@link #saveRangesForTest} manages. Dictionary (select-list) limits are left
+     * out, as that save never changes them.
+     */
+    List<ResultLimit> getNumericRangesForTest(String testId);
 
     /** OGC-949 M7: reference ranges scoped to a result component. */
     List<ResultLimit> getResultLimitsByComponentId(String componentId);
@@ -75,6 +83,10 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     List<ResultLimit> getResultLimits(Test test);
 
     ResultLimit getResultLimitForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue);
 
     /**
      * The reference range for one displayed result row: a multi-component test uses

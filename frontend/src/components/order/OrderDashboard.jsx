@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import { useHistory } from "react-router-dom";
+import { useWorkflowPrefix } from "./OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   DataTable,
@@ -27,6 +34,12 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
@@ -40,7 +53,7 @@ import "./order-workflow.scss";
  * - DSH-3/4: "Include external sources" toggle for EMR/referral orders
  * - DSH-5/6: "+ New Order" button and barcode scan bar
  * - DSH-7/8: Filter dropdowns (Status, date range, Priority)
- * - DSH-9: Pagination (25/50/100 items, default 100)
+ * - DSH-9: Pagination, one server page at a time (paging.results.pageSize)
  */
 
 const STATUS_OPTIONS = [
@@ -48,6 +61,9 @@ const STATUS_OPTIONS = [
   { id: "in_progress", label: "In Progress" },
   { id: "pending_qa", label: "Pending QA" },
   { id: "completed", label: "Completed" },
+  // Driven by the order's referral rather than a sample status column: the
+  // FHIR-aligned ReferralStatus already models the lifecycle (OGC-1201 U).
+  { id: "referred_out", label: "Referred Out" },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -58,11 +74,10 @@ const PRIORITY_OPTIONS = [
   { id: "routine", label: "Routine" },
 ];
 
-const PAGE_SIZES = [25, 50, 100];
-
 const OrderDashboardContent = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { loadOrder, resetOrder } = useOrderContext();
@@ -74,62 +89,118 @@ const OrderDashboardContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: null, end: null });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
-  const [totalItems, setTotalItems] = useState(0);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
+
+  const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
+  const isEnvOrVector = workflow === "environmental" || workflow === "vector";
+
+  const workflowLabel = {
+    vector: "sidenav.label.vector.order",
+    environmental: "sidenav.label.environmental.order",
+    clinical: "sidenav.label.clinical.order",
+  }[workflow];
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sidenav.label.addorder", link: "/order" },
+    { label: workflowLabel, link: workflowPrefix },
   ];
 
-  // Fetch orders
+  // Identifies the load in flight, so a superseded response is dropped.
+  const latestRequest = useRef(0);
+
+  const applyPage = useCallback((requestId, response) => {
+    if (requestId !== latestRequest.current) {
+      return;
+    }
+    setIsLoading(false);
+    if (response) {
+      const pageOrders = response.orders || [];
+      setOrders(pageOrders);
+      setPaging(response.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response.paging, pageOrders.length, previous),
+      );
+    }
+  }, []);
+
+  // A new search: the server matches every order against the filters, caches
+  // the list and answers with its first page.
   const fetchOrders = useCallback(() => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
 
     const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
+      workflowType: workflow,
     });
 
     if (searchQuery) params.append("search", searchQuery);
     if (statusFilter !== "all") params.append("status", statusFilter);
     if (priorityFilter !== "all") params.append("priority", priorityFilter);
-    // Format dates as YYYY-MM-DD for backend
-    if (dateRange.start) {
-      const d = new Date(dateRange.start);
-      params.append("startDate", d.toISOString().split("T")[0]);
-    }
-    if (dateRange.end) {
-      const d = new Date(dateRange.end);
-      params.append("endDate", d.toISOString().split("T")[0]);
-    }
+    // Format dates as YYYY-MM-DD using local date parts to avoid UTC timezone shift
+    const toLocalIso = (d) => {
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+    if (dateRange.start)
+      params.append("startDate", toLocalIso(new Date(dateRange.start)));
+    if (dateRange.end)
+      params.append("endDate", toLocalIso(new Date(dateRange.end)));
 
-    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) => {
-      setIsLoading(false);
-      if (response) {
-        setOrders(response.orders || []);
-        setTotalItems(response.totalCount || 0);
-      }
-    });
-  }, [page, pageSize, searchQuery, statusFilter, priorityFilter, dateRange]);
+    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) =>
+      applyPage(requestId, response),
+    );
+  }, [
+    workflow,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    dateRange,
+    applyPage,
+  ]);
+
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = useCallback(
+    (pageNumber) => {
+      const requestId = ++latestRequest.current;
+      setIsLoading(true);
+      getFromOpenElisServer(
+        `/rest/order/dashboard?page=${pageNumber}`,
+        (response) => applyPage(requestId, response),
+      );
+    },
+    [applyPage],
+  );
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
+  /** A filter change is a new search, which the server answers from page 1. */
+  const applyFilter = (setFilter) => (value) => {
+    setFilter(value);
+  };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
+
   // Handlers
   const handleNewOrder = () => {
     resetOrder();
-    history.push("/order/enter");
+    history.push(`${workflowPrefix}/enter`);
   };
 
   const handleContinueOrder = async (order) => {
-    // Load the order into context, then navigate to the appropriate step
+    // Load the order into context, then navigate to the appropriate step.
+    // Include ?order= so a refresh reloads the order automatically.
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const nextStep = getNextStep(order);
-      history.push(`/order/${nextStep}`);
+      history.push(
+        `${workflowPrefix}/${nextStep}?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       console.error("handleContinueOrder: Error loading order", error);
       addNotification({
@@ -147,7 +218,9 @@ const OrderDashboardContent = () => {
   const handleAcceptExternal = async (order) => {
     try {
       await loadOrder(order.labNumber, false);
-      history.push("/order/enter");
+      history.push(
+        `${workflowPrefix}/enter?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -162,11 +235,13 @@ const OrderDashboardContent = () => {
   };
 
   const handleFixIssue = async (order) => {
-    // Load the order into context, then navigate to the step that needs fixing
+    // Load the order into context, then navigate to the step that needs fixing.
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const returnedStep = order.returnedToStep || "enter";
-      history.push(`/order/${returnedStep}`);
+      history.push(
+        `${workflowPrefix}/${returnedStep}?order=${encodeURIComponent(order.labNumber)}`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -181,13 +256,14 @@ const OrderDashboardContent = () => {
   };
 
   const handleBarcodeOrderLoaded = (order) => {
-    history.push(`/order/enter?labNumber=${order.labNumber}`);
+    history.push(`${workflowPrefix}/enter?labNumber=${order.labNumber}`);
   };
 
   const getNextStep = (order) => {
     if (!order.stepProgress) return "enter";
     if (!order.stepProgress.enter) return "enter";
-    if (!order.stepProgress.collect) return "collect";
+    const isClinical = order.workflowType === "clinical";
+    if (isClinical && !order.stepProgress.collect) return "collect";
     if (!isLabelStepComplete(order)) return "label";
     if (!order.stepProgress.qa) return "qa";
     return "qa";
@@ -206,21 +282,25 @@ const OrderDashboardContent = () => {
     return allHaveStorage || storageSkipped || order.stepProgress?.label;
   };
 
+  const getTotalSteps = (order) => (order.workflowType === "clinical" ? 4 : 3);
+
   const getStepProgressValue = (order) => {
     if (!order.stepProgress) return 0;
+    const isClinical = order.workflowType === "clinical";
     let completed = 0;
     if (order.stepProgress.enter) completed++;
-    if (order.stepProgress.collect) completed++;
+    if (isClinical && order.stepProgress.collect) completed++;
     if (isLabelStepComplete(order)) completed++;
     if (order.stepProgress.qa) completed++;
-    return (completed / 4) * 100;
+    return (completed / getTotalSteps(order)) * 100;
   };
 
   const getCompletedStepsCount = (order) => {
     if (!order.stepProgress) return 0;
+    const isClinical = order.workflowType === "clinical";
     let completed = 0;
     if (order.stepProgress.enter) completed++;
-    if (order.stepProgress.collect) completed++;
+    if (isClinical && order.stepProgress.collect) completed++;
     if (isLabelStepComplete(order)) completed++;
     if (order.stepProgress.qa) completed++;
     return completed;
@@ -237,18 +317,27 @@ const OrderDashboardContent = () => {
     },
     {
       key: "patient",
-      header: intl.formatMessage({
-        id: "patient.label",
-        defaultMessage: "Patient/Subject",
-      }),
+      header: isEnvOrVector
+        ? intl.formatMessage({
+            id: "order.dashboard.samplingSite",
+            defaultMessage: "Sampling Site",
+          })
+        : intl.formatMessage({
+            id: "patient.label",
+            defaultMessage: "Patient/Subject",
+          }),
     },
-    {
-      key: "facility",
-      header: intl.formatMessage({
-        id: "order.facility",
-        defaultMessage: "Facility",
-      }),
-    },
+    ...(!isEnvOrVector
+      ? [
+          {
+            key: "facility",
+            header: intl.formatMessage({
+              id: "order.facility",
+              defaultMessage: "Facility",
+            }),
+          },
+        ]
+      : []),
     {
       key: "priority",
       header: intl.formatMessage({
@@ -292,8 +381,10 @@ const OrderDashboardContent = () => {
         )}
       </div>
     ),
-    patient: order.patientName || order.subjectName || "---",
-    facility: order.facilityName || "---",
+    patient: isEnvOrVector
+      ? order.samplingSiteName || "---"
+      : order.patientName || order.subjectName || "---",
+    ...(!isEnvOrVector ? { facility: order.facilityName || "---" } : {}),
     priority: (() => {
       const p = order.priority?.toLowerCase();
       if (p === "stat") {
@@ -331,7 +422,7 @@ const OrderDashboardContent = () => {
           hideLabel
         />
         <span className="progress-label">
-          {getCompletedStepsCount(order)}/4
+          {getCompletedStepsCount(order)}/{getTotalSteps(order)}
         </span>
       </div>
     ),
@@ -405,58 +496,86 @@ const OrderDashboardContent = () => {
 
           {/* Filters Row */}
           <div className="dashboard-filters">
-            <Dropdown
-              id="status-filter"
-              titleText=""
-              label={intl.formatMessage({
-                id: "order.filter.status",
-                defaultMessage: "Status",
-              })}
-              items={STATUS_OPTIONS}
-              itemToString={(item) => item?.label || ""}
-              selectedItem={STATUS_OPTIONS.find((s) => s.id === statusFilter)}
-              onChange={({ selectedItem }) =>
-                setStatusFilter(selectedItem?.id || "all")
-              }
-            />
-            <Dropdown
-              id="priority-filter"
-              titleText=""
-              label={intl.formatMessage({
-                id: "order.filter.priority",
-                defaultMessage: "Priority",
-              })}
-              items={PRIORITY_OPTIONS}
-              itemToString={(item) => item?.label || ""}
-              selectedItem={PRIORITY_OPTIONS.find(
-                (p) => p.id === priorityFilter,
-              )}
-              onChange={({ selectedItem }) =>
-                setPriorityFilter(selectedItem?.id || "all")
-              }
-            />
-            <DatePicker
-              datePickerType="range"
-              onChange={(dates) =>
-                setDateRange({ start: dates[0], end: dates[1] })
-              }
-            >
-              <DatePickerInput
-                id="date-start"
-                placeholder="mm/dd/yyyy"
-                labelText=""
-                size="md"
+            <div className="dashboard-filter-item">
+              <Dropdown
+                id="status-filter"
+                titleText=""
+                label={intl.formatMessage({
+                  id: "order.filter.status",
+                  defaultMessage: "Status",
+                })}
+                items={STATUS_OPTIONS}
+                itemToString={(item) => item?.label || ""}
+                selectedItem={STATUS_OPTIONS.find((s) => s.id === statusFilter)}
+                onChange={({ selectedItem }) =>
+                  applyFilter(setStatusFilter)(selectedItem?.id || "all")
+                }
               />
-              <DatePickerInput
-                id="date-end"
-                placeholder="mm/dd/yyyy"
-                labelText=""
-                size="md"
+            </div>
+            <div className="dashboard-filter-item">
+              <Dropdown
+                id="priority-filter"
+                titleText=""
+                label={intl.formatMessage({
+                  id: "order.filter.priority",
+                  defaultMessage: "Priority",
+                })}
+                items={PRIORITY_OPTIONS}
+                itemToString={(item) => item?.label || ""}
+                selectedItem={PRIORITY_OPTIONS.find(
+                  (p) => p.id === priorityFilter,
+                )}
+                onChange={({ selectedItem }) =>
+                  applyFilter(setPriorityFilter)(selectedItem?.id || "all")
+                }
               />
-            </DatePicker>
+            </div>
+            <div className="dashboard-filter-item">
+              <DatePicker
+                datePickerType="single"
+                onChange={(dates) =>
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    start: dates[0],
+                  }))
+                }
+              >
+                <DatePickerInput
+                  id="date-start"
+                  placeholder="mm/dd/yyyy"
+                  labelText={intl.formatMessage({
+                    id: "order.filter.dateFrom",
+                    defaultMessage: "From",
+                  })}
+                  size="md"
+                />
+              </DatePicker>
+            </div>
+            <div className="dashboard-filter-item">
+              <DatePicker
+                datePickerType="single"
+                onChange={(dates) =>
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    end: dates[0],
+                  }))
+                }
+              >
+                <DatePickerInput
+                  id="date-end"
+                  placeholder="mm/dd/yyyy"
+                  labelText={intl.formatMessage({
+                    id: "order.filter.dateTo",
+                    defaultMessage: "To",
+                  })}
+                  size="md"
+                />
+              </DatePicker>
+            </div>
           </div>
 
           {/* Orders Table */}
+          {arrows.show && <ServerPageArrows {...arrows} />}
           <DataTable rows={rows} headers={headers} isSortable>
             {({
               rows,
@@ -471,14 +590,22 @@ const OrderDashboardContent = () => {
                 <TableToolbar {...getToolbarProps()}>
                   <TableToolbarContent>
                     <TableToolbarSearch
-                      placeholder={intl.formatMessage({
-                        id: "order.search.placeholder",
-                        defaultMessage:
-                          "Search by patient, lab number, or ID...",
-                      })}
+                      placeholder={intl.formatMessage(
+                        isEnvOrVector
+                          ? {
+                              id: "order.search.placeholder.env",
+                              defaultMessage:
+                                "Search by site name or lab number...",
+                            }
+                          : {
+                              id: "order.search.placeholder",
+                              defaultMessage:
+                                "Search by patient, lab number, or ID...",
+                            },
+                      )}
                       onChange={(e) => {
                         onInputChange(e);
-                        setSearchQuery(e.target.value);
+                        applyFilter(setSearchQuery)(e.target.value);
                       }}
                     />
                   </TableToolbarContent>
@@ -541,16 +668,15 @@ const OrderDashboardContent = () => {
             )}
           </DataTable>
 
-          {/* Pagination (DSH-9) */}
+          {/* Pagination (DSH-9): Carbon's page is the server's page */}
           <Pagination
-            totalItems={totalItems}
-            pageSize={pageSize}
-            pageSizes={PAGE_SIZES}
-            page={page}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage);
-              setPageSize(newPageSize);
-            }}
+            {...serverPaginationProps({
+              paging,
+              rowsOnPage: orders.length,
+              pageSize: serverPageSize,
+              onPageRequest: loadPage,
+              intl,
+            })}
           />
         </Stack>
       </div>

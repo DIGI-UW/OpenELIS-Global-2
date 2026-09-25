@@ -91,12 +91,13 @@ public class QCChartDataRestController {
     public ResponseEntity<ChartStatisticsResponse> getChartStatistics(
             @PathVariable("controlLotId") String controlLotId) {
         try {
-            QCStatistics stats = chartDataService.getLatestStatistics(controlLotId);
+            QCChartDataService.StatsWithSigma statsWithSigma = chartDataService.getStatisticsWithSigma(controlLotId);
 
-            if (stats == null) {
+            if (statsWithSigma == null || statsWithSigma.statistics() == null) {
                 return ResponseEntity.notFound().build();
             }
 
+            QCStatistics stats = statsWithSigma.statistics();
             ChartStatisticsResponse response = new ChartStatisticsResponse();
             response.setControlLotId(controlLotId);
             response.setMean(stats.getMean() != null ? stats.getMean().doubleValue() : 0.0);
@@ -114,6 +115,11 @@ public class QCChartDataRestController {
             response.setMinus1SD(mean - sd);
             response.setMinus2SD(mean - 2 * sd);
             response.setMinus3SD(mean - 3 * sd);
+
+            // OGC-704: Westgard sigma metric (mean/SD + per-test TEa, bias 0).
+            // Shared with the OGC-706 export via QCChartDataService#getStatisticsWithSigma.
+            response.setSigma(statsWithSigma.sigma().sigma());
+            response.setSigmaCategory(statsWithSigma.sigma().category());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -140,10 +146,8 @@ public class QCChartDataRestController {
             point.setHasViolation(!violatedRules.isEmpty());
 
             // Determine severity (highest among violations)
-            String severity = violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId()))
-                    .map(QCRuleViolation::getSeverity).filter(s -> "REJECTION".equals(s)).findFirst()
-                    .orElse(violatedRules.isEmpty() ? null : "WARNING");
-            point.setSeverity(severity);
+            point.setSeverity(QCRuleViolation.worstSeverity(
+                    violations.stream().filter(v -> result.getId().equals(v.getTriggeringResultId())).toList()));
 
             dataPoints.add(point);
         }
@@ -258,6 +262,9 @@ public class QCChartDataRestController {
         private double minus1SD;
         private double minus2SD;
         private double minus3SD;
+        // OGC-704: sigma metric; null sigma when NOT_CALCULABLE
+        private Double sigma;
+        private String sigmaCategory;
 
         public String getControlLotId() {
             return controlLotId;
@@ -345,6 +352,22 @@ public class QCChartDataRestController {
 
         public void setMinus3SD(double minus3SD) {
             this.minus3SD = minus3SD;
+        }
+
+        public Double getSigma() {
+            return sigma;
+        }
+
+        public void setSigma(Double sigma) {
+            this.sigma = sigma;
+        }
+
+        public String getSigmaCategory() {
+            return sigmaCategory;
+        }
+
+        public void setSigmaCategory(String sigmaCategory) {
+            this.sigmaCategory = sigmaCategory;
         }
     }
 }

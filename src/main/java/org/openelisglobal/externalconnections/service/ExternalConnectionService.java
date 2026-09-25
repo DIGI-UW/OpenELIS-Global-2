@@ -21,4 +21,11 @@ public interface ExternalConnectionService extends BaseObjectService<ExternalCon
     void updateExternalConnectionFields(Integer id, String sysUserId, Boolean active,
             ProgrammedConnection programmedConnection, AuthType authType, URI uri, String nameValue,
             String descriptionValue, String basicUsername, String basicPassword);
+
+    /**
+     * True iff at least one {@code external_connection} row exists for the given
+     * programmed connection type with {@code active = true}. Used as the
+     * channel-availability gate by the notification trigger system.
+     */
+    boolean isActive(ProgrammedConnection programmedConnection);
 }
