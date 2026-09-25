@@ -40,7 +40,6 @@ import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -359,8 +358,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         if (!GenericValidator.isBlankOrNull(defaultFields.getSampleTypeId())) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "createSampleItem",
                     "Retrieving TypeOfSample with ID: " + defaultFields.getSampleTypeId());
-            TypeOfSample typeOfSample = SystemContext
-                    .callAsSystem(() -> typeOfSampleService.get(defaultFields.getSampleTypeId()));
+            TypeOfSample typeOfSample = typeOfSampleService.get(defaultFields.getSampleTypeId());
             if (typeOfSample == null) {
                 String errorMsg = "TypeOfSample not found with ID: " + defaultFields.getSampleTypeId();
                 LogEvent.logError(errorMsg, null);
@@ -948,8 +946,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 sampleItem.setSysUserId(sysUserId);
 
                 if (!GenericValidator.isBlankOrNull(defaultFields.getSampleTypeId())) {
-                    TypeOfSample typeOfSample = SystemContext
-                            .callAsSystem(() -> typeOfSampleService.get(defaultFields.getSampleTypeId()));
+                    TypeOfSample typeOfSample = typeOfSampleService.get(defaultFields.getSampleTypeId());
                     sampleItem.setTypeOfSample(typeOfSample);
                 }
 
@@ -1860,7 +1857,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
         // Try to find by ID first
         try {
-            TypeOfSample type = SystemContext.callAsSystem(() -> typeOfSampleService.get(searchKey));
+            TypeOfSample type = typeOfSampleService.get(searchKey);
             if (type != null) {
                 return type;
             }
@@ -1870,7 +1867,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
         // Try to find by description, localized name, or local abbreviation
         // (case-insensitive)
-        List<TypeOfSample> allTypes = SystemContext.callAsSystem(typeOfSampleService::getAllTypeOfSamples);
+        List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
         for (TypeOfSample type : allTypes) {
             // Check description
             if (type.getDescription() != null && type.getDescription().trim().equalsIgnoreCase(searchKey)) {

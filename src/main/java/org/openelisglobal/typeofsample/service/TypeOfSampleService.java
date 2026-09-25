@@ -9,7 +9,10 @@ import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
+// Readable by anyone who may see the orderable catalogue: populating a
+// sample-type dropdown is not sample-type administration. Writes on this
+// interface carry PRIV_SAMPLE_TYPE_MANAGE individually.
+@PreAuthorize("hasAnyAuthority('PRIV_SAMPLE_TYPE_VIEW','PRIV_CATALOGUE_VIEW')")
 public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, String> {
     void getData(TypeOfSample typeOfSample);
 
@@ -64,6 +67,12 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
      * sequence and renumbers every sample type to a dense 1..n, so the order-entry
      * Sample Type menu ordering is deterministic. Returns the resulting full list
      * in its new order.
+     *
+     * <p>
+     * A catalogue WRITE, so it is pinned to PRIV_SAMPLE_TYPE_MANAGE rather than
+     * inheriting the interface gate, that one accepts PRIV_CATALOGUE_VIEW, which
+     * every order-entry role holds, and reordering the menu is not a read.
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_MANAGE')")
     List<TypeOfSample> moveToSortOrderPosition(String typeOfSampleId, int position, String sysUserId);
 }

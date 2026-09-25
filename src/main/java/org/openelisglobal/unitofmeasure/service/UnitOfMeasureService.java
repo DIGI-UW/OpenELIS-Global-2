@@ -10,18 +10,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @CrudPrivileges(write = "PRIV_TEST_CONFIGURE")
 public interface UnitOfMeasureService extends BaseObjectService<UnitOfMeasure, String> {
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     UnitOfMeasure getUnitOfMeasureById(String uomId);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     UnitOfMeasure getUnitOfMeasureByName(UnitOfMeasure unitOfMeasure);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    // Units offered on the collection step are catalogue data, not results.
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType);
 
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void refreshNames();
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     Localization getLocalizationForUnitOfMeasure(String id);
 }

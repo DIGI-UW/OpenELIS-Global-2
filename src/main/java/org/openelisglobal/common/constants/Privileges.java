@@ -59,6 +59,25 @@ public final class Privileges {
     public static final String METHOD_MANAGE = "method:manage";
 
     // -----------------------------------------------------------------------
+    // Catalogue (read-only view of the orderable catalogue)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Seeing the catalogue of orderable things, sample types, tests, panels,
+     * methods, units of measure and the dictionary lists behind order-form
+     * dropdowns.
+     *
+     * <p>
+     * Distinct from the privileges that ADMINISTER those catalogues
+     * ({@link #SAMPLE_TYPE_VIEW}, {@link #PANEL_VIEW}, {@link #TEST_CONFIGURE},
+     * {@link #DICTIONARY_VIEW}, {@link #RESULT_VIEW}). An order-entry role holds
+     * none of those, so before this existed the only ways to populate a dropdown
+     * were to grant catalogue administration or to bypass the gate in system
+     * context. This names the read itself. It confers no write.
+     */
+    public static final String CATALOGUE_VIEW = "catalogue:view";
+
+    // -----------------------------------------------------------------------
     // Sample Type (specimen type)
     // -----------------------------------------------------------------------
 

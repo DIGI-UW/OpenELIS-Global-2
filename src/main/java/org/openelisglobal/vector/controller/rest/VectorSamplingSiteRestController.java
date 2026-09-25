@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
@@ -47,9 +46,9 @@ public class VectorSamplingSiteRestController {
             // order-entry role holds, and the broad catch below turned that denial
             // into a bare 500 — so the site picker was empty with no explanation.
             // Reads only; creating or editing a site stays gated below.
-            List<VectorSamplingSite> sites = SystemContext
-                    .callAsSystem(() -> (type != null && !type.isBlank()) ? vectorSamplingSiteService.getByType(type)
-                            : vectorSamplingSiteService.getAll());
+            List<VectorSamplingSite> sites = (type != null && !type.isBlank())
+                    ? vectorSamplingSiteService.getByType(type)
+                    : vectorSamplingSiteService.getAll();
             return ResponseEntity.ok(sites);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -60,7 +59,7 @@ public class VectorSamplingSiteRestController {
     @GetMapping(value = "/active", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorSamplingSite>> getActiveSites() {
         try {
-            return ResponseEntity.ok(SystemContext.callAsSystem(vectorSamplingSiteService::getActive));
+            return ResponseEntity.ok(vectorSamplingSiteService.getActive());
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -70,7 +69,7 @@ public class VectorSamplingSiteRestController {
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorSamplingSite>> searchSites(@RequestParam String search) {
         try {
-            return ResponseEntity.ok(SystemContext.callAsSystem(() -> vectorSamplingSiteService.search(search)));
+            return ResponseEntity.ok(vectorSamplingSiteService.search(search));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -80,7 +79,7 @@ public class VectorSamplingSiteRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<VectorSamplingSite> getSite(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(SystemContext.callAsSystem(() -> vectorSamplingSiteService.get(id)));
+            return ResponseEntity.ok(vectorSamplingSiteService.get(id));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();

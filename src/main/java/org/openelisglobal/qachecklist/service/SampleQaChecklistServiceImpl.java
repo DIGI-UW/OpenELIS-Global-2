@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.dao.BaseDAO;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -55,8 +54,8 @@ public class SampleQaChecklistServiceImpl extends BaseObjectServiceImpl<SampleQa
         // via checkAllItemsVerified, inside saveOrUpdateChecklist — so an
         // order-entry role could neither see the checklist nor record answers to
         // it. Reading the questions is not dictionary administration.
-        List<Dictionary> allItems = SystemContext.callAsSystem(
-                () -> dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(QA_CHECKLIST_CATEGORY_NAME));
+        List<Dictionary> allItems = dictionaryService
+                .getDictionaryEntrysByCategoryNameLocalizedSort(QA_CHECKLIST_CATEGORY_NAME);
 
         // Filter to only active items and sort by sort_order
         return allItems.stream().filter(d -> "Y".equals(d.getIsActive())).sorted((a, b) -> {

@@ -1,14 +1,20 @@
 package org.openelisglobal.vector.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /** Tests for {@link VectorSamplingSiteService#search} and {@code getByCode}. */
 public class VectorSamplingSiteServiceTest extends BaseWebContextSensitiveTest {
@@ -67,5 +73,80 @@ public class VectorSamplingSiteServiceTest extends BaseWebContextSensitiveTest {
 
         assertNull("getByCode must return null (not throw) for an unknown code, "
                 + "since callers use it to decide whether to create a new site", found);
+    }
+
+    // ---- resolveOrCreateForOrder: the order-entry entry point ----
+
+    private void authenticateAsReception() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("reception", "N/A", SeededRoleAuthorities.role("Reception")));
+    }
+
+    @Test
+    public void resolveOrCreateForOrder_reception_createsTheSiteTheFormIntroduced() {
+        authenticateAsReception();
+        String id = vectorSamplingSiteService.resolveOrCreateForOrder(null, "Sungai Intake", "RBC-ORD-1",
+                "WATER_SOURCE", "1");
+        assertNotNull("a new site must yield an id", id);
+        VectorSamplingSite created = vectorSamplingSiteService.getByCode("RBC-ORD-1");
+        assertNotNull("the site must be findable by the code the form supplied", created);
+        assertEquals(id, String.valueOf(created.getId()));
+        assertEquals("Sungai Intake", created.getName());
+        assertEquals("WATER_SOURCE", created.getType());
+        assertTrue("an inline-created site is active", created.getActive());
+        assertEquals("LOCAL", created.getSource());
+    }
+
+    @Test
+    public void resolveOrCreateForOrder_knownCode_reusesInsteadOfDuplicating() {
+        authenticateAsReception();
+        String first = vectorSamplingSiteService.resolveOrCreateForOrder(null, "Pasar Well", "RBC-ORD-2", null, "1");
+        String second = vectorSamplingSiteService.resolveOrCreateForOrder(null, "Pasar Well (again)", "RBC-ORD-2", null,
+                "1");
+        assertEquals("a second order naming the same code must reuse the site", first, second);
+    }
+
+    @Test
+    public void resolveOrCreateForOrder_knownId_syncsNameCodeAndTypeFromTheForm() {
+        VectorSamplingSite site = insertSite("RBC-ORD-3", "Old Name", true); // admin fixture
+        authenticateAsReception();
+        String id = vectorSamplingSiteService.resolveOrCreateForOrder(String.valueOf(site.getId()), "New Name",
+                "RBC-ORD-3", "TREATMENT_PLANT", "1");
+        assertEquals(String.valueOf(site.getId()), id);
+        VectorSamplingSite reloaded = vectorSamplingSiteService.getByCode("RBC-ORD-3");
+        assertEquals("New Name", reloaded.getName());
+        assertEquals("TREATMENT_PLANT", reloaded.getType());
+    }
+
+    @Test
+    public void resolveOrCreateForOrder_nothingToResolve_returnsWhatItWasGiven() {
+        authenticateAsReception();
+        assertNull(vectorSamplingSiteService.resolveOrCreateForOrder(null, null, null, null, "1"));
+        assertNull("a name without a code is not enough to create a site",
+                vectorSamplingSiteService.resolveOrCreateForOrder(null, "Name only", null, null, "1"));
+    }
+
+    /**
+     * Inversion, both halves. The gate moved onto the order-entry method; the write
+     * itself did not open. Reception still cannot insert a site directly...
+     */
+    @Test(expected = AccessDeniedException.class)
+    public void insert_reception_isStillRefused() {
+        authenticateAsReception();
+        VectorSamplingSite site = new VectorSamplingSite();
+        site.setCode("RBC-ORD-4");
+        site.setName("Should not exist");
+        site.setActive(true);
+        site.setSource("LOCAL");
+        site.setSysUserId("1");
+        vectorSamplingSiteService.insert(site);
+    }
+
+    /** ...and the new method's own gate is real: neither privilege, no site. */
+    @Test(expected = AccessDeniedException.class)
+    public void resolveOrCreateForOrder_withoutEitherPrivilege_isRefused() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("nobody", "N/A", Collections.emptyList()));
+        vectorSamplingSiteService.resolveOrCreateForOrder(null, "Nope", "RBC-ORD-5", null, "1");
     }
 }

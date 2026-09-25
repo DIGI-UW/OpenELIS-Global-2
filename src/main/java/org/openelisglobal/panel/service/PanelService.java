@@ -6,7 +6,9 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_PANEL_VIEW')")
+// Same as TypeOfSampleService: listing the panels on an order is a catalogue
+// read, not panel administration.
+@PreAuthorize("hasAnyAuthority('PRIV_PANEL_VIEW','PRIV_CATALOGUE_VIEW')")
 public interface PanelService extends BaseObjectService<Panel, String> {
 
     void getData(Panel panel);

@@ -668,4 +668,41 @@
         </rollback>
     </changeSet>
 
+    <!--
+      catalogue:view grants, as their own changeset.
+
+      012-004-seed-role-privilege-mappings above has already run on every
+      existing database, so an INSERT added inside it never executes there. Any
+      new grant needs a new changeset, same reason as 012-003b.
+
+      Every role that works an order needs to SEE the catalogue it orders from:
+      sample types, tests, panels, methods, units and the dictionary lists
+      behind the dropdowns. Those reads used to be reached by bypassing their
+      admin gates in system context; with catalogue:view they are gated normally
+      and the grant is visible in Role Management. It confers no write, editing
+      any catalogue still needs its own :manage or :configure privilege.
+    -->
+    <changeSet author="openelis" id="012-004h-grant-catalogue-view">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant catalogue:view to the roles that work an order (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation', 'Reports', 'Pathologist',
+                             'Cytopathologist', 'EQA Coordinator', 'Analyser Import')
+              AND p.name = 'catalogue:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_privilege p
+                WHERE srp.privilege_id = p.id AND p.name = 'catalogue:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

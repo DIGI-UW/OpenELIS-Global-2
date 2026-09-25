@@ -63,8 +63,16 @@ public interface TestMethodService extends BaseObjectService<TestMethod, String>
 
     String getDefaultMethodId(String testId);
 
+    /**
+     * Read-only: the methods already linked to a test, named for display. Order
+     * entry's collection step lists them alongside each requested test, so the gate
+     * is widened from the interface's PRIV_TEST_CONFIGURE (a catalogue-editing
+     * privilege) to also accept PRIV_CATALOGUE_VIEW. Nothing here is editable.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_TEST_CONFIGURE','PRIV_CATALOGUE_VIEW')")
     List<IdValuePair> getMethodDisplayListForTest(String testId);
 
+    @PreAuthorize("hasAnyAuthority('PRIV_TEST_CONFIGURE','PRIV_CATALOGUE_VIEW')")
     List<TestMethodDto> getLinkedMethodDtos(String testId);
 
     TestMethodDto linkMethodDto(TestMethod testMethod);

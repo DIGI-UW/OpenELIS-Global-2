@@ -702,13 +702,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 continue;
             }
             // Resolving the id the caller already picked from the sample-type list we
-            // showed them. TypeOfSampleService is gated on PRIV_SAMPLE_TYPE_VIEW, an
-            // admin privilege no order-entry role holds, so this denied mid-save —
-            // after the sample row had already been inserted, leaving a partial
-            // order. This is reference-data resolution, not a privileged read; who
-            // may place the order is decided by the order services around it.
-            TypeOfSample typeOfSample = SystemContext
-                    .callAsSystem(() -> typeOfSampleService.getTypeOfSampleById(requested.getTypeOfSampleId()));
+            // showed them, a catalogue read, accepting PRIV_CATALOGUE_VIEW. Before
+            // that privilege existed this denied MID-SAVE, after the sample row had
+            // been inserted, leaving a partial order.
+            TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleById(requested.getTypeOfSampleId());
             if (typeOfSample == null) {
                 throw new IllegalArgumentException("Unknown requested sample type: " + requested.getTypeOfSampleId());
             }
@@ -1104,9 +1101,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         java.sql.Date collectionDateTime = DateUtil.convertStringDateTimeToSqlDate(sampleTestCollection.collectionDate);
         TestSection testSection = test.getTestSection();
         if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(userSelectedTestSection)) {
-            // test:configure gates the test-section catalogue; resolving the section
-            // the order names is order assembly, not catalogue administration.
-            testSection = SystemContext.callAsSystem(() -> testSectionService.get(userSelectedTestSection));
+            // Resolving the test section the order names: a catalogue read, and
+            // TestSectionService accepts PRIV_CATALOGUE_VIEW, so it runs as the caller.
+            testSection = testSectionService.get(userSelectedTestSection);
         }
 
         Panel panel = updateData.getSampleAddService().getPanelForTest(test);

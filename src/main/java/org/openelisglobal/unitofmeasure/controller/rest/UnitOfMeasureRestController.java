@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
@@ -49,9 +48,8 @@ public class UnitOfMeasureRestController {
             // Units of measure for the collection step's quantity field. The service
             // is gated on test:configure, an administrative privilege that no
             // order-entry role holds, so the dropdown 500'd and rendered empty.
-            uoms = SystemContext.callAsSystem(
-                    () -> (type != null && !type.trim().isEmpty()) ? unitOfMeasureService.getUnitOfMeasuresByType(type)
-                            : unitOfMeasureService.getAll());
+            uoms = (type != null && !type.trim().isEmpty()) ? unitOfMeasureService.getUnitOfMeasuresByType(type)
+                    : unitOfMeasureService.getAll();
 
             List<Map<String, String>> result = new ArrayList<>();
             for (UnitOfMeasure uom : uoms) {

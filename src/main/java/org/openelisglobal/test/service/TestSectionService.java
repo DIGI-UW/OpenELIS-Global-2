@@ -25,13 +25,17 @@ public interface TestSectionService extends BaseObjectService<TestSection, Strin
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestSection> getTestSections(String filter);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    // Name -> section lookup, used by the order-entry test picker to place each
+    // orderable test under its section. A catalogue read.
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     TestSection getTestSectionByName(String testSection);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     TestSection getTestSectionByName(TestSection testSection);
 
-    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
+    // Test sections name where a test is run; resolving the one an order chose is a
+// catalogue read. Configuring sections keeps PRIV_TEST_CONFIGURE on the writes.
+    @PreAuthorize("hasAnyAuthority('PRIV_TEST_CONFIGURE','PRIV_CATALOGUE_VIEW')")
     List<TestSection> getPageOfTestSections(int startingRecNo);
 
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
@@ -52,7 +56,12 @@ public interface TestSectionService extends BaseObjectService<TestSection, Strin
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<TestSection> getAllInActiveTestSections();
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    // The active test sections, as a catalogue list. The order dashboard reads it
+    // to scope which orders a user may see (OrderSearchRestController
+    // .resolveAllowedSectionIds), so gating it on PRIV_RESULT_VIEW denied the whole
+    // clinical/environmental/vector dashboard to Reception, the 500 that greeted
+    // the role whose entry point it is.
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<TestSection> getAllActiveTestSections();
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

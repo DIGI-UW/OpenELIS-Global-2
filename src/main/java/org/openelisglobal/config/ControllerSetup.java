@@ -75,11 +75,43 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(value = { AccessDeniedException.class })
     protected ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
-        // Denials are expected control flow under privilege-based RBAC, so log at
-        // debug without a stack trace rather than as an error.
-        LogEvent.logDebug(this.getClass().getName(), "handleAccessDeniedException", ex.getMessage());
+        // One line, no stack trace: which gate refused and from where. A denial is
+        // expected control flow under privilege-based RBAC, but an unexplained 403
+        // on a save is not, and until this line the only trace of one was the
+        // status code. The exception's own message is "Access Denied", which names
+        // nothing.
+        LogEvent.logInfo(this.getClass().getName(), "handleAccessDeniedException",
+                "403 " + request.getDescription(false) + ": " + describeDenial(ex));
         return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
                 HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * "denied at insert (called from
+     * SamplePatientUpdateData.resolveOrCreateSamplingSiteId:1165)". The gated
+     * method never runs, so it is not on the stack; the proxy that refused it is,
+     * and its method name is the one that matters. The caller is the first
+     * application frame outside the security plumbing.
+     */
+    static String describeDenial(AccessDeniedException ex) {
+        String deniedMethod = null;
+        String calledFrom = null;
+        for (StackTraceElement frame : ex.getStackTrace()) {
+            String cls = frame.getClassName();
+            boolean proxy = cls.contains("$Proxy") || cls.contains("$$SpringCGLIB$$");
+            if (deniedMethod == null && proxy) {
+                deniedMethod = frame.getMethodName();
+            } else if (calledFrom == null && !proxy && cls.startsWith("org.openelisglobal")
+                    && !cls.contains(".security.") && !cls.contains(".config.")) {
+                calledFrom = cls.substring(cls.lastIndexOf('.') + 1) + "." + frame.getMethodName() + ":"
+                        + frame.getLineNumber();
+            }
+            if (deniedMethod != null && calledFrom != null) {
+                break;
+            }
+        }
+        return "denied at " + (deniedMethod == null ? "unknown method" : deniedMethod) + " (called from "
+                + (calledFrom == null ? "unknown" : calledFrom) + ")";
     }
 
     /**

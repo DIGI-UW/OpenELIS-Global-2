@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -118,18 +117,13 @@ public class SampleTypeRequestRestController {
 
     /**
      * Convert entity to DTO with test and panel names resolved.
+     *
+     * <p>
+     * Names the tests, panels and linked methods already requested on this order so
+     * the collection screen can show them. All three reads accept
+     * {@code PRIV_CATALOGUE_VIEW}, so this runs as the caller.
      */
     private SampleTypeRequestDTO convertToDTO(SampleTypeRequest entity) {
-        // Naming the tests and panels already requested on this order so the
-        // collection screen can show them. It reads the test catalogue
-        // (result:view), panels (panel:view) and linked methods (test:configure) —
-        // all administrative, none held by an order-entry role, so the collect step
-        // 403'd and could not list what to collect. The request rows themselves
-        // belong to the order the caller is working; this only resolves their names.
-        return SystemContext.callAsSystem(() -> convertToDTOInternal(entity));
-    }
-
-    private SampleTypeRequestDTO convertToDTOInternal(SampleTypeRequest entity) {
         SampleTypeRequestDTO dto = new SampleTypeRequestDTO(entity);
 
         // Resolve test names

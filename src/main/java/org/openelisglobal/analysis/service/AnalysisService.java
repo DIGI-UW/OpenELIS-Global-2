@@ -185,7 +185,16 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAllAnalysisByTestAndStatus(String testId, List<String> statusIdList);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analyses on a specimen, i.e. which tests were ordered on it, not their
+     * results. Order-facing screens need this to show what an order contains: the
+     * order dashboard reads it for each row's progress, and vector fan-out re-keys
+     * these rows onto the pool. Gating it on PRIV_RESULT_VIEW denied the dashboard
+     * to Reception outright, so it also accepts PRIV_ORDER_VIEW. Reading the actual
+     * RESULT values stays on PRIV_RESULT_VIEW throughout the rest of this
+     * interface.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

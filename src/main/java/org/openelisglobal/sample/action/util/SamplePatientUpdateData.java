@@ -30,7 +30,6 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
@@ -71,7 +70,6 @@ import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
-import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.validation.Errors;
 
 /** */
@@ -860,12 +858,9 @@ public class SamplePatientUpdateData {
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
-        // Resolving the programme the order was placed under. ProgramService is
-        // gated on PRIV_PROGRAM_VIEW, an admin privilege no order-entry role holds,
-        // so populating the order form denied before the controller was reached —
-        // the request failed in the filter chain with a bare container 403 and
-        // nothing in the log.
-        Program program = SystemContext.callAsSystem(() -> programService.get(programId));
+        // Resolving the programme the order was placed under. ProgramService's read
+        // side accepts PRIV_CATALOGUE_VIEW, so this runs as the caller.
+        Program program = programService.get(programId);
         setProgramQuestionnaireResponse(additionalQuestions);
 
         // For updates (sample already exists), try to load existing ProgramSample
@@ -933,9 +928,7 @@ public class SamplePatientUpdateData {
         }
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ORDER_PROGRAM, "true")) {
             if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
-                createObservation(
-                        SystemContext.callAsSystem(() -> programService.get(sampleOrder.getProgramId()))
-                                .getProgramName(),
+                createObservation(programService.get(sampleOrder.getProgramId()).getProgramName(),
                         observationHistoryService.getObservationTypeIdForType(ObservationType.PROGRAM),
                         ValueType.LITERAL);
             }
@@ -1125,51 +1118,13 @@ public class SamplePatientUpdateData {
      * (deferred "+ Add new site" creation).
      */
     private String resolveOrCreateSamplingSiteId(String siteId, String siteName, String siteCode, String siteType) {
-        VectorSamplingSiteService samplingSiteService = SpringContext.getBean(VectorSamplingSiteService.class);
-
-        if (!GenericValidator.isBlankOrNull(siteId)) {
-            try {
-                VectorSamplingSite existingSite = samplingSiteService.get(Integer.valueOf(siteId));
-                boolean changed = false;
-                if (!GenericValidator.isBlankOrNull(siteName) && !siteName.equals(existingSite.getName())) {
-                    existingSite.setName(siteName);
-                    changed = true;
-                }
-                if (!GenericValidator.isBlankOrNull(siteCode) && !siteCode.equals(existingSite.getCode())) {
-                    existingSite.setCode(siteCode);
-                    changed = true;
-                }
-                if (!GenericValidator.isBlankOrNull(siteType) && !siteType.equals(existingSite.getType())) {
-                    existingSite.setType(siteType);
-                    changed = true;
-                }
-                if (changed) {
-                    existingSite.setSysUserId(currentUserId);
-                    samplingSiteService.update(existingSite);
-                }
-            } catch (NumberFormatException | org.hibernate.ObjectNotFoundException e) {
-                LogEvent.logError(this.getClass().getName(), "resolveOrCreateSamplingSiteId",
-                        "Could not update sampling site id=" + siteId + ": " + e.getMessage());
-            }
-            return siteId;
-        }
-        if (GenericValidator.isBlankOrNull(siteName) || GenericValidator.isBlankOrNull(siteCode)) {
-            return siteId;
-        }
-
-        VectorSamplingSite existing = samplingSiteService.getByCode(siteCode);
-        if (existing != null) {
-            return String.valueOf(existing.getId());
-        }
-
-        VectorSamplingSite newSite = new VectorSamplingSite();
-        newSite.setName(siteName);
-        newSite.setCode(siteCode);
-        newSite.setType(siteType);
-        newSite.setActive(true);
-        newSite.setSource("LOCAL");
-        Integer newId = samplingSiteService.insert(newSite);
-        return String.valueOf(newId);
+        // Creating a site from the order form is the order's business, and the
+        // service method carries the gate that says so (order:create). The inherited
+        // insert this used to call is a catalogue write gated on sample_type:manage,
+        // which no order-entry role holds, so "Add new site" failed every
+        // non-administrator's environmental and vector save with an unlogged 403.
+        return SpringContext.getBean(VectorSamplingSiteService.class).resolveOrCreateForOrder(siteId, siteName,
+                siteCode, siteType, currentUserId);
     }
 
     /**

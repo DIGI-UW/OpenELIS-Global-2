@@ -431,6 +431,28 @@
             <column name="description" value="View testing method definitions"/>
             <column name="category" value="method"/>
         </insert>
+        <!-- ==================== CATALOGUE ==================== -->
+        <!--
+          Seeing the catalogue of orderable things is not the same as
+          administering it. Populating an order form's dropdowns reads sample
+          types, tests, panels, methods, units of measure and dictionary lists -
+          all of which are otherwise gated on ADMIN privileges
+          (sample_type:view, panel:view, test:configure, dictionary:view,
+          result:view). No order-entry role holds those, and granting them to
+          get a dropdown would hand reception the ability to rewrite the test
+          catalogue.
+
+          This privilege names the read itself, so those lookups can be gated
+          normally instead of bypassed in system context. It confers no write:
+          editing any of those catalogues keeps its own :manage / :configure
+          privilege.
+        -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="catalogue:view"/>
+            <column name="description" value="View orderable catalogue: sample types, tests, panels, methods, units, reference lists"/>
+            <column name="category" value="catalogue"/>
+        </insert>
+
         <!-- ==================== SAMPLE TYPE ==================== -->
         <insert tableName="system_privilege" schemaName="clinlims">
             <column name="name" value="sample_type:view"/>
@@ -493,6 +515,33 @@
             <sql>
                 DELETE FROM clinlims.system_privilege
                 WHERE name IN ('micro:view', 'micro:bench', 'micro:supervise');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      catalogue:view for databases that already ran 012-003.
+
+      That changeset seeds the whole catalogue but is guarded by
+      "COUNT(*) = 0 FROM system_privilege", so it runs exactly once, on an empty
+      table. Adding a row to it therefore reaches a fresh install and nobody
+      else, every existing deployment, and every developer database, skips it.
+      A new privilege needs its own additive changeset; this is it, in the same
+      idempotent shape as 012-003a above.
+    -->
+    <changeSet author="openelis" id="012-003b-seed-catalogue-view-privilege">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Seed catalogue:view for existing databases (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_privilege (name, description, category)
+            SELECT 'catalogue:view', 'View orderable catalogue: sample types, tests, panels, methods, units, reference lists', 'catalogue'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_privilege WHERE name = 'catalogue:view');
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_privilege WHERE name = 'catalogue:view';
             </sql>
         </rollback>
     </changeSet>

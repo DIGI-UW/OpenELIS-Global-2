@@ -14,7 +14,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
@@ -90,43 +89,39 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
      * screen's test picker reads.
      *
      * <p>
-     * Assembled in system context. Building this list crosses six services whose
-     * gates are admin-scoped: sample_type:view, panel:view (twice), program:view,
-     * test:configure and micro:view. Reception — the role whose entire job is order
-     * entry — holds none of them, so running the assembly under the caller's
-     * authentication returned 403 and the picker showed no tests at all, where
-     * before privilege-based RBAC every authenticated user could order.
+     * Gated as the caller. Building this list crosses sample types, panels, panel
+     * items, test methods, test sections, programmes and microbiology culture
+     * setups; every one of those reads accepts {@code PRIV_CATALOGUE_VIEW}, which
+     * each order-entry role holds. It used to run in system context instead,
+     * because those reads were gated on administrative privileges
+     * ({@code result:view}, {@code test:configure}, {@code micro:view}) that
+     * Reception has no business holding, so the only way to show a test picker was
+     * to bypass authorization entirely.
      *
      * <p>
      * This is the test CATALOGUE, not patient or result data, and the response is
-     * already narrowed to the caller's own test sections by
-     * {@code getUserTestSections} above. The endpoint still requires an
-     * authenticated session, and who may actually place an order remains gated on
+     * further narrowed to the caller's own test sections by
+     * {@code getUserTestSections}. Who may actually place an order remains gated on
      * the order-creation services this does not touch.
-     *
-     * @see org.openelisglobal.common.security.SystemContext
      */
     public ResponseEntity<Object> processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        return SystemContext.callAsSystem(() -> {
+        String sampleType = request.getParameter("sampleType");
+        if (GenericValidator.isBlankOrNull(sampleType)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
+        }
+        if (!StringUtil.isInteger(sampleType)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
+        }
 
-            String sampleType = request.getParameter("sampleType");
-            if (GenericValidator.isBlankOrNull(sampleType)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
-            }
-            if (!StringUtil.isInteger(sampleType)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
-            }
+        String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
+        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
+        List<String> testUnitIds = new ArrayList<>();
+        if (testSections != null) {
+            testSections.forEach(test -> testUnitIds.add(test.getId()));
+        }
 
-            String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
-            List<String> testUnitIds = new ArrayList<>();
-            if (testSections != null) {
-                testSections.forEach(test -> testUnitIds.add(test.getId()));
-            }
-
-            return ResponseEntity.ok(createSearchResult(sampleType, testUnitIds));
-        });
+        return ResponseEntity.ok(createSearchResult(sampleType, testUnitIds));
     }
 
     /**
@@ -143,20 +138,15 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Same reasoning as processRequest below: assembling the orderable sample-type
-        // list crosses result:view (getUserSampleTypes) and sample_type:view
-        // (getAllTypeOfSamples), neither of which an order-entry role holds. The list
-        // is already scoped to the caller by getUserSampleTypes' own systemUserId
-        // argument, so system context here widens nothing the caller could not
-        // already see.
-        return SystemContext.callAsSystem(() -> {
-            List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
-            java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
-                    .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
-                    .collect(java.util.stream.Collectors.toSet());
-            return all.stream().filter(p -> clinicalOfferableIds.contains(p.getId()))
-                    .collect(java.util.stream.Collectors.toList());
-        });
+        // Gated as the caller: getUserSampleTypes is scoped to the caller's own
+        // assignments by its systemUserId argument and getAllTypeOfSamples is the
+        // sample-type catalogue. Both accept PRIV_CATALOGUE_VIEW.
+        List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+        java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
+                .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
+                .collect(java.util.stream.Collectors.toSet());
+        return all.stream().filter(p -> clinicalOfferableIds.contains(p.getId()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private boolean isOfferableInClinical(String rawDomain) {
@@ -167,38 +157,34 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEnvironmentalSampleTypes() {
-        // getTypesForDomain is gated on sample_type:view, which order-entry roles do
-        // not hold; this is the sample-type dropdown for environmental order entry.
-        return SystemContext.callAsSystem(() -> typeOfSampleService
+        // A catalogue read: TypeOfSampleService now accepts catalogue:view, so the
+        // sample-type dropdown is gated rather than bypassed.
+        return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
                 .stream().filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
-                .collect(java.util.stream.Collectors.toList()));
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @GetMapping(value = "vector-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getVectorSampleTypes() {
-        // Same as getEnvironmentalSampleTypes: sample_type:view gates the lookup, but
-        // this is the vector workflow's sample-type dropdown.
-        return SystemContext.callAsSystem(() -> typeOfSampleService
+        // Same as getEnvironmentalSampleTypes, a catalogue read.
+        return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.VECTOR).stream()
                 .filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
-                .collect(java.util.stream.Collectors.toList()));
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // getUserPrograms is gated on result:view and programService.get on
-        // program:view; the programs returned are already restricted to the caller's
-        // own assignments, so this is the caller's own list, not a widening.
-        return SystemContext.callAsSystem(() -> userService
-                .getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
-                    Program program = programService.get(option.getId());
-                    return program == null ? null
-                            : new ProgramOption(option.getId(), option.getValue(), program.getCode());
-                }).filter(java.util.Objects::nonNull).toList());
+        // The caller's own programme assignments, with each programme's code resolved
+        // from the catalogue. Both reads accept PRIV_CATALOGUE_VIEW.
+        return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
+            Program program = programService.get(option.getId());
+            return program == null ? null : new ProgramOption(option.getId(), option.getValue(), program.getCode());
+        }).filter(java.util.Objects::nonNull).toList();
     }
 
     private SampleEntryTests createSearchResult(String sampleType, List<String> testUnitIds) {

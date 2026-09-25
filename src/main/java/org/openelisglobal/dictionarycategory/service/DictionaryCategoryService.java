@@ -6,9 +6,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DictionaryCategoryService extends BaseObjectService<DictionaryCategory, String> {
 
-    @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_DICTIONARY_VIEW','PRIV_CATALOGUE_VIEW')")
     DictionaryCategory getDictionaryCategoryByName(String name);
 
-    @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_DICTIONARY_VIEW','PRIV_CATALOGUE_VIEW')")
     boolean duplicateDictionaryCategoryExists(DictionaryCategory dictionaryCategory);
 }

@@ -3,7 +3,6 @@ package org.openelisglobal.vector.service;
 import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.ObjectNotFoundException;
-import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -114,8 +113,7 @@ public class VectorSpeciesServiceImpl extends AuditableBaseObjectServiceImpl<Vec
             // Naming the sample type a species belongs to, for the vector order
             // picker. sample_type:view is admin-scoped and no order-entry role
             // holds it.
-            TypeOfSample tos = SystemContext
-                    .callAsSystem(() -> typeOfSampleService.getTypeOfSampleById(String.valueOf(s.getSampleTypeId())));
+            TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(s.getSampleTypeId()));
             s.setSampleType(tos);
         }
         if (s.getPathogenCategoryId() != null) {

@@ -60,7 +60,7 @@ public interface UserService {
      */
     List<IdValuePair> getUserTestSections(String systemUserId, String roleId);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<IdValuePair> getUserSampleTypes(String systemUserId, String userRole);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -83,9 +83,9 @@ public interface UserService {
      * from the database therefore lingers there until the next restart, so an id
      * that no longer resolves to a record is dropped rather than dereferenced.
      */
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<IdValuePair> getUserPrograms(String systemUserId, String userRole);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<IdValuePair> getUserSampleTypes(String systemUserId, String roleName, String testSectionName);
 }
