@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -55,7 +56,13 @@ public class SampleAcceptanceChecklistServiceImpl implements SampleAcceptanceChe
     @Override
     @Transactional(readOnly = true)
     public List<Dictionary> listLabWide() {
-        return dictionaryService.getActiveSortedEntriesByCategoryName(LAB_WIDE_CATEGORY);
+        // The acceptance checklist the QA Review step shows. Its items live in the
+        // dictionary, which is gated on dictionary:view — an administrative
+        // privilege no order-entry role holds — so the QA step 500'd and the
+        // checklist could not be answered or saved. Reading the questions is not
+        // dictionary administration; editing them below stays gated.
+        return SystemContext
+                .callAsSystem(() -> dictionaryService.getActiveSortedEntriesByCategoryName(LAB_WIDE_CATEGORY));
     }
 
     @Override
@@ -65,7 +72,8 @@ public class SampleAcceptanceChecklistServiceImpl implements SampleAcceptanceChe
             return listLabWide();
         }
         String category = DOMAIN_CATEGORY_PREFIX + domain.trim().toUpperCase();
-        List<Dictionary> domainItems = dictionaryService.getActiveSortedEntriesByCategoryName(category);
+        List<Dictionary> domainItems = SystemContext
+                .callAsSystem(() -> dictionaryService.getActiveSortedEntriesByCategoryName(category));
         // Precedence: a domain with its own active items uses that list; otherwise the
         // lab-wide list is the fallback. The lists are never merged.
         if (domainItems != null && !domainItems.isEmpty()) {

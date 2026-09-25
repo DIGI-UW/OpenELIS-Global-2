@@ -167,6 +167,16 @@
             WHERE r.name = 'Reception' AND p.name = 'storage:view'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
+            -- QA Review is the last step of order entry: the person who received
+            -- the specimen answers the acceptance checklist. That save is gated on
+            -- nce:edit, so without it a receptionist reaches the step but cannot
+            -- record the answers. Reception already holds nce:create and nce:view;
+            -- this completes the set for the checklist they are asked to fill in.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
         </sql>
 
         <!-- ==================== RESULTS ==================== -->
