@@ -226,7 +226,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await rifRow.getByRole("button", { name: "Use suggested test" }).click();
     await expect(
       rifRow.getByRole("combobox", { name: "OpenELIS test for RIF" }),
-    ).toHaveAttribute("title", "Xpert RIF Resistance");
+    ).toHaveValue("Xpert RIF Resistance · 46244-0");
     await expect(
       page.getByRole("button", { name: /^RIF.*Needs mapping$/ }),
     ).toHaveAttribute("aria-expanded", "true");
