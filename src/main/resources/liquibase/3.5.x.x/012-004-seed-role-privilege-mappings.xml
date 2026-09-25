@@ -992,4 +992,45 @@
         </rollback>
     </changeSet>
 
+    <!--
+      inventory:view for the bench and reporting roles.
+
+      The Inventory Management page is offered in the menu to every role and
+      reads InventoryItemService / InventoryManagementService, both gated on
+      inventory:view - a privilege granted to no role, so the page failed for
+      everyone. It surfaced as HTTP 500 rather than 403 because those
+      controllers wrap the call in a broad catch that relabels the denial, which
+      is why nothing in the log named a gate.
+
+      Granted to the roles that consume stock or report on it: Results and
+      Validation record reagent usage against results (the microbiology reagent
+      lot history reads the same service), and Reports runs the lot-traceability
+      and usage-trend reports. Editing stock keeps inventory:manage, which stays
+      ungranted; the route itself is guarded in App.jsx so the menu no longer
+      offers the page to roles without the privilege.
+    -->
+    <changeSet author="openelis" id="012-004p-grant-inventory-view">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant inventory:view to the roles that consume or report on stock (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Results', 'Validation', 'Reports')
+              AND p.name = 'inventory:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Results', 'Validation', 'Reports')
+                  AND p.name = 'inventory:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

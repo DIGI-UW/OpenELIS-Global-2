@@ -824,98 +824,195 @@ export const RoleEquivalentPrivileges = {
  *   technician assigned the Pathology unit's Results lab role. When only one
  *   dimension is named, the unnamed dimension is trivially satisfied (AND).
  */
+// Declared here, above ROUTE_GUARDS, because that map's entries name
+// Roles.* and the object literal is evaluated at module load: with Roles
+// further down the file, importing Utils threw "Cannot access 'Roles'
+// before initialization" and every consumer failed.
+export const Roles = {
+  GLOBAL_ADMIN: "Global Administrator",
+  USER_ACCOUNT_ADMIN: "User Account Administrator",
+  AUDIT_TRAIL: "Audit Trail",
+  ANALYSER_IMPORT: "Analyser Import",
+  CYTOPATHOLOGIST: "Cytopathologist",
+  PATHOLOGIST: "Pathologist",
+  RECEPTION: "Reception",
+  RESULTS: "Results",
+  VALIDATION: "Validation",
+  REPORTS: "Reports",
+  EQA_COORDINATOR: "EQA Coordinator",
+} as const;
+
 /**
- * The privilege each guarded route in App.jsx requires, keyed by its `path`.
+ * The guard props each SecureRoute in App.jsx carries, keyed by its `path`.
  *
  * The sidebar is built from /rest/menu, which returns every menu row the
- * installation has configured, with no reference to the caller's privileges.
+ * installation has configured with no reference to the caller's privileges.
  * SecureRoute then refuses the ones the user cannot open, so roughly half of
- * each role's menu led to a blank screen: Reception saw 74 such entries,
- * Results and Validation 88 each, Reports 55. `menuEntryVisible` below uses
- * this map to hide exactly what SecureRoute would refuse.
+ * each role's menu led to a blank screen: 74 such entries for Reception, 88 for
+ * Results and Validation, 55 for Reports, out of 153.
  *
- * This duplicates App.jsx, so it is pinned: `menuRouteGuards.test.js` fails if
- * a `<SecureRoute privilege=...>` is added, removed or changed without the
- * corresponding entry here. Keep the two in step rather than letting the menu
- * drift back into promising what it cannot deliver.
+ * The props are stored verbatim and handed straight back to computeRouteAccess
+ * rather than being reduced to a privilege here. 31 routes are still guarded by
+ * `role=` rather than `privilege=` (the privilege conversion did not reach
+ * them), and a role guard is satisfied through RoleEquivalentPrivileges.
+ * Flattening would mean re-implementing that mapping and drifting from it;
+ * passing the props through means the menu and the route cannot disagree.
+ *
+ * This duplicates App.jsx, so it is pinned: `menuRouteGuards.test.js` parses
+ * App.jsx and fails if a guard is added, removed or changed without the
+ * matching change here.
  */
-export const ROUTE_PRIVILEGES = {
-  "/analyzers/qc/charts/:analyzerId": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/control-lots": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/control-lots/:id": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/control-lots/new": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/db": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/instruments/:instrumentId": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/qc/rule-config": Privileges.ANALYZER_CONFIGURE,
-  "/analyzers/:id/mappings": Privileges.ANALYZER_IMPORT,
-  "/analyzers/custom-field-types": Privileges.ANALYZER_IMPORT,
-  "/analyzers/types/:profileId/mapping": Privileges.ANALYZER_IMPORT,
-  "/Aliquot": Privileges.ORDER_CREATE,
-  "/ElectronicOrders": Privileges.ORDER_CREATE,
-  "/GenericSample/Edit": Privileges.ORDER_CREATE,
-  "/GenericSample/Import": Privileges.ORDER_CREATE,
-  "/GenericSample/Order": Privileges.ORDER_CREATE,
-  "/ModifyOrder": Privileges.ORDER_CREATE,
-  "/PatientHistory": Privileges.ORDER_CREATE,
-  "/PatientManagement/:patientId?": Privileges.ORDER_CREATE,
-  "/PatientMerge": Privileges.ORDER_CREATE,
-  "/PatientResults/:patientId": Privileges.ORDER_CREATE,
-  "/PrintBarcode": Privileges.ORDER_CREATE,
-  "/SampleBatchEntrySetup": Privileges.ORDER_CREATE,
-  "/SampleEdit": Privileges.ORDER_CREATE,
-  "/SamplePatientEntry": Privileges.ORDER_CREATE,
-  "/genericProgram": Privileges.ORDER_CREATE,
-  "/order/enter": Privileges.ORDER_CREATE,
-  "/order/environmental": Privileges.ORDER_CREATE,
-  "/order/vector": Privileges.ORDER_CREATE,
-  "/programView/:programSampleId": Privileges.ORDER_CREATE,
-  "/LaporanHasil": Privileges.REPORT_RUN,
-  "/Report": Privileges.REPORT_RUN,
-  "/RoutineReport": Privileges.REPORT_RUN,
-  "/RoutineReports": Privileges.REPORT_RUN,
-  "/StudyReport": Privileges.REPORT_RUN,
-  "/StudyReports": Privileges.REPORT_RUN,
-  "/TATReport": Privileges.REPORT_RUN,
-  "/VectorManualEntry": Privileges.REPORT_RUN,
-  "/VectorSurveillanceReport": Privileges.REPORT_RUN,
-  "/AccessionResults": Privileges.RESULT_ENTER,
-  "/EnvironmentalDashboard": Privileges.RESULT_ENTER,
-  "/GenericSample/Results": Privileges.RESULT_ENTER,
-  "/LogbookResults": Privileges.RESULT_ENTER,
-  "/NoteBookInstanceEditForm/:notebookentryid": Privileges.RESULT_ENTER,
-  "/NoteBookInstanceEntryForm/:notebookid": Privileges.RESULT_ENTER,
-  "/NotebookSampleOrder/:notebookId": Privileges.RESULT_ENTER,
-  "/NotebookSampleOrder/:notebookId/:notebookEntryId": Privileges.RESULT_ENTER,
-  "/PatientResults": Privileges.RESULT_ENTER,
-  "/RangeResults": Privileges.RESULT_ENTER,
-  "/Results": Privileges.RESULT_ENTER,
-  "/StatusResults": Privileges.RESULT_ENTER,
-  "/WorkPlanByTestSection": Privileges.RESULT_ENTER,
-  "/WorkplanByPanel": Privileges.RESULT_ENTER,
-  "/WorkplanByPriority": Privileges.RESULT_ENTER,
-  "/WorkplanByTest": Privileges.RESULT_ENTER,
-  "/result": Privileges.RESULT_ENTER,
-  "/vector/deconvolution": Privileges.RESULT_ENTER,
-  "/vector/identification": Privileges.RESULT_ENTER,
-  "/ImmunohistochemistryCaseView/:immunohistochemistrySampleId":
-    Privileges.RESULT_PATHOLOGY_SIGN_OFF,
-  "/ImmunohistochemistryDashboard": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
-  "/PathologyCaseView/:pathologySampleId": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
-  "/PathologyDashboard": Privileges.RESULT_PATHOLOGY_SIGN_OFF,
-  "/AccessionValidation": Privileges.RESULT_VALIDATE,
-  "/AccessionValidationRange": Privileges.RESULT_VALIDATE,
-  "/ResultValidation": Privileges.RESULT_VALIDATE,
-  "/ResultValidationByTestDate": Privileges.RESULT_VALIDATE,
-  "/validation": Privileges.RESULT_VALIDATE,
-  "/RoleManagement": Privileges.ROLE_MANAGE,
-  "/AuditTrailReport": Privileges.SYSTEM_CONFIGURE,
-  "/MasterListsPage": Privileges.SYSTEM_CONFIGURE,
-  "/NoteBookEntryForm": Privileges.SYSTEM_CONFIGURE,
-  "/NoteBookEntryForm/:notebookid": Privileges.SYSTEM_CONFIGURE,
-  "/admin": Privileges.SYSTEM_CONFIGURE,
-  "/analyzers/:id/edit": Privileges.SYSTEM_CONFIGURE,
-  "/analyzers/:id/qc-rules": Privileges.SYSTEM_CONFIGURE,
-  "/analyzers/new": Privileges.SYSTEM_CONFIGURE,
+export const ROUTE_GUARDS = {
+  "/AccessionResults": { privilege: Privileges.RESULT_ENTER },
+  "/AccessionValidation": { privilege: Privileges.RESULT_VALIDATE },
+  "/AccessionValidationRange": { privilege: Privileges.RESULT_VALIDATE },
+  "/Alerts": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/Aliquot": { privilege: Privileges.ORDER_CREATE },
+  // App.jsx names this ANALYZER_RESULTS_ROLES; inlined because that constant
+  // lives in App.jsx and importing it here would be a cycle (App -> Layout ->
+  // Header -> Utils). menuRouteGuards.test.js asserts the two still agree.
+  "/AnalyzerResults": { role: [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT] },
+  "/AuditTrailReport": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/EQADistribution": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQADistribution/create": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQAManagement": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQAMyPrograms": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQAOrders": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQAParticipants": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQAResults": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/ElectronicOrders": { privilege: Privileges.ORDER_CREATE },
+  "/EnvironmentalDashboard": { privilege: Privileges.RESULT_ENTER },
+  "/FreezerMonitoring": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
+  "/GenericSample/Edit": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Import": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Order": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Results": { privilege: Privileges.RESULT_ENTER },
+  "/ImmunohistochemistryCaseView/:immunohistochemistrySampleId": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/ImmunohistochemistryDashboard": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/LaporanHasil": { privilege: Privileges.REPORT_RUN },
+  "/LogbookResults": { privilege: Privileges.RESULT_ENTER },
+  "/MasterListsPage": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/MicrobiologyCaseView/:caseId": {
+    role: [Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS],
+  },
+  "/ModifyOrder": { privilege: Privileges.ORDER_CREATE },
+  "/NCECorrectiveAction": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/NceDashboard": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/NoteBookDashboard": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
+  },
+  "/NoteBookEntryForm": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/NoteBookEntryForm/:notebookid": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/NoteBookInstanceEditForm/:notebookentryid": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/NoteBookInstanceEntryForm/:notebookid": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/NotebookSampleOrder/:notebookId": { privilege: Privileges.RESULT_ENTER },
+  "/NotebookSampleOrder/:notebookId/:notebookEntryId": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/PathologyCaseView/:pathologySampleId": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/PathologyDashboard": { privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF },
+  "/PatientHistory": { privilege: Privileges.ORDER_CREATE },
+  "/PatientManagement/:patientId?": { privilege: Privileges.ORDER_CREATE },
+  "/PatientMerge": { privilege: Privileges.ORDER_CREATE },
+  "/PatientResults": { privilege: Privileges.RESULT_ENTER },
+  "/PatientResults/:patientId": { privilege: Privileges.ORDER_CREATE },
+  "/PrintBarcode": { privilege: Privileges.ORDER_CREATE },
+  "/RangeResults": { privilege: Privileges.RESULT_ENTER },
+  "/Report": { privilege: Privileges.REPORT_RUN },
+  "/ReportNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/ResultValidation": { privilege: Privileges.RESULT_VALIDATE },
+  "/ResultValidationByTestDate": { privilege: Privileges.RESULT_VALIDATE },
+  "/Results": { privilege: Privileges.RESULT_ENTER },
+  "/RoleManagement": { privilege: Privileges.ROLE_MANAGE },
+  "/RoutineReport": { privilege: Privileges.REPORT_RUN },
+  "/RoutineReports": { privilege: Privileges.REPORT_RUN },
+  "/SampleBatchEntrySetup": { privilege: Privileges.ORDER_CREATE },
+  "/SampleEdit": { privilege: Privileges.ORDER_CREATE },
+  "/SampleManagement": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/SamplePatientEntry": { privilege: Privileges.ORDER_CREATE },
+  "/SampleShipment": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/:tab": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/box/:boxId": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/create-box": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/receive": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/reference-lab-results": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/reports": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/settings": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
+  "/StatusResults": { privilege: Privileges.RESULT_ENTER },
+  "/Storage": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)":
+    { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/StudyReport": { privilege: Privileges.REPORT_RUN },
+  "/StudyReports": { privilege: Privileges.REPORT_RUN },
+  "/TATReport": { privilege: Privileges.REPORT_RUN },
+  "/VectorManualEntry": { privilege: Privileges.REPORT_RUN },
+  "/VectorSurveillanceReport": { privilege: Privileges.REPORT_RUN },
+  "/ViewNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/WorkPlanByTestSection": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByPanel": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByPriority": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByTest": { privilege: Privileges.RESULT_ENTER },
+  "/admin": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/:id/edit": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/:id/mappings": { privilege: Privileges.ANALYZER_IMPORT },
+  "/analyzers/:id/qc-rules": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/custom-field-types": { privilege: Privileges.ANALYZER_IMPORT },
+  "/analyzers/errors": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/new": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/qc/charts/:analyzerId": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/control-lots": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/qc/control-lots/:id": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/control-lots/new": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/db": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/qc/instruments/:instrumentId": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/rule-config": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/types": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/types/:profileId/mapping": {
+    privilege: Privileges.ANALYZER_IMPORT,
+  },
+  "/genericProgram": { privilege: Privileges.ORDER_CREATE },
+  "/inventory": { role: [Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/order/enter": { privilege: Privileges.ORDER_CREATE },
+  "/order/environmental": { privilege: Privileges.ORDER_CREATE },
+  "/order/vector": { privilege: Privileges.ORDER_CREATE },
+  "/programView/:programSampleId": { privilege: Privileges.ORDER_CREATE },
+  "/result": { privilege: Privileges.RESULT_ENTER },
+  "/validation": { privilege: Privileges.RESULT_VALIDATE },
+  "/vector/deconvolution": { privilege: Privileges.RESULT_ENTER },
+  "/vector/identification": { privilege: Privileges.RESULT_ENTER },
 };
 
 /**
@@ -965,20 +1062,20 @@ export const menuEntryVisible = (actionURL, userSessionDetails) => {
     return true;
   }
   const path = actionURL.split("?")[0];
-  let privilege = ROUTE_PRIVILEGES[path];
-  if (!privilege) {
+  let guard = ROUTE_GUARDS[path];
+  if (!guard) {
     // A parameterised route ("/PathologyCaseView/:id") never matches a menu
     // row literally; match the portion before the first parameter instead.
-    const match = Object.keys(ROUTE_PRIVILEGES).find((route) => {
+    const match = Object.keys(ROUTE_GUARDS).find((route) => {
       const base = route.split("/:")[0];
       return base.length > 1 && (path === base || path.startsWith(base + "/"));
     });
-    privilege = match ? ROUTE_PRIVILEGES[match] : undefined;
+    guard = match ? ROUTE_GUARDS[match] : undefined;
   }
-  if (!privilege) {
+  if (!guard) {
     return true;
   }
-  return computeRouteAccess(userSessionDetails, { privilege });
+  return computeRouteAccess(userSessionDetails, guard);
 };
 
 export const computeRouteAccess = (userDetails, props = {}) => {
@@ -1208,20 +1305,6 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   }
   return outputArray;
 }
-
-export const Roles = {
-  GLOBAL_ADMIN: "Global Administrator",
-  USER_ACCOUNT_ADMIN: "User Account Administrator",
-  AUDIT_TRAIL: "Audit Trail",
-  ANALYSER_IMPORT: "Analyser Import",
-  CYTOPATHOLOGIST: "Cytopathologist",
-  PATHOLOGIST: "Pathologist",
-  RECEPTION: "Reception",
-  RESULTS: "Results",
-  VALIDATION: "Validation",
-  REPORTS: "Reports",
-  EQA_COORDINATOR: "EQA Coordinator",
-} as const;
 
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {

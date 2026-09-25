@@ -2,22 +2,24 @@ import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 import {
-  ROUTE_PRIVILEGES,
+  ROUTE_GUARDS,
   Privileges,
+  Roles,
   menuEntryVisible,
   menuSubtreeVisible,
 } from "./Utils";
 
 /**
- * ROUTE_PRIVILEGES duplicates the `privilege=` props in App.jsx, and the
- * sidebar hides menu rows based on it. If the two drift, the menu goes back to
- * promising links that SecureRoute refuses (the bug this fixed: 74 dead rows
- * for Reception, 88 for Results and Validation, 55 for Reports, out of 153) or
- *, worse, starts hiding rows that actually work.
+ * ROUTE_GUARDS duplicates the guard props in App.jsx, and the sidebar hides
+ * menu rows based on it. If the two drift, the menu goes back to promising
+ * links that SecureRoute refuses (the bug this fixed: 74 dead rows for
+ * Reception, 88 for Results and Validation, 55 for Reports, out of 153) or,
+ * worse, starts hiding rows that actually work.
  *
  * Parsing App.jsx rather than hand-listing the routes is the point: the test
  * fails the moment a guard is added, removed or repointed without updating the
- * map.
+ * map. Both guard shapes are read, because 31 routes are still guarded by
+ * `role=` rather than `privilege=`.
  */
 const readGuardsFromApp = () => {
   const source = fs.readFileSync(
@@ -30,34 +32,81 @@ const readGuardsFromApp = () => {
     const end = i + 1 < starts.length ? starts[i + 1] : start + 2500;
     const block = source.slice(start, end);
     const routePath = block.match(/path="([^"]+)"/);
-    const privilege = block.match(/privilege=\{Privileges\.(\w+)\}/);
-    if (routePath && privilege && !(routePath[1] in guards)) {
-      guards[routePath[1]] = privilege[1];
+    if (!routePath || routePath[1] in guards) {
+      return;
     }
+    const privilege = block.match(/privilege=\{Privileges\.(\w+)\}/);
+    const role = block.match(/role=\{([^}]*)\}/);
+    if (!privilege && !role) {
+      return;
+    }
+    const guard = {};
+    if (privilege) {
+      // A guard naming a constant that does not exist grants to nobody, since
+      // `undefined` matches no privilege in the session.
+      expect(
+        Privileges[privilege[1]],
+        `App.jsx guards ${routePath[1]} with Privileges.${privilege[1]}, which is not declared`,
+      ).toBeDefined();
+      guard.privilege = Privileges[privilege[1]];
+    }
+    if (role) {
+      const names = [...role[1].matchAll(/Roles\.(\w+)/g)].map((m) => m[1]);
+      if (names.length) {
+        guard.role = names.map((name) => {
+          expect(
+            Roles[name],
+            `App.jsx guards ${routePath[1]} with Roles.${name}, which is not declared`,
+          ).toBeDefined();
+          return Roles[name];
+        });
+      } else if (/ANALYZER_RESULTS_ROLES/.test(role[1])) {
+        // App.jsx names a shared constant here. ROUTE_GUARDS inlines its value
+        // (importing it would be a cycle), so resolve it the same way and let
+        // the equality check below catch any divergence.
+        guard.role = [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT];
+      } else {
+        // Some other shared constant: compared by presence only, below.
+        guard.role = "SHARED_CONSTANT";
+      }
+    }
+    guards[routePath[1]] = guard;
   });
   return guards;
 };
 
-describe("ROUTE_PRIVILEGES stays in step with App.jsx", () => {
-  it("covers exactly the routes App.jsx guards with a privilege", () => {
+describe("ROUTE_GUARDS stays in step with App.jsx", () => {
+  it("covers exactly the routes App.jsx guards", () => {
     const fromApp = readGuardsFromApp();
 
     // Inversion: if the parser silently matched nothing, every assertion below
     // would pass against an empty object and the map could rot unnoticed.
-    expect(Object.keys(fromApp).length).toBeGreaterThan(50);
+    expect(Object.keys(fromApp).length).toBeGreaterThan(90);
 
-    const expected = {};
-    Object.entries(fromApp).forEach(([routePath, constantName]) => {
-      expected[routePath] = Privileges[constantName];
-      // A guard naming a constant that does not exist grants to nobody, since
-      // `undefined` matches no privilege in the session.
-      expect(
-        Privileges[constantName],
-        `App.jsx guards ${routePath} with Privileges.${constantName}, which is not declared`,
-      ).toBeDefined();
-    });
+    const expected = { ...fromApp };
+    const actual = { ...ROUTE_GUARDS };
 
-    expect(ROUTE_PRIVILEGES).toEqual(expected);
+    // Routes whose role= is a shared constant are checked for presence only.
+    Object.entries(fromApp)
+      .filter(([, guard]) => guard.role === "SHARED_CONSTANT")
+      .forEach(([routePath]) => {
+        expect(
+          actual[routePath],
+          `${routePath} is guarded in App.jsx but missing from ROUTE_GUARDS`,
+        ).toBeDefined();
+        delete expected[routePath];
+        delete actual[routePath];
+      });
+
+    expect(actual).toEqual(expected);
+  });
+
+  it("includes the role-guarded routes, not just the privilege-guarded ones", () => {
+    // /inventory is guarded by role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}. An
+    // earlier version of the map read only `privilege=`, so this route was
+    // absent and the menu kept offering a page that 500s for most roles.
+    expect(ROUTE_GUARDS["/inventory"]).toBeDefined();
+    expect(ROUTE_GUARDS["/inventory"].role).toContain(Roles.RESULTS);
   });
 });
 
@@ -91,6 +140,15 @@ describe("menuEntryVisible mirrors SecureRoute", () => {
     expect(menuEntryVisible("/AccessionValidation", validator)).toBe(true);
   });
 
+  it("satisfies a role guard through the privilege it maps to", () => {
+    // /inventory is role-guarded on Results, which RoleEquivalentPrivileges
+    // maps to result:enter. A user holding that privilege under a different
+    // role name (Lab Technician inherits it) must still see it.
+    const labTech = { privileges: ["result:enter"], roles: ["Lab Technician"] };
+    expect(menuEntryVisible("/inventory", labTech)).toBe(true);
+    expect(menuEntryVisible("/inventory", reception)).toBe(false);
+  });
+
   it("ignores the query string a menu row carries but a route path does not", () => {
     const withQuery = menuEntryVisible("/AuditTrailReport?type=order", {
       privileges: ["system:configure"],
@@ -103,8 +161,8 @@ describe("menuEntryVisible mirrors SecureRoute", () => {
   });
 
   it("matches a parameterised route by the part before the parameter", () => {
-    // App.jsx guards "/PathologyCaseView/:pathologySampleId"; the menu links to
-    // "/PathologyDashboard", and a case link carries a real id.
+    // App.jsx guards "/PathologyCaseView/:pathologySampleId"; a case link
+    // carries a real id.
     const pathologist = { privileges: ["result:pathology-sign-off"] };
     expect(menuEntryVisible("/PathologyCaseView/42", pathologist)).toBe(true);
     expect(menuEntryVisible("/PathologyCaseView/42", reception)).toBe(false);
@@ -151,7 +209,7 @@ describe("menuSubtreeVisible keeps sections with reachable contents", () => {
  * filter that hid too much would be a worse bug than the dead links it
  * replaced, and these are the exact paths the live walkthroughs exercised.
  *
- * Privilege sets are the seeded ones as of 012-004o; if a grant changes, update
+ * Privilege sets are the seeded ones as of 012-004p; if a grant changes, update
  * them here rather than loosening the assertions.
  */
 describe("the four workbench roles keep their own menus", () => {
@@ -179,6 +237,7 @@ describe("the four workbench roles keep their own menus", () => {
       "alert:view",
       "catalogue:view",
       "esig:use",
+      "inventory:view",
       "micro:bench",
       "micro:view",
       "nce:view",
@@ -196,6 +255,7 @@ describe("the four workbench roles keep their own menus", () => {
       "alert:view",
       "catalogue:view",
       "esig:use",
+      "inventory:view",
       "micro:bench",
       "micro:supervise",
       "micro:view",
@@ -214,6 +274,7 @@ describe("the four workbench roles keep their own menus", () => {
       "analyte:view",
       "catalogue:view",
       "coldstorage:view",
+      "inventory:view",
       "nce:view",
       "order:view",
       "organization:view",
