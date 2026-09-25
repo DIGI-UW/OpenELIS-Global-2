@@ -396,22 +396,17 @@
   <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
-  <!-- Cleanup stays ignored until existing analyzer settings and local mappings
-       have been transferred and verified. Keep the published changesets intact.
-       Completion gates: docs/analyzer-upgrade-migration.md. -->
+  <!-- Destructive analyzer cleanup is deferred to a future migration after
+       verified data transfer. See docs/analyzer-upgrade-migration.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
-  <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml" ignore="true"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
   <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
   <include relativeToChangelogFile="true" file="091-analyzer-activation-record.xml"/>
   <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
-  <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml" ignore="true"/>
-  <include relativeToChangelogFile="true" file="094-remove-openelis-analyzer-connection-runtime.xml" ignore="true"/>
   <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
   <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
-  <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml" ignore="true"/>
-  <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml" ignore="true"/>
+  <include relativeToChangelogFile="true" file="097-normalize-analyzer-registration.xml"/>
 
   <!-- OGC-782 M1: microbiology catalog/reference foundations. The historical
        filename is retained so already-applied demo migrations keep identity. -->

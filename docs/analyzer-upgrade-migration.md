@@ -11,9 +11,14 @@ Earlier cleanup can already have removed settings needed for that transfer.
 
 ## This patch
 
-Defer destructive cleanup in 086, 088, 093, 094, 097 and 098 using Liquibase's
-`ignore` flag. Keep additive migrations enabled and preserve the published
-changeset identities and checksums. Ignored cleanup is not marked as executed.
+Remove premature cleanup from 086 and remove the standalone cleanup changesets
+088, 093, 094, 097 and 098 from the startup changelog and source tree. Keep
+additive migrations enabled. Git history and prior release tags retain the
+published definitions; no ignored migrations or runtime archive is needed.
+Existing DATABASECHANGELOG records are left alone. A new, separate changeset
+retains the old registration-status conversion and obsolete menu removal,
+without deleting analyzer configuration or error data.
+
 This retains old profile references, recognition rules, connection settings,
 FILE/serial configuration, mappings and error records as migration input only;
 Bridge remains the runtime owner.
@@ -35,14 +40,14 @@ analyzer listing, which currently expects the new profile bindings.
 - [ ] Verify fresh, partially upgraded and already migrated databases, including
       preservation of results, mappings and outstanding raw/error messages.
 
-Cleanup can follow in a separate PR after verified transfer. Do not simply
-re-enable the ignored changesets: their existing guards do not prove the data
+Cleanup must use new changeset IDs in a later release after verified transfer.
+Do not resurrect the removed changesets: their old guards do not prove the data
 reached Bridge. Account for earlier destructive migrations and already-applied
 changesets; reverting an image cannot restore deleted data.
 
 ## Validation
 
-The focused changelog test uses Liquibase 4.8's actual ignore filter, verifies
-all seven published cleanup checksums, and confirms additive migrations remain
-scheduled. Its scheduling assertion fails on unmodified develop. These checks
-do not establish full application startup or database upgrade acceptance.
+Existing populated PostgreSQL upgrade fixtures require successful completion
+with source settings and mappings preserved, rather than a cleanup failure or
+deleted tables. They also rerun the upgrade to check repeatability. Full
+application startup and migration-to-Bridge acceptance remain separate gates.
