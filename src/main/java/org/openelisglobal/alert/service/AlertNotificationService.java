@@ -1,13 +1,18 @@
 package org.openelisglobal.alert.service;
 
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.openelisglobal.alert.event.AlertCreatedEvent;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
 import org.openelisglobal.notification.service.sender.ClientNotificationSender;
 import org.openelisglobal.notification.valueholder.EmailNotification;
@@ -38,6 +43,9 @@ public class AlertNotificationService {
     @Autowired
     private SiteInformationService siteInformationService;
 
+    @Autowired
+    private FreezerService freezerService;
+
     @SuppressWarnings("rawtypes")
     @Autowired
     private List<ClientNotificationSender> notificationSenders;
@@ -47,6 +55,8 @@ public class AlertNotificationService {
 
     private static final String SITE_INFO_ALERT_EMAIL = "alert.notification.email";
     private static final String SITE_INFO_ALERT_PHONE = "alert.notification.phone";
+    private static final String FREEZER_ENTITY_TYPE = "Freezer";
+    private static final DateTimeFormatter MESSAGE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx");
 
     /**
      * Handle AlertCreatedEvent and send notification.
@@ -235,12 +245,26 @@ public class AlertNotificationService {
      */
     private String buildNotificationMessage(Alert alert) {
         StringBuilder message = new StringBuilder();
-        message.append("Alert Type: ").append(alert.getAlertType()).append("\n");
-        message.append("Severity: ").append(alert.getSeverity()).append("\n");
-        message.append("Entity: ").append(alert.getAlertEntityType()).append(" (ID: ").append(alert.getAlertEntityId())
-                .append(")\n");
-        message.append("Message: ").append(alert.getMessage()).append("\n");
-        message.append("Time: ").append(alert.getStartTime()).append("\n");
+        appendLine(message, "alert.notification.label.type", alert.getAlertType());
+        appendLine(message, "alert.notification.label.severity", alert.getSeverity());
+        appendLine(message, "alert.notification.label.entity", describeEntity(alert));
+        appendLine(message, "alert.notification.label.message", alert.getMessage());
+        appendLine(message, "alert.notification.label.time", alert.getStartTime() == null ? null
+                : alert.getStartTime().truncatedTo(ChronoUnit.SECONDS).format(MESSAGE_TIME_FORMAT));
         return message.toString();
+    }
+
+    private void appendLine(StringBuilder message, String labelKey, Object value) {
+        message.append(MessageUtil.getMessage(labelKey)).append(": ").append(value).append("\n");
+    }
+
+    private String describeEntity(Alert alert) {
+        if (FREEZER_ENTITY_TYPE.equals(alert.getAlertEntityType()) && alert.getAlertEntityId() != null) {
+            String name = freezerService.findById(alert.getAlertEntityId()).map(Freezer::getName).orElse(null);
+            if (name != null) {
+                return name + " (" + alert.getAlertEntityType() + ")";
+            }
+        }
+        return alert.getAlertEntityType() + " (ID: " + alert.getAlertEntityId() + ")";
     }
 }
