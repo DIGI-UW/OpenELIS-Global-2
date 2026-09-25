@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -67,6 +67,8 @@ const replace = async (name, value) => {
   await user.clear(input);
   await user.paste(value);
 };
+const changeText = (input, value) =>
+  fireEvent.change(input, { target: { value } });
 const save = async () =>
   userEvent.click(
     screen.getByRole("button", { name: "Save and validate profile settings" }),
@@ -86,7 +88,7 @@ beforeEach(() => {
   );
 });
 
-it.each([
+const preservationCases = [
   [
     "FluoroCycler FILE",
     fileProfile,
@@ -101,13 +103,15 @@ it.each([
     "E-1394-97-site",
     ["protocol", "version"],
   ],
-])(
+];
+
+it.each(preservationCases)(
   "preserves the unabridged %s profile when editing one setting",
   async (_, original, label, value, path) => {
     const authored = clone(original);
     delete authored.catalog;
-    const { onStateChange, unmount } = mount(authored);
-    await replace(label, value);
+    const { onStateChange } = mount(authored);
+    changeText(screen.getByRole("textbox", { name: label }), value);
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ dirty: true, publishable: false }),
     );
@@ -123,12 +127,18 @@ it.each([
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ dirty: false, publishable: true }),
     );
-    const saved = clone(stored.profile);
-    unmount();
+  },
+);
+
+it.each(preservationCases)(
+  "reopens the saved %s setting without losing its value",
+  (_, original, label, value, path) => {
+    const saved = clone(original);
+    delete saved.catalog;
+    saved[path[0]][path[1]] = value;
     mount(saved);
     expect(screen.getByRole("textbox", { name: label })).toHaveValue(value);
   },
-  15000,
 );
 
 it("retains edits after a save failure and retries the same complete profile", async () => {
@@ -352,7 +362,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
   const view = render(editor());
   const choose = async (name, value) =>
     userEvent.selectOptions(screen.getByRole("combobox", { name }), value);
-  await replace("Profile version", "1.0");
+  changeText(screen.getByRole("textbox", { name: "Profile version" }), "1.0");
   await choose("Evidence confidence", "LOW");
   await choose("Laboratory discipline", "MOLECULAR");
   await choose("Protocol", "FILE");
@@ -361,19 +371,22 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
   await choose("Supports a connection test", "true");
   await choose("Profile file format", "CSV");
   await choose("Default file format", "CSV");
-  await replace("Filename pattern", "*.csv");
+  changeText(
+    screen.getByRole("textbox", { name: "Filename pattern" }),
+    "*.csv",
+  );
   await choose("First row contains column names", "true");
-  await replace("Column delimiter", ",");
+  changeText(screen.getByRole("textbox", { name: "Column delimiter" }), ",");
   const extensions = within(
     screen.getByRole("group", { name: "Supported file extensions" }),
   );
   await userEvent.click(extensions.getByRole("button", { name: "Add value" }));
-  await userEvent.type(extensions.getByRole("textbox"), ".csv");
+  changeText(extensions.getByRole("textbox"), ".csv");
   for (const [source, field] of Object.entries(newFileProfile.column_mapping)) {
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
     const rows = screen.getAllByRole("group", { name: /File column \d+/ });
     const row = within(rows[rows.length - 1]);
-    await userEvent.type(
+    changeText(
       row.getByRole("textbox", { name: "Column name in the file" }),
       source,
     );
@@ -395,11 +408,8 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
   const field = within(
     screen.getByRole("group", { name: "Connection field 1" }),
   );
-  await userEvent.type(
-    field.getByRole("textbox", { name: "Setting name" }),
-    "directory",
-  );
-  await userEvent.type(
+  changeText(field.getByRole("textbox", { name: "Setting name" }), "directory");
+  changeText(
     field.getByRole("textbox", { name: "Label translation key" }),
     "analyzer.connection.field.directory",
   );
@@ -423,7 +433,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     ["LOINC code", "20447-9"],
     ["Reported units", "copies/mL"],
   ]) {
-    await userEvent.type(testRow.getByRole("textbox", { name: label }), value);
+    changeText(testRow.getByRole("textbox", { name: label }), value);
   }
   await userEvent.selectOptions(
     testRow.getByRole("combobox", { name: "Reported value type" }),
@@ -468,7 +478,10 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
       name: messages["analyzerType.recognition.condition.add"],
     }),
   );
-  await replace("Specimen ID prefix", "QC-");
+  changeText(
+    screen.getByRole("textbox", { name: "Specimen ID prefix" }),
+    "QC-",
+  );
   await userEvent.click(
     screen.getByRole("button", { name: "Save control recognition" }),
   );
@@ -481,7 +494,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     expect.any(Function),
   );
   expect(onSuccess).toHaveBeenCalledWith("create");
-}, 15000);
+});
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
   const authored = clone(astmProfile);
