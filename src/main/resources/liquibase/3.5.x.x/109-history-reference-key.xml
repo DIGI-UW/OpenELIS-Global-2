@@ -12,7 +12,9 @@
     runs inside the save, every control lot edit and retirement answered 500.
 
     A history row now carries a numeric key in reference_id or a string key in
-    reference_key, never both; existing rows and readers are unchanged.
+    reference_key, never both; existing rows and readers are unchanged. Rolling
+    back deletes the string-keyed rows, which the old schema cannot hold, and
+    restores NOT NULL on reference_id.
     -->
 
     <changeSet id="history-reference-key-add-column" author="mozzy11">
@@ -32,6 +34,11 @@
         </createIndex>
         <rollback>
             <dropIndex schemaName="clinlims" tableName="history" indexName="history_reference_key_idx"/>
+            <delete schemaName="clinlims" tableName="history">
+                <where>reference_id IS NULL</where>
+            </delete>
+            <addNotNullConstraint schemaName="clinlims" tableName="history" columnName="reference_id"
+                columnDataType="numeric"/>
             <dropColumn schemaName="clinlims" tableName="history" columnName="reference_key"/>
         </rollback>
     </changeSet>

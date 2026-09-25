@@ -222,12 +222,12 @@ public class TestCalculatedUtil {
                         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
                         String value = null;
                         try {
-                            Log.debug("Caliculation Rule: " + calculation.getName() + " Function : "
+                            Log.debug("Calculation Rule: " + calculation.getName() + " Function : "
                                     + function.toString());
                             value = scriptEngine.eval(function.toString()).toString();
-                            Log.debug("Caliculation Rule: " + calculation.getName() + " Value  : " + value);
+                            Log.debug("Calculation Rule: " + calculation.getName() + " Value  : " + value);
                         } catch (ScriptException e) {
-                            Log.error("Invalid Caliculation Rule: " + calculation.getName(), e);
+                            Log.error("Invalid Calculation Rule: " + calculation.getName(), e);
                         }
                         Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, value,
                                 sysUserId);
