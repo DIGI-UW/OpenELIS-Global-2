@@ -1,7 +1,7 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Redirect, Route } from "react-router-dom";
 import { SideNav, SideNavItems } from "@carbon/react";
 import ConfiguredSideNav from "./ConfiguredSideNav";
 import messages from "../../languages/en.json";
@@ -101,3 +101,125 @@ test.each([false, true])(
     }
   },
 );
+
+describe("groups stay open across navigation", () => {
+  const qaMenus = () =>
+    menus([
+      {
+        elementId: "menu_qa",
+        displayKey: "sideNav.label.qa",
+        childMenus: [
+          {
+            elementId: "menu_qa_qms",
+            displayKey: "sideNav.label.qa.qms",
+            childMenus: [
+              {
+                elementId: "menu_reports_audittrail",
+                displayKey: "sideNav.title.audittrail",
+                childMenus: [
+                  {
+                    elementId: "menu_reports_audittrail_system",
+                    displayKey: "sideNav.label.audittrail.systemEvents",
+                    actionURL: "/AuditTrailReport?type=system",
+                  },
+                  {
+                    elementId: "menu_reports_audittrail_order",
+                    displayKey: "sideNav.label.audittrail.orderEvents",
+                    actionURL: "/AuditTrailReport?type=order",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+  let history;
+  const renderQa = (entry = "/Dashboard") =>
+    render(
+      <MemoryRouter initialEntries={[entry]}>
+        <IntlProvider locale="en" messages={messages}>
+          <Route
+            render={(props) => {
+              history = props.history;
+              return null;
+            }}
+          />
+          <Route
+            path="/AuditTrailReport"
+            render={({ location }) => (
+              <Redirect
+                to={{
+                  pathname: "/qa/qms/audit-trail",
+                  search: location.search,
+                }}
+              />
+            )}
+          />
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav menus={qaMenus()} unifiedResultsOn={false} />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  const group = (id) => document.getElementById(id);
+  const openGroups = () =>
+    ["menu_qa", "menu_qa_qms", "menu_reports_audittrail"].filter(
+      (id) => group(id).getAttribute("aria-expanded") === "true",
+    );
+
+  it("links a moved audit trail row to its current route", () => {
+    renderQa();
+    expect(
+      document.getElementById("menu_reports_audittrail_system_nav"),
+    ).toHaveAttribute("href", "/qa/qms/audit-trail?type=system");
+    expect(
+      document.getElementById("menu_reports_audittrail_order_nav"),
+    ).toHaveAttribute("href", "/qa/qms/audit-trail?type=order");
+  });
+
+  it("keeps QA > QMS > Audit Trail open and marks the clicked item", () => {
+    renderQa();
+    ["menu_qa", "menu_qa_qms", "menu_reports_audittrail"].forEach((id) =>
+      fireEvent.click(group(id)),
+    );
+
+    fireEvent.click(
+      document.getElementById("menu_reports_audittrail_system_nav"),
+    );
+    expect(openGroups()).toHaveLength(3);
+    expect(
+      document.getElementById("menu_reports_audittrail_system_nav"),
+    ).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(
+      document.getElementById("menu_reports_audittrail_order_nav"),
+    );
+    expect(openGroups()).toHaveLength(3);
+    expect(
+      document.getElementById("menu_reports_audittrail_order_nav"),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("an old bookmark redirected by the router still opens its groups", () => {
+    renderQa("/AuditTrailReport?type=order");
+    expect(openGroups()).toHaveLength(3);
+    expect(
+      document.getElementById("menu_reports_audittrail_order_nav"),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("a route no menu item matches leaves the open groups as they were", () => {
+    renderQa("/qa/qms/audit-trail?type=system");
+    expect(openGroups()).toHaveLength(3);
+
+    act(() => history.push("/qa/qms/page-without-a-menu-entry"));
+
+    expect(openGroups()).toHaveLength(3);
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
+  });
+});

@@ -46,7 +46,7 @@ const SCREENS = [
     name: "AuditTrailReportIndex",
     Screen: AuditTrailReportIndex,
     at: "/AuditTrailReport",
-    target: "/AuditTrailReport?type=system",
+    target: "/qa/qms/audit-trail?type=system",
   },
 ];
 
