@@ -217,8 +217,12 @@ describe("AnalyzerConnectionSetup", () => {
     const onClose = vi.fn();
     const history = renderConnection({ onClose });
 
-    expect(await screen.findByLabelText("Transport")).toHaveValue("TCP/IP");
-    expect(screen.getByLabelText("Connection role")).toHaveValue("SERVER");
+    expect(await screen.findByLabelText("Transport")).toHaveDisplayValue(
+      "Network (TCP/IP)",
+    );
+    expect(screen.getByLabelText("Connection role")).toHaveDisplayValue(
+      "Server",
+    );
     expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveValue(55000);
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -237,11 +241,14 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       screen.getByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     expect(screen.getByRole("textbox", { name: "Host" })).toBeVisible();
 
-    await userEvent.selectOptions(screen.getByLabelText("Transport"), "RS-232");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Transport"),
+      "Serial (RS-232)",
+    );
     expect(screen.queryByLabelText("Connection role")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -307,7 +314,7 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       await screen.findByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Test connection" }),
