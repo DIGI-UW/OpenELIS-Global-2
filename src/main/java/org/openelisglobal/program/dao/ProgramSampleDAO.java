@@ -8,4 +8,7 @@ public interface ProgramSampleDAO extends BaseDAO<ProgramSample, Integer> {
     ProgramSample getProgrammeSampleBySample(Integer sampleId, String programName);
 
     List<ProgramSample> getProgramSamplesByAccessionNumberOrProgramName(String filter);
+
+    // Programs V2: read-time historical order count for the deactivate modal.
+    long countByProgramId(String programId);
 }

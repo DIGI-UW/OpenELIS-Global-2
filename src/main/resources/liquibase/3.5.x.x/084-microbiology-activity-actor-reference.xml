@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-microbiology-activity-actor-reference" author="OpenELIS">
+    <preConditions onFail="HALT">
+      <sqlCheck expectedResult="0">
+        SELECT count(*)
+        FROM clinlims.micro_case_activity
+        WHERE performed_by IS NOT NULL
+          AND performed_by !~ '^[0-9]+$'
+      </sqlCheck>
+    </preConditions>
+
+    <modifyDataType
+      schemaName="clinlims"
+      tableName="micro_case_activity"
+      columnName="performed_by"
+      newDataType="numeric(10)"/>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_case_activity"
+      baseColumnNames="performed_by"
+      constraintName="fk_micro_case_activity_performed_by"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="system_user"
+      referencedColumnNames="id"/>
+
+    <rollback>
+      <dropForeignKeyConstraint
+        baseTableSchemaName="clinlims"
+        baseTableName="micro_case_activity"
+        constraintName="fk_micro_case_activity_performed_by"/>
+      <modifyDataType
+        schemaName="clinlims"
+        tableName="micro_case_activity"
+        columnName="performed_by"
+        newDataType="varchar(20)"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

@@ -35,6 +35,7 @@ public class StorageSearchServiceImplTest {
     private List<Map<String, Object>> mockDevicesForAPI;
     private List<Map<String, Object>> mockShelvesForAPI;
     private List<Map<String, Object>> mockRacksForAPI;
+    private List<Map<String, Object>> mockBoxesForAPI;
 
     @Before
     public void setUp() {
@@ -152,6 +153,23 @@ public class StorageSearchServiceImplTest {
         rack2.put("label", "Rack R2");
         rack2.put("active", true);
         mockRacksForAPI.add(rack2);
+
+        mockBoxesForAPI = new ArrayList<>();
+        Map<String, Object> box1 = new HashMap<>();
+        box1.put("id", 40);
+        box1.put("label", "Box Alpha");
+        box1.put("code", "BX-001");
+        box1.put("type", "96-well");
+        box1.put("active", true);
+        mockBoxesForAPI.add(box1);
+
+        Map<String, Object> box2 = new HashMap<>();
+        box2.put("id", 41);
+        box2.put("label", "Box Beta");
+        box2.put("code", "BX-002");
+        box2.put("type", "384-well");
+        box2.put("active", true);
+        mockBoxesForAPI.add(box2);
     }
 
     // ========== Sample Search Service Tests ==========
@@ -422,8 +440,52 @@ public class StorageSearchServiceImplTest {
         for (Map<String, Object> rack : results) {
             String label = (String) rack.get("label");
             assertNotNull("Label should not be null", label);
-            assertTrue("Label should contain query (case-insensitive)", 
+            assertTrue("Label should contain query (case-insensitive)",
                     label.toLowerCase().contains("rack r1"));
         }
+    }
+
+    // ========== Box Search Service Tests ==========
+
+    @Test
+    public void testSearchBoxes_FiltersByLabel() throws Exception {
+        when(storageLocationService.getBoxesForAPI(null)).thenReturn(mockBoxesForAPI);
+
+        List<Map<String, Object>> results = searchService.searchBoxes("box alpha");
+
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should return one matching box", 1, results.size());
+        assertEquals("Should return Box Alpha", 40, results.get(0).get("id"));
+    }
+
+    @Test
+    public void testSearchBoxes_FiltersByCode() throws Exception {
+        when(storageLocationService.getBoxesForAPI(null)).thenReturn(mockBoxesForAPI);
+
+        List<Map<String, Object>> results = searchService.searchBoxes("BX-002");
+
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should return one matching box", 1, results.size());
+        assertEquals("Should return Box Beta", 41, results.get(0).get("id"));
+    }
+
+    @Test
+    public void testSearchBoxes_EmptyQueryReturnsAll() throws Exception {
+        when(storageLocationService.getBoxesForAPI(null)).thenReturn(mockBoxesForAPI);
+
+        List<Map<String, Object>> results = searchService.searchBoxes("");
+
+        assertNotNull("Results should not be null", results);
+        assertEquals("Empty query should return all boxes", 2, results.size());
+    }
+
+    @Test
+    public void testSearchBoxes_NoMatchReturnsEmpty() throws Exception {
+        when(storageLocationService.getBoxesForAPI(null)).thenReturn(mockBoxesForAPI);
+
+        List<Map<String, Object>> results = searchService.searchBoxes("freezer");
+
+        assertNotNull("Results should not be null", results);
+        assertTrue("Should return no matches", results.isEmpty());
     }
 }

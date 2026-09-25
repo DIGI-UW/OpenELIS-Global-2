@@ -102,6 +102,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setLod(d.getLod());
+                match.setLoq(d.getLoq());
                 match.setSysUserId(sysUserId);
                 update(match);
                 keptIds.add(match.getId());
@@ -122,6 +124,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setLod(d.getLod());
+                    slot.setLoq(d.getLoq());
                     slot.setIsActive("Y");
                     slot.setSysUserId(sysUserId);
                     update(slot);
@@ -180,7 +184,55 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
         }
         syncLegacyTestFields(testId, sysUserId);
+        dropUnreachableDictionaryRanges(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    /**
+     * OGC-1234: a select-list range names its normal value by dictionary id. Once
+     * the component no longer offers that value (the option was removed, a "Copy
+     * from test" replaced the options, or the component is no longer a select
+     * list), no result can ever equal it, so every result would be judged abnormal
+     * and the screens would show a reference value the test does not offer. Such a
+     * range is removed. Legacy option rows without a component id count as the
+     * primary's. Ranges of inactive components are left alone: nothing reads them.
+     */
+    private void dropUnreachableDictionaryRanges(String testId, String sysUserId) {
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
+        TestResultComponent primary = pickPrimary(components);
+        Map<String, Set<String>> offeredByComponent = new HashMap<>();
+        for (TestResultComponent component : components) {
+            Set<String> offered = new HashSet<>();
+            if (component.getResultType() != null
+                    && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(component.getResultType())) {
+                for (TestResult option : testResultService.getActiveOptionsByComponentId(component.getId())) {
+                    if (option.getValue() != null) {
+                        offered.add(option.getValue().trim());
+                    }
+                }
+            }
+            offeredByComponent.put(component.getId(), offered);
+        }
+        if (primary != null) {
+            for (TestResult legacy : testResultService.getActiveTestResultsByTest(testId)) {
+                if (legacy.getComponentId() == null && legacy.getValue() != null
+                        && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(legacy.getTestResultType())) {
+                    offeredByComponent.get(primary.getId()).add(legacy.getValue().trim());
+                }
+            }
+        }
+        for (ResultLimit range : resultLimitService.getAllResultLimitsForTest(testId)) {
+            String normalValue = range.getDictionaryNormalId();
+            if (normalValue == null || normalValue.isBlank()) {
+                continue;
+            }
+            String componentId = range.getComponentId() != null ? range.getComponentId()
+                    : primary == null ? null : primary.getId();
+            Set<String> offered = componentId == null ? null : offeredByComponent.get(componentId);
+            if (offered != null && !offered.contains(normalValue.trim())) {
+                resultLimitService.delete(range.getId(), sysUserId);
+            }
+        }
     }
 
     /**
@@ -451,6 +503,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setSignificantDigits(src.getSignificantDigits());
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
+            copy.setLod(src.getLod());
+            copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
             copy.setIsActive("Y");

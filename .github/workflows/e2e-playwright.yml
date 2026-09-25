@@ -5,7 +5,12 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop, fix/madagascar-accession-results-file-e2e]
+    branches:
+      - develop
+      - 3.2.2.x
+      - fix/madagascar-accession-results-file-e2e
+      - spec/782-*
+      - feat/782-*
   push:
     branches: [develop]
   release:
@@ -17,12 +22,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─── Detect Changes ─────────────────────────────────────────────────────────
+  # Skips the Shared Build when a pull request changes only documentation. This
+  # is only an optimisation: E2E / Tests re-decides from the default branch's
+  # copy of .github/scripts/e2e-scope.cjs before it reports the checkpoint, so a
+  # pull request cannot skip E2E by editing this file. Every other event always
+  # builds.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      e2e: ${{ steps.scope.outputs.e2e || 'true' }}
+    steps:
+      - name: Checkout scope script
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Test scope rules
+        if: github.event_name == 'pull_request'
+        run: node --test .github/scripts/e2e-scope.test.cjs
+      - name: Decide E2E scope
+        id: scope
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            const files = await scope.listPullRequestFiles({ github, owner: context.repo.owner,
+              repo: context.repo.repo, pullNumber: context.payload.pull_request.number });
+            const e2e = scope.requiresE2E(files);
+            core.info(`${files.length} changed file(s); E2E ${e2e ? 'required' : 'skipped: documentation only'}`);
+            core.setOutput('e2e', e2e ? 'true' : 'false');
+      # E2E / Tests reads this to know which pull request triggered the build.
+      # It is only a lookup key there: the wrapper accepts it only when the API
+      # confirms that pull request is open at this exact head sha.
+      - name: Record triggering pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/e2e-scope-context
+          echo "${{ github.event.pull_request.number }}" > /tmp/e2e-scope-context/pr_number
+      - name: Upload triggering pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-scope-context
+          path: /tmp/e2e-scope-context/
+          retention-days: 1
+
   # ─── Shared Build ───────────────────────────────────────────────────────────
   # Single image producer for the E2E pipeline. The downstream workflow_run
   # wrapper consumes these artifacts for non-fork execution and reports the
   # stable `03 Checkpoint - E2E` contract.
   shared-build:
     name: Shared Build
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
@@ -84,6 +85,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
+    /**
+     * Ranges take their ids from {@code result_limits_seq}; sibling classes seed
+     * limits with explicit ids without advancing it, so depending on class order a
+     * save collided with a seeded row. Resync before writing.
+     */
     @Before
     @Override
     public void setUp() throws Exception {
@@ -94,6 +100,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
                 analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
                 panelService, panelItemService);
         cleanup();
+        resyncSequence("result_limits_seq", "clinlims.result_limits");
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'N', ?, NOW())",
@@ -107,7 +114,41 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_test_result WHERE id = ?", DICTIONARY_RESULT_TYPE_ID);
+    }
+
+    private static final long DICTIONARY_RESULT_TYPE_ID = 95456L;
+
+    /**
+     * Sibling classes' datasets replace {@code type_of_test_result} with their own
+     * rows, not all of which include a dictionary type, so the id is taken from
+     * whatever row exists and one is seeded only when none does.
+     */
+    private Long ensureDictionaryResultType() {
+        java.util.List<Long> existing = jdbc.queryForList(
+                "SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D' ORDER BY id LIMIT 1",
+                Long.class);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_test_result (id, test_result_type, description, hl7_value, lastupdated)"
+                        + " VALUES (?, 'D', 'Dictionary', 'CE', NOW())",
+                DICTIONARY_RESULT_TYPE_ID);
+        return DICTIONARY_RESULT_TYPE_ID;
+    }
+
+    private String seedPrimaryComponent() {
+        String componentId = UUID.randomUUID().toString();
+        jdbc.update(
+                "INSERT INTO clinlims.test_result_component"
+                        + " (id, test_id, code, label, display_order, result_type, allow_multiple_readings,"
+                        + " is_primary, show_on_report, is_active, lastupdated)"
+                        + " VALUES (?, ?, 'PRIMARY', 'Result', 0, 'N', false, true, true, 'Y', NOW())",
+                componentId, TEST_ID);
+        return componentId;
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -179,6 +220,30 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         assertEquals(Double.valueOf(20d), loaded.highValid);
     }
 
+    /**
+     * FR-19 (OGC-1119): the component a range constrains is written and read back.
+     */
+    @org.junit.Test
+    public void saveRanges_componentAssociationRoundTrips() {
+        String componentId = seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = componentId;
+        assertEquals(200, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+
+        RangeDto loaded = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(componentId, loaded.componentId);
+    }
+
+    /** A range may only constrain one of the test's own components (OGC-1119). */
+    @org.junit.Test
+    public void saveRanges_rejectsAComponentThatIsNotTheTests() {
+        seedPrimaryComponent();
+        RangeDto r = range(null, "M", 0d, 30d);
+        r.componentId = UUID.randomUUID().toString();
+        assertEquals(422, controller.saveRanges(testId(), body(r), authedRequest()).getStatusCode().value());
+        assertTrue("a rejected save must write nothing", controller.getRanges(testId()).getBody().ranges.isEmpty());
+    }
+
     @org.junit.Test
     public void saveRanges_openEndedMaxAgeRoundTripsAsNull_andCoversToInfinity() {
         // maxAge null → open-ended; a single 0..∞ all-sex range fully covers both.
@@ -247,8 +312,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
-        Long dictTypeId = jdbc
-                .queryForObject("SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D'", Long.class);
+        Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());
         dict.setResultTypeId(String.valueOf(dictTypeId));
@@ -273,6 +337,28 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         Double lowReporting = jdbc.queryForObject("SELECT low_reporting_range FROM clinlims.result_limits WHERE id = ?",
                 Double.class, Long.valueOf(numeric.id));
         assertEquals(1.5d, lowReporting, 1e-9);
+    }
+
+    /**
+     * OGC-1238: the editor lists only the numeric ranges it manages. A dictionary
+     * limit it cannot change is not offered as a row that deleting would appear to
+     * remove.
+     */
+    @org.junit.Test
+    public void getRanges_listsOnlyTheNumericRangesTheEditorManages() {
+        Long dictTypeId = ensureDictionaryResultType();
+        org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
+        dict.setTestId(testId());
+        dict.setResultTypeId(String.valueOf(dictTypeId));
+        dict.setSysUserId("1");
+        resultLimitService.insert(dict);
+        controller.saveRanges(testId(), body(range(null, "M", 0d, 30d)), authedRequest());
+
+        List<RangeDto> listed = controller.getRanges(testId()).getBody().ranges;
+
+        assertEquals(1, listed.size());
+        assertEquals(Double.valueOf(30d), listed.get(0).maxAge);
+        assertTrue(listed.stream().noneMatch(r -> dict.getId().equals(r.id)));
     }
 
     @org.junit.Test

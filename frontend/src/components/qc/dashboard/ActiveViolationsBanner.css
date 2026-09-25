@@ -1,0 +1,31 @@
+/**
+ * ActiveViolationsBanner Styles
+ * Uses Carbon Design System tokens
+ */
+
+.active-violations-banner {
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--cds-layer, #ffffff);
+  border-left: 4px solid var(--cds-support-error, #da1e28);
+}
+
+.active-violations-banner__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.active-violations-banner__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.active-violations-banner__error {
+  font-size: 0.75rem;
+  color: var(--cds-support-error, #da1e28);
+  margin-bottom: 0.5rem;
+}

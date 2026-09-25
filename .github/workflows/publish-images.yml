@@ -118,6 +118,17 @@ jobs:
           - compose_image: openelisglobal-databse.build
             dockerhub_suffix: database
     steps:
+      # The Trivy step below reads .trivyignore from the workspace, but this job
+      # otherwise never checks the repository out (it only retags images), so
+      # Trivy failed with "cannot find ignorefile" on every publish since the
+      # scan was added. Check out just that file, at the commit being published.
+      - name: Checkout Trivy ignore list
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.setup.outputs.head_sha }}
+          sparse-checkout: .trivyignore
+          sparse-checkout-cone-mode: false
+
       - name: Download image map from triggering build workflow
         uses: actions/download-artifact@v6
         with:
@@ -186,6 +197,34 @@ jobs:
 
       - name: Pull tested image from GHCR
         run: docker pull "${{ steps.source.outputs.ghcr_source }}"
+
+      - name: Scan tested image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.source.outputs.ghcr_source }}
+          format: table
+          output: ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+          exit-code: 0
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
+
+      - name: Generate tested image SBOM
+        if: always()
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.source.outputs.ghcr_source }}
+          output-file: ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
+          artifact-name: ${{ format('openelis-{0}-sbom.spdx.json', matrix.dockerhub_suffix) }}
+
+      - name: Upload image security artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ format('publish-{0}-security-reports', matrix.dockerhub_suffix) }}
+          path: |
+            ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
+            ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
 
       - name: Retag and publish tested image to DockerHub
         run: |

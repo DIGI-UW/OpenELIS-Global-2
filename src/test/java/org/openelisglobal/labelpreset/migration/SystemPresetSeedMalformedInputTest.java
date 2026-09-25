@@ -78,6 +78,9 @@ public class SystemPresetSeedMalformedInputTest extends BaseWebContextSensitiveT
         SystemPresetSeedTest.clearBarcodeSiteInformation(dataSource);
         SystemPresetSeedTest.executeSeedSql(dataSource, SEED_CHANGESET);
         SystemPresetSeedTest.executeSeedSql(dataSource, SystemPresetSeedTest.FIELD_SEED_CHANGESET);
+        // Re-running 030 resets is_universal to its column default; restore the
+        // later 032 universal flag so sibling readers see the fully-migrated seed.
+        SystemPresetSeedTest.reapplyUniversalFlag(dataSource);
     }
 
     @Test

@@ -25,8 +25,20 @@ import {
   deleteFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { requestFailed } from "../../../utils/requestOutcome";
 
 const CODE_REGEX = /^[A-Z0-9]{3,10}$/;
+
+const failureMessageKey = (res, conflictKey) => {
+  const status = res && res.status;
+  if (status === 409) {
+    return conflictKey;
+  }
+  if (status === 400 || status === 422) {
+    return "admin.testCatalog.methods.error.invalidRequest";
+  }
+  return "admin.testCatalog.methods.error.server";
+};
 
 export default function MethodsSection({ testId }) {
   const intl = useIntl();
@@ -53,6 +65,10 @@ export default function MethodsSection({ testId }) {
 
   // Copy from test state
   const [copyTestId, setCopyTestId] = useState("");
+  // Remounts the picker after a copy: Carbon's ComboBox keeps its own
+  // selection when selectedItem returns to null, so picking the same test
+  // again would not fire onChange.
+  const [copyPickerKey, setCopyPickerKey] = useState(0);
 
   const loadLinks = useCallback(() => {
     if (!testId) return;
@@ -79,9 +95,11 @@ export default function MethodsSection({ testId }) {
   const availableMethods = allMethods.filter((m) => !linkedMethodIds.has(m.id));
   const otherTests = allTests.filter((t) => t.id !== testId);
 
-  const notify = (kind, titleKey) => {
-    setNotification({ kind, titleKey });
-    setTimeout(() => setNotification(null), 4000);
+  const notify = (kind, titleKey, values) => {
+    setNotification({ kind, titleKey, values });
+    if (kind === "success") {
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
   // ── Link existing method ──────────────────────────────────────────────────
@@ -96,14 +114,24 @@ export default function MethodsSection({ testId }) {
         effectiveDate: linkEffectiveDate,
       }),
       (res) => {
-        if (res) {
+        if (requestFailed(res)) {
           setLinkModalOpen(false);
-          setLinkMethodId("");
-          setLinkEffectiveDate("");
-          setLinkIsDefault(false);
+          notify(
+            "error",
+            failureMessageKey(
+              res,
+              "admin.testCatalog.methods.error.duplicateLink",
+            ),
+          );
           loadLinks();
-          notify("success", "admin.testCatalog.methods.btn.linkMethod");
+          return;
         }
+        setLinkModalOpen(false);
+        setLinkMethodId("");
+        setLinkEffectiveDate("");
+        setLinkIsDefault(false);
+        loadLinks();
+        notify("success", "admin.testCatalog.methods.linked");
       },
     );
   };
@@ -137,17 +165,26 @@ export default function MethodsSection({ testId }) {
         effectiveDate: createEffectiveDate,
       }),
       (res) => {
-        if (res) {
-          setShowInlineCreate(false);
-          setCreateNameEn("");
-          setCreateNameFr("");
-          setCreateCode("");
-          setCreateEffectiveDate("");
-          setCreateIsDefault(false);
-          loadLinks();
-          loadAllMethods();
-          notify("success", "admin.testCatalog.methods.btn.createMethod");
+        if (requestFailed(res)) {
+          const messageKey = failureMessageKey(
+            res,
+            "admin.testCatalog.methods.error.duplicateCode",
+          );
+          if (res && res.status === 409) {
+            setCodeError(intl.formatMessage({ id: messageKey }));
+          }
+          notify("error", messageKey);
+          return;
         }
+        setShowInlineCreate(false);
+        setCreateNameEn("");
+        setCreateNameFr("");
+        setCreateCode("");
+        setCreateEffectiveDate("");
+        setCreateIsDefault(false);
+        loadLinks();
+        loadAllMethods();
+        notify("success", "admin.testCatalog.methods.created");
       },
     );
   };
@@ -176,13 +213,34 @@ export default function MethodsSection({ testId }) {
 
   const handleCopyFromTest = () => {
     if (!copyTestId) return;
+    const source = otherTests.find((t) => t.id === copyTestId);
+    const sourceName = source ? source.value : "";
+    const linkedBefore = new Set(links.map((l) => l.methodId));
     postToOpenElisServerJsonResponse(
       `/rest/test/${testId}/methods/copyFrom/${copyTestId}`,
       JSON.stringify({}),
-      () => {
+      (res) => {
+        if (requestFailed(res) || !Array.isArray(res)) {
+          notify(
+            "error",
+            failureMessageKey(res, "admin.testCatalog.methods.error.server"),
+          );
+          return;
+        }
         setCopyTestId("");
-        loadLinks();
-        notify("success", "admin.testCatalog.methods.btn.copyFromTest");
+        setCopyPickerKey((k) => k + 1);
+        setLinks(res);
+        const copied = res.filter((l) => !linkedBefore.has(l.methodId)).length;
+        if (copied === 0) {
+          notify("info", "admin.testCatalog.methods.copyNothing", {
+            source: sourceName,
+          });
+        } else {
+          notify("success", "admin.testCatalog.methods.copied", {
+            count: copied,
+            source: sourceName,
+          });
+        }
       },
     );
   };
@@ -202,7 +260,10 @@ export default function MethodsSection({ testId }) {
       {notification && (
         <InlineNotification
           kind={notification.kind}
-          title={intl.formatMessage({ id: notification.titleKey })}
+          title={intl.formatMessage(
+            { id: notification.titleKey },
+            notification.values,
+          )}
           onClose={() => setNotification(null)}
           style={{ marginBottom: "0.5rem" }}
         />
@@ -317,6 +378,7 @@ export default function MethodsSection({ testId }) {
               id: "admin.testCatalog.methods.inline.nameEnglish",
             })}
             value={createNameEn}
+            maxLength={20}
             onChange={(e) => setCreateNameEn(e.target.value)}
           />
           <TextInput
@@ -414,6 +476,7 @@ export default function MethodsSection({ testId }) {
         }}
       >
         <ComboBox
+          key={`copy-from-test-${copyPickerKey}`}
           id="copy-from-test"
           titleText={intl.formatMessage({
             id: "admin.testCatalog.methods.copyFromTest.label",
@@ -423,6 +486,11 @@ export default function MethodsSection({ testId }) {
           })}
           items={otherTests}
           itemToString={(item) => (item ? item.value : "")}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
+          selectedItem={otherTests.find((t) => t.id === copyTestId) || null}
           onChange={({ selectedItem }) => setCopyTestId(selectedItem?.id || "")}
           style={{ minWidth: "260px" }}
         />

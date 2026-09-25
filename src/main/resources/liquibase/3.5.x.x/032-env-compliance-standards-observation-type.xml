@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0.0-add-env-compliance-standards" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'envComplianceStandards'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="envComplianceStandards"/>
+      <column name="description" value="JSON array of compliance standard IDs linked to this environmental order"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

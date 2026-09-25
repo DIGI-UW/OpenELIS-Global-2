@@ -300,6 +300,33 @@ describe("useMenuAutoExpand", () => {
   });
 
   describe("edge cases", () => {
+    test.each([false, true])(
+      "inactive menu branches do not select or expand destinations (inactive parent=%s)",
+      (inactiveParent) => {
+        const menus = [
+          {
+            menu: { id: "parent", actionURL: "", isActive: !inactiveParent },
+            childMenus: [
+              {
+                menu: {
+                  id: "child",
+                  actionURL: "/Storage/rooms",
+                  isActive: inactiveParent,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+        ];
+        window.history.pushState({}, "", "/Storage/rooms");
+        const { result } = renderHook(() => useMenuAutoExpand(menus), {
+          wrapper,
+        });
+        expect(result.current[0].expanded).toBe(false);
+        expect(result.current[0].childMenus[0].routeActive).toBe(false);
+      },
+    );
+
     /**
      * Test: Handles empty menus array
      */

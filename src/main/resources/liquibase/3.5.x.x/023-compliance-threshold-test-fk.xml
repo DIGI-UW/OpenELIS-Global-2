@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        FRS S-01 alignment (data model: testId FK to Test):
+        Promote compliance_threshold.test_id from a free-text VARCHAR
+        annotation to a real foreign key referencing test(id).
+
+        Type compatibility:
+        clinlims.test.id is numeric(10,0). The compliance_threshold.test_id
+        column must be numeric(10,0) too — Postgres rejects FK constraints
+        between character-varying and numeric columns.
+
+        Two paths are handled:
+        - Fresh deployments: column doesn't exist yet → 023-1 creates it
+          as numeric(10,0).
+        - Older deployments where Hibernate auto-DDL or an earlier version
+          of this migration created the column as VARCHAR(100) → 023-1b
+          casts it to numeric(10,0).
+
+        Whichever path ran, 023-2 then adds the FK and 023-3 indexes it.
+    -->
+
+    <changeSet id="023-1-ensure-compliance-threshold-test-id-column" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+            <not>
+                <columnExists tableName="compliance_threshold" columnName="test_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="compliance_threshold">
+            <column name="test_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="compliance_threshold" columnName="test_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="023-1b-migrate-varchar-test-id-to-numeric" author="claude">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+            <columnExists tableName="compliance_threshold" columnName="test_id"/>
+            <sqlCheck expectedResult="character varying">
+                SELECT data_type FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                  AND table_name = 'compliance_threshold'
+                  AND column_name = 'test_id'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.compliance_threshold
+            ALTER COLUMN test_id TYPE numeric(10,0)
+            USING NULLIF(test_id, '')::numeric(10,0);
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.compliance_threshold ALTER COLUMN test_id TYPE VARCHAR(100) USING test_id::text</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="023-2-add-compliance-threshold-test-fk" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+            <tableExists tableName="test"/>
+            <columnExists tableName="compliance_threshold" columnName="test_id"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_compliance_threshold_test"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_compliance_threshold_test"
+            baseTableName="compliance_threshold"
+            baseColumnNames="test_id"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="NO ACTION"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="compliance_threshold"
+                constraintName="fk_compliance_threshold_test"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="023-3-create-compliance-threshold-test-id-index" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+            <not>
+                <indexExists tableName="compliance_threshold" indexName="idx_compliance_threshold_test_id"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="compliance_threshold" indexName="idx_compliance_threshold_test_id">
+            <column name="test_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="compliance_threshold" indexName="idx_compliance_threshold_test_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

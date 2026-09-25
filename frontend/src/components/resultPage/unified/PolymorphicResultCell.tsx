@@ -3,6 +3,11 @@ import { Select, SelectItem, TextArea, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import ResultMultiSelect from "../../common/multiSelect";
 import CascadingMultiSelect from "../../common/cascadingMultiSelect";
+import {
+  decimalPlaces,
+  exceedsDecimalPlaces,
+  normalizeScientificNotation,
+} from "../scientificNotation";
 
 /**
  * OGC-1020 (R1) — FR-A1 polymorphic result cell.
@@ -10,8 +15,10 @@ import CascadingMultiSelect from "../../common/cascadingMultiSelect";
  * Renders the result input by the test's result type — numeric (N),
  * dictionary (D), multi-checkbox (M) — matching the legacy widgets one for
  * one so stored values stay compatible. Cascading (C), remark (R) and
- * alphanumeric (A) reuse the legacy behavior. When the row is read-only
- * (FR-A2: saved until Edit) the stored display value renders as plain text.
+ * alphanumeric (A) reuse the legacy behavior. Titer (T) is a free-text
+ * dilution ratio such as 1:10, stored as typed (OGC-1185). When the row is
+ * read-only (FR-A2: saved until Edit) the stored display value renders as
+ * plain text.
  *
  * A multi-component test yields one row PER COMPONENT sharing an analysisId
  * (FR-A′1), so widget identity and change events are keyed by the composite
@@ -40,16 +47,18 @@ export interface ResultCellRow {
 }
 
 /**
- * The decimal places entered, or 0 when the value carries no fraction.
+ * The decimal places entered, or 0 when the value carries no fraction. A value
+ * in scientific notation (1.5e5, 1.5×10⁵) is judged by its mantissa: 1.5e5
+ * carries one place, not three.
  *
  * <p>A value entered to more places than the test reports to is stored in full
  * and shown rounded, so the record and the screen stop agreeing and the next
  * edit saves the rounded form over the stored one (OGC-1179). The entry field
- * says so rather than accepting it silently.
+ * says so rather than accepting it silently. A whole-number test does not
+ * constrain a mantissa: 1.5e5 is a whole number.
  */
 export function enteredDecimalPlaces(value: string): number {
-  const dot = value.indexOf(".");
-  return dot === -1 ? 0 : value.length - dot - 1;
+  return decimalPlaces(value);
 }
 
 export function exceedsConfiguredPrecision(
@@ -60,8 +69,8 @@ export function exceedsConfiguredPrecision(
     return false;
   }
   return (
-    Number.isFinite(Number(value)) &&
-    enteredDecimalPlaces(value) > significantDigits
+    Number.isFinite(Number(normalizeScientificNotation(value))) &&
+    exceedsDecimalPlaces(value, significantDigits)
   );
 }
 
@@ -84,16 +93,6 @@ export function blocksSaveOnPrecision(row: {
     row.resultValue !== row.rawResultValue &&
     exceedsConfiguredPrecision(row.resultValue, row.significantDigits)
   );
-}
-
-/** The `step` a number input of this precision accepts. */
-export function precisionStep(significantDigits: number | undefined): string {
-  if (significantDigits === undefined || significantDigits < 0) {
-    return "any";
-  }
-  return significantDigits === 0
-    ? "1"
-    : `0.${"0".repeat(significantDigits - 1)}1`;
 }
 
 /** Unique identity for a worklist row: one analysis may render N component rows. */
@@ -213,8 +212,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
           id={`unifiedResultValue-${rowKey}`}
           labelText={accessibleName}
           hideLabel
-          type="number"
-          step={precisionStep(row.significantDigits)}
+          type="text"
+          inputMode="text"
           invalid={tooPrecise}
           invalidText={intl.formatMessage(
             { id: "error.results.precision" },
@@ -227,6 +226,23 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
         />
       );
     }
+
+    case "T":
+      return (
+        <TextInput
+          id={`unifiedResultValue-${rowKey}`}
+          labelText={accessibleName}
+          hideLabel
+          type="text"
+          placeholder={intl.formatMessage({
+            id: "label.results.titer.placeholder",
+          })}
+          value={row.resultValue || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onValueChange("resultValue", e.target.value)
+          }
+        />
+      );
 
     case "R":
     case "A":

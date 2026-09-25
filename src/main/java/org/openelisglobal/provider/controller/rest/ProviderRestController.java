@@ -7,9 +7,12 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.provider.service.ProviderDisplayName;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -32,6 +35,9 @@ public class ProviderRestController {
     private ProviderService providerService;
     @Autowired
     private PersonService personService;
+
+    @Autowired
+    private ProviderTitleService providerTitleService;
 
     @GetMapping(value = "/Provider/raw/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -100,17 +106,15 @@ public class ProviderRestController {
                     providerData.put("firstName", provider.getPerson().getFirstName());
                     providerData.put("lastName", provider.getPerson().getLastName());
 
-                    String fullName = "";
-                    if (provider.getPerson().getLastName() != null) {
-                        fullName = provider.getPerson().getLastName();
-                    }
-                    if (provider.getPerson().getFirstName() != null) {
-                        if (!fullName.isEmpty()) {
-                            fullName += ", ";
-                        }
-                        fullName += provider.getPerson().getFirstName();
-                    }
-                    providerData.put("name", fullName);
+                    String titleCode = provider.getPerson().getTitleCode();
+                    Dictionary title = providerTitleService.getByCode(titleCode);
+                    String abbreviation = title == null ? titleCode : title.getLocalAbbreviation();
+                    providerData.put("titleCode", titleCode);
+                    providerData.put("titleAbbreviation", abbreviation);
+                    providerData.put("name", ProviderDisplayName.titledFamilyFirst(abbreviation,
+                            provider.getPerson().getFirstName(), provider.getPerson().getLastName()));
+                    providerData.put("displayName", ProviderDisplayName.titled(abbreviation,
+                            provider.getPerson().getFirstName(), provider.getPerson().getLastName()));
 
                     String providerPhone = provider.getPerson().getPrimaryPhone();
                     if (GenericValidator.isBlankOrNull(providerPhone)) {

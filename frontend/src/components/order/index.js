@@ -2,6 +2,7 @@ export {
   OrderContext,
   OrderProvider,
   useOrderContext,
+  useWorkflowPrefix,
   SaveStatus,
 } from "./OrderContext";
 export { default as OrderStepper, ORDER_STEPS } from "./OrderStepper";
@@ -10,4 +11,13 @@ export { default as BarcodeScannerBar } from "./BarcodeScannerBar";
 export { default as SaveNavigationButtons } from "./SaveNavigationButtons";
 export { default as OrderWorkflowLayout } from "./OrderWorkflowLayout";
 export { default as OrderDashboard } from "./OrderDashboard";
-export { OrderEnter, OrderCollect, OrderLabel, OrderQA } from "./steps";
+export {
+  ClinicalOrderEnter,
+  EnvironmentalOrderEnter,
+  VectorOrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+  VectorOrderComplete,
+  OrderEnter, // backward-compat alias → ClinicalOrderEnter
+} from "./steps";

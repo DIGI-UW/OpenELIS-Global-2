@@ -64,17 +64,20 @@
     <test_section id="302" name="Hematology"
         description="Blood-related tests" is_external="N"
         lastupdated="2025-06-10 10:00:00" sort_order="1" is_active="Y"
-        name_localization_id="201" display_key="section.hematology" />
+        name_localization_id="201" display_key="section.hematology"
+        domain="CLINICAL" />
 
     <test_section id="300" name="Microbiology"
         description="Infectious diseases" is_external="N"
         lastupdated="2025-06-10 10:15:00" sort_order="2" is_active="Y"
-        name_localization_id="202" display_key="section.microbiology" />
+        name_localization_id="202" display_key="section.microbiology"
+        domain="CLINICAL" />
 
     <test_section id="301" name="Hematology"
         description="Toxic substances analysis" is_external="Y"
         lastupdated="2025-06-10 10:30:00" sort_order="3" is_active="Y"
-        name_localization_id="203" display_key="section.toxicology" />
+        name_localization_id="203" display_key="section.toxicology"
+        domain="CLINICAL" />
 
 
     <test id="1" description="Blood Test" loinc="123456"

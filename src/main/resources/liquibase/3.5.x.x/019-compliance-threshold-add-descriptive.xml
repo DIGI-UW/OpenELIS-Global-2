@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        FRS S-01 alignment (FR-3-003, FR-3-007):
+        Add DESCRIPTIVE threshold type. Stores a free-text qualitative
+        condition (e.g. "No odor", "Clear", "Absent") in value_descriptive.
+        Compliance evaluation against DESCRIPTIVE thresholds requires manual
+        analyst judgment - the engine flags it as Manual Review Required
+        rather than auto-evaluating.
+    -->
+
+    <changeSet id="019-1-add-value-descriptive-column" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+            <not>
+                <columnExists tableName="compliance_threshold" columnName="value_descriptive"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="compliance_threshold">
+            <column name="value_descriptive" type="VARCHAR(1024)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="compliance_threshold" columnName="value_descriptive"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="019-2-extend-threshold-type-check" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE compliance_threshold DROP CONSTRAINT IF EXISTS chk_compliance_threshold_type;
+        </sql>
+        <sql>
+            ALTER TABLE compliance_threshold
+            ADD CONSTRAINT chk_compliance_threshold_type
+            CHECK (threshold_type IN (
+                'RANGE', 'MINIMUM', 'MAXIMUM', 'EXACT', 'BORDERLINE',
+                'DESCRIPTIVE'
+            ));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE compliance_threshold DROP CONSTRAINT chk_compliance_threshold_type</sql>
+            <sql>
+                ALTER TABLE compliance_threshold
+                ADD CONSTRAINT chk_compliance_threshold_type
+                CHECK (threshold_type IN ('RANGE', 'MINIMUM', 'MAXIMUM', 'EXACT'))
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

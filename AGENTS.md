@@ -187,7 +187,11 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **State & Data:**
 
-- **SWR 2.0.3** (data fetching + caching)
+- **No query/cache layer yet.** Data is fetched by hand through
+  `getFromOpenElisServer` callbacks inside `useEffect` (735 calls across 273
+  files). **TanStack Query v4** is the adopted target; see
+  `docs/planning/query-layer-adoption.md`. SWR was listed here but was never
+  installed or used.
 - **React Router DOM 5.2.0** (routing)
 
 **Forms & Validation:**
@@ -548,6 +552,31 @@ exists in one of them.
 
 ## Development Workflow
 
+### Authoritative Development Stack
+
+Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
+supported interactive development launcher and starts the complete core
+OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+ports, and volumes.
+
+```bash
+scripts/dev-stack up
+scripts/dev-stack status
+eval "$(scripts/dev-stack env)"  # before Playwright
+scripts/dev-stack down
+```
+
+Never invoke the development Compose files directly or invent per-task Compose
+commands. Never use SQL fixture loaders for feature setup; use property-gated
+application scenario services. `scripts/dev-stack down --volumes --yes` is the
+only supported destructive reset. CI-parity and release tooling are separate
+interfaces and are not replacements for this development path.
+
+Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
+servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+`LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
+existing Let's Encrypt flow.
+
 ### Initial Setup
 
 ```bash
@@ -571,8 +600,8 @@ cd ..
 # Build OpenELIS WAR
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+# Start the complete isolated development stack
+scripts/dev-stack up
 ```
 
 **Access Points:**
@@ -713,8 +742,7 @@ mvn spotless:apply
 mvn spotless:check
 
 # Hot reload (after code changes)
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 ```
 
 **Frontend:**
@@ -745,16 +773,16 @@ npm run cy:run
 
 ```bash
 # Start development environment
-docker compose -f dev.docker-compose.yml up -d
+scripts/dev-stack up
 
 # Stop all containers
-docker compose -f dev.docker-compose.yml down
+scripts/dev-stack down
 
-# Rebuild specific container (after code changes)
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Explicitly reset this worktree's data
+scripts/dev-stack down --volumes --yes
 
 # View logs
-docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 ```
 
 ### Branch Strategy
@@ -1629,6 +1657,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides
@@ -1786,8 +1833,9 @@ npm run pw:test:ui
 
 **Prerequisites:**
 
-1. App running at `https://localhost` (or set `BASE_URL`)
+1. App running through `scripts/dev-stack up`
 2. Auth env vars: `TEST_USER` and `TEST_PASS`
+3. Run `eval "$(scripts/dev-stack env)"` from the repo root
 
 **Core-app tests (build stack):**
 
@@ -2290,8 +2338,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 mvn spotless:apply && cd frontend && npm run format && cd ..
 
 # Hot reload backend
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)

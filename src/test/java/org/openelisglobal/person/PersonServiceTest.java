@@ -22,6 +22,10 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.requester.service.SampleRequesterService;
+import org.openelisglobal.requester.valueholder.SampleRequester;
+import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class PersonServiceTest extends BaseWebContextSensitiveTest {
@@ -34,11 +38,18 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     PersonService personService;
+    @Autowired
+    SampleRequesterService sampleRequesterService;
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/person.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        // sample_requester isn't covered by either dataset above, so rows
+        // inserted by one requestor_contact test would otherwise leak
+        // into the next (this class extends BaseWebContextSensitiveTest with
+        // @Transactional(NOT_SUPPORTED) — no auto-rollback between tests).
+        cleanRowsInCurrentConnection(new String[] { "sample_requester" });
     }
 
     // @Test
@@ -270,6 +281,163 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
         assertEquals("No row with the given identifier exists: [org.openelisglobal.person.valueholder.Person#2]",
                 throwable.getMessage());
+    }
+
+    /**
+     * Regression: getPagesOfSearchedRequestorContacts previously joined Person.id
+     * (LIMSStringNumberUserType, exposed as Java String) against
+     * SampleRequester.requesterId (Java long) via an HQL cast(... as string), which
+     * Hibernate translated into a Postgres "operator does not exist: numeric =
+     * character varying" at runtime — never caught by the pure-Mockito unit tests
+     * since none of them touch a real DB. This test runs against the real test
+     * schema via BaseWebContextSensitiveTest so a regression here fails loudly
+     * instead of only in the running app.
+     */
+    @Test
+    public void getPagesOfSearchedRequestorContacts_findsPersonLinkedAsRequestorContact() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        SampleRequester requester = new SampleRequester();
+        requester.setRequesterId("1");
+        requester.setRequesterTypeId(requestorContactTypeId);
+        requester.setSampleId(1L);
+        requester.setSysUserId(TEST_SYS_USER_ID);
+        sampleRequesterService.insert(requester);
+
+        List<Person> results = personService.getPagesOfSearchedRequestorContacts(1, PERSON1_FIRSTNAME,
+                requestorContactTypeId);
+
+        assertEquals(1, results.size());
+        assertEquals(PERSON1_FIRSTNAME, results.get(0).getFirstName());
+        assertEquals(PERSON1_LASTNAME, results.get(0).getLastName());
+    }
+
+    @Test
+    public void getPagesOfSearchedRequestorContacts_excludesPersonsNotLinkedAsRequestorContact() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        List<Person> results = personService.getPagesOfSearchedRequestorContacts(1, PERSON1_FIRSTNAME,
+                requestorContactTypeId);
+
+        assertTrue("a Person never linked via a requestor_contact SampleRequester row must not appear in results",
+                results.isEmpty());
+    }
+
+    @Test
+    public void getTotalSearchedRequestorContactCount_countsOnlyLinkedPersons() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        assertEquals(0, personService.getTotalSearchedRequestorContactCount(PERSON1_FIRSTNAME, requestorContactTypeId));
+
+        SampleRequester requester = new SampleRequester();
+        requester.setRequesterId("1");
+        requester.setRequesterTypeId(requestorContactTypeId);
+        requester.setSampleId(1L);
+        requester.setSysUserId(TEST_SYS_USER_ID);
+        sampleRequesterService.insert(requester);
+
+        assertEquals(1, personService.getTotalSearchedRequestorContactCount(PERSON1_FIRSTNAME, requestorContactTypeId));
+    }
+
+    /**
+     * Requestor dedup mirrors Organization's confirmNewRequesterName — re-typing an
+     * existing Requestor's exact first+last name must resolve to the same Person
+     * rather than creating a duplicate.
+     */
+    @Test
+    public void getRequestorContactByName_findsExactMatchAmongLinkedPersons() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        SampleRequester requester = new SampleRequester();
+        requester.setRequesterId("1");
+        requester.setRequesterTypeId(requestorContactTypeId);
+        requester.setSampleId(1L);
+        requester.setSysUserId(TEST_SYS_USER_ID);
+        sampleRequesterService.insert(requester);
+
+        Person found = personService.getRequestorContactByName(PERSON1_FIRSTNAME, PERSON1_LASTNAME,
+                requestorContactTypeId);
+
+        assertNotNull(found);
+        assertEquals("1", found.getId());
+    }
+
+    @Test
+    public void getRequestorContactByName_returnsNullWhenNoMatch() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        Person found = personService.getRequestorContactByName(PERSON1_FIRSTNAME, PERSON1_LASTNAME,
+                requestorContactTypeId);
+
+        assertNull("a Person that has never been linked as a requestor_contact must not match", found);
+    }
+
+    @Test
+    public void getRequestorContactByName_returnsNullWhenLinkedButNameDiffers() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        SampleRequester requester = new SampleRequester();
+        requester.setRequesterId("1");
+        requester.setRequesterTypeId(requestorContactTypeId);
+        requester.setSampleId(1L);
+        requester.setSysUserId(TEST_SYS_USER_ID);
+        sampleRequesterService.insert(requester);
+
+        Person found = personService.getRequestorContactByName("Someone", "Else", requestorContactTypeId);
+
+        assertNull(found);
+    }
+
+    /**
+     * End-to-end through SamplePatientUpdateData.initRequestorContact — re-typing
+     * an existing Requestor's exact name (no requestorPersonId) must reuse that
+     * Person, not create a duplicate, mirroring how
+     * initSampleRequester/confirmNewRequesterName dedups Organization by name.
+     */
+    @Test
+    public void initRequestorContact_reusesExistingPersonWhenNameMatchesExistingRequestorContact() throws Exception {
+        long requestorContactTypeId = org.openelisglobal.common.services.TableIdService
+                .getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+
+        SampleRequester requester = new SampleRequester();
+        requester.setRequesterId("1");
+        requester.setRequesterTypeId(requestorContactTypeId);
+        requester.setSampleId(1L);
+        requester.setSysUserId(TEST_SYS_USER_ID);
+        sampleRequesterService.insert(requester);
+
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+        sampleOrder.setRequestorFirstName(PERSON1_FIRSTNAME);
+        sampleOrder.setRequestorLastName(PERSON1_LASTNAME);
+        sampleOrder.setRequestorPhone("999-0000");
+
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData(TEST_SYS_USER_ID);
+        updateData.initRequestorContact(sampleOrder);
+
+        assertNotNull(updateData.getRequestorPerson());
+        assertEquals("1", updateData.getRequestorPerson().getId());
+        assertEquals("999-0000", updateData.getRequestorPerson().getWorkPhone());
+    }
+
+    @Test
+    public void initRequestorContact_createsNewPersonWhenNoNameMatch() throws Exception {
+        SampleOrderItem sampleOrder = new SampleOrderItem();
+        sampleOrder.setRequestorFirstName("Brand");
+        sampleOrder.setRequestorLastName("NewContact");
+
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData(TEST_SYS_USER_ID);
+        updateData.initRequestorContact(sampleOrder);
+
+        assertNotNull(updateData.getRequestorPerson());
+        assertNull("a genuinely new Requestor must not have an id yet (not yet persisted)",
+                updateData.getRequestorPerson().getId());
+        assertEquals("Brand", updateData.getRequestorPerson().getFirstName());
     }
 
 }
