@@ -24,6 +24,11 @@ import {
 } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { hasCultureWorkflowTest } from "../../orderDataUtils";
+import {
+  formatHoldingMinutes,
+  holdingDeadline,
+  shortestHoldingMinutes,
+} from "../../dateUtils";
 
 const SampleTestSection = ({
   samples,
@@ -195,6 +200,36 @@ const SampleTestSection = ({
 
   const hasAnyPanels = (sampleIndex) =>
     (panelsPerSample[sampleIndex] || []).length > 0;
+
+  // AP: holding time is already on the per-test payload but was never shown
+  // at order time, so the limit only surfaced on Results — and there it is
+  // measured from collection rather than from lab receipt.
+  const renderHoldingLimit = (sample) => {
+    const minutes = shortestHoldingMinutes(sample.tests);
+    if (!minutes) {
+      return null;
+    }
+    const deadline = holdingDeadline(sample, sample.tests);
+    return (
+      <p className="sample-holding-limit">
+        <FormattedMessage
+          id="sample.holdingLimit"
+          defaultMessage="Holding time: {limit}"
+          values={{ limit: formatHoldingMinutes(minutes) }}
+        />
+        {deadline && (
+          <>
+            {" — "}
+            <FormattedMessage
+              id="sample.holdingLimit.testBy"
+              defaultMessage="test by {deadline}"
+              values={{ deadline: deadline.toLocaleString() }}
+            />
+          </>
+        )}
+      </p>
+    );
+  };
 
   const handleAddSample = () => {
     const newSample = {
@@ -585,6 +620,7 @@ const SampleTestSection = ({
                 />
               ))}
             </div>
+            {renderHoldingLimit(sample)}
             {hasAnyTests(sampleIndex) ? (
               <>
                 <Search
@@ -821,6 +857,12 @@ const SampleTestSection = ({
                 </th>
                 <th>
                   <FormattedMessage
+                    id="env.sample.receivedAtLab"
+                    defaultMessage="Received at Lab"
+                  />
+                </th>
+                <th>
+                  <FormattedMessage
                     id="env.sample.testsAndPanels"
                     defaultMessage="Tests & Panels"
                   />
@@ -999,6 +1041,42 @@ const SampleTestSection = ({
                           disabled={isReadOnly}
                         />
                       </td>
+                      {/* Receipt at the lab was stamped silently at save time,
+                          which recorded the order-entry moment rather than
+                          when the specimen actually arrived. Capturing it
+                          here makes it correctable and back-datable. */}
+                      <td className="env-manifest-cell">
+                        <input
+                          id={`receivedAtLab-${sampleIndex}`}
+                          type="datetime-local"
+                          className="env-manifest-datetime"
+                          aria-label={intl.formatMessage({
+                            id: "env.sample.receivedAtLab",
+                            defaultMessage: "Received at Lab",
+                          })}
+                          value={
+                            sample.receivedDate && sample.receivedTime
+                              ? `${sample.receivedDate}T${sample.receivedTime}`
+                              : sample.receivedDate || ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val && val.includes("T")) {
+                              const [date, time] = val.split("T");
+                              handleEnvFieldsChange(sampleIndex, {
+                                receivedDate: date,
+                                receivedTime: time,
+                              });
+                            } else {
+                              handleEnvFieldsChange(sampleIndex, {
+                                receivedDate: val,
+                                receivedTime: "",
+                              });
+                            }
+                          }}
+                          disabled={isReadOnly}
+                        />
+                      </td>
                       <td className="env-manifest-cell env-manifest-cell--toggle">
                         <Button
                           kind={
@@ -1036,25 +1114,23 @@ const SampleTestSection = ({
                           onClick={() => handleDuplicateSample(sampleIndex)}
                           disabled={isReadOnly}
                         />
-                        {samples.length > 1 && (
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            hasIconOnly
-                            iconDescription={intl.formatMessage({
-                              id: "sample.remove.action",
-                              defaultMessage: "Remove Sample",
-                            })}
-                            renderIcon={TrashCan}
-                            onClick={() => handleRemoveSample(sampleIndex)}
-                            disabled={isReadOnly}
-                          />
-                        )}
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          iconDescription={intl.formatMessage({
+                            id: "sample.remove.action",
+                            defaultMessage: "Remove Sample",
+                          })}
+                          renderIcon={TrashCan}
+                          onClick={() => handleRemoveSample(sampleIndex)}
+                          disabled={isReadOnly}
+                        />
                       </td>
                     </tr>
                     {isExpanded && sample.sampleTypeId && (
                       <tr className="env-manifest-row--expanded">
-                        <td colSpan={10}>
+                        <td colSpan={11}>
                           {renderTestPanelPicker(sampleIndex)}
                         </td>
                       </tr>
@@ -1295,12 +1371,17 @@ const SampleTestSection = ({
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
-      <p className="helper-text">
-        <FormattedMessage
-          id="sample.optional.info"
-          defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
-        />
-      </p>
+      {/* Only the clinical lane has a Collect step to defer this to; telling an
+          environmental or vector user they can specify it "later during
+          collection" points at a step their workflow does not have. */}
+      {workflowType === "clinical" && (
+        <p className="helper-text">
+          <FormattedMessage
+            id="sample.optional.info"
+            defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
+          />
+        </p>
+      )}
 
       {/* Sample Cards — only render regular (non-QC), non-rejected samples at top
           level. Rejected/resampled specimens are read-only in the QA intake-
@@ -1328,24 +1409,22 @@ const SampleTestSection = ({
                   </>
                 )}
               </h5>
-              {samples.length > 1 && (
-                <Link
-                  onClick={() => handleRemoveSample(sampleIndex)}
-                  disabled={isReadOnly}
-                >
-                  {workflowType === "vector" ? (
-                    <FormattedMessage
-                      id="vector.animalOrganism.remove"
-                      defaultMessage="Remove Animal/Organism"
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="sample.remove.action"
-                      defaultMessage="Remove Sample"
-                    />
-                  )}
-                </Link>
-              )}
+              <Link
+                onClick={() => handleRemoveSample(sampleIndex)}
+                disabled={isReadOnly}
+              >
+                {workflowType === "vector" ? (
+                  <FormattedMessage
+                    id="vector.animalOrganism.remove"
+                    defaultMessage="Remove Animal/Organism"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="sample.remove.action"
+                    defaultMessage="Remove Sample"
+                  />
+                )}
+              </Link>
             </div>
 
             <Grid>
@@ -1638,6 +1717,7 @@ const SampleTestSection = ({
                         />
                       ))}
                     </div>
+                    {renderHoldingLimit(sample)}
                     {hasAnyTests(sampleIndex) ? (
                       <>
                         <Search

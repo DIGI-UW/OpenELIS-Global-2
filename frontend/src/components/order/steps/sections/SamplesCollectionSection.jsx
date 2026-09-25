@@ -72,7 +72,6 @@ const SamplesCollectionSection = ({
 
   // Handle sample removal
   const handleSampleRemove = (sampleIndex) => {
-    if (samples.length <= 1) return; // Keep at least one sample
     const updated = samples.filter((_, i) => i !== sampleIndex);
     // Re-index remaining samples
     const reindexed = updated.map((s, i) => ({ ...s, index: i }));
@@ -127,7 +126,7 @@ const SamplesCollectionSection = ({
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
                 isReadOnly={isReadOnly}
-                canRemove={samples.length > 1}
+                canRemove={!isReadOnly}
                 admissionDate={admissionDate}
               />
 

@@ -587,38 +587,6 @@
   gap: 1.5rem;
 }
 
-.qa-checklist-tile {
-  padding: 1.5rem;
-
-  h4 {
-    margin-bottom: 0.5rem;
-  }
-
-  .qa-checklist-instructions {
-    color: #6f6f6f; /* cds-gray-60 for WCAG AA compliance */
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
-
-  .qa-checklist-items {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
-
-    .cds--checkbox-wrapper {
-      padding: 0.5rem;
-      border-radius: 4px;
-      min-height: 32px; /* WCAG touch target */
-      transition: background-color 0.15s ease;
-
-      &:hover {
-        background-color: var(--cds-layer-hover);
-      }
-    }
-  }
-}
-
 .qa-success-tile {
   padding: 3rem;
   text-align: center;
@@ -1768,4 +1736,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+.label-print-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  .label-print-blocked-link {
+    padding-left: 1rem;
+  }
+}
+
+.sample-holding-limit {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  margin: 0.25rem 0 0.5rem;
 }

@@ -98,3 +98,49 @@ describe("the state after the entry step saves", () => {
     expect(screen.queryByText("Order LAB-42 saved")).not.toBeInTheDocument();
   });
 });
+
+describe("the save status indicator", () => {
+  beforeEach(() => {
+    orderContextValue.saveStatus = "saved";
+    orderContextValue.isDirty = false;
+    orderContextValue.labNumber = "LAB-42";
+    orderContextValue.orderId = "42";
+  });
+
+  // OGC-1201 AE: saveStatus starts at SAVED, so a brand-new entry form
+  // announced an order that had never been saved. OGC-1051 is the same
+  // indicator claiming the opposite; neither is true before an order exists.
+  it("says nothing on an untouched new order", () => {
+    orderContextValue.labNumber = null;
+    orderContextValue.orderId = null;
+    renderLayout();
+
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+  });
+
+  it("reports unsaved changes once the user edits a new order", () => {
+    orderContextValue.labNumber = null;
+    orderContextValue.orderId = null;
+    orderContextValue.isDirty = true;
+    renderLayout();
+
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+  });
+
+  it("reports a saved order that exists", () => {
+    renderLayout();
+
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+  });
+
+  it("reports a failed save on an order that does not exist yet", () => {
+    orderContextValue.labNumber = null;
+    orderContextValue.orderId = null;
+    orderContextValue.isDirty = true;
+    orderContextValue.saveStatus = "error";
+    renderLayout();
+
+    expect(screen.getByText("Save failed")).toBeInTheDocument();
+  });
+});

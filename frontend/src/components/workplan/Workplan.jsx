@@ -13,7 +13,13 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import React, { useState, useContext, useEffect } from "react";
+import React, {
+  useCallback,
+  useState,
+  useContext,
+  useEffect,
+  useRef,
+} from "react";
 import "../Style.css";
 import "./wpStyle.css";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -27,6 +33,12 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { ConfigurationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EQABadge from "../eqa/EQABadge";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 
 export default function Workplan(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -41,8 +53,21 @@ export default function Workplan(props) {
   const [configurationName, setConfigurationName] = useState("");
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedLabel, setSelectedLabel] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
+  const pageLoader = useRef(null);
+  const registerPageLoader = useCallback((run) => {
+    pageLoader.current = run;
+  }, []);
+  const loadPage = useCallback(
+    (pageNumber) => pageLoader.current?.(pageNumber),
+    [],
+  );
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   const type = props.type;
   let title = "";
@@ -99,21 +124,20 @@ export default function Workplan(props) {
 
   const handleTestsList = (tests) => {
     setTestsList(tests.workplanTests);
+    setPaging(tests.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(
+        tests.paging,
+        tests.workplanTests?.length ?? 0,
+        previous,
+      ),
+    );
   };
   const handleSelectedValue = (val) => {
     setSelectedValue(val);
   };
   const handleSelectedLabel = (val) => {
     setSelectedLabel(val);
-  };
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
   };
 
   const printWorkplan = () => {
@@ -201,6 +225,7 @@ export default function Workplan(props) {
               createTestsList={handleTestsList}
               selectedValue={handleSelectedValue}
               selectedLabel={handleSelectedLabel}
+              registerPageLoader={registerPageLoader}
             />
           </Column>
         </Grid>
@@ -237,6 +262,7 @@ export default function Workplan(props) {
             <Grid fullWidth={true}>
               <Column sm={4} md={8} lg={16}>
                 <>
+                  {arrows.show && <ServerPageArrows {...arrows} />}
                   <Table size={"sm"} data-cy="workplanResultsTable">
                     <TableHead>
                       <TableRow>
@@ -276,143 +302,104 @@ export default function Workplan(props) {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {testsList
-                        .slice((page - 1) * pageSize, page * pageSize)
-                        .map((row, index) => {
-                          if (
-                            !(row.accessionNumber === currentAccessionNumber)
-                          ) {
-                            showAccessionNumber = true;
-                            currentAccessionNumber = row.accessionNumber;
-                            rowColorIndex++;
-                          } else {
-                            showAccessionNumber = false;
-                          }
-                          return (
-                            <TableRow
-                              key={index}
-                              id={"row_" + index}
-                              className={
-                                rowColorIndex % 2 === 0 ? "evenRow" : "oddRow"
-                              }
-                            >
-                              {!row.servingAsTestGroupIdentifier && (
-                                <TableCell>
-                                  <input
-                                    type="checkbox"
-                                    value={row.notIncludedInWorkplan}
-                                    id={"includedCheck_" + index}
-                                    className="includedCheck"
-                                    onClick={(e) =>
-                                      disableEnableTest(e.target, index)
-                                    }
-                                  />
-                                </TableCell>
-                              )}
-                              {type === "test" && (
-                                <TableCell>
-                                  {row.nonconforming && (
-                                    <img
-                                      src={`images/nonconforming.gif`}
-                                      alt="nonconforming"
-                                    />
-                                  )}
-                                </TableCell>
-                              )}
+                      {testsList.map((row, index) => {
+                        if (!(row.accessionNumber === currentAccessionNumber)) {
+                          showAccessionNumber = true;
+                          currentAccessionNumber = row.accessionNumber;
+                          rowColorIndex++;
+                        } else {
+                          showAccessionNumber = false;
+                        }
+                        return (
+                          <TableRow
+                            key={index}
+                            id={"row_" + index}
+                            className={
+                              rowColorIndex % 2 === 0 ? "evenRow" : "oddRow"
+                            }
+                          >
+                            {!row.servingAsTestGroupIdentifier && (
                               <TableCell>
-                                {showAccessionNumber && (
-                                  <>
-                                    <Link
-                                      style={{ color: "blue" }}
-                                      href={
-                                        `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
-                                        row.accessionNumber
-                                      }
-                                    >
-                                      <u>
-                                        {convertAlphaNumLabNumForDisplay(
-                                          row.accessionNumber,
-                                        )}
-                                      </u>
-                                    </Link>
-                                    {row.eqaSample && (
-                                      <EQABadge priority={row.eqaPriority} />
-                                    )}
-                                  </>
+                                <input
+                                  type="checkbox"
+                                  value={row.notIncludedInWorkplan}
+                                  id={"includedCheck_" + index}
+                                  className="includedCheck"
+                                  onClick={(e) =>
+                                    disableEnableTest(e.target, index)
+                                  }
+                                />
+                              </TableCell>
+                            )}
+                            {type === "test" && (
+                              <TableCell>
+                                {row.nonconforming && (
+                                  <img
+                                    src={`images/nonconforming.gif`}
+                                    alt="nonconforming"
+                                  />
                                 )}
                               </TableCell>
-                              {subjectOnWorkplan?.toLowerCase() === "true" && (
-                                <TableCell>
-                                  {showAccessionNumber && row.patientInfo}
-                                </TableCell>
-                              )}
-                              {nextVisitOnWorkplan?.toLowerCase() ===
-                                "true" && (
-                                <TableCell>
-                                  {showAccessionNumber && row.nextVisitDate}
-                                </TableCell>
-                              )}
-                              {type !== "test" && (
-                                <TableCell>
-                                  {row.nonconforming && (
-                                    <img
-                                      src={`images/nonconforming.gif`}
-                                      alt="nonconforming"
-                                    />
+                            )}
+                            <TableCell>
+                              {showAccessionNumber && (
+                                <>
+                                  <Link
+                                    style={{ color: "blue" }}
+                                    href={
+                                      `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
+                                      row.accessionNumber
+                                    }
+                                  >
+                                    <u>
+                                      {convertAlphaNumLabNumForDisplay(
+                                        row.accessionNumber,
+                                      )}
+                                    </u>
+                                  </Link>
+                                  {row.eqaSample && (
+                                    <EQABadge priority={row.eqaPriority} />
                                   )}
-                                </TableCell>
+                                </>
                               )}
-                              {type !== "test" && (
-                                <TableCell>{row.testName}</TableCell>
-                              )}
-                              <TableCell>{row.receivedDate}</TableCell>
-                            </TableRow>
-                          );
-                        })}
+                            </TableCell>
+                            {subjectOnWorkplan?.toLowerCase() === "true" && (
+                              <TableCell>
+                                {showAccessionNumber && row.patientInfo}
+                              </TableCell>
+                            )}
+                            {nextVisitOnWorkplan?.toLowerCase() === "true" && (
+                              <TableCell>
+                                {showAccessionNumber && row.nextVisitDate}
+                              </TableCell>
+                            )}
+                            {type !== "test" && (
+                              <TableCell>
+                                {row.nonconforming && (
+                                  <img
+                                    src={`images/nonconforming.gif`}
+                                    alt="nonconforming"
+                                  />
+                                )}
+                              </TableCell>
+                            )}
+                            {type !== "test" && (
+                              <TableCell>{row.testName}</TableCell>
+                            )}
+                            <TableCell>{row.receivedDate}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20, 30, 50, 100]}
-                    totalItems={testsList.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
+                    {...serverPaginationProps({
+                      paging,
+                      rowsOnPage: testsList.length,
+                      pageSize: serverPageSize,
+                      onPageRequest: loadPage,
+                      intl,
                     })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
                   />
                 </>
               </Column>

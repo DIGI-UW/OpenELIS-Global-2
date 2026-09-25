@@ -51,6 +51,12 @@ public class HibernateMappingValidationTest {
 
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeSource.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeType.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeConfig.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeMapping.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeSerial.class);
+
         configuration.addAnnotatedClass(AnalyzerEvent.class);
         configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
@@ -60,6 +66,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingResult.class);
         configuration.addAnnotatedClass(AnalyzerResults.class);
+        configuration.addAnnotatedClass(org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt.class);
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");

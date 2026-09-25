@@ -24,7 +24,12 @@ import {
   buildSubmissionSampleOrderItems,
   buildSubmittedMicrobiologyOrderDetail,
 } from "./orderDataUtils";
-import { formatIsoDateForBackend, normalizeDateForState } from "./dateUtils";
+import {
+  currentLocalTime,
+  formatIsoDateForBackend,
+  normalizeDateForState,
+  todayLocalIso,
+} from "./dateUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -122,6 +127,9 @@ export const sampleObject = {
   quantity: "",
   quantityUnit: "",
   collectionConditions: "",
+  collectionMethod: "",
+  sampleTemperature: "",
+  specimenOrigin: "",
   collectionDate: "",
   collectionTime: "",
   collectorId: "",
@@ -166,6 +174,9 @@ const flattenSampleManifestFields = (
         dateLocale,
       ),
       collectionTime: s.collectionTime || xml.collectionTime || "",
+      collectionMethod: s.collectionMethod || xml.collectionMethod || "",
+      sampleTemperature: s.sampleTemperature || xml.sampleTemperature || "",
+      specimenOrigin: s.specimenOrigin || xml.specimenOrigin || "",
       container: s.container || xml.container || "",
       locationDetails: s.locationDetails || xml.locationDetails || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
@@ -441,6 +452,14 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             sampleItem.collectionConditions ||
             sampleXMLData.collectionConditions ||
             "";
+          const collectionMethod =
+            sampleItem.collectionMethod || sampleXMLData.collectionMethod || "";
+          const sampleTemperature =
+            sampleItem.sampleTemperature ||
+            sampleXMLData.sampleTemperature ||
+            "";
+          const specimenOrigin =
+            sampleItem.specimenOrigin || sampleXMLData.specimenOrigin || "";
           const quantity = sampleItem.quantity || sampleXMLData.quantity || "";
           const uom = sampleItem.quantityUnit || sampleXMLData.uom || "";
           const rejected = sampleItem.sampleRejected ? "true" : "false";
@@ -507,7 +526,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
         }
       });
 
@@ -639,6 +658,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       // Pass environmentalFields for GPS fallback in environmental workflow
       const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
       const effectiveSamples = samplesOverride || samples;
+      // Only the decoupled entry step may legitimately persist no specimens;
+      // every other save that carries a sample type must produce sample_items.
+      const expectsSampleItems =
+        !orderEntryOnly && effectiveSamples.some((s) => s.sampleTypeId);
       const sampleXML = buildSampleXML(effectiveSamples, envFields);
       const referralItems = buildReferralItems(effectiveSamples);
       const useReferral = referralItems.length > 0;
@@ -766,12 +789,26 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                         },
                       }));
                     }
+                    // A 200 is not proof the specimens were written. When this
+                    // save was meant to create sample_items, the reload has to
+                    // show them; otherwise the screen would report success over
+                    // an order that persisted nothing.
+                    const reloadedSamples = response?.samples || [];
+                    if (expectsSampleItems && reloadedSamples.length === 0) {
+                      // A message bundle key — SaveFailureNotice resolves it,
+                      // the same way it resolves the server's own keys.
+                      setSaveStatus(SaveStatus.ERROR);
+                      setError("order.save.notPersisted");
+                      setIsDirty(true);
+                      reject(new Error("order.save.notPersisted"));
+                      return;
+                    }
                     // Return the freshly-loaded samples (with sampleItemIds) so
                     // callers can immediately use them for downstream actions
                     // like storage assignment, without waiting for the next render.
                     resolve({
                       success: true,
-                      samples: response?.samples || [],
+                      samples: reloadedSamples,
                     });
                   },
                 );
@@ -833,8 +870,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     let entrySampleXML = "";
     if (workflowType === "vector" && samples.some((s) => s.sampleTypeId)) {
       const now = new Date();
-      const todayIso = now.toISOString().slice(0, 10); // YYYY-MM-DD
-      const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+      const todayIso = todayLocalIso(now);
+      const currentTime = currentLocalTime(now);
       const providerFirst =
         orderData?.sampleOrderItems?.providerFirstName || "";
       const providerLast = orderData?.sampleOrderItems?.providerLastName || "";
@@ -919,6 +956,18 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                 async (response) => {
                   if (response) {
                     const sampleId = response.id;
+                    // The entry step legitimately persists only
+                    // sample_type_requests, but the order itself must exist.
+                    // Without this the screen reported a saved order that the
+                    // server never created.
+                    if (!sampleId) {
+                      setSaveStatus(SaveStatus.ERROR);
+                      setError("order.save.notPersisted");
+                      setIsDirty(true);
+                      setIsSubmitting(false);
+                      reject(new Error("order.save.notPersisted"));
+                      return;
+                    }
                     setOrderId(sampleId);
 
                     // Pull the persisted sample_items back into context so

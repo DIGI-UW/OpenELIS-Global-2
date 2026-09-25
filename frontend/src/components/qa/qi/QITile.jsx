@@ -1,9 +1,10 @@
 /**
  * QITile Component
  *
- * Shared tile shell for the QI Dashboard (OGC-695). Renders either a live
- * KPI (value + delta + secondary context + detail link) or a gray
- * "coming soon" placeholder annotated with the ticket that lights it up.
+ * The one KPI tile the QA module renders — on the QI Dashboard (OGC-695) and
+ * on the QA Overview's Today row, which shows the same five indicators. Value,
+ * delta, target and threshold captions, secondary context and the detail link
+ * are each optional, so a surface shows only what it has.
  */
 
 import React from "react";
@@ -31,28 +32,9 @@ const QITile = ({
   secondary,
   message,
   detailPath,
-  comingSoonTicket,
 }) => {
   const intl = useIntl();
   const history = useHistory();
-
-  if (comingSoonTicket) {
-    return (
-      <Tile className="qi-tile qi-tile--gray" data-testid={testId}>
-        <div className="qi-tile__title-row">
-          <span className="qi-tile__title">
-            <FormattedMessage id={titleKey} />
-          </span>
-        </div>
-        <p className="qi-tile__message">
-          <FormattedMessage
-            id="qa.qi.dashboard.comingSoon"
-            values={{ ticket: comingSoonTicket }}
-          />
-        </p>
-      </Tile>
-    );
-  }
 
   return (
     <Tile
@@ -103,7 +85,14 @@ const QITile = ({
         </>
       )}
       {detailPath && (
-        <Link className="qi-tile__detail-link" to={detailPath}>
+        // The tile itself navigates; the link is here so the route is
+        // reachable from the keyboard. Stop the click from reaching the tile,
+        // or following the link would navigate twice.
+        <Link
+          className="qi-tile__detail-link"
+          to={detailPath}
+          onClick={(e) => e.stopPropagation()}
+        >
           <FormattedMessage id="qa.qi.dashboard.viewDetail" /> ↗
         </Link>
       )}

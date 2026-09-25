@@ -139,10 +139,8 @@
         <property name="antimicrobialResistance"
             type="java.lang.Boolean" column="antimicrobial_resistance" />
 
-        <!-- C.1 / OGC-704: total allowable error (percent) for sigma metrics -->
-        <property name="tea" type="java.lang.Double">
-            <column name="TEA" precision="10" scale="4" />
-        </property>
+        <!-- OGC-704: total allowable error (percent) for sigma metrics -->
+        <property name="tea" type="java.lang.Double" column="TEA" />
     </class>
     <!-- <query name="test.getNext"> -->
     <!-- from Test t order by t.testSection.testSectionName, t.testName -->

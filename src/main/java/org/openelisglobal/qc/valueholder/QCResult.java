@@ -36,11 +36,10 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    // Nullable since OGC-1147: an RDT cassette is identified by controlLabel rather
-    // than
-    // by a levelled control-material record. Manual quantitative runs should still
-    // carry
-    // a lot — that is where the fixed mean/SD used for the z-score lives (D3).
+    // Nullable since OGC-1147: an RDT cassette is identified by controlLabel
+    // rather than by a levelled control-material record. Manual quantitative runs
+    // should still carry a lot, which is where the fixed mean/SD used for the
+    // z-score lives.
     @Column(name = "control_lot_id", length = 36)
     private String controlLotId;
 
@@ -65,14 +64,13 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "source", nullable = false, length = 10)
     private QCSource source = QCSource.ASTM;
 
-    // D2: qualitative outcomes get their own column — never a magic number in
+    // Qualitative outcomes get their own column, never a magic number in
     // resultValue.
     @Enumerated(EnumType.STRING)
     @Column(name = "qualitative_outcome", length = 10)
     private QCQualitativeOutcome qualitativeOutcome;
 
-    // Snapshot of the target in force when this control was captured, so a
-    // later
+    // Snapshot of the target in force when this control was captured, so a later
     // edit to a configured target (OGC-1148) can never rewrite QC history.
     @Column(name = "expected_value", precision = 15, scale = 5)
     private BigDecimal expectedValue;
@@ -80,9 +78,8 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "uncertainty", precision = 15, scale = 5)
     private BigDecimal uncertainty;
 
-    // Lab unit (test_section). The QC-fail signal is scoped by test AND lab
-    // unit, and a
-    // bench run has no analyzer to scope by instead.
+    // Lab unit (test_section). The QC-fail signal is scoped by test AND lab unit,
+    // and a bench run has no analyzer to scope by instead.
     @Column(name = "test_section_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testSectionId;

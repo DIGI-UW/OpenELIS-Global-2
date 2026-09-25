@@ -1,3 +1,4 @@
+import { normalizeScientificNotation } from "../../../resultPage/scientificNotation";
 import {
   PatientData,
   ObsRecord,
@@ -181,10 +182,12 @@ export function exist(...args: any[]): boolean {
 export const assessValue =
   (meta: ObsMetaInfo) =>
   (value: string): OBSERVATION_INTERPRETATION => {
-    if (isNaN(parseFloat(value))) {
+    // the observation carries the value as the technologist wrote it, so read
+    // the number it denotes rather than the leading digits of "5×10¹"
+    const numericValue = parseFloat(normalizeScientificNotation(value));
+    if (isNaN(numericValue)) {
       return "NORMAL";
     }
-    const numericValue = parseFloat(value);
     if (exist(meta.hiAbsolute) && numericValue > meta.hiAbsolute) {
       return "OFF_SCALE_HIGH";
     }

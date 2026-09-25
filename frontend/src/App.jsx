@@ -13,18 +13,7 @@ import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
-import StorageDashboard from "./components/storage/StorageDashboard";
-import SampleItemsPage from "./components/storage/pages/SampleItemsPage";
-import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
-import RoomsPage from "./components/storage/pages/RoomsPage";
-import DevicesPage from "./components/storage/pages/DevicesPage";
-import ShelvesPage from "./components/storage/pages/ShelvesPage";
-import RacksPage from "./components/storage/pages/RacksPage";
-import BoxesPage from "./components/storage/pages/BoxesPage";
-import EditLocationPage from "./components/storage/pages/EditLocationPage";
-import EditBoxPage from "./components/storage/pages/EditBoxPage";
-import AddLocationPage from "./components/storage/pages/AddLocationPage";
-import AddBoxPage from "./components/storage/pages/AddBoxPage";
+import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
@@ -59,46 +48,7 @@ import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import ReferenceLabResults from "./components/referenceLabResults";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
-
-/**
- * Wraps `React.lazy` with retry-on-failure semantics for the dynamic
- * `import()` factory. Handles transient chunk-fetch failures — e.g.
- * Chrome's `ERR_NETWORK_CHANGED` when the browser's network state
- * flickers during a chunk request, or any single failed resource fetch
- * that leaves the lazy component permanently broken until page reload.
- *
- * Without retry, a single chunk-fetch blip crashes the route and
- * surfaces as an E2E failure: the RouteErrorBoundary catches the
- * `TypeError: Failed to fetch dynamically imported module` and shows
- * its "module could not be loaded" fallback. Seen as a recurring
- * develop-CI flake on route chunk fetch; the retry wrapper
- * gives the browser three chances with backoff before giving up.
- *
- * Backoff is intentionally short (0.5s/1s/1.5s): the real failures
- * are transient TCP / Docker-network conditions that resolve in
- * milliseconds. Longer waits would harm real error reporting when the
- * chunk is genuinely missing (e.g., deploy mismatch).
- */
-function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
-  // This helper is the one legitimate wrapper around React.lazy.
-  // eslint-disable-next-line local/no-raw-react-lazy
-  return React.lazy(async () => {
-    let lastError;
-    for (let attempt = 0; attempt < retries; attempt += 1) {
-      try {
-        return await factory();
-      } catch (err) {
-        lastError = err;
-        if (attempt < retries - 1) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, backoffMs * (attempt + 1)),
-          );
-        }
-      }
-    }
-    throw lastError;
-  });
-}
+import lazyWithRetry from "./components/common/lazyWithRetry";
 
 const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
 const AnalyzerTypesPage = lazyWithRetry(
@@ -149,12 +99,16 @@ import PatientHistory from "./components/patient/PatientHistory";
 import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
+import BatchWorkplan from "./components/workplan/BatchWorkplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
+import { clearReportingDraft } from "./components/reports/CustomDataExport/CustomDataExport";
+import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute";
+import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
 import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = lazyWithRetry(
@@ -226,11 +180,6 @@ import {
   VectorDeconvolutionWorklist,
 } from "./components/vectorIdentification";
 
-export const ANALYZER_RESULTS_ROLES = [
-  Roles.GLOBAL_ADMIN,
-  Roles.ANALYSER_IMPORT,
-];
-
 // QA-context breadcrumb for the TAT report mounted at /qa/qi/tat (OGC-696).
 // Labels are i18n keys resolved by PageBreadCrumb.
 const qaTatBreadcrumbs = [
@@ -238,6 +187,52 @@ const qaTatBreadcrumbs = [
   { label: "sideNav.label.qa", link: "/qa/overview" },
   { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
   { label: "reports.tat.title", link: "" },
+];
+
+export const ANALYZER_RESULTS_ROLES = [
+  Roles.GLOBAL_ADMIN,
+  Roles.ANALYSER_IMPORT,
+];
+
+// Paths the QA information-architecture rehome moved (OGC-689/691/695). Kept so
+// bookmarks and anything still linking the old path land on the new page; every
+// in-app link points at the new path.
+const REHOMED_PATHS = [
+  ["/EQAOrders", "/qa/eqa/my-cycles"],
+  ["/EQAMyPrograms", "/qa/eqa/my-programs"],
+  ["/EQAManagement", "/qa/eqa/management"],
+  ["/EQAResults", "/qa/eqa/my-cycles"],
+  ["/EQAParticipants", "/qa/eqa/participants"],
+  ["/EQADistribution/create", "/qa/eqa/provider/schemes"],
+  ["/EQADistribution", "/qa/eqa/provider/schemes"],
+  // EQA V2 absorbed the V1 order list, results and distribution pages.
+  ["/qa/eqa/orders", "/qa/eqa/my-cycles"],
+  ["/qa/eqa/results", "/qa/eqa/my-cycles"],
+  ["/qa/eqa/distribution/create", "/qa/eqa/provider/schemes"],
+  ["/qa/eqa/distribution", "/qa/eqa/provider/schemes"],
+  // Menu rows seeded by qa/019 at the FRS paths.
+  ["/eqa/participant/cycles", "/qa/eqa/my-cycles"],
+  ["/eqa/management/provider/schemes", "/qa/eqa/provider/schemes"],
+  ["/qa/eqa/provider/workbench", "/qa/eqa/provider/schemes"],
+  ["/eqa/oversight/follow-up-queue", "/qa/eqa/follow-up-queue"],
+  [
+    "/eqa/oversight/lab-performance/coverage",
+    "/qa/eqa/lab-performance/coverage",
+  ],
+  ["/eqa/oversight/analyst-track", "/qa/eqa/analyst-competency"],
+  ["/qa/qi", "/qa/qi/dashboard"],
+  ["/analyzers/qc/db", "/qa/qc/dashboard"],
+  ["/analyzers/qc/control-lots", "/qa/qc/control-lots"],
+  ["/analyzers/qc/rule-config", "/qa/qc/rule-config"],
+];
+
+// The quality-indicator reports: same route shape, same roles, each gated on its
+// own indicator being enabled.
+const QI_INDICATOR_ROUTES = [
+  ["tat", "TAT", () => <TATReport breadcrumbs={qaTatBreadcrumbs} />],
+  ["rejection", "REJECTION", () => <RejectionReport />],
+  ["amendment", "AMENDMENT", () => <AmendmentReport />],
+  ["callback", "CALLBACK", () => <CallbackReport />],
 ];
 
 export default function App() {
@@ -322,6 +317,7 @@ export default function App() {
   };
 
   const logout = () => {
+    clearReportingDraft();
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
         //includes the browser sessionId in the Header for Authentication on the backend server
@@ -438,6 +434,11 @@ export default function App() {
   const routeErrorSamplePatientEntry = {
     titleKey: "errorBoundary.route.samplePatientEntry.title",
     messageKey: "errorBoundary.route.samplePatientEntry.message",
+  };
+
+  const routeErrorOrderEntry = {
+    titleKey: "errorBoundary.route.orderEntry.title",
+    messageKey: "errorBoundary.route.orderEntry.message",
   };
 
   const routeErrorAnalyzers = {
@@ -713,7 +714,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <ClinicalOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <ClinicalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -753,7 +758,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <EnvironmentalOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <EnvironmentalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -787,7 +796,11 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          render={() => <VectorOrderEnter />}
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <VectorOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -912,44 +925,9 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
-                {/* QA v0.5 IA rehome (OGC-691): EQA pages moved to /qa/eqa/* */}
-                <Redirect exact from="/EQAOrders" to="/qa/eqa/my-cycles" />
-                <Redirect
-                  exact
-                  from="/EQAMyPrograms"
-                  to="/qa/eqa/my-programs"
-                />
-                <Redirect exact from="/EQAManagement" to="/qa/eqa/management" />
-                <Redirect
-                  exact
-                  from="/EQAParticipants"
-                  to="/qa/eqa/participants"
-                />
-                <Redirect
-                  from="/EQADistribution"
-                  to="/qa/eqa/provider/schemes"
-                />
-                {/* EQA V2 absorbed the V1 order list and distribution pages (OGC-608):
-                    orders live on My Cycles, distributions are provider cycles. The
-                    old URLs redirect for one release so bookmarks keep working. */}
-                <Redirect exact from="/qa/eqa/orders" to="/qa/eqa/my-cycles" />
-                {/* The V1 Results & Analysis page listed the same /rest/eqa/orders
-                    My Cycles reads, under a name it did not earn: its statistics
-                    half had already been disconnected. Scoring lives on the
-                    provider workbench and analysis in the participant report. */}
-                <Redirect exact from="/qa/eqa/results" to="/qa/eqa/my-cycles" />
-                <Redirect exact from="/EQAResults" to="/qa/eqa/my-cycles" />
-                <Redirect
-                  from="/qa/eqa/distribution"
-                  to="/qa/eqa/provider/schemes"
-                />
-                {/* qa/019 menu row (T-12) ships the FRS path; page lives in the
-                    /qa/eqa/* family with its V1 siblings (T-24 card note). */}
-                <Redirect
-                  exact
-                  from="/eqa/participant/cycles"
-                  to="/qa/eqa/my-cycles"
-                />
+                {REHOMED_PATHS.map(([from, to]) => (
+                  <Redirect key={from} exact from={from} to={to} />
+                ))}
                 <SecureRoute
                   path="/qa/eqa/my-cycles"
                   exact
@@ -998,19 +976,6 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Both of these 404'd after the provider lane moved: the FRS path is
-                    what qa/019 seeded into the menu, and /provider/workbench is the URL
-                    the cycle picker shipped at before the scheme list replaced it. */}
-                <Redirect
-                  exact
-                  from="/eqa/management/provider/schemes"
-                  to="/qa/eqa/provider/schemes"
-                />
-                <Redirect
-                  exact
-                  from="/qa/eqa/provider/workbench"
-                  to="/qa/eqa/provider/schemes"
-                />
                 <SecureRoute
                   path="/qa/eqa/provider/schemes"
                   exact
@@ -1024,15 +989,6 @@ export default function App() {
                   render={() => <ProviderWorkbenchPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
-                />
-                {/* Oversight lane (T-18): the follow-up queue. qa/019 seeded
-                    its menu row at the FRS path, so that path redirects here
-                    the way My Cycles does. Triage writes carry their own
-                    qa.manage.eqa guard server-side. */}
-                <Redirect
-                  exact
-                  from="/eqa/oversight/follow-up-queue"
-                  to="/qa/eqa/follow-up-queue"
                 />
                 <SecureRoute
                   path="/qa/eqa/follow-up-queue"
@@ -1050,14 +1006,6 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Lab Performance (T-20): two views of one rollup, as sibling
-                    routes rather than in-page tabs — the FRS makes these
-                    submenu children. */}
-                <Redirect
-                  exact
-                  from="/eqa/oversight/lab-performance/coverage"
-                  to="/qa/eqa/lab-performance/coverage"
-                />
                 <SecureRoute
                   path="/qa/eqa/lab-performance/recent"
                   exact
@@ -1071,15 +1019,6 @@ export default function App() {
                   render={() => <LabPerformancePage view="coverage" />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
-                />
-                {/* Analyst Competency (T-19): the last oversight menu row.
-                    qa/019 seeded it at the FRS path, which redirects here the
-                    way its two siblings do. Read-only — competency events are
-                    service-written, never posted from this page. */}
-                <Redirect
-                  exact
-                  from="/eqa/oversight/analyst-track"
-                  to="/qa/eqa/analyst-competency"
                 />
                 <SecureRoute
                   path="/qa/eqa/analyst-competency"
@@ -1111,81 +1050,53 @@ export default function App() {
                 <SecureRoute
                   path="/qa/overview"
                   exact
-                  component={() => <QAOverview />}
+                  render={() => <QAOverview />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/qa/qc/reagent-qc"
                   exact
-                  component={() => <QAPlaceholder feature="reagent-qc" />}
+                  render={() => <QAPlaceholder feature="reagent-qc" />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/qa/qc/manual-qc"
                   exact
-                  component={() => <QAPlaceholder feature="manual-qc" />}
+                  render={() => <QAPlaceholder feature="manual-qc" />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
                     placeholder; the pillar menu entry is now expand-only. */}
-                <Redirect exact from="/qa/qi" to="/qa/qi/dashboard" />
                 <SecureRoute
                   path="/qa/qi/dashboard"
                   exact
-                  component={() => <QIDashboard />}
+                  render={() => <QIDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/qa/qi/config"
                   exact
-                  component={() => <QIConfigList />}
+                  render={() => <QIConfigList />}
                   permission="qa.manage.qi"
                   role={Roles.GLOBAL_ADMIN}
                 />
-                <SecureRoute
-                  path="/qa/qi/tat"
-                  exact
-                  component={() => (
-                    <QIEnabledRoute indicator="TAT">
-                      <TATReport breadcrumbs={qaTatBreadcrumbs} />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/rejection"
-                  exact
-                  component={() => (
-                    <QIEnabledRoute indicator="REJECTION">
-                      <RejectionReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/amendment"
-                  exact
-                  component={() => (
-                    <QIEnabledRoute indicator="AMENDMENT">
-                      <AmendmentReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
-                <SecureRoute
-                  path="/qa/qi/callback"
-                  exact
-                  component={() => (
-                    <QIEnabledRoute indicator="CALLBACK">
-                      <CallbackReport />
-                    </QIEnabledRoute>
-                  )}
-                  role={[Roles.RESULTS, Roles.REPORTS]}
-                />
+                {QI_INDICATOR_ROUTES.map(([slug, indicator, page]) => (
+                  <SecureRoute
+                    key={slug}
+                    path={`/qa/qi/${slug}`}
+                    exact
+                    render={() => (
+                      <QIEnabledRoute indicator={indicator}>
+                        {page()}
+                      </QIEnabledRoute>
+                    )}
+                    role={[Roles.RESULTS, Roles.REPORTS]}
+                  />
+                ))}
                 <SecureRoute
                   path="/qa/qms/nce-register"
                   exact
-                  component={() => (
+                  render={() => (
                     <NonConformIndex form="ViewNonConformingEvent" />
                   )}
                   role={[Roles.RECEPTION, Roles.VALIDATION]}
@@ -1194,27 +1105,27 @@ export default function App() {
                 <SecureRoute
                   path="/qa/qms/audit-trail"
                   exact
-                  component={() => <AuditTrailReportIndex />}
+                  render={() => <AuditTrailReportIndex />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/qa/qms/e-signature-log"
                   exact
-                  component={() => <ESignatureLog />}
+                  render={() => <ESignatureLog />}
                   permission="qa.view.qms"
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/qa/qms/capa-register"
                   exact
-                  component={() => <CapaRegister />}
+                  render={() => <CapaRegister />}
                   permission="qa.view.qms"
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/qa/qms/accreditation"
                   exact
-                  component={() => <Accreditation />}
+                  render={() => <Accreditation />}
                   permission="qa.view.qms"
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -1223,180 +1134,22 @@ export default function App() {
                   exact
                   render={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
-                      <StorageDashboard />
+                      <StorageManagementPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
+                {/* Every per-resource URL resolves to the same tabbed page, so
+                    existing bookmarks and menu rows keep working. */}
                 <SecureRoute
-                  path="/Storage/sample-items"
+                  path="/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)"
                   exact
                   render={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
-                      <SampleItemsPage />
+                      <StorageManagementPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/sample-items/:id/manage-location"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <ManageLocationPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RoomsPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <DevicesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <ShelvesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <RacksPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <BoxesPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="room" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="device" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="shelf" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddLocationPage type="rack" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <AddBoxPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/rooms/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <EditLocationPage type="room" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/devices/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <EditLocationPage type="device" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/shelves/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <EditLocationPage type="shelf" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/racks/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <EditLocationPage type="rack" />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/boxes/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorStorage}>
-                      <EditBoxPage />
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/inventory"
@@ -1462,42 +1215,6 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/analyzers/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/qc-rules"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QcRulePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
                   path="/analyzers"
                   exact
                   render={() => (
@@ -1508,42 +1225,6 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/mappings"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <FieldMapping />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
-                />
-                <SecureRoute
-                  path="/analyzers/errors"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <ErrorDashboardPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/custom-field-types"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CustomFieldTypeManagementPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/types"
@@ -1576,7 +1257,6 @@ export default function App() {
                   role={Roles.LAB_SUPERVISOR}
                 />
                 {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
-                <Redirect exact from="/analyzers/qc/db" to="/qa/qc/dashboard" />
                 <SecureRoute
                   path="/qa/qc/dashboard"
                   exact
@@ -1586,7 +1266,7 @@ export default function App() {
                 <SecureRoute
                   path="/qa/qc/alerts"
                   exact
-                  component={() => <QCDashboard initialTab={1} />}
+                  render={() => <QCDashboard initialTab={1} />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
@@ -1594,11 +1274,6 @@ export default function App() {
                   exact
                   render={() => <ControlChartDetail />}
                   role={Roles.LAB_SUPERVISOR}
-                />
-                <Redirect
-                  exact
-                  from="/analyzers/qc/control-lots"
-                  to="/qa/qc/control-lots"
                 />
                 <SecureRoute
                   path="/qa/qc/control-lots"
@@ -1617,11 +1292,6 @@ export default function App() {
                   exact
                   render={() => <ControlLotSetup />}
                   role={Roles.LAB_SUPERVISOR}
-                />
-                <Redirect
-                  exact
-                  from="/analyzers/qc/rule-config"
-                  to="/qa/qc/rule-config"
                 />
                 <SecureRoute
                   path="/qa/qc/rule-config"
@@ -1671,6 +1341,12 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
 
+                <SecureRoute
+                  path="/Workplan"
+                  exact
+                  component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
                 <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact
@@ -1823,6 +1499,12 @@ export default function App() {
                   )}
                 />
                 <SecureRoute
+                  path={REPORTING_ROUTE_PATHS}
+                  exact
+                  render={() => <ReportingRoute />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
                   path="/TATReport"
                   exact
                   render={() => <TATReport />}
@@ -1846,34 +1528,45 @@ export default function App() {
                   render={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
+                {/* Every validation submenu renders the same component, and
+                    SearchForm picks its mode from window.location.pathname. The
+                    router reuses the mounted instance across these paths, so
+                    without a per-path key the mode effect never re-runs and the
+                    page keeps showing the previous submenu while the URL
+                    changes. The key forces a remount, which is what a fresh load
+                    does and what resets the search state between submenus. */}
                 <SecureRoute
                   path="/validation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="validation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="ResultValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidation"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => <StudyValidation key="AccessionValidation" />}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/AccessionValidationRange"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="AccessionValidationRange" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
                   path="/ResultValidationByTestDate"
                   exact
-                  render={() => <StudyValidation />}
+                  render={() => (
+                    <StudyValidation key="ResultValidationByTestDate" />
+                  )}
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute

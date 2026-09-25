@@ -2,12 +2,9 @@ package org.openelisglobal.reports.amendment.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.commons.text.StringEscapeUtils;
 import org.hibernate.Session;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -23,6 +21,7 @@ import org.openelisglobal.reports.amendment.bean.AmendmentDetailResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentEvent;
 import org.openelisglobal.reports.amendment.bean.AmendmentSummaryResponse;
 import org.openelisglobal.reports.amendment.bean.AmendmentTrendResponse;
+import org.openelisglobal.reports.qi.QiReportSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,8 +48,8 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
 
     @Override
     public AmendmentSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         Number amended = (Number) session
@@ -68,14 +67,14 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         AmendmentSummaryResponse response = new AmendmentSummaryResponse();
         response.setAmendedCount(amended.longValue());
         response.setReleasedCount(released.longValue());
-        response.setRatePercent(ratePercent(amended.longValue(), released.longValue()));
+        response.setRatePercent(QiReportSupport.ratePercent(amended.longValue(), released.longValue()));
         return response;
     }
 
     @Override
     public AmendmentDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, int page, int pageSize) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         // Loads the whole window (amendments are rare, max 366 days) and pages in
@@ -122,11 +121,8 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
             all.add(event);
         }
 
-        int fromIndex = Math.min(page * pageSize, all.size());
-        int toIndex = Math.min(fromIndex + pageSize, all.size());
-
         AmendmentDetailResponse response = new AmendmentDetailResponse();
-        response.setItems(all.subList(fromIndex, toIndex));
+        response.setItems(QiReportSupport.page(all, page, pageSize));
         response.setTotalCount(all.size());
         response.setPage(page);
         response.setPageSize(pageSize);
@@ -135,10 +131,10 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
 
     @Override
     public AmendmentTrendResponse getTrend(LocalDate fromDate, LocalDate toDate, String interval) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
-        String unit = truncUnit(interval);
+        String unit = QiReportSupport.truncUnit(interval);
 
         @SuppressWarnings("unchecked")
         List<Object[]> amendedBuckets = session
@@ -159,10 +155,12 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         // union of period keys — an amendment can land in a bucket with no releases
         Map<String, long[]> byPeriod = new TreeMap<>();
         for (Object[] row : amendedBuckets) {
-            byPeriod.computeIfAbsent(periodKey(row[0], interval), k -> new long[2])[0] = ((Number) row[1]).longValue();
+            byPeriod.computeIfAbsent(QiReportSupport.periodKey(row[0], interval),
+                    k -> new long[2])[0] = ((Number) row[1]).longValue();
         }
         for (Object[] row : releasedBuckets) {
-            byPeriod.computeIfAbsent(periodKey(row[0], interval), k -> new long[2])[1] = ((Number) row[1]).longValue();
+            byPeriod.computeIfAbsent(QiReportSupport.periodKey(row[0], interval),
+                    k -> new long[2])[1] = ((Number) row[1]).longValue();
         }
 
         List<AmendmentTrendResponse.TrendPoint> points = new ArrayList<>();
@@ -171,7 +169,7 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
             point.setPeriod(entry.getKey());
             point.setAmendedCount(entry.getValue()[0]);
             point.setReleasedCount(entry.getValue()[1]);
-            point.setRatePercent(ratePercent(entry.getValue()[0], entry.getValue()[1]));
+            point.setRatePercent(QiReportSupport.ratePercent(entry.getValue()[0], entry.getValue()[1]));
             points.add(point);
         }
 
@@ -182,8 +180,8 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
 
     @Override
     public AmendmentBreakdownResponse getBreakdown(LocalDate fromDate, LocalDate toDate) {
-        Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
-        Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
+        Timestamp fromTs = QiReportSupport.startOf(fromDate);
+        Timestamp toTs = QiReportSupport.endOf(toDate);
         Session session = entityManager.unwrap(Session.class);
 
         @SuppressWarnings("unchecked")
@@ -214,7 +212,8 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
             breakdownRow.setTestName((String) row[1]);
             breakdownRow.setAmendedCount(((Number) row[2]).longValue());
             breakdownRow.setReleasedCount(releasedCounts.getOrDefault((String) row[0], 0L));
-            breakdownRow.setRatePercent(ratePercent(breakdownRow.getAmendedCount(), breakdownRow.getReleasedCount()));
+            breakdownRow.setRatePercent(
+                    QiReportSupport.ratePercent(breakdownRow.getAmendedCount(), breakdownRow.getReleasedCount()));
             rows.add(breakdownRow);
         }
         rows.sort((a, b) -> a.getAmendedCount() != b.getAmendedCount()
@@ -224,40 +223,6 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         AmendmentBreakdownResponse response = new AmendmentBreakdownResponse();
         response.setRows(rows);
         return response;
-    }
-
-    private static String truncUnit(String interval) {
-        if (interval == null) {
-            return "day";
-        }
-        return switch (interval.toUpperCase()) {
-        case "WEEKLY" -> "week";
-        case "MONTHLY" -> "month";
-        default -> "day"; // DAILY + unknown, matching the TAT report's lenient default
-        };
-    }
-
-    private static String periodKey(Object truncatedBucket, String interval) {
-        return getPeriodKey(((Timestamp) truncatedBucket).toLocalDateTime().toLocalDate(), interval);
-    }
-
-    // copied from TATReportServiceImpl (its private helper) rather than coupling
-    // the two report services over 8 lines
-    private static String getPeriodKey(LocalDate date, String interval) {
-        if (interval == null)
-            interval = "DAILY";
-        return switch (interval.toUpperCase()) {
-        case "WEEKLY" -> date.getYear() + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-        case "MONTHLY" -> date.getYear() + "-" + String.format("%02d", date.getMonthValue());
-        default -> date.toString(); // DAILY
-        };
-    }
-
-    private static Double ratePercent(long amended, long released) {
-        if (released == 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(amended * 100.0 / released).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**
@@ -296,19 +261,15 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
     }
 
     private List<Long> toLongs(Set<String> ids) {
-        List<Long> longs = new ArrayList<>();
-        for (String id : ids) {
-            longs.add(Long.valueOf(id));
-        }
-        return longs;
+        return ids.stream().map(Long::valueOf).toList();
     }
 
     private Long analysisRefTableId() {
-        return Long.valueOf(referenceTablesService.getReferenceTableByName("ANALYSIS").getId());
+        return QiReportSupport.refTableId(referenceTablesService, "ANALYSIS");
     }
 
     private Long resultRefTableId() {
-        return Long.valueOf(referenceTablesService.getReferenceTableByName("RESULT").getId());
+        return QiReportSupport.refTableId(referenceTablesService, "RESULT");
     }
 
     // Caveat: corrected notes are stored in whatever server locale was active
@@ -332,7 +293,6 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         if (end < 0) {
             return null;
         }
-        return xml.substring(start + "<value>".length(), end).replace("&lt;", "<").replace("&gt;", ">")
-                .replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&");
+        return StringEscapeUtils.unescapeXml(xml.substring(start + "<value>".length(), end));
     }
 }

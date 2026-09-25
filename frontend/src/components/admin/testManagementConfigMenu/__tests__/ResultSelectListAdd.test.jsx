@@ -39,6 +39,7 @@ const frenchName = () => screen.getAllByRole("textbox")[1];
 
 describe("ResultSelectListAdd", () => {
   let reload;
+  const addNotification = vi.fn();
 
   const renderScreen = () =>
     render(
@@ -49,7 +50,7 @@ describe("ResultSelectListAdd", () => {
               value={{
                 notificationVisible: false,
                 setNotificationVisible: vi.fn(),
-                addNotification: vi.fn(),
+                addNotification,
               }}
             >
               <ResultSelectListAdd />
@@ -76,6 +77,7 @@ describe("ResultSelectListAdd", () => {
 
   beforeEach(() => {
     postToOpenElisServerJsonResponse.mockReset();
+    addNotification.mockReset();
     reload = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -117,5 +119,72 @@ describe("ResultSelectListAdd", () => {
     await waitFor(() => expect(english()).toHaveValue(""));
     // Saving used to reload the document, which threw away the whole app.
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status.
+  it("reports a refused save (500) as an error and keeps the entry", async () => {
+    await nameTheListAndContinue();
+    await userEvent.click(screen.getByLabelText("Culture"));
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+    expect(english()).toHaveValue("Growth");
+  });
+
+  it("reports a refused lookup (500) as an error instead of offering nothing", async () => {
+    renderScreen();
+    await userEvent.type(english(), "Growth");
+    await userEvent.type(frenchName(), "Croissance");
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+  });
+
+  it("saves the new entry once per test even when Next is pressed again", async () => {
+    await nameTheListAndContinue();
+    await userEvent.click(screen.getByLabelText("Culture"));
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "Request failed (HTTP 500 )", status: 500 }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
+
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback({}),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(3),
+    );
+    const [, payload] = postToOpenElisServerJsonResponse.mock.calls[2];
+    const perTest = JSON.parse(JSON.parse(payload).testSelectListJson);
+    expect(perTest).toHaveLength(1);
+    expect(perTest[0].items.filter((item) => !item.id)).toHaveLength(1);
   });
 });

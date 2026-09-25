@@ -13,30 +13,27 @@ import {
   InlineNotification,
   Modal,
   Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tag,
   TextInput,
 } from "@carbon/react";
 import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
-  hasQaPermission,
+  hasPermissionOrGlobalAdmin,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import QAEmptyState from "../common/QAEmptyState";
-import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import QASimpleTable from "../common/QASimpleTable";
+import QAStatTiles from "../common/QAStatTiles";
+import AccreditationStatusTag, {
+  accreditationLogoUrl,
+} from "../common/AccreditationStatusTag";
 import AccreditingBodyModal from "./AccreditingBodyModal";
 import EnrollTestsModal from "./EnrollTestsModal";
-import config from "../../../config.json";
-import "../qi/QIDashboard.css";
+import "../common/QAStyles.css";
 
 /**
  * Test Accreditation (OGC-686) at /qa/qms/accreditation. One surface for
@@ -55,37 +52,39 @@ const breadcrumbs = [
 
 const STATUSES = ["ACTIVE", "EXPIRING", "EXPIRED", "INACTIVE"];
 
-const STATUS_TAG_TYPE = {
-  ACTIVE: "green",
-  EXPIRING: "magenta",
-  EXPIRED: "red",
-  INACTIVE: "gray",
-};
-
 const BODY_HEADERS = [
-  "qa.qms.accreditation.body.column.logo",
-  "qa.qms.accreditation.body.column.code",
-  "qa.qms.accreditation.body.column.name",
-  "qa.qms.accreditation.body.column.expiresOn",
-  "qa.qms.accreditation.body.column.enrolled",
-  "qa.qms.accreditation.body.column.status",
-  "qa.qms.accreditation.body.column.actions",
+  { key: "logo", labelKey: "qa.qms.accreditation.body.column.logo" },
+  { key: "code", labelKey: "common.code" },
+  { key: "name", labelKey: "common.name" },
+  { key: "expiresOn", labelKey: "qa.qms.accreditation.body.column.expiresOn" },
+  { key: "enrolled", labelKey: "qa.qms.accreditation.enrollments.title" },
+  { key: "status", labelKey: "common.status" },
+  { key: "actions", labelKey: "common.actions" },
 ];
 
 const EQA_COVERAGE_HEADERS = [
-  "qa.qms.accreditation.eqa.column.body",
-  "qa.qms.accreditation.eqa.column.scope",
-  "qa.qms.accreditation.eqa.column.covered",
-  "qa.qms.accreditation.eqa.column.gaps",
+  { key: "body", labelKey: "qa.qms.accreditation.enrollment.column.body" },
+  { key: "scope", labelKey: "qa.qms.accreditation.eqa.column.scope" },
+  { key: "covered", labelKey: "qa.qms.accreditation.eqa.column.covered" },
+  { key: "gaps", labelKey: "qa.qms.accreditation.eqa.column.gaps" },
 ];
 
 const ENROLLMENT_HEADERS = [
-  "qa.qms.accreditation.enrollment.column.test",
-  "qa.qms.accreditation.enrollment.column.body",
-  "qa.qms.accreditation.enrollment.column.effectiveFrom",
-  "qa.qms.accreditation.enrollment.column.expires",
-  "qa.qms.accreditation.enrollment.column.status",
-  "qa.qms.accreditation.enrollment.column.actions",
+  { key: "test", labelKey: "common.test" },
+  { key: "body", labelKey: "qa.qms.accreditation.enrollment.column.body" },
+  {
+    key: "effectiveFrom",
+    labelKey: "qa.qms.accreditation.enrollment.column.effectiveFrom",
+  },
+  {
+    key: "expires",
+    labelKey: "qa.qms.accreditation.enrollment.column.expires",
+  },
+  { key: "status", labelKey: "common.status" },
+  {
+    key: "actions",
+    labelKey: "common.actions",
+  },
 ];
 
 /** Names the first few uncovered tests; a long tail would swamp the row. */
@@ -104,23 +103,11 @@ const gapSummary = (gaps, intl) => {
     : names.join(", ");
 };
 
-const headerRow = (ids) => (
-  <TableHead>
-    <TableRow>
-      {ids.map((id) => (
-        <TableHeader key={id}>
-          <FormattedMessage id={id} />
-        </TableHeader>
-      ))}
-    </TableRow>
-  </TableHead>
-);
-
 const Accreditation = () => {
   const intl = useIntl();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canManage = hasQaPermission(
+  const canManage = hasPermissionOrGlobalAdmin(
     userSessionDetails,
     "qa.manage.accreditation",
   );
@@ -207,15 +194,9 @@ const Accreditation = () => {
     intl.formatMessage({
       id:
         status === "all"
-          ? "qa.qms.accreditation.filter.all"
+          ? "common.all"
           : `qa.qms.accreditation.status.${status}`,
     });
-
-  const statusTag = (status) => (
-    <Tag type={STATUS_TAG_TYPE[status] || "gray"} size="sm">
-      {statusLabel(status)}
-    </Tag>
-  );
 
   const maxPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
   const safePage = Math.min(page, maxPage);
@@ -231,6 +212,101 @@ const Accreditation = () => {
   const testFilterName =
     (enrollments || []).find((e) => String(e.testId) === testIdFilter)
       ?.testName || testIdFilter;
+
+  const bodyRows = (bodies || []).map((b) => ({
+    id: String(b.id),
+    logo: b.logoImageId ? (
+      <img
+        src={accreditationLogoUrl(b.logoImageId)}
+        alt=""
+        style={{ height: "2rem" }}
+      />
+    ) : (
+      "—"
+    ),
+    code: b.code,
+    name: b.name,
+    expiresOn: b.expiresOn || "—",
+    enrolled: b.enrolledTestCount,
+    status: <AccreditationStatusTag status={b.status} size="sm" />,
+    actions: canManage ? (
+      <>
+        <Button
+          kind="ghost"
+          size="sm"
+          hasIconOnly
+          renderIcon={Edit}
+          iconDescription={intl.formatMessage({
+            id: "qa.qms.accreditation.body.edit",
+          })}
+          onClick={() => setBodyModal({ body: b })}
+          data-testid={`edit-body-${b.id}`}
+        />
+        <Button
+          kind="ghost"
+          size="sm"
+          hasIconOnly
+          renderIcon={TrashCan}
+          disabled={b.enrolledTestCount > 0}
+          // Say how many enrollments block the delete —
+          // the same count the REST rejection reports.
+          iconDescription={
+            b.enrolledTestCount > 0
+              ? intl.formatMessage(
+                  { id: "qa.qms.accreditation.body.delete.blocked" },
+                  { count: b.enrolledTestCount },
+                )
+              : intl.formatMessage({ id: "qa.qms.accreditation.body.delete" })
+          }
+          onClick={() => setDeleteBody(b)}
+          data-testid={`delete-body-${b.id}`}
+        />
+      </>
+    ) : (
+      ""
+    ),
+  }));
+
+  const enrollmentRows = pageRows.map((e) => ({
+    id: String(e.id),
+    test: e.testName || e.testId,
+    body: `${e.bodyCode} — ${e.bodyName}`,
+    effectiveFrom: e.effectiveFrom || "—",
+    expires: e.bodyExpiresOn || "—",
+    status: <AccreditationStatusTag status={e.status} size="sm" />,
+    actions: canManage ? (
+      <Button
+        kind="ghost"
+        size="sm"
+        hasIconOnly
+        renderIcon={TrashCan}
+        iconDescription={intl.formatMessage({
+          id: "qa.qms.accreditation.enrollment.remove",
+        })}
+        onClick={() => setDeleteEnrollment(e)}
+        data-testid={`delete-enrollment-${e.id}`}
+      />
+    ) : (
+      ""
+    ),
+  }));
+
+  const coverageRows = (eqaCoverage || []).map((row) => ({
+    id: String(row.accreditingBodyId),
+    body: `${row.bodyCode} — ${row.bodyName}`,
+    scope: row.enrolledTestCount,
+    covered: row.coveredTestCount,
+    gaps:
+      (row.gaps || []).length === 0 ? (
+        <Tag type="green">
+          <FormattedMessage id="qa.qms.accreditation.eqa.noGaps" />
+        </Tag>
+      ) : (
+        <>
+          <Tag type="red">{row.gaps.length}</Tag> {gapSummary(row.gaps, intl)}
+        </>
+      ),
+  }));
 
   return (
     <div className="pageContent qi-dashboard" data-testid="accreditation-page">
@@ -267,32 +343,30 @@ const Accreditation = () => {
         <>
           {summary && (
             <>
-              <div className="qi-dashboard__tiles">
-                <div className="qi-tile qi-tile--blue">
-                  <div className="qi-tile__title">
-                    <FormattedMessage id="qa.qms.accreditation.tile.total" />
-                  </div>
-                  <div className="qi-tile__value">{summary.totalBodies}</div>
-                </div>
-                <div className="qi-tile qi-tile--green">
-                  <div className="qi-tile__title">
-                    <FormattedMessage id="qa.qms.accreditation.tile.active" />
-                  </div>
-                  <div className="qi-tile__value">{summary.activeBodies}</div>
-                </div>
-                <div className="qi-tile qi-tile--amber">
-                  <div className="qi-tile__title">
-                    <FormattedMessage id="qa.qms.accreditation.tile.expiring" />
-                  </div>
-                  <div className="qi-tile__value">{summary.expiringBodies}</div>
-                </div>
-                <div className="qi-tile qi-tile--red">
-                  <div className="qi-tile__title">
-                    <FormattedMessage id="qa.qms.accreditation.tile.expired" />
-                  </div>
-                  <div className="qi-tile__value">{summary.expiredBodies}</div>
-                </div>
-              </div>
+              <QAStatTiles
+                tiles={[
+                  {
+                    labelKey: "qa.qms.accreditation.tile.total",
+                    value: summary.totalBodies,
+                    accent: "blue",
+                  },
+                  {
+                    labelKey: "common.active",
+                    value: summary.activeBodies,
+                    accent: "green",
+                  },
+                  {
+                    labelKey: "inventory.metrics.expiringSoon",
+                    value: summary.expiringBodies,
+                    accent: "amber",
+                  },
+                  {
+                    labelKey: "common.expired",
+                    value: summary.expiredBodies,
+                    accent: "red",
+                  },
+                ]}
+              />
               {summary.inForceBodyNames?.length > 0 && (
                 <p className="qi-dashboard__subtitle">
                   <FormattedMessage
@@ -327,73 +401,11 @@ const Accreditation = () => {
               subheadKey="qa.empty.accreditation.bodies.subhead"
             />
           ) : (
-            <TableContainer>
-              <Table size="sm">
-                {headerRow(BODY_HEADERS)}
-                <TableBody>
-                  {bodies.map((b) => (
-                    <TableRow key={b.id} data-testid={`body-${b.id}`}>
-                      <TableCell>
-                        {b.logoImageId ? (
-                          <img
-                            src={`${config.serverBaseUrl}/rest/accreditation/logo/${b.logoImageId}`}
-                            alt=""
-                            style={{ height: "2rem" }}
-                          />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>{b.code}</TableCell>
-                      <TableCell>{b.name}</TableCell>
-                      <TableCell>{b.expiresOn || "—"}</TableCell>
-                      <TableCell>{b.enrolledTestCount}</TableCell>
-                      <TableCell>{statusTag(b.status)}</TableCell>
-                      <TableCell>
-                        {canManage && (
-                          <>
-                            <Button
-                              kind="ghost"
-                              size="sm"
-                              hasIconOnly
-                              renderIcon={Edit}
-                              iconDescription={intl.formatMessage({
-                                id: "qa.qms.accreditation.body.edit",
-                              })}
-                              onClick={() => setBodyModal({ body: b })}
-                              data-testid={`edit-body-${b.id}`}
-                            />
-                            <Button
-                              kind="ghost"
-                              size="sm"
-                              hasIconOnly
-                              renderIcon={TrashCan}
-                              disabled={b.enrolledTestCount > 0}
-                              // Say how many enrollments block the delete —
-                              // the same count the REST rejection reports.
-                              iconDescription={
-                                b.enrolledTestCount > 0
-                                  ? intl.formatMessage(
-                                      {
-                                        id: "qa.qms.accreditation.body.delete.blocked",
-                                      },
-                                      { count: b.enrolledTestCount },
-                                    )
-                                  : intl.formatMessage({
-                                      id: "qa.qms.accreditation.body.delete",
-                                    })
-                              }
-                              onClick={() => setDeleteBody(b)}
-                              data-testid={`delete-body-${b.id}`}
-                            />
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <QASimpleTable
+              rows={bodyRows}
+              headers={BODY_HEADERS}
+              rowTestIdPrefix="body"
+            />
           )}
 
           <div className="qi-dashboard__controls">
@@ -411,7 +423,7 @@ const Accreditation = () => {
               itemToString={(item) =>
                 !item || item === "all" || !byBodyId[item]
                   ? intl.formatMessage({
-                      id: "qa.qms.accreditation.filter.all",
+                      id: "common.all",
                     })
                   : `${byBodyId[item].code} — ${byBodyId[item].name}`
               }
@@ -423,7 +435,7 @@ const Accreditation = () => {
             <Dropdown
               id="accreditation-status-filter"
               titleText={intl.formatMessage({
-                id: "qa.qms.accreditation.filter.status",
+                id: "common.status",
               })}
               label=""
               items={["all", ...STATUSES]}
@@ -437,7 +449,7 @@ const Accreditation = () => {
             <TextInput
               id="accreditation-search"
               labelText={intl.formatMessage({
-                id: "qa.qms.accreditation.filter.search",
+                id: "label.sampleType.tests.search",
               })}
               value={search}
               onChange={(e) => {
@@ -483,37 +495,11 @@ const Accreditation = () => {
             />
           ) : (
             <>
-              <TableContainer>
-                <Table size="sm">
-                  {headerRow(ENROLLMENT_HEADERS)}
-                  <TableBody>
-                    {pageRows.map((e) => (
-                      <TableRow key={e.id} data-testid={`enrollment-${e.id}`}>
-                        <TableCell>{e.testName || e.testId}</TableCell>
-                        <TableCell>{`${e.bodyCode} — ${e.bodyName}`}</TableCell>
-                        <TableCell>{e.effectiveFrom || "—"}</TableCell>
-                        <TableCell>{e.bodyExpiresOn || "—"}</TableCell>
-                        <TableCell>{statusTag(e.status)}</TableCell>
-                        <TableCell>
-                          {canManage && (
-                            <Button
-                              kind="ghost"
-                              size="sm"
-                              hasIconOnly
-                              renderIcon={TrashCan}
-                              iconDescription={intl.formatMessage({
-                                id: "qa.qms.accreditation.enrollment.remove",
-                              })}
-                              onClick={() => setDeleteEnrollment(e)}
-                              data-testid={`delete-enrollment-${e.id}`}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <QASimpleTable
+                rows={enrollmentRows}
+                headers={ENROLLMENT_HEADERS}
+                rowTestIdPrefix="enrollment"
+              />
               <Pagination
                 page={safePage + 1}
                 pageSize={pageSize}
@@ -554,35 +540,11 @@ const Accreditation = () => {
               subheadKey="qa.empty.accreditation.eqa.subhead"
             />
           ) : (
-            <TableContainer>
-              <Table size="sm">
-                {headerRow(EQA_COVERAGE_HEADERS)}
-                <TableBody>
-                  {eqaCoverage.map((row) => (
-                    <TableRow
-                      key={row.accreditingBodyId}
-                      data-testid={`eqa-coverage-${row.accreditingBodyId}`}
-                    >
-                      <TableCell>{`${row.bodyCode} — ${row.bodyName}`}</TableCell>
-                      <TableCell>{row.enrolledTestCount}</TableCell>
-                      <TableCell>{row.coveredTestCount}</TableCell>
-                      <TableCell>
-                        {(row.gaps || []).length === 0 ? (
-                          <Tag type="green">
-                            <FormattedMessage id="qa.qms.accreditation.eqa.noGaps" />
-                          </Tag>
-                        ) : (
-                          <>
-                            <Tag type="red">{row.gaps.length}</Tag>{" "}
-                            {gapSummary(row.gaps, intl)}
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <QASimpleTable
+              rows={coverageRows}
+              headers={EQA_COVERAGE_HEADERS}
+              rowTestIdPrefix="eqa-coverage"
+            />
           )}
         </>
       )}
@@ -608,7 +570,7 @@ const Accreditation = () => {
           id: "qa.qms.accreditation.body.delete.title",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "qa.qms.accreditation.body.delete.confirm",
+          id: "common.delete",
         })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         onRequestClose={() => setDeleteBody(null)}
@@ -635,7 +597,7 @@ const Accreditation = () => {
           id: "qa.qms.accreditation.enrollment.delete.title",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "qa.qms.accreditation.enrollment.delete.confirm",
+          id: "common.remove",
         })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         onRequestClose={() => setDeleteEnrollment(null)}

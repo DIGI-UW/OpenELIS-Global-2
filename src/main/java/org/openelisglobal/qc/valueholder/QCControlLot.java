@@ -48,15 +48,11 @@ public class QCControlLot extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    // Nullable since OGC-1147: a bench control lot for a manual method has
-    // no
+    // Nullable since OGC-1147: a bench control lot for a manual method has no
     // analyzer to point at. qc-024 dropped the NOT NULL; the Bean Validation
-    // @NotNull
-    // that used to sit here is enforced by Hibernate on insert, so it had to go too
-    // or
-    // the relaxed column would still be unreachable. Analyzer lots keep populating
-    // it
-    // and the FK from qc-008 simply skips the check when NULL.
+    // @NotNull that used to sit here is enforced by Hibernate on insert, so it had
+    // to go too or the relaxed column would still be unreachable. Analyzer lots
+    // keep populating it and the FK from qc-008 simply skips the check when NULL.
     @Column(name = "instrument_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String instrumentId;

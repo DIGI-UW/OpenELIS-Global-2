@@ -1,0 +1,162 @@
+import React from "react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import InventoryCatalog from "./InventoryCatalog";
+import { NotificationContext } from "../layout/Layout";
+import { InventoryItemAPI } from "./InventoryService";
+import messages from "../../languages/en.json";
+
+vi.mock("./InventoryService", () => ({
+  InventoryItemAPI: {
+    getAll: vi.fn(),
+    getItemTypes: vi.fn(),
+    activate: vi.fn(),
+    deactivate: vi.fn(),
+  },
+}));
+
+// The Add/Edit modal pulls in a lot of unrelated Carbon form machinery; only
+// the catalog table's Code column + search are under test here.
+vi.mock("./InventoryItemForm", () => ({ default: () => null }));
+
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  notifications: [],
+  addNotification: vi.fn(),
+  removeNotification: vi.fn(),
+};
+
+const renderCatalog = () =>
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <NotificationContext.Provider value={mockNotificationContext}>
+        <InventoryCatalog />
+      </NotificationContext.Provider>
+    </IntlProvider>,
+  );
+
+const ITEMS = [
+  {
+    id: 1000,
+    code: "REAGENT_A",
+    name: "Reagent A",
+    itemType: "REAGENT",
+    units: "mL",
+    lowStockThreshold: 10,
+    isActive: "Y",
+  },
+  {
+    id: 1001,
+    code: "RDT_KIT",
+    name: "RDT Kit",
+    itemType: "RDT",
+    units: "kits",
+    lowStockThreshold: 5,
+    isActive: "Y",
+  },
+];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  InventoryItemAPI.getItemTypes.mockResolvedValue(["REAGENT", "RDT"]);
+  InventoryItemAPI.getAll.mockResolvedValue(ITEMS);
+});
+
+describe("InventoryCatalog — Code column and search (OGC-658 Part C)", () => {
+  it("shows a Code column with each item's stable code", async () => {
+    renderCatalog();
+
+    expect(await screen.findByText("REAGENT_A")).toBeInTheDocument();
+    expect(screen.getByText("RDT_KIT")).toBeInTheDocument();
+  });
+
+  it("filters the table when searching by code", async () => {
+    renderCatalog();
+    await screen.findByText("REAGENT_A");
+
+    const search = screen.getByPlaceholderText(/search by item name or code/i);
+    fireEvent.change(search, { target: { value: "RDT_KIT" } });
+
+    expect(screen.queryByText("Reagent A")).not.toBeInTheDocument();
+    expect(screen.getByText("RDT Kit")).toBeInTheDocument();
+  });
+
+  it("still filters by item name (unaffected by the code search addition)", async () => {
+    renderCatalog();
+    await screen.findByText("REAGENT_A");
+
+    const search = screen.getByPlaceholderText(/search by item name or code/i);
+    fireEvent.change(search, { target: { value: "Reagent A" } });
+
+    expect(screen.getByText("Reagent A")).toBeInTheDocument();
+    expect(screen.queryByText("RDT Kit")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryCatalog — row actions", () => {
+  it("acts on the clicked row after the table has been re-sorted", async () => {
+    // Fetch order is the reverse of name order, so sorting by name moves
+    // Alpha into the first rendered row while the fetch-order array still
+    // holds Zeta there.
+    InventoryItemAPI.getAll.mockResolvedValue([
+      { ...ITEMS[0], id: 2000, code: "ZETA", name: "Zeta", isActive: "N" },
+      { ...ITEMS[1], id: 2001, code: "ALPHA", name: "Alpha", isActive: "N" },
+    ]);
+    InventoryItemAPI.activate.mockResolvedValue({});
+    renderCatalog();
+
+    await screen.findByText("Zeta");
+    fireEvent.click(screen.getByText(messages["catalog.item.name"]));
+    const nameCells = document.querySelectorAll("tbody tr td:nth-child(2)");
+    expect(nameCells[0]).toHaveTextContent("Alpha");
+
+    fireEvent.click(document.querySelectorAll("button.cds--overflow-menu")[0]);
+    fireEvent.click(await screen.findByText(messages["button.activate"]));
+
+    await waitFor(() =>
+      expect(InventoryItemAPI.activate).toHaveBeenCalledWith(2001),
+    );
+  });
+
+  it("shows a low-stock threshold of 0 as 0, not as unset", async () => {
+    InventoryItemAPI.getAll.mockResolvedValue([
+      { ...ITEMS[0], lowStockThreshold: 0 },
+    ]);
+    renderCatalog();
+
+    const row = (await screen.findByText("Reagent A")).closest("tr");
+    expect(within(row).getByText("0")).toBeInTheDocument();
+    expect(within(row).queryByText("-")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryCatalog — paging against a narrowed list", () => {
+  // The pager is hidden once the page is empty, so a search made from page two
+  // that leaves fewer rows than one page strands the user with no way back.
+  it("shows the match when a search is made from the second page", async () => {
+    const many = Array.from({ length: 25 }, (_, n) => ({
+      id: 2000 + n,
+      code: `CODE_${n}`,
+      name: `Catalog Item ${n}`,
+      itemType: "REAGENT",
+      units: "mL",
+      lowStockThreshold: 1,
+      isActive: "Y",
+    }));
+    InventoryItemAPI.getAll.mockResolvedValue(many);
+    renderCatalog();
+
+    await screen.findByText("Catalog Item 0");
+    fireEvent.click(screen.getByLabelText("Next page"));
+    await screen.findByText("Catalog Item 24");
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CODE_3" },
+    });
+
+    expect(await screen.findByText("Catalog Item 3")).toBeInTheDocument();
+  });
+});

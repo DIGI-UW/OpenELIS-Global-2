@@ -4,10 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URLConnection;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import javax.imageio.ImageIO;
 import org.openelisglobal.accreditation.dto.AccreditationSummary;
 import org.openelisglobal.accreditation.dto.AccreditingBodyView;
 import org.openelisglobal.accreditation.dto.EqaCoverageView;
@@ -15,18 +12,20 @@ import org.openelisglobal.accreditation.dto.TestAccreditationView;
 import org.openelisglobal.accreditation.service.AccreditingBodyService;
 import org.openelisglobal.accreditation.service.TestAccreditationService;
 import org.openelisglobal.accreditation.valueholder.AccreditingBody;
+import org.openelisglobal.accreditation.valueholder.TestAccreditation;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.service.servlet.reports.LogoUploadService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.image.valueholder.Image;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +33,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -66,42 +64,39 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/rest/accreditation")
 public class AccreditationRestController extends BaseRestController {
 
-    /**
-     * Logo uploads: raster only, ≤ 500 KB. SVG is excluded — see the note below.
-     */
-    private static final long MAX_LOGO_BYTES = 500L * 1024L;
-
-    private static final int MIN_LOGO_PIXELS = 64;
-
     private final AccreditingBodyService accreditingBodyService;
 
     private final TestAccreditationService testAccreditationService;
 
     private final ImageService imageService;
 
+    private final LogoUploadService logoUploadService;
+
     public AccreditationRestController(AccreditingBodyService accreditingBodyService,
-            TestAccreditationService testAccreditationService, ImageService imageService) {
+            TestAccreditationService testAccreditationService, ImageService imageService,
+            LogoUploadService logoUploadService) {
         this.accreditingBodyService = accreditingBodyService;
         this.testAccreditationService = testAccreditationService;
         this.imageService = imageService;
+        this.logoUploadService = logoUploadService;
     }
 
     // ---------- reads ----------
 
     @GetMapping(value = "/bodies", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public List<AccreditingBodyView> listBodies() {
         return accreditingBodyService.getBodyViews();
     }
 
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public AccreditationSummary summary() {
         return accreditingBodyService.getSummary();
     }
 
     @GetMapping(value = "/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public List<TestAccreditationView> listEnrollments(@RequestParam(value = "bodyId", required = false) Long bodyId,
             @RequestParam(value = "testId", required = false) String testId) {
         return testAccreditationService.getEnrollmentViews(bodyId, testId);
@@ -113,7 +108,7 @@ public class AccreditationRestController extends BaseRestController {
      * keeps.
      */
     @GetMapping(value = "/eqa-coverage", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public List<EqaCoverageView> eqaCoverage() {
         return testAccreditationService.getEqaCoverage();
     }
@@ -124,7 +119,7 @@ public class AccreditationRestController extends BaseRestController {
      * this.
      */
     @GetMapping(value = "/logo/{imageId}")
-    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QMS)
     public ResponseEntity<byte[]> logo(@PathVariable String imageId) {
         Image image = imageService.get(imageId);
         if (image == null || image.getImage() == null) {
@@ -132,12 +127,9 @@ public class AccreditationRestController extends BaseRestController {
         }
         // The image row stores no content type, so derive it from the bytes rather
         // than claiming PNG for a JPEG upload.
-        String contentType = URLConnection.guessContentTypeFromName("logo");
+        String contentType = null;
         try (java.io.InputStream in = new ByteArrayInputStream(image.getImage())) {
-            String sniffed = URLConnection.guessContentTypeFromStream(in);
-            if (sniffed != null) {
-                contentType = sniffed;
-            }
+            contentType = URLConnection.guessContentTypeFromStream(in);
         } catch (IOException e) {
             LogEvent.logError(e);
         }
@@ -149,23 +141,23 @@ public class AccreditationRestController extends BaseRestController {
     // ---------- body writes ----------
 
     @PostMapping(value = "/bodies", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public ResponseEntity<AccreditingBodyView> createBody(@RequestBody AccreditingBody body,
             HttpServletRequest request) {
         AccreditingBody saved = accreditingBodyService.createBody(body, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(viewOf(saved.getId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(accreditingBodyService.getBodyView(saved.getId()));
     }
 
     @PutMapping(value = "/bodies/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public AccreditingBodyView updateBody(@PathVariable Long id, @RequestBody AccreditingBody body,
             HttpServletRequest request) {
         accreditingBodyService.updateBody(id, body, ControllerUtills.getSysUserId(request));
-        return viewOf(id);
+        return accreditingBodyService.getBodyView(id);
     }
 
     @DeleteMapping("/bodies/{id}")
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public ResponseEntity<Void> deleteBody(@PathVariable Long id, HttpServletRequest request) {
         accreditingBodyService.deleteBody(id, ControllerUtills.getSysUserId(request));
         return ResponseEntity.noContent().build();
@@ -181,37 +173,37 @@ public class AccreditationRestController extends BaseRestController {
      * is the only place the failure is visible.
      */
     @PostMapping(value = "/bodies/{id}/logo", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public AccreditingBodyView uploadLogo(@PathVariable Long id, @RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
-        byte[] bytes = validateLogo(file);
+        byte[] bytes = logoUploadService.validateLogo(file);
         Image image = new Image();
         image.setImage(bytes);
         image.setDescription("accreditation-logo-body-" + id);
         Image saved = imageService.save(image);
         accreditingBodyService.setLogo(id, saved.getId(), ControllerUtills.getSysUserId(request));
-        return viewOf(id);
+        return accreditingBodyService.getBodyView(id);
     }
 
     @DeleteMapping(value = "/bodies/{id}/logo", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public AccreditingBodyView removeLogo(@PathVariable Long id, HttpServletRequest request) {
         accreditingBodyService.setLogo(id, null, ControllerUtills.getSysUserId(request));
-        return viewOf(id);
+        return accreditingBodyService.getBodyView(id);
     }
 
     // ---------- enrollment writes ----------
 
     @PostMapping(value = "/enrollments", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<Void> enroll(@RequestBody EnrollmentRequest body, HttpServletRequest request) {
-        testAccreditationService.enroll(body.testId, body.accreditingBodyId, body.effectiveFrom,
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
+    public ResponseEntity<Void> enroll(@RequestBody TestAccreditation body, HttpServletRequest request) {
+        testAccreditationService.enroll(body.getTestId(), body.getAccreditingBodyId(), body.getEffectiveFrom(),
                 ControllerUtills.getSysUserId(request));
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/enrollments/{id}")
-    @PreAuthorize("hasAuthority('qa.manage.accreditation') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.MANAGE_ACCREDITATION)
     public ResponseEntity<Void> unenroll(@PathVariable Long id, HttpServletRequest request) {
         testAccreditationService.unenroll(id, ControllerUtills.getSysUserId(request));
         return ResponseEntity.noContent().build();
@@ -219,54 +211,4 @@ public class AccreditationRestController extends BaseRestController {
 
     // ---------- helpers ----------
 
-    /** Re-reads through the view assembler so responses carry counts and status. */
-    private AccreditingBodyView viewOf(Long id) {
-        return accreditingBodyService.getBodyViews().stream().filter(v -> id.equals(v.id)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No accrediting body with id " + id));
-    }
-
-    private byte[] validateLogo(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("A logo file is required");
-        }
-        if (file.getSize() > MAX_LOGO_BYTES) {
-            throw new IllegalArgumentException("File exceeds 500 KB");
-        }
-        byte[] bytes;
-        java.awt.image.BufferedImage decoded;
-        try {
-            bytes = file.getBytes();
-            decoded = ImageIO.read(new ByteArrayInputStream(bytes));
-        } catch (IOException e) {
-            LogEvent.logError(e);
-            throw new IllegalArgumentException("Could not read the uploaded file");
-        }
-        if (decoded == null) {
-            throw new IllegalArgumentException("Logo must be a PNG or JPEG image (SVG is not supported on reports)");
-        }
-        if (decoded.getWidth() < MIN_LOGO_PIXELS || decoded.getHeight() < MIN_LOGO_PIXELS) {
-            throw new IllegalArgumentException("Logo must be at least 64×64 pixels");
-        }
-        return bytes;
-    }
-
-    /** Create-enrollment payload. */
-    public static class EnrollmentRequest {
-        public String testId;
-        public Long accreditingBodyId;
-        public LocalDate effectiveFrom;
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleBadInput(IllegalArgumentException e) {
-        return Map.of("error", e.getMessage());
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleConstraint(DataIntegrityViolationException e) {
-        LogEvent.logError(e);
-        return Map.of("error", "Invalid or duplicate accreditation data");
-    }
 }

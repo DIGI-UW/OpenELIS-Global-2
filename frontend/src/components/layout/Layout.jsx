@@ -68,28 +68,8 @@ export default function Layout(props) {
   const [supportedLocales, setSupportedLocales] = useState([]);
   const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
-  // Determine layout config from props or route-based fallbacks
-  const isStorageContext =
-    location.pathname.startsWith("/Storage") ||
-    location.pathname.startsWith("/FreezerMonitoring");
-
-  const isAnalyzerContext =
-    location.pathname.startsWith("/analyzers") ||
-    location.pathname.startsWith("/AnalyzerManagement");
-  const isMicrobiologyContext = location.pathname.startsWith("/Microbiology");
   const isAdminContext = isAdminNavRoute(location.pathname);
   const navContext = isAdminContext ? "admin" : "main";
-
-  // Used by Header to persist per-context menu expansion state
-  const storageKeyPrefix = isAdminContext
-    ? "admin"
-    : isStorageContext
-      ? "storage"
-      : isAnalyzerContext
-        ? "analyzer"
-        : isMicrobiologyContext
-          ? "microbiology"
-          : "main";
 
   // Nav on desktop: pinned (default) renders it persistently and pushes
   // content; unpinned turns it into the same hamburger-opened overlay drawer
@@ -119,7 +99,7 @@ export default function Layout(props) {
 
   useEffect(() => {
     closeSideNav();
-  }, [location.pathname, closeSideNav]);
+  }, [location.pathname, location.search, closeSideNav]);
 
   // Credential-change screens are login-adjacent and render focused (no sidenav),
   // matching /login regardless of auth state.
@@ -222,7 +202,6 @@ export default function Layout(props) {
               toggleNavPinned={toggleNavPinned}
               toggleSideNav={() => setDrawerOpen((open) => !open)}
               closeSideNav={closeSideNav}
-              storageKeyPrefix={storageKeyPrefix}
               navContext={navContext}
               showSideNav={!isFocusedAuthRoute}
             />

@@ -316,6 +316,15 @@ function TestManagementConfigMenu() {
                   <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
                 </ClickableTile>
                 <br />
+                <ClickableTile href="/MasterListsPage/program" id="programs">
+                  <FormattedMessage id="admin.programs.title" />
+                  <UnorderedList nested>
+                    <ListItem>
+                      <FormattedMessage id="admin.programs.subtitle" />
+                    </ListItem>
+                  </UnorderedList>
+                </ClickableTile>
+                <br />
                 <ClickableTile
                   href="/MasterListsPage/ComplianceStandardsAdmin"
                   id="ComplianceStandardsAdmin"

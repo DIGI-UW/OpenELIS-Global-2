@@ -55,8 +55,12 @@ const row = (id, overrides = {}) => ({
   ackPending: false,
   nonconforming: false,
   critical: false,
+  clear: true,
   ...overrides,
 });
+
+/** A row the server holds in Needs-review, carrying the given signals. */
+const held = (id, overrides = {}) => row(id, { clear: false, ...overrides });
 
 const renderValidation = (
   rows,
@@ -80,6 +84,60 @@ const renderValidation = (
 
 const BULK_ON = { AccessionFormat: "", ALLOW_BULK_RELEASE_CLEAR: "true" };
 
+describe("Validation — result flags in the row (OGC-1121)", () => {
+  it("marks a critical value and an abnormal value differently, and a normal one not at all", () => {
+    renderValidation([
+      row(0),
+      row(1, { result: "120", normal: false, resultFlag: "ABNORMAL" }),
+      row(2, {
+        result: "200",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const normal = screen.getByTestId("validation-result-0");
+    const abnormal = screen.getByTestId("validation-result-1");
+    const critical = screen.getByTestId("validation-result-2");
+
+    expect(normal.querySelector('[data-testid^="flag-"]')).toBeNull();
+    expect(
+      abnormal.querySelector('[data-testid="flag-ABNORMAL"]'),
+    ).not.toBeNull();
+    expect(
+      critical.querySelector('[data-testid="flag-CRITICAL"]'),
+    ).not.toBeNull();
+    expect(critical).toHaveTextContent("Critical");
+    expect(abnormal).not.toHaveTextContent("Critical");
+    expect(critical.className).toContain("unifiedValueAccent--critical");
+    expect(abnormal.className).toContain("unifiedValueAccent--abnormal");
+
+    // The critical row also carries the row-level signal chip.
+    expect(screen.getByTestId("check-before-release-2")).toHaveTextContent(
+      "Critical",
+    );
+  });
+});
+
+describe("Validation — result value stays on one line", () => {
+  it("keeps a flagged scientific-notation value unbroken beside its flag", () => {
+    renderValidation([
+      row(0, {
+        result: "1.5 x 10^4",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const value = screen.getByTestId("validation-result-value-0");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
+    expect(value.querySelector('[data-testid^="flag-"]')).toBeNull();
+  });
+});
+
 describe("Validation — Check before release (OGC-1027)", () => {
   it("renders a chip only for rows carrying a signal; a clean row is blank", () => {
     renderValidation([row(0), row(1, { nceOpen: true, modified: true })]);
@@ -94,8 +152,8 @@ describe("Validation — Check before release (OGC-1027)", () => {
   it("filter chips carry live counts computed over the whole queue", () => {
     renderValidation([
       row(0),
-      row(1, { nceOpen: true }),
-      row(2, { normal: false }),
+      held(1, { nceOpen: true }),
+      held(2, { normal: false }),
     ]);
 
     expect(screen.getByTestId("triage-filter-all")).toHaveTextContent(
@@ -180,17 +238,17 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(results.resultList[0].noteContext).toBe("VALIDATION");
   });
 
-  it("'Release all clear' is absent when the lab has bulk release turned off (OGC-1029)", () => {
+  it("'Release all clear' stays visible but disabled when the lab has bulk release turned off, and says so (OGC-1226 FR-14d)", () => {
     renderValidation([row(0)]);
-    expect(screen.queryByTestId("release-all-clear")).toBeNull();
-    expect(screen.getByTestId("release-all-clear-disabled")).toHaveTextContent(
-      "Bulk release is turned off",
-    );
+    expect(screen.getByTestId("release-all-clear")).toBeDisabled();
+    expect(
+      screen.getByTestId("release-all-clear-why-bulkDisabled"),
+    ).toHaveTextContent("Bulk release is turned off");
   });
 
   it("'Release all clear (N)' counts the Clear lane and is disabled when it is empty (OGC-1029)", () => {
     renderValidation(
-      [row(0, { nceOpen: true }), row(1, { normal: false })],
+      [held(0, { nceOpen: true }), held(1, { normal: false })],
       BULK_ON,
     );
     const button = screen.getByTestId("release-all-clear");
@@ -198,10 +256,91 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(button).toBeDisabled();
   });
 
+  it("a disabled bulk button explains itself: rows with signals, most common named (OGC-1226 FR-14a)", () => {
+    renderValidation(
+      [
+        held(0, { nceOpen: true }),
+        held(1, { normal: false }),
+        held(2, { normal: false, modified: true }),
+      ],
+      BULK_ON,
+    );
+    const why = screen.getByTestId("release-all-clear-why-signals");
+    expect(why).toHaveTextContent(
+      "3 results in this queue carry something to check before release.",
+    );
+    expect(why).toHaveTextContent("Most common: Abnormal, NCE open, Modified.");
+    expect(
+      screen.queryByTestId("release-all-clear-why-noReference"),
+    ).toBeNull();
+  });
+
+  it("tests with no reference value in the catalogue are named apart, with the fix (OGC-1226 FR-14b, FR-15)", () => {
+    renderValidation(
+      [
+        held(0, { normalRange: "" }),
+        held(1, { normalRange: "" }),
+        held(2, { critical: true }),
+      ],
+      BULK_ON,
+    );
+    expect(
+      screen.getByTestId("release-all-clear-why-noReference"),
+    ).toHaveTextContent(
+      "2 results are for tests with no reference value recorded in the test catalogue, so they cannot be judged as normal. Record an expected normal value for these tests in the Test Catalogue to let their results clear.",
+    );
+    expect(
+      screen.getByTestId("release-all-clear-why-signals"),
+    ).toHaveTextContent(
+      "1 results in this queue carry something to check before release.",
+    );
+  });
+
+  it("an empty queue after a search keeps the disabled button and says nothing is waiting (OGC-1226 FR-14c)", () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: BULK_ON }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation
+              params=""
+              results={{ resultList: [], qcFailureList: [], searched: true }}
+            />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+    expect(screen.getByTestId("release-all-clear")).toBeDisabled();
+    expect(
+      screen.getByTestId("release-all-clear-why-queueEmpty"),
+    ).toHaveTextContent("Nothing is waiting for validation.");
+  });
+
+  it("before any search there is no bulk button to explain", () => {
+    renderValidation([], BULK_ON);
+    expect(screen.queryByTestId("release-all-clear")).toBeNull();
+  });
+
+  it("the explanation disappears once something is clear, and the confirm dialog says what clearance checked (OGC-1226 FR-16)", () => {
+    renderValidation([row(0), held(1, { normal: false })], BULK_ON);
+    expect(screen.queryByTestId("release-all-clear-why")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    expect(screen.getByTestId("release-all-clear-scope")).toHaveTextContent(
+      "It does not confirm that quality control was performed.",
+    );
+    expect(screen.getByTestId("release-all-clear-modal")).toHaveTextContent(
+      "no recorded QC failure",
+    );
+  });
+
   it("the confirm list holds only Clear-lane rows and the signed release posts them with the page's search key (OGC-1029)", () => {
     postToOpenElisServerJsonResponse.mockReset();
     renderValidation(
-      [row(0), row(1, { nceOpen: true }), row(2)],
+      [row(0), held(1, { nceOpen: true }), row(2)],
       BULK_ON,
       "?type=order&accessionNumber=ACC0",
     );
@@ -225,7 +364,7 @@ describe("Validation — Check before release (OGC-1027)", () => {
   });
 
   it("a needs-review row offers 'Review →' which opens its panel (OGC-1029)", () => {
-    renderValidation([row(0), row(1, { normal: false })], BULK_ON);
+    renderValidation([row(0), held(1, { normal: false })], BULK_ON);
     expect(screen.queryByTestId("review-row-0")).toBeNull();
     expect(screen.queryByTestId("validation-review-panel-1")).toBeNull();
 
@@ -277,8 +416,20 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
-  it("fail-safe: QC not evaluated keeps a chip-less row out of the Clear lane", () => {
-    renderValidation([row(0, { qcStatus: "UNKNOWN" })]);
+  it("a patient result with no QC verdict sits in the Clear lane when the server says so (OGC-1226 FR-3)", () => {
+    renderValidation([row(0, { qcStatus: "UNKNOWN" })], BULK_ON);
+
+    expect(screen.queryByTestId("check-before-release-0")).toBeNull();
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Clear: 1",
+    );
+    expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+      "Release all clear (1)",
+    );
+  });
+
+  it("the page never derives a lane of its own: a chip-less row the server holds back stays in Needs-review (OGC-1226 FR-6)", () => {
+    renderValidation([held(0)], BULK_ON);
 
     expect(screen.queryByTestId("check-before-release-0")).toBeNull();
     expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(

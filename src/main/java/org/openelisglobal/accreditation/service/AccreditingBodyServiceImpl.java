@@ -77,6 +77,14 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional(readOnly = true)
+    public AccreditingBodyView getBodyView(Long id) {
+        AccreditingBody body = require(id);
+        long enrolled = testAccreditationDAO.getAllMatching("accreditingBodyId", id).size();
+        return toView(body, enrolled, LocalDate.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AccreditationSummary getSummary() {
         LocalDate today = LocalDate.now();
         List<AccreditingBody> bodies = baseObjectDAO.getAllOrdered();
@@ -128,7 +136,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     public AccreditingBody createBody(AccreditingBody body, String sysUserId) {
         String code = normalizeCode(body.getCode());
         validateCode(code);
-        if (baseObjectDAO.getByCode(code) != null) {
+        if (!baseObjectDAO.getAllMatching("code", code).isEmpty()) {
             throw new IllegalArgumentException("An accrediting body with code " + code + " already exists");
         }
         AccreditingBody row = new AccreditingBody();
@@ -142,16 +150,15 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Override
     @Transactional
     public AccreditingBody updateBody(Long id, AccreditingBody incoming, String sysUserId) {
-        AccreditingBody existing = require(id);
+        AccreditingBody row = detached(id);
         // The body code is read-only after create. Reject rather than silently drop it,
         // so a client sending a changed code learns it did nothing.
         if (incoming.getCode() != null) {
             String submitted = normalizeCode(incoming.getCode());
-            if (!submitted.equals(existing.getCode())) {
+            if (!submitted.equals(row.getCode())) {
                 throw new IllegalArgumentException("Accrediting body code cannot be changed after creation");
             }
         }
-        AccreditingBody row = detachedCopy(existing);
         applyEditableFields(row, incoming);
         row.setSysUserId(sysUserId);
         update(row);
@@ -162,7 +169,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Transactional
     public void deleteBody(Long id, String sysUserId) {
         AccreditingBody existing = require(id);
-        long enrolled = testAccreditationDAO.countByBody(id);
+        long enrolled = testAccreditationDAO.getAllMatching("accreditingBodyId", id).size();
         if (enrolled > 0) {
             // The DB FK would refuse this anyway; failing here turns a 500-ish
             // constraint violation into an explainable message with the count in it.
@@ -178,7 +185,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Override
     @Transactional
     public AccreditingBody setLogo(Long id, String logoImageId, String sysUserId) {
-        AccreditingBody row = detachedCopy(require(id));
+        AccreditingBody row = detached(id);
         String previousLogo = row.getLogoImageId();
         row.setLogoImageId(logoImageId);
         row.setSysUserId(sysUserId);
@@ -205,30 +212,23 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     }
 
     /**
-     * A fresh detached instance carrying every persisted field of {@code existing}.
-     * Callers then overwrite only what they mean to change.
-     *
-     * <p>
-     * Never mutate the loaded entity: the audit base class re-reads the pre-image
-     * to build its history diff, so an in-place edit would diff against itself. The
-     * loaded {@code @Version} rides along so the optimistic-lock check on merge
-     * matches the row in the DB.
+     * The stored row, evicted from the session so a caller can edit it in place.
+     * The audit base class re-reads the pre-image to build its history diff, so an
+     * edit to a still-attached instance would diff against itself. Evicting first
+     * is the repo idiom — see {@code DictionaryServiceImpl.delete} and
+     * {@code NoteBookServiceImpl.update}.
      */
-    private AccreditingBody detachedCopy(AccreditingBody existing) {
-        AccreditingBody row = new AccreditingBody();
-        row.setId(existing.getId());
-        row.setLastupdated(existing.getLastupdated());
-        row.setCode(existing.getCode());
-        row.setName(existing.getName());
-        row.setLogoImageId(existing.getLogoImageId());
-        row.setExpiresOn(existing.getExpiresOn());
-        row.setLogoVisibilityMode(existing.getLogoVisibilityMode());
-        row.setThresholdPct(existing.getThresholdPct());
-        row.setDisplayOrder(existing.getDisplayOrder());
-        row.setActive(existing.getActive());
+    private AccreditingBody detached(Long id) {
+        AccreditingBody row = require(id);
+        baseObjectDAO.evict(row);
         return row;
     }
 
+    /**
+     * Kept in preference to the base {@code get(id)} because a missing body is the
+     * caller's mistake: this message reaches the client as a 400, where the base
+     * method's ObjectNotFoundException would surface as a server error.
+     */
     private AccreditingBody require(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("Accrediting body id is required");
@@ -281,7 +281,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     private Map<Long, Long> enrolledCounts() {
         Map<Long, Long> counts = new HashMap<>();
-        for (Object[] pair : baseObjectDAO.countEnrolledTestsByBody()) {
+        for (Object[] pair : testAccreditationDAO.countEnrolledTestsByBody()) {
             counts.put((Long) pair[0], (Long) pair[1]);
         }
         return counts;

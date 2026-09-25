@@ -8,7 +8,6 @@ import {
   Select,
   Loading,
   Grid,
-  Link,
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -18,7 +17,6 @@ import { getFromOpenElisServer, Roles } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 
 const SearchForm = (props) => {
   const { setNotificationVisible, addNotification } =
@@ -37,29 +35,12 @@ const SearchForm = (props) => {
   );
   const [testDate, setTestDate] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
 
   const validationResults = (data) => {
     if (data) {
       setSearchResults(data);
       setIsLoading(false);
-      const totalPages = Number(data.paging?.totalPages) || 1;
-      const currentPage = Number(data.paging?.currentPage) || 1;
-      const hasMultiplePages = totalPages > 1;
-      setPagination(hasMultiplePages);
-      setCurrentApiPage(hasMultiplePages ? currentPage : null);
-      setTotalApiPages(hasMultiplePages ? totalPages : null);
-      setNextPage(
-        hasMultiplePages && currentPage < totalPages ? currentPage + 1 : null,
-      );
-      setPreviousPage(
-        hasMultiplePages && currentPage > 1 ? currentPage - 1 : null,
-      );
       if (data?.resultList?.length > 0) {
         const newResultsList = data.resultList.map((data, id) => {
           let tempData = { ...data };
@@ -69,12 +50,14 @@ const SearchForm = (props) => {
         setSearchResults((prevState) => ({
           ...prevState,
           resultList: newResultsList,
+          searched: true,
         }));
       } else {
         setIsLoading(false);
         setSearchResults((prevState) => ({
           ...prevState,
           resultList: [],
+          searched: true,
         }));
 
         addNotification({
@@ -109,20 +92,11 @@ const SearchForm = (props) => {
     if (!props.registerRefresh) {
       return;
     }
-    props.registerRefresh(
-      url
-        ? () => {
-            setIsLoading(true);
-            getFromOpenElisServer(url, validationResults);
-          }
-        : null,
-    );
-  }, [url, props.registerRefresh]);
+    props.registerRefresh(url ? refreshResults : null);
+    props.registerPageLoader?.(url ? loadResultsPage : null);
+  }, [url, props.registerRefresh, props.registerPageLoader]);
 
   const handleSubmit = (values) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     setIsLoading(true);
     var accessionNumber = values.accessionNumber
       ? values.accessionNumber.split("-")[0]
@@ -164,23 +138,32 @@ const SearchForm = (props) => {
 
   const handleChange = () => {};
 
-  const loadNextResultsPage = () => {
+  /** One server page, the same request for the arrows and for Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, validationResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, validationResults);
   };
 
-  const loadPreviousResultsPage = () => {
+  /**
+   * Re-runs the search, so the server rebuilds its pages, and reopens the page
+   * the user was on when the rebuilt queue still has it.
+   */
+  const refreshResults = (pageToReopen) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, validationResults);
+    getFromOpenElisServer(url, (data) => {
+      const totalPages = Number(data?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, validationResults);
+      } else {
+        validationResults(data);
+      }
+    });
   };
   const fetchTestSections = (response) => {
     setTestSections(response);
   };
 
   const submitOnSelect = (e) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     var values = { unitType: e.target.value };
     handleSubmit(values);
   };
@@ -255,10 +238,6 @@ const SearchForm = (props) => {
         break;
       }
     }
-
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
   }, [searchBy, doRange]);
   return (
     <>
@@ -389,46 +368,6 @@ const SearchForm = (props) => {
           </Grid>
         </>
       )}
-
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
     </>
   );
 };

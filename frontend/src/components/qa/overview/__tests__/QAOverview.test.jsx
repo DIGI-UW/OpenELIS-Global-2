@@ -1,26 +1,24 @@
 import React from "react";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../../languages/en.json";
 import QAOverview from "../QAOverview";
 import { weekStart } from "../overviewData";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { renderQa } from "../../testUtils";
+import { isoDaysFromToday } from "../../common/qaDates";
+import { fetchFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
 
 vi.mock("../../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    getFromOpenElisServer: vi.fn(),
+    fetchFromOpenElisServer: vi.fn(),
   };
 });
 
 // Dates relative to the real clock so the week/24h predicates stay stable
 // whichever day the suite runs.
-const pad = (n) => String(n).padStart(2, "0");
-const isoDay = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const isoDay = toLocalIsoDate;
 const TODAY = isoDay(new Date());
 const LAST_MONTH = isoDay(new Date(Date.now() - 10 * 864e5)); // before any Monday
 const NOW_ISO = new Date().toISOString();
@@ -113,48 +111,66 @@ const SUMMARY = {
 const TAT_CURRENT = { mean: 33.3333, totalCount: 12 };
 const TAT_PRIOR = { mean: 40, totalCount: 9 };
 
-// Rendering with the real en.json also fails loudly if a referenced i18n key
-// is missing (react-intl falls back to the raw key, breaking text assertions).
 const renderPage = async () => {
   let view;
+  fetchFromOpenElisServer.mockClear();
   await act(async () => {
-    view = render(
-      <IntlProvider locale="en" messages={messages}>
-        <MemoryRouter>
-          <QAOverview />
-        </MemoryRouter>
-      </IntlProvider>,
-    );
+    view = renderQa(<QAOverview />, { entries: ["/qa/overview"] });
   });
+  // This week's confirmed-callback count is the last thing on the page to
+  // arrive: its window is only asked for once the overview summary has landed.
+  // Seeing it means every read has settled.
+  await waitFor(() =>
+    expect(screen.getByText("3 confirmed")).toBeInTheDocument(),
+  );
   return view;
 };
+
+const callsTo = (fragment) =>
+  fetchFromOpenElisServer.mock.calls.filter(([url]) => url.includes(fragment));
 
 beforeEach(() => {
   sessionStorage.clear();
   vi.clearAllMocks();
-  let tatCalls = 0;
-  getFromOpenElisServer.mockImplementation((url, callback) => {
+  // The TAT rollup asks for the 30-day window and the equal one before it.
+  const currentWindow = `fromDate=${isoDaysFromToday(-30)}`;
+  fetchFromOpenElisServer.mockImplementation((url) => {
     if (url.includes("/rest/nce/dashboard")) {
-      callback({ nceList: NCE_LIST });
-    } else if (url.includes("/rest/qa/overview/summary")) {
-      callback(SUMMARY);
-    } else if (url.includes("/rest/reports/tat/summary")) {
-      // fetchTatRollup always requests the current window before the prior one
-      callback(++tatCalls === 1 ? TAT_CURRENT : TAT_PRIOR);
-    } else if (url.includes("/rest/reports/amendment/summary")) {
-      callback({ amendedCount: 8, releasedCount: 2580, ratePercent: 0.31 });
-    } else if (url.includes("/rest/reports/rejection/summary")) {
-      callback({ rejectedCount: 3, totalCount: 120, ratePercent: 2.5 });
-    } else if (url.includes("/rest/critical-callback/summary")) {
-      callback({
+      return Promise.resolve({ nceList: NCE_LIST });
+    }
+    if (url.includes("/rest/qa/overview/summary")) {
+      return Promise.resolve(SUMMARY);
+    }
+    if (url.includes("/rest/reports/tat/summary")) {
+      return Promise.resolve(
+        url.includes(currentWindow) ? TAT_CURRENT : TAT_PRIOR,
+      );
+    }
+    if (url.includes("/rest/reports/amendment/summary")) {
+      return Promise.resolve({
+        amendedCount: 8,
+        releasedCount: 2580,
+        ratePercent: 0.31,
+      });
+    }
+    if (url.includes("/rest/reports/rejection/summary")) {
+      return Promise.resolve({
+        rejectedCount: 3,
+        totalCount: 120,
+        ratePercent: 2.5,
+      });
+    }
+    if (url.includes("/rest/critical-callback/summary")) {
+      return Promise.resolve({
         enabled: true,
         criticalCount: 4,
         confirmedCount: 3,
         compliancePercent: 75.0,
         target: 100,
       });
-    } else if (url.includes("/rest/accreditation/summary")) {
-      callback({
+    }
+    if (url.includes("/rest/accreditation/summary")) {
+      return Promise.resolve({
         totalBodies: 3,
         activeBodies: 2,
         expiringBodies: 1,
@@ -162,39 +178,43 @@ beforeEach(() => {
         inForceBodyNames: ["ISO 15189", "SANAS"],
         worstStatus: "EXPIRING",
       });
-    } else if (url.includes("/rest/nce/capa-register")) {
-      callback([
+    }
+    if (url.includes("/rest/nce/capa-register")) {
+      return Promise.resolve([
         { id: 1, nceStatus: "Pending", dueDate: LAST_MONTH }, // overdue
         { id: 2, nceStatus: "completed", dateCompleted: TODAY },
       ]);
-    } else if (url.includes("/rest/qi-config/resolve")) {
+    }
+    if (url.includes("/rest/qi-config/resolve")) {
       // full thresholds where the tiles judge tones (OGC-710)
       if (url.includes("indicator=REJECTION")) {
-        callback({
+        return Promise.resolve({
           enabled: true,
           target: 2,
           action: 5,
           direction: "LOWER_BETTER",
         });
-      } else if (url.includes("indicator=AMENDMENT")) {
-        callback({
+      }
+      if (url.includes("indicator=AMENDMENT")) {
+        return Promise.resolve({
           enabled: true,
           target: 0.5,
           action: 2,
           direction: "LOWER_BETTER",
         });
-      } else if (url.includes("indicator=CALLBACK")) {
+      }
+      if (url.includes("indicator=CALLBACK")) {
         // the one HIGHER_BETTER indicator (qa/009 seed: 100 target / 95 action)
-        callback({
+        return Promise.resolve({
           enabled: true,
           target: 100,
           action: 95,
           direction: "HIGHER_BETTER",
         });
-      } else {
-        callback({ enabled: true });
       }
+      return Promise.resolve({ enabled: true });
     }
+    return Promise.reject(new Error(`unexpected read: ${url}`));
   });
 });
 
@@ -223,14 +243,23 @@ describe("QAOverview", () => {
       const region = screen.getByRole("region", { name });
       expect(within(region).queryAllByText("Coming soon")).toHaveLength(slots);
     });
+  });
 
-    // One shared NCE fetch, one overview summary, two TAT windows, the
-    // Amendment + Rejection tile summaries, three callback windows (tile 30d,
-    // attention 24h, week), the CAPA register, the accreditation summary
-    // (inspector Q5), plus the OGC-711 config resolves: AttentionRequired
-    // (NCE), TodayTiles (all five indicators), PillarStatus (TAT)
-    // = 1 + 1 + 2 + 2 + 3 + 1 + 1 + 1 + 5 + 1 = 18
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(18);
+  test("slots sharing an endpoint read it once", async () => {
+    await renderPage();
+
+    // Five slots want the NCE register, two want the TAT rollup, four want
+    // the overview summary, and three want the NCE indicator's config — each
+    // is one cached read, not one per slot.
+    expect(callsTo("/rest/nce/dashboard")).toHaveLength(1);
+    expect(callsTo("/rest/qa/overview/summary")).toHaveLength(1);
+    expect(callsTo("indicator=NCE")).toHaveLength(1);
+    // The callback summary is asked for three genuinely different windows:
+    // the tile's 30 days, the attention queue's 24 hours, and this week.
+    expect(
+      new Set(callsTo("/rest/critical-callback/summary").map(([url]) => url))
+        .size,
+    ).toBe(3);
   });
 
   test("Today tiles carry the KPI titles, tickets, and the live TAT/Amendment/NCE values", async () => {
@@ -252,28 +281,29 @@ describe("QAOverview", () => {
     });
     // Average TAT is live: value + prior-window delta, no ticket
     expect(within(today).queryByText("OGC-696")).not.toBeInTheDocument();
-    const tatTile = within(today)
-      .getByText("Average TAT")
-      .closest(".cds--tile");
-    expect(within(tatTile).getByText("33h 20m")).toBeInTheDocument();
-    expect(tatTile).toHaveTextContent("↓ 6h 40m");
-    expect(within(tatTile).getByText(/vs prior 30 days/)).toBeInTheDocument();
+    const tile = (indicator) =>
+      within(today).getByTestId(`qa-overview-tile-${indicator}`);
+    expect(tile("tat")).toHaveTextContent("33h 20m");
+    expect(tile("tat")).toHaveTextContent("↓ 6h 40m");
+    expect(tile("tat")).toHaveTextContent("vs prior 30 days");
     // NCE Pulse is live: no ticket tag, real counts from the mocked payload
     expect(within(today).queryByText("OGC-699")).not.toBeInTheDocument();
-    expect(within(today).getByText("3")).toHaveClass("qa-live-amber");
-    expect(
-      within(today).getByText("3 in corrective action"),
-    ).toBeInTheDocument();
+    expect(tile("nce")).toHaveTextContent("3");
+    expect(tile("nce").className).toContain("qi-tile--amber");
+    expect(tile("nce")).toHaveTextContent("3 in corrective action");
     // Amendment Rate is live: rate under the green threshold
     expect(within(today).queryByText("OGC-698")).not.toBeInTheDocument();
-    expect(within(today).getByText("0.31%")).toHaveClass("qa-live-green");
-    expect(within(today).getByText("8 of 2580 released")).toBeInTheDocument();
+    expect(tile("amendment")).toHaveTextContent("0.31%");
+    expect(tile("amendment").className).toContain("qi-tile--green");
+    expect(tile("amendment")).toHaveTextContent("8 of 2580 released");
     // Rejection Rate is live (OGC-697/710): between target 2 and action 5
-    expect(within(today).getByText("2.50%")).toHaveClass("qa-live-amber");
-    expect(within(today).getByText("3 of 120 started")).toBeInTheDocument();
+    expect(tile("rejection")).toHaveTextContent("2.50%");
+    expect(tile("rejection").className).toContain("qi-tile--amber");
+    expect(tile("rejection")).toHaveTextContent("3 of 120 started");
     // Callback compliance is live (OGC-714/715): 75% below the 100% target
-    expect(within(today).getByText("75.00%")).toHaveClass("qa-live-red");
-    expect(within(today).getByText("3 of 4 confirmed")).toBeInTheDocument();
+    expect(tile("callback")).toHaveTextContent("75.00%");
+    expect(tile("callback").className).toContain("qi-tile--red");
+    expect(tile("callback")).toHaveTextContent("3 of 4 confirmed");
   });
 
   test("attention queue: live NCE, QC-violation, and EQA-due rows with drill-throughs", async () => {

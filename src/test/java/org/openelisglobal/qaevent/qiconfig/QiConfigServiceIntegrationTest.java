@@ -6,8 +6,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.openelisglobal.qaevent.qiconfig.QiConfigFixtures.bd;
+import static org.openelisglobal.qaevent.qiconfig.QiConfigFixtures.ov;
+import static org.openelisglobal.qaevent.qiconfig.QiConfigFixtures.view;
 
-import java.math.BigDecimal;
 import java.util.List;
 import javax.sql.DataSource;
 import org.junit.After;
@@ -17,6 +19,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qaevent.qiconfig.dto.QiConfigView;
 import org.openelisglobal.qaevent.qiconfig.dto.ResolvedConfig;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
+import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -36,7 +39,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * identical to the shipped {@code NceActionLogServiceImpl}. See UAT step 21.
  *
  * <p>
- * The shipped Liquibase seed (qi-config-003) is truncated by the base test
+ * The shipped Liquibase seed (qi-config-004) is truncated by the base test
  * harness, so each test seeds the config it needs rather than depending on it.
  */
 public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest {
@@ -77,7 +80,7 @@ public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(0, bySection.getTarget().compareTo(bd("2")));
         assertEquals(0, noSection.getTarget().compareTo(bd("2")));
         assertTrue(bySection.isEnabled());
-        assertEquals("LOWER_BETTER", bySection.getDirection());
+        assertEquals(QiIndicator.Direction.LOWER_BETTER, bySection.getDirection());
     }
 
     @Test
@@ -105,7 +108,7 @@ public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest 
         assertTrue(r.isEnabled());
         assertNull(r.getTarget());
         assertNull(r.getAction());
-        assertEquals("LOWER_BETTER", r.getDirection());
+        assertEquals(QiIndicator.Direction.LOWER_BETTER, r.getDirection());
     }
 
     @Test
@@ -188,29 +191,4 @@ public class QiConfigServiceIntegrationTest extends BaseWebContextSensitiveTest 
                 + " VALUES (nextval('clinlims.qi_config_id_seq'), 'REJECTION', true)"));
     }
 
-    // ---- helpers ----
-
-    private static BigDecimal bd(String s) {
-        return new BigDecimal(s);
-    }
-
-    private static QiConfigView view(boolean enabled, BigDecimal target, BigDecimal action,
-            QiConfigView.Override... overrides) {
-        QiConfigView v = new QiConfigView();
-        v.setEnabled(enabled);
-        v.setTarget(target);
-        v.setAction(action);
-        for (QiConfigView.Override o : overrides) {
-            v.getOverrides().add(o);
-        }
-        return v;
-    }
-
-    private static QiConfigView.Override ov(String sectionId, BigDecimal target, BigDecimal action) {
-        QiConfigView.Override o = new QiConfigView.Override();
-        o.setTestCategoryId(sectionId);
-        o.setTarget(target);
-        o.setAction(action);
-        return o;
-    }
 }

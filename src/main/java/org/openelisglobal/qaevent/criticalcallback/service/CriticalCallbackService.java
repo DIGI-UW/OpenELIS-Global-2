@@ -10,8 +10,6 @@ import org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback;
 
 public interface CriticalCallbackService extends BaseObjectService<CriticalCallback, String> {
 
-    List<CriticalCallback> getByAnalysisId(String analysisId);
-
     /**
      * Compliance summary over released critical results in the window. When the
      * CALLBACK indicator is disabled, returns {@code enabled=false} with zero

@@ -246,7 +246,7 @@ export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
   baseProfileId?: string | null;
   baseRevision?: number | null;
-  profile?: {
+  profile?: JsonObject & {
     profileMeta?: {
       id?: string;
       displayName?: string;
@@ -309,6 +309,22 @@ export interface AnalyzerControlRecognitionUpdate {
  * @param {Function} callback - Callback function (data) => void
  * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
+export interface AnalyzerDeliveryIssuesResponse {
+  status: string;
+  data?: {
+    count: number;
+    rows: Array<{ id: string; state: string; actionable: boolean }>;
+  };
+}
+
+/** Results the Analyzer Bridge received but has not delivered to OpenELIS. */
+export const getAnalyzerDeliveryIssues = (
+  callback: DataCallback<AnalyzerDeliveryIssuesResponse | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
+};
+
 export const getAnalyzers = (
   filters: AnalyzerFilters = {},
   callback: DataCallback<AnalyzersResponse | undefined>,
@@ -728,6 +744,19 @@ export const getAnalyzerTypeDraft = (
   );
 };
 
+export const updateAnalyzerTypeDraft = (
+  draftId: string,
+  profile: JsonObject,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    "PUT",
+    { profile },
+    callback,
+  );
+};
+
 export const getAnalyzerTypeControlRecognition = (
   draftId: string,
   callback: DataCallback<AnalyzerControlRecognitionDraft | undefined>,
@@ -786,3 +815,21 @@ export const publishAnalyzerTypeDraft = (
     callback,
   );
 };
+
+export interface AnalyzerUpgradeOutcome {
+  analyzerId: string;
+  name: string;
+  status: string;
+  reason?: string | null;
+}
+export const getAnalyzerUpgrade = (
+  callback: DataCallback<AnalyzerUpgradeOutcome[] | undefined>,
+) => getFromOpenElisServer("/rest/analyzer/upgrade", callback);
+export const retryAnalyzerUpgrade = (
+  callback: ApiCallback<AnalyzerUpgradeOutcome[]>,
+) =>
+  postToOpenElisServerJsonResponse(
+    "/rest/analyzer/upgrade",
+    JSON.stringify({}),
+    callback,
+  );

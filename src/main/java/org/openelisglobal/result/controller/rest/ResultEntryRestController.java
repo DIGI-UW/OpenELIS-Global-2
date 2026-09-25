@@ -297,6 +297,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        // A test carrying a live referral is not referred again, and the bench has to
+        // be told rather than have the refer-out quietly dropped from the save.
+        if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
+            body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
         item.setModified(true);
         reuseExistingResultForComponent(item, analysis);
 
@@ -396,7 +403,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);

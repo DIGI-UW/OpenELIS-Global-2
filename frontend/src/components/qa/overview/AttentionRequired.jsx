@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { CheckmarkOutline } from "@carbon/icons-react";
 import ComingSoon from "./ComingSoon";
 import QAEmptyState from "../common/QAEmptyState";
-import useQiEnabled from "../qi/useQiEnabled";
+import useQiConfig from "../qi/useQiConfig";
 import {
   NCE_DRILL_URL,
   countCriticalPending,
   countEffectivenessReviewsDue,
-  fetchNceList,
+  useNceList,
 } from "./nceOverview";
-import { fetchCallbackSummary, fetchOverviewSummary } from "./overviewData";
-import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
-import { deriveStatus } from "../qms/CapaRegister";
+import { useCallbackSummary, useOverviewSummary } from "./overviewData";
+import { toLocalIsoDate } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
+import { isoDaysFromToday } from "../common/qaDates";
+import { deriveStatus } from "../common/capa";
 
 // Live action-queue row: count badge + label, linked to the drill-through.
 // count === undefined -> loading, null -> fetch yielded no data.
@@ -35,6 +37,10 @@ const LiveRow = ({ count, labelKey, alert, onClick }) => (
   </button>
 );
 
+// undefined while the read is in flight, null when it yielded nothing.
+const counter = (loading, data, compute) =>
+  loading ? undefined : data ? compute(data) : null;
+
 /**
  * Attention Required action queue. Live rows: critical NCEs pending
  * acknowledgment (OGC-699), critical results in the last 24h
@@ -45,49 +51,41 @@ const AttentionRequired = () => {
   const intl = useIntl();
   const history = useHistory();
   const title = intl.formatMessage({ id: "qa.overview.section.attention" });
-  // undefined = loading, null = fetch yielded no data
-  const [nceList, setNceList] = useState();
-  const [summary, setSummary] = useState();
-  const [callbacks, setCallbacks] = useState();
-  const [capaItems, setCapaItems] = useState();
+  const { loading: nceLoading, nceList } = useNceList();
+  const { loading: summaryLoading, summary } = useOverviewSummary();
+  const { loading: callbacksLoading, callbacks } = useCallbackSummary(
+    isoDaysFromToday(-1),
+    toLocalIsoDate(new Date()),
+  );
+  const capaQuery = useServerData("/rest/nce/capa-register");
   // OGC-711: hide the critical-NCE row when the NCE indicator is disabled.
-  const { isEnabled } = useQiEnabled(["NCE"]);
-  const nceEnabled = isEnabled("NCE");
+  const { enabled: nceEnabled } = useQiConfig("NCE");
 
-  useEffect(() => {
-    let mounted = true;
-    fetchNceList((list) => mounted && setNceList(list));
-    fetchOverviewSummary((data) => mounted && setSummary(data));
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    fetchCallbackSummary(
-      toLocalIsoDate(yesterday),
-      toLocalIsoDate(new Date()),
-      (res) => mounted && setCallbacks(res),
-    );
-    getFromOpenElisServer(
-      "/rest/nce/capa-register",
-      (res) => mounted && setCapaItems(Array.isArray(res) ? res : null),
-    );
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const criticalNce = nceList ? countCriticalPending(nceList) : nceList;
-  const reviewsDue = nceList ? countEffectivenessReviewsDue(nceList) : nceList;
-  const qcViolations = summary ? summary.qc.violations24h : summary;
-  const eqaDue = summary ? summary.eqa.dueSoon14d : summary;
+  const criticalNce = counter(nceLoading, nceList, countCriticalPending);
+  const reviewsDue = counter(nceLoading, nceList, countEffectivenessReviewsDue);
+  const qcViolations = counter(
+    summaryLoading,
+    summary,
+    (s) => s.qc.violations24h,
+  );
+  const eqaDue = counter(summaryLoading, summary, (s) => s.eqa.dueSoon14d);
   // hidden when the opt-in CALLBACK indicator is off (cascade)
   const callbackShown = callbacks?.enabled !== false;
-  const criticalResults = callbacks ? callbacks.criticalCount : callbacks;
+  const criticalResults = counter(
+    callbacksLoading,
+    callbacks,
+    (c) => c.criticalCount,
+  );
   const unconfirmed = callbacks
     ? callbacks.criticalCount - callbacks.confirmedCount
     : 0;
   const today = toLocalIsoDate(new Date());
-  const overdueCapas = capaItems
-    ? capaItems.filter((row) => deriveStatus(row, today) === "overdue").length
-    : capaItems;
+  const overdueCapas = counter(
+    capaQuery.isLoading,
+    Array.isArray(capaQuery.data) ? capaQuery.data : null,
+    (rows) =>
+      rows.filter((row) => deriveStatus(row, today) === "overdue").length,
+  );
 
   // All live queues loaded and empty — surface a calm "all clear" above the
   // rows (placeholders still render below).

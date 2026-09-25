@@ -6,7 +6,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- ================================================================== -->
-    <!-- C.2 (OGC-707): CAPA Register. Adds a due date to corrective/        -->
+    <!-- OGC-707: CAPA Register. Adds a due date to corrective/             -->
     <!-- preventive actions so the register can flag overdue CAPAs.          -->
     <!-- ================================================================== -->
 

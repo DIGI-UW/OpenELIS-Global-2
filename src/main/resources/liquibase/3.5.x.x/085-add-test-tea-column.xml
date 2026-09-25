@@ -6,7 +6,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- ================================================================== -->
-    <!-- C.1 / OGC-704: per-test Total Allowable Error (TEa) for Westgard   -->
+    <!-- OGC-704: per-test Total Allowable Error (TEa) for Westgard       -->
     <!-- sigma metrics. Nullable percentage; sigma renders as               -->
     <!-- "not calculable" where unset.                                      -->
     <!-- ================================================================== -->

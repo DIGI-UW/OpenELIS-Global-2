@@ -187,7 +187,7 @@ public class InitialRunsCalculatorTest {
      * Mean: 104.5. Sum of squared deviations: 665. Sample SD (CLSI C24, ÷(N−1)):
      * sqrt(665/19) = sqrt(35) = 5.9161 to 4 dp. The population SD (÷N) is 5.7663 —
      * asserting the exact stored 4-dp value makes this test fail against a ÷N
-     * implementation (GAP-6).
+     * implementation.
      */
     @Test
     public void testCalculate_WithReferenceDataset_ShouldStoreSampleSD() {

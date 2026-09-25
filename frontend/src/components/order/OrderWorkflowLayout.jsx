@@ -35,9 +35,20 @@ import "./order-workflow.scss";
  * - Save navigation buttons (NAV-4)
  */
 
+/**
+ * The save state of an order that exists. An order the user has not saved yet
+ * has no save state to report: saying "Saved" on an untouched new form claims
+ * something that never happened, and saying "Unsaved changes" invents changes
+ * the user has not made. Both were reported as defects; the indicator is
+ * simply absent until there is a saved order or an edit to describe.
+ */
 const SaveStatusIndicator = () => {
   const intl = useIntl();
-  const { saveStatus, isDirty } = useOrderContext();
+  const { saveStatus, isDirty, labNumber, orderId } = useOrderContext();
+
+  if (!orderId && !labNumber && !isDirty && saveStatus !== SaveStatus.SAVING) {
+    return null;
+  }
 
   if (saveStatus === SaveStatus.SAVING) {
     return (

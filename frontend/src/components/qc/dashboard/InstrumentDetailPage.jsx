@@ -9,7 +9,6 @@
 
 import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
-  Button,
   Tag,
   Tile,
   Tabs,
@@ -119,7 +118,7 @@ const InstrumentDetailPage = () => {
               label: "analyzer.page.hierarchy.root",
               link: analyzerReturnPath,
             },
-            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            { label: "qc.dashboard.title", link: "/qa/qc/dashboard" },
             {
               label: "qc.instrument.notFound",
               isCurrentPage: true,
@@ -153,7 +152,7 @@ const InstrumentDetailPage = () => {
           },
           {
             label: "qc.dashboard.title",
-            link: "/analyzers/qc/db",
+            link: "/qa/qc/dashboard",
           },
           { label: instrumentName, isCurrentPage: true },
         ]}
@@ -266,14 +265,6 @@ const InstrumentDetailPage = () => {
           </TabPanels>
         </Tabs>
       </div>
-
-      <Button
-        className="instrument-detail-back-button"
-        kind="secondary"
-        onClick={() => history.push("/analyzers/qc/db")}
-      >
-        {intl.formatMessage({ id: "qc.dashboard.title" })}
-      </Button>
     </div>
   );
 };

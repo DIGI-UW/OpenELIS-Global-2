@@ -35,6 +35,7 @@ import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import { useHistory, useLocation } from "react-router-dom";
+import { formatActionType } from "./actionTypes";
 import "./NceDashboard.css";
 
 const STATUS_CONFIG = {
@@ -47,31 +48,14 @@ const STATUS_CONFIG = {
   CAPA: {
     type: "purple",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.capa",
+    labelKey: "nce.tab.capa",
   },
   Completed: {
     type: "gray",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.completed",
+    labelKey: "common.completed",
   },
 };
-
-// action_type codes → i18n label keys.
-// Heads up: CapaRegister.jsx and NCECorrectiveAction.jsx carry this same
-// mapping — change all three together.
-const ACTION_TYPE_KEYS = {
-  1: "banner.menu.nonconformity.correctiveActions",
-  2: "nonconform.nce.preventive.action",
-  3: "nonconform.nce.concurrent.control.action",
-};
-
-const formatActionType = (actionType, intl) =>
-  (actionType || "")
-    .split(",")
-    .map((c) => c.trim())
-    .filter((c) => ACTION_TYPE_KEYS[c])
-    .map((c) => intl.formatMessage({ id: ACTION_TYPE_KEYS[c] }))
-    .join(", ");
 
 export const NceDashboard = () => {
   const intl = useIntl();
@@ -729,10 +713,13 @@ export const NceDashboard = () => {
               defaultMessage: "All Status",
             })}
           />
-          <SelectItem value="Pending" text="Open" />
-          <SelectItem value="Under Investigation" text="Under Investigation" />
-          <SelectItem value="CAPA" text="CAPA" />
-          <SelectItem value="Completed" text="Completed" />
+          {Object.entries(STATUS_CONFIG).map(([value, { labelKey }]) => (
+            <SelectItem
+              key={value}
+              value={value}
+              text={intl.formatMessage({ id: labelKey })}
+            />
+          ))}
         </Select>
         <Select
           id="category-filter"
@@ -1201,10 +1188,7 @@ export const NceDashboard = () => {
                             )
                           }
                         >
-                          <FormattedMessage
-                            id="nce.capa.add"
-                            defaultMessage="Add"
-                          />
+                          <FormattedMessage id="label.button.add" />
                         </Button>
                       </div>
                       {nce.actionLogs && nce.actionLogs.length > 0 ? (
@@ -1234,8 +1218,8 @@ export const NceDashboard = () => {
                                 )}
                                 {log.dateCompleted && (
                                   <span>
-                                    <FormattedMessage id="qa.qms.capaRegister.column.completed" />
-                                    : {log.dateCompleted}
+                                    <FormattedMessage id="common.completed" />:{" "}
+                                    {log.dateCompleted}
                                   </span>
                                 )}
                               </div>

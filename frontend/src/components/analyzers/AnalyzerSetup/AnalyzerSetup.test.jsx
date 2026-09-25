@@ -343,6 +343,11 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(notListedUrl.searchParams.get("returnTo")).toBe(
       "/analyzers?setup=instrument",
     );
+    expect(
+      screen.getByText(
+        "Choose the listed type for your instrument, even if it will only send results. Whether it sends results only or also receives orders is set later, in Connect.",
+      ),
+    ).toBeVisible();
 
     expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
     expect(
@@ -600,6 +605,78 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
+  it("shows unconfigured control recognition during verification without blocking connection setup", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...currentMapping,
+          controlRecognition: {
+            ...currentMapping.controlRecognition,
+            description: "SERVER DESCRIPTION MUST NOT RENDER",
+            conditions: [],
+          },
+        }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByText("Control recognition not configured"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "No control recognition rules are configured. Control results may not be identified automatically.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Continue to Connect" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByText("This interface does not transmit control results"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("allows a confirmed partial mapping to continue without hiding unresolved counts", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    getAnalyzerTypeMapping.mockImplementation((_id, _revision, callback) =>
+      callback({
+        ...currentMapping,
+        tests: [
+          {
+            ...currentMapping.tests[0],
+            mappingState: "UNRESOLVED",
+            testId: null,
+            selectedTest: null,
+            results: currentMapping.tests[0].results.map((result) => ({
+              ...result,
+              mappingState: "UNRESOLVED",
+              resultOptionId: null,
+              selectedOption: null,
+            })),
+          },
+        ],
+      }),
+    );
+    const history = renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+    const button = await screen.findByRole("button", {
+      name: "Continue to Connect",
+    });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalled();
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "connect",
+    );
+  });
+
   it("stays on Verify and explains when the reviewed mapping revision changed", async () => {
     const entry = `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
     getAnalyzer.mockImplementation((_id, callback) =>
@@ -770,7 +847,7 @@ describe("AnalyzerSetup Instrument step", () => {
       }),
     );
 
-    renderSetupWithHistory(
+    const history = renderSetupWithHistory(
       `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
     );
 
@@ -784,6 +861,19 @@ describe("AnalyzerSetup Instrument step", () => {
       screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeVisible();
     expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Mappings need to be verified again"),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Mappings reviewed for this setup"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Verify mappings" }),
+    );
+    const params = new URLSearchParams(history.location.search);
+    expect(params.get("setup")).toBe("verify");
+    expect(params.get("analyzerId")).toBe("42");
   });
 
   it("saves current settings and activates without requiring a connection test", async () => {
@@ -815,6 +905,11 @@ describe("AnalyzerSetup Instrument step", () => {
       `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
       onClose,
     );
+
+    expect(
+      await screen.findByText("Analyzer is ready to activate"),
+    ).toBeVisible();
+    expect(screen.getByText("Mappings reviewed for this setup")).toBeVisible();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Finish and activate" }),

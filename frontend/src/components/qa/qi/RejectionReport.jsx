@@ -1,41 +1,24 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  DataTable,
-  DataTableSkeleton,
-  DatePicker,
-  DatePickerInput,
-  Dropdown,
-  Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tag,
-} from "@carbon/react";
+import React, { useState } from "react";
 import { DonutChart, LineChart, SimpleBarChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
-import {
-  getFromOpenElisServer,
-  toLocalIsoDate,
-  toLocalIsoDateTime,
-} from "../../utils/Utils";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
-import QAEmptyState from "../common/QAEmptyState";
+import { toLocalIsoDateTime } from "../../utils/Utils";
+import { useServerData } from "../../utils/useServerData";
+import QASimpleTable from "../common/QASimpleTable";
 import { chartThresholds, rateTone } from "./qiThresholds";
-import "./QIDashboard.css";
+import QIReportPage, {
+  QIRateHeader,
+  QITrendInterval,
+  rateChartOptions,
+} from "./QIReportPage";
 
 /**
  * Rejection Rate detail page (OGC-697 tile, full visuals OGC-710) at
  * /qa/qi/rejection: rate header colored against qi_config thresholds, rate
  * trend with target/action lines, reason Pareto (rejection reasons are
  * dictionary-driven, unlike amendments), per-test breakdown, and the
- * rejection list. Mirrors AmendmentReport so the two detail pages stay
- * reviewable side by side.
+ * rejection list.
  */
 
 const breadcrumbs = [
@@ -47,17 +30,17 @@ const breadcrumbs = [
 
 const HEADERS = [
   { key: "rejectedAt", labelKey: "qa.qi.rejection.column.rejectedAt" },
-  { key: "labNumber", labelKey: "qa.qi.rejection.column.labNumber" },
-  { key: "testName", labelKey: "qa.qi.rejection.column.test" },
-  { key: "location", labelKey: "qa.qi.rejection.column.location" },
-  { key: "reason", labelKey: "qa.qi.rejection.column.reason" },
+  { key: "labNumber", labelKey: "common.labNumber" },
+  { key: "testName", labelKey: "common.test" },
+  { key: "location", labelKey: "common.location" },
+  { key: "reason", labelKey: "storage.audit.reason" },
   { key: "rejectedBy", labelKey: "qa.qi.rejection.column.rejectedBy" },
-  { key: "nce", labelKey: "qa.qi.rejection.column.nce" },
+  { key: "nce", labelKey: "label.validation.filter.nce" },
 ];
 
 const REASON_HEADERS = [
-  { key: "reason", labelKey: "qa.qi.rejection.reasons.column.reason" },
-  { key: "count", labelKey: "qa.qi.rejection.reasons.column.count" },
+  { key: "reason", labelKey: "storage.audit.reason" },
+  { key: "count", labelKey: "reports.tat.column.count" },
   { key: "percent", labelKey: "qa.qi.rejection.reasons.column.percent" },
   {
     key: "cumulative",
@@ -66,27 +49,14 @@ const REASON_HEADERS = [
 ];
 
 const BREAKDOWN_HEADERS = [
-  { key: "testName", labelKey: "qa.qi.rejection.breakdown.column.test" },
+  { key: "testName", labelKey: "common.test" },
   {
     key: "rejectedCount",
-    labelKey: "qa.qi.rejection.breakdown.column.rejected",
+    labelKey: "sampleAcceptance.qa.status.rejected",
   },
-  { key: "totalCount", labelKey: "qa.qi.rejection.breakdown.column.total" },
-  { key: "ratePercent", labelKey: "qa.qi.rejection.breakdown.column.rate" },
+  { key: "totalCount", labelKey: "reports.tat.column.started" },
+  { key: "ratePercent", labelKey: "qa.qi.amendment.breakdown.column.rate" },
 ];
-
-const INTERVALS = [
-  { id: "DAILY", labelKey: "reports.tat.daily" },
-  { id: "WEEKLY", labelKey: "reports.tat.weekly" },
-  { id: "MONTHLY", labelKey: "reports.tat.monthly" },
-];
-
-function defaultRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
-  return { fromDate: toLocalIsoDate(from), toDate: toLocalIsoDate(to) };
-}
 
 // The design's one line of guidance: how few reasons cover >=80% of
 // rejections. Only meaningful once there is more than one reason and the
@@ -108,80 +78,46 @@ function paretoInsight(reasons) {
   };
 }
 
-const RejectionReport = () => {
+const toRows = (detail) =>
+  (detail.items || []).map((item, index) => ({
+    id: `${item.analysisId}-${index}`,
+    rejectedAt: toLocalIsoDateTime(item.rejectedAt),
+    labNumber: item.labNumber || "—",
+    testName: item.testName || "—",
+    location: item.location || "—",
+    reason: item.reason || "—",
+    rejectedBy: item.rejectedBy || "—",
+    nce: item.nceNumber ? (
+      <Link
+        to={`/ViewNonConformingEvent?nceNumber=${encodeURIComponent(item.nceNumber)}`}
+      >
+        {item.nceNumber}
+      </Link>
+    ) : (
+      "—"
+    ),
+  }));
+
+/** Trend, reason Pareto, ordering-location heatmap and per-test breakdown. */
+const RejectionSections = ({ range, config }) => {
   const intl = useIntl();
-  const [range, setRange] = useState(defaultRange);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
-  // undefined = loading, null = fetch yielded no data
-  const [detail, setDetail] = useState();
-  const [trend, setTrend] = useState();
-  const [breakdown, setBreakdown] = useState();
-  const [heatmap, setHeatmap] = useState();
   const [interval, setInterval] = useState("DAILY");
-  // fail-open like QIDashboard/QIEnabledRoute: no config -> plain gray tag
-  const [config, setConfig] = useState(null);
-
-  const fetchDetail = useCallback(() => {
-    setDetail(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/rejection/detail?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`,
-      (res) => setDetail(res ?? null),
-    );
-  }, [range, page, pageSize]);
-
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
-
-  useEffect(() => {
-    setTrend(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/rejection/trend?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}&interval=${interval}`,
-      (res) => setTrend(res ?? null),
-    );
-  }, [range, interval]);
-
-  useEffect(() => {
-    setBreakdown(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/rejection/breakdown?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}`,
-      (res) => setBreakdown(res ?? null),
-    );
-  }, [range]);
-
-  useEffect(() => {
-    setHeatmap(undefined);
-    getFromOpenElisServer(
-      `/rest/reports/rejection/heatmap?fromDate=${range.fromDate}` +
-        `&toDate=${range.toDate}`,
-      (res) => setHeatmap(res ?? null),
-    );
-  }, [range]);
-
-  useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/qi-config/resolve?indicator=REJECTION",
-      (res) => setConfig(res ?? null),
-    );
-  }, []);
-
-  const handleDates = (dates) => {
-    if (dates.length === 2) {
-      setPage(0);
-      setRange({
-        fromDate: toLocalIsoDate(dates[0]),
-        toDate: toLocalIsoDate(dates[1]),
-      });
-    }
-  };
+  const trendQuery = useServerData(
+    `/rest/reports/rejection/trend?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}&interval=${interval}`,
+  );
+  const breakdownQuery = useServerData(
+    `/rest/reports/rejection/breakdown?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}`,
+  );
+  const heatmapQuery = useServerData(
+    `/rest/reports/rejection/heatmap?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}`,
+  );
 
   // Window totals derive from the trend buckets — same SQL predicates as the
   // summary endpoint, just grouped; no separate summary fetch needed.
-  const points = trend?.points || [];
+  const points = trendQuery.data?.points || [];
   const totalRejected = points.reduce((sum, p) => sum + p.rejectedCount, 0);
   const totalStarted = points.reduce((sum, p) => sum + p.totalCount, 0);
   const windowRate =
@@ -189,44 +125,25 @@ const RejectionReport = () => {
       ? Math.round((totalRejected * 10000) / totalStarted) / 100 // 2dp, like the backend
       : null;
 
-  const tone = rateTone(windowRate, config);
-
-  // Daily periods are real dates — a time axis spaces them honestly (a
-  // 4-day gap looks like a gap, not one tick). Weekly/monthly keys
-  // ("2026-W30", "2026-07") aren't parseable dates, so those stay labels.
   const timeAxis = interval === "DAILY";
   const chartData = points
     .filter((p) => p.ratePercent != null)
     .map((p) => ({
       period: timeAxis ? new Date(`${p.period}T00:00:00`) : p.period,
       value: p.ratePercent,
-      group: intl.formatMessage({ id: "qa.qi.rejection.trend.series" }),
+      group: intl.formatMessage({ id: "qa.qi.rejection.rate.label" }),
     }));
 
-  const thresholds = chartThresholds(
-    config,
-    intl.formatMessage({ id: "qa.qi.rejection.threshold.target" }),
-    intl.formatMessage({ id: "qa.qi.rejection.threshold.action" }),
+  const chartOptions = rateChartOptions(
+    chartThresholds(
+      config,
+      intl.formatMessage({ id: "qa.qiConfig.field.target" }),
+      intl.formatMessage({ id: "common.action" }),
+    ),
+    timeAxis,
   );
 
-  const chartOptions = {
-    title: "",
-    height: "320px",
-    axes: {
-      bottom: { mapsTo: "period", scaleType: timeAxis ? "time" : "labels" },
-      left: {
-        title: "%",
-        mapsTo: "value",
-        scaleType: "linear",
-        includeZero: true,
-        thresholds,
-      },
-    },
-    curve: "curveMonotoneX",
-    points: { radius: 3, filled: true },
-    legend: { enabled: false },
-  };
-
+  const breakdown = breakdownQuery.data;
   const reasons = breakdown?.reasons || [];
   const donutData = reasons.map((row) => ({
     group: row.reason,
@@ -276,7 +193,7 @@ const RejectionReport = () => {
     toolbar: { enabled: false },
   };
 
-  const reasonRows = (breakdown?.reasons || []).map((row, index) => ({
+  const reasonRows = reasons.map((row, index) => ({
     id: `${row.reason}-${index}`,
     reason: row.reason,
     count: row.count,
@@ -290,32 +207,13 @@ const RejectionReport = () => {
         : "—",
   }));
 
-  const breakdownRows = (breakdown?.tests || []).map((row, index) => ({
+  const breakdownRows = tests.map((row, index) => ({
     id: `${row.testName}-${index}`,
     testName: row.testName,
     rejectedCount: row.rejectedCount,
     totalCount: row.totalCount,
     ratePercent:
       row.ratePercent != null ? `${row.ratePercent.toFixed(2)}%` : "—",
-  }));
-
-  const rows = (detail?.items || []).map((item, index) => ({
-    id: `${item.analysisId}-${index}`,
-    rejectedAt: toLocalIsoDateTime(item.rejectedAt),
-    labNumber: item.labNumber || "—",
-    testName: item.testName || "—",
-    location: item.location || "—",
-    reason: item.reason || "—",
-    rejectedBy: item.rejectedBy || "—",
-    nce: item.nceNumber ? (
-      <Link
-        to={`/ViewNonConformingEvent?nceNumber=${encodeURIComponent(item.nceNumber)}`}
-      >
-        {item.nceNumber}
-      </Link>
-    ) : (
-      "—"
-    ),
   }));
 
   // Pivot the flat heatmap cells into sections × locations; null location /
@@ -326,7 +224,7 @@ const RejectionReport = () => {
   const unknownSection = intl.formatMessage({
     id: "qa.qi.rejection.heatmap.unknownSection",
   });
-  const heatCells = (heatmap?.cells || []).map((cell) => ({
+  const heatCells = (heatmapQuery.data?.cells || []).map((cell) => ({
     ...cell,
     location: cell.location || unknownLocation,
     section: cell.section || unknownSection,
@@ -343,125 +241,39 @@ const RejectionReport = () => {
     heatCells.map((c) => [`${c.location}|${c.section}`, c]),
   );
 
-  const renderTable = (tableRows, headers) => (
-    <DataTable
-      rows={tableRows}
-      headers={headers.map((h) => ({
-        key: h.key,
-        header: intl.formatMessage({ id: h.labelKey }),
-      }))}
-    >
-      {({
-        rows: bodyRows,
-        headers: tableHeaders,
-        getHeaderProps,
-        getRowProps,
-      }) => (
-        <TableContainer>
-          <Table size="sm">
-            <TableHead>
-              <TableRow>
-                {tableHeaders.map((header) => (
-                  <TableHeader {...getHeaderProps({ header })} key={header.key}>
-                    {header.header}
-                  </TableHeader>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {bodyRows.map((row) => (
-                <TableRow {...getRowProps({ row })} key={row.id}>
-                  {row.cells.map((cell) => (
-                    <TableCell key={cell.id}>{cell.value}</TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </DataTable>
-  );
-
   return (
-    <div className="pageContent qi-dashboard">
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <h2>
-        <FormattedMessage id="qa.qi.rejection.title" />
-      </h2>
-      <p className="qi-dashboard__subtitle">
-        <FormattedMessage id="qa.qi.rejection.subtitle" />
-      </p>
-      <DatePicker
-        datePickerType="range"
-        dateFormat="Y-m-d"
-        value={[range.fromDate, range.toDate]}
-        onChange={handleDates}
-      >
-        <DatePickerInput
-          id="rejection-from"
-          labelText={intl.formatMessage({
-            id: "qa.qi.rejection.filter.from",
-          })}
-          placeholder="yyyy-mm-dd"
-        />
-        <DatePickerInput
-          id="rejection-to"
-          labelText={intl.formatMessage({ id: "qa.qi.rejection.filter.to" })}
-          placeholder="yyyy-mm-dd"
-        />
-      </DatePicker>
-
-      {trend === null ? (
+    <>
+      {trendQuery.isError ? (
         <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.rejection.error" />
+          <FormattedMessage id="qa.qi.dashboard.tile.rejection.error" />
         </p>
       ) : (
-        trend !== undefined && (
+        trendQuery.data && (
           <>
-            <div className="amendment-rate-header">
-              <span className="qi-tile__title">
-                <FormattedMessage id="qa.qi.rejection.rate.label" />
-              </span>
-              <Tag
-                type={tone === "amber" ? "gray" : tone}
-                className={
-                  tone === "amber"
-                    ? "amendment-rate-tag qi-rate-tag--amber"
-                    : "amendment-rate-tag"
-                }
-              >
-                {windowRate != null ? `${windowRate.toFixed(2)}%` : "—"}
-              </Tag>
-              <span className="qi-tile__secondary">
+            <QIRateHeader
+              label={<FormattedMessage id="qa.qi.rejection.rate.label" />}
+              value={windowRate}
+              tone={rateTone(windowRate, config)}
+              secondary={
                 <FormattedMessage
                   id="qa.qi.dashboard.tile.rejection.secondary"
                   values={{ rejected: totalRejected, total: totalStarted }}
                 />
-              </span>
-            </div>
+              }
+            />
 
             <h4 className="amendment-section__title">
-              <FormattedMessage id="qa.qi.rejection.trend.title" />
+              <FormattedMessage id="reports.tat.trend" />
             </h4>
-            <Dropdown
+            <QITrendInterval
               id="rejection-trend-interval"
-              size="sm"
-              className="amendment-trend-interval"
-              titleText={intl.formatMessage({
-                id: "qa.qi.rejection.trend.interval",
-              })}
-              label=""
-              items={INTERVALS}
-              itemToString={(item) =>
-                item ? intl.formatMessage({ id: item.labelKey }) : ""
-              }
-              selectedItem={INTERVALS.find((i) => i.id === interval)}
-              onChange={({ selectedItem }) => setInterval(selectedItem.id)}
+              titleKey="reports.tat.aggregation"
+              interval={interval}
+              onChange={setInterval}
             />
             {chartData.length === 0 ? (
               <p className="qi-tile__message">
-                <FormattedMessage id="qa.qi.rejection.trend.empty" />
+                <FormattedMessage id="qa.qi.amendment.trend.empty" />
               </p>
             ) : (
               <LineChart data={chartData} options={chartOptions} />
@@ -484,7 +296,7 @@ const RejectionReport = () => {
             </p>
           )}
           <DonutChart data={donutData} options={donutOptions} />
-          {renderTable(reasonRows, REASON_HEADERS)}
+          <QASimpleTable rows={reasonRows} headers={REASON_HEADERS} />
         </>
       )}
 
@@ -556,44 +368,38 @@ const RejectionReport = () => {
       {breakdownRows.length > 0 && (
         <>
           <h4 className="amendment-section__title">
-            <FormattedMessage id="qa.qi.rejection.breakdown.title" />
+            <FormattedMessage id="qa.qi.amendment.breakdown.title" />
           </h4>
           <SimpleBarChart data={barData} options={barOptions} />
-          {renderTable(breakdownRows, BREAKDOWN_HEADERS)}
+          <QASimpleTable rows={breakdownRows} headers={BREAKDOWN_HEADERS} />
         </>
       )}
-
-      {detail === undefined ? (
-        <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
-      ) : detail === null ? (
-        <p className="qi-tile__message">
-          <FormattedMessage id="qa.qi.rejection.error" />
-        </p>
-      ) : rows.length === 0 ? (
-        <QAEmptyState
-          titleKey="qa.empty.rejection.title"
-          subheadKey="qa.empty.rejection.subhead"
-        />
-      ) : (
-        <>
-          <h4 className="amendment-section__title">
-            <FormattedMessage id="qa.qi.rejection.list.title" />
-          </h4>
-          {renderTable(rows, HEADERS)}
-          <Pagination
-            page={page + 1}
-            pageSize={pageSize}
-            pageSizes={[25, 50, 100]}
-            totalItems={detail.totalCount}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage - 1);
-              setPageSize(newPageSize);
-            }}
-          />
-        </>
-      )}
-    </div>
+    </>
   );
 };
+
+const RejectionReport = () => (
+  <QIReportPage
+    indicator="REJECTION"
+    breadcrumbs={breadcrumbs}
+    titleKey="qa.qi.rejection.title"
+    subtitleKey="qa.qi.rejection.subtitle"
+    errorKey="qa.qi.dashboard.tile.rejection.error"
+    idPrefix="rejection"
+    fromLabelKey="common.from"
+    toLabelKey="to.title"
+    detailUrl={(range, page, pageSize) =>
+      `/rest/reports/rejection/detail?fromDate=${range.fromDate}` +
+      `&toDate=${range.toDate}&page=${page}&pageSize=${pageSize}`
+    }
+    headers={HEADERS}
+    toRows={toRows}
+    listTitleKey="qa.qi.rejection.list.title"
+    emptyTitleKey="qa.empty.rejection.title"
+    emptySubheadKey="qa.empty.rejection.subhead"
+  >
+    {({ range, config }) => <RejectionSections range={range} config={config} />}
+  </QIReportPage>
+);
 
 export default RejectionReport;

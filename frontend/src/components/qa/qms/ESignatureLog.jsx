@@ -1,28 +1,26 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Button,
-  DataTable,
   DataTableSkeleton,
   DatePicker,
   DatePickerInput,
   Dropdown,
   Modal,
   Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from "@carbon/react";
 import { Download, DocumentPdf } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  toLocalIsoDate,
+  toLocalIsoDateTime,
+} from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import QASimpleTable from "../common/QASimpleTable";
 import QAEmptyState from "../common/QAEmptyState";
-import "./ESignatureLog.css";
+import { lastDays } from "../common/qaDates";
+import "../common/QAStyles.css";
 
 /**
  * Electronic Signature Log (OGC-702) at /qa/qms/e-signature-log: filterable,
@@ -38,11 +36,11 @@ const breadcrumbs = [
 ];
 
 const HEADERS = [
-  { key: "signedAt", labelKey: "qa.qms.esigLog.column.signedAt" },
+  { key: "signedAt", labelKey: "qc.signature.signedAt" },
   { key: "signer", labelKey: "qa.qms.esigLog.column.signer" },
-  { key: "action", labelKey: "qa.qms.esigLog.column.action" },
+  { key: "action", labelKey: "common.action" },
   { key: "subject", labelKey: "qa.qms.esigLog.column.subject" },
-  { key: "reason", labelKey: "qa.qms.esigLog.column.reason" },
+  { key: "reason", labelKey: "storage.audit.reason" },
 ];
 
 const MEANINGS = ["AUTHORED", "VALIDATED_AND_RELEASED", "REJECTED"];
@@ -56,28 +54,13 @@ const RECORD_TYPES = [
   "REPORT",
 ];
 
-// Local-timezone yyyy-mm-dd (toISOString shifts to UTC and can be off by a day)
-function formatDate(d) {
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${month}-${day}`;
-}
-
 function defaultFilters() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 30);
   return {
-    fromDate: formatDate(from),
-    toDate: formatDate(to),
+    ...lastDays(30),
     signerId: "",
     meaning: "",
     recordType: "",
   };
-}
-
-function formatTimestamp(value) {
-  return value ? new Date(value).toLocaleString() : "—";
 }
 
 const ESignatureLog = () => {
@@ -92,7 +75,7 @@ const ESignatureLog = () => {
   // undefined = loading, null = fetch yielded no data
   const [data, setData] = useState();
 
-  const allLabel = intl.formatMessage({ id: "qa.qms.esigLog.filter.all" });
+  const allLabel = intl.formatMessage({ id: "common.all" });
 
   useEffect(() => {
     getFromOpenElisServer("/rest/users", (response) => {
@@ -128,8 +111,8 @@ const ESignatureLog = () => {
     if (dates.length === 2) {
       setDraft({
         ...draft,
-        fromDate: formatDate(dates[0]),
-        toDate: formatDate(dates[1]),
+        fromDate: toLocalIsoDate(dates[0]),
+        toDate: toLocalIsoDate(dates[1]),
       });
     }
   };
@@ -182,7 +165,7 @@ const ESignatureLog = () => {
 
   const rows = (data?.items || []).map((item) => ({
     id: String(item.signatureId),
-    signedAt: formatTimestamp(item.signedAt),
+    signedAt: toLocalIsoDateTime(item.signedAt),
     signer: item.signerNamePrinted || "—",
     action: item.signatureMeaning ? meaningLabel(item.signatureMeaning) : "—",
     subject: item.recordType ? `${item.recordType} #${item.recordId}` : "—",
@@ -190,15 +173,15 @@ const ESignatureLog = () => {
   }));
 
   return (
-    <div className="pageContent esig-log">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
-        <FormattedMessage id="qa.qms.esigLog.title" />
+        <FormattedMessage id="sideNav.label.qa.qms.esigLog" />
       </h2>
-      <p className="esig-log__subtitle">
+      <p className="qi-dashboard__subtitle">
         <FormattedMessage id="qa.qms.esigLog.subtitle" />
       </p>
-      <div className="esig-log__filters" data-testid="esig-log-filters">
+      <div className="qi-dashboard__controls" data-testid="esig-log-filters">
         <DatePicker
           datePickerType="range"
           dateFormat="Y-m-d"
@@ -207,20 +190,20 @@ const ESignatureLog = () => {
         >
           <DatePickerInput
             id="esig-log-from"
-            labelText={intl.formatMessage({ id: "qa.qms.esigLog.filter.from" })}
+            labelText={intl.formatMessage({ id: "reports.tat.dateRangeFrom" })}
             placeholder="yyyy-mm-dd"
           />
           <DatePickerInput
             id="esig-log-to"
-            labelText={intl.formatMessage({ id: "qa.qms.esigLog.filter.to" })}
+            labelText={intl.formatMessage({ id: "reports.tat.dateRangeTo" })}
             placeholder="yyyy-mm-dd"
           />
         </DatePicker>
         <Dropdown
           id="esig-log-meaning"
-          className="esig-log__filter-dropdown"
+          className="qi-dashboard__filter"
           titleText={intl.formatMessage({
-            id: "qa.qms.esigLog.filter.action",
+            id: "common.action",
           })}
           label={allLabel}
           items={meaningItems}
@@ -232,7 +215,7 @@ const ESignatureLog = () => {
         />
         <Dropdown
           id="esig-log-record-type"
-          className="esig-log__filter-dropdown"
+          className="qi-dashboard__filter"
           titleText={intl.formatMessage({
             id: "qa.qms.esigLog.filter.subjectType",
           })}
@@ -246,8 +229,8 @@ const ESignatureLog = () => {
         />
         <Dropdown
           id="esig-log-user"
-          className="esig-log__filter-dropdown"
-          titleText={intl.formatMessage({ id: "qa.qms.esigLog.filter.user" })}
+          className="qi-dashboard__filter"
+          titleText={intl.formatMessage({ id: "common.user" })}
           label={allLabel}
           items={userItems}
           itemToString={(item) => item?.label || ""}
@@ -269,7 +252,7 @@ const ESignatureLog = () => {
           onClick={clearFilters}
           data-testid="esig-log-clear-filters"
         >
-          {intl.formatMessage({ id: "qa.qms.esigLog.filter.clear" })}
+          {intl.formatMessage({ id: "label.clear" })}
         </Button>
         <Button
           kind="ghost"
@@ -278,7 +261,7 @@ const ESignatureLog = () => {
           onClick={() => handleExport("csv")}
           data-testid="esig-log-export-csv"
         >
-          {intl.formatMessage({ id: "qa.qms.esigLog.export.csv" })}
+          {intl.formatMessage({ id: "reports.tat.exportCsv" })}
         </Button>
         <Button
           kind="ghost"
@@ -287,7 +270,7 @@ const ESignatureLog = () => {
           onClick={() => handleExport("pdf")}
           data-testid="esig-log-export-pdf"
         >
-          {intl.formatMessage({ id: "qa.qms.esigLog.export.pdf" })}
+          {intl.formatMessage({ id: "common.exportPdf" })}
         </Button>
       </div>
       <Modal
@@ -297,10 +280,10 @@ const ESignatureLog = () => {
           id: "qa.qms.esigLog.export.confirm.title",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "qa.qms.esigLog.export.confirm.confirm",
+          id: "reports.export",
         })}
         secondaryButtonText={intl.formatMessage({
-          id: "qa.qms.esigLog.export.confirm.cancel",
+          id: "common.cancel",
         })}
         onRequestSubmit={() => {
           openExport(pendingExport);
@@ -313,7 +296,7 @@ const ESignatureLog = () => {
       {data === undefined ? (
         <DataTableSkeleton columnCount={HEADERS.length} rowCount={5} />
       ) : data === null ? (
-        <p className="esig-log__message">
+        <p className="qi-tile__message">
           <FormattedMessage id="qa.qms.esigLog.error" />
         </p>
       ) : rows.length === 0 ? (
@@ -323,41 +306,7 @@ const ESignatureLog = () => {
         />
       ) : (
         <>
-          <DataTable
-            rows={rows}
-            headers={HEADERS.map((h) => ({
-              key: h.key,
-              header: intl.formatMessage({ id: h.labelKey }),
-            }))}
-          >
-            {({ rows: tableRows, headers, getHeaderProps, getRowProps }) => (
-              <TableContainer>
-                <Table size="sm">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          {...getHeaderProps({ header })}
-                          key={header.key}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableRows.map((row) => (
-                      <TableRow {...getRowProps({ row })} key={row.id}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
+          <QASimpleTable rows={rows} headers={HEADERS} />
           <Pagination
             page={page + 1}
             pageSize={pageSize}

@@ -1,7 +1,10 @@
 package org.openelisglobal.menu.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.menu.dao.MenuDAO;
@@ -9,8 +12,12 @@ import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String> implements MenuService {
@@ -20,7 +27,11 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
 
     MenuServiceImpl() {
         super(Menu.class);
-        disableLogging();
+        // Menu rows carry globally visible navigation configuration (action URL,
+        // active flag, section style, icon), so changes need an attributable
+        // trail. saveHistory only writes when getChanges() finds a real diff, so
+        // the tree-wide saves that rebuild navigation stay silent.
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -43,8 +54,8 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Override
     @Transactional
     public MenuItem save(MenuItem menuItem) {
-        MenuItem item = saveMenuItem(menuItem);
-        MenuUtil.forceRebuild();
+        MenuItem item = saveMenuItem(menuItem, configuredMenus());
+        rebuildAfterCommit();
         return item;
     }
 
@@ -52,15 +63,42 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Transactional
     public List<MenuItem> save(List<MenuItem> menuItems) {
         List<MenuItem> menuItemsNew = new ArrayList<>();
+        Map<String, Menu> configuration = configuredMenus();
         for (MenuItem menuItem : menuItems) {
-            MenuItem item = saveMenuItem(menuItem);
+            MenuItem item = saveMenuItem(menuItem, configuration);
             menuItemsNew.add(item);
         }
-        MenuUtil.forceRebuild();
+        rebuildAfterCommit();
         return menuItemsNew;
     }
 
-    private MenuItem saveMenuItem(MenuItem menuItem) {
+    private Map<String, Menu> configuredMenus() {
+        Map<String, Menu> result = new HashMap<>();
+        collectMenus(MenuUtil.getUnfilteredMenuTree(), result);
+        return result;
+    }
+
+    private void collectMenus(List<MenuItem> items, Map<String, Menu> result) {
+        for (MenuItem item : items) {
+            result.put(item.getMenu().getElementId(), item.getMenu());
+            collectMenus(item.getChildMenus(), result);
+        }
+    }
+
+    private void rebuildAfterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    MenuUtil.forceRebuild();
+                }
+            });
+        } else {
+            MenuUtil.forceRebuild();
+        }
+    }
+
+    private MenuItem saveMenuItem(MenuItem menuItem, Map<String, Menu> configuration) {
         Menu menu = menuItem.getMenu();
         Menu oldMenu;
         if (GenericValidator.isBlankOrNull(menu.getId())) {
@@ -69,20 +107,54 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             oldMenu = get(menu.getId());
         }
 
-        // Update menu item if it was added outside the database
+        Menu effective = configuration.get(menu.getElementId());
+        Set<String> controlled = effective == null ? Set.of() : effective.getConfigurationFields();
         if (oldMenu == null) {
-            MenuUtil.updateMenu(menu);
+            if (effective == null || !effective.isConfigurationOnly()) {
+                MenuUtil.updateMenu(menu);
+            } else {
+                menuItem.setMenu(effective);
+            }
         } else {
-            oldMenu.setActionURL(menu.getActionURL());
-            oldMenu.setIsActive(menu.getIsActive());
+            // Detach before mutating. The audit trail in AuditableBaseObjectServiceImpl
+            // reloads the row to diff old against new, and inside one persistence
+            // context that reload hands back this very instance -- already carrying
+            // the edits, so every change looks like no change and nothing is
+            // recorded. Detached, the reload reads the persisted state and the diff
+            // is real; BaseDAOImpl.update merges, so the write itself is unaffected.
+            getBaseObjectDAO().evict(oldMenu);
+            if (!controlled.contains("actionURL")) {
+                oldMenu.setActionURL(menu.getActionURL());
+            }
+            if (!controlled.contains("isActive")) {
+                oldMenu.setIsActive(menu.getIsActive());
+            }
+            if (menu.isPresentationStyleSpecified() && !controlled.contains("presentationStyle")) {
+                String style = normalize(menu.getPresentationStyle());
+                if (style != null && !"section".equals(style)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported menu presentation style");
+                }
+                oldMenu.setPresentationStyle(style);
+            }
+            if (menu.isIconSpecified() && !controlled.contains("icon")) {
+                String icon = normalize(menu.getIcon());
+                if (icon != null && !icon.matches("[a-z][a-z0-9-]{0,59}")) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid menu icon name");
+                }
+                oldMenu.setIcon(icon);
+            }
             menuItem.setMenu(save(oldMenu));
         }
 
         List<MenuItem> oldChildren = menuItem.getChildMenus();
         menuItem.setChildMenus(new ArrayList<>());
         for (MenuItem oldChild : oldChildren) {
-            menuItem.getChildMenus().add(save(oldChild));
+            menuItem.getChildMenus().add(saveMenuItem(oldChild, configuration));
         }
         return menuItem;
+    }
+
+    private String normalize(String value) {
+        return GenericValidator.isBlankOrNull(value) ? null : value.trim();
     }
 }

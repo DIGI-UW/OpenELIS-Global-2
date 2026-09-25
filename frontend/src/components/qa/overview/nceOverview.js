@@ -1,5 +1,4 @@
-import { getFromOpenElisServer } from "../../utils/Utils";
-import { dedupedFetch } from "./overviewData";
+import { useServerData } from "../../utils/useServerData";
 
 /**
  * Shared NCE client-filter util for the QA Overview (OGC-699).
@@ -13,12 +12,16 @@ import { dedupedFetch } from "./overviewData";
 
 export const NCE_DRILL_URL = "/NceDashboard?severity=CRITICAL&status=Pending";
 
-// Overview slots mounting together share one request (see dedupedFetch).
-export const fetchNceList = dedupedFetch((resolve) => {
-  getFromOpenElisServer("/rest/nce/dashboard", (data) =>
-    resolve(data && Array.isArray(data.nceList) ? data.nceList : null),
-  );
-});
+export const NCE_LIST_URL = "/rest/nce/dashboard";
+
+// Overview slots mounting together share this one cached request.
+export const useNceList = () => {
+  const query = useServerData(NCE_LIST_URL);
+  return {
+    loading: query.isLoading,
+    nceList: Array.isArray(query.data?.nceList) ? query.data.nceList : null,
+  };
+};
 
 export const countCriticalPending = (list) =>
   list.filter((nce) => nce.severity === "CRITICAL" && nce.status === "Pending")

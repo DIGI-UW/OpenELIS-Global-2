@@ -28,6 +28,7 @@ import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
@@ -127,8 +128,9 @@ public class TestResultItem implements ResultItem, Serializable {
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
-    private double lowerCritical;
-    private double higherCritical;
+    // Authored critical bounds, null when the range has none (OGC-1121).
+    private Double lowerCritical;
+    private Double higherCritical;
     private List<ComplianceEvaluation> complianceStatuses = Collections.emptyList();
 
     /**
@@ -675,19 +677,19 @@ public class TestResultItem implements ResultItem, Serializable {
         this.lowerAbnormalRange = lowerAbnormalRange;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
     }
 
@@ -837,7 +839,7 @@ public class TestResultItem implements ResultItem, Serializable {
     public String getResultValueLog() {
         try {
             DecimalFormat df = new DecimalFormat("###.##");
-            double val = Double.parseDouble(this.resultValue);
+            double val = Double.parseDouble(StringUtil.normalizeScientificNotation(this.resultValue));
             return df.format(Math.log10(val));
         } catch (Exception e) {
             return "--";

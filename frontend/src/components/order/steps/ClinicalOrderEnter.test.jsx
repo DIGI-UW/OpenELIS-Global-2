@@ -5,44 +5,47 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 
-const { orderContextValue, programSectionProps } = vi.hoisted(() => ({
-  orderContextValue: {
-    orderData: {
-      patientProperties: { lastName: "Ada" },
-      sampleOrderItems: {
-        environmentalFields: { workflowType: "clinical" },
+const { orderContextValue, programSectionProps, configurationValue } =
+  vi.hoisted(() => ({
+    configurationValue: { configurationProperties: {} },
+    orderContextValue: {
+      orderData: {
+        patientProperties: { lastName: "Ada" },
+        sampleOrderItems: {
+          environmentalFields: { workflowType: "clinical" },
+        },
       },
+      setOrderData: vi.fn(),
+      samples: [
+        {
+          sampleTypeId: "blood",
+          tests: [
+            {
+              id: "culture-test",
+              cultureWorkflowType: "BACTERIOLOGY",
+            },
+          ],
+        },
+      ],
+      setSamples: vi.fn(),
+      labNumber: "LAB-1",
+      isSubmitting: false,
+      saveStatus: "saved",
+      error: null,
+      fieldErrors: {},
+      saveOrderEntry: vi.fn(),
+      markStepComplete: vi.fn(),
+      isReadOnly: false,
+      isEditMode: false,
+      resetOrder: vi.fn(),
     },
-    setOrderData: vi.fn(),
-    samples: [
-      {
-        sampleTypeId: "blood",
-        tests: [
-          {
-            id: "culture-test",
-            cultureWorkflowType: "BACTERIOLOGY",
-          },
-        ],
-      },
-    ],
-    setSamples: vi.fn(),
-    labNumber: "LAB-1",
-    isSubmitting: false,
-    saveStatus: "saved",
-    error: null,
-    fieldErrors: {},
-    saveOrderEntry: vi.fn(),
-    markStepComplete: vi.fn(),
-    isReadOnly: false,
-    isEditMode: false,
-    resetOrder: vi.fn(),
-  },
-  programSectionProps: vi.fn(),
-}));
+    programSectionProps: vi.fn(),
+  }));
 
+const currentLocation = { pathname: "/order/clinical/enter", search: "" };
 vi.mock("react-router-dom", () => ({
   useHistory: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useLocation: () => ({ pathname: "/order/clinical/enter", search: "" }),
+  useLocation: () => currentLocation,
 }));
 
 vi.mock("../OrderContext", () => ({
@@ -61,6 +64,7 @@ vi.mock("../../layout/Layout", () => ({
     setNotificationVisible: vi.fn(),
     addNotification: vi.fn(),
   }),
+  ConfigurationContext: React.createContext(configurationValue),
 }));
 
 vi.mock("../../common/CustomNotification", () => ({
@@ -96,8 +100,12 @@ vi.mock("./sections/ClinicalInfoSection", () => ({
   default: () => null,
 }));
 
+const requesterSectionProps = vi.fn();
 vi.mock("./sections/RequesterSection", () => ({
-  default: () => null,
+  default: (props) => {
+    requesterSectionProps(props);
+    return null;
+  },
 }));
 
 vi.mock("./sections/SampleTestSection", () => ({
@@ -168,5 +176,138 @@ describe("ClinicalOrderEnter", () => {
     expect(programSectionProps).toHaveBeenCalledWith(
       expect.objectContaining({ samples: orderContextValue.samples }),
     );
+  });
+});
+
+describe("ClinicalOrderEnter required-field configuration", () => {
+  const renderEnter = () =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ClinicalOrderEnter />
+      </IntlProvider>,
+    );
+
+  beforeEach(() => {
+    requesterSectionProps.mockClear();
+    configurationValue.configurationProperties = {};
+    orderContextValue.isSubmitting = false;
+    orderContextValue.saveStatus = "saved";
+    orderContextValue.error = null;
+    orderContextValue.fieldErrors = {};
+    orderContextValue.orderData = {
+      patientProperties: { lastName: "Ada" },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+  });
+
+  // OGC-1201 K: the provider never appeared in the save gate, and
+  // ClinicalOrderEnter never read the configuration at all.
+  //
+  // The site setting only ever marked the field — that is all it does in the
+  // legacy screen it was written for, and no server validation reads it — so
+  // it drives the asterisk, not the gate. Turning it into a gate blocks every
+  // order on the profiles that set it, which is not what it has ever meant.
+  it("does not block the save on the site marker setting", () => {
+    configurationValue.configurationProperties = {
+      SampleEntryReferralSiteNameRequired: "true",
+    };
+    renderEnter();
+
+    expect(screen.getByRole("button", { name: "Save Draft" })).toBeEnabled();
+  });
+
+  it("blocks the save when the deployment requires a requester", () => {
+    configurationValue.configurationProperties = { REQUESTER_REQUIRED: "true" };
+    renderEnter();
+
+    expect(screen.getByRole("button", { name: "Save Draft" })).toBeDisabled();
+  });
+
+  it("leaves the save open when the deployment requires neither", () => {
+    renderEnter();
+
+    expect(screen.getByRole("button", { name: "Save Draft" })).toBeEnabled();
+  });
+
+  it("marks the required fields so the user can see them", () => {
+    configurationValue.configurationProperties = {
+      SampleEntryReferralSiteNameRequired: "true",
+      REQUESTER_REQUIRED: "true",
+    };
+    renderEnter();
+
+    expect(requesterSectionProps).toHaveBeenCalledWith(
+      expect.objectContaining({ siteRequired: true, providerRequired: true }),
+    );
+  });
+
+  // PatientRequired is TRUE in DefaultFormFields and every shipped profile,
+  // so an absent value must not read as "patient optional".
+  it("requires a patient unless the deployment turns it off", () => {
+    orderContextValue.orderData = {
+      patientProperties: {},
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+    expect(screen.getByRole("button", { name: "Save Draft" })).toBeDisabled();
+  });
+});
+
+describe("ClinicalOrderEnter EQA pre-set", () => {
+  beforeEach(() => {
+    configurationValue.configurationProperties = {};
+    orderContextValue.setOrderData = vi.fn();
+    orderContextValue.orderData = {
+      patientProperties: {},
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+  });
+
+  afterEach(() => {
+    currentLocation.search = "";
+  });
+
+  // OGC-1201 W: the EQA worklist used to push at the legacy screen with
+  // ?isEQA=true. EQA is a control on the shared form now, and a caller can
+  // pre-set it — which is what keeps the override a recorded decision rather
+  // than something only a human click can produce.
+  it("arrives with EQA and no-patient already declared", () => {
+    currentLocation.search = "?eqa=true";
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ClinicalOrderEnter />
+      </IntlProvider>,
+    );
+
+    const applied = orderContextValue.setOrderData.mock.calls
+      .map(([value]) => value)
+      .filter((value) => typeof value === "function")
+      .map((value) => value(orderContextValue.orderData))
+      .find((next) => next.sampleOrderItems?.isEQASample);
+
+    expect(applied).toBeDefined();
+    expect(applied.sampleOrderItems).toEqual(
+      expect.objectContaining({
+        isEQASample: true,
+        noPatientOverride: true,
+        noPatientReasonCode: "EQA",
+      }),
+    );
+  });
+
+  it("leaves an ordinary new order alone", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ClinicalOrderEnter />
+      </IntlProvider>,
+    );
+
+    const applied = orderContextValue.setOrderData.mock.calls
+      .map(([value]) => value)
+      .filter((value) => typeof value === "function")
+      .map((value) => value(orderContextValue.orderData))
+      .find((next) => next.sampleOrderItems?.isEQASample);
+
+    expect(applied).toBeUndefined();
   });
 });

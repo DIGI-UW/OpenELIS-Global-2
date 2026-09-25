@@ -1,7 +1,5 @@
 package org.openelisglobal.qc.service.calculator;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.qc.valueholder.QCControlLot;
@@ -18,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class RollingCalculator implements StatisticsCalculator {
 
     private static final int DEFAULT_WINDOW_SIZE = 20;
+    private static final int SCALE = 4;
 
     @Override
     public boolean supports(String calculationMethod) {
@@ -36,33 +35,15 @@ public class RollingCalculator implements StatisticsCalculator {
             return null; // Insufficient data
         }
 
-        // Take most recent N results (assumes results are ordered by date DESC)
-        List<QCResult> recentResults = results.subList(0, Math.min(windowSize, results.size()));
+        // Take most recent N results (results are ordered by run date DESC)
+        List<QCResult> recentResults = results.subList(0, windowSize);
+        SampleStatistics stats = SampleStatistics.of(recentResults, SCALE);
 
-        // Calculate mean
-        BigDecimal sum = BigDecimal.ZERO;
-        for (QCResult result : recentResults) {
-            sum = sum.add(result.getResultValue());
-        }
-        BigDecimal mean = sum.divide(BigDecimal.valueOf(recentResults.size()), 4, RoundingMode.HALF_UP);
-
-        // Calculate standard deviation — sample SD, ÷(N−1). Control limits are
-        // established from a sample of runs, not the population (CLSI C24); ÷N
-        // understated the SD ~2.6% at N=20 and inflated every z-score (GAP-6).
-        BigDecimal varianceSum = BigDecimal.ZERO;
-        for (QCResult result : recentResults) {
-            BigDecimal diff = result.getResultValue().subtract(mean);
-            varianceSum = varianceSum.add(diff.multiply(diff));
-        }
-        BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(recentResults.size() - 1), 4, RoundingMode.HALF_UP);
-        BigDecimal stdDev = BigDecimal.valueOf(Math.sqrt(variance.doubleValue())).setScale(4, RoundingMode.HALF_UP);
-
-        // Create statistics entity
         QCStatistics statistics = new QCStatistics();
         statistics.setControlLotId(controlLot.getId());
         statistics.setCalculationDate(new Timestamp(System.currentTimeMillis()));
-        statistics.setMean(mean);
-        statistics.setStandardDeviation(stdDev);
+        statistics.setMean(stats.mean());
+        statistics.setStandardDeviation(stats.standardDeviation());
         statistics.setNumValues(recentResults.size());
         statistics.setCalculationMethod("ROLLING");
 

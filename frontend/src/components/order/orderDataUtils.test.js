@@ -229,3 +229,26 @@ describe("the submitted microbiology details", () => {
     expect(submitted).toBeUndefined();
   });
 });
+
+describe("order override fields on submission", () => {
+  // OGC-1201: SampleOrderItem rejects properties it does not declare — these
+  // three are declared precisely so the decision travels with the order and
+  // is recorded atomically with it.
+  it("carries the no-patient decision to the server", () => {
+    const submitted = buildSubmissionSampleOrderItems({
+      labNo: "LAB-1",
+      isEQASample: true,
+      eqaProgramId: "3",
+      noPatientOverride: true,
+      noPatientReasonCode: "EQA",
+      noPatientReason: "External quality assessment sample",
+    });
+
+    // The server accepts and records the decision in the same request that
+    // creates the order, so the declaration has to reach it.
+    expect(submitted.noPatientOverride).toBe(true);
+    expect(submitted.noPatientReasonCode).toBe("EQA");
+    expect(submitted.isEQASample).toBe(true);
+    expect(submitted.eqaProgramId).toBe("3");
+  });
+});

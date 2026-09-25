@@ -3,6 +3,7 @@ package org.openelisglobal.analysis.service;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -182,6 +183,11 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAllAnalysisByTestAndStatus(String testId, List<String> statusIdList);
 
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults);
+
+    List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds);
+
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
     List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId);
@@ -233,6 +239,10 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     Panel getPanel(Analysis analysis);
 
+    /**
+     * The analysis's own section when one is assigned, else the test's home
+     * section. Null only when neither is known.
+     */
     TestSection getTestSection(Analysis analysis);
 
     List<Analysis> getAllAnalysisByTestsAndStatus(List<String> list, List<String> analysisStatusList,
@@ -297,6 +307,14 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * empty section list.
      */
     int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}. Returns 0
+     * for an empty section list.
+     */
+    int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds);
 
     /**

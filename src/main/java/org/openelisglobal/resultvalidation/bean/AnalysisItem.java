@@ -87,8 +87,11 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String testResultComponentId;
 
-    private double lowerCritical;
-    private double higherCritical;
+    private Double lowerCritical;
+    private Double higherCritical;
+    // NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side against the
+    // patient-conditional limit; the same flag Results Entry shows (OGC-1121).
+    private String resultFlag;
     private String normalRange;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
@@ -168,6 +171,10 @@ public class AnalysisItem implements Serializable {
     private List<IdValuePair> methods;
     private List<IdValuePair> referralOrganizations;
     private List<IdValuePair> referralReasons;
+    /**
+     * The test was sent to a reference laboratory; this result came back from it.
+     */
+    private boolean referredOut = false;
 
     private List<IdValuePair> dictionaryResults;
 
@@ -226,6 +233,13 @@ public class AnalysisItem implements Serializable {
     private boolean critical = false;
 
     private String qcStatus;
+
+    /**
+     * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
+     * of its analysis satisfies {@code ValidationSignals.isClear}. The page reads
+     * it and never derives a lane of its own.
+     */
+    private boolean clear = false;
 
     private String criticalRange;
 
@@ -679,6 +693,14 @@ public class AnalysisItem implements Serializable {
         this.referralReasons = referralReasons;
     }
 
+    public boolean isReferredOut() {
+        return referredOut;
+    }
+
+    public void setReferredOut(boolean referredOut) {
+        this.referredOut = referredOut;
+    }
+
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
     }
@@ -927,6 +949,14 @@ public class AnalysisItem implements Serializable {
         this.qcStatus = qcStatus;
     }
 
+    public boolean isClear() {
+        return clear;
+    }
+
+    public void setClear(boolean clear) {
+        this.clear = clear;
+    }
+
     public String getCriticalRange() {
         return criticalRange;
     }
@@ -1047,20 +1077,28 @@ public class AnalysisItem implements Serializable {
         this.nceNumber = nceNumber;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
     }
 
     public String getGenscreenResult() {

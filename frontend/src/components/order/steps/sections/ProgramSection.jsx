@@ -30,15 +30,22 @@ import {
  * - Program-specific additional fields (VL, EID, TB, etc.)
  */
 
+/**
+ * `domain` is the order's domain (CLINICAL / ENVIRONMENTAL / VECTOR). When it
+ * is given the picker only offers active programs of that domain (OGC-781
+ * FR-6); without it every active program is offered.
+ */
 const ProgramSection = ({
   orderData,
   setOrderData,
   samples = [],
   isReadOnly,
+  domain,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const questionnaireProgramIdRef = useRef(null);
+  const appendedProgramIdRef = useRef(null);
 
   const [programs, setPrograms] = useState([]);
   const [programsLoaded, setProgramsLoaded] = useState(false);
@@ -101,16 +108,59 @@ const ProgramSection = ({
   // Fetch programs on mount
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/user-programs", (response) => {
-      if (componentMounted.current && response) {
-        setPrograms(response);
-        setProgramsLoaded(true);
+    const url = domain
+      ? `/rest/user-programs?domain=${encodeURIComponent(domain)}`
+      : "/rest/user-programs";
+    getFromOpenElisServer(url, (response) => {
+      if (!componentMounted.current) {
+        return;
       }
+      // Anything but a list leaves the section empty rather than letting a
+      // later find() throw and take the whole order page down with it.
+      setPrograms(Array.isArray(response) ? response : []);
+      setProgramsLoaded(true);
     });
     return () => {
       componentMounted.current = false;
     };
-  }, []);
+  }, [domain]);
+
+  // An order already filed under a program the picker no longer offers (it
+  // was deactivated, or belongs to another domain) must still show that
+  // program instead of a blank picker.
+  useEffect(() => {
+    if (!programsLoaded || !currentProgramId) {
+      return;
+    }
+    const known = programs.some(
+      (program) => String(program.id) === String(currentProgramId),
+    );
+    if (known || appendedProgramIdRef.current === String(currentProgramId)) {
+      return;
+    }
+    appendedProgramIdRef.current = String(currentProgramId);
+    getFromOpenElisServer(`/rest/program/${currentProgramId}`, (response) => {
+      if (!componentMounted.current || !response?.program?.programName) {
+        return;
+      }
+      setPrograms((previous) =>
+        previous.some(
+          (program) => String(program.id) === String(currentProgramId),
+        )
+          ? previous
+          : [
+              ...previous,
+              {
+                id: String(response.program.id || currentProgramId),
+                value: response.program.programName,
+                code: response.program.code,
+                domain: response.domain,
+                active: response.active,
+              },
+            ],
+      );
+    });
+  }, [programsLoaded, programs, currentProgramId]);
 
   useEffect(() => {
     if (!hasCultureWorkflow || !microbiologyProgram) {
@@ -565,15 +615,21 @@ const ProgramSection = ({
     </div>
   );
 
-  // Check if VL program is selected
+  // Identify the programme by its configured code, the way Microbiology above
+  // does. The name is only a fallback, and then only on a whole-word match:
+  // a bare "vl" substring also fires on names like Sylvatic or Salvador.
+  const programCode = selectedProgram?.code?.toUpperCase() || "";
+  const programName = selectedProgram?.value?.toLowerCase() || "";
   const isVLProgram =
-    selectedProgram?.value?.toLowerCase().includes("vl") ||
-    selectedProgram?.value?.toLowerCase().includes("viral load");
+    programCode === "VL" ||
+    programCode === "VIRAL_LOAD" ||
+    /\bvl\b/.test(programName) ||
+    programName.includes("viral load");
 
   // Check if the Vector Field Survey program is selected (custom larval/pupal panel)
-  const isVectorFieldSurvey = selectedProgram?.value
-    ?.toLowerCase()
-    .includes("vector field survey");
+  const isVectorFieldSurvey =
+    programCode === "VECTOR_FIELD_SURVEY" ||
+    programName.includes("vector field survey");
 
   return (
     <Tile className="order-section program-section">
@@ -632,6 +688,26 @@ const ProgramSection = ({
         </Column>
       </Grid>
 
+      {programsLoaded && programs.length === 0 && !hasCultureWorkflow && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={
+            domain
+              ? intl.formatMessage(
+                  { id: "orderEntry.programPicker.empty.domain" },
+                  {
+                    domain: intl.formatMessage({
+                      id: `label.domain.${domain}`,
+                    }),
+                  },
+                )
+              : intl.formatMessage({ id: "orderEntry.programPicker.empty" })
+          }
+        />
+      )}
+
       {hasCultureWorkflow && programsLoaded && !microbiologyProgram && (
         <InlineNotification
           kind="error"
@@ -672,10 +748,11 @@ const ProgramSection = ({
             />
           </p>
 
-          {/* Render program-specific fields or fall back to the generic Questionnaire */}
-          {isVLProgram ? (
-            renderVLProgramFields()
-          ) : isVectorFieldSurvey && displayedQuestionnaire ? (
+          {/* A configured questionnaire governs. The built-in VL panel used to
+              render instead of it, which made a VL programme's own
+              questionnaire — pregnancy included — unreachable; it is now the
+              fallback for VL programmes that have not configured one. */}
+          {isVectorFieldSurvey && displayedQuestionnaire ? (
             <VectorFieldSurveyPanel
               questionnaire={displayedQuestionnaire}
               getAnswer={getAnswer}
@@ -688,6 +765,8 @@ const ProgramSection = ({
               onAnswerChange={handleAnswerChange}
               getAnswer={getAnswer}
             />
+          ) : isVLProgram ? (
+            renderVLProgramFields()
           ) : null}
         </div>
       )}

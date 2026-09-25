@@ -18,12 +18,12 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * persisted result was communicated ({@code resultId} + {@code resultValue}
  * snapshot, immune to later edits), who called ({@code loggedBy}, stamped
  * server-side), when ({@code loggedAt}), who received it, and the outcome.
- * Result-grain per the C.4 outline §5 — a callback can only be logged against a
- * saved result. Rows are write-once and are themselves the record — the entity
- * is deliberately NOT audited (UUID id, no reference_tables registration;
- * audited tables need numeric ids). Repeat callbacks for the same result are
- * additional rows: multiplicity is the attempt log. Numeric FKs are mapped to
- * String via {@code LIMSStringNumberUserType} (the OpenELIS idiom). The audit
+ * Result-grain: a callback can only be logged against a saved result. Rows are
+ * write-once and are themselves the record — the entity is deliberately NOT
+ * audited (UUID id, no reference_tables registration; audited tables need
+ * numeric ids). Repeat callbacks for the same result are additional rows:
+ * multiplicity is the attempt log. Numeric FKs are mapped to String via
+ * {@code LIMSStringNumberUserType} (the OpenELIS idiom). The audit
  * {@code @Version} column ({@code last_updated}) comes from {@link BaseObject};
  * the DB-filled {@code lastupdated} (DEFAULT now()) is not mapped here.
  *
@@ -37,11 +37,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
 public class CriticalCallback extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
-
-    /** Callback outcomes; DB CHECK constraint mirrors this set. */
-    public enum Status {
-        CONFIRMED, REACHED_NO_READBACK, UNABLE_TO_REACH
-    }
 
     @Id
     @Column(name = "id", length = 36)
@@ -68,6 +63,9 @@ public class CriticalCallback extends BaseObject<String> {
     @Column(name = "recipient_name", nullable = false, length = 255)
     private String recipientName;
 
+    /**
+     * CONFIRMED, REACHED_NO_READBACK or UNABLE_TO_REACH; a DB CHECK enforces it.
+     */
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 

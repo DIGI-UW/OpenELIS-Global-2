@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -330,7 +331,15 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     @Transactional(readOnly = true)
     public TestSection getTestSection(Analysis analysis) {
-        return analysis == null ? null : analysis.getTestSection();
+        if (analysis == null) {
+            return null;
+        }
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection();
+        }
+        // Legacy and imported analyses often carry no section of their own; the
+        // test's home section is the bench that actually ran the work.
+        return analysis.getTest() == null ? null : analysis.getTest().getTestSection();
     }
 
     @Override
@@ -842,6 +851,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    public List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) {
+        return baseObjectDAO.getPendingAnalysesForWorkplan(statusIdList, testIdList, excludedAnalysisIds, maxResults);
+    }
+
+    @Override
+    public List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) {
+        return baseObjectDAO.getAnalysesByIdsWithDetails(analysisIds);
+    }
+
+    @Override
     public int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) {
         return baseObjectDAO.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList,
@@ -950,6 +970,14 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds) {
         return baseObjectDAO.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList, testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
+                testSectionIds);
     }
 
     @Override

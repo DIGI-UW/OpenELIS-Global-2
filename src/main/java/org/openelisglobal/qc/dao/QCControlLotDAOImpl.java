@@ -168,7 +168,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             // Bench lots have no analyzer; both consumers of this pairing (Westgard
             // config and bridge registration) are per-instrument, and a NULL
             // instrument in the result poisons the caller's transaction when the
-            // analyzer lookup throws (rollback-only). D4 keeps manual QC out of
+            // analyzer lookup throws (rollback-only). Manual QC stays out of
             // Westgard evaluation anyway.
             cq.where(cb.isNotNull(root.get("instrumentId")));
             cq.multiselect(root.get("testId"), root.get("instrumentId")).distinct(true);

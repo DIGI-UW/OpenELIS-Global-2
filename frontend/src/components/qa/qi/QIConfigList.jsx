@@ -1,24 +1,17 @@
-import React, { useEffect, useState } from "react";
-import {
-  Button,
-  DataTable,
-  DataTableSkeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tag,
-} from "@carbon/react";
+import React, { useState } from "react";
+import { Button, DataTableSkeleton, Tag } from "@carbon/react";
 import { Edit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import ServerDataState from "../../utils/ServerDataState";
+import QASimpleTable from "../common/QASimpleTable";
 import QIConfigEditor from "./QIConfigEditor";
-import { unitFor } from "./qiThresholds";
-import "./QIDashboard.css";
+import { thresholdParts } from "./qiThresholds";
+import "../common/QAStyles.css";
 
 /**
  * OGC-709 — QI Configuration admin page at /qa/qi/config. Lists the four quality
@@ -32,43 +25,29 @@ const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sideNav.label.qa", link: "" },
   { label: "sideNav.label.qa.qi", link: "" },
-  { label: "qa.qiConfig.title", link: "" },
+  { label: "sideNav.label.qa.qi.config", link: "" },
 ];
 
 const HEADERS = [
-  { key: "indicator", labelKey: "qa.qiConfig.column.indicator" },
-  { key: "enabled", labelKey: "qa.qiConfig.column.enabled" },
-  { key: "target", labelKey: "qa.qiConfig.column.target" },
-  { key: "action", labelKey: "qa.qiConfig.column.action" },
+  { key: "indicator", labelKey: "reports.label.indicator" },
+  { key: "enabled", labelKey: "qc.westgard.rule.enabled" },
+  { key: "target", labelKey: "qa.qiConfig.field.target" },
+  { key: "action", labelKey: "qa.qiConfig.field.action" },
   { key: "overrides", labelKey: "qa.qiConfig.column.overrides" },
-  { key: "actions", labelKey: "qa.qiConfig.column.actions" },
+  { key: "actions", labelKey: "common.actions" },
 ];
 
-// Target shows the good side ("≤ 2%" when lower is better), action the breach
-// side ("≥ 5%") — same ops as the dashboard tiles' threshold caption. TAT
-// thresholds are hours, rates are % (unitFor).
-function thresholdText(value, direction, unit, isAction) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  const op = (direction === "HIGHER_BETTER") !== isAction ? "≥" : "≤";
-  return `${op} ${value}${unit}`;
-}
+const CONFIG_ENDPOINT = "/rest/qi-config";
+
+const bands = (cfg) =>
+  thresholdParts({ ...cfg, enabled: true }, cfg.indicatorKey);
 
 const QIConfigList = () => {
   const intl = useIntl();
-  // undefined = loading, null = fetch failed
-  const [configs, setConfigs] = useState();
   const [editing, setEditing] = useState(null);
-
-  const load = () => {
-    setConfigs(undefined);
-    getFromOpenElisServer("/rest/qi-config", (res) =>
-      setConfigs(Array.isArray(res) ? res : null),
-    );
-  };
-
-  useEffect(load, []);
+  const query = useServerData(CONFIG_ENDPOINT);
+  const invalidateServerData = useInvalidateServerData();
+  const configs = Array.isArray(query.data) ? query.data : null;
 
   const rows = (configs || []).map((cfg) => ({
     id: cfg.indicatorKey,
@@ -80,18 +59,12 @@ const QIConfigList = () => {
         <FormattedMessage id={cfg.enabled ? "label.yes" : "label.no"} />
       </Tag>
     ),
-    target: thresholdText(
-      cfg.target,
-      cfg.direction,
-      unitFor(cfg.indicatorKey),
-      false,
-    ),
-    action: thresholdText(
-      cfg.action,
-      cfg.direction,
-      unitFor(cfg.indicatorKey),
-      true,
-    ),
+    // Target shows the good side ("≤ 2%" when lower is better), action the
+    // breach side ("≥ 5%") — the same strings the dashboard tiles caption
+    // themselves with. Read as enabled: this table shows what an indicator is
+    // configured to, and the Enabled column next to it says whether it is on.
+    target: bands(cfg)?.target ?? "—",
+    action: bands(cfg)?.action ?? "—",
     overrides: cfg.overrides ? cfg.overrides.length : 0,
     actions: (
       <Button
@@ -110,54 +83,20 @@ const QIConfigList = () => {
     <div className="pageContent qi-dashboard" data-testid="qi-config">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>
-        <FormattedMessage id="qa.qiConfig.title" />
+        <FormattedMessage id="sideNav.label.qa.qi.config" />
       </h2>
       <p className="qi-dashboard__subtitle">
         <FormattedMessage id="qa.qiConfig.subtitle" />
       </p>
 
-      {configs === undefined ? (
+      {query.isFetching ? (
         <DataTableSkeleton columnCount={HEADERS.length} rowCount={4} />
-      ) : configs === null ? (
-        <p className="qi-tile__message">
-          <FormattedMessage id="qa.qiConfig.error" />
-        </p>
+      ) : !configs ? (
+        // A failed read of the only thing this page shows: the shared state
+        // says so and offers the retry, rather than a dead sentence.
+        <ServerDataState query={query} />
       ) : (
-        <DataTable
-          rows={rows}
-          headers={HEADERS.map((h) => ({
-            key: h.key,
-            header: intl.formatMessage({ id: h.labelKey }),
-          }))}
-        >
-          {({ rows: tableRows, headers, getHeaderProps, getRowProps }) => (
-            <TableContainer>
-              <Table size="lg">
-                <TableHead>
-                  <TableRow>
-                    {headers.map((header) => (
-                      <TableHeader
-                        {...getHeaderProps({ header })}
-                        key={header.key}
-                      >
-                        {header.header}
-                      </TableHeader>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tableRows.map((row) => (
-                    <TableRow {...getRowProps({ row })} key={row.id}>
-                      {row.cells.map((cell) => (
-                        <TableCell key={cell.id}>{cell.value}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </DataTable>
+        <QASimpleTable rows={rows} headers={HEADERS} size="lg" />
       )}
 
       {editing && (
@@ -166,7 +105,9 @@ const QIConfigList = () => {
           onClose={(saved) => {
             setEditing(null);
             if (saved) {
-              load();
+              // The resolved configs the tiles and detail pages read change
+              // with it, so retire every server read rather than this list.
+              invalidateServerData();
             }
           }}
         />

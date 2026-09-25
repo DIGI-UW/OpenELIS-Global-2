@@ -25,11 +25,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     List<InventoryLot> getByInventoryItemId(Long itemId);
 
     /**
-     * Get lots by storage location ID
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId);
-
-    /**
      * Get lots expiring within specified days
      */
     List<InventoryLot> getExpiringLots(int daysFromNow);
@@ -43,6 +38,12 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Get lot by lot number
      */
     InventoryLot getByLotNumber(String lotNumber);
+
+    /**
+     * Get lot by its internal barcode, exact match first and then normalized. A lot
+     * without one holds NULL, never '', so a blank query never matches.
+     */
+    InventoryLot getByBarcode(String barcode);
 
     /**
      * Get lot by FHIR UUID

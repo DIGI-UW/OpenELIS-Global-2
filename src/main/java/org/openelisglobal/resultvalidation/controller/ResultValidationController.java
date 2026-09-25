@@ -39,7 +39,6 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
@@ -376,11 +375,9 @@ public class ResultValidationController extends BaseResultValidationController {
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
-        // This legacy endpoint finalizes analyses exactly like the REST
-        // save, so it must honour the same QC hold — otherwise it is a sidestep
-        // around the block the lab opted into.
-        Set<String> blocked = SpringContext.getBean(QcHoldService.class).analysisIdsBlockedFromRelease(
-                analysisItems.stream().map(AnalysisItem::getAnalysisId).filter(java.util.Objects::nonNull).toList());
+        // This legacy endpoint finalizes analyses exactly like the REST save, so it
+        // takes the same QC hold.
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
 
         List<String> analysisIdList = new ArrayList<>();
 

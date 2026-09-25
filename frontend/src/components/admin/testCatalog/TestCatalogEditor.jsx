@@ -21,6 +21,7 @@ import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
+import QcTargetsSection from "./sections/QcTargetsSection";
 import StorageSection from "./sections/StorageSection";
 import AnalyzersSection from "./sections/AnalyzersSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
@@ -293,6 +294,8 @@ const TestCatalogEditor = () => {
                 <MethodsSection testId={testId} />
               ) : activeSection === "ranges" ? (
                 <RangesSection testId={testId} />
+              ) : activeSection === "qc-targets" ? (
+                <QcTargetsSection testId={testId} />
               ) : activeSection === "storage" ? (
                 <StorageSection testId={testId} />
               ) : activeSection === "analyzers" ? (

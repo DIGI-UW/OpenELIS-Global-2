@@ -6,6 +6,13 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../../languages/en.json";
 import { ConfigurationContext } from "../../../layout/Layout";
+
+// Brings its own Notification/Configuration context needs; exercised in its
+// own suite, not here.
+vi.mock("../../../addOrder/GpsCoordinatesCapture", () => ({
+  default: () => <div data-testid="gps-capture" />,
+}));
+
 import SampleCollectionCard from "./SampleCollectionCard";
 
 describe("SampleCollectionCard admission-date validation", () => {

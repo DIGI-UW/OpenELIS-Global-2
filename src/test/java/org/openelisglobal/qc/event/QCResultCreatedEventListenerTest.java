@@ -36,8 +36,6 @@ public class QCResultCreatedEventListenerTest {
     @Mock
     private QCRuleViolationService violationService;
 
-    // Unmocked before OGC-1147: the listener's resultDAO call NPE'd and the catch
-    // swallowed it, so the status write was never actually exercised here.
     @Mock
     private QCResultDAO resultDAO;
 
@@ -64,9 +62,6 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithNoViolations_ShouldNotCreateViolation() {
-        // Stubbed so the listener reaches the evaluation instead of returning early
-        // on a missing persisted result, which would satisfy the assertions below
-        // for the wrong reason.
         givenPersistedTestResult();
         when(ruleEvaluationService.evaluateAllRules("R1")).thenReturn(Collections.emptyList());
 
@@ -74,9 +69,9 @@ public class QCResultCreatedEventListenerTest {
 
         verify(ruleEvaluationService).evaluateAllRules("R1");
         verify(violationService, never()).createViolation(any(), any());
-        // An empty evaluation means no rules ran, not "in control", so the status
-        // the writer set survives untouched — see
-        // testHandleQCResultCreated_WithNoRulesEvaluated_ShouldNotTouchStatus.
+        // An empty evaluation is "no rules ran", so the listener leaves the status
+        // alone; testHandleQCResultCreated_WithNoRulesEvaluated_ShouldNotTouchStatus
+        // covers why that matters.
         verify(resultDAO, never()).update(any());
     }
 
@@ -84,7 +79,7 @@ public class QCResultCreatedEventListenerTest {
      * OGC-1147 regression. An empty evaluation means "no rules ran", not "in control", so
      * the status the writer set must survive. A bench control has no westgard_rule_config
      * row at all — that table is keyed on a non-null instrument_id — so without this the
-     * listener would flip a technician's FAIL to ACCEPTED. findLatestAcceptedBenchResultBefore
+     * listener would flip a technician's FAIL to ACCEPTED. findLatestAcceptedBefore
      * would then treat the failed control as the last in-control one when bounding the next
      * failure's window, holding FEWER patient results than it should.
      */

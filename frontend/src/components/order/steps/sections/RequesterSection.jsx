@@ -17,9 +17,16 @@ import {
   TableCell,
   Tag,
   Link,
+  Checkbox,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
+import {
+  forgetRequester,
+  readRememberedRequester,
+  rememberRequester,
+} from "../../rememberedRequester";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -39,6 +46,8 @@ const RequesterSection = ({
   setOrderData,
   isReadOnly,
   workflowType,
+  siteRequired = false,
+  providerRequired = false,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -91,6 +100,54 @@ const RequesterSection = ({
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isProviderLocked, setIsProviderLocked] = useState(false);
   const sampleOrderItems = orderData?.sampleOrderItems || {};
+  const rememberChecked = Boolean(orderData?.rememberSiteAndRequester);
+  const restoredRef = useRef(false);
+
+  // Pre-fill a brand-new order from the last remembered site and requester.
+  useEffect(() => {
+    if (restoredRef.current || isReadOnly) {
+      return;
+    }
+    restoredRef.current = true;
+    if (orderData?.sampleOrderItems?.referringSiteId) {
+      return;
+    }
+    const remembered = readRememberedRequester();
+    if (!remembered) {
+      return;
+    }
+    setOrderData((prev) => ({
+      ...prev,
+      rememberSiteAndRequester: true,
+      sampleOrderItems: { ...prev.sampleOrderItems, ...remembered },
+    }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the stored copy in step with what is on the order right now, so the
+  // next order starts from what the user last actually used.
+  useEffect(() => {
+    if (rememberChecked) {
+      rememberRequester(orderData?.sampleOrderItems);
+    }
+  }, [rememberChecked, orderData?.sampleOrderItems]);
+
+  const handleRememberChange = (_event, { checked }) => {
+    if (!checked) {
+      forgetRequester();
+    }
+    setOrderData((prev) => ({ ...prev, rememberSiteAndRequester: checked }));
+  };
+
+  // V-7: the fax and email inputs existed with no validation at all, so a
+  // mistyped address was accepted and only failed later at report delivery.
+  const providerFax = sampleOrderItems.providerFax || "";
+  const providerEmail = sampleOrderItems.providerEmail || "";
+  const providerEmailInvalid =
+    providerEmail.length > 0 &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(providerEmail);
+  const providerFaxInvalid =
+    providerFax.length > 0 && !/^\+?[0-9().\-\s]{6,}$/.test(providerFax);
+
   const referringSiteId = sampleOrderItems.referringSiteId || "";
   const effectiveSelectedSite =
     selectedSite?.isNew ||
@@ -115,6 +172,8 @@ const RequesterSection = ({
           id: providerPersonId,
           firstName: sampleOrderItems.providerFirstName || "",
           lastName: sampleOrderItems.providerLastName || "",
+          titleCode: sampleOrderItems.providerTitleCode || "",
+          titleAbbreviation: sampleOrderItems.providerTitleAbbreviation || "",
           phone: sampleOrderItems.providerWorkPhone || "",
           fax: sampleOrderItems.providerFax || "",
           email: sampleOrderItems.providerEmail || "",
@@ -207,6 +266,9 @@ const RequesterSection = ({
         id: providerPersonId,
         firstName: orderData?.sampleOrderItems?.providerFirstName || "",
         lastName: orderData?.sampleOrderItems?.providerLastName || "",
+        titleCode: orderData?.sampleOrderItems?.providerTitleCode || "",
+        titleAbbreviation:
+          orderData?.sampleOrderItems?.providerTitleAbbreviation || "",
         phone: orderData?.sampleOrderItems?.providerWorkPhone || "",
         fax: orderData?.sampleOrderItems?.providerFax || "",
         email: orderData?.sampleOrderItems?.providerEmail || "",
@@ -615,6 +677,8 @@ const RequesterSection = ({
           providerPersonId: provider.personId,
           providerFirstName: provider.firstName,
           providerLastName: provider.lastName,
+          providerTitleCode: provider.titleCode || "",
+          providerTitleAbbreviation: provider.titleAbbreviation || "",
           providerWorkPhone: provider.phone,
           providerFax: provider.fax || "",
           providerEmail: provider.email || "",
@@ -672,6 +736,8 @@ const RequesterSection = ({
         providerPersonId: "",
         providerFirstName: "",
         providerLastName: "",
+        providerTitleCode: "",
+        providerTitleAbbreviation: "",
         providerWorkPhone: "",
         providerFax: "",
         providerEmail: "",
@@ -902,7 +968,12 @@ const RequesterSection = ({
             <TextInput
               id="siteName"
               labelText={
-                <FormattedMessage id="site.name" defaultMessage="Site Name" />
+                <span>
+                  <FormattedMessage id="site.name" defaultMessage="Site Name" />
+                  {siteRequired && (
+                    <span className="required-indicator"> *</span>
+                  )}
+                </span>
               }
               placeholder={intl.formatMessage({
                 id: "site.name.placeholder",
@@ -1158,6 +1229,22 @@ const RequesterSection = ({
                 />
               ))}
             </Select>
+          </Column>
+          <Column lg={6} md={8} sm={4}>
+            {/* V-5: a clinic entering a day's work from one referring site
+                re-typed it on every order. Kept per browser; it is a
+                data-entry convenience, not a property of the order. */}
+            <Checkbox
+              id="rememberSiteAndRequester"
+              labelText={intl.formatMessage({
+                id: "order.rememberSiteAndRequester",
+                defaultMessage:
+                  "Remember this site and requester for my next order",
+              })}
+              checked={rememberChecked}
+              onChange={handleRememberChange}
+              disabled={isReadOnly}
+            />
           </Column>
         </Grid>
 
@@ -1649,10 +1736,17 @@ const RequesterSection = ({
             <Column lg={6} md={4} sm={4}>
               <TextInput
                 id="providerName"
-                labelText={intl.formatMessage({
-                  id: "provider.name",
-                  defaultMessage: "Provider Name",
-                })}
+                labelText={
+                  <span>
+                    <FormattedMessage
+                      id="provider.name"
+                      defaultMessage="Provider Name"
+                    />
+                    {providerRequired && (
+                      <span className="required-indicator"> *</span>
+                    )}
+                  </span>
+                }
                 placeholder={intl.formatMessage({
                   id: "provider.name.placeholder",
                   defaultMessage: "Enter provider name",
@@ -1810,6 +1904,12 @@ const RequesterSection = ({
                           e.target.value,
                         )
                       }
+                      invalid={providerFaxInvalid}
+                      invalidText={intl.formatMessage({
+                        id: "provider.fax.invalid",
+                        defaultMessage:
+                          "Enter a valid fax number, digits and + ( ) - only.",
+                      })}
                       disabled={isProviderFieldDisabled}
                     />
                   </Column>
@@ -1827,6 +1927,12 @@ const RequesterSection = ({
                           e.target.value,
                         )
                       }
+                      invalid={providerEmailInvalid}
+                      invalidText={intl.formatMessage({
+                        id: "provider.email.invalid",
+                        defaultMessage:
+                          "Enter a valid email address, for example lab@example.org.",
+                      })}
                       disabled={isProviderFieldDisabled}
                     />
                   </Column>
@@ -1987,10 +2093,7 @@ const RequesterSection = ({
                 </Link>
               </div>
               <div className="selected-card-content">
-                <h5>
-                  {effectiveSelectedProvider.firstName}{" "}
-                  {effectiveSelectedProvider.lastName}
-                </h5>
+                <h5>{providerDisplayName(effectiveSelectedProvider)}</h5>
                 <p>
                   {effectiveSelectedProvider.phone &&
                     `Phone: ${effectiveSelectedProvider.phone}`}

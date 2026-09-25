@@ -64,7 +64,7 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
     @NotNull(groups = { ResultValidation.class })
     private Boolean displayTestSections = true;
 
-    // Response-only (DEF-2): accessions whose release the save withheld because an
+    // Response-only: accessions whose release the save withheld because an
     // open QC failure covers them. Never bound from the request.
     private List<String> withheldAccessions;
 

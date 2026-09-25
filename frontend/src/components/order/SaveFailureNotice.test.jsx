@@ -53,4 +53,39 @@ describe("SaveFailureNotice", () => {
       screen.queryByText(/sampleOrderItems.labNo/),
     ).not.toBeInTheDocument();
   });
+
+  // OGC-1201 R: the validator passes the message key as its own default
+  // message, so a blocked save used to read "errors.no.sample" to the user.
+  it("translates a rejection the server reports as a message key", () => {
+    orderContextValue.saveStatus = "error";
+    orderContextValue.error = "sampleOrderItems: errors.no.sample";
+    orderContextValue.fieldErrors = {
+      sampleOrderItems: "errors.requester.org.or.requestor.required",
+    };
+    renderNotice([]);
+
+    expect(
+      screen.getByText(/Select the appropriate sample for each test\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "sampleOrderItems: Enter at least one of Requesting Organization or Requester contact.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/errors\./)).not.toBeInTheDocument();
+  });
+
+  it("keeps a server message that is not a known key", () => {
+    orderContextValue.saveStatus = "error";
+    orderContextValue.error = "Validation failed";
+    orderContextValue.fieldErrors = {
+      "sampleOrderItems.labNo": "must not be blank",
+    };
+    renderNotice([]);
+
+    expect(screen.getByText(/Validation failed/)).toBeInTheDocument();
+    expect(
+      screen.getByText("sampleOrderItems.labNo: must not be blank"),
+    ).toBeInTheDocument();
+  });
 });

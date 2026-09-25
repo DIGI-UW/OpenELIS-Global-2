@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.qa.security.QaPermissions;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
@@ -496,10 +497,6 @@ public class QCRestController extends BaseRestController {
     // ==================== Dashboard Endpoints (T120/T121) ====================
 
     /**
-     * Get dashboard summary with aggregate violation counts. GET
-     * /rest/qc/dashboard/summary?months=1
-     */
-    /**
      * Bench QC activity, grouped by lab unit and test.
      * /rest/qc/dashboard/bench?months=1[&amp;source=MANUAL|RDT]
      *
@@ -510,19 +507,12 @@ public class QCRestController extends BaseRestController {
      * return an empty instrument list (OGC-1147).
      */
     @GetMapping("/dashboard/bench")
-    @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(QaPermissions.VIEW_QC)
     public ResponseEntity<List<BenchQcSummaryRow>> getBenchQcSummary(
             @RequestParam(value = "months", defaultValue = "1") int months,
             @RequestParam(value = "source", required = false) String source) {
         try {
-            QCSource parsed = null;
-            if (StringUtils.isNotBlank(source) && !"ALL".equalsIgnoreCase(source)) {
-                parsed = QCSource.valueOf(source.toUpperCase());
-                if (!parsed.isBenchEntered()) {
-                    // ASTM belongs to the instrument tiles, not this listing.
-                    return ResponseEntity.badRequest().build();
-                }
-            }
+            QCSource parsed = QCSource.parseBenchFilter(source);
             Timestamp[] range = computeDateRange(months);
             return ResponseEntity.ok(dashboardService.getBenchQcSummary(range[0], range[1], parsed));
         } catch (IllegalArgumentException e) {

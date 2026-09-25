@@ -300,3 +300,25 @@ describe("LocalizationSection", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("LocalizationSection message lookup (OGC-1238)", () => {
+  it("renders a test's copy without looking up keys that do not exist", async () => {
+    mockHappyPath();
+    const onError = vi.fn();
+    render(
+      <IntlProvider locale="en-US" messages={messages} onError={onError}>
+        <LocalizationSection testId="42" />
+      </IntlProvider>,
+    );
+
+    expect(
+      await screen.findByText(messages["label.testCatalog.localization.intro"]),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.localization.field.name"],
+      ),
+    ).toBeInTheDocument();
+    expect(onError).not.toHaveBeenCalled();
+  });
+});

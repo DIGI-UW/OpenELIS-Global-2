@@ -59,22 +59,30 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.result.service.ResultInventoryService;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultSignatureService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
@@ -330,7 +338,7 @@ public class ResultUtil {
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
-            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
+            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
@@ -434,20 +442,65 @@ public class ResultUtil {
         }
     }
 
-    @SuppressWarnings("deprecation")
+    /**
+     * A test already carrying a live referral must not be referred again: the
+     * second referral would come with its own subcontract row and its own FHIR
+     * Task, and nothing downstream could tell which of the two the reference lab is
+     * working on. Results Entry hides the action once a test is referred; this is
+     * the same rule for anything that reaches a save directly.
+     */
+    public static boolean hasOpenReferral(Analysis analysis) {
+        return analysis != null && analysis.getId() != null
+                && SpringContext.getBean(ReferralService.class).hasOpenReferral(analysis.getId());
+    }
+
+    /**
+     * Whoever raised a referral: the referrer named on the form, else the
+     * technician credited with the result, else the person saving.
+     *
+     * <p>
+     * All three rungs are needed. The Results Entry writers used to set the
+     * technician and then overwrite it with the form's referrer, which no client
+     * sends, so nothing was recorded at all; the unified Results page shows a
+     * technician but never asks for one; and Order Entry sends neither.
+     */
+    public static String requesterNameFor(String referrer, String technician, String actorUserId) {
+        if (!GenericValidator.isBlankOrNull(referrer)) {
+            return referrer;
+        }
+        if (!GenericValidator.isBlankOrNull(technician)) {
+            return technician;
+        }
+        if (GenericValidator.isBlankOrNull(actorUserId)) {
+            return null;
+        }
+        SystemUser user = SpringContext.getBean(SystemUserService.class).getUserById(actorUserId);
+        return user == null ? null : user.getNameForDisplay();
+    }
+
     public static void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
+        if (hasOpenReferral(analysis)) {
+            LogEvent.logWarn(ResultUtil.class.getSimpleName(), "handleReferrals",
+                    "refused a second referral on analysis " + analysis.getId()
+                            + ": one is still open. Cancel it before referring the test again.");
+            return;
+        }
         // List<Referral> referrals = new ArrayList<>();
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
-        referral.setStatus(ReferralStatus.SENT);
+        // Born DRAFT with its subcontract row, exactly as the Order Entry Refer Out
+        // does: REQUESTED is reached only by a dispatch, and every lifecycle
+        // transition reads the subcontract row (OGC-1188).
+        referral.setStatus(ReferralStatus.DRAFT);
+        referral.setSubcontract(SpringContext.getBean(ReferralSetService.class).buildSubcontractFromItem(referralItem,
+                actionDataSet.getCurrentUserId()));
         referral.setSysUserId(actionDataSet.getCurrentUserId());
         referral.setReferralTypeId(confirmationReferralTypeId());
-        referral.setRequesterName(testResultItem.getTechnician());
-
         referral.setRequestDate(new Timestamp(new Date().getTime()));
         referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-        referral.setRequesterName(referralItem.getReferrer());
+        referral.setRequesterName(requesterNameFor(referralItem.getReferrer(), testResultItem.getTechnician(),
+                actionDataSet.getCurrentUserId()));
         referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
         referral.setAnalysis(analysis);
 
@@ -568,6 +621,20 @@ public class ResultUtil {
     }
 
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate) {
+        return getStatusForTestResult(testResult, alwaysValidate,
+                GenericValidator.isBlankOrNull(testResult.getAnalysisId()) ? null
+                        : analysisService.get(testResult.getAnalysisId()));
+    }
+
+    /**
+     * The analysis status a saved result earns. A result is finalized without a
+     * validator only when it would sit in the Validation queue's Clear lane
+     * (OGC-1226 FR-7, one predicate for the lane and for automation): the lab has
+     * not asked to validate everything, the test's limit does not insist on it, and
+     * {@link ValidationSignals#isClearAtEntry} says clear. Everything else waits
+     * for a validator.
+     */
+    public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);
@@ -579,19 +646,40 @@ public class ResultUtil {
                 testResult.getResultType())) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
         } else {
-            if (!GenericValidator.isBlankOrNull(testResult.getResultLimitId())) {
-                ResultLimit resultLimit = resultLimitService.get(testResult.getResultLimitId());
-                if (resultLimit.isAlwaysValidate()) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
-                if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(testResult.getResultType())
-                        && !testResult.getResultValue().equals(resultLimit.getDictionaryNormalId())) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
+            ResultLimit resultLimit = GenericValidator.isBlankOrNull(testResult.getResultLimitId()) ? null
+                    : resultLimitService.get(testResult.getResultLimitId());
+            if (resultLimit != null && resultLimit.isAlwaysValidate()) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
-
+            if (!clearAtEntry(testResult, analysis, resultLimit)) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+            }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * Gathers what the clearance rule needs at entry time: the limit's range
+     * verdict, the quality-control verdict already recorded on the result being
+     * re-saved (a first save has none yet), an open non-conformity on the sample
+     * item, whether this save follows an earlier one (the revision is bumped after
+     * the status is chosen, so a revision of at least 1 here means a modification)
+     * and the item's nonconforming flag.
+     */
+    private static boolean clearAtEntry(TestResultItem testResult, Analysis analysis, ResultLimit resultLimit) {
+        String qcStatus = ValidationSignals.QC_UNKNOWN;
+        if (!GenericValidator.isBlankOrNull(testResult.getResultId())) {
+            Result existing = SpringContext.getBean(ResultService.class).get(testResult.getResultId());
+            if (existing != null && existing.getQcEvaluation() == QcEvaluation.FAIL) {
+                qcStatus = ValidationSignals.QC_FAIL;
+            }
+        }
+        boolean nceOpen = analysis != null
+                && SpringContext.getBean(ResultsValidationUtility.class).hasOpenNonConformity(analysis);
+        boolean modified = analysis != null && !GenericValidator.isBlankOrNull(analysis.getRevision())
+                && !"0".equals(analysis.getRevision().trim());
+        return ValidationSignals.isClearAtEntry(resultLimit, testResult.getResultType(), testResult.getResultValue(),
+                qcStatus, nceOpen, modified, testResult.isNonconforming());
     }
 
     public static boolean noResults(String value, String multiSelectValue, String type) {

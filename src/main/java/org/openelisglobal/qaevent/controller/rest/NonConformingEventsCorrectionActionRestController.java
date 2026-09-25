@@ -82,10 +82,10 @@ public class NonConformingEventsCorrectionActionRestController extends BaseRestC
             HttpServletRequest request) {
 
         form.setCurrentUserId(getSysUserId(request));
-        // F-4: only an "effective = Yes" verdict resolves/closes the NCE. A "No"
-        // verdict
-        // (or no answer) goes through updateCorrectiveAction, which records the verdict
-        // when present without closing — so an "ineffective" review is never discarded.
+        // Only an "effective = Yes" verdict resolves/closes the NCE. A "No" verdict
+        // (or no answer) goes through updateCorrectiveAction, which records the
+        // verdict when present without closing, so an "ineffective" review is never
+        // discarded.
         boolean updated = "Yes".equalsIgnoreCase(form.getEffective()) ? nonConformingEventWorker.resolveNCEvent(form)
                 : nonConformingEventWorker.updateCorrectiveAction(form);
 

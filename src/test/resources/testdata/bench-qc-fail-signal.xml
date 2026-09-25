@@ -33,6 +33,17 @@
         lastupdated="2025-06-01 12:00:00" />
     <localization_value id="7102" localization_id="7102"
         locale="en" value="Parasitology" />
+    <!-- Every shipped test carries a name localization, and the QC surfaces
+        read the localized name rather than the description; without these the bench
+        summary would show the untranslated-name placeholder key. -->
+    <localization id="7103" description="Bench Haemoglobin"
+        lastupdated="2025-06-01 12:00:00" />
+    <localization_value id="7103" localization_id="7103"
+        locale="en" value="Bench Haemoglobin" />
+    <localization id="7104" description="Bench Malaria RDT"
+        lastupdated="2025-06-01 12:00:00" />
+    <localization_value id="7104" localization_id="7104"
+        locale="en" value="Bench Malaria RDT" />
 
     <test_section id="701" name="BenchHaem"
         description="Haematology bench" org_id="7001" is_active="Y"
@@ -44,11 +55,13 @@
     <test id="6601" name="Bench Haemoglobin"
         description="Bench Haemoglobin"
         guid="c2d5e7c8-9f12-4b3e-8d67-1e23a4b5c661" is_active="Y"
-        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+        is_reportable="Y" orderable="true" name_localization_id="7103"
+        lastUpdated="2025-06-01 12:00:00" />
     <test id="6602" name="Bench Malaria RDT"
         description="Bench Malaria RDT"
         guid="c2d5e7c8-9f12-4b3e-8d67-1e23a4b5c662" is_active="Y"
-        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+        is_reportable="Y" orderable="true" name_localization_id="7104"
+        lastUpdated="2025-06-01 12:00:00" />
 
     <!-- Bench control lot: NO instrument_id. Impossible before OGC-1147 relaxed
         qc_control_lot.instrument_id — a bench lot has no analyzer to point at. -->

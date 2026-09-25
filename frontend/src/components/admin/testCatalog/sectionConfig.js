@@ -15,6 +15,7 @@ export const V1_SECTIONS = [
   "sample-results",
   "methods",
   "ranges",
+  "qc-targets",
   "storage",
   "panels",
   "labels",

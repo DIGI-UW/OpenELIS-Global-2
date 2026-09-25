@@ -53,8 +53,6 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     private static final String SEVERITY_REJECTION = "REJECTION";
     private static final String SEVERITY_WARNING = "WARNING";
 
-    private static final String STATUS_UNRESOLVED = "UNRESOLVED";
-
     private static final int DEFAULT_WINDOW_DAYS = 30;
 
     @Autowired
@@ -225,7 +223,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             String testSectionId = Objects.toString(row[0], null);
             String testId = Objects.toString(row[1], null);
             summary.add(new BenchQcSummaryRow(testSectionId, resolveTestSectionName(testSectionId), testId,
-                    resolveTestName(testId), Objects.toString(row[2], null),
+                    testService.getLabelOrDefault(testId, Test::getName, null), Objects.toString(row[2], null),
                     row[3] == null ? 0L : ((Number) row[3]).longValue(),
                     row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5]));
         }
@@ -243,19 +241,6 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         } catch (RuntimeException e) {
             LogEvent.logWarn(this.getClass().getName(), "resolveTestSectionName",
                     "Could not resolve lab unit name for " + testSectionId);
-            return null;
-        }
-    }
-
-    private String resolveTestName(String testId) {
-        if (testId == null) {
-            return null;
-        }
-        try {
-            Test test = testService.get(testId);
-            return test == null ? null : test.getName();
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(this.getClass().getName(), "resolveTestName", "Could not resolve test name for " + testId);
             return null;
         }
     }
@@ -407,18 +392,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         AnalyteDetail detail = new AnalyteDetail();
         detail.setTestId(testId);
 
-        try {
-            Test test = testService.getTestById(String.valueOf(testId));
-            if (test != null) {
-                detail.setTestName(test.getDescription() != null ? test.getDescription() : "Test " + testId);
-            } else {
-                detail.setTestName("Test " + testId);
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "buildAnalyteDetail",
-                    "Could not load test " + testId + ": " + e.getMessage());
-            detail.setTestName("Test " + testId);
-        }
+        detail.setTestName(testService.getLabelOrDefault(testId, Test::getDescription, "Test " + testId));
 
         if (latestResult != null) {
             detail.setLatestZScore(latestResult.getZScore());

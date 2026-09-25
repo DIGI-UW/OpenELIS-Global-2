@@ -6,8 +6,9 @@ import { Stack, InlineNotification, Button } from "@carbon/react";
 import { Warning } from "@carbon/icons-react";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext } from "../../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -17,7 +18,10 @@ import {
   getPendingRequests,
   convertRequestsToSamples,
 } from "../api/sampleTypeRequestApi";
+import SampleAcceptanceReview from "./sections/SampleAcceptanceReview";
+import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
+import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
@@ -58,9 +62,14 @@ const OrderCollect = () => {
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
 
   // Sample types from API
   const [showNceForm, setShowNceForm] = useState(false);
+  // Intake acceptance is hidden when this order's domain enforcement is OFF,
+  // matching QA Review. Default false → fail open.
+  const [acceptanceOff, setAcceptanceOff] = useState(false);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -96,6 +105,21 @@ const OrderCollect = () => {
       componentMounted.current = false;
     };
   }, []);
+
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+
+  useEffect(() => {
+    let active = true;
+    getEnforcement().then((modes) => {
+      if (!active) return;
+      setAcceptanceOff((modes?.[workflowType] || "").toUpperCase() === "OFF");
+    });
+    return () => {
+      active = false;
+    };
+  }, [workflowType]);
 
   // Load pending sample type requests when orderId is available
   useEffect(() => {
@@ -143,15 +167,24 @@ const OrderCollect = () => {
   }, [orderId]);
 
   // Validate that at least one sample with a sample type is present.
-  // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
+  // Informed consent stays advisory by default, which is what FRS FR-5-001/
+  // FR-5-002 describes, but a site whose regulator requires consent before
+  // collection can turn consentRequiredForCollection on and have it gate.
+  // Environmental and vector samples have no human subject, so they capture
+  // no consent and the gate never applies to them.
   const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
   const hasCollectionDateConflict = samples.some((sample) =>
     isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
   );
+  // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
+  const consentRequired =
+    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentSatisfied = !consentRequired || consentData.consentGiven;
   const canProceed =
     samples?.length > 0 &&
     samples.some((s) => s.sampleTypeId) &&
-    !hasCollectionDateConflict;
+    !hasCollectionDateConflict &&
+    consentSatisfied;
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -230,8 +263,26 @@ const OrderCollect = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice />
 
       <Stack gap={7}>
+        {consentRequired && !consentData.consentGiven && (
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({
+              id: "collect.consentRequired.title",
+              defaultMessage: "Informed consent is required",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.consentRequired.subtitle",
+              defaultMessage:
+                "This laboratory requires consent to be recorded before a collection can proceed.",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
         {/* Warning if no tests ordered */}
         {!hasOrderedTests && (
           <InlineNotification
@@ -261,12 +312,32 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
         />
 
+        {/* A: the collector could see the ordered tests but not add one. */}
+        <CollectTestPickerSection
+          samples={samples}
+          setSamples={setSamples}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
         {/* Section 2: Informed Consent */}
         <ConsentAccordionSection
           consentData={consentData}
           onConsentChange={handleConsentChange}
           isReadOnly={isReadOnly && !isEditMode}
         />
+
+        {/* A collector holding a hemolyzed specimen could log an NCE here but
+            had to walk to QA Review to reject or resample it. The same
+            per-specimen acceptance table is mounted here, without the submit
+            gate that belongs to QA. Acceptance is recorded against
+            sample_items, so it appears once the collection has been saved. */}
+        {!acceptanceOff && samples.some((s) => s.sampleItemId) && (
+          <SampleAcceptanceReview
+            orderId={orderId}
+            labNumber={labNumber}
+            samples={samples}
+          />
+        )}
 
         {/* Section 3: Samples Collection */}
         <SamplesCollectionSection

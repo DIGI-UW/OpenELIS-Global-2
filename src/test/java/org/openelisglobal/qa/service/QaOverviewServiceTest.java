@@ -54,10 +54,9 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        // Clean first, then load QC. The loader truncates with CASCADE, and
-        // analyzer_site_binding_confirmation carries an FK to history, so
-        // clearing history afterwards would take the analyzer graph — and with
-        // it every qc_result and qc_rule_violation — along with it.
+        // Empty the activity tables first: clearing history truncates with CASCADE,
+        // and an analyzer confirmation table now carries a foreign key to it, so the
+        // cascade reaches the QC tables. Seeding QC afterwards keeps those rows.
         executeDataSetWithStateManagement("testdata/qa-overview-clean.xml");
         executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
         jdbc = new JdbcTemplate(dataSource);

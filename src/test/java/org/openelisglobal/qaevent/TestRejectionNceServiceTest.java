@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -96,10 +97,9 @@ public class TestRejectionNceServiceTest extends BaseWebContextSensitiveTest {
 
         logbookPersistService.persistDataSet(dataSet, new ArrayList<>(), "1");
 
-        NcEvent nce = ncEventService.findByTriggerSource(TestRejectionNceServiceImpl.TRIGGER_SOURCE_TEST_REJECTION,
-                "2");
+        NcEvent nce = rejectionNce("2");
         assertNotNull(nce);
-        assertNull(ncEventService.findByTriggerSource(TestRejectionNceServiceImpl.TRIGGER_SOURCE_TEST_REJECTION, "1"));
+        assertNull(rejectionNce("1"));
 
         // The rejection detail rows carry the NCE number (LEFT JOIN on the
         // trigger source), so the UI can link each rejection to its NCE.
@@ -107,5 +107,11 @@ public class TestRejectionNceServiceTest extends BaseWebContextSensitiveTest {
                 LocalDate.of(2025, 7, 31), 0, 25);
         assertEquals(1, detail.getTotalCount());
         assertEquals(nce.getNceNumber(), detail.getItems().get(0).getNceNumber());
+    }
+
+    /** The non-conformity a rejection on this analysis raised, or null. */
+    private NcEvent rejectionNce(String analysisId) {
+        return ncEventService.getMatch(Map.of("triggerSourceType",
+                TestRejectionNceServiceImpl.TRIGGER_SOURCE_TEST_REJECTION, "triggerSourceId", analysisId)).orElse(null);
     }
 }

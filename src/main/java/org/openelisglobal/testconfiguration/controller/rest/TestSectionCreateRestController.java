@@ -19,6 +19,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestSectionCreateForm;
 import org.openelisglobal.testconfiguration.service.TestSectionCreateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -84,13 +85,13 @@ public class TestSectionCreateRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionCreate")
-    public TestSectionCreateForm postTestSectionCreate(HttpServletRequest request,
+    public ResponseEntity<?> postTestSectionCreate(HttpServletRequest request,
             @RequestBody @Valid TestSectionCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String identifyingName = form.getTestUnitEnglishName();
@@ -117,14 +118,14 @@ public class TestSectionCreateRestController extends BaseController {
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {

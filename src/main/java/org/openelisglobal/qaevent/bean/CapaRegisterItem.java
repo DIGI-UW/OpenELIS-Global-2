@@ -68,11 +68,9 @@ public class CapaRegisterItem {
     }
 
     // java.util.Date params so Hibernate's constructor-projection type match
-    // succeeds (it derives
-    // java.util.Date from the DATE columns). Serialize as yyyy-MM-dd strings (as
-    // the NCE dashboard
-    // does) so the client compares/derives status without timezone or epoch-millis
-    // ambiguity.
+    // succeeds (it derives java.util.Date from the DATE columns). Serialize as
+    // yyyy-MM-dd strings (as the NCE dashboard does) so the client compares and
+    // derives status without timezone or epoch-millis ambiguity.
     public String getDueDate() {
         return dueDate == null ? null : new java.sql.Date(dueDate.getTime()).toLocalDate().toString();
     }

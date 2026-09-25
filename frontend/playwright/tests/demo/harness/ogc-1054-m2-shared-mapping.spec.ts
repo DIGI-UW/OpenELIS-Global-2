@@ -83,8 +83,14 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     ).toHaveAttribute("href", FILTERED_CATALOG);
 
     const sourceRows = page.getByTestId("analyzer-type-mapping-row");
-    await expect(sourceRows).toHaveCount(4);
-    for (const code of ["MTB-RIF", "RIF", "HIV-VL", "COVID19"]) {
+    await expect(sourceRows).toHaveCount(5);
+    for (const code of [
+      "MTB-RIF",
+      "RIF",
+      "HIV-VL",
+      "COVID19",
+      "UNMAPPED-MTB",
+    ]) {
       await expect(page.getByText(code, { exact: true }).first()).toBeVisible();
     }
 
@@ -115,7 +121,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     const mappingUrl = page.url();
     await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
     await expect(page).toHaveURL(mappingUrl);
-    await expect(sourceRows).toHaveCount(4);
+    await expect(sourceRows).toHaveCount(5);
 
     await breadcrumb
       .getByRole("link", { name: "Analyzer Types", exact: true })
@@ -144,7 +150,10 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
         name: `${PROFILE_NAME} mappings`,
       }),
     ).toBeVisible();
-    await expect(page.getByTestId("analyzer-type-mapping-row")).toHaveCount(4);
+    await expect(page.getByTestId("analyzer-type-mapping-row")).toHaveCount(5);
+    await expect(
+      page.getByRole("button", { name: /^UNMAPPED-MTB.*Needs mapping$/ }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Duplicate Profile", exact: true }),
     ).toBeVisible();
@@ -215,7 +224,12 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       .getByTestId("analyzer-type-mapping-row")
       .filter({ has: page.getByText("RIF", { exact: true }) });
     await rifRow.getByRole("button", { name: "Use suggested test" }).click();
-    await page.getByRole("button", { name: /^RIF.*Mapped$/ }).click();
+    await expect(
+      rifRow.getByRole("combobox", { name: "OpenELIS test for RIF" }),
+    ).toHaveValue("Xpert RIF Resistance · 46244-0");
+    await expect(
+      page.getByRole("button", { name: /^RIF.*Needs mapping$/ }),
+    ).toHaveAttribute("aria-expanded", "true");
 
     const resistant = rifRow.getByRole("combobox", {
       name: "OpenELIS result for DETECTED",

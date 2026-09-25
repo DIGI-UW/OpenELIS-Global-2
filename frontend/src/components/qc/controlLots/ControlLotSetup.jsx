@@ -12,15 +12,13 @@
  * - Association with analyzer/test combinations
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Grid,
   Column,
   Form,
   FormGroup,
   TextInput,
-  DatePicker,
-  DatePickerInput,
   Dropdown,
   Button,
   Loading,
@@ -32,9 +30,12 @@ import { useHistory, useParams } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import {
+  displayDateToIso,
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../layout/Layout";
 import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -44,6 +45,20 @@ const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
   const { id: lotId } = useParams();
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  // CustomDatePicker renders and returns the locale display format; the lot
+  // endpoint speaks ISO, so the expiration date is converted at both edges.
+  const dateLocale = configurationProperties?.DEFAULT_DATE_LOCALE;
+  const isoToDisplayDate = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const yyyy = d.getUTCFullYear();
+    return dateLocale === "fr-FR"
+      ? `${dd}/${mm}/${yyyy}`
+      : `${mm}/${dd}/${yyyy}`;
+  };
 
   const isEditMode = !!lotId;
 
@@ -167,15 +182,7 @@ const ControlLotSetup = () => {
         lotNumber: existingLot.lotNumber || "",
         controlMaterial: existingLot.productName || "",
         controlLevel: existingLot.controlLevel || "",
-        expirationDate: existingLot.expirationDate
-          ? (() => {
-              const d = new Date(existingLot.expirationDate);
-              const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-              const dd = String(d.getUTCDate()).padStart(2, "0");
-              const yyyy = d.getUTCFullYear();
-              return `${mm}/${dd}/${yyyy}`;
-            })()
-          : "",
+        expirationDate: isoToDisplayDate(existingLot.expirationDate),
         analyzerId:
           existingLot.instrumentId != null
             ? String(existingLot.instrumentId)
@@ -234,10 +241,9 @@ const ControlLotSetup = () => {
       lotNumber: values.lotNumber,
       controlLevel: values.controlLevel,
       expirationDate: values.expirationDate
-        ? (() => {
-            const [mm, dd, yyyy] = values.expirationDate.split("/");
-            return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
-          })()
+        ? new Date(
+            `${displayDateToIso(values.expirationDate, dateLocale)}T12:00:00`,
+          ).toISOString()
         : undefined,
       instrumentId: values.analyzerId
         ? parseInt(values.analyzerId, 10)
@@ -309,9 +315,12 @@ const ControlLotSetup = () => {
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "" },
-            { label: "qc.dashboard.title", link: "" },
-            { label: "qc.controlLots.title", link: "" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            {
+              label: "qc.controlLots.title",
+              link: "/analyzers/qc/control-lots",
+            },
             {
               label: isEditMode
                 ? "qc.controlLot.edit.title"
@@ -328,7 +337,7 @@ const ControlLotSetup = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.controlLots.title" }),
@@ -453,51 +462,19 @@ const ControlLotSetup = () => {
               {/* Expiration Date */}
               <Column lg={8} md={4} sm={4}>
                 <FormGroup legendText="">
-                  <DatePicker
-                    datePickerType="single"
-                    dateFormat="m/d/Y"
+                  <CustomDatePicker
+                    id="expiration-date"
+                    labelText={intl.formatMessage({
+                      id: "qc.controlLot.field.expiration",
+                    })}
                     value={values.expirationDate}
-                    onChange={([date]) => {
-                      if (date) {
-                        const mm = String(date.getMonth() + 1).padStart(2, "0");
-                        const dd = String(date.getDate()).padStart(2, "0");
-                        const yyyy = date.getFullYear();
-                        setFieldValue("expirationDate", `${mm}/${dd}/${yyyy}`);
-                      } else {
-                        setFieldValue("expirationDate", "");
-                      }
-                    }}
-                  >
-                    <DatePickerInput
-                      id="expiration-date"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "qc.controlLot.field.expiration",
-                      })}
-                      onBlur={handleBlur("expirationDate")}
-                      // The outer flatpickr onChange only fires on calendar
-                      // selection, so typed input was silently dropped. Capture a
-                      // fully-typed date here (dateFormat is m/d/Y) so manual
-                      // entry persists like every other date field.
-                      onChange={(e) => {
-                        const typed = e.target.value;
-                        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(typed)) return;
-                        // Reject calendar-invalid dates (e.g. 13/45/2026) that
-                        // pass the shape regex — submit parses this via new Date()
-                        // and toISOString() would throw on an invalid date.
-                        const [mm, dd, yyyy] = typed.split("/");
-                        const d = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
-                        if (!isNaN(d.getTime())) {
-                          setFieldValue("expirationDate", typed);
-                        }
-                      }}
-                      invalid={
-                        touched.expirationDate && !!errors.expirationDate
-                      }
-                      invalidText={errors.expirationDate}
-                      data-testid="control-lot-expiration-input"
-                    />
-                  </DatePicker>
+                    updateStateValue
+                    onChange={(displayed) =>
+                      setFieldValue("expirationDate", displayed)
+                    }
+                    invalid={touched.expirationDate && !!errors.expirationDate}
+                    invalidText={errors.expirationDate}
+                  />
                 </FormGroup>
               </Column>
 

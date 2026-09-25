@@ -1,21 +1,13 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
 import { Analytics } from "@carbon/icons-react";
-import messages from "../../../../languages/en.json";
 import QAEmptyState, { QASparseList } from "../QAEmptyState";
-
-const renderWithIntl = (node) =>
-  render(
-    <IntlProvider locale="en" messages={messages}>
-      {node}
-    </IntlProvider>,
-  );
+import { renderQa } from "../../testUtils";
 
 describe("QAEmptyState", () => {
   test("renders the state-naming headline and subhead from real i18n keys", () => {
-    renderWithIntl(
+    renderQa(
       <QAEmptyState
         titleKey="qa.empty.tat.title"
         subheadKey="qa.empty.tat.subhead"
@@ -28,7 +20,7 @@ describe("QAEmptyState", () => {
   });
 
   test("renders without a subhead when none is given, and honors a custom icon", () => {
-    const { container } = renderWithIntl(
+    const { container } = renderQa(
       <QAEmptyState titleKey="qa.empty.amendment.title" icon={Analytics} />,
     );
     expect(
@@ -40,7 +32,7 @@ describe("QAEmptyState", () => {
   });
 
   test("inline size applies the inline modifier class", () => {
-    const { container } = renderWithIntl(
+    const { container } = renderQa(
       <QAEmptyState size="inline" titleKey="qa.empty.attention.title" />,
     );
     expect(container.querySelector(".qa-empty--inline")).toBeInTheDocument();
@@ -49,7 +41,7 @@ describe("QAEmptyState", () => {
 
 describe("QASparseList", () => {
   test("renders a count headline and one row per item", () => {
-    renderWithIntl(
+    renderQa(
       <QASparseList
         headlineKey="qa.empty.sparse.labUnits"
         headlineValues={{ count: 2 }}
@@ -67,7 +59,7 @@ describe("QASparseList", () => {
   });
 
   test("pluralizes the headline for a single category", () => {
-    renderWithIntl(
+    renderQa(
       <QASparseList
         headlineKey="qa.empty.sparse.labUnits"
         headlineValues={{ count: 1 }}

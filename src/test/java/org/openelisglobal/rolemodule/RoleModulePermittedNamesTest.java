@@ -28,6 +28,8 @@ public class RoleModulePermittedNamesTest extends BaseWebContextSensitiveTest {
     private static final List<String> ALL_VIEW_KEYS = Arrays.asList("qa.view.overview", "qa.view.qc", "qa.view.eqa",
             "qa.view.qi", "qa.view.qms");
 
+    private static final List<String> ALL_MANAGE_KEYS = Arrays.asList("qa.manage.qi", "qa.manage.accreditation");
+
     @Autowired
     private RoleModuleService roleModuleService;
 
@@ -38,25 +40,40 @@ public class RoleModulePermittedNamesTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void qaOfficer_bundlesOverviewAndAllFourPillarPermissions() {
+    public void qaOfficer_bundlesOverviewAllPillarsAndBothManageRights() {
         Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of("QA Officer"),
                 Constants.QA_PERMISSION_PREFIX);
 
         for (String key : ALL_VIEW_KEYS) {
             assertTrue("QA Officer should hold " + key, permissions.contains(key));
         }
-        // qa.manage.qi is registered but not granted in v1
-        assertFalse(permissions.contains("qa.manage.qi"));
-        assertEquals(ALL_VIEW_KEYS.size(), permissions.size());
+        for (String key : ALL_MANAGE_KEYS) {
+            assertTrue("QA Officer should hold " + key, permissions.contains(key));
+        }
+        assertEquals(ALL_VIEW_KEYS.size() + ALL_MANAGE_KEYS.size(), permissions.size());
     }
 
     @Test
-    public void globalAdministrator_holdsAllViewKeys() {
+    public void globalAdministrator_holdsEveryQaKey() {
         Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of("Global Administrator"),
                 Constants.QA_PERMISSION_PREFIX);
 
         for (String key : ALL_VIEW_KEYS) {
             assertTrue("Global Administrator should hold " + key, permissions.contains(key));
+        }
+        for (String key : ALL_MANAGE_KEYS) {
+            assertTrue("Global Administrator should hold " + key, permissions.contains(key));
+        }
+    }
+
+    @Test
+    public void compatRolesNeverHoldAManageRight() {
+        for (String role : List.of("Reception", "Results", "Validation")) {
+            Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of(role),
+                    Constants.QA_PERMISSION_PREFIX);
+            for (String key : ALL_MANAGE_KEYS) {
+                assertFalse(role + " must not hold " + key, permissions.contains(key));
+            }
         }
     }
 

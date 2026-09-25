@@ -3,15 +3,14 @@ package org.openelisglobal.qaevent.qiconfig.breach;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.function.BiFunction;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.openelisglobal.qaevent.qiconfig.dto.ResolvedConfig;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
 import org.openelisglobal.qaevent.qiconfig.valueholder.QiIndicator;
-import org.openelisglobal.reports.amendment.bean.AmendmentSummaryResponse;
 import org.openelisglobal.reports.amendment.service.AmendmentReportService;
-import org.openelisglobal.reports.rejection.bean.RejectionSummaryResponse;
 import org.openelisglobal.reports.rejection.service.RejectionReportService;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATSegment;
@@ -45,7 +44,6 @@ import org.springframework.stereotype.Service;
 public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
 
     private static final DateTimeFormatter PERIOD_KEY = DateTimeFormatter.ofPattern("yyyy-MM");
-    private static final String LOWER_BETTER = "LOWER_BETTER";
 
     @Autowired
     private QiConfigService qiConfigService;
@@ -59,6 +57,24 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
     private CriticalCallbackService criticalCallbackService;
     @Autowired
     private QiBreachNceService qiBreachNceService;
+
+    /**
+     * One indicator, the metric it is measured by over a window, and the unit that
+     * metric is quoted in ("%" for rates, "h" for TAT). A metric returning null
+     * means there was nothing to measure in the window.
+     */
+    private record Probe(QiIndicator indicator, String unit, BiFunction<LocalDate, LocalDate, BigDecimal> metric) {
+    }
+
+    // Evaluated in this order. The lambdas read the injected services when they
+    // run, so building the list as a field initializer is safe.
+    private final List<Probe> probes = List.of(
+            new Probe(QiIndicator.AMENDMENT, "%",
+                    (from, to) -> percent(amendmentReportService.getSummary(from, to).getRatePercent())),
+            new Probe(QiIndicator.REJECTION, "%",
+                    (from, to) -> percent(rejectionReportService.getSummary(from, to).getRatePercent())),
+            new Probe(QiIndicator.TAT, "h", this::meanTatHours), new Probe(QiIndicator.CALLBACK, "%",
+                    (from, to) -> percent(criticalCallbackService.getSummary(from, to).getCompliancePercent())));
 
     // Fixed-rate poller, same shape as the FHIR task poller
     // (FhirApiWorkFlowServiceImpl): first run 10s after startup, then every 2
@@ -81,96 +97,49 @@ public class QiBreachEvaluatorServiceImpl implements QiBreachEvaluatorService {
 
     private void evaluateWindow(LocalDate from, LocalDate to) {
         String periodKey = from.format(PERIOD_KEY);
-        evaluateSafely("AMENDMENT", () -> evaluateAmendment(from, to, periodKey));
-        evaluateSafely("REJECTION", () -> evaluateRejection(from, to, periodKey));
-        evaluateSafely("TAT", () -> evaluateTat(from, to, periodKey));
-        evaluateSafely("CALLBACK", () -> evaluateCallback(from, to, periodKey));
-    }
-
-    private void evaluateSafely(String indicator, Runnable evaluation) {
-        try {
-            evaluation.run();
-        } catch (RuntimeException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "evaluateBreaches",
-                    indicator + " breach evaluation failed: " + e.getMessage());
+        for (Probe probe : probes) {
+            try {
+                evaluate(probe, from, to, periodKey);
+            } catch (RuntimeException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "evaluateBreaches",
+                        probe.indicator().name() + " breach evaluation failed: " + e.getMessage());
+            }
         }
     }
 
-    private void evaluateAmendment(LocalDate from, LocalDate to, String periodKey) {
-        ResolvedConfig config = resolveActionable(QiIndicator.AMENDMENT);
-        if (config == null) {
+    private void evaluate(Probe probe, LocalDate from, LocalDate to, String periodKey) {
+        ResolvedConfig config = qiConfigService.resolve(probe.indicator().name(), null);
+        if (!config.isEnabled() || config.getAction() == null) {
             return;
         }
-        AmendmentSummaryResponse summary = amendmentReportService.getSummary(from, to);
-        if (summary.getRatePercent() == null) {
-            return; // nothing released this period
+        BigDecimal actual = probe.metric().apply(from, to);
+        if (actual == null) {
+            return; // nothing to measure this period
         }
-        checkAndFire(QiIndicator.AMENDMENT, BigDecimal.valueOf(summary.getRatePercent()), config, "%", periodKey);
-    }
-
-    private void evaluateRejection(LocalDate from, LocalDate to, String periodKey) {
-        ResolvedConfig config = resolveActionable(QiIndicator.REJECTION);
-        if (config == null) {
+        // LOWER_BETTER breaches when the value rises above the action threshold;
+        // HIGHER_BETTER when it drops below.
+        boolean lowerBetter = config.getDirection() == QiIndicator.Direction.LOWER_BETTER;
+        int comparison = actual.compareTo(config.getAction());
+        if (lowerBetter ? comparison <= 0 : comparison >= 0) {
             return;
         }
-        RejectionSummaryResponse summary = rejectionReportService.getSummary(from, to);
-        if (summary.getRatePercent() == null) {
-            return; // nothing started this period
-        }
-        checkAndFire(QiIndicator.REJECTION, BigDecimal.valueOf(summary.getRatePercent()), config, "%", periodKey);
+        String summary = probe.indicator().name() + (lowerBetter ? " exceeded" : " fell below")
+                + " its action threshold in " + periodKey + " (" + actual + probe.unit() + " vs action "
+                + config.getAction() + probe.unit() + ")";
+        qiBreachNceService.createBreachNce(probe.indicator(), periodKey, summary);
     }
 
-    private void evaluateTat(LocalDate from, LocalDate to, String periodKey) {
-        ResolvedConfig config = resolveActionable(QiIndicator.TAT);
-        if (config == null) {
-            return;
-        }
-        // Same segment/mode as the QI dashboard tile, so the auto-NCE and the
-        // tile a lab manager checks against it agree.
+    /**
+     * Same segment/mode as the QI dashboard tile, so the auto-NCE and the tile a
+     * lab manager checks it against agree.
+     */
+    private BigDecimal meanTatHours(LocalDate from, LocalDate to) {
         TATSummaryResponse summary = tatReportService.getSummary(from, to, TATSegment.RECEIPT_TO_VALIDATION,
                 TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, null);
-        if (summary == null || summary.getMean() == null) {
-            return; // nothing validated this period
-        }
-        checkAndFire(QiIndicator.TAT, summary.getMean(), config, "h", periodKey);
+        return summary == null ? null : summary.getMean();
     }
 
-    private void evaluateCallback(LocalDate from, LocalDate to, String periodKey) {
-        ResolvedConfig config = resolveActionable(QiIndicator.CALLBACK);
-        if (config == null) {
-            return;
-        }
-        // Opt-in indicator: getSummary re-checks enabled and short-circuits, so a
-        // lab that never turns CALLBACK on pays nothing here either.
-        CallbackSummaryResponse summary = criticalCallbackService.getSummary(from, to);
-        if (summary.getCompliancePercent() == null) {
-            return; // no critical results released this period
-        }
-        checkAndFire(QiIndicator.CALLBACK, BigDecimal.valueOf(summary.getCompliancePercent()), config, "%", periodKey);
-    }
-
-    /** Resolved config, or null when disabled / no action threshold set. */
-    private ResolvedConfig resolveActionable(QiIndicator indicator) {
-        ResolvedConfig config = qiConfigService.resolve(indicator.name(), null);
-        if (!config.isEnabled() || config.getAction() == null) {
-            return null;
-        }
-        return config;
-    }
-
-    private void checkAndFire(QiIndicator indicator, BigDecimal actual, ResolvedConfig config, String unit,
-            String periodKey) {
-        if (breaches(actual, config.getAction(), config.getDirection())) {
-            qiBreachNceService.createBreachNce(indicator.name(), periodKey, actual, config.getAction(),
-                    config.getDirection(), unit);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "checkAndFire", indicator.name() + " breach (" + periodKey
-                    + "): " + actual + unit + " vs action " + config.getAction() + unit);
-        }
-    }
-
-    // LOWER_BETTER breaches when the value rises above the action threshold;
-    // HIGHER_BETTER when it drops below.
-    private boolean breaches(BigDecimal actual, BigDecimal action, String direction) {
-        return LOWER_BETTER.equals(direction) ? actual.compareTo(action) > 0 : actual.compareTo(action) < 0;
+    private static BigDecimal percent(Double value) {
+        return value == null ? null : BigDecimal.valueOf(value);
     }
 }

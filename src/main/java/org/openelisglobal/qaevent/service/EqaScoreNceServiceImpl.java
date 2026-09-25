@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
@@ -122,7 +123,9 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
      */
     private NcEvent createNceForResult(EQAParticipantResult result, EQAProgram scheme, EQACycle cycle) {
         String triggerId = String.valueOf(result.getId());
-        NcEvent existing = ncEventService.findByTriggerSource(TRIGGER_SOURCE_EQA_UNACCEPTABLE, triggerId);
+        NcEvent existing = ncEventService
+                .getMatch(Map.of("triggerSourceType", TRIGGER_SOURCE_EQA_UNACCEPTABLE, "triggerSourceId", triggerId))
+                .orElse(null);
         if (existing != null) {
             return existing;
         }
@@ -173,7 +176,9 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
         List<Long> resultIds = followupService.resultIdsFor(followup);
         String triggerId = String.valueOf(followupId);
 
-        NcEvent nce = ncEventService.findByTriggerSource(TRIGGER_SOURCE_EQA_FOLLOWUP, triggerId);
+        NcEvent nce = ncEventService
+                .getMatch(Map.of("triggerSourceType", TRIGGER_SOURCE_EQA_FOLLOWUP, "triggerSourceId", triggerId))
+                .orElse(null);
         if (followup.getFollowupStatus() == EQAFollowupStatus.ESCALATED && nce != null) {
             // Already escalated — a repeated click returns the same NCE rather than
             // duplicating its competency events.

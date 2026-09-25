@@ -18,6 +18,7 @@ package org.openelisglobal.analysis.dao;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -211,11 +212,6 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
             Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
 
     /**
-     * Whether any patient analysis of a test completed on an analyzer strictly
-     * before the given time. Used to tell whether the 24h affected-samples floor
-     * actually excluded samples (OGC-728 cap-reason accuracy).
-     */
-    /**
      * The lab-unit-keyed counterpart of
      * {@link #getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange}, for
      * controls run at the bench (OGC-1147). A manual or RDT control has no
@@ -234,6 +230,11 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before)
             throws LIMSRuntimeException;
 
+    /**
+     * Whether any patient analysis of a test completed on an analyzer strictly
+     * before the given time. Used to tell whether the 24h affected-samples floor
+     * actually excluded samples (OGC-728 cap-reason accuracy).
+     */
     boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before)
             throws LIMSRuntimeException;
 
@@ -303,6 +304,19 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber, String upperRangeAccessionNumber, boolean doRange, boolean finished);
 
+    /**
+     * Pending analyses for the batch workplan, with every exclusion applied in the
+     * query so {@code maxResults} caps rows the caller will actually show. Capping
+     * first and filtering afterwards can return nothing while eligible rows exist.
+     *
+     * @param testIdList          tests the caller may see; empty means none
+     * @param excludedAnalysisIds analyses already held by an open batch
+     */
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) throws LIMSRuntimeException;
+
+    List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate);
 
@@ -321,6 +335,13 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
 
     int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}.
+     */
+    int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
 
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 

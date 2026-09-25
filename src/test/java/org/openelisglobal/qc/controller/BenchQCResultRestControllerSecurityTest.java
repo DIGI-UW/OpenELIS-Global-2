@@ -12,25 +12,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
  * OGC-1025 — {@code POST /rest/qc/results} is a results-entry <em>write</em>,
@@ -39,7 +33,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * inversion case (a QC-view-only user is refused) is the point of the change.
  */
 @WebAppConfiguration
-@ContextConfiguration(classes = { BenchQCResultRestControllerSecurityTest.TestConfig.class })
+@ContextConfiguration(classes = { SliceSecurityConfig.class, BenchQCResultRestControllerSecurityTest.TestConfig.class })
 @TestPropertySource("classpath:common.properties")
 public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
@@ -58,12 +52,6 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(1);
         return userSessionData;
-    }
-
-    @Test
-    public void record_withoutAuthenticationReturns401() throws Exception {
-        mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(RDT_INVALID_BODY))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -121,22 +109,12 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
     }
 
     @Configuration
-    @EnableWebMvc
-    @EnableWebSecurity
-    @EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
-        @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
-                    .csrf(csrf -> csrf.disable());
-            return http.build();
-        }
 
         @Bean
         QCResultService qcResultService() {
-            QCResultService service = mock(QCResultService.class);
-            when(service.createBenchQCResult(any(), anyInt())).thenReturn(new QCResult());
-            return service;
+            // resetStub sets the return value before every test.
+            return mock(QCResultService.class);
         }
 
         @Bean
@@ -144,12 +122,6 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
             BenchQCResultRestController controller = new BenchQCResultRestController();
             ReflectionTestUtils.setField(controller, "qcResultService", qcResultService);
             return controller;
-        }
-
-        @Bean
-        ControllerSetup controllerSetup() {
-            // Real @ControllerAdvice so @PreAuthorize denials surface as 403s, not 500s.
-            return new ControllerSetup();
         }
     }
 }

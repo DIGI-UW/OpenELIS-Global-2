@@ -6,10 +6,11 @@
  * No React, no I/O: the backend row is the only input, so the rules are
  * unit-tested directly and the component just renders the outcome.
  *
- * Fail-safe (FRS FR-B1): a row is Clear only when every clearance input is
- * affirmatively known and clean. Anything missing or indeterminate — no
- * reference range, QC not evaluated — keeps the row in Needs-review. A blank
- * chip cell is therefore never read as "QC passed" (FR-A2).
+ * The lane is the server's verdict (OGC-1226 FR-5, FR-6): the backend evaluates
+ * the one clearance rule on the rows it serves and marks each row `clear`; this
+ * module reads that mark and never derives a lane of its own. Chips are still
+ * derived here from the row's signals, and a blank chip cell is never read as
+ * "QC passed" (FR-A2).
  */
 
 export const QC_PASS = "PASS";
@@ -32,6 +33,7 @@ export const FILTERS = [
 
 /** "Check before release" chips, in display order. */
 export const SIGNAL_KEYS = [
+  "critical",
   "nce",
   "qcFail",
   "modified",
@@ -55,7 +57,6 @@ export function deriveSignals(row) {
   return {
     nce: isTrue(source.nceOpen),
     qcFail: qcStatus === QC_FAIL,
-    qcKnownPass: qcStatus === QC_PASS,
     modified: isTrue(source.modified),
     ackPending: isTrue(source.ackPending),
     nonconforming: isTrue(source.nonconforming),
@@ -70,16 +71,9 @@ export function activeSignalChips(signals) {
   return SIGNAL_KEYS.filter((key) => signals[key] === true);
 }
 
-export function computeLane(signals) {
-  const clear =
-    signals.inRange &&
-    signals.qcKnownPass &&
-    !signals.nce &&
-    !signals.modified &&
-    !signals.critical &&
-    !signals.nonconforming &&
-    !signals.ackPending;
-  return clear ? LANE_CLEAR : LANE_NEEDS_REVIEW;
+/** The lane the server put the row in; anything but an explicit clear is Needs-review. */
+export function laneOf(row) {
+  return row && row.clear === true ? LANE_CLEAR : LANE_NEEDS_REVIEW;
 }
 
 export function matchesFilter(signals, lane, filter) {
@@ -108,9 +102,62 @@ export function matchesFilter(signals, lane, filter) {
 export function triageRows(rows) {
   return (rows || []).map((row) => {
     const signals = deriveSignals(row);
-    const lane = computeLane(signals);
+    const lane = laneOf(row);
     return { row, signals, lane, chips: activeSignalChips(signals) };
   });
+}
+
+/** The signals carried most often across the given rows, most frequent first. */
+function dominantSignals(items) {
+  const counts = new Map();
+  for (const item of items) {
+    const carried = [...item.chips];
+    if (item.signals.abnormal && !item.signals.critical) {
+      carried.push("abnormal");
+    }
+    for (const key of carried) {
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([key]) => key);
+}
+
+/**
+ * OGC-1226 (FR-13 to FR-15) — why "Release all clear" cannot be used right now,
+ * as every reason that applies with its count, in display order. Empty when the
+ * button is usable. A row whose test has no reference value in the catalogue is
+ * reported as such rather than as a risk, because the fix for it lives in the
+ * Test Catalogue, not in the queue.
+ */
+export function bulkUnavailableReasons(triaged, { bulkAllowed = true } = {}) {
+  const reasons = [];
+  if (!bulkAllowed) {
+    reasons.push({ key: "bulkDisabled" });
+  }
+  const items = triaged || [];
+  if (items.length === 0) {
+    reasons.push({ key: "queueEmpty" });
+    return reasons;
+  }
+  if (items.some((item) => item.lane === LANE_CLEAR)) {
+    return reasons;
+  }
+  const withReference = items.filter((item) => item.signals.rangeKnown);
+  const noReference = items.filter((item) => !item.signals.rangeKnown);
+  if (withReference.length > 0) {
+    reasons.push({
+      key: "signals",
+      count: withReference.length,
+      dominant: dominantSignals(withReference),
+    });
+  }
+  if (noReference.length > 0) {
+    reasons.push({ key: "noReference", count: noReference.length });
+  }
+  return reasons;
 }
 
 /** Live counts per filter, always over the whole queue (FR-A3). */

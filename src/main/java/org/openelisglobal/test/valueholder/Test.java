@@ -127,7 +127,7 @@ public class Test extends EnumValueItemImpl {
 
     private Boolean antimicrobialResistance;
 
-    // C.1 / OGC-704: total allowable error (percent) for Westgard sigma metrics;
+    // OGC-704: total allowable error (percent) for Westgard sigma metrics;
     // null where not configured (sigma renders as "not calculable")
     private Double tea;
 

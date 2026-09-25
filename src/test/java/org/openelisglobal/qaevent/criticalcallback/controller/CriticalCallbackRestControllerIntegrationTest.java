@@ -8,13 +8,13 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.qaevent.criticalcallback.CriticalResultFixture;
 import org.openelisglobal.qaevent.criticalcallback.controller.rest.CriticalCallbackRestController;
 import org.openelisglobal.qaevent.criticalcallback.controller.rest.CriticalCallbackRestController.CallbackRequest;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
@@ -39,7 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
  * The seed builds the full chain the criticality check resolves through: test +
  * result_limits (critical band 10–90, default demographic row) + sample +
  * sample_item + analysis + a saved result. A callback can only be logged
- * against a persisted, actually-critical result (C.4 outline §5).
+ * against a persisted, actually-critical result.
  *
  * <p>
  * Gated by {@code qa.view.qi}; the 403 path is enforced by Spring Security's
@@ -49,14 +49,11 @@ import org.springframework.web.server.ResponseStatusException;
  */
 public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
+    // The test, its critical band, the sample and the sample item all share this
+    // id; each analysis carries a result of the same id as itself.
     private static final long TEST_ID = 95431L;
-    private static final long LIMIT_ID = 95431L;
-    private static final long SAMPLE_ID = 95431L;
-    private static final long SAMPLE_ITEM_ID = 95431L;
     private static final long ANALYSIS_ID = 95431L;
     private static final long ANALYSIS_ID_NORMAL = 95432L;
-    private static final long RESULT_ID_CRITICAL = 95431L;
-    private static final long RESULT_ID_NORMAL = 95432L;
 
     @Autowired
     private CriticalCallbackService callbackService;
@@ -71,54 +68,26 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
     private javax.sql.DataSource dataSource;
 
     private CriticalCallbackRestController controller;
-    private JdbcTemplate jdbc;
+    private CriticalResultFixture fixture;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
         controller = new CriticalCallbackRestController(callbackService, resultService, resultLimitService);
-        cleanup();
-        jdbc.update(
-                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
-                        + " VALUES (?, ?, ?, 'Y', ?, NOW())",
-                TEST_ID, "CallbackIT", "CallbackIT desc", UUID.randomUUID().toString());
-        // Default demographic row (blank gender, full age span) with a 10–90
-        // critical band — mirrors the shipped result_limits shape.
-        jdbc.update(
-                "INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
-                        + " low_critical, high_critical, lastupdated) VALUES (?, ?, 4, 0, ?, 10, 90, NOW())",
-                LIMIT_ID, TEST_ID, Double.POSITIVE_INFINITY);
-        jdbc.update("INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date, is_confirmation,"
-                + " lastupdated) VALUES (?, ?, NOW(), NOW(), false, NOW())", SAMPLE_ID, "CBIT" + SAMPLE_ID);
-        jdbc.update("INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, lastupdated)"
-                + " VALUES (?, ?, 1, 1, NOW())", SAMPLE_ITEM_ID, SAMPLE_ID);
-        jdbc.update("INSERT INTO clinlims.analysis (id, analysis_type, test_id, sampitem_id, lastupdated)"
-                + " VALUES (?, 'MANUAL', ?, ?, NOW())", ANALYSIS_ID, TEST_ID, SAMPLE_ITEM_ID);
-        jdbc.update("INSERT INTO clinlims.analysis (id, analysis_type, test_id, sampitem_id, lastupdated)"
-                + " VALUES (?, 'MANUAL', ?, ?, NOW())", ANALYSIS_ID_NORMAL, TEST_ID, SAMPLE_ITEM_ID);
+        fixture = new CriticalResultFixture(new JdbcTemplate(dataSource), TEST_ID, ANALYSIS_ID, ANALYSIS_ID_NORMAL);
+        fixture.clean();
+        fixture.seedTestWithCriticalBand("CallbackIT", "CBIT");
         // 95 is at/beyond the high critical bound (>= 90); 50 is inside normal.
-        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
-                + " VALUES (?, ?, '95', 'N', NOW())", RESULT_ID_CRITICAL, ANALYSIS_ID);
-        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated)"
-                + " VALUES (?, ?, '50', 'N', NOW())", RESULT_ID_NORMAL, ANALYSIS_ID_NORMAL);
+        // Neither is released: the capture endpoint reads the saved result, not the
+        // release window.
+        fixture.seedResult(ANALYSIS_ID, null, "95");
+        fixture.seedResult(ANALYSIS_ID_NORMAL, null, "50");
     }
 
     @After
     public void tearDown() {
-        cleanup();
-    }
-
-    private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.critical_callback WHERE analysis_id IN (?, ?)", ANALYSIS_ID,
-                ANALYSIS_ID_NORMAL);
-        jdbc.update("DELETE FROM clinlims.result WHERE id IN (?, ?)", RESULT_ID_CRITICAL, RESULT_ID_NORMAL);
-        jdbc.update("DELETE FROM clinlims.analysis WHERE id IN (?, ?)", ANALYSIS_ID, ANALYSIS_ID_NORMAL);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", SAMPLE_ITEM_ID);
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE_ID);
-        jdbc.update("DELETE FROM clinlims.result_limits WHERE id = ?", LIMIT_ID);
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        fixture.clean();
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -139,8 +108,14 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
         return body;
     }
 
+    /** Each analysis carries a result of the same id. */
     private String criticalResultId() {
-        return String.valueOf(RESULT_ID_CRITICAL);
+        return String.valueOf(ANALYSIS_ID);
+    }
+
+    /** Every attempt logged against one analysis, newest first. */
+    private List<CriticalCallback> attemptsFor(long analysisId) {
+        return callbackService.getAllMatchingOrdered("analysisId", String.valueOf(analysisId), "loggedAt", true);
     }
 
     @Test
@@ -163,7 +138,7 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
         assertNotNull(created.getLoggedAt());
         assertTrue("loggedAt should be stamped at insert time", created.getLoggedAt().after(before));
 
-        List<CriticalCallback> persisted = callbackService.getByAnalysisId(String.valueOf(ANALYSIS_ID));
+        List<CriticalCallback> persisted = attemptsFor(ANALYSIS_ID);
         assertEquals(1, persisted.size());
         assertEquals(created.getId(), persisted.get(0).getId());
         assertEquals("95", persisted.get(0).getResultValue());
@@ -177,7 +152,7 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
         controller.create(req(criticalResultId(), "Ward clerk", "UNABLE_TO_REACH"), authedRequest());
         controller.create(req(criticalResultId(), "Dr. Okello", "CONFIRMED"), authedRequest());
 
-        List<CriticalCallback> attempts = callbackService.getByAnalysisId(String.valueOf(ANALYSIS_ID));
+        List<CriticalCallback> attempts = attemptsFor(ANALYSIS_ID);
         assertEquals(2, attempts.size());
         // newest first (order by loggedAt desc); both outcomes retained
         assertEquals("CONFIRMED", attempts.get(0).getStatus());
@@ -190,10 +165,10 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
     public void create_nonCriticalSavedValue_throwsBadRequest() {
         // value 50 sits inside the 10–90 critical band: the record does not
         // support a critical callback, regardless of what the UI showed.
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> controller.create(req(String.valueOf(RESULT_ID_NORMAL), "Dr. X", "CONFIRMED"), authedRequest()));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> controller
+                .create(req(String.valueOf(ANALYSIS_ID_NORMAL), "Dr. X", "CONFIRMED"), authedRequest()));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertTrue(callbackService.getByAnalysisId(String.valueOf(ANALYSIS_ID_NORMAL)).isEmpty());
+        assertTrue(attemptsFor(ANALYSIS_ID_NORMAL).isEmpty());
     }
 
     @Test
@@ -230,6 +205,6 @@ public class CriticalCallbackRestControllerIntegrationTest extends BaseWebContex
                 () -> controller.create(req(criticalResultId(), "Dr. X", "LEFT_VOICEMAIL"), authedRequest()));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         // nothing persisted on a rejected request
-        assertTrue(callbackService.getByAnalysisId(String.valueOf(ANALYSIS_ID)).isEmpty());
+        assertTrue(attemptsFor(ANALYSIS_ID).isEmpty());
     }
 }

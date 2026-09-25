@@ -1,45 +1,34 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
-import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
-import messages from "../../../../languages/en.json";
 import QIDashboard from "../QIDashboard";
-import { NotificationContext } from "../../../layout/Layout";
+import { renderQa } from "../../testUtils";
+import { isoDaysFromToday } from "../../common/qaDates";
 
-vi.mock("../../../utils/Utils", () => ({
-  toLocalIsoDate: (d) =>
-    d instanceof Date
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      : d || "",
-  getFromOpenElisServer: vi.fn(),
-}));
+vi.mock("../../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    fetchFromOpenElisServer: vi.fn(),
+  };
+});
 
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { fetchFromOpenElisServer } from "../../../utils/Utils";
 
-// The dashboard mounts <AlertDialog/> (for the OGC-711 disabled-route redirect
-// toast), which reads NotificationContext — provided by Layout in the app.
-const notificationValue = {
-  notifications: [],
-  addNotification: vi.fn(),
-  removeNotification: vi.fn(),
-  setNotificationVisible: vi.fn(),
-  notificationVisible: false,
+const renderPage = async () => {
+  await act(async () => {
+    renderQa(<QIDashboard />, { entries: ["/qa/qi/dashboard"] });
+  });
+  // Every tile reads its window and the one before it; no skeleton left means
+  // all of them have settled, whether with a number or with an error line.
+  await waitFor(() =>
+    expect(document.querySelectorAll(".cds--skeleton__text")).toHaveLength(0),
+  );
 };
 
-// Rendering with the real en.json fails loudly if a referenced i18n key
-// is missing (react-intl falls back to the raw key, breaking assertions).
-const renderPage = () =>
-  render(
-    <IntlProvider locale="en" messages={messages}>
-      <NotificationContext.Provider value={notificationValue}>
-        <MemoryRouter>
-          <QIDashboard />
-        </MemoryRouter>
-      </NotificationContext.Provider>
-    </IntlProvider>,
-  );
+const callsTo = (fragment) =>
+  fetchFromOpenElisServer.mock.calls.filter(([url]) => url.includes(fragment));
 
 const currentSummary = {
   totalCount: 2471,
@@ -128,6 +117,10 @@ const nceList = [
 ];
 
 // Each windowed endpoint fires current-window before prior-window.
+// The window the dashboard opens on (30 days) tells the current read from the
+// prior one, whose fromDate is further back.
+const currentWindow = () => `fromDate=${isoDaysFromToday(-30)}`;
+
 const mockApis = ({
   tatCurrent = currentSummary,
   tatPrior = priorSummary,
@@ -140,25 +133,31 @@ const mockApis = ({
   nce = nceList,
   configs = resolvedConfigs,
 } = {}) => {
-  let tatCall = 0;
-  let amendCall = 0;
-  let rejectCall = 0;
-  let callbackCall = 0;
-  getFromOpenElisServer.mockImplementation((url, callback) => {
+  fetchFromOpenElisServer.mockImplementation((url) => {
+    const window = (current, prior) =>
+      Promise.resolve(url.includes(currentWindow()) ? current : prior);
     if (url.includes("/rest/reports/tat/summary")) {
-      callback(tatCall++ === 0 ? tatCurrent : tatPrior);
-    } else if (url.includes("/rest/reports/amendment/summary")) {
-      callback(amendCall++ === 0 ? amendCurrent : amendPrior);
-    } else if (url.includes("/rest/reports/rejection/summary")) {
-      callback(rejectCall++ === 0 ? rejectCurrent : rejectPrior);
-    } else if (url.includes("/rest/critical-callback/summary")) {
-      callback(callbackCall++ === 0 ? callbackCurrent : callbackPrior);
-    } else if (url.includes("/rest/nce/dashboard")) {
-      callback(nce === null ? undefined : { nceList: nce });
-    } else if (url.includes("/rest/qi-config/resolve")) {
-      const key = new URLSearchParams(url.split("?")[1]).get("indicator");
-      callback(configs[key] || { enabled: true });
+      return window(tatCurrent, tatPrior);
     }
+    if (url.includes("/rest/reports/amendment/summary")) {
+      return window(amendCurrent, amendPrior);
+    }
+    if (url.includes("/rest/reports/rejection/summary")) {
+      return window(rejectCurrent, rejectPrior);
+    }
+    if (url.includes("/rest/critical-callback/summary")) {
+      return window(callbackCurrent, callbackPrior);
+    }
+    if (url.includes("/rest/nce/dashboard")) {
+      return nce === null
+        ? Promise.reject(new Error("unavailable"))
+        : Promise.resolve({ nceList: nce });
+    }
+    if (url.includes("/rest/qi-config/resolve")) {
+      const key = new URLSearchParams(url.split("?")[1]).get("indicator");
+      return Promise.resolve(configs[key] || { enabled: true });
+    }
+    return Promise.reject(new Error(`unexpected read: ${url}`));
   });
 };
 
@@ -170,7 +169,7 @@ beforeEach(() => {
 describe("QIDashboard", () => {
   test("renders five tiles in fixed order with a live TAT tile", async () => {
     mockApis();
-    renderPage();
+    await renderPage();
 
     const tiles = [
       "tat",
@@ -204,7 +203,7 @@ describe("QIDashboard", () => {
 
   test("tiles color against their resolved thresholds and caption them", async () => {
     mockApis();
-    renderPage();
+    await renderPage();
 
     // TAT mean 18.78h ≤ target 24h => green; caption shows both bands.
     const tatTile = screen.getByTestId("qi-tile-tat");
@@ -240,7 +239,7 @@ describe("QIDashboard", () => {
         slaMinutes: 60,
       },
     });
-    renderPage();
+    await renderPage();
 
     const callbackTile = screen.getByTestId("qi-tile-callback");
     await waitFor(() => expect(callbackTile).toHaveTextContent("90.00%"));
@@ -250,7 +249,7 @@ describe("QIDashboard", () => {
 
   test("amendment tile shows rate, improving delta, and counts", async () => {
     mockApis();
-    renderPage();
+    await renderPage();
 
     const tile = screen.getByTestId("qi-tile-amendment");
     await waitFor(() => expect(tile).toHaveTextContent("0.31%"));
@@ -262,7 +261,7 @@ describe("QIDashboard", () => {
 
   test("NCE Pulse tile shows the critical-pending count and corrective-action line", async () => {
     mockApis();
-    renderPage();
+    await renderPage();
 
     const tile = screen.getByTestId("qi-tile-nce-pulse");
     await waitFor(() => expect(tile).toHaveTextContent("3"));
@@ -275,7 +274,7 @@ describe("QIDashboard", () => {
 
   test("rejection tile shows rate, improving delta, and counts", async () => {
     mockApis();
-    renderPage();
+    await renderPage();
 
     const tile = screen.getByTestId("qi-tile-rejection");
     await waitFor(() => expect(tile).toHaveTextContent("2.80%"));
@@ -291,7 +290,7 @@ describe("QIDashboard", () => {
       amendCurrent: { amendedCount: 0, releasedCount: 0, ratePercent: null },
       rejectCurrent: { rejectedCount: 0, totalCount: 0, ratePercent: null },
     });
-    renderPage();
+    await renderPage();
 
     await waitFor(() =>
       expect(screen.getByTestId("qi-tile-tat")).toHaveTextContent(
@@ -307,10 +306,14 @@ describe("QIDashboard", () => {
   });
 
   test("shows error states when the APIs are unavailable", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) =>
-      callback(undefined),
+    // Nothing answers but the config resolves, so every tile shows its own
+    // "unavailable" line rather than an empty value.
+    fetchFromOpenElisServer.mockImplementation((url) =>
+      url.includes("/rest/qi-config/resolve")
+        ? Promise.resolve({ enabled: true })
+        : Promise.reject(new Error("unavailable")),
     );
-    renderPage();
+    await renderPage();
 
     await waitFor(() =>
       expect(screen.getByTestId("qi-tile-tat")).toHaveTextContent(
@@ -328,10 +331,10 @@ describe("QIDashboard", () => {
     );
   });
 
-  test("uses the persisted reporting window for both summary queries", () => {
+  test("uses the persisted reporting window for both summary queries", async () => {
     localStorage.setItem("qa.qi.dashboard.window", "7d");
     mockApis();
-    renderPage();
+    await renderPage();
 
     const from = new Date();
     from.setDate(from.getDate() - 7);
@@ -339,33 +342,44 @@ describe("QIDashboard", () => {
     const expectedFrom = `${from.getFullYear()}-${String(
       from.getMonth() + 1,
     ).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`;
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining(`fromDate=${expectedFrom}`),
-      expect.any(Function),
+      expect.anything(),
     );
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("segment=RECEIPT_TO_VALIDATION"),
-      expect.any(Function),
+      expect.anything(),
     );
-    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+    expect(fetchFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining(
         `/rest/reports/amendment/summary?fromDate=${expectedFrom}`,
       ),
-      expect.any(Function),
+      expect.anything(),
     );
   });
 
-  test("refresh refetches every indicator and rate-limits the button", async () => {
-    mockApis();
-    renderPage();
-    // TAT + Rejection + Amendment + Callback fire current+prior (2 each);
-    // NCE Pulse once; plus the config resolve for all five indicators (5)
-    // = 14
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(14);
+  test("refresh reads every indicator again and rate-limits the button", async () => {
+    mockApis({ nce: [] });
+    await renderPage();
+    const tile = screen.getByTestId("qi-tile-nce-pulse");
+    expect(tile).toHaveTextContent("0");
 
+    // A different register behind the same button: refreshing must show it.
+    mockApis({ nce: nceList });
     const refresh = screen.getByTestId("qi-dashboard-refresh");
-    fireEvent.click(refresh);
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(28);
+    await act(async () => {
+      fireEvent.click(refresh);
+    });
+    await waitFor(() => expect(tile).toHaveTextContent("3"));
     expect(refresh).toBeDisabled();
+  });
+
+  test("the five tiles share one config read each", async () => {
+    mockApis();
+    await renderPage();
+
+    ["TAT", "REJECTION", "AMENDMENT", "NCE", "CALLBACK"].forEach((key) =>
+      expect(callsTo(`indicator=${key}`)).toHaveLength(1),
+    );
   });
 });

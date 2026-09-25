@@ -652,8 +652,10 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             if (result.getPerformanceStatus() != EQAPerformanceStatus.UNACCEPTABLE) {
                 continue;
             }
-            NcEvent nce = ncEventService.findByTriggerSource(EqaScoreNceService.TRIGGER_SOURCE_EQA_UNACCEPTABLE,
-                    String.valueOf(result.getId()));
+            NcEvent nce = ncEventService
+                    .getMatch(Map.of("triggerSourceType", EqaScoreNceService.TRIGGER_SOURCE_EQA_UNACCEPTABLE,
+                            "triggerSourceId", String.valueOf(result.getId())))
+                    .orElse(null);
             if (nce != null && nce.getNceNumber() != null) {
                 numbers.put(result.getId(), nce.getNceNumber());
             }

@@ -18,6 +18,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -47,10 +48,6 @@ public class InventoryLot extends BaseObject<Long> {
     @JoinColumn(name = "inventory_item_id", nullable = false)
     @NotNull
     private InventoryItem inventoryItem;
-
-    @ManyToOne
-    @JoinColumn(name = "storage_location_id")
-    private InventoryStorageLocation storageLocation;
 
     @Column(name = "lot_number", nullable = false, length = 100)
     @NotNull
@@ -96,6 +93,9 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
+    // Not persisted; @Transient would read as @JsonIgnore (OGC-657).
+    private transient Map<String, Object> location;
+
     // Business logic helper methods
 
     /**
@@ -130,6 +130,16 @@ public class InventoryLot extends BaseObject<Long> {
     public boolean isAvailableForUse() {
         return !isExpired() && currentQuantity > 0 && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
                 && qcStatus == QCStatus.PASSED;
+    }
+
+    /**
+     * Stock a reorder decision can count on: usable now or only awaiting QC. Wider
+     * than {@link #isAvailableForUse()}, which gates consumption.
+     */
+    public boolean countsAsAvailableStock() {
+        return !isExpired() && currentQuantity != null && currentQuantity > 0
+                && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
+                && (qcStatus == QCStatus.PASSED || qcStatus == QCStatus.PENDING);
     }
 
     /**

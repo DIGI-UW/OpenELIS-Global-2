@@ -14,7 +14,7 @@
         <maven.java.release>21</maven.java.release>
         <major.version>3</major.version>
         <minor.version>2</minor.version>
-        <state.version>2</state.version>
+        <state.version>3</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
         <fix.version>0</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -1026,6 +1026,12 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <!-- The integration suite shares one static PostgreSQL container and
+                        does not roll back, so results depend on class order. Surefire's default
+                        "filesystem" order differs per runner VM, which made the same commit pass
+                        on one runner and fail on another. Alphabetical is deterministic and stable
+                        as classes are added. -->
+                    <runOrder>alphabetical</runOrder>
                 </configuration>
             </plugin>
             <plugin>

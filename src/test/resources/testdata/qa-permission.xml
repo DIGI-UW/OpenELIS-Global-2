@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Mirrors the liquibase/qa/004 permission registry: the qa.* system_module
     keys, the QA Officer role, and the grant matrix (compat grants preserve each
-    surface's pre-registry audience). Loaded via the managed dataset path so
-    RoleModulePermittedNamesTest is deterministic regardless of which suite tests
-    truncated these tables earlier (e.g. role-module.xml). The migration's own
-    execution is exercised at context start; its dev-DB content was SQL-mirror
-    verified (see PR #3843). -->
+    surface's pre-registry audience; QA Officer and Global Administrator also
+    hold the narrower qa.manage.* write rights). Loaded via the managed dataset
+    path so RoleModulePermittedNamesTest is deterministic regardless of which
+    suite tests truncated these tables earlier (e.g. role-module.xml). The migration's
+    own execution is exercised at context start. -->
 <dataset>
     <system_role id="9101" name="QA Officer"
         description="Laboratory quality assurance oversight"
@@ -42,10 +42,13 @@
         description="QMS pillar visibility" has_select_flag="Y"
         has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
     <system_module id="9206" name="qa.manage.qi"
-        description="Reserved, ungranted in v1" has_select_flag="Y"
+        description="QI configuration management" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9207" name="qa.manage.accreditation"
+        description="Accreditation management" has_select_flag="Y"
         has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
 
-    <!-- QA Officer: overview + all four pillars -->
+    <!-- QA Officer: overview + all four pillars + both manage rights -->
     <system_role_module id="9301" has_select="Y"
         has_add="N" has_update="N" has_delete="N" system_role_id="9101"
         system_module_id="9201" />
@@ -61,8 +64,14 @@
     <system_role_module id="9305" has_select="Y"
         has_add="N" has_update="N" has_delete="N" system_role_id="9101"
         system_module_id="9205" />
+    <system_role_module id="9321" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9206" />
+    <system_role_module id="9322" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9101"
+        system_module_id="9207" />
 
-    <!-- Global Administrator: all view keys -->
+    <!-- Global Administrator: every qa.* key -->
     <system_role_module id="9306" has_select="Y"
         has_add="N" has_update="N" has_delete="N" system_role_id="9102"
         system_module_id="9201" />
@@ -78,6 +87,12 @@
     <system_role_module id="9310" has_select="Y"
         has_add="N" has_update="N" has_delete="N" system_role_id="9102"
         system_module_id="9205" />
+    <system_role_module id="9323" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9206" />
+    <system_role_module id="9324" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9102"
+        system_module_id="9207" />
 
     <!-- Reception compat: overview + qi + eqa + qms -->
     <system_role_module id="9311" has_select="Y"
