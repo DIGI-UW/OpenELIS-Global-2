@@ -10,12 +10,14 @@ Date: 2026-09-25
 Modified Sections:
   - Development Workflow > Branch Strategy
     * `main` was described as "Production releases only (reviewers backport
-      from develop)". It now points at the latest release tag, moves only by
-      fast-forward to a newer tag, and receives no commits of its own.
+      from develop)". It now holds the latest release and changes only
+      through a reviewed release pull request from a release branch, merged
+      with a merge commit; each release is tagged on `main`.
     * Added `release/<X.Y>.x` branches, which receive fixes cherry-picked from
       `develop`.
   - Pull Request Requirements > Target Branch
-    * Hotfixes also target `develop`; there is no hotfix path into `main`.
+    * Hotfixes also target `develop`; released lines receive them by
+      cherry-pick onto their release branch.
 
 Rationale:
   No `main` branch existed when the old text was written, and releases were
@@ -1559,8 +1561,9 @@ naming conventions and milestone workflow.
 **Primary Branches**:
 
 - **`develop`** - Integration and default branch (all PRs target this)
-- **`main`** - The latest release. It moves only by fast-forward to a newer
-  release tag and never receives commits of its own.
+- **`main`** - The latest release. It changes only through a reviewed release
+  pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
+  each release is tagged on `main`.
 - **`release/<X.Y>.x`** - One branch per supported release line. It receives
   only fixes already merged to `develop`.
 
