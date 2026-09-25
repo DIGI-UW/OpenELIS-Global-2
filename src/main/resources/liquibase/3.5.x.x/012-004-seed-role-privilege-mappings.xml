@@ -156,7 +156,7 @@
             WHERE r.name = 'Reception' AND p.name = 'shipment:view'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
-            -- Label & Store is the third step of order entry: the person who took
+            -- Label and Store is the third step of order entry: the person who took
             -- the specimen records where it was put. That screen reads the storage
             -- tree (rooms, shelves, racks, boxes), so without storage:view the step
             -- 500s and a receptionist cannot finish the order they started.
