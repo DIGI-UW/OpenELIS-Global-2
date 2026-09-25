@@ -63,8 +63,9 @@ const mount = (profile = fileProfile) => {
 };
 const replace = async (name, value) => {
   const input = screen.getByRole("textbox", { name });
-  await userEvent.clear(input);
-  await userEvent.type(input, value.replaceAll("{", "{{"));
+  const user = userEvent.setup();
+  await user.clear(input);
+  await user.paste(value);
 };
 const save = async () =>
   userEvent.click(

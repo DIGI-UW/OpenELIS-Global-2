@@ -66,6 +66,7 @@ const validForm = (form) => {
 const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
   const intl = useIntl();
   const nextClientKey = useRef(1);
+  const activeRequestScope = useRef(null);
   const [draft, setDraft] = useState(null);
   const [form, setForm] = useState(toForm(null));
   const [baseline, setBaseline] = useState(null);
@@ -76,7 +77,11 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const scope = {};
+    activeRequestScope.current = scope;
+    setLoading(true);
     getAnalyzerTypeControlRecognition(draftId, (response) => {
+      if (activeRequestScope.current !== scope) return;
       setLoading(false);
       if (hasError(response) || !response.recognition) {
         setError(
@@ -92,6 +97,9 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
       setForm(nextForm);
       setBaseline(JSON.stringify(toUpdate(nextForm)));
     });
+    return () => {
+      activeRequestScope.current = null;
+    };
   }, [draftId, intl]);
 
   const update = toUpdate(form);
@@ -217,7 +225,9 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
     setSaving(true);
     setError(null);
     setSaved(false);
+    const scope = activeRequestScope.current;
     updateAnalyzerTypeControlRecognition(draftId, update, (response) => {
+      if (!scope || activeRequestScope.current !== scope) return;
       setSaving(false);
       if (hasError(response) || !response.recognition) {
         setError(
