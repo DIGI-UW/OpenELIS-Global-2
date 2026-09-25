@@ -160,7 +160,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 // shared component scan. They register mocks for isolated MockMvc slices
                 // that otherwise collide with production services.
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerPluginConfigRestControllerSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.alert.controller.rest.AlertRestControllerSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {

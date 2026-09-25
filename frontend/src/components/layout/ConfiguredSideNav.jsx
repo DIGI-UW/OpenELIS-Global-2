@@ -56,7 +56,8 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
     return filter(menus || []);
   }, [menus, unifiedResultsOn]);
   const expandedMenus = useMenuAutoExpand(visibleMenus);
-  const label = (key) => intl.formatMessage({ id: key, defaultMessage: key });
+  const label = (key) =>
+    intl.messages?.[key] ? intl.formatMessage({ id: key }) : key;
 
   const renderItem = (item, level = 0) => {
     const { menu, childMenus, routeActive, activeDescendantId, expanded } =

@@ -223,3 +223,39 @@ describe("groups stay open across navigation", () => {
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
   });
 });
+
+test("a plugin menu row with a literal name renders it without a missing-translation error", () => {
+  const onError = vi.fn();
+  render(
+    <MemoryRouter initialEntries={["/Dashboard"]}>
+      <IntlProvider locale="en-US" messages={messages} onError={onError}>
+        <SideNav expanded aria-label="Side navigation">
+          <SideNavItems>
+            <ConfiguredSideNav
+              menus={menus([
+                {
+                  elementId: "menu_results_analyzer_2",
+                  displayKey: "Mindray BS240",
+                  actionURL: "/AnalyzerResults?id=2",
+                },
+                {
+                  elementId: "menu_home",
+                  displayKey: "banner.menu.home",
+                  actionURL: "/Dashboard",
+                },
+              ])}
+              unifiedResultsOn
+            />
+          </SideNavItems>
+        </SideNav>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+  expect(
+    screen.getByRole("link", { name: "Mindray BS240", exact: true }),
+  ).toHaveAttribute("href", "/AnalyzerResults?id=2");
+  expect(
+    screen.getByRole("link", { name: messages["banner.menu.home"] }),
+  ).toBeInTheDocument();
+  expect(onError).not.toHaveBeenCalled();
+});
