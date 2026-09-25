@@ -15,7 +15,8 @@ vi.mock("./api", () => ({
 }));
 
 const EXCURSION = {
-  alertId: 1104,
+  excursionId: "EXC-47-1104",
+  firstReadingId: 1104,
   freezerId: 47,
   freezerName: "Demo Vaccine Fridge",
   locationName: "Demo Cold Room",
@@ -65,6 +66,15 @@ describe("Reports", () => {
     expect(
       screen.queryByText("No excursions available for the selected filters."),
     ).not.toBeInTheDocument();
+  });
+
+  it("labels an excursion with the id the PDF report prints for it", async () => {
+    fetchReportExcursions.mockResolvedValue([EXCURSION]);
+
+    renderReports();
+
+    expect(await screen.findByText("EXC-47-1104")).toBeInTheDocument();
+    expect(screen.queryByText(/ALERT-/)).not.toBeInTheDocument();
   });
 
   it("shows the empty state when there are no excursions", async () => {

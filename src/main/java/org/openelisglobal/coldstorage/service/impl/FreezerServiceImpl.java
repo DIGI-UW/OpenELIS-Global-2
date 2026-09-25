@@ -3,11 +3,16 @@ package org.openelisglobal.coldstorage.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.coldstorage.dao.FreezerDAO;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.PropertyAccessorFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,12 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 @SuppressWarnings("unused")
 public class FreezerServiceImpl implements FreezerService {
 
+    private static final String AUDIT_TABLE = "freezer";
+
     private final FreezerDAO freezerDAO;
     private final StorageLocationService storageLocationService;
+    private final AuditTrailService auditTrailService;
 
-    public FreezerServiceImpl(FreezerDAO freezerDAO, StorageLocationService storageLocationService) {
+    public FreezerServiceImpl(FreezerDAO freezerDAO, StorageLocationService storageLocationService,
+            AuditTrailService auditTrailService) {
         this.freezerDAO = freezerDAO;
         this.storageLocationService = storageLocationService;
+        this.auditTrailService = auditTrailService;
     }
 
     @Override
@@ -87,6 +97,7 @@ public class FreezerServiceImpl implements FreezerService {
         }
 
         freezerDAO.insert(freezer);
+        auditTrailService.saveNewHistory(freezer, sysUserId, AUDIT_TABLE);
         return freezer;
     }
 
@@ -94,6 +105,7 @@ public class FreezerServiceImpl implements FreezerService {
     @Transactional
     public Freezer updateFreezer(Long id, Freezer updatedFreezer, Long roomId, String sysUserId) {
         Freezer existing = requireFreezer(id);
+        Freezer before = auditCopy(existing);
 
         if (!existing.getName().equals(updatedFreezer.getName())) {
             freezerDAO.findByName(updatedFreezer.getName()).ifPresent(f -> {
@@ -172,6 +184,7 @@ public class FreezerServiceImpl implements FreezerService {
             existing.setRs485DelayAfterMs(updatedFreezer.getRs485DelayAfterMs());
         }
 
+        audit(existing, before, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE);
         return freezerDAO.update(existing);
     }
 
@@ -180,6 +193,7 @@ public class FreezerServiceImpl implements FreezerService {
     public Freezer updateThresholds(Long id, BigDecimal targetTemperature, BigDecimal warningThreshold,
             BigDecimal criticalThreshold, Integer pollingIntervalSeconds, String sysUserId) {
         Freezer freezer = requireFreezer(id);
+        Freezer before = auditCopy(freezer);
         freezer.setTargetTemperature(targetTemperature);
         freezer.setWarningThreshold(warningThreshold);
         freezer.setCriticalThreshold(criticalThreshold);
@@ -194,29 +208,63 @@ public class FreezerServiceImpl implements FreezerService {
             storageLocationService.update(freezer.getStorageDevice());
         }
 
+        audit(freezer, before, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE);
         return freezerDAO.update(freezer);
     }
 
     @Override
     @Transactional
-    public void setDeviceStatus(Long id, Boolean active) {
+    public void setDeviceStatus(Long id, Boolean active, String sysUserId) {
         Freezer freezer = requireFreezer(id);
         if (Boolean.TRUE.equals(freezer.getDeleted())) {
             throw new IllegalArgumentException("Cannot change status of a deleted freezer: " + id);
         }
+        Freezer before = auditCopy(freezer);
         freezer.setActive(active);
+        audit(freezer, before, sysUserId, IActionConstants.AUDIT_TRAIL_UPDATE);
         freezerDAO.update(freezer);
     }
 
     @Override
     @Transactional
-    public void deleteFreezer(Long id) {
+    public void deleteFreezer(Long id, String sysUserId) {
         Freezer freezer = requireFreezer(id);
+        Freezer before = auditCopy(freezer);
         // Soft delete via a dedicated flag, distinct from the active enable/disable
         // toggle, so a deleted device stays out of every list query and its toggle
         // can no longer resurrect it (issue #3743).
         freezer.setDeleted(true);
+        audit(freezer, before, sysUserId, IActionConstants.AUDIT_TRAIL_DELETE);
         freezerDAO.update(freezer);
+    }
+
+    private void audit(Freezer after, Freezer before, String sysUserId, String activity) {
+        auditTrailService.saveHistory(auditCopy(after), before, sysUserId, activity, AUDIT_TABLE);
+    }
+
+    /**
+     * Excludes lazy collections and lastupdated and normalises decimal scale, or
+     * the text diff logs phantom changes.
+     */
+    private Freezer auditCopy(Freezer freezer) {
+        Freezer copy = new Freezer();
+        BeanUtils.copyProperties(freezer, copy, "readings", "thresholdAssignments", "lastupdated");
+        if (freezer.getStorageDevice() != null) {
+            // Not the shared instance: updateFreezer moves that one in place.
+            StorageDevice device = new StorageDevice();
+            device.setName(freezer.getStorageDevice().getName());
+            device.setParentRoom(freezer.getStorageDevice().getParentRoom());
+            copy.setStorageDevice(device);
+        }
+        BeanWrapper wrapper = PropertyAccessorFactory.forBeanPropertyAccess(copy);
+        for (var property : wrapper.getPropertyDescriptors()) {
+            String name = property.getName();
+            if (wrapper.isWritableProperty(name) && wrapper.getPropertyValue(name) instanceof BigDecimal value) {
+                BigDecimal plain = value.stripTrailingZeros();
+                wrapper.setPropertyValue(name, plain.scale() < 0 ? plain.setScale(0) : plain);
+            }
+        }
+        return copy;
     }
 
     /**

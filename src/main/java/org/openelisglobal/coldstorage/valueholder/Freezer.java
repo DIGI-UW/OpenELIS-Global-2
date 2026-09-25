@@ -264,6 +264,17 @@ public class Freezer extends BaseObject<Long> {
     }
 
     /**
+     * Read by the audit trail in place of the bare device name, so a room move is
+     * recorded.
+     */
+    @JsonIgnore
+    public String getStorageDevice_Audit() {
+        String room = getRoom();
+        return storageDevice == null ? null
+                : room == null ? storageDevice.getName() : storageDevice.getName() + " (" + room + ")";
+    }
+
+    /**
      * Convenience method to get parent room name for JSON serialization. Read-only
      * for JSON serialization - use storageDevice for updates.
      *

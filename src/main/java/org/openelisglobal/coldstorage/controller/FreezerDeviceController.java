@@ -162,15 +162,16 @@ public class FreezerDeviceController extends BaseRestController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/toggle-status")
-    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request) {
-        freezerService.setDeviceStatus(id, request.getActive());
+    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        freezerService.setDeviceStatus(id, request.getActive(), getSysUserId(httpRequest));
         return ResponseEntity.ok().build();
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/delete")
-    public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
-        freezerService.deleteFreezer(id);
+    public ResponseEntity<Void> deleteDevice(@PathVariable Long id, jakarta.servlet.http.HttpServletRequest request) {
+        freezerService.deleteFreezer(id, getSysUserId(request));
         return ResponseEntity.ok().build();
     }
 
@@ -186,11 +187,13 @@ public class FreezerDeviceController extends BaseRestController {
 
     private FreezerStatusResponse toStatusResponse(Freezer freezer) {
         FreezerReading latest = freezerReadingService.getLatestReading(freezer.getId()).orElse(null);
-        ThresholdProfile profile = resolveActiveProfile(freezer,
-                latest != null ? latest.getRecordedAt() : OffsetDateTime.now());
+        // The profile active now, which judges the next reading.
+        ThresholdProfile profile = resolveActiveProfile(freezer, OffsetDateTime.now());
         BigDecimal targetTemperature = thresholdEvaluationService.deriveTargetTemperature(profile);
-        return FreezerStatusResponse.from(freezer, latest, targetTemperature,
+        FreezerStatusResponse response = FreezerStatusResponse.from(freezer, latest, targetTemperature,
                 modbusPollIntervalSeconds * STALE_AFTER_MISSED_POLLS);
+        response.applyProfile(profile);
+        return response;
     }
 
     private ThresholdProfile resolveActiveProfile(Freezer freezer, OffsetDateTime timestamp) {
@@ -218,6 +221,23 @@ public class FreezerDeviceController extends BaseRestController {
         private OffsetDateTime recordedAt;
 
         private Long staleAfterSeconds;
+
+        private String thresholdProfileName;
+        private BigDecimal humidityWarningMin;
+        private BigDecimal humidityWarningMax;
+        private BigDecimal humidityCriticalMin;
+        private BigDecimal humidityCriticalMax;
+
+        void applyProfile(ThresholdProfile profile) {
+            if (profile == null) {
+                return;
+            }
+            thresholdProfileName = profile.getName();
+            humidityWarningMin = profile.getHumidityWarningMin();
+            humidityWarningMax = profile.getHumidityWarningMax();
+            humidityCriticalMin = profile.getHumidityCriticalMin();
+            humidityCriticalMax = profile.getHumidityCriticalMax();
+        }
 
         public static FreezerStatusResponse from(Freezer freezer, FreezerReading reading, BigDecimal targetTemperature,
                 long staleAfterSeconds) {

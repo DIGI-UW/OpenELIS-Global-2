@@ -18,6 +18,7 @@ import org.openelisglobal.coldstorage.service.CorrectiveActionService;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -243,14 +244,11 @@ public class FreezerAuditTrailController extends BaseRestController {
 
     private Map<String, Object> createConfigurationChangeEvent(History history, Freezer freezer, String freezerName) {
         try {
-            if (history.getChanges() == null || history.getChanges().length == 0) {
-                return null;
-            }
-
-            String xmlChanges = new String(history.getChanges());
-            Map<String, String> changes = parseXmlChanges(xmlChanges);
-
-            if (changes.isEmpty()) {
+            // Classify inserts before the empty check: an insert row carries no changes.
+            boolean created = IActionConstants.AUDIT_TRAIL_INSERT.equals(history.getActivity());
+            String xmlChanges = history.getChanges() == null ? "" : new String(history.getChanges());
+            Map<String, String> changes = xmlChanges.isEmpty() ? Map.of() : parseXmlChanges(xmlChanges);
+            if (!created && changes.isEmpty()) {
                 return null;
             }
 
@@ -259,8 +257,18 @@ public class FreezerAuditTrailController extends BaseRestController {
             event.put("freezerId", String.valueOf(freezer.getId()));
             event.put("freezerName", freezerName);
 
-            // Determine action type based on changes
-            String actionType = determineActionType(changes);
+            String actionType;
+            String comment;
+            if (created) {
+                actionType = "FREEZER_CREATED";
+                comment = "Freezer " + freezerName + " created";
+            } else if (IActionConstants.AUDIT_TRAIL_DELETE.equals(history.getActivity())) {
+                actionType = "FREEZER_DELETED";
+                comment = "Freezer " + freezerName + " deleted";
+            } else {
+                actionType = determineActionType(changes);
+                comment = buildChangeDescription(changes, freezerName);
+            }
             event.put("actionType", actionType);
 
             event.put("performedAt",
@@ -268,8 +276,6 @@ public class FreezerAuditTrailController extends BaseRestController {
 
             String performedBy = getUserName(Integer.parseInt(history.getSysUserId()));
             event.put("performedBy", performedBy);
-
-            String comment = buildChangeDescription(changes, freezerName);
             event.put("comment", comment);
             event.put("details", xmlChanges);
 
@@ -324,25 +330,32 @@ public class FreezerAuditTrailController extends BaseRestController {
         }
     }
 
+    /** History stores each field's pre-change value, so phrase it as "was". */
     private String buildChangeDescription(Map<String, String> changes, String freezerName) {
-        StringBuilder desc = new StringBuilder();
+        List<String> parts = new ArrayList<>();
 
         if (changes.containsKey("warningThreshold")) {
-            desc.append("Warning threshold changed to ").append(changes.get("warningThreshold")).append("°C");
-        } else if (changes.containsKey("criticalThreshold")) {
-            desc.append("Critical threshold changed to ").append(changes.get("criticalThreshold")).append("°C");
-        } else if (changes.containsKey("targetTemperature")) {
-            desc.append("Target temperature changed to ").append(changes.get("targetTemperature")).append("°C");
-        } else if (changes.containsKey("name")) {
-            desc.append("Freezer renamed to ").append(changes.get("name"));
-        } else if (changes.containsKey("active")) {
-            boolean isActive = Boolean.parseBoolean(changes.get("active"));
-            desc.append("Freezer ").append(isActive ? "activated" : "deactivated");
-        } else {
-            desc.append("Configuration updated for ").append(freezerName);
+            parts.add("Warning threshold changed (was " + celsiusOrUnset(changes.get("warningThreshold")) + ")");
+        }
+        if (changes.containsKey("criticalThreshold")) {
+            parts.add("Critical threshold changed (was " + celsiusOrUnset(changes.get("criticalThreshold")) + ")");
+        }
+        if (changes.containsKey("targetTemperature")) {
+            parts.add("Target temperature changed (was " + celsiusOrUnset(changes.get("targetTemperature")) + ")");
+        }
+        if (changes.containsKey("name")) {
+            parts.add("Freezer renamed (was " + changes.get("name") + ")");
+        }
+        if (changes.containsKey("active")) {
+            boolean wasActive = Boolean.parseBoolean(changes.get("active"));
+            parts.add("Freezer " + (wasActive ? "deactivated" : "activated"));
         }
 
-        return desc.toString();
+        return parts.isEmpty() ? "Configuration updated for " + freezerName : String.join("; ", parts);
+    }
+
+    private String celsiusOrUnset(String value) {
+        return value == null || value.isEmpty() ? "unset" : value + "°C";
     }
 
     String buildCorrectiveActionDetails(CorrectiveAction action) {

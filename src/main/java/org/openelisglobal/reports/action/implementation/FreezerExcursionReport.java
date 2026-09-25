@@ -125,7 +125,7 @@ public class FreezerExcursionReport extends Report implements IReportCreator {
     private FreezerExcursionReportData toReportData(FreezerExcursionData excursion) {
         FreezerExcursionReportData data = new FreezerExcursionReportData();
 
-        data.setExcursionId("EXC-" + excursion.getFreezerId() + "-" + excursion.getAlertId());
+        data.setExcursionId(excursion.getExcursionId());
         data.setFreezerId(String.valueOf(excursion.getFreezerId()));
         data.setFreezerName(excursion.getFreezerName() != null ? excursion.getFreezerName()
                 : "Freezer " + excursion.getFreezerId());

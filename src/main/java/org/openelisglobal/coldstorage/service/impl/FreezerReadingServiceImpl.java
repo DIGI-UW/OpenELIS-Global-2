@@ -125,7 +125,8 @@ public class FreezerReadingServiceImpl implements FreezerReadingService {
         FreezerReading firstReading = excursionReadings.get(0);
         FreezerReading lastReading = excursionReadings.get(excursionReadings.size() - 1);
 
-        excursion.setAlertId(firstReading.getId());
+        excursion.setFirstReadingId(firstReading.getId());
+        excursion.setExcursionId("EXC-" + freezer.getId() + "-" + firstReading.getId());
         excursion.setFreezerId(freezer.getId());
         excursion.setFreezerName(freezer.getName());
         excursion.setLocationName(freezer.getRoom());

@@ -133,7 +133,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         first.setTemperatureOffset(BigDecimal.ZERO);
 
         Freezer createdFirst = freezerService.createFreezer(first, 1L, "1");
-        freezerService.deleteFreezer(createdFirst.getId());
+        freezerService.deleteFreezer(createdFirst.getId(), "1");
 
         Freezer second = new Freezer();
         second.setName("pcr");
@@ -200,7 +200,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
 
         Freezer createdFirst = freezerService.createFreezer(first, 1L, "1");
         String firstCode = createdFirst.getStorageDevice().getCode();
-        freezerService.deleteFreezer(createdFirst.getId());
+        freezerService.deleteFreezer(createdFirst.getId(), "1");
 
         Freezer second = new Freezer();
         second.setName("Freezer001");
@@ -278,7 +278,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
         assertFalse("Freezer should be inactive initially", freezer.getActive());
 
-        freezerService.setDeviceStatus(freezerId, true);
+        freezerService.setDeviceStatus(freezerId, true, "1");
 
         Freezer updatedFreezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should still exist", updatedFreezer);
@@ -292,7 +292,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist", freezer);
         assertTrue("Freezer should be active initially", freezer.getActive());
 
-        freezerService.setDeviceStatus(freezerId, false);
+        freezerService.setDeviceStatus(freezerId, false, "1");
 
         Freezer updatedFreezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should still exist", updatedFreezer);
@@ -306,7 +306,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Freezer should exist before deletion", freezer);
         assertFalse("Freezer should not be deleted initially", Boolean.TRUE.equals(freezer.getDeleted()));
 
-        freezerService.deleteFreezer(freezerId);
+        freezerService.deleteFreezer(freezerId, "1");
 
         Freezer deletedFreezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer row should still exist after soft delete", deletedFreezer);
@@ -323,7 +323,7 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
         // A device list cleanup must not remove a device's reading history from the
         // daily-log/excursion/audit-trail reports an inspector pulls.
         Long freezerId = 100L;
-        freezerService.deleteFreezer(freezerId);
+        freezerService.deleteFreezer(freezerId, "1");
 
         assertTrue("Deleted freezer must remain visible to the reporting paths",
                 freezerService.getAllFreezersForReporting().stream().anyMatch(f -> freezerId.equals(f.getId())));
@@ -334,10 +334,10 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void setDeviceStatus_shouldRejectReactivatingDeletedFreezer() {
         Long freezerId = 100L;
-        freezerService.deleteFreezer(freezerId);
+        freezerService.deleteFreezer(freezerId, "1");
 
         try {
-            freezerService.setDeviceStatus(freezerId, true);
+            freezerService.setDeviceStatus(freezerId, true, "1");
             fail("Toggling status on a deleted freezer should throw");
         } catch (IllegalArgumentException expected) {
             // expected: a deleted freezer cannot be re-activated via the enable/disable
