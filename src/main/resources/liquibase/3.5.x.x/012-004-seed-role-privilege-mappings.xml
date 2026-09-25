@@ -8,13 +8,13 @@
     <!--
       Maps each base role to its complete, standalone privilege set.
 
-      BASE ROLES SHIP FLAT — no inheritance between them.
+      BASE ROLES SHIP FLAT, no inheritance between them.
       Each base role is self-contained: a user assigned only 'Validation'
       gets exactly and only the privileges listed here for Validation.
 
       Implementors extend the system by creating NEW roles that:
         - set parent_role_id to a base role (e.g., Reception) to INHERIT its
-          privileges — NOT grouping_parent, which is UI taxonomy (see 012-005)
+          privileges, NOT grouping_parent, which is UI taxonomy (see 012-005)
         - set grouping_parent to the container the role renders under:
           "Lab Unit Roles" when it is scoped per test section, else "Global Roles"
         - add additional privileges in system_role_privilege
@@ -28,18 +28,18 @@
 
       This keeps base roles minimal and deployments composable.
 
-      Global Administrator has no rows — it holds ALL privileges implicitly,
+      Global Administrator has no rows, it holds ALL privileges implicitly,
       resolved in the privilege service via a Global Admin shortcut.
     -->
 
     <!--
       EQA Coordinator is referenced in code (Constants.ROLE_EQA_COORDINATOR, and
       UserService's report-scope handling) and is granted privileges below, but no
-      migration ever created the row — so those grants silently matched nothing.
+      migration ever created the row, so those grants silently matched nothing.
       Create it here, before the grants.
 
       grouping_parent = "Global Roles": the role is not scoped per test section
-      (its work — EQA programme administration and reporting — spans the lab), so
+      (its work, EQA programme administration and reporting, spans the lab), so
       it belongs with the other whole-system roles rather than in the lab-unit
       picker. parent_role_id stays NULL: base roles ship flat (see 012-005).
     -->
@@ -55,7 +55,7 @@
                 </sqlCheck>
             </and>
         </preConditions>
-        <comment>Create the EQA Coordinator role (Global Roles) — referenced in code but never seeded</comment>
+        <comment>Create the EQA Coordinator role (Global Roles), referenced in code but never seeded</comment>
         <sql>
             INSERT INTO clinlims.system_role (id, name, description, display_key, active, editable, is_grouping_role, grouping_parent)
             SELECT nextval('clinlims.system_role_seq'), 'EQA Coordinator',
@@ -81,7 +81,7 @@
           than guarding the whole batch on an empty-table precondition. A single
           pre-existing row (a pilot, a partially-applied migration, a restored DB, a
           site-specific seed) must NOT cause the batch to be marked-ran and skip the
-          remaining ~50 mappings — that would silently leave every non-admin role with
+          remaining ~50 mappings, that would silently leave every non-admin role with
           zero PRIV_* authorities and lock those users out post-upgrade. The
           system_role_privilege_uq unique constraint (012-002) backs this.
         -->
@@ -90,7 +90,7 @@
         <!-- ==================== RECEPTION ==================== -->
         <!--
           Order intake, patient registration, NCE reporting, shipment handling.
-          No result privileges — a receptionist never touches results.
+          No result privileges, a receptionist never touches results.
           Includes provider:view and organization:view (needed to select
           requesting clinician and referring organization during order entry),
           and sample_requester:view (needed to look up existing requesters).
@@ -160,7 +160,7 @@
             -- the specimen records where it was put. That screen reads the storage
             -- tree (rooms, shelves, racks, boxes), so without storage:view the step
             -- 500s and a receptionist cannot finish the order they started.
-            -- Read only — creating, moving and deleting storage locations stay on
+            -- Read only, creating, moving and deleting storage locations stay on
             -- storage:manage, which Reception does not get.
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
@@ -181,7 +181,7 @@
 
         <!-- ==================== RESULTS ==================== -->
         <!--
-          Result entry for lab technicians. Standalone — does not include
+          Result entry for lab technicians. Standalone, does not include
           order or patient management. A lab may assign both Reception and
           Results to a technician who does both; or Results alone to one
           who only enters results from existing orders.
@@ -222,7 +222,7 @@
 
         <!-- ==================== VALIDATION ==================== -->
         <!--
-          Biologist/validator role. Standalone — validates results only.
+          Biologist/validator role. Standalone, validates results only.
           Does NOT include result:enter or result:modify by default.
           A deployment where validators also enter results should assign
           both Results and Validation roles, or create an extension role.
@@ -267,7 +267,7 @@
           Standalone pathologist role. Includes result:view and result:validate
           because a pathologist must be able to review and approve results,
           plus the pathology-specific sign-off. Does not include result:enter
-          or result:modify — pathologists review, not enter.
+          or result:modify, pathologists review, not enter.
         -->
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
@@ -425,13 +425,13 @@
       built by DisplayListService.createReferralOrganizationList() ->
       OrganizationService.getOrganizationsByTypeName(..., "referralLab"), which is
       gated PRIV_ORGANIZATION_VIEW. 012-004 gives organization:view to Reception
-      only, so Results and Validation — the roles that actually refer samples, and
-      the only ones granted referral:view — got AccessDeniedException from
+      only, so Results and Validation, the roles that actually refer samples, and
+      the only ones granted referral:view, got AccessDeniedException from
       GET /rest/displayList/REFERRAL_ORGANIZATIONS on the result-entry and
       validation screens (observed as HTTP 500 in E2E run 33568673124).
 
       Scope note: this is a read of the referral-lab picklist (id + name), not the
-      organization administration surface — organization:manage stays unset for
+      organization administration surface, organization:manage stays unset for
       these roles, so they still cannot create or edit organizations.
     -->
     <changeSet author="openelis" id="012-004c-grant-organization-view-to-referring-roles">
@@ -465,7 +465,7 @@
       upgraded before this fix).
 
       Why these roles need it: UserRoleService/UserService#getUserLabUnitRoles is a
-      SELF-scoping read — every one of these callers passes the CALLER'S OWN id:
+      SELF-scoping read, every one of these callers passes the CALLER'S OWN id:
 
         MenuController#isGlobalScopeUser            -> GET /rest/menu   (every page load)
         OrderSearchRestController#isGlobalScopeUser -> order search
@@ -524,7 +524,7 @@
         micro:bench     -> Results, Validation   (BENCH_ACCESS)
         micro:supervise -> Validation            (SUPERVISOR_ACCESS)
 
-      Global Administrator needs no row — it holds everything via the sentinel,
+      Global Administrator needs no row, it holds everything via the sentinel,
       which is how 'ADMIN' was satisfied in both expressions above.
 
       Reference/breakpoint administration is deliberately NOT granted here: it is
@@ -601,7 +601,7 @@
       ANALYSER_IMPORT and ADMIN; 012-004 granted the role only analyzer:import and
       analyzer:configure, so the screen 403s on its first read. Restore the role's
       pre-existing reach. result:enter/result:modify are the accept path
-      (AnalyzerResultsAcceptService) — accepting analyzer results IS result entry
+      (AnalyzerResultsAcceptService), accepting analyzer results IS result entry
       by another route; without them the role's primary function is gone.
     -->
     <changeSet author="openelis" id="012-004f-grant-analyzer-results-screen-to-analyser-import">
@@ -638,7 +638,7 @@
 
       DELIBERATE ESCALATION SURFACE: a holder of role:manage can create a role,
       grant it any privilege in the catalogue, and assign it to themselves through
-      user management — so this grant makes User Account Administrator equivalent
+      user management, so this grant makes User Account Administrator equivalent
       to a full administrator. That is the intended trust model here (role
       authoring sits with the account-administration persona); it is called out so
       it is never mistaken for an oversight. Deployments wanting separation of
@@ -701,6 +701,121 @@
                 DELETE FROM clinlims.system_role_privilege srp
                 USING clinlims.system_privilege p
                 WHERE srp.privilege_id = p.id AND p.name = 'catalogue:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      patient:view for Results.
+
+      A results technologist works a sample identified by patient: the results
+      list renders patientName and patientInfo on every row, and the menu offers
+      Results -> By Patient. Without this grant every Results search returned 403
+      from SampleHumanService.getPatientForSample, which the list calls to resolve
+      the patient behind each accession number, so the whole Results workflow was
+      unusable for the role whose job it is. The frontend routes are gated on
+      result:enter, which Results holds, so the UI admitted them and the backend
+      then refused.
+
+      Same reason as 012-003b and 012-004h for needing its own changeset:
+      012-004-seed-role-privilege-mappings has already run everywhere, so an
+      INSERT added inside it never executes on an existing database.
+    -->
+    <changeSet author="openelis" id="012-004i-grant-patient-view-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Results so result entry can identify the sample (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results'
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND r.name = 'Results' AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      nce:view for Results.
+
+      The results list attaches notes to each row, and NoteServiceImpl reads the
+      sample's QA events to do it, so without nce:view every Results search
+      returned 403 from SampleQaEventService.getSampleQaEventsBySample. The screen
+      is built for this: it renders a "nonconforming" badge per row and offers the
+      inline NCE form. Validation and Reception already hold the privilege.
+
+      Read-only. Raising a non-conformity needs nce:create and editing one needs
+      nce:edit, neither of which Results is granted here.
+    -->
+    <changeSet author="openelis" id="012-004j-grant-nce-view-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant nce:view to Results so the results list can show non-conformity (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results'
+              AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND r.name = 'Results' AND p.name = 'nce:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      esig:use for Results.
+
+      012-009 seeded esig:use to Pathologist, Cytopathologist and Validation,
+      described there as "the sign-off/validation roles". That misses the
+      technologist: SignatureMeaning.AUTHORED is documented as "Technologist
+      signed upon entering/saving test results", and the setting's own
+      description covers "result entry and validation workflows". With
+      electronicSignatureEnabled=true, saving a result opens the signing dialog,
+      which calls esig/enabled and esig/certified/{user}; without the privilege
+      both return 403, the dialog shows "Failed to load signature status", and the
+      Results role cannot save any result at all.
+
+      The privilege only permits signing as yourself: the controller refuses a
+      certification check for any username other than the authenticated one.
+      Deployments that leave e-signature off (the shipped default) are unaffected
+      either way.
+    -->
+    <changeSet author="openelis" id="012-004k-grant-esig-use-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant esig:use to Results so a technologist can sign results they author (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Results'
+              AND p.name = 'esig:use'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Results' AND p.name = 'esig:use';
             </sql>
         </rollback>
     </changeSet>

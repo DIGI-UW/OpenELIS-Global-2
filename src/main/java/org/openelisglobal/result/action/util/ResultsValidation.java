@@ -38,7 +38,28 @@ public class ResultsValidation {
     @Autowired
     private AnalysisService analysisService;
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
+    /**
+     * Form validation for one submitted row: is the test date parseable, is a
+     * result actually present, is a numeric result numeric.
+     *
+     * <p>
+     * "Validation" here is input checking, not the result-validation WORKFLOW step,
+     * and the two are unrelated. Gating it on PRIV_RESULT_VALIDATE (a privilege
+     * only the Validation, Pathologist and Cytopathologist roles hold) meant a
+     * technologist could reach the save endpoint and have their submission refused
+     * while it was being checked, so the Results role could not save a result at
+     * all. The only callers are the three result-ENTRY save paths
+     * (LogbookResultsController, LogbookResultsRestController,
+     * ResultEntryRestController).
+     *
+     * <p>
+     * Gated on PRIV_RESULT_ENTER, which is what the caller must hold to be
+     * submitting results in the first place; result:modify and result:validate
+     * holders reach their own endpoints. Rejecting bad input is not a privileged
+     * operation, but leaving it ungated would let any authenticated caller probe
+     * the validator.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     public Errors validateItem(TestResultItem item) {
         Errors errors = new BaseErrors();
 
@@ -67,7 +88,8 @@ public class ResultsValidation {
         return errors;
     }
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
+    /** Same reasoning as {@link #validateItem}: this is its loop. */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     public Errors validateModifiedItems(List<TestResultItem> modifiedItems) {
         Errors errors = new BaseErrors();
 

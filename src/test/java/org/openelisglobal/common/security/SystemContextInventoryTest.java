@@ -55,6 +55,15 @@ public class SystemContextInventoryTest {
             .compile("SystemContext\\s*\\.?\\s*(callAsSystem|runAsSystem)\\s*\\(");
 
     /**
+     * The lower-level door to the same bypass. {@code SystemContext} is a thin
+     * wrapper over {@code SystemInitFlag.enter()/exit()}, so a call site that uses
+     * the flag directly skips exactly the same privilege checks while being
+     * invisible to {@link #CALL_SITE}. Counting only the wrapper pinned half the
+     * surface: eleven direct users already existed when this was added.
+     */
+    private static final Pattern RAW_FLAG_SITE = Pattern.compile("SystemInitFlag\\s*\\.\\s*enter\\s*\\(");
+
+    /**
      * The files permitted to bypass authorization, with the number of sites in
      * each. Raising a number, or adding a key, means adding an unreviewed
      * authorization bypass, justify it in the PR.
@@ -74,6 +83,31 @@ public class SystemContextInventoryTest {
 
     private static final int EXPECTED_TOTAL = 12;
 
+    /**
+     * Direct {@code SystemInitFlag.enter()} users, with the number of sites in
+     * each. Infrastructure that runs before or outside a user's authorities
+     * (startup configuration loading, the login success handler, the async task
+     * decorator, reference-data caches) plus three self-identity primitives that
+     * resolve the caller's own SystemUser row. Same rule as ALLOWED above: raising
+     * a number or adding a key adds an unreviewed bypass.
+     */
+    private static final Map<String, Integer> ALLOWED_RAW_FLAG = Map.ofEntries(
+            Map.entry("org/openelisglobal/common/security/SystemContext.java", 2),
+            Map.entry("org/openelisglobal/common/security/SystemContextTaskDecorator.java", 2),
+            Map.entry("org/openelisglobal/common/services/DisplayListService.java", 1),
+            Map.entry("org/openelisglobal/common/util/ConfigurationListenerServiceImpl.java", 1),
+            // Self-identity: the current principal's own SystemUser, needed on every
+            // audited write and while authorities are still being built.
+            Map.entry("org/openelisglobal/common/util/UserContextHolder.java", 1),
+            Map.entry("org/openelisglobal/configuration/service/ConfigurationInitializationService.java", 1),
+            // Self-identity: the signer is always the authenticated caller.
+            Map.entry("org/openelisglobal/esig/service/ElectronicSignatureServiceImpl.java", 1),
+            Map.entry("org/openelisglobal/login/controller/LoginPageController.java", 1),
+            Map.entry("org/openelisglobal/security/login/CustomFormAuthenticationSuccessHandler.java", 1),
+            Map.entry("org/openelisglobal/systemuser/service/UserServiceImpl.java", 1),
+            Map.entry("org/openelisglobal/result/action/util/ResultsLoadUtility.java", 1),
+            Map.entry("org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java", 1));
+
     @Test
     public void systemContextCallSitesMatchTheReviewedInventory() throws IOException {
         Map<String, Integer> actual = scanCallSites();
@@ -84,6 +118,18 @@ public class SystemContextInventoryTest {
                 new TreeMap<>(ALLOWED), new TreeMap<>(actual));
 
         assertEquals("Total bypass count", EXPECTED_TOTAL, actual.values().stream().mapToInt(Integer::intValue).sum());
+    }
+
+    @Test
+    public void rawSystemInitFlagUsesMatchTheReviewedInventory() throws IOException {
+        Map<String, Integer> actual = scan(RAW_FLAG_SITE);
+        // SystemInitFlag declares enter() itself; that is the definition, not a use.
+        actual.remove("org/openelisglobal/common/security/SystemInitFlag.java");
+
+        assertEquals(
+                "Direct SystemInitFlag.enter() sites changed. This is the same authorization bypass as"
+                        + " SystemContext, one layer down, and is not counted by the scan above.",
+                new TreeMap<>(ALLOWED_RAW_FLAG), new TreeMap<>(actual));
     }
 
     /**
@@ -101,6 +147,13 @@ public class SystemContextInventoryTest {
                 CALL_SITE.matcher("List<X> x = SystemContext\n        .callAsSystem(() -> y());").find());
         assertFalse("an unrelated mention must not be detected",
                 CALL_SITE.matcher("import org.openelisglobal.common.security.SystemContext;").find());
+
+        assertTrue("a direct flag use must be detected",
+                RAW_FLAG_SITE.matcher("boolean wasSet = SystemInitFlag.enter();").find());
+        assertFalse("exit() is the restore half, not a new bypass",
+                RAW_FLAG_SITE.matcher("SystemInitFlag.exit(wasSet);").find());
+        assertFalse("the wrapper pattern must not match a raw flag use",
+                CALL_SITE.matcher("boolean wasSet = SystemInitFlag.enter();").find());
     }
 
     /**
@@ -135,11 +188,20 @@ public class SystemContextInventoryTest {
     }
 
     private Map<String, Integer> scanCallSites() throws IOException {
+        Map<String, Integer> counts = scan(CALL_SITE);
+        // SystemContext declares callAsSystem/runAsSystem; that is the definition,
+        // not a call site. Scoped to this scan: for the raw-flag scan below, the
+        // same file's two SystemInitFlag.enter() uses ARE the bypass it wraps.
+        counts.remove("org/openelisglobal/common/security/SystemContext.java");
+        return counts;
+    }
+
+    private Map<String, Integer> scan(Pattern pattern) throws IOException {
         Map<String, Integer> counts = new TreeMap<>();
         try (Stream<Path> sources = javaSources()) {
             List<Path> files = sources.collect(Collectors.toList());
             for (Path file : files) {
-                Matcher matcher = CALL_SITE.matcher(readSafely(file));
+                Matcher matcher = pattern.matcher(readSafely(file));
                 int count = 0;
                 while (matcher.find()) {
                     count++;
@@ -149,8 +211,6 @@ public class SystemContextInventoryTest {
                 }
             }
         }
-        // SystemContext itself declares the methods; it is not a call site.
-        counts.remove("org/openelisglobal/common/security/SystemContext.java");
         return counts;
     }
 
