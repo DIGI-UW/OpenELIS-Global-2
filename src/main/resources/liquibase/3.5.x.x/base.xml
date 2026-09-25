@@ -145,6 +145,9 @@
   <!-- required_by on sample (order level) — replaces OGC-527 sample_item approach -->
   <include relativeToChangelogFile="true" file="035-move-required-by-to-sample.xml"/>
 
+  <!-- Upgrade from 3.2.2.0: park CRITICAL_RESULT alerts while 036/057 redeclare chk_alert_type without it -->
+  <include relativeToChangelogFile="true" file="036-0-stash-upgrade-alert-types.xml"/>
+
   <!-- Add REQUIRED_BY_DEADLINE to alert type constraint -->
   <include relativeToChangelogFile="true" file="036-add-required-by-alert-type.xml"/>
 
@@ -428,6 +431,8 @@
 
   <!-- OGC-782: keep the referral and critical-result alert types after 057 redeclares the constraint -->
   <include relativeToChangelogFile="true" file="058-alert-type-union.xml"/>
+  <!-- Upgrade from 3.2.2.0: restore the alert types parked by 036-0 -->
+  <include relativeToChangelogFile="true" file="058-1-restore-upgrade-alert-types.xml"/>
   <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
   <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
 
