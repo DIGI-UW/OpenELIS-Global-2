@@ -13,9 +13,24 @@ import { useIntl } from "react-intl";
 export default function ReportingColumns({ fields, selected, onChange }) {
   const intl = useIntl();
   const t = (id, values) => intl.formatMessage({ id }, values);
+  // Labels arrive from the server in English. Resolve them here so the browse
+  // list, search, the selected list and the announcements all read the same
+  // localized text. Fields built from the database (test:, component:,
+  // observation:) have no catalog key, so the server label stands in.
+  const localizedFields = useMemo(
+    () =>
+      fields.map((field) => ({
+        ...field,
+        label: intl.formatMessage({
+          id: `reporting.field.${field.id}`,
+          defaultMessage: field.label,
+        }),
+      })),
+    [fields, intl],
+  );
   const groups = useMemo(() => {
     const result = new Map();
-    fields.forEach((field) => {
+    localizedFields.forEach((field) => {
       if (!result.has(field.group)) result.set(field.group, []);
       result.get(field.group).push(field);
     });
@@ -24,7 +39,7 @@ export default function ReportingColumns({ fields, selected, onChange }) {
       label: intl.formatMessage({ id: `reporting.group.${id}` }),
       vars,
     }));
-  }, [fields, intl]);
+  }, [localizedFields, intl]);
   const [collapsed, setCollapsed] = useState(
     () => new Set(groups.map((g) => g.id)),
   );
@@ -41,7 +56,7 @@ export default function ReportingColumns({ fields, selected, onChange }) {
   const query = search.trim().toLocaleLowerCase();
   const folds = query ? searchCollapsed : collapsed;
   const setFolds = query ? setSearchCollapsed : setCollapsed;
-  const byId = new Map(fields.map((f) => [f.id, f]));
+  const byId = new Map(localizedFields.map((f) => [f.id, f]));
   const chosen = new Set(selected);
   const visible = groups
     .map((group) => ({
