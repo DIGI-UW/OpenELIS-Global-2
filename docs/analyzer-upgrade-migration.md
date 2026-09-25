@@ -31,7 +31,8 @@ analyzer listing, which currently expects the new profile bindings.
 
 - [ ] Add a one-time OE2 transfer using the existing Bridge connection API and
       unchanged analyzer IDs. Reconcile matching connections, save returned IDs,
-      and migrate profile references and local clinical mappings without guessing.
+      and migrate profile references and local clinical mappings without
+      guessing.
 - [ ] Keep pending records visible and retain their source data when Bridge is
       unavailable or configuration cannot be resolved. Resume interrupted work
       without duplicate connections or false activation/verification.
