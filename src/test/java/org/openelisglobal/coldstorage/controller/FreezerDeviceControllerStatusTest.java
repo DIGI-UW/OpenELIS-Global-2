@@ -2,6 +2,8 @@ package org.openelisglobal.coldstorage.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 import org.junit.Before;
@@ -18,7 +20,24 @@ public class FreezerDeviceControllerStatusTest extends BaseWebContextSensitiveTe
 
     @Before
     public void setUp() throws Exception {
+        super.setUp();
         executeDataSetWithStateManagement("testdata/freezer.xml");
+    }
+
+    /**
+     * Humidity alerting reads the assigned threshold profile, which no screen
+     * showed, so an operator could not see what humidity a device was alerting on
+     * (issue #4261).
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    public void getCurrentStatus_exposesTheAssignedProfilesHumidityBands() throws Exception {
+        executeDataSetWithStateManagement("testdata/threshold_evaluation.xml");
+
+        performGet("/rest/coldstorage/status").andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.freezerId == 100)].thresholdProfileName").value("Ultra-Low Freezer Profile"))
+                .andExpect(jsonPath("$[?(@.freezerId == 100)].humidityWarningMin").value(30.0))
+                .andExpect(jsonPath("$[?(@.freezerId == 100)].humidityWarningMax").value(70.0));
     }
 
     @Test

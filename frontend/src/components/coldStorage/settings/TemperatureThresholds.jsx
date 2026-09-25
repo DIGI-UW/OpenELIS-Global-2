@@ -10,7 +10,11 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { fetchDevices, updateDeviceThresholds } from "../api";
+import {
+  fetchDevices,
+  fetchFreezerStatus,
+  updateDeviceThresholds,
+} from "../api";
 import {
   AlertDialog,
   NotificationKinds,
@@ -43,6 +47,7 @@ function TemperatureThresholds() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [thresholds, setThresholds] = useState({});
+  const [profilesByDevice, setProfilesByDevice] = useState({});
 
   const loadDevices = useCallback(async () => {
     try {
@@ -64,6 +69,17 @@ function TemperatureThresholds() {
         };
       });
       setThresholds(initialThresholds);
+
+      try {
+        const statuses = await fetchFreezerStatus();
+        const byDevice = {};
+        (Array.isArray(statuses) ? statuses : []).forEach((status) => {
+          byDevice[status.freezerId] = status;
+        });
+        setProfilesByDevice(byDevice);
+      } catch {
+        setProfilesByDevice({});
+      }
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
@@ -80,6 +96,28 @@ function TemperatureThresholds() {
   useEffect(() => {
     loadDevices();
   }, [loadDevices]);
+
+  const humidityBandsText = (deviceId) => {
+    const status = profilesByDevice[deviceId];
+    if (!status) {
+      return null;
+    }
+    if (!status.thresholdProfileName) {
+      return intl.formatMessage({ id: "coldStorage.threshold.noProfile" });
+    }
+    const unset = intl.formatMessage({ id: "coldStorage.threshold.unset" });
+    const orUnset = (value) => (value == null ? unset : `${value}%`);
+    return intl.formatMessage(
+      { id: "coldStorage.threshold.humidityBands" },
+      {
+        profile: status.thresholdProfileName,
+        warningMin: orUnset(status.humidityWarningMin),
+        warningMax: orUnset(status.humidityWarningMax),
+        criticalMin: orUnset(status.humidityCriticalMin),
+        criticalMax: orUnset(status.humidityCriticalMax),
+      },
+    );
+  };
 
   const handleThresholdChange = (deviceId, field, value) => {
     setThresholds((prev) => ({
@@ -172,6 +210,7 @@ function TemperatureThresholds() {
             <Stack gap={7}>
               {devices.map((device) => {
                 const deviceThresholds = thresholds[device.id] || {};
+                const humidityBands = humidityBandsText(device.id);
                 return (
                   <div
                     key={device.id}
@@ -190,6 +229,13 @@ function TemperatureThresholds() {
                       <span style={{ color: "#525252", fontSize: "0.875rem" }}>
                         {device.id}
                       </span>
+                      {humidityBands && (
+                        <p
+                          style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}
+                        >
+                          {humidityBands}
+                        </p>
+                      )}
                     </div>
 
                     <div
