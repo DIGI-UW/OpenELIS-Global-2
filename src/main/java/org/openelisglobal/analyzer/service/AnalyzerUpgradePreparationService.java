@@ -137,8 +137,6 @@ public class AnalyzerUpgradePreparationService {
     private BridgeAnalyzerProfile selectProfile(Analyzer analyzer, AnalyzerUpgradeSource old,
             ProfileSelection selection) {
         AnalyzerProfileBinding pin = analyzer.getPinnedProfileBinding();
-        if (pin == null && old.getProfileBindingId() != null)
-            pin = profiles.get(old.getProfileBindingId());
         if (pin != null) {
             if (selection != null && (!pin.getProfileId().equals(selection.profileId())
                     || pin.getProfileRevision() != selection.revision()))

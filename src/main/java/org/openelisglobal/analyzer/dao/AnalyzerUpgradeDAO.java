@@ -23,7 +23,7 @@ public class AnalyzerUpgradeDAO {
         return entityManager.createQuery("""
                 SELECT s.id FROM AnalyzerUpgradeSource s, Analyzer a
                 WHERE a.id = s.id AND a.bridgeConnectionId IS NULL
-                  AND (s.typeId IS NOT NULL OR s.profileBindingId IS NOT NULL
+                  AND (s.typeId IS NOT NULL
                     OR s.host IS NOT NULL OR s.directory IS NOT NULL
                     OR EXISTS (FROM AnalyzerUpgradeConfig c WHERE c.id = s.id)
                     OR EXISTS (FROM AnalyzerUpgradeMapping m WHERE m.analyzerId = s.id)

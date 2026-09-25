@@ -24,9 +24,6 @@ public class AnalyzerUpgradeSource extends BaseObject<String> {
     @Column(name = "analyzer_type_id", insertable = false, updatable = false)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String typeId;
-    @Column(name = "profile_binding_id", insertable = false, updatable = false)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String profileBindingId;
     @Column(name = "ip_address", insertable = false, updatable = false)
     private String host;
     @Column(name = "port", insertable = false, updatable = false)
@@ -57,10 +54,6 @@ public class AnalyzerUpgradeSource extends BaseObject<String> {
 
     public String getTypeId() {
         return typeId;
-    }
-
-    public String getProfileBindingId() {
-        return profileBindingId;
     }
 
     public String getHost() {
