@@ -12,7 +12,7 @@ on:
       - spec/782-*
       - feat/782-*
   push:
-    branches: [develop, 3.2.2.x]
+    branches: [develop]
   release:
     types: [published]
   workflow_dispatch:
