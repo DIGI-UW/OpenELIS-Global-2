@@ -2,6 +2,7 @@ package org.openelisglobal.coldstorage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,7 @@ import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,9 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private FreezerService freezerService;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Autowired
     private HistoryService historyService;
@@ -186,10 +191,12 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
                 "{\"name\":\"Renamed Freezer\",\"type\":\"freezer\",\"code\":\"FSD001\",\"parentRoomId\":\"1\"}"))
                 .andExpect(status().isOk());
 
-        assertEquals("The rename is performed by the signed-in user, not the device's creator", "1",
-                jdbcTemplate.queryForObject("SELECT h.sys_user_id::text FROM clinlims.history h"
-                        + " JOIN clinlims.reference_tables rt ON rt.id = h.reference_table"
-                        + " WHERE upper(rt.name) = 'FREEZER' AND h.reference_id = ?", String.class, 100L));
+        String recorded = jdbcTemplate.queryForObject("SELECT h.sys_user_id::text FROM clinlims.history h"
+                + " JOIN clinlims.reference_tables rt ON rt.id = h.reference_table"
+                + " WHERE upper(rt.name) = 'FREEZER' AND h.reference_id = ?", String.class, 100L);
+        assertNotEquals("The device's creator did not perform the rename", "9401", recorded);
+        assertEquals("The rename is performed by the signed-in user", userContextHolder.getCurrentSysUserId(),
+                recorded);
     }
 
     @Test
