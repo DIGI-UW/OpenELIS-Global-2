@@ -584,4 +584,7 @@
   <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
   <include relativeToChangelogFile="true" file="108-program-domain-shipped-classification.xml"/>
 
+  <!-- Audit history rows for tables keyed by a UUID string (qc_control_lot). -->
+  <include relativeToChangelogFile="true" file="109-history-reference-key.xml"/>
+
 </databaseChangeLog>
