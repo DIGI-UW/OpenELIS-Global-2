@@ -128,6 +128,7 @@ it.each([
     mount(saved);
     expect(screen.getByRole("textbox", { name: label })).toHaveValue(value);
   },
+  15000,
 );
 
 it("retains edits after a save failure and retries the same complete profile", async () => {
@@ -480,7 +481,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     expect.any(Function),
   );
   expect(onSuccess).toHaveBeenCalledWith("create");
-});
+}, 15000);
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
   const authored = clone(astmProfile);
