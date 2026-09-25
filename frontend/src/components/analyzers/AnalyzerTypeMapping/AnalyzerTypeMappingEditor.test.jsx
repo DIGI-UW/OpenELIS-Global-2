@@ -360,6 +360,11 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(
       screen.queryByText("SERVER DESCRIPTION MUST NOT RENDER"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Confirm mappings and control recognition",
+      }),
+    ).toBeDisabled();
   });
 
   it("opens and focuses the held analyzer value named in the bookmark", async () => {

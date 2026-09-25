@@ -183,6 +183,24 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void unconfiguredControlRecognitionBlocksReadinessAndActivation() {
+        BridgeProfileCatalog.ProfileRevision configured = profileRevision();
+        BridgeProfileCatalog.ControlRecognitionSummary unconfigured = new BridgeProfileCatalog.ControlRecognitionSummary(
+                RECOGNITION_FINGERPRINT, "RULES", "Control recognition not configured", false, List.of());
+        when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(
+                new BridgeProfileCatalog.ProfileRevision(configured.profile(), configured.publication(), unconfigured));
+
+        AnalyzerActivationResult readiness = service.readiness(ANALYZER_ID);
+        AnalyzerActivationResult activation = service.activate(ANALYZER_ID, ACTOR);
+
+        assertEquals(List.of("analyzer.activation.blocker.recognition"),
+                readiness.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        assertEquals(List.of("analyzer.activation.blocker.recognition"),
+                activation.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
+    }
+
+    @Test
     public void rejectedActivationAcknowledgementNeverChangesOpenElisState() {
         activationAcknowledgement.put("outcome", "REJECTED");
         activationAcknowledgement.put("actualRuntimeState", "INACTIVE");

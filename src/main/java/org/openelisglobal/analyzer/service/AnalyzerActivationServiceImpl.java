@@ -196,6 +196,9 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
                 if (!"ACTIVE".equals(catalogProfile.status()) || !matchesCatalogProfile(profile, catalogProfile)) {
                     blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
                 }
+                if (!profileRevision.controlRecognitionSummary().isConfigured()) {
+                    blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
+                }
             } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
                 blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
             }

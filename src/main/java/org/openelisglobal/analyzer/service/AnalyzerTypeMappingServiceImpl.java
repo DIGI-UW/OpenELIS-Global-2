@@ -120,6 +120,10 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     }
 
     private static void validateConfirmable(AnalyzerTypeMappingView view) {
+        if (!view.controlRecognition().isConfigured()) {
+            throw new IllegalArgumentException(
+                    "Configure control recognition before confirming Analyzer Type mappings");
+        }
         for (AnalyzerTypeMappingView.TestRow test : view.tests()) {
             if (test.mappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
                     || test.mappingState() == AnalyzerSiteBindingMappingState.BOUND && test.selectedTest() == null) {

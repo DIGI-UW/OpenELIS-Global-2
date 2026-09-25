@@ -156,6 +156,29 @@ public class AnalyzerTypeMappingServiceTest {
     }
 
     @Test
+    public void confirmMappingRejectsPublishedProfileWithoutControlRecognitionRules() throws Exception {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot candidate = confirmableSiteBinding(profileBinding);
+        BridgeProfileCatalog.ProfileRevision configured = profileRevision();
+        BridgeProfileCatalog.ControlRecognitionSummary unconfigured = new BridgeProfileCatalog.ControlRecognitionSummary(
+                recognitionFingerprint(), "RULES", "Control recognition not configured", false, List.of());
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(
+                new BridgeProfileCatalog.ProfileRevision(configured.profile(), configured.publication(), unconfigured));
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
+                .thenReturn(Optional.of(profileBinding));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(candidate));
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive")));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.confirmMapping("site.mock-analyzer", 2, null, "17"));
+
+        assertEquals("Configure control recognition before confirming Analyzer Type mappings", exception.getMessage());
+        verify(confirmationService, never()).confirm(any(), any(), any(), any());
+    }
+
+    @Test
     public void getMappingReturnsUnresolvedRowsWithoutCreatingLocalState() throws Exception {
         when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2)).thenReturn(Optional.empty());
