@@ -15,6 +15,7 @@ import {
 import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
 import ProfileStringList from "./ProfileStringList";
 import ProfileTestDefinitions from "./ProfileTestDefinitions";
+import ProfileConnectionOptions from "./ProfileConnectionOptions";
 
 // These choices describe the published Bridge v1 contract, never instrument defaults.
 const FORMATS = ["CSV", "TSV", "XLS", "XLSX", "ODS", "XML"];
@@ -47,6 +48,16 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const [draft, setDraft] = useState(initialDraft);
   const [profile, setProfile] = useState(initialDraft.profile || {});
   const [columns, setColumns] = useState(columnsOf(initialDraft.profile));
+  const [invalidValues, setInvalidValues] = useState(new Set());
+  const onValueValidity = useCallback((id, valid) => {
+    setInvalidValues((previous) => {
+      if (previous.has(id) === !valid) return previous;
+      const next = new Set(previous);
+      if (valid) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [conflict, setConflict] = useState(false);
@@ -56,7 +67,9 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const draftId = initialDraft.draftId;
   const columnsChanged = encode(columns) !== encode(columnsOf(draft.profile));
   const dirty =
-    encode(profile) !== encode(draft.profile || {}) || columnsChanged;
+    encode(profile) !== encode(draft.profile || {}) ||
+    columnsChanged ||
+    invalidValues.size > 0;
   const columnKeys = columns.map((row) => row.source.trim());
   const columnsValid =
     columns.every((row) => row.source.trim() && row.field) &&
@@ -181,7 +194,8 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   );
 
   const save = () => {
-    if (!dirty || !columnsValid || fieldsLocked) return;
+    if (!dirty || !columnsValid || invalidValues.size > 0 || fieldsLocked)
+      return;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -231,7 +245,13 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
     change(
       ["connectionFields"],
       connectionFields.map((field, current) =>
-        current === index ? { ...field, [key]: value } : field,
+        current === index
+          ? Object.fromEntries(
+              Object.entries({ ...field, [key]: value }).filter(
+                ([, entry]) => entry !== undefined,
+              ),
+            )
+          : field,
       ),
     );
 
@@ -472,13 +492,26 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
               labelText={text("required")}
               value={String(field.required ?? "")}
               onChange={(event) =>
-                updateField(index, "required", event.target.value === "true")
+                updateField(
+                  index,
+                  "required",
+                  event.target.value === ""
+                    ? undefined
+                    : event.target.value === "true",
+                )
               }
             >
               <SelectItem value="" text={text("choose")} />
               <SelectItem value="true" text={text("yes")} />
               <SelectItem value="false" text={text("no")} />
             </Select>
+            <ProfileConnectionOptions
+              field={field}
+              index={index}
+              fields={connectionFields}
+              onChange={(key, value) => updateField(index, key, value)}
+              onValidityChange={onValueValidity}
+            />
             <Button
               kind="ghost"
               size="sm"
@@ -510,7 +543,9 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
         </Button>
         <Button
           kind="secondary"
-          disabled={!dirty || !columnsValid || fieldsLocked}
+          disabled={
+            !dirty || !columnsValid || invalidValues.size > 0 || fieldsLocked
+          }
           onClick={save}
         >
           {text("save")}

@@ -1,4 +1,5 @@
 const sharedKeys = {
+  "valueType.number": "analyzerType.editor.inputKind.NUMBER",
   yes: "label.yes",
   no: "label.no",
   name: "analyzerType.field.profileName",

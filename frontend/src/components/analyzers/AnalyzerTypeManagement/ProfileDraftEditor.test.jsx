@@ -505,3 +505,207 @@ it("edits test definitions without losing aliases, named results or unrelated pr
     expect.any(Function),
   );
 });
+
+it("authors typed choices and visibility without changing other profile content", async () => {
+  mount(astmProfile);
+  const original = clone(stored.profile);
+  const transportIndex = original.connectionFields.findIndex(
+    (field) => field.key === "transport",
+  );
+  const group = within(
+    screen.getByRole("group", {
+      name: `Connection field ${transportIndex + 1}`,
+    }),
+  );
+  await userEvent.click(group.getByRole("button", { name: "Add choice" }));
+  const choice = within(group.getByRole("group", { name: "Choice 3" }));
+  await userEvent.type(
+    choice.getByLabelText("Label translation key"),
+    "analyzer.connection.transport.TCP/IP",
+  );
+  await userEvent.selectOptions(choice.getByLabelText("Value type"), "number");
+  await userEvent.clear(choice.getByLabelText("Choice value"));
+  await userEvent.type(choice.getByLabelText("Choice value"), "7");
+  const roleIndex = original.connectionFields.findIndex(
+    (field) => field.key === "connectionRole",
+  );
+  const role = within(
+    screen.getByRole("group", { name: `Connection field ${roleIndex + 1}` }),
+  );
+  await userEvent.selectOptions(role.getByLabelText("Comparison"), "EQUALS");
+  await userEvent.selectOptions(
+    within(
+      role.getByRole("group", { name: "Show this connection field when" }),
+    ).getByLabelText("Value type"),
+    "number",
+  );
+  await userEvent.clear(role.getByLabelText("Comparison value"));
+  await userEvent.type(role.getByLabelText("Comparison value"), "7");
+  await save();
+  original.connectionFields[transportIndex].choices.push({
+    value: 7,
+    labelKey: "analyzer.connection.transport.TCP/IP",
+  });
+  original.connectionFields[roleIndex].visibleWhen = {
+    fieldKey: "transport",
+    operator: "EQUALS",
+    value: 7,
+  };
+  expect(updateAnalyzerTypeDraft).toHaveBeenLastCalledWith(
+    "draft-file",
+    original,
+    expect.any(Function),
+  );
+  expect(
+    within(group.getByRole("group", { name: "Choice 3" })).getByLabelText(
+      "Choice value",
+    ),
+  ).toHaveValue("7");
+});
+
+it("keeps invalid typed input visible and blocks saving instead of discarding it", async () => {
+  const { onStateChange } = mount(astmProfile);
+  const original = clone(stored.profile);
+  const index = original.connectionFields.findIndex(
+    (field) => field.key === "connectionRole",
+  );
+  const role = within(
+    screen.getByRole("group", { name: `Connection field ${index + 1}` }),
+  );
+  await userEvent.selectOptions(
+    within(
+      role.getByRole("group", { name: "Show this connection field when" }),
+    ).getByLabelText("Value type"),
+    "array",
+  );
+  const value = role.getByLabelText("Comparison value");
+  await userEvent.clear(value);
+  await userEvent.type(value, "[[");
+  expect(value).toHaveValue("[");
+  expect(
+    screen.getByRole("button", { name: "Save and validate profile settings" }),
+  ).toBeDisabled();
+  expect(onStateChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ dirty: true, publishable: false }),
+  );
+  expect(updateAnalyzerTypeDraft).not.toHaveBeenCalled();
+  await userEvent.clear(value);
+  await userEvent.type(value, '[["TCP/IP","RS-232"]');
+  await userEvent.selectOptions(role.getByLabelText("Comparison"), "IN");
+  await save();
+  original.connectionFields[index].visibleWhen = {
+    fieldKey: "transport",
+    operator: "IN",
+    value: ["TCP/IP", "RS-232"],
+  };
+  expect(stored.profile).toEqual(original);
+});
+
+it("removes visibility conditions explicitly without changing profile defaults", async () => {
+  mount(astmProfile);
+  const original = clone(stored.profile);
+  const index = original.connectionFields.findIndex(
+    (field) => field.key === "connectionRole",
+  );
+  const role = within(
+    screen.getByRole("group", { name: `Connection field ${index + 1}` }),
+  );
+  await userEvent.click(
+    role.getByRole("button", { name: "Remove visibility condition" }),
+  );
+  await save();
+  delete original.connectionFields[index].visibleWhen;
+  expect(stored.profile).toEqual(original);
+});
+
+it("creates a connection choice list and a Boolean visibility condition for a FILE profile", async () => {
+  mount(newFileProfile);
+  const original = clone(stored.profile);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Add connection field" }),
+  );
+  const added = within(
+    screen.getByRole("group", { name: "Connection field 2" }),
+  );
+  await userEvent.type(added.getByLabelText("Setting name"), "enabled");
+  await userEvent.type(
+    added.getByLabelText("Label translation key"),
+    "analyzer.connection.field.enabled",
+  );
+  await userEvent.selectOptions(added.getByLabelText("Input type"), "SELECT");
+  await userEvent.selectOptions(
+    added.getByLabelText("Required during connection setup"),
+    "false",
+  );
+  await userEvent.click(added.getByRole("button", { name: "Add choice" }));
+  const choice = within(added.getByRole("group", { name: "Choice 1" }));
+  await userEvent.type(
+    choice.getByLabelText("Label translation key"),
+    "label.no",
+  );
+  await userEvent.selectOptions(choice.getByLabelText("Value type"), "boolean");
+  const directory = within(
+    screen.getByRole("group", { name: "Connection field 1" }),
+  );
+  await userEvent.click(
+    directory.getByRole("button", { name: "Add visibility condition" }),
+  );
+  await userEvent.selectOptions(
+    directory.getByLabelText("Controlling setting"),
+    "enabled",
+  );
+  await userEvent.selectOptions(
+    directory.getByLabelText("Comparison"),
+    "EQUALS",
+  );
+  await userEvent.selectOptions(
+    directory.getByLabelText("Value type"),
+    "boolean",
+  );
+  await save();
+  original.connectionFields.push({
+    key: "enabled",
+    labelKey: "analyzer.connection.field.enabled",
+    inputKind: "SELECT",
+    required: false,
+    choices: [{ value: false, labelKey: "label.no" }],
+  });
+  original.connectionFields[0].visibleWhen = {
+    fieldKey: "enabled",
+    operator: "EQUALS",
+    value: false,
+  };
+  expect(stored.profile).toEqual(original);
+});
+
+it("clears local validation when an invalid visibility condition is explicitly removed", async () => {
+  mount(astmProfile);
+  const original = clone(stored.profile);
+  const index = original.connectionFields.findIndex(
+    (field) => field.key === "connectionRole",
+  );
+  const role = within(
+    screen.getByRole("group", { name: `Connection field ${index + 1}` }),
+  );
+  const visibility = within(
+    role.getByRole("group", { name: "Show this connection field when" }),
+  );
+  await userEvent.selectOptions(
+    visibility.getByLabelText("Value type"),
+    "number",
+  );
+  await userEvent.clear(visibility.getByLabelText("Comparison value"));
+  await userEvent.type(
+    visibility.getByLabelText("Comparison value"),
+    "invalid",
+  );
+  expect(
+    screen.getByRole("button", { name: "Save and validate profile settings" }),
+  ).toBeDisabled();
+  await userEvent.click(
+    role.getByRole("button", { name: "Remove visibility condition" }),
+  );
+  await save();
+  delete original.connectionFields[index].visibleWhen;
+  expect(stored.profile).toEqual(original);
+});
