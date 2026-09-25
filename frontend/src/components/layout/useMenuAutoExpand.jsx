@@ -1,12 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
 const normalizePath = (path) =>
   path === "/" ? "/Dashboard" : path.replace(/\/$/, "");
 
-/** Derive one active destination and its ancestors from the router location. */
+const menuKey = (item) => item.menu.elementId || item.menu.id;
+
+/**
+ * Derive one active destination and its ancestors from the router location.
+ * A location no menu item matches (a redirect target, a page without its own
+ * entry) keeps the ancestors of the last matched item expanded, without
+ * marking it active, so the side nav does not fold shut under the user.
+ */
 export function useMenuAutoExpand(initialMenus) {
   const { pathname, search } = useLocation();
+  const lastMatchedKey = useRef();
   return useMemo(() => {
     const currentPath = normalizePath(pathname);
     const currentQuery = new URLSearchParams(search);
@@ -40,11 +48,18 @@ export function useMenuAutoExpand(initialMenus) {
       }
     };
     findDestination(initialMenus || []);
+    if (activeItem) {
+      lastMatchedKey.current = menuKey(activeItem);
+    }
+    const anchorKey = activeItem ? undefined : lastMatchedKey.current;
     const annotate = (items) =>
       items.map((item) => {
         const childMenus = annotate(item.childMenus || []);
         const activeChild = childMenus.find(
-          (child) => child.routeActive || child.activeDescendantId,
+          (child) =>
+            child.routeActive ||
+            child.activeDescendantId ||
+            (anchorKey !== undefined && menuKey(child) === anchorKey),
         );
         return {
           ...item,
