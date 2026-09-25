@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -121,7 +122,15 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
                     rekeyedIds.add(analysis.getId());
                 }
             }
-            for (Analysis analysis : analysisService.getAnalysesBySampleItem(original)) {
+            // Re-keying the order's own analyses onto the pool rows. result:view
+            // gates reading RESULTS; this reads the analysis rows of the order
+            // being placed so they can be pointed at the vector pool instead of
+            // the placeholder sample item. A vector order that named a trap type
+            // or lifecycle stage reached fan-out and denied here, so the whole
+            // save failed with a 500 — but only for orders using the vector
+            // fields, which is why a vector order without them saved fine.
+            for (Analysis analysis : SystemContext
+                    .callAsSystem(() -> analysisService.getAnalysesBySampleItem(original))) {
                 if (analysis == null || analysis.getId() == null || rekeyedIds.contains(analysis.getId())) {
                     continue;
                 }

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -80,7 +81,10 @@ public class VectorTrapTypeServiceImpl extends AuditableBaseObjectServiceImpl<Ve
         if (t.getSampleTypeIds() != null && !t.getSampleTypeIds().isEmpty()) {
             List<TypeOfSample> resolved = new ArrayList<>();
             for (Long stId : t.getSampleTypeIds()) {
-                TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(stId));
+                // Same as VectorSpeciesServiceImpl: naming the sample types a trap
+                // type applies to, for the vector order picker.
+                TypeOfSample tos = SystemContext
+                        .callAsSystem(() -> typeOfSampleService.getTypeOfSampleById(String.valueOf(stId)));
                 if (tos != null) {
                     resolved.add(tos);
                 }
