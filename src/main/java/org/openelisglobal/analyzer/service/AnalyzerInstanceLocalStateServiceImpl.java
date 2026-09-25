@@ -189,12 +189,9 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     private static AnalyzerInstanceState state(Analyzer analyzer, long heldResultCount) {
         AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
         if (profile == null) {
-            if (isUnconfiguredDraft(analyzer) || (analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE
-                    && analyzer.getBridgeConnectionId() == null)) {
-                return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(), "", 0,
-                        "", null, analyzer.getStatus(), heldResultCount);
-            }
-            throw new IllegalStateException("Analyzer profile binding is missing");
+            // Preserved pre-Bridge records must remain visible while migration is pending.
+            return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(), "", 0, "",
+                    null, analyzer.getStatus(), heldResultCount);
         }
         return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(),
                 profile.getProfileId(), profile.getProfileRevision(), profile.getProfileFingerprint(),

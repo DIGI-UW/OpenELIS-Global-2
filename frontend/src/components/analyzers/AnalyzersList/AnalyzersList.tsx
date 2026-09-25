@@ -25,6 +25,9 @@ import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzerDeliveryIssues,
+  getAnalyzerUpgrade,
+  retryAnalyzerUpgrade,
+  type AnalyzerUpgradeOutcome,
   getAnalyzers,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -103,6 +106,25 @@ const AnalyzersList = () => {
   > | null>(null);
   const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [upgradePending, setUpgradePending] = useState<
+    AnalyzerUpgradeOutcome[]
+  >([]);
+  const [upgrading, setUpgrading] = useState(false);
+  useEffect(() => {
+    getAnalyzerUpgrade((rows) =>
+      setUpgradePending(Array.isArray(rows) ? rows : []),
+    );
+  }, []);
+  const retryUpgrade = () => {
+    setUpgrading(true);
+    retryAnalyzerUpgrade(() => {
+      getAnalyzerUpgrade((rows) =>
+        setUpgradePending(Array.isArray(rows) ? rows : []),
+      );
+      getAnalyzers({}, (data) => setAnalyzers(data?.analyzers || []));
+      setUpgrading(false);
+    });
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
@@ -473,6 +495,24 @@ const AnalyzersList = () => {
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {upgradePending.length > 0 && (
+        <Callout
+          kind="warning"
+          lowContrast
+          title={intl.formatMessage(
+            { id: "analyzer.upgrade.pending" },
+            { count: upgradePending.length },
+          )}
+          subtitle={upgradePending
+            .map((row) => `${row.name}${row.reason ? `: ${row.reason}` : ""}`)
+            .join("; ")}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.upgrade.retry",
+          })}
+          onActionButtonClick={upgrading ? undefined : retryUpgrade}
+        />
+      )}
 
       {visibleSetupStep && (
         <AnalyzerSetup

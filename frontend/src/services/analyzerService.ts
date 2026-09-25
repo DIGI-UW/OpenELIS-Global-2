@@ -815,3 +815,21 @@ export const publishAnalyzerTypeDraft = (
     callback,
   );
 };
+
+export interface AnalyzerUpgradeOutcome {
+  analyzerId: string;
+  name: string;
+  status: string;
+  reason?: string | null;
+}
+export const getAnalyzerUpgrade = (
+  callback: DataCallback<AnalyzerUpgradeOutcome[] | undefined>,
+) => getFromOpenElisServer("/rest/analyzer/upgrade", callback);
+export const retryAnalyzerUpgrade = (
+  callback: ApiCallback<AnalyzerUpgradeOutcome[]>,
+) =>
+  postToOpenElisServerJsonResponse(
+    "/rest/analyzer/upgrade",
+    JSON.stringify({}),
+    callback,
+  );

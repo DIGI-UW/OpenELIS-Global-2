@@ -122,6 +122,11 @@
 
         <!-- Analyzer orchestration and site-binding entities -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeSource</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeType</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeSerial</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
