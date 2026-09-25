@@ -141,6 +141,35 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
     }
 
+    @Test
+    public void getCatalogAcceptsExplicitUnconfiguredRulesWithoutClaimingNoControls() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.putArray("conditions");
+        summary.put("description", "Control recognition not configured");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog.ControlRecognitionSummary recognition = service.getCatalog().profiles().get(0)
+                .controlRecognitionSummary();
+
+        assertEquals("RULES", recognition.mode());
+        assertEquals(false, recognition.affirmedNoControlResults());
+        assertEquals(0, recognition.conditions().size());
+    }
+
+    @Test
+    public void getCatalogRejectsUnconfiguredRulesThatClaimNoControls() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.putArray("conditions");
+        summary.put("affirmedNoControlResults", true);
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
+    }
+
     private static String validCatalog() {
         return """
                 {

@@ -1000,6 +1000,8 @@
   "analyzerType.recognition.mode.none.short": "No control-result recognition",
   "analyzerType.recognition.mode.rules": "Recognize controls using these conditions",
   "analyzerType.recognition.mode.rules.short": "Rule-based control recognition",
+  "analyzerType.recognition.mode.unconfigured.short": "Control recognition not configured",
+  "analyzerType.recognition.mode.unconfigured": "No control recognition rules are configured. Control results may not be identified automatically.",
   "analyzerType.recognition.mode": "How does this interface identify control results?",
   "analyzerType.recognition.rules.help": "A result is treated as a control when any condition matches.",
   "analyzerType.recognition.save": "Save control recognition",

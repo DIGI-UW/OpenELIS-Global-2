@@ -865,11 +865,19 @@ const AnalyzerTypeMappingEditor = () => {
                   <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
                 </h2>
                 <p>
-                  {formatRecognitionMode(intl, mapping.controlRecognition.mode)}
+                  {formatRecognitionMode(
+                    intl,
+                    mapping.controlRecognition.mode,
+                    mapping.controlRecognition.conditions,
+                  )}
                 </p>
               </div>
               <Tag type="blue">
-                {formatRecognitionMode(intl, mapping.controlRecognition.mode)}
+                {formatRecognitionMode(
+                  intl,
+                  mapping.controlRecognition.mode,
+                  mapping.controlRecognition.conditions,
+                )}
               </Tag>
             </div>
             {mapping.controlRecognition.mode === "NONE" ? (
@@ -879,6 +887,15 @@ const AnalyzerTypeMappingEditor = () => {
                 hideCloseButton
                 title={intl.formatMessage({
                   id: "analyzerType.mappingEditor.recognition.none",
+                })}
+              />
+            ) : mapping.controlRecognition.conditions.length === 0 ? (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "analyzerType.recognition.mode.unconfigured",
                 })}
               />
             ) : (

@@ -708,6 +708,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                             {formatRecognitionMode(
                               intl,
                               mapping.controlRecognition.mode,
+                              mapping.controlRecognition.conditions,
                             )}
                           </Tag>
                         </div>
@@ -717,6 +718,16 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                               id: "analyzerType.recognition.mode.none",
                             })}
                           </p>
+                        ) : mapping.controlRecognition.conditions.length ===
+                          0 ? (
+                          <InlineNotification
+                            kind="warning"
+                            lowContrast
+                            hideCloseButton
+                            title={intl.formatMessage({
+                              id: "analyzerType.recognition.mode.unconfigured",
+                            })}
+                          />
                         ) : (
                           <ul>
                             {mapping.controlRecognition.conditions.map(
