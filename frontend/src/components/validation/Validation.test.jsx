@@ -120,6 +120,24 @@ describe("Validation — result flags in the row (OGC-1121)", () => {
   });
 });
 
+describe("Validation — result value stays on one line", () => {
+  it("keeps a flagged scientific-notation value unbroken beside its flag", () => {
+    renderValidation([
+      row(0, {
+        result: "1.5 x 10^4",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const value = screen.getByTestId("validation-result-value-0");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
+    expect(value.querySelector('[data-testid^="flag-"]')).toBeNull();
+  });
+});
+
 describe("Validation — Check before release (OGC-1027)", () => {
   it("renders a chip only for rows carrying a signal; a clean row is blank", () => {
     renderValidation([row(0), row(1, { nceOpen: true, modified: true })]);
