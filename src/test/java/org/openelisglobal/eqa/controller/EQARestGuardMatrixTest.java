@@ -248,8 +248,7 @@ public class EQARestGuardMatrixTest {
             String authority = entry.getKey();
             String file = entry.getValue();
             String changeset = classpathResource(file);
-            assertTrue(authority + " is not registered by " + file,
-                    changeset.contains("value=\"" + authority + "\"/>"));
+            assertTrue(authority + " is not registered by " + file, registersAuthority(changeset, authority));
             assertTrue(authority + " is registered but no role grant selects it in " + file,
                     grantsAuthority(changeset, authority));
             // A changeset nobody includes never runs, and the guard above then
@@ -279,14 +278,22 @@ public class EQARestGuardMatrixTest {
         return found;
     }
 
+    /** A column insert, or a row of a VALUES list whose first column is the name. */
+    private boolean registersAuthority(String changeset, String authority) {
+        return changeset.contains("value=\"" + authority + "\"/>")
+                || changeset.matches("(?s).*\\(\\s*'" + Pattern.quote(authority) + "'\\s*,.*");
+    }
+
     /**
      * The grant is an INSERT into system_role_module that selects the module by
-     * name, either singly or as part of an IN list. Requiring that SQL shape keeps
-     * the registration insert in the same file from satisfying the assertion.
+     * name, singly, in an IN list, or in a role's ARRAY of module names. Requiring
+     * that SQL shape keeps the registration insert in the same file from
+     * satisfying the assertion.
      */
     private boolean grantsAuthority(String changeset, String authority) {
         return changeset.contains("m.name = '" + authority + "'")
-                || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*");
+                || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*")
+                || changeset.matches("(?s).*ARRAY\\[[^\\]]*'" + Pattern.quote(authority) + "'.*");
     }
 
     private String classpathResource(String path) throws Exception {
