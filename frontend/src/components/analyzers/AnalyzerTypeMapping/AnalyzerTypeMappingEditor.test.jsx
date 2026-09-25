@@ -331,6 +331,37 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
   });
 
+  it("shows unconfigured rules without claiming the interface sends no controls", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          controlRecognition: {
+            ...recognition,
+            description: "SERVER DESCRIPTION MUST NOT RENDER",
+            conditions: [],
+          },
+        }),
+    );
+
+    renderEditor();
+
+    expect(
+      await screen.findAllByText("Control recognition not configured"),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "No control recognition rules are configured. Control results may not be identified automatically.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("This interface does not transmit control results"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("SERVER DESCRIPTION MUST NOT RENDER"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens and focuses the held analyzer value named in the bookmark", async () => {
     getAnalyzerTypeMapping.mockImplementation(
       (_profileId, _revision, callback) =>

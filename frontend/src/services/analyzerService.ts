@@ -246,7 +246,7 @@ export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
   baseProfileId?: string | null;
   baseRevision?: number | null;
-  profile?: {
+  profile?: JsonObject & {
     profileMeta?: {
       id?: string;
       displayName?: string;
@@ -740,6 +740,19 @@ export const getAnalyzerTypeDraft = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    callback,
+  );
+};
+
+export const updateAnalyzerTypeDraft = (
+  draftId: string,
+  profile: JsonObject,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    "PUT",
+    { profile },
     callback,
   );
 };
