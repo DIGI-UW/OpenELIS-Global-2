@@ -1,4 +1,9 @@
 const sharedKeys = {
+  baudRate: "serial.config.baudRate.label",
+  dataBits: "serial.config.dataBits.label",
+  stopBits: "serial.config.stopBits.label",
+  parity: "serial.config.parity.label",
+  flowControl: "serial.config.flowControl.label",
   "valueType.number": "analyzerType.editor.inputKind.NUMBER",
   yes: "label.yes",
   no: "label.no",

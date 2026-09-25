@@ -709,3 +709,181 @@ it("clears local validation when an invalid visibility condition is explicitly r
   delete original.connectionFields[index].visibleWhen;
   expect(stored.profile).toEqual(original);
 });
+
+it.each(["ASTM", "HL7"])(
+  "creates %s communication settings from an empty draft without inventing a port",
+  async (protocol) => {
+    mount({
+      $schema: newFileProfile.$schema,
+      schemaVersion: "1.0",
+      profileMeta: {
+        id: "site.synthetic-socket",
+        displayName: "Synthetic socket analyzer",
+      },
+    });
+    const choose = async (name, value) =>
+      userEvent.selectOptions(screen.getByLabelText(name), value);
+    await replace("Profile version", "1.0");
+    await choose("Evidence confidence", "LOW");
+    await choose("Laboratory discipline", "MOLECULAR");
+    await choose("Protocol", protocol);
+    await choose("Receives analyzer results", "true");
+    await choose("Sends orders to the analyzer", "false");
+    await choose("Supports a connection test", "true");
+    await replace("Manufacturer", "Synthetic manufacturer");
+    await replace("Instrument name in messages", "SYNTHETIC");
+    await replace("Analyzer identifier pattern", "^SYNTHETIC$");
+    await replace(
+      "Protocol version",
+      protocol === "ASTM" ? "LIS02-A2" : "2.5.1",
+    );
+    if (protocol === "ASTM") {
+      await choose("ASTM framing version", "LIS01_A");
+      await choose("Result records to parse", "ALL");
+    }
+    await userEvent.click(screen.getByLabelText("Support TCP/IP"));
+    await choose("Who starts communication", "ANALYZER_INITIATED");
+    await choose(
+      "Allows the laboratory system to start communication",
+      "false",
+    );
+    await choose("Default connection role", "SERVER");
+    await choose("Default transport", "TCP/IP");
+    await choose("Result grouping", "PER_MESSAGE");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add connection field" }),
+    );
+    const field = within(
+      screen.getByRole("group", { name: "Connection field 1" }),
+    );
+    await userEvent.type(field.getByLabelText("Setting name"), "host");
+    await userEvent.type(
+      field.getByLabelText("Label translation key"),
+      "analyzer.connection.field.host",
+    );
+    await userEvent.selectOptions(field.getByLabelText("Input type"), "TEXT");
+    await userEvent.selectOptions(
+      field.getByLabelText("Required during connection setup"),
+      "false",
+    );
+    await save();
+    expect(stored.profile).toEqual({
+      $schema: newFileProfile.$schema,
+      schemaVersion: "1.0",
+      profileMeta: {
+        id: "site.synthetic-socket",
+        displayName: "Synthetic socket analyzer",
+        version: "1.0",
+        confidence: "LOW",
+      },
+      manufacturer: "Synthetic manufacturer",
+      category: "MOLECULAR",
+      analyzer_name: "SYNTHETIC",
+      identifier_pattern: "^SYNTHETIC$",
+      protocol:
+        protocol === "ASTM"
+          ? { name: "ASTM", version: "LIS02-A2", lowerLayerVersion: "LIS01_A" }
+          : { name: "HL7", version: "2.5.1" },
+      capabilities: {
+        inboundResults: true,
+        outboundOrders: false,
+        connectionTest: true,
+      },
+      transport: ["TCP/IP"],
+      transport_config: { "TCP/IP": {} },
+      communication: {
+        mode: "ANALYZER_INITIATED",
+        supports_lis_initiated: false,
+      },
+      configDefaults: {
+        connectionRole: "SERVER",
+        transport: "TCP/IP",
+        aggregationMode: "PER_MESSAGE",
+        ...(protocol === "ASTM"
+          ? { extractionOverrides: { resultRecordSelection: { mode: "ALL" } } }
+          : {}),
+      },
+      connectionFields: [
+        {
+          key: "host",
+          labelKey: "analyzer.connection.field.host",
+          inputKind: "TEXT",
+          required: false,
+          choices: [],
+        },
+      ],
+      default_test_mappings: [],
+    });
+    expect(stored.profile.configDefaults).not.toHaveProperty("port");
+    expect(stored.profile.transport_config["TCP/IP"]).not.toHaveProperty(
+      "default_port",
+    );
+  },
+);
+
+it("edits serial settings and transport ports while retaining the complete existing profile", async () => {
+  mount(astmProfile);
+  const expected = clone(stored.profile);
+  await userEvent.clear(
+    screen.getByLabelText("Serial read timeout (milliseconds)"),
+  );
+  await userEvent.type(
+    screen.getByLabelText("Serial read timeout (milliseconds)"),
+    "1500",
+  );
+  await userEvent.selectOptions(screen.getByLabelText("Enable RTS"), "false");
+  const tcp = within(screen.getByRole("group", { name: "TCP/IP settings" }));
+  await userEvent.type(
+    tcp.getByLabelText("Default outbound port (optional)"),
+    "6001",
+  );
+  await userEvent.click(screen.getByLabelText("Support RS-232"));
+  await userEvent.click(screen.getByLabelText("Support RS-232"));
+  expect(
+    screen.getByLabelText("Serial read timeout (milliseconds)"),
+  ).toHaveValue(1500);
+  await save();
+  expected.transport = expected.transport
+    .filter((value) => value !== "RS-232")
+    .concat("RS-232");
+  expected.transport_config["RS-232"].read_timeout_ms = 1500;
+  expected.transport_config["RS-232"].rts_enabled = false;
+  expected.transport_config["TCP/IP"].default_port = 6001;
+  expect(stored.profile).toEqual(expected);
+});
+
+it("requires confirmation before clearing settings when changing an unsaved protocol", async () => {
+  mount({
+    $schema: newFileProfile.$schema,
+    schemaVersion: "1.0",
+    profileMeta: { id: "site.switch", displayName: "Synthetic switch" },
+  });
+  await userEvent.selectOptions(screen.getByLabelText("Protocol"), "FILE");
+  await userEvent.selectOptions(
+    screen.getByLabelText("Profile file format"),
+    "CSV",
+  );
+  await replace("Filename pattern", "*.csv");
+  await userEvent.selectOptions(screen.getByLabelText("Protocol"), "ASTM");
+  expect(
+    screen.getByRole("button", { name: "Save and validate profile settings" }),
+  ).toBeDisabled();
+  expect(screen.getByLabelText("Filename pattern")).toHaveValue("*.csv");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Keep the current protocol" }),
+  );
+  expect(screen.getByLabelText("Protocol")).toHaveValue("FILE");
+  await userEvent.selectOptions(screen.getByLabelText("Protocol"), "ASTM");
+  await userEvent.click(
+    screen.getByRole("button", {
+      name: /Switch protocol and clear its settings/,
+    }),
+  );
+  expect(screen.queryByLabelText("Filename pattern")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Protocol")).toHaveValue("ASTM");
+  await save();
+  expect(stored.profile.protocol).toEqual({ name: "ASTM" });
+  expect(stored.profile.configDefaults).toEqual({});
+  expect(stored.profile.profileMeta.displayName).toBe("Synthetic switch");
+  expect(screen.getByLabelText("Protocol")).toBeDisabled();
+});

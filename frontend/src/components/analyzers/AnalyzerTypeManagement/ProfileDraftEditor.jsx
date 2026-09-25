@@ -16,6 +16,7 @@ import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
 import ProfileStringList from "./ProfileStringList";
 import ProfileTestDefinitions from "./ProfileTestDefinitions";
 import ProfileConnectionOptions from "./ProfileConnectionOptions";
+import ProfileTransports from "./ProfileTransports";
 
 // These choices describe the published Bridge v1 contract, never instrument defaults.
 const FORMATS = ["CSV", "TSV", "XLS", "XLSX", "ODS", "XML"];
@@ -62,6 +63,7 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const [error, setError] = useState(null);
   const [conflict, setConflict] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pendingProtocol, setPendingProtocol] = useState(null);
   const [recognition, setRecognition] = useState(null);
   const [recognitionVersion, setRecognitionVersion] = useState(0);
   const draftId = initialDraft.draftId;
@@ -69,7 +71,8 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const dirty =
     encode(profile) !== encode(draft.profile || {}) ||
     columnsChanged ||
-    invalidValues.size > 0;
+    invalidValues.size > 0 ||
+    Boolean(pendingProtocol);
   const columnKeys = columns.map((row) => row.source.trim());
   const columnsValid =
     columns.every((row) => row.source.trim() && row.field) &&
@@ -140,6 +143,35 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
     setError(null);
     setColumns(next);
   };
+  const chooseProtocol = (name) => {
+    setSaved(false);
+    setError(null);
+    setPendingProtocol(null);
+    setColumns([]);
+    setProfile((current) => {
+      const next = {
+        ...current,
+        protocol: { name },
+        configDefaults: {},
+        connectionFields: [],
+      };
+      for (const key of [
+        "transport",
+        "transport_config",
+        "communication",
+        "msh3_pattern",
+        "supported_extensions",
+        "column_mapping",
+        "result_value_order",
+        "sheet_detection",
+        "controlResultRecognition",
+      ])
+        delete next[key];
+      if (name !== "FILE" && !next.default_test_mappings)
+        next.default_test_mappings = [];
+      return next;
+    });
+  };
   const valueAt = (path) => path.reduce((value, key) => value?.[key], profile);
   const input = (path, label, kind = "text") => (
     <TextInput
@@ -194,7 +226,13 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   );
 
   const save = () => {
-    if (!dirty || !columnsValid || invalidValues.size > 0 || fieldsLocked)
+    if (
+      !dirty ||
+      !columnsValid ||
+      invalidValues.size > 0 ||
+      pendingProtocol ||
+      fieldsLocked
+    )
       return;
     setSaving(true);
     setError(null);
@@ -260,7 +298,7 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
       className="analyzer-type-profile-editor"
       aria-label={text("heading")}
     >
-      {!initialDraft.profile?.protocol?.name && <p>{text("newFileScope")}</p>}
+      {!draft.profile?.protocol?.name && <p>{text("newProtocolHelp")}</p>}
       <fieldset disabled={fieldsLocked} className="analyzer-type-modal__form">
         <legend>{text("heading")}</legend>
         {input(["profileMeta", "displayName"], "name")}
@@ -284,13 +322,42 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
           "MOLECULAR",
           "COAGULATION",
         ])}
-        {select(
-          ["protocol", "name"],
-          "protocol",
-          initialDraft.profile?.protocol?.name
-            ? [initialDraft.profile.protocol.name]
-            : ["FILE"],
-          Boolean(initialDraft.profile?.protocol?.name),
+        <Select
+          id="profile-protocol-name"
+          labelText={text("protocol")}
+          aria-label={text("protocol")}
+          disabled={Boolean(draft.profile?.protocol?.name)}
+          value={protocol || ""}
+          onChange={(event) => {
+            const name = event.target.value;
+            if (name === protocol) return;
+            if (protocol) setPendingProtocol(name);
+            else chooseProtocol(name);
+          }}
+        >
+          <SelectItem value="" text={text("choose")} disabled />
+          {["FILE", "ASTM", "HL7"].map((name) => (
+            <SelectItem key={name} value={name} text={name} />
+          ))}
+        </Select>
+        {pendingProtocol && (
+          <div role="group" aria-label={text("switchProtocol")}>
+            <p>{text("switchProtocolHelp", { protocol: pendingProtocol })}</p>
+            <Button
+              kind="danger"
+              size="sm"
+              onClick={() => chooseProtocol(pendingProtocol)}
+            >
+              {text("switchProtocol")}
+            </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              onClick={() => setPendingProtocol(null)}
+            >
+              {text("keepProtocol")}
+            </Button>
+          </div>
         )}
         {boolean(["capabilities", "inboundResults"], "inboundResults")}
         {boolean(["capabilities", "outboundOrders"], "outboundOrders")}
@@ -405,6 +472,89 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
                 "E1381_95",
               ])}
             {protocol === "HL7" && input(["msh3_pattern"], "msh3Pattern")}
+            <ProfileTransports
+              profile={profile}
+              input={input}
+              select={select}
+              boolean={boolean}
+              onChange={(transport, transport_config) => {
+                setSaved(false);
+                setError(null);
+                setProfile((current) => ({
+                  ...current,
+                  transport,
+                  transport_config,
+                }));
+              }}
+            />
+            {protocol === "ASTM" && (
+              <>
+                <Select
+                  id="profile-result-record-mode"
+                  labelText={text("resultRecords")}
+                  value={
+                    profile.configDefaults?.extractionOverrides
+                      ?.resultRecordSelection?.mode || ""
+                  }
+                  onChange={(event) =>
+                    change(
+                      [
+                        "configDefaults",
+                        "extractionOverrides",
+                        "resultRecordSelection",
+                      ],
+                      event.target.value
+                        ? {
+                            mode: event.target.value,
+                            ...(event.target.value === "FIELD_NON_BLANK"
+                              ? {
+                                  targetField:
+                                    profile.configDefaults?.extractionOverrides
+                                      ?.resultRecordSelection?.targetField ||
+                                    "",
+                                }
+                              : {}),
+                          }
+                        : undefined,
+                    )
+                  }
+                >
+                  <SelectItem value="" text={text("choose")} />
+                  <SelectItem value="ALL" text={text("resultRecords.ALL")} />
+                  <SelectItem
+                    value="FIELD_NON_BLANK"
+                    text={text("resultRecords.FIELD_NON_BLANK")}
+                  />
+                </Select>
+                {profile.configDefaults?.extractionOverrides
+                  ?.resultRecordSelection?.mode === "FIELD_NON_BLANK" &&
+                  input(
+                    [
+                      "configDefaults",
+                      "extractionOverrides",
+                      "resultRecordSelection",
+                      "targetField",
+                    ],
+                    "resultRecordField",
+                  )}
+              </>
+            )}
+            {protocol === "HL7" &&
+              select(
+                ["configDefaults", "extractionOverrides", "specimenPosition"],
+                "specimenPosition",
+                ["PRECEDING", "FOLLOWING_OBX"],
+              )}
+            {select(["configDefaults", "dataFlow"], "dataFlow", [
+              "RESULTS_ONLY",
+              "TWO_WAY",
+            ])}
+            {select(
+              ["configDefaults", "outboundPortMode"],
+              "outboundPortMode",
+              ["DEFAULT", "OVERRIDE"],
+            )}
+
             {select(["communication", "mode"], "communicationMode", [
               "ANALYZER_INITIATED",
               "LIS_INITIATED",
@@ -423,7 +573,8 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
               "transport",
               profile.transport || [],
             )}
-            {input(["configDefaults", "port"], "port", "number")}
+            {profile.configDefaults?.port !== undefined &&
+              input(["configDefaults", "port"], "clientProfilePort", "number")}
             {select(["configDefaults", "aggregationMode"], "aggregationMode", [
               "PER_MESSAGE",
               "BY_SPECIMEN",
@@ -544,7 +695,11 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
         <Button
           kind="secondary"
           disabled={
-            !dirty || !columnsValid || invalidValues.size > 0 || fieldsLocked
+            !dirty ||
+            !columnsValid ||
+            invalidValues.size > 0 ||
+            pendingProtocol ||
+            fieldsLocked
           }
           onClick={save}
         >
