@@ -5,8 +5,8 @@
 Transfer retained settings to Bridge after application startup, using the
 existing profile, shared mapping and connection services. The expected case is
 one analyzer per old profile, or several with identical saved test mappings.
-Keep original analyzer IDs, lab units, results, history and source settings.
-Do not add a migration framework or manufacture verification or activation.
+Keep original analyzer IDs, lab units, results, history and source settings. Do
+not add a migration framework or manufacture verification or activation.
 
 This complements #4431: that change retained the old configuration and removed
 premature cleanup from the startup changelog. It did not transfer configuration.
@@ -15,10 +15,10 @@ No additional Liquibase changes are needed for this transfer.
 ## Eligibility and transfer
 
 A record is eligible when it has **no Bridge connection reference** and still
-has retained configuration: an old analyzer type/profile reference, host or
-file directory, plugin settings, test mappings, or active serial settings.
-Creation dates are not used. Normal new setup leaves that old storage empty;
-an already transferred analyzer is skipped because its Bridge reference exists.
+has retained configuration: an old analyzer type/profile reference, host or file
+directory, plugin settings, test mappings, or active serial settings. Creation
+dates are not used. Normal new setup leaves that old storage empty; an already
+transferred analyzer is skipped because its Bridge reference exists.
 
 1. Use its existing pinned profile reference where present. Otherwise match the
    old type name exactly to a unique active Bridge profile family (display name
@@ -31,8 +31,8 @@ an already transferred analyzer is skipped because its Bridge reference exists.
    listener ports are not copied into outbound endpoint settings.
 3. Reuse the current shared-mapping services. Preserve saved test targets;
    automatic defaults fill gaps. A saved mapping that conflicts with a binding
-   already used by another analyzer remains pending. Categorical answers are
-   not invented, and answer defaults are cleared if their test target changes.
+   already used by another analyzer remains pending. Categorical answers are not
+   invented, and answer defaults are cleared if their test target changes.
 4. Commit the selected profile and mappings on the original analyzer, in Setup
    and inactive. Then call the existing Bridge connection client outside the
    database transaction, passing that same analyzer ID as `clientAnalyzerId`.
@@ -43,13 +43,13 @@ an already transferred analyzer is skipped because its Bridge reference exists.
 
 A successful transfer means the configuration and connection reference were
 saved. The operator still reviews/confirms mappings and control recognition,
-checks the connection and activates through the existing setup workflow.
-Results continue to belong to the original analyzer record.
+checks the connection and activates through the existing setup workflow. Results
+continue to belong to the original analyzer record.
 
 ## Startup, pending records and retry
 
-`AnalyzerUpgradeStartup` uses the existing daemon scheduler for one attempt,
-30 seconds after scheduler initialization. Failures are caught outside startup;
+`AnalyzerUpgradeStartup` uses the existing daemon scheduler for one attempt, 30
+seconds after scheduler initialization. Failures are caught outside startup;
 Bridge being unavailable cannot block database upgrades or application startup.
 The production startup trigger is disabled under the test profile.
 
@@ -95,12 +95,12 @@ fixture. A larger failure matrix, deployed browser/instrument acceptance and
 actual network/filesystem permissions are separate release checks. These tests
 do not claim physical-instrument qualification.
 
-Local validation for this addition: 22 backend tests (including the two populated
-upgrade/recovery scenarios) and 29 analyzer-list UI tests passed. Spotless,
-changed-file Prettier and whitespace checks passed. Repository-wide TypeScript
-checking remains failing; comparison against the prior PR head found the same
-1,983 diagnostics and no new diagnostics. GitHub CI and deployed acceptance are
-not covered by those local results.
+Local validation for this addition: 22 backend tests (including the two
+populated upgrade/recovery scenarios) and 29 analyzer-list UI tests passed.
+Spotless, changed-file Prettier and whitespace checks passed. Repository-wide
+TypeScript checking remains failing; comparison against the prior PR head found
+the same 1,983 diagnostics and no new diagnostics. GitHub CI and deployed
+acceptance are not covered by those local results.
 
 ## Later cleanup
 
