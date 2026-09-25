@@ -134,6 +134,47 @@ public class FreezerConfigurationAuditTest extends BaseWebContextSensitiveTest {
 
     @Test
     @WithMockUser(username = "admin", roles = "ADMIN")
+    public void updateDevice_shouldAuditAMoveToAnotherRoom() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.storage_device SET name = 'Test Freezer 1' WHERE id = 1");
+        String moved = "{\"name\":\"Test Freezer 1\",\"protocol\":\"TCP\",\"host\":\"192.168.1.100\",\"port\":502,"
+                + "\"slaveId\":1,\"temperatureRegister\":0,\"temperatureScale\":1,\"temperatureOffset\":-80,"
+                + "\"humidityRegister\":1,\"humidityScale\":1,\"humidityOffset\":0,\"pollingIntervalSeconds\":60,"
+                + "\"storageDevice\":{\"type\":\"freezer\"}}";
+
+        mockMvc.perform(
+                put("/rest/coldstorage/devices/100?roomId=2").contentType(MediaType.APPLICATION_JSON).content(moved))
+                .andExpect(status().isOk());
+
+        List<Map<String, Object>> events = auditTrail(100L);
+        assertEquals("The move is one configuration change: " + events, 1, events.size());
+        assertTrue("Details carry the previous room: " + events.get(0).get("details"),
+                ((String) events.get(0).get("details")).contains("Cold Storage Room 1"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    public void auditTrail_shouldNameEveryChangeMadeInOneSave() throws Exception {
+        String renamedWithThresholds = "{\"name\":\"Renamed Freezer\",\"protocol\":\"TCP\",\"host\":\"192.168.1.100\","
+                + "\"port\":502,\"slaveId\":1,\"temperatureRegister\":0,\"temperatureScale\":1,"
+                + "\"temperatureOffset\":-80,\"humidityRegister\":1,\"humidityScale\":1,\"humidityOffset\":0,"
+                + "\"pollingIntervalSeconds\":60,\"warningThreshold\":-15,\"criticalThreshold\":-10,"
+                + "\"storageDevice\":{\"id\":1}}";
+
+        mockMvc.perform(put("/rest/coldstorage/devices/100?roomId=1").contentType(MediaType.APPLICATION_JSON)
+                .content(renamedWithThresholds)).andExpect(status().isOk());
+
+        List<Map<String, Object>> events = auditTrail(100L);
+        assertEquals("One save is one history row: " + events, 1, events.size());
+        String comment = (String) events.get(0).get("comment");
+        assertTrue("The warning threshold change is named: " + comment, comment.contains("Warning threshold"));
+        assertTrue("The critical threshold change is named: " + comment, comment.contains("Critical threshold"));
+        assertTrue("The rename is named: " + comment, comment.contains("renamed (was Test Freezer 1)"));
+        assertTrue("An unset old value carries no unit: " + comment,
+                comment.contains("Warning threshold changed (was unset)"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
     public void renamingTheStorageDevice_shouldAuditTheFreezerRenameAsTheActingUser() throws Exception {
         ensureAuditSystemUser();
         jdbcTemplate.update("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name,"

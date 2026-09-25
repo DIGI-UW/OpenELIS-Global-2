@@ -249,6 +249,13 @@ public class FreezerServiceImpl implements FreezerService {
     private Freezer auditCopy(Freezer freezer) {
         Freezer copy = new Freezer();
         BeanUtils.copyProperties(freezer, copy, "readings", "thresholdAssignments", "lastupdated");
+        if (freezer.getStorageDevice() != null) {
+            // Not the shared instance: updateFreezer moves that one in place.
+            StorageDevice device = new StorageDevice();
+            device.setName(freezer.getStorageDevice().getName());
+            device.setParentRoom(freezer.getStorageDevice().getParentRoom());
+            copy.setStorageDevice(device);
+        }
         BeanWrapper wrapper = PropertyAccessorFactory.forBeanPropertyAccess(copy);
         for (var property : wrapper.getPropertyDescriptors()) {
             String name = property.getName();

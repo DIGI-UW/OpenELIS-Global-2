@@ -332,31 +332,30 @@ public class FreezerAuditTrailController extends BaseRestController {
 
     /** History stores each field's pre-change value, so phrase it as "was". */
     private String buildChangeDescription(Map<String, String> changes, String freezerName) {
-        StringBuilder desc = new StringBuilder();
+        List<String> parts = new ArrayList<>();
 
         if (changes.containsKey("warningThreshold")) {
-            desc.append("Warning threshold changed (was ").append(orUnset(changes.get("warningThreshold")))
-                    .append("°C)");
-        } else if (changes.containsKey("criticalThreshold")) {
-            desc.append("Critical threshold changed (was ").append(orUnset(changes.get("criticalThreshold")))
-                    .append("°C)");
-        } else if (changes.containsKey("targetTemperature")) {
-            desc.append("Target temperature changed (was ").append(orUnset(changes.get("targetTemperature")))
-                    .append("°C)");
-        } else if (changes.containsKey("name")) {
-            desc.append("Freezer renamed (was ").append(changes.get("name")).append(")");
-        } else if (changes.containsKey("active")) {
+            parts.add("Warning threshold changed (was " + celsiusOrUnset(changes.get("warningThreshold")) + ")");
+        }
+        if (changes.containsKey("criticalThreshold")) {
+            parts.add("Critical threshold changed (was " + celsiusOrUnset(changes.get("criticalThreshold")) + ")");
+        }
+        if (changes.containsKey("targetTemperature")) {
+            parts.add("Target temperature changed (was " + celsiusOrUnset(changes.get("targetTemperature")) + ")");
+        }
+        if (changes.containsKey("name")) {
+            parts.add("Freezer renamed (was " + changes.get("name") + ")");
+        }
+        if (changes.containsKey("active")) {
             boolean wasActive = Boolean.parseBoolean(changes.get("active"));
-            desc.append("Freezer ").append(wasActive ? "deactivated" : "activated");
-        } else {
-            desc.append("Configuration updated for ").append(freezerName);
+            parts.add("Freezer " + (wasActive ? "deactivated" : "activated"));
         }
 
-        return desc.toString();
+        return parts.isEmpty() ? "Configuration updated for " + freezerName : String.join("; ", parts);
     }
 
-    private String orUnset(String value) {
-        return value == null || value.isEmpty() ? "unset" : value;
+    private String celsiusOrUnset(String value) {
+        return value == null || value.isEmpty() ? "unset" : value + "°C";
     }
 
     String buildCorrectiveActionDetails(CorrectiveAction action) {
