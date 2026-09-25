@@ -170,8 +170,8 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
             confirmed.add(row);
         } else if (state == AnalyzerSiteBindingMappingState.EXCLUDED) {
             excluded.add(row);
-        } else {
-            throw new IllegalArgumentException("Every source row must be bound or excluded before confirmation");
+        } else if (state != AnalyzerSiteBindingMappingState.UNRESOLVED) {
+            throw new IllegalArgumentException("Every source row must have an explicit mapping state");
         }
     }
 
@@ -207,7 +207,14 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
     }
 
     private boolean hasCurrentCatalogBindings(AnalyzerSiteBindingSnapshot candidate) {
-        return AnalyzerSiteBindingCatalogState.load(mappingCatalogService).validate(candidate).allRowsCurrent();
+        AnalyzerSiteBindingCatalogState.Validation catalog = AnalyzerSiteBindingCatalogState.load(mappingCatalogService)
+                .validate(candidate);
+        return candidate.tests().stream()
+                .allMatch(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
+                        || catalog.isCurrentTest(row.getId().getSourceRowKey()))
+                && candidate.results().stream()
+                        .allMatch(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
+                                || catalog.isCurrentResult(row.getId().getSourceRowKey(), row.getId().getRawValue()));
     }
 
     private boolean hasExactSavedRows(AnalyzerSiteBindingSnapshot candidate,
