@@ -78,11 +78,11 @@ export async function fillMicrobiologyOrderHeader(
   await patientSearch
     .getByRole("button", { name: "Search", exact: true })
     .click();
-  const patientRow = patientSearch.getByTestId(
-    `patient-search-result-${seeded.patientId}`,
+  const patientRow = patientSearch.locator(
+    `[data-cy="patient-result-row-${seeded.patientId}"]`,
   );
   await expect(patientRow).toBeVisible({ timeout: LONG_TIMEOUT });
-  await patientRow.getByRole("button", { name: "Select" }).click();
+  await patientRow.locator("label").first().click();
   await expect(
     page.getByRole("heading", { name: "UAT Microbiology", exact: true }),
   ).toBeVisible({ timeout: UI_TIMEOUT });
