@@ -123,7 +123,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         case "SPECIFIC_VALUE":
             return valueMatches(rule.getTriggerValue(), value, result.getResultType());
         case "ABNORMAL":
-            return resultService.isAbnormalDictionaryResult(result);
+            return resultService.isAbnormalDictionaryResult(result) || isAbnormalNumericValue(result, value);
         case "CRITICAL":
             return critical;
         default:
@@ -166,6 +166,30 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             return Double.compare(Double.parseDouble(StringUtil.normalizeScientificNotation(triggerValue.trim())),
                     Double.parseDouble(value.trim())) == 0;
         } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * A numeric value outside the reference range of the patient-conditional result
+     * limit, judged by the same flag Results Entry and Validation show, so an
+     * ABNORMAL rule fires on exactly the results those screens mark abnormal. A
+     * critical value is abnormal too; a value outside the valid range is an entry
+     * error rather than a finding, and a result with no matching range has no basis
+     * to be called abnormal.
+     */
+    private boolean isAbnormalNumericValue(Result result, String value) {
+        if (value == null || value.isBlank() || !"N".equals(result.getResultType())) {
+            return false;
+        }
+        try {
+            Analysis analysis = result.getAnalysis();
+            Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
+            String flag = ValidationSignals.resultFlag(limit, result.getResultType(), value);
+            return ValidationSignals.FLAG_ABNORMAL.equals(flag) || ValidationSignals.FLAG_CRITICAL.equals(flag);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
             return false;
         }
     }

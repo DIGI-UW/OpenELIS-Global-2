@@ -81,7 +81,8 @@ public class TestCalculatedUtil {
                     continue;
                 }
                 List<ResultCalculation> resultCalculations = resultcalculationService
-                        .getResultCalculationByPatientAndCalculation(resultSet.patient, calculation);
+                        .getResultCalculationByPatientAndCalculation(resultSet.patient, calculation).stream()
+                        .filter(calc -> sameOrder(calc, resultSet.result)).collect(Collectors.toList());
 
                 if (resultCalculations.isEmpty()) {
                     Boolean createResultCalculation = false;
@@ -149,7 +150,7 @@ public class TestCalculatedUtil {
                         .getResultCalculationByPatientAndTest(resultSet.patient,
                                 resultSet.result.getTestResult().getTest())
                         .stream().filter(calc -> runsFor(ruleResultScope, calc.getCalculation(), resultSet.result))
-                        .collect(Collectors.toList());
+                        .filter(calc -> sameOrder(calc, resultSet.result)).collect(Collectors.toList());
             }
 
             if (!resultCalculations.isEmpty()) {
@@ -221,12 +222,12 @@ public class TestCalculatedUtil {
                         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
                         String value = null;
                         try {
-                            Log.debug("Caliculation Rule: " + calculation.getName() + " Function : "
+                            Log.debug("Calculation Rule: " + calculation.getName() + " Function : "
                                     + function.toString());
                             value = scriptEngine.eval(function.toString()).toString();
-                            Log.debug("Caliculation Rule: " + calculation.getName() + " Value  : " + value);
+                            Log.debug("Calculation Rule: " + calculation.getName() + " Value  : " + value);
                         } catch (ScriptException e) {
-                            Log.error("Invalid Caliculation Rule: " + calculation.getName(), e);
+                            Log.error("Invalid Calculation Rule: " + calculation.getName(), e);
                         }
                         Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, value,
                                 sysUserId);
@@ -273,12 +274,6 @@ public class TestCalculatedUtil {
                 result = new Result();
             }
             result.setTestResult(testResult);
-            ResultLimit resultLimit = resultLimitService.getResultLimitForTestAndPatient(test.getId(),
-                    resultCalculation.getPatient());
-            if (resultLimit != null) {
-                result.setMaxNormal(resultLimit.getHighNormal());
-                result.setMinNormal(resultLimit.getLowNormal());
-            }
             if (testResult.getSignificantDigits() != null) {
                 result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
             }
@@ -311,18 +306,31 @@ public class TestCalculatedUtil {
             } else {
                 result.setValue("");
             }
-            if (resultCalculation.getResult() != null) {
-                analysis = createCalculatedAnalysis(resultCalculation.getResult().getAnalysis(), test, resultSet.result,
-                        value, calculation.getName(), systemUserId, resultCalculated, calculation.getNote(),
-                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
-                result.setAnalysis(analysis);
-                resultService.update(result);
-            } else {
-                analysis = createCalculatedAnalysis(null, test, resultSet.result, value, calculation.getName(),
-                        systemUserId, resultCalculated, calculation.getNote(),
-                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
-                result.setAnalysis(analysis);
+            analysis = createCalculatedAnalysis(
+                    resultCalculation.getResult() == null ? null : resultCalculation.getResult().getAnalysis(), test,
+                    resultSet.result, value, calculation.getName(), systemUserId, resultCalculated,
+                    calculation.getNote(),
+                    calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
+            if (analysis == null) {
+                return null;
+            }
+            if (resultCalculation.getResult() == null) {
+                Result recorded = recordedResultFor(analysis, testResult);
+                if (recorded != null) {
+                    recorded.setTestResult(result.getTestResult());
+                    recorded.setSignificantDigits(result.getSignificantDigits());
+                    recorded.setResultType(result.getResultType());
+                    recorded.setSysUserId(systemUserId);
+                    recorded.setValue(result.getValue());
+                    result = recorded;
+                }
+            }
+            result.setAnalysis(analysis);
+            applyReferenceRange(result, analysis, test, resultCalculation);
+            if (result.getId() == null) {
                 resultService.insert(result);
+            } else {
+                resultService.update(result);
             }
             resultCalculation.setResult(result);
             resultcalculationService.update(resultCalculation);
@@ -530,10 +538,162 @@ public class TestCalculatedUtil {
         }
     }
 
+    /**
+     * Whether a patient's calculation belongs to the order the result was recorded
+     * on. Calculation state is stored per patient, so without this a second order
+     * for the same patient re-ran the first order's calculation: the new order's
+     * value was written into the earlier, possibly validated, result and the new
+     * order got none. An order is identified through the calculation's own result,
+     * or the first operand result it has bound; when neither resolves to a sample
+     * the calculation is treated as belonging to the order.
+     */
+    private boolean sameOrder(ResultCalculation resultCalculation, Result result) {
+        String resultSample = sampleIdOf(result);
+        if (resultSample == null) {
+            return true;
+        }
+        String calculationSample = resultCalculation.getResult() == null ? null
+                : sampleIdOf(resultCalculation.getResult());
+        if (calculationSample == null && resultCalculation.getOperandResultMap() != null) {
+            for (Integer operandResultId : resultCalculation.getOperandResultMap().values()) {
+                if (operandResultId != null) {
+                    calculationSample = sampleIdOf(resultService.get(operandResultId.toString()));
+                    if (calculationSample != null) {
+                        break;
+                    }
+                }
+            }
+        }
+        return calculationSample == null || calculationSample.equals(resultSample);
+    }
+
+    private String sampleIdOf(Result result) {
+        if (result == null || result.getAnalysis() == null || result.getAnalysis().getSampleItem() == null
+                || result.getAnalysis().getSampleItem().getSample() == null) {
+            return null;
+        }
+        return result.getAnalysis().getSampleItem().getSample().getId();
+    }
+
+    /**
+     * The result row of the destination component already recorded on the target
+     * analysis, so a calculated value lands on the component the order carries
+     * rather than beside it as a second row.
+     */
+    private Result recordedResultFor(Analysis analysis, TestResult destination) {
+        if (analysis.getId() == null || destination == null) {
+            return null;
+        }
+        for (Result recorded : resultService.getResultsByAnalysis(analysis)) {
+            TestResult recordedTestResult = recorded.getTestResult();
+            if (recordedTestResult == null) {
+                continue;
+            }
+            boolean sameComponent = destination.getComponentId() == null ? recordedTestResult.getComponentId() == null
+                    : destination.getComponentId().equals(recordedTestResult.getComponentId());
+            if (sameComponent) {
+                return recorded;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The reference range stored with a calculated result is the one Results Entry
+     * shows for it: the destination component's range for this patient on the
+     * analysis's specimen. Looking the range up by test alone handed a component
+     * the first matching range of the test, often another component's.
+     */
+    private void applyReferenceRange(Result result, Analysis analysis, Test test, ResultCalculation resultCalculation) {
+        ResultLimit resultLimit = analysis.getSampleItem() == null
+                ? resultLimitService.getResultLimitForTestAndPatient(test.getId(), resultCalculation.getPatient())
+                : resultLimitService.getResultLimitForResult(analysis, result, resultCalculation.getPatient());
+        if (resultLimit != null) {
+            result.setMaxNormal(resultLimit.getHighNormal());
+            result.setMinNormal(resultLimit.getLowNormal());
+        }
+    }
+
+    /**
+     * The analysis the order already holds for the calculation's resulting test on
+     * the target specimen. A calculation that writes another component of the test
+     * it reads writes into that same analysis, and a calculation whose resulting
+     * test was ordered fills that order; creating a second analysis instead left
+     * the ordered one empty forever and printed the test twice on the report.
+     */
+    private Analysis orderedTargetAnalysis(Analysis currentAnalysis, Test test, SampleItem targetItem) {
+        SampleItem item = targetItem != null ? targetItem : currentAnalysis.getSampleItem();
+        if (item == null || test == null) {
+            return null;
+        }
+        if (currentAnalysis.getTest() != null && test.getId().equals(currentAnalysis.getTest().getId())
+                && currentAnalysis.getSampleItem() != null
+                && item.getId().equals(currentAnalysis.getSampleItem().getId())) {
+            return currentAnalysis;
+        }
+        if (item.getId() == null) {
+            return null;
+        }
+        String canceled = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        for (Analysis ordered : analysisService.getAnalysesBySampleItem(item)) {
+            if (ordered.getTest() != null && test.getId().equals(ordered.getTest().getId())
+                    && !canceled.equals(ordered.getStatusId())) {
+                return ordered;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Fill an analysis the order already carries with a calculated value. Only what
+     * the calculation changes is touched: the analysis moves out of NotStarted once
+     * a value is calculated, and is flagged as calculated; it keeps its own test,
+     * specimen, revision and lineage.
+     */
+    private Analysis fillOrderedAnalysis(Analysis ordered, Analysis currentAnalysis, String calculationName,
+            String systemUserId, Boolean resultCalculated, String externalNote) {
+        Analysis target = analysisService.get(ordered.getId());
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (resultCalculated && statusService.getStatusID(AnalysisStatus.NotStarted).equals(target.getStatusId())) {
+            target.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+        }
+        if (target.getStartedDate() == null) {
+            target.setStartedDate(DateUtil.getNowAsTimestamp());
+        }
+        target.setResultCalculated(resultCalculated);
+        target.setSysUserId(systemUserId);
+        try {
+            analysisService.update(target);
+        } catch (Exception e) {
+            return null;
+        }
+        if (resultCalculated) {
+            createInternalNote(target, currentAnalysis, calculationName, systemUserId, externalNote);
+        } else {
+            createMissingValueInternalNote(target, currentAnalysis, calculationName, systemUserId);
+        }
+        return target;
+    }
+
     private Analysis createCalculatedAnalysis(Analysis existingAnalysis, Test test, Result result, String value,
             String calculationName, String systemUserId, Boolean resultCalculated, String externalNote,
             String targetSampleTypeId) {
         Analysis currentAnalysis = result.getAnalysis();
+        if (existingAnalysis != null && (existingAnalysis.getParentAnalysis() == null
+                || existingAnalysis.getId().equals(currentAnalysis.getId()))) {
+            return fillOrderedAnalysis(existingAnalysis, currentAnalysis, calculationName, systemUserId,
+                    resultCalculated, externalNote);
+        }
+        if (existingAnalysis == null) {
+            SampleItem targetItem = ruleResultScope.resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem() == null ? null : currentAnalysis.getSampleItem().getSample(),
+                    targetSampleTypeId, systemUserId);
+            Analysis ordered = orderedTargetAnalysis(currentAnalysis, test, targetItem);
+            if (ordered != null) {
+                return fillOrderedAnalysis(ordered, currentAnalysis, calculationName, systemUserId, resultCalculated,
+                        externalNote);
+            }
+        }
         Analysis generatedAnalysis = null;
         if (existingAnalysis != null) {
             generatedAnalysis = analysisService.get(existingAnalysis.getId());

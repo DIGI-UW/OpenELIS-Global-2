@@ -47,9 +47,21 @@ public class QCControlLotValidator {
      * legitimately recurs across different tests, and EXPIRED (retired) lots never
      * block reuse. Mirrored by the partial unique index uq_qc_control_lot_active
      * (qc-028) per the inversion-test convention.
+     *
+     * <p>
+     * Only a save that adds a live row to a key is refused: a new lot, a lot moved
+     * onto another key, or a retired lot brought back. Releases before the index
+     * kept one live row of the same lot per instrument, and upgraded sites still
+     * hold those pairs (qc-028 skips the index over them); refusing every save of
+     * such a lot left it impossible to edit or even retire, although retiring it is
+     * what the message asks for.
      */
     private void validateNoDuplicateLot(QCControlLot lot) {
         if (StringUtils.isBlank(lot.getLotNumber()) || StringUtils.isBlank(lot.getTestId())) {
+            return;
+        }
+        if ("EXPIRED".equals(lot.getStatus()) || controlLotDAO.isStoredLiveUnderKey(lot.getId(), lot.getLotNumber(),
+                lot.getTestId(), lot.getControlLevel())) {
             return;
         }
         List<QCControlLot> existing = controlLotDAO.getNonExpiredByLotTestAndLevel(lot.getLotNumber(), lot.getTestId(),
