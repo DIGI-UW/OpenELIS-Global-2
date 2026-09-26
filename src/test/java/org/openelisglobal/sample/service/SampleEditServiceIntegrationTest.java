@@ -17,6 +17,8 @@ import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
@@ -47,6 +49,9 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleHumanService sampleHumanService;
 
     @Before
     public void setUp() throws Exception {
@@ -89,6 +94,28 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("Reference should match", "REF-123", updatedSample.getConsentFormReference());
         assertEquals("Recorded At should match exactly", "2024-02-15 00:00:00.0",
                 updatedSample.getConsentRecordedAt().toString());
+    }
+
+    /**
+     * OGC-1266: an order saved without a patient (EQA, environmental, a declared
+     * no-patient order) could not be modified at all; the save dereferenced the
+     * missing patient.
+     */
+    @Test
+    public void editSample_onAnOrderWithoutAPatient_shouldSaveTheChange() {
+        Sample sample = sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER);
+        SampleHuman lookup = new SampleHuman();
+        lookup.setSampleId(sample.getId());
+        SampleHuman link = sampleHumanService.getDataBySample(lookup);
+        link.setPatientId(null);
+        link.setSysUserId(SYS_USER_ID);
+        sampleHumanService.update(link);
+        SampleEditForm form = createBaseForm();
+        form.getSampleOrderItems().setPriority(OrderPriority.STAT);
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(), sample, true, SYS_USER_ID);
+
+        assertEquals(OrderPriority.STAT, sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER).getPriority());
     }
 
     @Test
