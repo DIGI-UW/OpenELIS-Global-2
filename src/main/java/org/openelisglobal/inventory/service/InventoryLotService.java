@@ -55,6 +55,8 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     Double getTotalCurrentQuantity(Long itemId);
 
+    Double getTotalUsableQuantity(Long itemId);
+
     /**
      * Open a lot (marks as IN_USE and calculates expiry after opening for reagents)
      *
@@ -118,4 +120,5 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * EXPIRED Returns count of lots updated
      */
     int processExpiredLots();
+
 }
