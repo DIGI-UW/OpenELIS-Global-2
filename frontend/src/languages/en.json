@@ -4941,6 +4941,7 @@
   "order.attachment.delete.failed": "Could not delete the attachment. Please try again.",
   "order.attachment.dropzone": "Drag and drop files here, or click to browse",
   "order.attachment.empty": "No attachments yet.",
+  "order.attachment.saveFirst": "Save the order to add attachments.",
   "order.attachment.error.maxFiles": "You can attach at most {maxFiles} files.",
   "order.attachment.error.size": "Each file must be {maxSize} or smaller.",
   "order.attachment.error.type": "Allowed file types: {types}",
