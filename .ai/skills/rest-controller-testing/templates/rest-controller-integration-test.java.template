@@ -1,0 +1,85 @@
+package org.openelisglobal.${module}.controller;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
+
+/**
+ * Integration tests for ${ControllerName} — exercises real HTTP endpoints
+ * through MockMvc against a live Testcontainers database.
+ */
+public class ${ControllerName}IntegrationTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private javax.sql.DataSource dataSource;
+
+    private JdbcTemplate jdbc;
+    private MockHttpSession session;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbc = new JdbcTemplate(dataSource);
+        cleanup();
+        // TODO: insert test rows here
+        // jdbc.update("INSERT INTO clinlims.my_table (id, ...) VALUES (99901, ...)");
+
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+    }
+
+    @After
+    public void tearDown() {
+        cleanup();
+    }
+
+    private void cleanup() {
+        // TODO: mirror every insert above
+        // jdbc.update("DELETE FROM clinlims.my_table WHERE id IN (99901)");
+    }
+
+    @Test
+    public void get_existingResource_returns200WithExpectedFields() throws Exception {
+        mockMvc.perform(get("${endpoint}/{id}", "99901")
+                .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value("99901"));
+                // TODO: assert every relevant field with exact scalar values
+    }
+
+    @Test
+    public void post_validPayload_returns200AndPersistsRow() throws Exception {
+        mockMvc.perform(post("${endpoint}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"field\":\"value\"}")
+                .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+                // TODO: query DB to assert the row was actually persisted
+    }
+
+    @Test
+    public void post_invalidPayload_returns400() throws Exception {
+        mockMvc.perform(post("${endpoint}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")  // deliberately missing required fields
+                .session(session))
+                .andExpect(status().isBadRequest());
+    }
+}
