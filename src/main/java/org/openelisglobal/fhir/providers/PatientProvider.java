@@ -236,6 +236,19 @@ public class PatientProvider implements IResourceProvider {
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_FAMILY) StringAndListParam family,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_BIRTHDATE) DateRangeParam birthdate,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GENDER) TokenAndListParam gender,
+            @OptionalParam(name = "address-city") StringAndListParam city,
+
+            @OptionalParam(name = "address-state") StringAndListParam state,
+
+            @OptionalParam(name = "address-postalcode") StringAndListParam postalCode,
+
+            @OptionalParam(name = "address-country") StringAndListParam country,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_TELECOM) TokenAndListParam telecom,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_EMAIL) TokenAndListParam email,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_PHONE) TokenAndListParam phone,
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
             @Offset Integer offset, @Count Integer count,
             @IncludeParam(reverse = true, allow = { FhirConstants.SERVICE_REQUEST_PATIENT_REV_INCLUDE,
@@ -250,7 +263,7 @@ public class PatientProvider implements IResourceProvider {
 
         try {
             PatientSearchParams params = new PatientSearchParams(id, identifier, name, given, family, birthdate, gender,
-                    lastUpdated, sort, revIncludes);
+                    city, state, postalCode, country, telecom, email, phone, lastUpdated, sort, revIncludes);
             return FhirProviderUtils.withPaging(patientSearchService.searchPatients(params), offset, count);
         } catch (InvalidRequestException e) {
             throw e;
