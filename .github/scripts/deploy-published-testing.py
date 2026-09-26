@@ -5,8 +5,10 @@ import argparse
 import base64
 import datetime
 import fcntl
+import functools
 import importlib.util
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -38,6 +40,7 @@ BUNDLE_FILES = (
     "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
     "projects/analyzer-harness/seed-mvp-traffic.sh",
+    "projects/analyzer-harness/config-templates/tests/harness-tests.csv",
 )
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
@@ -67,8 +70,8 @@ def validate_manifest(manifest, namespace="itechuw"):
     return manifest
 
 
-def run(args, cwd, capture=False):
-    return subprocess.run(args, cwd=cwd, check=True, text=True,
+def run(args, cwd, capture=False, env=None):
+    return subprocess.run(args, cwd=cwd, env=env, check=True, text=True,
                           stdout=subprocess.PIPE if capture else None).stdout
 
 
@@ -99,6 +102,11 @@ def unpack_release(bundle, site_dir, sha):
     releases = site_dir / "releases"
     releases.mkdir(exist_ok=True)
     release = releases / sha
+    if release.exists():
+        missing = [name for name in BUNDLE_FILES if not (release / name).is_file()]
+        if missing:
+            raise ValueError("Existing release is incomplete; refusing to replace mounted files: " + ", ".join(missing))
+        return release
     with tempfile.TemporaryDirectory(prefix="unpack-", dir=releases) as staging:
         staging = pathlib.Path(staging)
         with tarfile.open(bundle) as archive:
@@ -110,8 +118,16 @@ def unpack_release(bundle, site_dir, sha):
         lucene = site_dir / "lucene"
         lucene.mkdir(exist_ok=True)
         (staging / "volume/lucene").symlink_to(lucene, target_is_directory=True)
-        if release.exists():
-            shutil.rmtree(release)
+        # Catalog uploads belong to the site, not to a disposable release.
+        configuration = site_dir / "configuration"
+        configuration.mkdir(exist_ok=True)
+        catalog = configuration / "backend"
+        if not catalog.exists():
+            with tempfile.TemporaryDirectory(prefix="catalog-", dir=configuration) as catalog_staging:
+                seeded = pathlib.Path(catalog_staging) / "backend"
+                shutil.copytree(staging / "projects/analyzer-harness/config-templates", seeded)
+                seeded.rename(catalog)
+        (staging / "configuration").symlink_to(configuration, target_is_directory=True)
         staging.rename(release)
         staging.mkdir()
     return release
@@ -127,15 +143,29 @@ def compose_command(site_dir, release, override=None):
     return command + (["-f", str(override)] if override else [])
 
 
+def site_settings(site_dir, release):
+    # Let Compose parse quoting and interpolation exactly as it does for the stack.
+    output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
+    environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    return {
+        "TEST_USER": environment.get("TEST_USER") or environment.get("OE_ADMIN_USERNAME") or TEST_USER,
+        "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD") or TEST_PASS,
+        "MOCK_URL": "http://127.0.0.1:" + (environment.get("ASTM_SIMULATOR_HTTP_PORT") or "8085"),
+    }
+
+
 def smoke_accession(run_id):
     digits = re.sub(r"\D", "", run_id)
     return "DEV019" + digits.zfill(14)[-14:]
 
 
-def http_json(method, url, body=None):
-    token = base64.b64encode(f"{TEST_USER}:{TEST_PASS}".encode()).decode()
+def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, auth_origin=None):
+    headers = {"Content-Type": "application/json"}
+    if auth_origin is None or url.startswith(auth_origin + "/"):
+        token = base64.b64encode(f"{username}:{password}".encode()).decode()
+        headers["Authorization"] = "Basic " + token
     request = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json", "Authorization": "Basic " + token})
+                                     headers=headers)
     with urllib.request.urlopen(request, timeout=30, context=ssl._create_unverified_context()) as response:
         return json.load(response)
 
@@ -179,13 +209,14 @@ def deploy(request, diagnostics, bundle):
     override = state_dir / "deployment-images.json"
     target_path = state_dir / "target.json"
     origin = "{0.scheme}://{0.netloc}".format(urllib.parse.urlsplit(contract["url"]))
-    mock_url = request.get("mock_url", DEFAULT_MOCK_URL)
     release = None
     try:
         require_current_candidate(manifest["appSha"], site_dir)
         require_stack_owner(site_dir)
         state_dir.mkdir(exist_ok=True)
         release = unpack_release(bundle, site_dir, manifest["appSha"])
+        settings = site_settings(site_dir, release)
+        mock_url = request.get("mock_url", settings["MOCK_URL"])
         # Stage on the same filesystem so promotion is atomic.
         with tempfile.TemporaryDirectory(prefix="candidate-", dir=state_dir) as candidate_dir:
             candidate_override = pathlib.Path(candidate_dir) / override.name
@@ -220,9 +251,11 @@ def deploy(request, diagnostics, bundle):
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
              "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network", "--activate"],
-            release)
+            release, env={**os.environ, **settings})
+        authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
+                                               password=settings["TEST_PASS"], auth_origin=origin)
         delivery = verify_analyzer_delivery(origin + "/api/OpenELIS-Global/rest", mock_url,
-                                            smoke_accession(request["run_id"]))
+                                            smoke_accession(request["run_id"]), http=authenticated_http)
         target = {"instance": "testing", "state": "ready", "appSha": manifest["appSha"],
                   "appBranch": manifest["appBranch"], "release": str(release), "images": images,
                   "deploymentId": request["run_id"],

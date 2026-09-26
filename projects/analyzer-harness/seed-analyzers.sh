@@ -8,11 +8,13 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# --activate: also confirm mappings and activate the priority connections,
-#   without sending traffic.
+# --activate: initialize mappings and activate newly created priority connections,
+#   preserving existing shared mappings and connection activation choices.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
 ACTIVATE=false
+ACTIVATION_ARGS=()
+HAS_NEW_PRIORITY=false
 for arg in "$@"; do
   case "$arg" in
     --ensure-connections) ENSURE_CONNECTIONS=true ;;
@@ -183,6 +185,12 @@ PY
     action_label="Updated"
   fi
 
+  local mapping_mode="preserve"
+  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
+    fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id site mapping"
+    mapping_mode="$(python3 -c 'import json,sys; print("preserve" if json.load(open(sys.argv[1])).get("siteBindingId") else "initialize")' "$RESPONSE_FILE")"
+  fi
+
   local status
   status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
   if [ "$status" != "$expected_status" ]; then
@@ -191,6 +199,10 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
+  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
+    ACTIVATION_ARGS+=("$name" "$mapping_mode")
+    HAS_NEW_PRIORITY=true
+  fi
 }
 
 lookup_mock_network_ip() {
@@ -307,12 +319,12 @@ reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUD
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
-if [ "$ACTIVATE" = true ]; then
-  echo "Confirming mappings and activating priority connections..."
+if [ "$ACTIVATE" = true ] && [ "$HAS_NEW_PRIORITY" = true ]; then
+  echo "Initializing newly created priority connections..."
   BASE_URL="$BASE_URL" \
   TEST_USER="$TEST_USER" \
   TEST_PASS="$TEST_PASS" \
-    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate
+    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate "${ACTIVATION_ARGS[@]}"
 fi
 
 if [ "$ENSURE_CONNECTIONS" = true ]; then

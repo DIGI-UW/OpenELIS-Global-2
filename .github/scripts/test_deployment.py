@@ -52,7 +52,7 @@ class DeploymentTest(unittest.TestCase):
         self.port_owner = deployment.PROJECT
         self.delivery = []
 
-    def command(self, args, _cwd, capture=False):
+    def command(self, args, _cwd, capture=False, **_kwargs):
         self.commands.append(args)
         if args[:2] == ["git", "ls-remote"]:
             return self.branch_head + "\trefs/heads/develop\n"

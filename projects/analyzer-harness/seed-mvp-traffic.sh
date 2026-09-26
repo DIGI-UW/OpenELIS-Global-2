@@ -12,8 +12,8 @@ ACTIVATE_ONLY=false
 case "${1:-}" in
   "") ;;
   --setup-only) SETUP_ONLY=true ;;
-  --activate) ACTIVATE_ONLY=true ;;
-  *) echo "Usage: $0 [--setup-only|--activate]" >&2; exit 2 ;;
+  --activate) ACTIVATE_ONLY=true; shift ;;
+  *) echo "Usage: $0 [--setup-only|--activate [new-analyzer-name initialize-or-preserve]...]" >&2; exit 2 ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -581,13 +581,53 @@ PY
   return 1
 }
 
+# Only the connections created by seed-analyzers in this invocation are eligible.
+# Existing connections never enter this path, even when deliberately inactive.
+if [ "$ACTIVATE_ONLY" = true ]; then
+  while [ "$#" -gt 0 ]; do
+    if [ "$#" -lt 2 ]; then
+      echo "ERROR: --activate expects name/mapping-mode pairs" >&2
+      exit 2
+    fi
+    name="$1"
+    mapping_mode="$2"
+    shift 2
+    case "$name" in
+      "$GENEXPERT_NAME") profile_id="$GENEXPERT_PROFILE" ;;
+      "$FLUOROCYCLER_NAME") profile_id="$FLUOROCYCLER_PROFILE" ;;
+      *) echo "ERROR: Unknown priority analyzer: $name" >&2; exit 2 ;;
+    esac
+    if [ "$(analyzer_field "$name" status)" = "ACTIVE" ]; then
+      echo "  Already active: $name"
+      continue
+    fi
+    analyzer_id="$(analyzer_field "$name" id)"
+    revision="$(analyzer_field "$name" profileRevision)"
+    case "$mapping_mode" in
+      initialize) prepare_profile_mapping "$profile_id" "$revision" ;;
+      preserve)
+        mapping_file="$TMP_DIR/current-$profile_id-mapping.json"
+        fetch_json "$OE_API/analyzer-types/$profile_id/mapping?revision=$revision" "$mapping_file" "$profile_id mapping"
+        if [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("confirmation", {}).get("state", "UNCONFIRMED"))' "$mapping_file")" != "CURRENT" ]; then
+          echo "  Preserved existing unconfirmed mapping; activate $name in OpenELIS when ready."
+          continue
+        fi
+        ;;
+      *) echo "ERROR: Unknown mapping mode: $mapping_mode" >&2; exit 2 ;;
+    esac
+    adopt_mapping_and_activate "$analyzer_id" "$profile_id"
+  done
+  echo "Done. Existing mappings and connections preserved; no traffic was sent."
+  exit 0
+fi
+
 echo "Preparing current site mappings and active priority connections..."
 GENEXPERT_ID="$(analyzer_field "$GENEXPERT_NAME" id)"
 GENEXPERT_REVISION="$(analyzer_field "$GENEXPERT_NAME" profileRevision)"
 FLUOROCYCLER_ID="$(analyzer_field "$FLUOROCYCLER_NAME" id)"
 FLUOROCYCLER_REVISION="$(analyzer_field "$FLUOROCYCLER_NAME" profileRevision)"
 
-if [ "$SETUP_ONLY" = true ] || [ "$ACTIVATE_ONLY" = true ]; then
+if [ "$SETUP_ONLY" = true ]; then
   prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION"
 else
   prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION" \
@@ -597,21 +637,6 @@ prepare_profile_mapping "$FLUOROCYCLER_PROFILE" "$FLUOROCYCLER_REVISION"
 
 if [ "$SETUP_ONLY" = true ]; then
   echo "Done. Confirmed mappings are ready for guided setup; no traffic was sent."
-  exit 0
-fi
-
-if [ "$ACTIVATE_ONLY" = true ]; then
-  # Re-adopting a binding on an active analyzer is refused, so reruns skip them.
-  for name in "$GENEXPERT_NAME" "$FLUOROCYCLER_NAME"; do
-    if [ "$(analyzer_field "$name" status)" = "ACTIVE" ]; then
-      echo "  Already active: $name"
-    elif [ "$name" = "$GENEXPERT_NAME" ]; then
-      adopt_mapping_and_activate "$GENEXPERT_ID" "$GENEXPERT_PROFILE"
-    else
-      adopt_mapping_and_activate "$FLUOROCYCLER_ID" "$FLUOROCYCLER_PROFILE"
-    fi
-  done
-  echo "Done. Priority connections are active; no traffic was sent."
   exit 0
 fi
 

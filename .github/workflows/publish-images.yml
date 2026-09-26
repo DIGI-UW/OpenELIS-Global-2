@@ -1,21 +1,22 @@
 # Publishes tested images after merge/release only.
-# Triggered by 03 - E2E build completion and gated on the wrapper-reported
+# Triggered by 03 - E2E build completion or a manual testing deployment, gated on
 # `03 Checkpoint - E2E` and backend (including existing-data upgrade) contracts.
-name: Publish Images
+name: Publish images / Deploy testing
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["03 - E2E"]
     types: [completed]
 
 concurrency:
-  group: publish-images-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: true
+  group: publish-images-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   setup:
     name: Setup Publish Context
-    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,27 +26,42 @@ jobs:
       head_sha: ${{ steps.context.outputs.head_sha }}
       head_branch: ${{ steps.context.outputs.head_branch }}
       image_transfer: ${{ steps.context.outputs.image_transfer }}
-      build_run_id: ${{ github.event.workflow_run.id }}
-      build_run_attempt: ${{ github.event.workflow_run.run_attempt }}
+      build_run_id: ${{ steps.context.outputs.build_run_id }}
+      build_run_attempt: ${{ steps.context.outputs.build_run_attempt }}
     steps:
-      - name: Capture publish context from triggering workflow
+      - name: Select the build to publish and deploy
         id: context
-        run: |
-          EVENT_NAME="${{ github.event.workflow_run.event }}"
-          IMAGE_TRANSFER="none"
-          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
-
-          CONCLUSION="${{ github.event.workflow_run.conclusion }}"
-          if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "cancelled" ]; then
-            IMAGE_TRANSFER="ghcr"
-          fi
-
-          echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
-          echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "Publish context: event=$EVENT_NAME image_transfer=$IMAGE_TRANSFER head_sha=$HEAD_SHA head_branch=$HEAD_BRANCH"
+        uses: actions/github-script@v8
+        with:
+          script: |
+            let run = context.payload.workflow_run;
+            if (context.eventName === 'workflow_dispatch') {
+              if (context.ref !== 'refs/heads/develop') {
+                throw new Error('Run Deploy testing from the develop branch.');
+              }
+              const { owner, repo } = context.repo;
+              const { data: branch } = await github.rest.repos.getBranch({ owner, repo, branch: 'develop' });
+              const sha = branch.commit.sha;
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: 'e2e-playwright.yml', branch: 'develop',
+                event: 'push', head_sha: sha, per_page: 100,
+              });
+              run = data.workflow_runs
+                .filter(candidate => candidate.head_sha === sha && candidate.event === 'push')
+                .sort((left, right) => right.id - left.id)[0];
+              if (!run || run.status !== 'completed' || run.conclusion !== 'success') {
+                throw new Error(`The latest develop build for ${sha} has not succeeded. Wait for CI before deploying.`);
+              }
+              core.info(`Deploy testing: using the existing build ${run.html_url}`);
+            }
+            const transfer = ['success', 'cancelled'].includes(run.conclusion) ? 'ghcr' : 'none';
+            core.setOutput('event_name', run.event);
+            core.setOutput('head_sha', run.head_sha);
+            core.setOutput('head_branch', run.head_branch);
+            core.setOutput('image_transfer', transfer);
+            core.setOutput('build_run_id', String(run.id));
+            core.setOutput('build_run_attempt', String(run.run_attempt));
+            core.info(`Publish context: event=${run.event} sha=${run.head_sha} branch=${run.head_branch}`);
 
   wait-for-e2e-checkpoint:
     name: Wait For Backend And E2E Checkpoints
