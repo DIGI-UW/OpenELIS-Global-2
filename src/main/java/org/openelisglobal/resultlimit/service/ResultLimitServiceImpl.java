@@ -194,7 +194,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId) {
-        return selectForPatient(scopeToSampleType(getResultLimits(testId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimits(testId), sampleTypeId, patient);
     }
 
     @Override
@@ -209,38 +209,40 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         if (GenericValidator.isBlankOrNull(componentId)) {
             return null;
         }
-        return selectForPatient(scopeToSampleType(getResultLimitsByComponentId(componentId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimitsByComponentId(componentId), sampleTypeId, patient);
     }
 
     /**
-     * OGC-1145 Phase 2 — specimen precedence over a limit pool: rows scoped to the
-     * given sample type win; otherwise the shared (null-scope) rows apply. Without
-     * a specimen in context, shared rows are preferred so an override for one
-     * specimen never leaks into another's evaluation. The full pool is the last
-     * resort (legacy data where every row predates scoping).
+     * OGC-1145 Phase 2 — specimen precedence over a limit pool: a row scoped to the
+     * given sample type wins for the patients it matches, and the shared
+     * (null-scope) rows back every patient the override does not cover. An override
+     * for Female adults on one specimen therefore leaves Male and paediatric
+     * patients on that specimen with the shared ranges, which is what the range
+     * coverage check assumes; selecting from the override rows alone left them with
+     * no range at all. Without a specimen in context, shared rows are preferred so
+     * an override for one specimen never leaks into another's evaluation. The full
+     * pool is the last resort (legacy data where every row predates scoping).
      */
-    private static List<ResultLimit> scopeToSampleType(List<ResultLimit> pool, String sampleTypeId) {
+    private ResultLimit selectWithSpecimenPrecedence(List<ResultLimit> pool, String sampleTypeId, Patient patient) {
         if (pool == null || pool.isEmpty()) {
-            return pool;
-        }
-        if (!GenericValidator.isBlankOrNull(sampleTypeId)) {
-            List<ResultLimit> scoped = new ArrayList<>();
-            for (ResultLimit limit : pool) {
-                if (sampleTypeId.equals(limit.getSampleTypeId())) {
-                    scoped.add(limit);
-                }
-            }
-            if (!scoped.isEmpty()) {
-                return scoped;
-            }
+            return null;
         }
         List<ResultLimit> shared = new ArrayList<>();
+        List<ResultLimit> scoped = new ArrayList<>();
         for (ResultLimit limit : pool) {
             if (GenericValidator.isBlankOrNull(limit.getSampleTypeId())) {
                 shared.add(limit);
+            } else if (sampleTypeId != null && sampleTypeId.equals(limit.getSampleTypeId())) {
+                scoped.add(limit);
             }
         }
-        return shared.isEmpty() ? pool : shared;
+        if (!scoped.isEmpty()) {
+            ResultLimit override = selectForPatient(scoped, patient);
+            if (override != null && !GenericValidator.isBlankOrNull(override.getId()) || shared.isEmpty()) {
+                return override;
+            }
+        }
+        return selectForPatient(shared.isEmpty() ? new ArrayList<>(pool) : shared, patient);
     }
 
     /** Pick the best-matching limit from a pool for the patient's age/gender. */

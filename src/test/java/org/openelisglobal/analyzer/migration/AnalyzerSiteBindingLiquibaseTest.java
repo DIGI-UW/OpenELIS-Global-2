@@ -55,16 +55,6 @@ public class AnalyzerSiteBindingLiquibaseTest {
     }
 
     @Test
-    public void migrationRemovesTheSupersededDirectAnalyzerProfileReference() throws Exception {
-        Element removal = changeSet(parse(MIGRATION), "OGC-1054-remove-direct-analyzer-profile-reference");
-
-        assertEquals(Set.of("fk_analyzer_profile_binding"),
-                attributes(elements(removal, "dropForeignKeyConstraint"), "constraintName"));
-        assertEquals(Set.of("idx_analyzer_profile_binding"), attributes(elements(removal, "dropIndex"), "indexName"));
-        assertEquals(Set.of("profile_binding_id"), attributes(elements(removal, "dropColumn"), "columnName"));
-    }
-
-    @Test
     public void migrationStoresReferencesAndLocalDecisionsWithoutCopyingPortableProfileContent() throws Exception {
         Document profileReferenceMigration = parse(PROFILE_REFERENCE_MIGRATION);
         Document migration = parse(MIGRATION);

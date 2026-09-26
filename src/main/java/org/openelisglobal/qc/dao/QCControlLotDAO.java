@@ -45,6 +45,14 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
      * uniqueness key for a usable lot. The same physical lot number legitimately
      * recurs across different tests, and retired lots don't block reuse.
      */
+    /**
+     * Whether the stored row of this lot is already live under the given
+     * (lotNumber, testId, controlLevel) key, read from the database rather than
+     * from a possibly edited managed instance.
+     */
+    boolean isStoredLiveUnderKey(String id, String lotNumber, String testId, String controlLevel)
+            throws LIMSRuntimeException;
+
     List<QCControlLot> getNonExpiredByLotTestAndLevel(String lotNumber, String testId, String controlLevel)
             throws LIMSRuntimeException;
 
