@@ -76,6 +76,13 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
     private Object originalFhirReferralServiceOnSetService;
 
     @Before
+    @After
+    public void cleanUp() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "referral_result", "referral", "analysis", "sample_item", "sample",
+                "result", "system_user" });
+    }
+
+    @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/referral-set.xml");
         fhirReferralServiceMock = Mockito.mock(FhirReferralService.class);
