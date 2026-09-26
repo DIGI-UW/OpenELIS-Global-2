@@ -105,37 +105,41 @@ public class ReportController extends BaseController {
     private void printReport(HttpServletRequest request, HttpServletResponse response, ReportForm form) {
         IReportCreator reportCreator = ReportImplementationFactory.getReportCreator(request.getParameter("report"));
 
-        if (reportCreator != null) {
-            reportCreator.setSystemUserId(getSysUserId(request));
-            reportCreator.setRequestedReport(request.getParameter("report"));
-            reportCreator.initializeReport(form);
-            reportCreator.setReportPath(getReportPath());
+        if (reportCreator == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Report not found or has been removed: " + request.getParameter("report"));
+        }
 
-            HashMap<String, String> parameterMap = (HashMap<String, String>) reportCreator.getReportParameters();
-            parameterMap.put("SUBREPORT_DIR", getReportPath());
-            parameterMap.put("imagesPath", getImagesPath());
+        reportCreator.setSystemUserId(getSysUserId(request));
+        reportCreator.setRequestedReport(request.getParameter("report"));
+        reportCreator.initializeReport(form);
+        reportCreator.setReportPath(getReportPath());
 
-            try {
-                response.setContentType(reportCreator.getContentType());
-                String responseHeaderName = reportCreator.getResponseHeaderName();
-                String responseHeaderContent = reportCreator.getResponseHeaderContent();
-                if (!GenericValidator.isBlankOrNull(responseHeaderName)
-                        && !GenericValidator.isBlankOrNull(responseHeaderContent)) {
-                    response.setHeader(responseHeaderName, responseHeaderContent);
-                }
+        HashMap<String, String> parameterMap = (HashMap<String, String>) reportCreator.getReportParameters();
+        parameterMap.put("SUBREPORT_DIR", getReportPath());
+        parameterMap.put("imagesPath", getImagesPath());
 
-                byte[] bytes = reportCreator.runReport();
-
-                response.setContentLength(bytes.length);
-
-                ServletOutputStream servletOutputStream = response.getOutputStream();
-
-                servletOutputStream.write(bytes, 0, bytes.length);
-                servletOutputStream.flush();
-                servletOutputStream.close();
-            } catch (IOException | SQLException | JRException | DocumentException | ParseException e) {
-                LogEvent.logError(e);
+        try {
+            response.setContentType(reportCreator.getContentType());
+            String responseHeaderName = reportCreator.getResponseHeaderName();
+            String responseHeaderContent = reportCreator.getResponseHeaderContent();
+            if (!GenericValidator.isBlankOrNull(responseHeaderName)
+                    && !GenericValidator.isBlankOrNull(responseHeaderContent)) {
+                response.setHeader(responseHeaderName, responseHeaderContent);
             }
+
+            byte[] bytes = reportCreator.runReport();
+
+            response.setContentLength(bytes.length);
+
+            ServletOutputStream servletOutputStream = response.getOutputStream();
+
+            servletOutputStream.write(bytes, 0, bytes.length);
+            servletOutputStream.flush();
+            servletOutputStream.close();
+        } catch (IOException | SQLException | JRException | DocumentException | ParseException e) {
+            LogEvent.logError(e);
         }
 
         if ("patient".equals(request.getParameter("type"))) {

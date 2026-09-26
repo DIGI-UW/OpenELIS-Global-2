@@ -18,15 +18,9 @@
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.Date;
-import java.sql.SQLException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.openelisglobal.reports.action.implementation.Report.DateRange;
-import org.openelisglobal.reports.service.WHONetReportService;
-import org.openelisglobal.spring.util.SpringContext;
 
 /**
  * @author pahill (pahill@uw.edu)
@@ -94,42 +88,12 @@ public class WHONETCSVRoutineColumnBuilder {
         }
     }
 
-    private List<WHONetRow> rows;
-    private int index = -1;
-
-    private String eol = System.getProperty("line.separator");
-    private DateRange dateRange;
-
-    /**
-     * @param dateRange
-     * @param projectStr
-     */
-    public WHONETCSVRoutineColumnBuilder(DateRange dateRange) {
-        this.dateRange = dateRange;
-    }
-
-    public void searchForWHONetResults() {
-        WHONetReportService reportService = SpringContext.getBean(WHONetReportService.class);
-        Date lowDate = dateRange.getLowDate();
-        Date highDate = dateRange.getHighDate();
-        rows = reportService.getWHONetRows(lowDate, highDate);
-        return;
-    }
-
-    public void buildDataSource() throws SQLException {
-        searchForWHONetResults();
-    }
-
     /**
      * Useful for the 1st line of a CSV files. This produces a completely escaped
      * for MSExcel comma separated list of columns.
      *
      * @return one string with all names.
      */
-    public String getColumnNamesLine() {
-        return columnNamesLine();
-    }
-
     public static String columnNamesLine() {
         return new StringBuilder()
                 .append(new WHONetRow("NATIONAL_ID", "FIRST_NAME", "LAST_NAME", "SEX", "BIRTH_DATE", "DATE_ENTERED",
@@ -145,18 +109,5 @@ public class WHONETCSVRoutineColumnBuilder {
             lines.add(row.getRow());
         }
         return (String.join(System.lineSeparator(), lines) + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
-    }
-
-    /**
-     * @return @
-     * @throws ParseException
-     * @throws SQLException
-     */
-    public String nextLine() throws SQLException, ParseException {
-        return new StringBuilder().append(rows.get(index).getRow()).append(eol).toString();
-    }
-
-    public boolean next() throws SQLException {
-        return ++index < rows.size();
     }
 }

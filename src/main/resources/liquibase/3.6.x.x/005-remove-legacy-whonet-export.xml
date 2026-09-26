@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="system" id="remove-legacy-whonet-export-menu">
+        <comment>Remove legacy whonet export menu entry</comment>
+
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id = 'menu_reports_whonet_export'</where>
+        </delete>
+
+        <rollback>
+            <insert tableName="menu" schemaName="clinlims">
+                <column name="id" valueSequenceNext="menu_seq" />
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports')" />
+                <column name="presentation_order" value="99" />
+                <column name="element_id" value="menu_reports_whonet_export" />
+                <column name="action_url" value="/Report?type=patient&amp;report=ExportWHONETReportByDate" />
+                <column name="display_key" value="reports.export.whonet" />
+                <column name="tool_tip_key" value="tooltip.reports.export.whonet" />
+                <column name="new_window" value="false" />
+                <column name="is_active" value="true" />
+            </insert>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
