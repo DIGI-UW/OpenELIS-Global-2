@@ -53,8 +53,19 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Autowired
     private SystemUserService systemUserService;
 
-    private final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal
-            .withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
+    /*
+     * An expiry or a receipt date is a calendar date that happens to be stored in a
+     * timestamp column, written as midnight UTC. Rendering it in the server's own
+     * zone moved the day for every deployment west of Greenwich: a lot entered as
+     * 30 June was reported as the 29th. Reading it back in the zone it was written
+     * in is what makes the round trip hold. Timestamps that really are instants go
+     * through formatDateTime, which stays local on purpose.
+     */
+    private final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal.withInitial(() -> {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return format;
+    });
     private final ThreadLocal<SimpleDateFormat> dateTimeFormat = ThreadLocal
             .withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
 

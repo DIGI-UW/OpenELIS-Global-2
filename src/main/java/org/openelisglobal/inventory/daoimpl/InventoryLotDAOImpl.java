@@ -57,7 +57,13 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
                     + "AND l.currentQuantity > 0 "
-                    + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
+                    // The effective expiry, not the printed one. A vial opened
+                    // last week goes off before its label says, and ordering on
+                    // the printed date alone handed out the longer-lived lot
+                    // first and left the shortened one to expire on the shelf.
+                    // LEAST ignores nulls in Postgres, which is what a lot with
+                    // only one of the two dates needs.
+                    + "ORDER BY least(l.expirationDate, l.calculatedExpiryAfterOpening) ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);

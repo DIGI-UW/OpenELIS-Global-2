@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")
+/*
+ * Guarded to the roles the Storage screens are already routed to. Without this
+ * the controller was open to any authenticated user, who could enumerate every
+ * reagent lot in the lab and move one to another box — beside ten inventory
+ * controllers that do carry a guard, which makes the module easy to read as
+ * fully protected when it is not.
+ */
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class InventoryLotStorageRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryLotStorageRestController.class);

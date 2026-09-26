@@ -24,6 +24,31 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 
+/**
+ * An expiry or a receipt date is a calendar date, stored in a timestamp column.
+ * Sent as midnight UTC so it means the same day everywhere: the local midnight
+ * a date picker hands back converts to the previous day for every zone east of
+ * Greenwich, and the server renders these as dates rather than instants. The
+ * GS1 scan path already stores them this way, so the two agree.
+ */
+const toStoredCalendarDate = (date) =>
+  date
+    ? new Date(
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+      ).toISOString()
+    : null;
+
+/** The same date read back, so the picker reopens on the day that was saved. */
+const fromStoredCalendarDate = (value) => {
+  if (!value) return null;
+  const stored = new Date(value);
+  return new Date(
+    stored.getUTCFullYear(),
+    stored.getUTCMonth(),
+    stored.getUTCDate(),
+  );
+};
+
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
@@ -91,10 +116,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         inventoryItem: lot.inventoryItem,
         lotNumber: lot.lotNumber || "",
         currentQuantity: lot.currentQuantity || 0,
-        expirationDate: lot.expirationDate
-          ? new Date(lot.expirationDate)
-          : null,
-        receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
+        expirationDate: fromStoredCalendarDate(lot.expirationDate),
+        receiptDate: fromStoredCalendarDate(lot.receiptDate) || new Date(),
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
@@ -220,10 +243,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           lotNumber: formData.lotNumber?.trim() || null,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
-          expirationDate: formData.expirationDate
-            ? formData.expirationDate.toISOString()
-            : null,
-          receiptDate: formData.receiptDate.toISOString(),
+          expirationDate: toStoredCalendarDate(formData.expirationDate),
+          receiptDate: toStoredCalendarDate(formData.receiptDate),
           qcStatus: formData.qcStatus,
           status: formData.status,
           barcode: formData.barcode?.trim() || null,
