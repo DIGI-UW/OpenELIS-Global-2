@@ -50,7 +50,7 @@ public class SlideLabel extends Label {
             aboveFields.add(getAvailableIdField(patient));
         if (useSlideId)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.slideNumber"),
-                    String.valueOf(slide.getSlideNumber()), 4));
+                    slide.displayIdentifier(), 4));
 
         if (useStaintype)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.stainType"),

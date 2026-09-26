@@ -341,7 +341,14 @@ public abstract class ConfigurationProperties {
         PATHOLOGY_STAGE_MICROTOMY_ENABLED("pathology.stage.MICROTOMY.enabled", "text"),
         PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
-        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text");
+        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
+
+        // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
+        // slides cut from a case. A missing row means the scheme below.
+        PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),
+        PATHOLOGY_IDENTIFIER_BLOCK_FORMAT("pathology.identifier.blockFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SLIDE_FORMAT("pathology.identifier.slideFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SEPARATOR("pathology.identifier.separator", "text");
 
         // visible on
         // the ui

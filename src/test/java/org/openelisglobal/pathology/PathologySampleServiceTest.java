@@ -118,7 +118,9 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
         List<PathologyBlock> pathologyBlocks = Arrays.asList(block1, block2);
 
         pathologySampleForm.setBlocks(pathologyBlocks);
-        pathologySampleForm.setSlides(Collections.singletonList(new PathologySampleForm.PathologySlideForm()));
+        // A slide has to name the block it was cut from, and case 2 holds no blocks
+        // yet, so this form adds cassettes only.
+        pathologySampleForm.setSlides(Collections.emptyList());
         pathologySampleForm.setReports(Collections.singletonList(new PathologySampleForm.PathologyReportForm()));
         pathologySampleService.updateWithFormValues(2, pathologySampleForm);
 

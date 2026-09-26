@@ -1,0 +1,12 @@
+@use "@carbon/styles/scss/spacing";
+
+// The identifier pills of the patient band, as a wrapping row with a real gap:
+// Carbon's own tag margin is enough between two words and not between two
+// pills of bold text. Scoped to a class of this component's own, because
+// .patient-id is also styled by the results viewer's stylesheet.
+.patient-header__ids {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}

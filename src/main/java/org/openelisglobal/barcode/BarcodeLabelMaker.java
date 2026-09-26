@@ -357,6 +357,9 @@ public class BarcodeLabelMaker {
             String specimenType = resolveSpecimenTypeContext(sampleItems);
             for (PathologySample pathologySample : pathologySamples) {
                 for (PathologyBlock block : pathologySample.getBlocks()) {
+                    if (!block.isActive()) {
+                        continue;
+                    }
                     BlockLabel label = new BlockLabel(sampleService.getPatient(sample), sample, pathologySample, block,
                             labNo, specimenType);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
@@ -374,9 +377,12 @@ public class BarcodeLabelMaker {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
             for (PathologySample pathologySample : pathologySamples) {
-                String blockId = resolveBlockIdContext(pathologySample);
                 String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
                 for (PathologySlide slide : pathologySample.getSlides()) {
+                    if (!slide.isActive()) {
+                        continue;
+                    }
+                    String blockId = blockContextFor(slide, pathologySample);
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
                             labNo, "", blockId, caseNumber);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
@@ -470,12 +476,28 @@ public class BarcodeLabelMaker {
         return new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
     }
 
-    private String resolveBlockIdContext(PathologySample pathologySample) {
-        if (pathologySample == null || pathologySample.getBlocks() == null || pathologySample.getBlocks().isEmpty()
-                || pathologySample.getBlocks().get(0) == null || pathologySample.getBlocks().get(0).getId() == null) {
+    /**
+     * Names the block a slide's label points to: the slide's own recorded block, or
+     * the case's first block in use for a slide that never recorded one.
+     */
+    private String blockContextFor(PathologySlide slide, PathologySample pathologySample) {
+        if (pathologySample == null || pathologySample.getBlocks() == null) {
             return "";
         }
-        return String.valueOf(pathologySample.getBlocks().get(0).getId());
+        Integer blockId = slide.getBlockId();
+        if (blockId != null) {
+            for (PathologyBlock block : pathologySample.getBlocks()) {
+                if (block != null && blockId.equals(block.getId())) {
+                    return block.displayIdentifier();
+                }
+            }
+        }
+        for (PathologyBlock block : pathologySample.getBlocks()) {
+            if (block != null && block.isActive()) {
+                return block.displayIdentifier();
+            }
+        }
+        return "";
     }
 
     private String resolvePatientIdentifier(Patient patient) {

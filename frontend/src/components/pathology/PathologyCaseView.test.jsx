@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -94,17 +94,35 @@ const renderCaseView = () =>
     </MemoryRouter>,
   );
 
-const statusSelect = async () =>
-  await waitFor(() => {
-    const select = document.getElementById("status");
-    expect(select.options.length).toBe(PATHOLOGY_STAGES.length + 1);
-    return select;
-  });
+/**
+ * The stage control is a Carbon Dropdown, so its options exist only while its
+ * menu is open and the value it holds is what the toggle button reads, not a
+ * DOM value attribute.
+ */
+const stageControl = async () =>
+  await waitFor(() =>
+    screen.getByRole("combobox", {
+      name: messages["common.status"],
+    }),
+  );
 
-const stageOptionTexts = (select) =>
-  Array.from(select.options)
-    .filter((option) => option.value !== "placeholder")
-    .map((option) => option.textContent);
+const openStageMenu = async () => {
+  const control = await stageControl();
+  fireEvent.click(control);
+  await waitFor(() =>
+    expect(stageOptions()).toHaveLength(PATHOLOGY_STAGES.length),
+  );
+  return control;
+};
+
+// Scoped to the stage control itself: the technician and pathologist
+// selectors on the same screen are native selects, whose own <option>
+// elements answer to the same role.
+const stageOptions = () =>
+  within(document.getElementById("status")).getAllByRole("option");
+
+const stageOptionTexts = () =>
+  stageOptions().map((option) => option.textContent);
 
 describe("PathologyCaseView stage select", () => {
   beforeEach(() => {
@@ -130,20 +148,20 @@ describe("PathologyCaseView stage select", () => {
   it("lists the eleven bench stages in order, each in the user's language", async () => {
     renderCaseView();
 
-    const select = await statusSelect();
+    const control = await openStageMenu();
 
-    expect(stageOptionTexts(select)).toEqual(
+    expect(stageOptionTexts()).toEqual(
       PATHOLOGY_STAGES.map((id) => messages[stageDisplayKey(id)]),
     );
-    expect(select.value).toBe("MICROTOMY");
+    expect(control).toHaveTextContent(messages["pathology.stage.microtomy"]);
   });
 
   it("never shows a stage under its raw enum name", async () => {
     renderCaseView();
 
-    const select = await statusSelect();
+    await openStageMenu();
 
-    stageOptionTexts(select).forEach((text) => {
+    stageOptionTexts().forEach((text) => {
       expect(PATHOLOGY_STAGES).not.toContain(text);
     });
     expect(screen.queryByText("READY_PATHOLOGIST")).not.toBeInTheDocument();
@@ -153,14 +171,16 @@ describe("PathologyCaseView stage select", () => {
   it("saves the stage the backend stores, not the translated label", async () => {
     renderCaseView();
 
-    const select = await statusSelect();
-    fireEvent.change(select, { target: { value: "STAINING" } });
-    // The screen repeats the same save action at the top and the bottom of a
-    // long form; either one posts the case.
+    await openStageMenu();
     fireEvent.click(
-      screen.getAllByRole("button", {
-        name: messages["label.button.save"],
-      })[0],
+      within(document.getElementById("status")).getByRole("option", {
+        name: messages["pathology.stage.staining"],
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["caseView.action.saveDraft"],
+      }),
     );
 
     await waitFor(() =>

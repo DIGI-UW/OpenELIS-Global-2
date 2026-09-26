@@ -102,4 +102,7 @@
   <include relativeToChangelogFile="true" file="035-widen-site-information-name.xml"/>
   <include relativeToChangelogFile="true" file="036-pathology-stage-enablement-flags.xml"/>
 
+  <!-- FR-2.3: the stage switch descriptions promised automatic skipping, which does not exist; describe what the case view does -->
+  <include relativeToChangelogFile="true" file="037-pathology-stage-flag-descriptions.xml"/>
+
 </databaseChangeLog>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-stage-descriptions-data"
+        author="openelis">
+        <comment>A deployment that already seeded the seven stage switches and
+            whose administrator then switched one stage off. The rows themselves
+            are not inserted here: changeset 036 has run by this boundary, so the
+            only existing data an upgrade has to preserve is the administrator's
+            own choice.</comment>
+        <sql>
+            UPDATE clinlims.site_information SET value = 'false'
+            WHERE name = 'pathology.stage.COVERSLIPPING.enabled';
+        </sql>
+    </changeSet>
+</databaseChangeLog>

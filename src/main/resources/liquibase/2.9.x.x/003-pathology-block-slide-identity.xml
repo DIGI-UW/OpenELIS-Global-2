@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Without these columns a pathology block or slide is recorded only as a
+    count: a number on a case, with nothing to say which portion of the
+    specimen it is or where it went. That leaves no way to trace a stained slide back to the
+    tissue it was cut from, which every accredited laboratory has to be able to
+    show (ISO 15189:2022 7.2.6.1(g)).
+
+    A cassette and the block it becomes are one row: embedding does not create
+    a new record, it moves cassette_state from CASSETTE to BLOCK. A slide always
+    names the block it was cut from, once one is known. Retiring a block or a
+    slide sets active to false; the row is never deleted, because a slide is
+    kept for ten years and a block for two after the case closes (42 CFR
+    493.1105), and a deleted row cannot be produced on request.
+
+    The columns are added nullable, backfilled from the legacy block_number and
+    slide_number columns (which stay, since barcode label printing and the
+    immunohistochemistry case view still read them), and only then constrained,
+    so an existing deployment's rows gain an identity instead of losing them.
+    -->
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet id="OGC-264-pathology-block-identity-columns" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_block"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_block" columnName="designation"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Add the columns a block needs to be identified rather than merely counted: a designation and barcode, the cassette-to-block state, the tissue type it was cut from, and an active flag so a block can be retired without being deleted</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_block">
+            <column name="designation" type="VARCHAR(32)"/>
+            <column name="barcode" type="VARCHAR(64)"/>
+            <column name="cassette_state" type="VARCHAR(16)"/>
+            <column name="tissue_type_id" type="NUMERIC(10)"/>
+            <column name="part_designation" type="VARCHAR(16)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+        </addColumn>
+        <addNotNullConstraint schemaName="clinlims" tableName="pathology_block"
+            columnName="active" columnDataType="BOOLEAN" defaultNullValue="true"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_block" baseColumnNames="tissue_type_id"
+            referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+            constraintName="pathology_block_tissue_type_fk"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_block"
+                constraintName="pathology_block_tissue_type_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_block">
+                <column name="designation"/>
+                <column name="barcode"/>
+                <column name="cassette_state"/>
+                <column name="tissue_type_id"/>
+                <column name="part_designation"/>
+                <column name="active"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-identity-columns" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_slide"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_slide" columnName="block_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Add the columns a slide needs to be identified and to name the block it was cut from: a designation and barcode, the level cut, the stain applied and its status, and an active flag so a slide can be retired without being deleted</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_slide">
+            <column name="block_id" type="INTEGER"/>
+            <column name="designation" type="VARCHAR(32)"/>
+            <column name="barcode" type="VARCHAR(64)"/>
+            <column name="level" type="VARCHAR(16)"/>
+            <column name="stain_id" type="NUMERIC(10)"/>
+            <column name="stain_status" type="VARCHAR(24)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+        </addColumn>
+        <addNotNullConstraint schemaName="clinlims" tableName="pathology_slide"
+            columnName="active" columnDataType="BOOLEAN" defaultNullValue="true"/>
+        <!-- No cascade: a slide is retained even if its block row were ever removed. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_slide" baseColumnNames="block_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_block" referencedColumnNames="id"
+            constraintName="pathology_slide_block_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_slide" baseColumnNames="stain_id"
+            referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+            constraintName="pathology_slide_stain_fk"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_slide"
+                constraintName="pathology_slide_block_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_slide"
+                constraintName="pathology_slide_stain_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_slide">
+                <column name="block_id"/>
+                <column name="designation"/>
+                <column name="barcode"/>
+                <column name="level"/>
+                <column name="stain_id"/>
+                <column name="stain_status"/>
+                <column name="active"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-block-identity-backfill" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="pathology_block" columnName="designation"/>
+        </preConditions>
+        <comment>Derive a designation and barcode for every block recorded before either existed, from its legacy block_number, and mark it as an already-cut block rather than an open cassette</comment>
+        <!-- last_updated is the row's optimistic-lock version; a row written
+             without one can never be updated by the application, so a missing
+             value is filled here and in the slide backfill below. -->
+        <!-- A window function ranks legacy blocks that would otherwise collide
+             on the same designation within a case (block_number is not unique),
+             which addColumn/update change types cannot express, so this is raw
+             SQL. Restricting both CTEs to designation IS NULL makes the whole
+             statement self-guarding: a second run finds no candidate rows. -->
+        <sql>
+            WITH ranked AS (
+                SELECT b.id,
+                       b.pathology_sample_id,
+                       COALESCE(b.block_number::text, 'B' || b.id) AS base_designation,
+                       row_number() OVER (
+                           PARTITION BY b.pathology_sample_id,
+                                        COALESCE(b.block_number::text, 'B' || b.id)
+                           ORDER BY b.id
+                       ) AS rn
+                  FROM clinlims.pathology_block b
+                 WHERE b.designation IS NULL
+            ),
+            designated AS (
+                SELECT id,
+                       pathology_sample_id,
+                       CASE WHEN rn = 1 THEN base_designation
+                            ELSE base_designation || '-' || rn END AS designation
+                  FROM ranked
+            )
+            UPDATE clinlims.pathology_block b
+               SET designation = d.designation,
+                   cassette_state = 'BLOCK',
+                   barcode = COALESCE(s.accession_number || '.' || d.designation,
+                                       d.designation),
+                   last_updated = COALESCE(b.last_updated, now())
+              FROM designated d
+              LEFT JOIN clinlims.pathology_sample ps ON ps.id = d.pathology_sample_id
+              LEFT JOIN clinlims.sample s ON s.id = ps.sample_id
+             WHERE b.id = d.id;
+        </sql>
+        <rollback>
+            <!-- The designation and barcode are derived from the block_number
+                 the row already carried; re-nulling them would only recreate
+                 the untraceable rows this changeset exists to fix, and would
+                 make every label already printed from a barcode unresolvable. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-identity-backfill" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="pathology_slide" columnName="designation"/>
+        </preConditions>
+        <comment>Derive a designation and barcode for every slide recorded before either existed, from its legacy slide_number; the block it was cut from is not recoverable, so block_id stays null</comment>
+        <sql>
+            WITH ranked AS (
+                SELECT s.id,
+                       s.pathology_sample_id,
+                       COALESCE(s.slide_number::text, 'S' || s.id) AS base_designation,
+                       row_number() OVER (
+                           PARTITION BY s.pathology_sample_id,
+                                        COALESCE(s.slide_number::text, 'S' || s.id)
+                           ORDER BY s.id
+                       ) AS rn
+                  FROM clinlims.pathology_slide s
+                 WHERE s.designation IS NULL
+            ),
+            designated AS (
+                SELECT id,
+                       pathology_sample_id,
+                       CASE WHEN rn = 1 THEN base_designation
+                            ELSE base_designation || '-' || rn END AS designation
+                  FROM ranked
+            )
+            UPDATE clinlims.pathology_slide sl
+               SET designation = d.designation,
+                   barcode = COALESCE(sm.accession_number || '.' || d.designation,
+                                       d.designation),
+                   last_updated = COALESCE(sl.last_updated, now())
+              FROM designated d
+              LEFT JOIN clinlims.pathology_sample ps ON ps.id = d.pathology_sample_id
+              LEFT JOIN clinlims.sample sm ON sm.id = ps.sample_id
+             WHERE sl.id = d.id;
+        </sql>
+        <rollback>
+            <!-- Same reasoning as the block backfill: the derived values are
+                 the only trace back to the legacy slide_number, and re-nulling
+                 them would make every already-printed slide label unresolvable. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <!--
+    Index the new designations and barcodes: a designation is unique within
+    its case (or within its block, for a slide), and a barcode is looked up
+    on every scan. Each index is its own changeset so a database that has
+    already picked up some of these on a partial run still gets the rest.
+    -->
+
+    <changeSet id="OGC-264-pathology-block-designation-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="pathology_block_designation_uk"/>
+            </not>
+        </preConditions>
+        <comment>A block designation is unique within its case</comment>
+        <createIndex indexName="pathology_block_designation_uk" tableName="pathology_block" schemaName="clinlims" unique="true">
+            <column name="pathology_sample_id"/>
+            <column name="designation"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_block" indexName="pathology_block_designation_uk"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-designation-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="pathology_slide_designation_uk"/>
+            </not>
+        </preConditions>
+        <!-- A null block_id is distinct from every other null in Postgres, so
+             legacy slides with no known parent block never collide with each
+             other under this constraint. -->
+        <comment>A slide designation is unique within its block</comment>
+        <createIndex indexName="pathology_slide_designation_uk" tableName="pathology_slide" schemaName="clinlims" unique="true">
+            <column name="block_id"/>
+            <column name="designation"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_slide" indexName="pathology_slide_designation_uk"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-block-barcode-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_block_barcode"/>
+            </not>
+        </preConditions>
+        <comment>A block barcode is looked up on every scan</comment>
+        <createIndex indexName="idx_pathology_block_barcode" tableName="pathology_block" schemaName="clinlims">
+            <column name="barcode"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_block" indexName="idx_pathology_block_barcode"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-barcode-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_slide_barcode"/>
+            </not>
+        </preConditions>
+        <comment>A slide barcode is looked up on every scan</comment>
+        <createIndex indexName="idx_pathology_slide_barcode" tableName="pathology_slide" schemaName="clinlims">
+            <column name="barcode"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_slide" indexName="idx_pathology_slide_barcode"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-block-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_slide_block_id"/>
+            </not>
+        </preConditions>
+        <comment>A slide is looked up by the block it was cut from</comment>
+        <createIndex indexName="idx_pathology_slide_block_id" tableName="pathology_slide" schemaName="clinlims">
+            <column name="block_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_slide" indexName="idx_pathology_slide_block_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-block-reference-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_BLOCK'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register pathology_block so deactivation is auditable like every other reference table</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="PATHOLOGY_BLOCK"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="reference_tables" schemaName="clinlims">
+                <where>name = 'PATHOLOGY_BLOCK'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-reference-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_SLIDE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register pathology_slide so deactivation is auditable like every other reference table</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="PATHOLOGY_SLIDE"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="reference_tables" schemaName="clinlims">
+                <where>name = 'PATHOLOGY_SLIDE'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
