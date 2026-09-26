@@ -1,0 +1,3 @@
+# Preserve line endings as-is; this file is read directly for password bootstrap
+# and must not be rewritten by Git's CRLF normalization (see #3891).
+src/main/resources/adminPassword.txt -text
