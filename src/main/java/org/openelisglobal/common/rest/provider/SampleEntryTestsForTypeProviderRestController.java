@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.domain.Domain;
@@ -306,15 +308,17 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         List<PanelTestMap> selected = new ArrayList<>();
 
         Map<String, String> testIdsByName = new HashMap<>();
+        Set<String> sampleTypeTestIds = new HashSet<>();
 
         for (Test test : tests) {
             testIdsByName.put(localizedTestName(test), test.getId());
+            sampleTypeTestIds.add(test.getId());
         }
 
         for (TypeOfSamplePanel samplePanel : panelList) {
             Panel panel = panelService.getPanelById(samplePanel.getPanelId());
             if ("Y".equals(panel.getIsActive())) {
-                String matchTests = getTestIdsForPanel(samplePanel.getPanelId(), testIdsByName, panelItemService);
+                String matchTests = getTestIdsForPanel(samplePanel.getPanelId(), testIdsByName, sampleTypeTestIds);
                 if (!GenericValidator.isBlankOrNull(matchTests)) {
                     int panelOrder = panelService.getPanelById(samplePanel.getPanelId()).getSortOrderInt();
                     selected.add(new PanelTestMap(samplePanel.getPanelId(), panelOrder, panel.getLocalizedName(),
@@ -326,14 +330,19 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return selected;
     }
 
+    /**
+     * The panel's members that can be ordered on this sample type. Membership is
+     * checked by test id, so a member that shares its name with another test on the
+     * same sample type is still part of the panel.
+     */
     private String getTestIdsForPanel(String panelId, Map<String, String> testIdsByName,
-            PanelItemService panelItemService) {
+            Set<String> sampleTypeTestIds) {
         StringBuilder testIds = new StringBuilder();
         List<PanelItem> items = panelItemService.getPanelItemsForPanel(panelId);
 
         for (PanelItem item : items) {
             String testId = item.getTest() == null ? testIdsByName.get(item.getTestName()) : item.getTest().getId();
-            if (testId != null && testIdsByName.containsValue(testId)) {
+            if (testId != null && sampleTypeTestIds.contains(testId)) {
                 testIds.append(testId).append(",");
             }
         }
