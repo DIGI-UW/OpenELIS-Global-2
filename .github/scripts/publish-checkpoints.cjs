@@ -1,4 +1,4 @@
-const BACKEND = "01 Checkpoint - Backend";
+const REQUIRED_CHECKS = ["01 Checkpoint - Backend", "02 Checkpoint - Frontend"];
 
 module.exports = async function waitForPublishCheckpoints({
   github,
@@ -22,49 +22,58 @@ module.exports = async function waitForPublishCheckpoints({
   const E2E = `03 Checkpoint - E2E / build-${buildRunId}-${buildRunAttempt}`;
   const started = now();
   while (now() - started < timeoutMs) {
-    const [statuses, checks] = await Promise.all([
+    const [statuses, ...checks] = await Promise.all([
       github.rest.repos.listCommitStatusesForRef({
         owner,
         repo,
         ref: sha,
         per_page: 100,
       }),
-      github.rest.checks.listForRef({
-        owner,
-        repo,
-        ref: sha,
-        check_name: BACKEND,
-        filter: "latest",
-        per_page: 100,
-      }),
+      ...REQUIRED_CHECKS.map((name) =>
+        github.rest.checks.listForRef({
+          owner,
+          repo,
+          ref: sha,
+          check_name: name,
+          filter: "latest",
+          per_page: 100,
+        }),
+      ),
     ]);
     const e2e = statuses.data.find((entry) => entry.context === E2E);
-    const backend = checks.data.check_runs
-      .filter((entry) => entry.name === BACKEND && entry.head_sha === sha)
-      .sort((left, right) => right.id - left.id)[0];
+    const required = REQUIRED_CHECKS.map((name, index) => ({
+      name,
+      check: checks[index].data.check_runs
+        .filter((entry) => entry.name === name && entry.head_sha === sha)
+        .sort((left, right) => right.id - left.id)[0],
+    }));
 
     if (e2e && ["failure", "error"].includes(e2e.state)) {
       throw new Error(`${E2E} is ${e2e.state} for ${sha}`);
     }
-    if (backend?.status === "completed" && backend.conclusion !== "success") {
-      throw new Error(`${BACKEND} is ${backend.conclusion} for ${sha}`);
+    for (const { name, check } of required) {
+      if (check?.status === "completed" && check.conclusion !== "success") {
+        throw new Error(`${name} is ${check.conclusion} for ${sha}`);
+      }
     }
     if (
       e2e?.state === "success" &&
-      backend?.status === "completed" &&
-      backend.conclusion === "success"
+      required.every(
+        ({ check }) =>
+          check?.status === "completed" && check.conclusion === "success",
+      )
     ) {
       core.info(
-        `Backend and E2E passed for ${sha}, build ${buildRunId}, attempt ${buildRunAttempt}.`,
+        `Backend, frontend and E2E passed for ${sha}, build ${buildRunId}, attempt ${buildRunAttempt}.`,
       );
       return;
     }
     core.info(
-      `Waiting for ${sha}: backend=${backend?.conclusion || backend?.status || "missing"}, E2E=${e2e?.state || "missing"}.`,
+      `Waiting for ${sha}: ${required.map(({ name, check }) => `${name}=${check?.conclusion || check?.status || "missing"}`).join(", ")}, E2E=${e2e?.state || "missing"}.`,
     );
     await sleep(pollMs);
   }
   throw new Error(
-    `Timed out waiting for backend and E2E checkpoints for ${sha}`,
+    `Timed out waiting for backend, frontend and E2E checkpoints for ${sha}`,
   );
 };

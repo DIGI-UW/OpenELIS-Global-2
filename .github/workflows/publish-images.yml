@@ -1,6 +1,6 @@
 # Publishes tested images after merge/release only.
 # Triggered by 03 - E2E build completion or a manual testing deployment, gated on
-# `03 Checkpoint - E2E` and backend (including existing-data upgrade) contracts.
+# backend, frontend and build-specific E2E checkpoints.
 name: Publish images / Deploy testing
 
 on:
@@ -64,7 +64,7 @@ jobs:
             core.info(`Publish context: event=${run.event} sha=${run.head_sha} branch=${run.head_branch}`);
 
   wait-for-e2e-checkpoint:
-    name: Wait For Backend And E2E Checkpoints
+    name: Wait For Backend, Frontend And E2E Checkpoints
     needs: setup
     if: needs.setup.outputs.head_sha != '' && (needs.setup.outputs.event_name == 'push' || needs.setup.outputs.event_name == 'release') && needs.setup.outputs.image_transfer != 'none'
     runs-on: ubuntu-latest
@@ -78,7 +78,7 @@ jobs:
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
           sparse-checkout: .github/scripts
-      - name: Require backend upgrades and E2E for the exact candidate
+      - name: Require all checkpoints for the exact candidate
         uses: actions/github-script@v8
         env:
           CANDIDATE_SHA: ${{ needs.setup.outputs.head_sha }}
