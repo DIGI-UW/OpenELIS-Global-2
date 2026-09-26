@@ -69,6 +69,8 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     private LocalizationService localizationService;
     @Autowired
     private TestService testService;
+    @Autowired
+    private SampleService sampleService;
 
     private String userId;
     private Patient patient;
@@ -246,7 +248,12 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         return sample;
     }
 
-    private void persist(Sample sample, String sampleXml, List<SampleTypeRequestDTO> requestedSampleTypes) {
+    /**
+     * Each save starts from the order as stored, the way the endpoint loads it by
+     * id on every request, so a repeated save does not carry a stale version.
+     */
+    private void persist(Sample order, String sampleXml, List<SampleTypeRequestDTO> requestedSampleTypes) {
+        Sample sample = order.getId() == null ? order : sampleService.get(order.getId());
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         form.setRequestedSampleTypes(requestedSampleTypes);
         SampleAddService sampleAddService = new SampleAddService(sampleXml, userId, sample, "");
