@@ -29,7 +29,8 @@ guidelines:
 
 ## 4. Target Branch
 
-- Always create PRs against the develop branch, including urgent fixes
+- Development PRs target `develop`, including urgent fixes
+- Release PRs from a release branch target `main`
 - If a fix is needed on a released version, the release manager cherry-picks it
   onto that line's release branch after it merges (see
   [RELEASES.md](RELEASES.md))

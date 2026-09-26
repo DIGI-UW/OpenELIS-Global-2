@@ -1560,7 +1560,7 @@ naming conventions and milestone workflow.
 
 **Primary Branches**:
 
-- **`develop`** - Integration and default branch (all PRs target this)
+- **`develop`** - Integration and default branch (development PRs target this)
 - **`main`** - The latest release. It changes only through a reviewed release
   pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
   each release is tagged on `main`.
@@ -1594,7 +1594,8 @@ Supported lines and versioning rules: [RELEASES.md](../../RELEASES.md).
    - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
    - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
    - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
-3. **Target Branch**: Always `develop`, including hotfixes
+3. **Target Branch**: Development PRs target `develop`, including hotfixes.
+   Release PRs from a release branch target `main`.
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
    - Frontend: `npm run format` (Prettier) - MUST run before committing

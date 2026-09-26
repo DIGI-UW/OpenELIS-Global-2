@@ -16,7 +16,7 @@ are supported, and how the branches relate to them.
 
 | Branch            | What it holds                                                                                                                                                 |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `develop`         | Integration branch and default branch. All pull requests target it. Its version is the next release with a `-SNAPSHOT` suffix. Never deploy it to production. |
+| `develop`         | Integration branch and default branch. Development pull requests target it. Its version is the next release with a `-SNAPSHOT` suffix. Never deploy it to production. |
 | `main`            | The latest release. It changes only through a reviewed release pull request from a release branch. Each release is tagged on `main`.                          |
 | `release/<X.Y>.x` | One branch per release line, cut from `develop` before a release. It receives only fixes that are already merged to `develop`.                                |
 | `3.2.2.x`         | The legacy 3.2.2 line, named before the `release/` convention.                                                                                                |

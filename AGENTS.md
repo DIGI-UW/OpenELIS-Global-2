@@ -126,8 +126,8 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (integration and default branch; all PRs target
-  it), `main` (the latest release; changes only through a reviewed release PR).
+- Branch strategy: `develop` (integration and default branch; development PRs
+  target it), `main` (the latest release; changes only through a reviewed release PR).
   See [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
@@ -864,7 +864,7 @@ scripts/dev-stack logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Integration and default branch (ALL PRs target this)
+- **`develop`** - Integration and default branch (development PRs target this)
 - **`main`** - The latest release. It changes only through a reviewed release PR
   from a `release/<X.Y>.x` branch, merged with a merge commit; each release is
   tagged on `main`.
@@ -2250,8 +2250,9 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop`, including hotfixes. Fixes for a released line are
-     cherry-picked onto its `release/<X.Y>.x` branch after they merge (see
+   - Development PRs target `develop`, including hotfixes. Fixes for a released
+     line are cherry-picked onto its `release/<X.Y>.x` branch after they merge.
+     Release PRs from a release branch target `main` (see
      [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
