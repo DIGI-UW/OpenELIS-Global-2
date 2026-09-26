@@ -6,12 +6,25 @@
 
 set -euo pipefail
 
+# --no-mock-network: the mock sends to each connection's own Bridge listener
+#   port, so a stack without the Docker socket skips per-analyzer networks.
+# --activate: also confirm mappings and activate the priority connections,
+#   without sending traffic.
 ENSURE_CONNECTIONS=false
-case "${1:-}" in
-  "") ;;
-  --ensure-connections) ENSURE_CONNECTIONS=true ;;
-  *) echo "Usage: $0 [--ensure-connections]" >&2; exit 2 ;;
-esac
+MOCK_NETWORK=true
+ACTIVATE=false
+for arg in "$@"; do
+  case "$arg" in
+    --ensure-connections) ENSURE_CONNECTIONS=true ;;
+    --no-mock-network) MOCK_NETWORK=false ;;
+    --activate) ACTIVATE=true ;;
+    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--activate]" >&2; exit 2 ;;
+  esac
+done
+if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
+  echo "--activate requires --ensure-connections; the full seed already activates" >&2
+  exit 2
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -274,23 +287,33 @@ fetch_json "$LAB_UNITS_API" "$LAB_UNITS_FILE" "Active lab units"
 LAB_UNIT_ID="$(resolve_lab_unit_id)"
 echo "  lab unit $LAB_UNIT_ID"
 
-if [ "$ENSURE_CONNECTIONS" = false ]; then
-  curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
-fi
+if [ "$MOCK_NETWORK" = true ]; then
+  if [ "$ENSURE_CONNECTIONS" = false ]; then
+    curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
+  fi
 
-echo "Creating GeneXpert mock transport..."
-GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
-if [ -z "$GENEXPERT_IP" ]; then
-  echo "ERROR: GeneXpert mock transport returned no IP address" >&2
-  exit 1
+  echo "Creating GeneXpert mock transport..."
+  GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
+  if [ -z "$GENEXPERT_IP" ]; then
+    echo "ERROR: GeneXpert mock transport returned no IP address" >&2
+    exit 1
+  fi
+  echo "  genexpert -> $GENEXPERT_IP:9600"
 fi
-echo "  genexpert -> $GENEXPERT_IP:9600"
 
 echo "Creating profile-pinned analyzer instances..."
 reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" '{"port":9600}'
 reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
+
+if [ "$ACTIVATE" = true ]; then
+  echo "Confirming mappings and activating priority connections..."
+  BASE_URL="$BASE_URL" \
+  TEST_USER="$TEST_USER" \
+  TEST_PASS="$TEST_PASS" \
+    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate
+fi
 
 if [ "$ENSURE_CONNECTIONS" = true ]; then
   echo "Done. Missing harness connections created; existing configuration and review data preserved."

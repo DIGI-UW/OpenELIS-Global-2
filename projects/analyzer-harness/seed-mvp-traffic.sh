@@ -8,10 +8,12 @@
 set -euo pipefail
 
 SETUP_ONLY=false
+ACTIVATE_ONLY=false
 case "${1:-}" in
   "") ;;
   --setup-only) SETUP_ONLY=true ;;
-  *) echo "Usage: $0 [--setup-only]" >&2; exit 2 ;;
+  --activate) ACTIVATE_ONLY=true ;;
+  *) echo "Usage: $0 [--setup-only|--activate]" >&2; exit 2 ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -577,7 +579,7 @@ GENEXPERT_REVISION="$(analyzer_field "$GENEXPERT_NAME" profileRevision)"
 FLUOROCYCLER_ID="$(analyzer_field "$FLUOROCYCLER_NAME" id)"
 FLUOROCYCLER_REVISION="$(analyzer_field "$FLUOROCYCLER_NAME" profileRevision)"
 
-if [ "$SETUP_ONLY" = true ]; then
+if [ "$SETUP_ONLY" = true ] || [ "$ACTIVATE_ONLY" = true ]; then
   prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION"
 else
   prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION" \
@@ -587,6 +589,21 @@ prepare_profile_mapping "$FLUOROCYCLER_PROFILE" "$FLUOROCYCLER_REVISION"
 
 if [ "$SETUP_ONLY" = true ]; then
   echo "Done. Confirmed mappings are ready for guided setup; no traffic was sent."
+  exit 0
+fi
+
+if [ "$ACTIVATE_ONLY" = true ]; then
+  # Re-adopting a binding on an active analyzer is refused, so reruns skip them.
+  for name in "$GENEXPERT_NAME" "$FLUOROCYCLER_NAME"; do
+    if [ "$(analyzer_field "$name" status)" = "ACTIVE" ]; then
+      echo "  Already active: $name"
+    elif [ "$name" = "$GENEXPERT_NAME" ]; then
+      adopt_mapping_and_activate "$GENEXPERT_ID" "$GENEXPERT_PROFILE"
+    else
+      adopt_mapping_and_activate "$FLUOROCYCLER_ID" "$FLUOROCYCLER_PROFILE"
+    fi
+  done
+  echo "Done. Priority connections are active; no traffic was sent."
   exit 0
 fi
 
