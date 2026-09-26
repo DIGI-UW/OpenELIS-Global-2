@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { newClientKey, withClientKeys } from "./saveKeys";
 import { useLocation } from "react-router-dom";
 import {
   getFromOpenElisServer,
@@ -251,11 +252,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
   // Wrapper for setStorageSkipped - persists to backend
   const setStorageSkipped = useCallback(
-    (value) => {
+    (value, labNumberOverride) => {
       setStorageSkippedState(value);
 
-      if (labNumber) {
-        const endpoint = `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${value}`;
+      const targetLabNumber = labNumberOverride || labNumber;
+      if (targetLabNumber) {
+        const endpoint = `/rest/order/storage-skipped?labNumber=${encodeURIComponent(targetLabNumber)}&storageSkipped=${value}`;
         putToOpenElisServer(endpoint, null, Function.prototype);
       }
     },
@@ -267,6 +269,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const [testSampleAssignments, setTestSampleAssignments] = useState({});
 
   const lastSavedDataRef = useRef(null);
+  const orderKeyRef = useRef(newClientKey());
+  const inFlightSaveRef = useRef(null);
 
   // Mirror of orderData read by loadOrder (which is memoised with []
   // deps) so it can preserve the reference-data lists ( sampleTypes,
@@ -526,7 +530,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
         }
       });
 
@@ -637,6 +641,35 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
    *   user's typed values to a backend reload that races an async write — see
    *   the Refer Out edit flow in OrderReferOutSection.handleSaveReferral.
    */
+  /**
+   * The sample rows to save, each unsaved one carrying a client key; any key
+   * just added is written back to state so a retry sends the same key.
+   */
+  const keepClientKeys = (samplesToSave) => {
+    const keyed = withClientKeys(samplesToSave);
+    if (keyed.changed) {
+      setSamplesState((current) =>
+        current.map((sample, index) => {
+          const key = keyed.samples[index]?.clientKey;
+          return key &&
+            sample &&
+            !sample.clientKey &&
+            !sample.sampleItemId &&
+            sample.sampleTypeId === keyed.samples[index].sampleTypeId
+            ? { ...sample, clientKey: key }
+            : sample;
+        }),
+      );
+    }
+    return keyed.samples;
+  };
+
+  /** An update carries the order id; a new order carries its order key. */
+  const withOrderIdentity = (sampleOrderItems) =>
+    orderId
+      ? { ...sampleOrderItems, sampleId: orderId }
+      : { ...sampleOrderItems, orderKey: orderKeyRef.current };
+
   const saveOrder = useCallback(
     async (
       silent = false,
@@ -646,6 +679,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     ) => {
       if (isReadOnly && !isEditMode) {
         return Promise.reject(new Error("Cannot save in read-only mode"));
+      }
+      if (inFlightSaveRef.current) {
+        return inFlightSaveRef.current;
       }
 
       if (!silent) {
@@ -657,7 +693,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       // Build sample XML and referral items
       // Pass environmentalFields for GPS fallback in environmental workflow
       const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-      const effectiveSamples = samplesOverride || samples;
+      const effectiveSamples = keepClientKeys(samplesOverride || samples);
       // Only the decoupled entry step may legitimately persist no specimens;
       // every other save that carries a sample type must produce sample_items.
       const expectsSampleItems =
@@ -686,27 +722,20 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         testSectionList: [],
       };
 
-      return new Promise((resolve, reject) => {
+      const save = new Promise((resolve, reject) => {
         // Always use SamplePatientEntry endpoint - the backend handles both insert and update
         // based on whether sampleOrderItems.sampleId is present
         const endpoint = "/rest/SamplePatientEntry";
 
         // Include sampleId in the payload for updates
-        if (orderId) {
-          submitData.sampleOrderItems = {
-            ...submitData.sampleOrderItems,
-            sampleId: orderId,
-          };
-        }
+        submitData.sampleOrderItems = withOrderIdentity(
+          submitData.sampleOrderItems,
+        );
 
         postToOpenElisServerFullResponse(
           endpoint,
           JSON.stringify(submitData),
           async (response) => {
-            if (!silent) {
-              setIsSubmitting(false);
-            }
-
             if (response && response.ok) {
               setIsDirty(false);
               setSaveStatus(SaveStatus.SAVED);
@@ -827,6 +856,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           },
         );
       });
+      inFlightSaveRef.current = save;
+      const settle = () => {
+        inFlightSaveRef.current = null;
+        if (!silent) {
+          setIsSubmitting(false);
+        }
+      };
+      save.then(settle, settle);
+      return save;
     },
     [
       orderId,
@@ -854,6 +892,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     if (isReadOnly && !isEditMode) {
       return Promise.reject(new Error("Cannot save in read-only mode"));
     }
+    if (inFlightSaveRef.current) {
+      return inFlightSaveRef.current;
+    }
 
     setIsSubmitting(true);
     setSaveStatus(SaveStatus.SAVING);
@@ -877,7 +918,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       const providerLast = orderData?.sampleOrderItems?.providerLastName || "";
       const providerName = `${providerFirst} ${providerLast}`.trim();
 
-      const stampedSamples = samples.map((s) =>
+      const stampedSamples = keepClientKeys(samples).map((s) =>
         s.sampleTypeId
           ? {
               ...s,
@@ -931,15 +972,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       testSectionList: [],
     };
 
-    return new Promise((resolve, reject) => {
+    const save = new Promise((resolve, reject) => {
       const endpoint = "/rest/SamplePatientEntry";
 
-      if (orderId) {
-        submitData.sampleOrderItems = {
-          ...submitData.sampleOrderItems,
-          sampleId: orderId,
-        };
-      }
+      submitData.sampleOrderItems = withOrderIdentity(
+        submitData.sampleOrderItems,
+      );
 
       postToOpenElisServerFullResponse(
         endpoint,
@@ -1043,6 +1081,13 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         },
       );
     });
+    inFlightSaveRef.current = save;
+    const settle = () => {
+      inFlightSaveRef.current = null;
+      setIsSubmitting(false);
+    };
+    save.then(settle, settle);
+    return save;
   }, [orderId, orderData, samples, isReadOnly, isEditMode, dateLocale]);
 
   /**
@@ -1195,8 +1240,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       label: false,
       qa: false,
     });
-    setStorageSkipped(false);
+    setStorageSkippedState(false);
     lastSavedDataRef.current = null;
+    orderKeyRef.current = newClientKey();
 
     // Re-fetch form defaults from API to get correct date format
     getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
@@ -1336,6 +1382,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     currentStep,
     isLoading,
     isSubmitting,
+    setIsSubmitting,
     saveStatus,
     isDirty,
     error,
