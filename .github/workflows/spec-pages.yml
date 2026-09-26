@@ -13,7 +13,7 @@ name: Deploy spec pages (canvases + markdown) to GitHub Pages
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
     paths:
       - "specs/**"
       - ".specify/oe/skills/overview/templates/canvas.html.template"

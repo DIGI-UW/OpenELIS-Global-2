@@ -1,6 +1,38 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Branch strategy: main and release branches
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.1 → 1.11.2
+Change Type: PATCH - Correct the description of the primary branches
+Date: 2026-09-25
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * `main` was described as "Production releases only (reviewers backport
+      from develop)". It now holds the latest release and changes only
+      through a reviewed release pull request from a release branch, merged
+      with a merge commit; each release is tagged on `main`.
+    * Added `release/<X.Y>.x` branches, which receive fixes cherry-picked from
+      `develop`.
+  - Pull Request Requirements > Target Branch
+    * Hotfixes also target `develop`; released lines receive them by
+      cherry-pick onto their release branch.
+
+Rationale:
+  No `main` branch existed when the old text was written, and releases were
+  tagged on `develop`. `master` was renamed to `main` and set to release
+  3.2.3.0 on 2026-09-25. RELEASES.md is the operational reference.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - branch strategy and target branch corrected in this change
+  ✅ SECURITY.md, PULL_REQUEST_TIPS.md - same correction
+
+Follow-up TODOs:
+  - None.
+-->
+
+<!--
 SYNC IMPACT REPORT - Frontend tech stack: data fetching
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.11.0 → 1.11.1
@@ -1528,8 +1560,14 @@ naming conventions and milestone workflow.
 
 **Primary Branches**:
 
-- **`develop`** - Main development branch (all PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release
+  pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
+  each release is tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`.
+
+Supported lines and versioning rules: [RELEASES.md](../../RELEASES.md).
 
 **Feature Development Branches** (per Principle IX):
 
@@ -1556,7 +1594,8 @@ naming conventions and milestone workflow.
    - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
    - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
    - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
-3. **Target Branch**: Always `develop` (unless hotfix)
+3. **Target Branch**: Development PRs target `develop`, including hotfixes.
+   Release PRs from a release branch target `main`.
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
    - Frontend: `npm run format` (Prettier) - MUST run before committing
@@ -1728,7 +1767,7 @@ sync.
 
 ---
 
-**Version**: 1.11.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-07
+**Version**: 1.11.2 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-25
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
