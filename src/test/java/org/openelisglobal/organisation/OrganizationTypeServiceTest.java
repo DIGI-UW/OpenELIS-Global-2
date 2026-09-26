@@ -1,8 +1,6 @@
 package org.openelisglobal.organisation;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 import java.util.List;
 import org.junit.Before;
@@ -53,4 +51,36 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Healthcare", organizationType2.getName());
         assertEquals("Healthcare Organization", organizationType2.getDescription());
     }
+
+    @Test
+    public void insert_shouldPersistNewOrganizationType() {
+        OrganizationType newType = new OrganizationType();
+        newType.setName("Laboratory");
+        newType.setDescription("Laboratory Organization");
+        newType.setSysUserId("1");
+
+        String insertedId = organizationTypeService.insert(newType);
+        assertNotNull("Inserted ID should not be null", insertedId);
+
+        OrganizationType retrieved = organizationTypeService.getOrganizationTypeByName("Laboratory");
+        assertNotNull("Inserted type should be retrievable by name", retrieved);
+        assertEquals("Laboratory", retrieved.getName());
+        assertEquals("Laboratory Organization", retrieved.getDescription());
+    }
+
+    @Test
+    public void getOrganizationIdsForType_shouldReturnLinkedOrganizationIds() {
+        // Type ID "1" corresponds to "Healthcare" in the fixture
+        List<String> orgIds = organizationTypeService.getOrganizationIdsForType("1");
+        assertNotNull("Result should not be null", orgIds);
+        assertTrue("Should return at least one organization ID for type 1", orgIds.size() > 0);
+    }
+
+    @Test
+    public void getOrganizationIdsForType_withUnknownTypeId_shouldReturnEmptyList() {
+        List<String> orgIds = organizationTypeService.getOrganizationIdsForType("99999");
+        assertNotNull("Result must not be null for unknown type ID", orgIds);
+        assertTrue("Should return empty list for unknown type ID", orgIds.isEmpty());
+    }
+
 }
