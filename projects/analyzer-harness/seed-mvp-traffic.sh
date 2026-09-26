@@ -165,7 +165,15 @@ PY
   while IFS= read -r test_id; do
     fetch_json "$OE_API/analyzer-types/mapping-catalog/tests/$test_id/result-options" \
       "$TMP_DIR/result-options-$test_id.json" "OpenELIS result options for test $test_id"
-  done < <(jq -r 'to_entries[].value // empty' "$selection_file" | sort -u)
+  done < <(python3 - "$selection_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    for test_id in sorted({str(value) for value in json.load(handle).values() if value is not None}):
+        print(test_id)
+PY
+)
 
   mapping_action="$(python3 - "$mapping_file" "$selection_file" "$TMP_DIR" "$update_file" \
     "$held_test_code" "$held_result_value" <<'PY'

@@ -315,14 +315,31 @@ jobs:
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST || 'testing.openelis-global.org' }}
       DEPLOY_USER: ${{ vars.TESTING_VM_USER || 'ubuntu' }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/ubuntu/openelis-docker' }}
+      SITE_PATH: ${{ vars.TESTING_SITE_PATH || '/home/ubuntu/openelis-testing' }}
       REMOTE_RUN: /tmp/openelis-deploy-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - name: Checkout deployment scripts with the application
+      - name: Checkout the application's deployment files
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            volume
+            projects/analyzer-harness
+      - name: Build the deployment bundle
+        run: |
+          set -euo pipefail
+          profiles=src/main/resources/analyzer-profiles
+          pin="$(git ls-tree HEAD tools/openelis-analyzer-bridge | awk '{print $3}')"
+          git init -q bridge
+          git -C bridge fetch -q --depth 1 --filter=blob:none https://github.com/DIGI-UW/openelis-analyzer-bridge.git "$pin"
+          git -C bridge checkout -q FETCH_HEAD -- "$profiles"
+          mkdir -p "bundle/tools/openelis-analyzer-bridge/$(dirname "$profiles")"
+          cp -R "bridge/$profiles" "bundle/tools/openelis-analyzer-bridge/$profiles"
+          tar -czf deploy-bundle.tgz docker-compose.yml docker-compose.analyzers.yml volume \
+            projects/analyzer-harness/config-templates \
+            projects/analyzer-harness/seed-analyzers.sh projects/analyzer-harness/seed-mvp-traffic.sh \
+            -C bundle tools
       - name: Validate deployment request
         env:
           IMAGE_MANIFEST: ${{ needs.deployment-manifest.outputs.manifest }}
@@ -343,7 +360,7 @@ jobs:
           spec.loader.exec_module(module)
           request = {'manifest': module.validate_manifest(json.loads(env['IMAGE_MANIFEST']), env['DOCKERHUB_NAMESPACE']),
                      'dockerhub_namespace': env['DOCKERHUB_NAMESPACE'],
-                     'deploy_path': env['DEPLOY_PATH'], 'run_id': env['GITHUB_RUN_ID'] + '-' + env['GITHUB_RUN_ATTEMPT'],
+                     'deploy_path': env['SITE_PATH'], 'run_id': env['GITHUB_RUN_ID'] + '-' + env['GITHUB_RUN_ATTEMPT'],
                      'readiness': {'url': env['READINESS_URL'], 'timeout': float(env['READINESS_TIMEOUT']),
                                    'key': env['READINESS_JSON_KEY'], 'expected': json.loads(env['READINESS_EXPECTED'])}}
           pathlib.Path('request.json').write_text(json.dumps(request))
@@ -359,7 +376,7 @@ jobs:
       - name: Deploy published images and require readiness
         run: |
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $REMOTE_RUN/diagnostics"
-          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
+          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json deploy-bundle.tgz .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
           set -o pipefail
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "python3 $REMOTE_RUN/deploy-published-testing.py $REMOTE_RUN/request.json" 2>&1 | tee deployment.log
       - name: Collect deployment diagnostics
