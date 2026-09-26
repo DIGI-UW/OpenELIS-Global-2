@@ -755,6 +755,8 @@ export default function App() {
                           render={() => <OrderQA />}
                           role={Roles.RECEPTION}
                         />
+                        {/* Keep last: a pathless Redirect matches the parent path and shadows later routes. */}
+                        <Redirect to={match.path} />
                       </Switch>
                     </OrderProvider>
                   )}
