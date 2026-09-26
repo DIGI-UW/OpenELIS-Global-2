@@ -1,5 +1,63 @@
 # AGENTS.md - README for AI Coding Agents
 
+## Start here — do these three things before any other work
+
+These are not optional and not "if needed". Skipping them is the single most
+common way an agent wastes a session in this repository.
+
+### 1. Install the agent command assets
+
+```bash
+python3 scripts/install-agent-skills.py -y claude
+```
+
+This installs `/fix-ci`, `/download-ci-logs`, `/address-pr-comments`,
+`/careful-rebase` and ~22 others, plus the packaged skills.
+
+**`.claude/` is gitignored.** It is created by this script, not by `git
+clone` and not by `git pull`. A second clone or worktree of this repository
+therefore has **no commands at all** until you run the installer there —
+and nothing warns you, the commands are simply absent. Run it once per
+checkout, including every worktree.
+
+### 2. Never judge CI from a run's conclusion
+
+Use `gh pr checks <PR>`. It matches the GitHub UI and exits non-zero unless
+everything passes.
+
+```bash
+gh pr checks 1234                      # the whole picture
+gh pr checks 1234 | grep -E "fail"     # just the failures
+```
+
+Three checks are required — `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some
+of them exist, so **confirm all three are present and none are `pending`**
+before calling a PR green.
+
+Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted
+by a `workflow_run` follow-up stage, so the underlying run's own conclusion
+does not tell you whether the checkpoint passed, and `gh run watch` exits 0
+on failure for this pipeline. Do not hand-parse `--json statusCheckRollup`
+either: it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes
+(`.state`), and an in-flight check reports an empty conclusion rather than
+null, so naive `jq` reports passing checks as queued and single checks as
+"all green".
+
+`/fix-ci` automates the whole diagnose-fix-push-recheck loop.
+`specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
+semantics.
+
+### 3. Work in the worktree that owns the branch
+
+```bash
+git worktree list
+```
+
+This project keeps several worktrees. When asked to work on a branch or PR,
+find its worktree first and make every edit there — never in the primary
+directory. Note that each worktree needs its own installer run, per step 1.
+
 ## FILE Ownership Model (014 Remediation)
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
@@ -400,20 +458,17 @@ interoperability.
 **Layers:**
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
-
    - Extend `BaseObject<String>`
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - Use JPA/Hibernate annotations (NOT XML mappings)
    - ID generation via `@GenericGenerator`
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
-
    - Interface + Implementation extends `BaseDAOImpl<Entity, String>`
    - Annotate with `@Component` + `@Transactional`
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
-
    - Interface + Implementation with `@Service` + `@Transactional`
    - **Transactions start here (NOT in controllers)**
    - **CRITICAL - Data Compilation Rule:** Services MUST eagerly fetch ALL data
@@ -424,7 +479,6 @@ interoperability.
    - Call DAOs for persistence, FHIR services for sync
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
-
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - **Controllers are singletons** - NO class-level variables
@@ -977,7 +1031,6 @@ npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
 **CRITICAL RULES:**
 
 1. **Transactions start in service layer ONLY**
-
    - Services annotated with `@Transactional`
    - Controllers MUST NOT have `@Transactional` (architectural violation)
 
@@ -1452,7 +1505,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -2231,50 +2284,40 @@ import jakarta.persistence.Entity;  // ✅ CORRECT
 Before creating PR, verify ALL items:
 
 1. **GitHub Issue Reference:**
-
    - PR title includes issue number: `issue-123: Add storage location widget` or
      `001-sample-storage: Implement barcode scanning`
 
 2. **Branch Naming:**
-
    - Branch name follows Constitution Principle IX (e.g.,
      `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
-
    - Always target `develop` (unless hotfix to `main`)
 
 4. **Code Formatting (MANDATORY):**
-
    - Backend: `mvn spotless:apply` - MUST run before commit
    - Frontend: `npm run format` - MUST run before commit
    - Pre-commit hooks recommended
 
 5. **Build Verification:**
-
    - `mvn clean install -DskipTests -Dmaven.test.skip=true` passes locally
 
 6. **Tests Included:**
-
    - Unit tests for business logic
    - ORM validation tests (if new entities)
    - Integration tests for API endpoints
    - E2E tests for user workflows (if UI changes)
 
 7. **Test Coverage:**
-
    - > 70% coverage for new code (JaCoCo report)
 
 8. **UI Screenshots:**
-
    - Attach before/after images for UI changes
 
 9. **Single Concern:**
-
    - PR addresses ONE issue only (no mixed refactoring + features)
 
 10. **Constitution Compliance:**
-
     - [ ] Layered architecture respected (Principle IV)
     - [ ] Carbon Design System used exclusively (Principle II)
     - [ ] FHIR compliance for external data (Principle III)
@@ -2284,20 +2327,16 @@ Before creating PR, verify ALL items:
     - [ ] Security/compliance requirements met (Principle VIII)
 
 11. **No Hardcoded Strings:**
-
     - All user-facing text uses React Intl
 
 12. **Liquibase Changesets:**
-
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
 
 13. **FHIR Resources Validated:**
-
     - If FHIR-mapped entities, test FHIR transformation
 
 14. **Documentation Updated:**
-
     - Update spec.md, plan.md, quickstart.md if applicable
 
 15. **Review Assignment:**
