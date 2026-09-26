@@ -5,11 +5,17 @@ on:
     paths:
       - ".github/scripts/**"
       - ".github/workflows/**"
+      - "docker-compose.analyzers.yml"
+      - "tools/openelis-analyzer-bridge"
+      - "tools/analyzer-mock-server"
   push:
     branches: [develop]
     paths:
       - ".github/scripts/**"
       - ".github/workflows/**"
+      - "docker-compose.analyzers.yml"
+      - "tools/openelis-analyzer-bridge"
+      - "tools/analyzer-mock-server"
 
 permissions:
   contents: read
