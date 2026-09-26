@@ -23,6 +23,9 @@ import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
 
+const compatibilityMapKey = (id, isPanel) =>
+  `${isPanel ? "panel" : "test"}-${id}`;
+
 export const getAssignableSamplesOfType = (samples = [], sampleTypeId) =>
   samples
     .map((sample, index) => ({ ...sample, index }))
@@ -97,37 +100,48 @@ const RequestedTestsSection = ({
         .join(","),
     [requestedItems],
   );
+  const panelIds = useMemo(
+    () =>
+      requestedItems
+        .filter((item) => item.isPanel)
+        .map((panel) => panel.id)
+        .join(","),
+    [requestedItems],
+  );
+  const compatibilityKey = `${testIds}|${panelIds}`;
   const isLoadingCompatibility =
-    Boolean(testIds) && loadedCompatibilityIds !== testIds;
+    Boolean(testIds || panelIds) && loadedCompatibilityIds !== compatibilityKey;
 
-  // Fetch test-sample-type compatibility when tests change
   useEffect(() => {
     componentMounted.current = true;
 
-    if (!testIds) return;
+    if (!testIds && !panelIds) return;
 
     getFromOpenElisServer(
-      `/rest/test-sample-types?testIds=${testIds}`,
+      `/rest/test-sample-types?testIds=${testIds}&panelIds=${panelIds}`,
       (response) => {
-        if (componentMounted.current && response?.tests) {
-          const map = {};
-          response.tests.forEach((t) => {
-            map[t.testId] = t.compatibleSampleTypes || [];
-          });
-          setTestSampleTypeMap(map);
-          setLoadedCompatibilityIds(testIds);
-        }
+        if (!componentMounted.current) return;
+        const map = {};
+        (response?.tests || []).forEach((t) => {
+          map[compatibilityMapKey(t.testId, false)] =
+            t.compatibleSampleTypes || [];
+        });
+        (response?.panels || []).forEach((p) => {
+          map[compatibilityMapKey(p.panelId, true)] =
+            p.compatibleSampleTypes || [];
+        });
+        setTestSampleTypeMap(map);
+        setLoadedCompatibilityIds(compatibilityKey);
       },
     );
 
     return () => {
       componentMounted.current = false;
     };
-  }, [testIds]);
+  }, [testIds, panelIds]);
 
-  // Get compatible sample types for a test
   const getCompatibleSampleTypes = useCallback(
-    (testId) => testSampleTypeMap[testId] || [],
+    (id, isPanel) => testSampleTypeMap[compatibilityMapKey(id, isPanel)] || [],
     [testSampleTypeMap],
   );
 
@@ -248,7 +262,7 @@ const RequestedTestsSection = ({
   const rows = useMemo(
     () =>
       requestedItems.map((item) => {
-        const compatibleTypes = getCompatibleSampleTypes(item.id);
+        const compatibleTypes = getCompatibleSampleTypes(item.id, item.isPanel);
         const assignments = getSampleAssignments(item.id, item.isPanel);
 
         return {
@@ -282,27 +296,20 @@ const RequestedTestsSection = ({
                     type="green"
                     size="sm"
                     className="sample-type-tag clickable"
-                    text={`+ ${st.name}${st.code ? ` (${st.code})` : ""}`}
+                    text={`+ ${st.name}`}
                     onClick={() => handleSampleTypeClick(item, st)}
                   />
                 ))
               ) : (
-                // If no compatibility data, show all sample types as options
-                sampleTypes.slice(0, 5).map((st) => (
-                  <OperationalTag
-                    key={st.id}
-                    type="green"
-                    size="sm"
-                    className="sample-type-tag clickable"
-                    text={`+ ${st.value}`}
-                    onClick={() =>
-                      handleSampleTypeClick(item, {
-                        id: st.id,
-                        name: st.value,
-                      })
-                    }
+                <span
+                  className="no-compatible-types"
+                  data-testid={`no-compatible-types-${item.id}`}
+                >
+                  <FormattedMessage
+                    id="collect.noCompatibleSampleTypes"
+                    defaultMessage="No sample type is set up for this test in the test catalog"
                   />
-                ))
+                </span>
               )}
             </div>
           ),

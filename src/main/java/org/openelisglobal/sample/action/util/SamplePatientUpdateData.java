@@ -421,6 +421,17 @@ public class SamplePatientUpdateData {
         return true;
     }
 
+    public static UUID orderKeyAsUuid(String orderKey) {
+        if (GenericValidator.isBlankOrNull(orderKey)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(orderKey.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public void createPopulatedSample(String receivedDate, SampleOrderItem sampleOrder) {
         // Check if editing an existing sample
         if (!GenericValidator.isBlankOrNull(sampleOrder.getSampleId())) {
@@ -450,6 +461,7 @@ public class SamplePatientUpdateData {
         // Create new sample
         sample = new Sample();
         sample.setSysUserId(currentUserId);
+        sample.setFhirUuid(orderKeyAsUuid(sampleOrder.getOrderKey()));
         sample.setAccessionNumber(accessionNumber);
         sample.setReferringId(referringId);
 

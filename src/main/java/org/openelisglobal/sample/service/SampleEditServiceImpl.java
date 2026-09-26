@@ -438,7 +438,7 @@ public class SampleEditServiceImpl implements SampleEditService {
             testSection = testSectionService.get(userSelectedTestSection); // change
         }
 
-        Panel panel = sampleAddService.getPanelForTest(test);
+        Panel panel = sampleAddService.getPanelForTest(sampleTestCollection, test);
 
         Analysis analysis = new Analysis();
         analysis.setTest(test);

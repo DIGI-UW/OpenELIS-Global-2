@@ -20,11 +20,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.proxy.HibernateProxy;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -49,6 +51,8 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryServiceIm
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
@@ -195,6 +199,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelService panelService;
 
     @Autowired
     private UserService userService;
@@ -539,6 +546,40 @@ public class OrderSearchRestController extends BaseRestController {
      * @param labNumber the lab/accession number to search for (required)
      * @return Order data with 200 OK, or 404 if not found
      */
+
+    /**
+     * The panel an analysis was ordered through, as recorded on the analysis. A
+     * test that is also a member of some panel but was ordered on its own has no
+     * panel, and is reloaded as a standalone test.
+     */
+    private String panelIdOf(Analysis analysis) {
+        Object panel = analysis.getPanel();
+        if (panel == null) {
+            return null;
+        }
+        if (panel instanceof HibernateProxy proxy) {
+            Object id = proxy.getHibernateLazyInitializer().getIdentifier();
+            return id == null ? null : id.toString();
+        }
+        return ((Panel) panel).getId();
+    }
+
+    private String panelNameFor(String panelId, String testId) {
+        try {
+            for (PanelItem panelItem : panelItemService.getPanelItemByTestId(testId)) {
+                if (panelItem.getPanel() != null && panelId.equals(panelItem.getPanel().getId())) {
+                    return panelItem.getPanel().getLocalizedName();
+                }
+            }
+            String name = panelService.getNameForPanelId(panelId);
+            return name == null ? "" : name;
+        } catch (Exception e) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "panelNameFor",
+                    "Panel name lookup failed for panel " + panelId);
+            return "";
+        }
+    }
+
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
 
@@ -729,9 +770,7 @@ public class OrderSearchRestController extends BaseRestController {
                 List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
-                // panelId → testIds accumulator — built from PanelItem records so that
-                // lazy-load failures on Analysis.getPanel() don't silently drop panels.
-                Map<String, List<String>> panelTestIdsMap = new HashMap<>();
+                Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
                 Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
                     if (analysis.getTest() == null) {
@@ -739,20 +778,13 @@ public class OrderSearchRestController extends BaseRestController {
                     }
                     testsData.add(buildSelectedTestData(analysis.getTest()));
 
-                    try {
-                        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(analysis.getTest().getId());
-                        for (PanelItem pi : panelItems) {
-                            if (pi.getPanel() == null) {
-                                continue;
-                            }
-                            String pid = pi.getPanel().getId();
-                            panelTestIdsMap.computeIfAbsent(pid, k -> new ArrayList<>())
-                                    .add(analysis.getTest().getId());
-                            panelNameMap.putIfAbsent(pid, pi.getPanel().getLocalizedName());
-                        }
-                    } catch (Exception e) {
-                        LogEvent.logDebug(this.getClass().getSimpleName(), "searchOrder",
-                                "Panel lookup failed for test " + analysis.getTest().getId());
+                    String panelId = panelIdOf(analysis);
+                    if (GenericValidator.isBlankOrNull(panelId)) {
+                        continue;
+                    }
+                    panelTestIdsMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(analysis.getTest().getId());
+                    if (!panelNameMap.containsKey(panelId)) {
+                        panelNameMap.put(panelId, panelNameFor(panelId, analysis.getTest().getId()));
                     }
                 }
                 for (Map.Entry<String, List<String>> entry : panelTestIdsMap.entrySet()) {

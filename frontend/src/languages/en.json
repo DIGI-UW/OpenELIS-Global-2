@@ -2488,6 +2488,7 @@
   "collect.multiSampleExample.result": "Creates separate tubes for each type",
   "collect.multiSampleExample.title": "Multi-Sample Collection Example",
   "collect.noSampleYet": "No samples collected yet",
+  "collect.noCompatibleSampleTypes": "No sample type is set up for this test in the test catalog",
   "collect.noTestsOrdered": "No tests have been ordered",
   "collect.noTestsWarning.subtitle": "Add samples with tests in Step 1 before proceeding",
   "collect.noTestsWarning.title": "No tests to collect",

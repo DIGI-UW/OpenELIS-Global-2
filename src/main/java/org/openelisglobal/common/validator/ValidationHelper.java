@@ -83,7 +83,13 @@ public class ValidationHelper {
             DateRelation relative) {
         String result = CustomDateValidator.getInstance().validateDate(CustomDateValidator.getInstance().getDate(value),
                 relative);
-        if (!IActionConstants.VALID.equals(result)) {
+        if (IActionConstants.INVALID_TO_LARGE.equals(result)) {
+            errors.rejectValue(name, "error.date.inFuture", new Object[] { displayName },
+                    DEFAULT_PREFIX + displayName + " may not be in the future");
+        } else if (IActionConstants.INVALID_TO_SMALL.equals(result)) {
+            errors.rejectValue(name, "error.date.inPast", new Object[] { displayName },
+                    DEFAULT_PREFIX + displayName + " may not be in the past");
+        } else if (!IActionConstants.VALID.equals(result)) {
             errors.rejectValue(name, "error.field.date.invalid", new Object[] { displayName, result },
                     DEFAULT_PREFIX + displayName + " is not in a valid date format");
         }
