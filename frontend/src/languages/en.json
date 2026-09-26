@@ -2305,7 +2305,7 @@
   "coldStorage.device.deactivateMessage": "Deactivating this device will stop monitoring and data collection. Historical data will be preserved.",
   "coldStorage.device.delete": "Delete Device",
   "coldStorage.device.deleteConfirm": "Are you sure you want to delete {name}?",
-  "coldStorage.device.deleteWarning": "This will mark the device as inactive and remove it from active monitoring. Historical data will be preserved.",
+  "coldStorage.device.deleteWarning": "This will mark the device as deleted and remove it from active monitoring. Historical data will be preserved, but the device cannot be restored.",
   "coldStorage.device.deleted": "Device \"{name}\" has been deleted successfully",
   "coldStorage.device.deviceStatus": "Device Status",
   "coldStorage.device.edit": "Edit device",

@@ -48,8 +48,8 @@ const EXPORT_FORMATS = ["PDF"]; // CSV, XML, and Excel to be implemented in Phas
 
 const REPORT_TYPE_MAP = {
   "Daily Log": "freezerDailyLogReport",
-  "Weekly Log": "freezerDailyLogReport",
-  "Monthly Log": "freezerDailyLogReport",
+  "Weekly Log": "weeklylog",
+  "Monthly Log": "monthlylog",
 };
 
 const getExcursionHeaders = (intl) => [
@@ -214,7 +214,7 @@ const toIsoString = (value) => {
 const formatActionLabel = (value) => {
   const actionLabels = {
     ALERT_ACKNOWLEDGED: "Alert acknowledged",
-    CRITICAL_ALERT_RESOLVED: "Critical alert resolved",
+    ALERT_RESOLVED: "Alert resolved",
     CORRECTIVE_ACTION_LOGGED: "Corrective action logged",
     THRESHOLD_UPDATED: "Threshold updated",
     FREEZER_RENAMED: "Freezer renamed",
