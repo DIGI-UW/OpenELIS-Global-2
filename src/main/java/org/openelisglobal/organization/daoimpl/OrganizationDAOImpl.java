@@ -16,7 +16,9 @@ package org.openelisglobal.organization.daoimpl;
 import jakarta.persistence.TypedQuery;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -370,7 +372,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
                 LogEvent.logDebug(this.getClass().getSimpleName(), "duplicateOrganizationExists", "org id is " + orgId);
                 query.setParameter("orgId", orgId);
-                query.setParameter("organizationName", organization.getOrganizationName());
+                query.setParameter("organizationName", organization.getOrganizationName().trim().toLowerCase());
 
                 list = query.getResultList();
             }
@@ -582,7 +584,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
             // transaction
             // This supports any number of hierarchy levels
             for (Organization org : list) {
-                initializeOrganizationHierarchy(org);
+                initializeOrganizationHierarchy(org, new HashSet<String>());
             }
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "searchOrganizationsWithTypes", e.getMessage());
@@ -596,17 +598,19 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
      * Recursively initialize organization types and parent hierarchy. Supports any
      * number of levels.
      */
-    private void initializeOrganizationHierarchy(Organization org) {
-        if (org == null) {
+    private void initializeOrganizationHierarchy(Organization org, Set<String> visitedIds) {
+        if (org == null || visitedIds.contains(org.getId())) {
             return;
         }
+
+        visitedIds.add(org.getId());
         // Initialize organization types
         if (org.getOrganizationTypes() != null) {
             org.getOrganizationTypes().size();
         }
         // Recursively initialize parent
         if (org.getOrganization() != null) {
-            initializeOrganizationHierarchy(org.getOrganization());
+            initializeOrganizationHierarchy(org.getOrganization(), visitedIds);
         }
     }
 }
