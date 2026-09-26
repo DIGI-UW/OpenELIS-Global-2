@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-lead-time.xml">
+
+    <!--
+    OGC-438: how long this item takes to arrive after it is ordered, so the items board can turn a
+    run-out estimate into an order-by date. The value is local to each lab rather than seeded from a
+    shared catalog, because the same product reaches different sites on different timescales.
+    Nullable on purpose: an item with no lead time still gets an order-by date, from a placeholder
+    the board labels as such, so the column can fill in over time instead of blocking the feature.
+    -->
+    <changeSet id="OGC-438-add-lead-time-to-inventory-item" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="lead_time_days" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="lead_time_days" type="INT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="lead_time_days" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

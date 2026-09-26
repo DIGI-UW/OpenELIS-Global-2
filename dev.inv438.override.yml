@@ -1,0 +1,24 @@
+services:
+  certs:
+    container_name: oe-certs-inv438
+  db.openelis.org:
+    container_name: openelisglobal-database-inv438
+    ports: !override
+      - "15433:5432"
+  oe.openelis.org:
+    container_name: openelisglobal-webapp-inv438
+    ports: !override
+      - "8092:8080"
+      - "8453:8443"
+  fhir.openelis.org:
+    container_name: external-fhir-api-inv438
+    ports: !override
+      - "8091:8080"
+      - "8454:8443"
+  frontend.openelis.org:
+    container_name: openelisglobal-front-end-inv438
+  proxy:
+    container_name: openelisglobal-proxy-inv438
+    ports: !override
+      - "8880:80"
+      - "8843:443"
