@@ -138,6 +138,23 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     });
     await expect(offered).toHaveText(mappedNames);
 
+    const server = await (
+      await page.request.get(`${API}/rest/server-time`)
+    ).json();
+    const [year, month, day] = server.date.split("-");
+    const dayFirst =
+      (await page.locator("#collectionDate-0").getAttribute("placeholder")) ===
+      "dd/mm/yyyy";
+    const shownDate = dayFirst
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+    await expect(page.locator("#collectionDate-0")).toHaveValue(shownDate, {
+      timeout: NAV_TIMEOUT,
+    });
+    await expect(page.locator("#receivedDate-0")).toHaveValue(shownDate);
+    const receivedTime = await page.locator("#receivedTime-0").inputValue();
+    await expect(page.locator("#collectionTime-0")).toHaveValue(receivedTime);
+
     const saves: string[] = [];
     page.on("request", (request) => {
       if (
