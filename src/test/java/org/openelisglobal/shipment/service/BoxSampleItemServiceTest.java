@@ -5,6 +5,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.referral.dao.ReferralDAO;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ReceptionStatus;
@@ -14,6 +16,9 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private BoxSampleItemService boxSampleItemService;
+
+    @Autowired
+    private ReferralDAO referralDAO;
 
     @Before
     public void init() throws Exception {
@@ -151,5 +156,35 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("1", fetched.getSampleItem().getId());
         Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, fetched.getReceptionStatus());
         Assert.assertEquals("Verified OK", fetched.getReceptionNotes());
+    }
+
+    @Test
+    public void removeSampleItemFromBox_shouldSucceedAndUnassignReferralFromBox() {
+        Referral referralBefore = referralDAO.getReferralById("1");
+        Assert.assertNotNull(referralBefore.getAssignedBox());
+        Assert.assertEquals(Integer.valueOf(1), referralBefore.getAssignedBox().getId());
+
+        boxSampleItemService.removeSampleItemFromBox(100, 1);
+
+        BoxSampleItem removed = boxSampleItemService.getBoxSampleItemById(100);
+        Assert.assertNull(removed);
+
+        Referral referralAfter = referralDAO.getReferralById("1");
+        Assert.assertNull(referralAfter.getAssignedBox());
+
+        int remainingInBox = boxSampleItemService.countSampleItemsInBox(1);
+        Assert.assertEquals(1, remainingInBox);
+    }
+
+    @Test
+    public void removeSampleItemFromBox_shouldNotAffectReferralsAssignedToOtherBoxes() {
+        boxSampleItemService.removeSampleItemFromBox(101, 1);
+
+        BoxSampleItem removed = boxSampleItemService.getBoxSampleItemById(101);
+        Assert.assertNull(removed);
+
+        Referral referralUnaffected = referralDAO.getReferralById("1");
+        Assert.assertNotNull(referralUnaffected.getAssignedBox());
+        Assert.assertEquals(Integer.valueOf(1), referralUnaffected.getAssignedBox().getId());
     }
 }
