@@ -92,7 +92,9 @@ export async function fillMicrobiologyOrderHeader(
     .getByLabel("Sample Type");
   await expect(sampleType).toBeVisible({ timeout: LONG_TIMEOUT });
   await sampleType.selectOption(seeded.sampleTypeId);
-  await expect(page.getByLabel(MICROBIOLOGY_CULTURE_TEST_NAME)).toBeVisible({
+  await expect(
+    page.getByLabel(MICROBIOLOGY_CULTURE_TEST_NAME, { exact: true }),
+  ).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
 
@@ -100,7 +102,8 @@ export async function fillMicrobiologyOrderHeader(
 }
 
 export async function clickMicrobiologyOrderTest(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
+  // exact: the selected tag's close button is named "Remove <name>".
+  const checkbox = page.getByLabel(name, { exact: true });
   await expect(checkbox).toBeVisible({ timeout: LONG_TIMEOUT });
   const checkboxId = await checkbox.getAttribute("id");
   if (!checkboxId) {
@@ -113,7 +116,8 @@ export async function clickMicrobiologyOrderTest(page: Page, name: string) {
 }
 
 export async function selectMicrobiologyOrderTest(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
+  // exact: the selected tag's close button is named "Remove <name>".
+  const checkbox = page.getByLabel(name, { exact: true });
   if (!(await checkbox.isChecked())) {
     await clickMicrobiologyOrderTest(page, name);
   }

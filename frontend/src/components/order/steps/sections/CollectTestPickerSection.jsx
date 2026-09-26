@@ -85,6 +85,15 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
         )
       : items;
 
+  // Carbon labels a tag's close button from title, and falls back to
+  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
+  // both have to be given or the button reads Carbon's English "Dismiss".
+  const removeLabel = (name) =>
+    intl.formatMessage(
+      { id: "common.removeSelection", defaultMessage: "Remove {name}" },
+      { name },
+    );
+
   const collectableSamples = samples
     .map((sample, index) => ({ sample, index }))
     .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected);
@@ -128,13 +137,8 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     text={panel.name}
                     disabled={isReadOnly}
                     onClose={() => toggleSelection(index, "panels", panel)}
-                    dismissTooltipLabel={intl.formatMessage(
-                      {
-                        id: "common.removeSelection",
-                        defaultMessage: "Remove {name}",
-                      },
-                      { name: panel.name },
-                    )}
+                    title={removeLabel(panel.name)}
+                    dismissTooltipLabel={removeLabel(panel.name)}
                   />
                 ))}
                 {(sample.tests || []).map((test) => (
@@ -144,13 +148,8 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     text={test.name}
                     disabled={isReadOnly}
                     onClose={() => toggleSelection(index, "tests", test)}
-                    dismissTooltipLabel={intl.formatMessage(
-                      {
-                        id: "common.removeSelection",
-                        defaultMessage: "Remove {name}",
-                      },
-                      { name: test.name },
-                    )}
+                    title={removeLabel(test.name)}
+                    dismissTooltipLabel={removeLabel(test.name)}
                   />
                 ))}
               </div>
