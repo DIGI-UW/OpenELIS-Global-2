@@ -59,6 +59,7 @@ import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -553,11 +554,21 @@ public class SamplePatientUpdateData {
             providerPerson.setWorkPhone(sampleOrder.getProviderWorkPhone());
             providerPerson.setFax(sampleOrder.getProviderFax());
             providerPerson.setEmail(sampleOrder.getProviderEmail());
+            providerPerson.setTitleCode(knownProviderTitle(sampleOrder.getProviderTitleCode()));
             providerPerson.setSysUserId(currentUserId);
             provider.setExternalId(sampleOrder.getRequesterSampleID());
         }
 
         provider.setSysUserId(currentUserId);
+    }
+
+    /** A title code the site has configured, or null for anything else. */
+    private String knownProviderTitle(String titleCode) {
+        if (GenericValidator.isBlankOrNull(titleCode)) {
+            return null;
+        }
+        return SpringContext.getBean(ProviderTitleService.class).getByCode(titleCode.trim()) == null ? null
+                : titleCode.trim();
     }
 
     /**

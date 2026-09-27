@@ -167,6 +167,18 @@ public class SampleOrderItem implements Serializable {
             SampleEditForm.SampleEdit.class })
     private String providerEmail;
 
+    /**
+     * The picked provider's title (OGC-1223), echoed by order entry. It is stored
+     * on the provider, so it only applies when the save creates a new provider.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleCode;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleAbbreviation;
+
     // Requesting Organization contact info (Environmental/Vector) — the
     // organization itself is addressed via referringSite*; these are the
     // org's own phone/fax/email, distinct from any Requestor contact person.
@@ -554,6 +566,22 @@ public class SampleOrderItem implements Serializable {
 
     public void setProviderFax(String providerFax) {
         this.providerFax = providerFax;
+    }
+
+    public String getProviderTitleCode() {
+        return providerTitleCode;
+    }
+
+    public void setProviderTitleCode(String providerTitleCode) {
+        this.providerTitleCode = providerTitleCode;
+    }
+
+    public String getProviderTitleAbbreviation() {
+        return providerTitleAbbreviation;
+    }
+
+    public void setProviderTitleAbbreviation(String providerTitleAbbreviation) {
+        this.providerTitleAbbreviation = providerTitleAbbreviation;
     }
 
     public String getProviderEmail() {
