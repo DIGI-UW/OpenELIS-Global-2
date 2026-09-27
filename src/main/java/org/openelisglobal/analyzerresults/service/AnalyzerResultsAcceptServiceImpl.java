@@ -131,6 +131,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         remaining.removeAll(actionableResults);
 
         List<AnalyzerResultItem> childlessControls = extractChildlessControls(remaining);
+        retainResolvableResults(childlessControls);
         List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
                 childlessControls);
 

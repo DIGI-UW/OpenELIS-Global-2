@@ -118,16 +118,33 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                         + " VALUES (?::numeric, ?, ?, 'Held result', 'RAW', false, ?, true, ?, NOW())",
                 heldId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
 
+        String heldControlId = String
+                .valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, read_only, import_issue_reason, last_updated)"
+                        + " VALUES (?::numeric, ?, ?, 'Held control', 'RAW', true, ?, true, ?, NOW())",
+                heldControlId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST,
+                AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+
         AnalyzerResultItem accepted = acceptedItem();
         accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
         AnalyzerResultItem unresolved = acceptedItem();
         unresolved.setId(heldId);
         unresolved.setReadOnly(true);
         unresolved.setIsAccepted(false);
-        acceptService.acceptAndPersist(List.of(unresolved, accepted), "1");
+        AnalyzerResultItem heldControl = acceptedItem();
+        heldControl.setId(heldControlId);
+        heldControl.setSampleGroupingNumber(2);
+        heldControl.setIsControl(true);
+        heldControl.setReadOnly(true);
+        heldControl.setIsAccepted(false);
+        acceptService.acceptAndPersist(List.of(unresolved, accepted, heldControl), "1");
 
         assertEquals(Integer.valueOf(1), jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldId));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldControlId));
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, stagedRowId));
         assertEquals(Integer.valueOf(1),
