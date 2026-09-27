@@ -424,7 +424,8 @@ const AnalyzerTypeMappingEditor = () => {
       saving ||
       applying ||
       !mapping?.siteBindingId ||
-      !mapping?.bindingFingerprint
+      !mapping?.bindingFingerprint ||
+      mapping?.confirmation?.state !== "CURRENT"
     ) {
       return;
     }
@@ -550,7 +551,8 @@ const AnalyzerTypeMappingEditor = () => {
                     saving ||
                     applying ||
                     !mapping.siteBindingId ||
-                    !mapping.bindingFingerprint
+                    !mapping.bindingFingerprint ||
+                    confirmation.state !== "CURRENT"
                   }
                   onClick={applyToAnalyzer}
                 >

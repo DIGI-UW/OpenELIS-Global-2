@@ -253,6 +253,13 @@ describe("AnalyzerTypeMappingEditor", () => {
   });
 
   it("applies the current mapping only to the named analyzer and retries its holds", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          confirmation: { ...unconfirmed, state: "CURRENT" },
+        }),
+    );
     selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
       callback({ id: "501" }),
     );
@@ -281,6 +288,26 @@ describe("AnalyzerTypeMappingEditor", () => {
       ),
     ).toBeVisible();
   });
+
+  it.each(["UNCONFIRMED", "STALE"])(
+    "does not apply a %s mapping to held results",
+    async (state) => {
+      getAnalyzerTypeMapping.mockImplementation(
+        (_profileId, _revision, callback) =>
+          callback({ ...mapping, confirmation: { ...unconfirmed, state } }),
+      );
+      renderEditor(
+        "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501",
+      );
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Apply mappings and retry held results",
+        }),
+      ).toBeDisabled();
+      expect(selectAnalyzerSiteBinding).not.toHaveBeenCalled();
+    },
+  );
 
   it("restores a bookmarkable shared-type editor with breadcrumbs and every independent source row", async () => {
     renderEditor();

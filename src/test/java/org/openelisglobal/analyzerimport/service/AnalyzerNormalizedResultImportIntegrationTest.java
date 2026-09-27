@@ -248,10 +248,13 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 new AnalyzerSiteBindingDraft(List.of(new AnalyzerSiteBindingTestDraft(original.getRawTestCode(),
                         AnalyzerSiteBindingMappingState.BOUND, String.valueOf(TEST_ID))), List.of()),
                 "1");
-        confirm(updated, bundle);
-        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
-        assertTrue(resultsService.get(id).isReadOnly());
+        localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
+                updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1");
+        assertTrue("selecting an unconfirmed revision must not release held results",
+                resultsService.get(id).isReadOnly());
 
+        confirm(updated, bundle);
+        assertTrue("confirmation alone must not replay held results", resultsService.get(id).isReadOnly());
         localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
                 updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1");
         AnalyzerResults recovered = resultsService.get(id);
