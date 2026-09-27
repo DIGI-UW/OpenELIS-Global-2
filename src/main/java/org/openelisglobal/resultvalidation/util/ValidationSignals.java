@@ -7,6 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
@@ -189,6 +190,25 @@ public final class ValidationSignals {
             }
         }
         return name;
+    }
+
+    /**
+     * The user who last wrote the result value, from its audit history (newest
+     * first, as {@code HistoryService} returns it): the fallback for "Entered by"
+     * when the lab does not record technician names, so no bench signature exists.
+     * Null when the history holds no insert or update.
+     */
+    public static String lastWriterId(List<History> newestFirst) {
+        if (newestFirst == null) {
+            return null;
+        }
+        for (History entry : newestFirst) {
+            if (entry != null && ("I".equals(entry.getActivity()) || "U".equals(entry.getActivity()))
+                    && !GenericValidator.isBlankOrNull(entry.getSysUserId())) {
+                return entry.getSysUserId();
+            }
+        }
+        return null;
     }
 
     /**
