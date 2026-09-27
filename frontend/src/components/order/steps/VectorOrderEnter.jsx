@@ -21,6 +21,7 @@ import {
   hasRequesterOrRequestor,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
+import { fetchServerNow } from "../serverClock";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -151,7 +152,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -172,7 +173,7 @@ const VectorOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       markStepComplete("enter");
       history.push(
         labNumber
@@ -200,7 +201,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
