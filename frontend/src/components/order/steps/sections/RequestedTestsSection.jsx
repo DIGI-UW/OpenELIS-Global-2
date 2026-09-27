@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -54,7 +48,6 @@ const RequestedTestsSection = ({
   isReadOnly,
 }) => {
   const intl = useIntl();
-  const componentMounted = useRef(true);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,14 +106,13 @@ const RequestedTestsSection = ({
     Boolean(testIds || panelIds) && loadedCompatibilityIds !== compatibilityKey;
 
   useEffect(() => {
-    componentMounted.current = true;
-
     if (!testIds && !panelIds) return;
 
+    let current = true;
     getFromOpenElisServer(
       `/rest/test-sample-types?testIds=${testIds}&panelIds=${panelIds}`,
       (response) => {
-        if (!componentMounted.current) return;
+        if (!current) return;
         const map = {};
         (response?.tests || []).forEach((t) => {
           map[compatibilityMapKey(t.testId, false)] =
@@ -136,7 +128,7 @@ const RequestedTestsSection = ({
     );
 
     return () => {
-      componentMounted.current = false;
+      current = false;
     };
   }, [testIds, panelIds]);
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -75,5 +75,51 @@ describe("RequestedTestsSection compatible sample types (FR-K13)", () => {
       "No sample type is set up for this test in the test catalog",
     );
     expect(screen.queryByText(/Histopathology/)).toBeNull();
+  });
+
+  it("keeps the newest answer when an earlier request replies late", () => {
+    const pending = [];
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      pending.push({ url, cb }),
+    );
+    const tree = (orderedSamples) => (
+      <IntlProvider locale="en" messages={messages}>
+        <RequestedTestsSection
+          samples={orderedSamples}
+          setSamples={() => {}}
+          assignTestToSample={() => {}}
+          sampleTypes={[]}
+          isReadOnly={false}
+        />
+      </IntlProvider>
+    );
+    const { rerender } = render(
+      tree([
+        { sampleTypeId: "", tests: [{ id: "7", name: "Amylase" }], panels: [] },
+      ]),
+    );
+    rerender(
+      tree([
+        { sampleTypeId: "", tests: [{ id: "8", name: "Glucose" }], panels: [] },
+      ]),
+    );
+
+    act(() =>
+      pending[1].cb({
+        tests: [
+          { testId: "8", compatibleSampleTypes: [{ id: "2", name: "Serum" }] },
+        ],
+      }),
+    );
+    act(() =>
+      pending[0].cb({
+        tests: [
+          { testId: "7", compatibleSampleTypes: [{ id: "3", name: "Plasma" }] },
+        ],
+      }),
+    );
+
+    expect(screen.getByText("+ Serum")).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).toBeNull();
   });
 });
