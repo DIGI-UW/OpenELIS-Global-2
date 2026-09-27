@@ -765,7 +765,10 @@
 .order-section {
   margin-bottom: 1.5rem;
   min-width: 0;
-  overflow: hidden;
+  // Clip sideways only: hidden on both axes cut open dropdown menus off at
+  // the bottom of the card.
+  overflow-x: clip;
+  overflow-y: visible;
   padding: 1.5rem;
 
   .section-title {

@@ -284,6 +284,27 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
     expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
   });
 
+  it("a rename onto another panel's name is refused by name, not a blank failure (OGC-1234)", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ ...PANEL, refusal: "name.duplicate" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.nameDuplicate"],
+        }),
+      ),
+    );
+  });
+
   it("a refusal without a domain conflict keeps the generic message", async () => {
     wrap();
     await screen.findByTestId("panel-editor-title");

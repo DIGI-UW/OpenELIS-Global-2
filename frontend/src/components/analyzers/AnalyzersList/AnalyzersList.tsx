@@ -24,6 +24,10 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
+  getAnalyzerDeliveryIssues,
+  getAnalyzerUpgrade,
+  retryAnalyzerUpgrade,
+  type AnalyzerUpgradeOutcome,
   getAnalyzers,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -62,6 +66,19 @@ interface AnalyzerTableRow {
 
 const profileRevisionKey = (profileId: string, revision: number) =>
   `${profileId}@${revision}`;
+
+const upgradeReasonKeys = new Set([
+  "analyzer.upgrade.reason.serialSettings",
+  "analyzer.upgrade.reason.invalidConfiguration",
+  "analyzer.upgrade.reason.fileColumnsMismatch",
+  "analyzer.upgrade.reason.invalidFileColumns",
+  "analyzer.upgrade.reason.componentMapping",
+  "analyzer.upgrade.reason.sharedMapping",
+  "analyzer.upgrade.reason.profileMismatch",
+  "analyzer.upgrade.reason.selectProfile",
+  "analyzer.upgrade.reason.fileFormatMismatch",
+  "analyzer.upgrade.reason.bridgeConnection",
+]);
 
 const hasHeldResults = (analyzer: Analyzer) =>
   Number(analyzer.heldResultCount || 0) > 0;
@@ -102,6 +119,25 @@ const AnalyzersList = () => {
   > | null>(null);
   const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [upgradePending, setUpgradePending] = useState<
+    AnalyzerUpgradeOutcome[]
+  >([]);
+  const [upgrading, setUpgrading] = useState(false);
+  useEffect(() => {
+    getAnalyzerUpgrade((rows) =>
+      setUpgradePending(Array.isArray(rows) ? rows : []),
+    );
+  }, []);
+  const retryUpgrade = () => {
+    setUpgrading(true);
+    retryAnalyzerUpgrade(() => {
+      getAnalyzerUpgrade((rows) =>
+        setUpgradePending(Array.isArray(rows) ? rows : []),
+      );
+      getAnalyzers({}, (data) => setAnalyzers(data?.analyzers || []));
+      setUpgrading(false);
+    });
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
@@ -131,6 +167,17 @@ const AnalyzersList = () => {
   const listTestUnit = queryParams.get("testUnit") || "";
   const listAnalyzerType = queryParams.get("analyzerType") || "";
   const firstAttentionAnalyzer = analyzers.find(hasHeldResults);
+  const [undeliveredCount, setUndeliveredCount] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getAnalyzerDeliveryIssues((response) => {
+      setUndeliveredCount(
+        response?.status === "success" ? response.data?.count || 0 : 0,
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const openSetup = () => {
     const params = new URLSearchParams(location.search);
@@ -462,6 +509,32 @@ const AnalyzersList = () => {
         </Button>
       </div>
 
+      {upgradePending.length > 0 && (
+        <Callout
+          kind="warning"
+          lowContrast
+          title={intl.formatMessage(
+            { id: "analyzer.upgrade.pending" },
+            { count: upgradePending.length },
+          )}
+          subtitle={upgradePending
+            .map(
+              (row) =>
+                `${row.name}: ${intl.formatMessage({
+                  id:
+                    row.reason && upgradeReasonKeys.has(row.reason)
+                      ? row.reason
+                      : "analyzer.upgrade.reason.unexpected",
+                })}`,
+            )
+            .join("; ")}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.upgrade.retry",
+          })}
+          onActionButtonClick={upgrading ? undefined : retryUpgrade}
+        />
+      )}
+
       {visibleSetupStep && (
         <AnalyzerSetup
           key={setupAnalyzerId || "new-analyzer"}
@@ -494,6 +567,30 @@ const AnalyzersList = () => {
             id: "analyzer.attention.review",
           })}
           onActionButtonClick={() => openResults(firstAttentionAnalyzer)}
+        />
+      )}
+
+      {undeliveredCount > 0 && (
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="delivery-issues-attention"
+          title={intl.formatMessage(
+            { id: "analyzer.deliveryIssues.attention.title" },
+            { count: undeliveredCount },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.deliveryIssues.attention.subtitle",
+          })}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.deliveryIssues.attention.review",
+          })}
+          onActionButtonClick={() =>
+            history.push({
+              pathname: "/AnalyzerResults",
+              search: "?view=import-issues",
+            })
+          }
         />
       )}
 

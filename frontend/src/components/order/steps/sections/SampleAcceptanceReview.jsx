@@ -250,7 +250,7 @@ const SampleAcceptanceReview = ({
             defaultMessage="Intake Acceptance"
           />
         </h4>
-        <p className="sac-subtitle">
+        <div className="sac-subtitle">
           <FormattedMessage
             id="sampleAcceptance.review.subtitle"
             defaultMessage="Select a sample to complete its acceptance checklist"
@@ -264,7 +264,7 @@ const SampleAcceptanceReview = ({
               })}
             />
           )}
-        </p>
+        </div>
       </div>
 
       <Table size="md" useZebraStyles className="sac-review-table">

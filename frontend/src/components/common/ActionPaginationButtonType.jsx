@@ -136,43 +136,47 @@ const ActionPaginationButtonType = ({
               {toRecordCount} <FormattedMessage id="of" /> {totalRecordCount}
             </h4>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Button
+            {handlePreviousPage && handleNextPage && (
+              <div
                 style={{
-                  minWidth: isMobile ? "2rem" : "2.5rem",
-                  minHeight: isMobile ? "2rem" : "2.5rem",
-                  padding: "0.5rem",
+                  display: "flex",
+                  gap: "0.5rem",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-                hasIconOnly
-                disabled={parseInt(fromRecordCount) <= 1}
-                onClick={handlePreviousPage}
-                renderIcon={ArrowLeft}
-                iconDescription={intl.formatMessage({
-                  id: "organization.previous",
-                })}
-              />
-              <Button
-                style={{
-                  minWidth: isMobile ? "2rem" : "2.5rem",
-                  minHeight: isMobile ? "2rem" : "2.5rem",
-                  padding: "0.5rem",
-                }}
-                hasIconOnly
-                renderIcon={ArrowRight}
-                onClick={handleNextPage}
-                disabled={parseInt(toRecordCount) >= parseInt(totalRecordCount)}
-                iconDescription={intl.formatMessage({
-                  id: "organization.next",
-                })}
-              />
-            </div>
+              >
+                <Button
+                  style={{
+                    minWidth: isMobile ? "2rem" : "2.5rem",
+                    minHeight: isMobile ? "2rem" : "2.5rem",
+                    padding: "0.5rem",
+                  }}
+                  hasIconOnly
+                  disabled={parseInt(fromRecordCount) <= 1}
+                  onClick={handlePreviousPage}
+                  renderIcon={ArrowLeft}
+                  iconDescription={intl.formatMessage({
+                    id: "organization.previous",
+                  })}
+                />
+                <Button
+                  style={{
+                    minWidth: isMobile ? "2rem" : "2.5rem",
+                    minHeight: isMobile ? "2rem" : "2.5rem",
+                    padding: "0.5rem",
+                  }}
+                  hasIconOnly
+                  renderIcon={ArrowRight}
+                  onClick={handleNextPage}
+                  disabled={
+                    parseInt(toRecordCount) >= parseInt(totalRecordCount)
+                  }
+                  iconDescription={intl.formatMessage({
+                    id: "organization.next",
+                  })}
+                />
+              </div>
+            )}
           </div>
         </Section>
       </Column>
@@ -185,8 +189,8 @@ ActionPaginationButtonType.propTypes = {
   modifyButton: PropTypes.bool.isRequired,
   deactivateButton: PropTypes.bool.isRequired,
   deleteDeactivate: PropTypes.func.isRequired,
-  handlePreviousPage: PropTypes.func.isRequired,
-  handleNextPage: PropTypes.func.isRequired,
+  handlePreviousPage: PropTypes.func,
+  handleNextPage: PropTypes.func,
   fromRecordCount: PropTypes.string.isRequired,
   toRecordCount: PropTypes.string.isRequired,
   totalRecordCount: PropTypes.string.isRequired,

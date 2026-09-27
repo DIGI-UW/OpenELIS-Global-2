@@ -92,6 +92,7 @@ import PatientHistory from "./components/patient/PatientHistory";
 import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
+import BatchWorkplan from "./components/workplan/BatchWorkplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -1113,42 +1114,6 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/analyzers/new"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/edit"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/qc-rules"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QcRulePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
                   path="/analyzers"
                   exact
                   render={() => (
@@ -1159,42 +1124,6 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/mappings"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <FieldMapping />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
-                />
-                <SecureRoute
-                  path="/analyzers/errors"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <ErrorDashboardPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/custom-field-types"
-                  exact
-                  render={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CustomFieldTypeManagementPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/types"
@@ -1311,6 +1240,12 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
 
+                <SecureRoute
+                  path="/Workplan"
+                  exact
+                  component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
                 <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact

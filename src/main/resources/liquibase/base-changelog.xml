@@ -4,6 +4,8 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+  <!-- Upgrade guard: resync id sequences before any seed insert runs -->
+  <include file="liquibase/upgrade/000-resync-id-sequences.xml" />
   <include file="liquibase/2.0.x.x/base.xml" />
   <include file="liquibase/2.1.x.x/base.xml" />
   <include file="liquibase/2.2.x.x/base.xml" />

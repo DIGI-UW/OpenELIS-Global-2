@@ -53,6 +53,61 @@ const formatCheckMessage = (intl, check) => {
   });
 };
 
+const PORT_SOURCE_MESSAGES = new Map([
+  ["Connection override", "analyzer.setup.connect.portSource.override"],
+  ["Profile default", "analyzer.setup.connect.portSource.profile"],
+  ["Bridge default", "analyzer.setup.connect.portSource.bridge"],
+]);
+
+// Render only endpoint evidence from the probe, never settings inferred by OE2
+// or arbitrary detail fields returned by a newer Bridge.
+const ProbeEndpointDetails = ({ check }) => {
+  const intl = useIntl();
+  const kind = normalizedCheckKey(check.key);
+  const { host, port, portSource } = check.details || {};
+  const hasHost = typeof host === "string" && host.trim().length > 0;
+  const hasPort = Number.isInteger(port) && port > 0 && port <= 65535;
+  const sourceId = PORT_SOURCE_MESSAGES.get(portSource);
+  if (kind === "listener") {
+    return hasPort ? (
+      <p>
+        {intl.formatMessage(
+          { id: "analyzer.setup.connect.listenerPort" },
+          { port: String(port) },
+        )}
+      </p>
+    ) : null;
+  }
+  if (kind !== "remote_protocol") return null;
+  return (
+    <>
+      {hasHost && hasPort && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.destination" },
+            { host, port: String(port) },
+          )}
+        </p>
+      )}
+      {sourceId && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.portSource" },
+            { source: intl.formatMessage({ id: sourceId }) },
+          )}
+        </p>
+      )}
+      {check.status !== "PASSED" && (
+        <p>
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.destinationRemediation",
+          })}
+        </p>
+      )}
+    </>
+  );
+};
+
 const probeOutcomeMessage = (status) => {
   switch (status) {
     case "SUCCEEDED":
@@ -97,7 +152,7 @@ const MAPPING_BLOCKERS = new Set([
   "analyzer.activation.blocker.recognition",
 ]);
 
-const needsMappingVerification = (readiness) =>
+export const needsMappingVerification = (readiness) =>
   Boolean(
     readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
   );
@@ -120,6 +175,7 @@ const AnalyzerConnectionSetup = ({
   onCandidateChange,
   onClose,
   onVerifyMappings,
+  onReadinessChange,
 }) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
@@ -160,6 +216,10 @@ const AnalyzerConnectionSetup = ({
     }
     return () => controller.abort();
   }, [candidate?.id]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
 
   const refreshReadiness = (analyzerId = candidate.id) => {
     setReadinessLoading(true);
@@ -332,7 +392,10 @@ const AnalyzerConnectionSetup = ({
             {probe.checks.map((check) => (
               <div key={check.key}>
                 <dt>{formatCheckKind(intl, check)}</dt>
-                <dd>{formatCheckMessage(intl, check)}</dd>
+                <dd>
+                  {formatCheckMessage(intl, check)}
+                  <ProbeEndpointDetails check={check} />
+                </dd>
               </div>
             ))}
           </dl>

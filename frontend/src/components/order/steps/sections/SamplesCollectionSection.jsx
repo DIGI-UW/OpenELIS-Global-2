@@ -46,17 +46,20 @@ const SamplesCollectionSection = ({
 
   // Current server time for "Received at Lab" - always shows current time when page opens
   // Initialize with client time as fallback, then update with server time
-  const [serverReceivedDate, setServerReceivedDate] = useState(getClientDate());
-  const [serverReceivedTime, setServerReceivedTime] = useState(getClientTime());
+  // The laboratory's "now", from the server. Empty until it answers, so the
+  // cards default collection and receipt from the same clock; the browser's
+  // clock is only the fallback when the server cannot be reached.
+  const [serverReceivedDate, setServerReceivedDate] = useState("");
+  const [serverReceivedTime, setServerReceivedTime] = useState("");
 
   // Fetch current server time on mount - this is "now" for receiving samples
   useEffect(() => {
     componentMounted.current = true;
 
     getFromOpenElisServer("/rest/server-time", (response) => {
-      if (componentMounted.current && response) {
-        setServerReceivedDate(response.date || getClientDate());
-        setServerReceivedTime(response.time || getClientTime());
+      if (componentMounted.current) {
+        setServerReceivedDate(response?.date || getClientDate());
+        setServerReceivedTime(response?.time || getClientTime());
       }
     });
 

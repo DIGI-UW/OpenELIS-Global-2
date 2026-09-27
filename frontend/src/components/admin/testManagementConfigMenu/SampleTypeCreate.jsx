@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -70,28 +71,33 @@ function SampleTypeCreate() {
   };
 
   const handlePostSampleTypeCreateListCallBack = (res, actions) => {
-    if (res) {
-      if (res) {
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        actions.resetForm();
-        setBothFilled(false);
-        invalidateServerData();
-        setNotificationVisible(true);
-      }
+    if (!requestFailed(res)) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "message.sampleType.add.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      actions.resetForm();
+      setBothFilled(false);
+      invalidateServerData();
+      setNotificationVisible(true);
     } else {
       actions.setSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id:
+            res && res.status === 400
+              ? "error.sampleType.create.invalidName"
+              : res && res.status === 409
+                ? "configuration.sampleType.create.duplicate"
+                : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
     }

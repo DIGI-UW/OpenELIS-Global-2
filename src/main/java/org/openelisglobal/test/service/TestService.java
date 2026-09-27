@@ -183,4 +183,10 @@ public interface TestService extends BaseObjectService<Test, String> {
      * test has no localization link for it.
      */
     Map<String, String> getNameLocalizationIds(String testId);
+
+    /**
+     * True when the localization is some test's name or reporting name, so a change
+     * to its translations must refresh the cached test-name lists.
+     */
+    boolean isNameLocalization(String localizationId);
 }

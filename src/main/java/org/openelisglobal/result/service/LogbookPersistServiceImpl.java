@@ -332,6 +332,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 sysUserId);
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
+        actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
         reflexAnalysises.addAll(caclculatedAnalyses);
         return reflexAnalysises;
     }

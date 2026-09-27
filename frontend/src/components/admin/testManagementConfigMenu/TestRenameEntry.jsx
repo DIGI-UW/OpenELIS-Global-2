@@ -10,6 +10,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -96,13 +97,13 @@ function TestRenameEntry() {
 
   function testRenameEntryPostCallback(res) {
     setIsLoading(false);
-    if (res) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });

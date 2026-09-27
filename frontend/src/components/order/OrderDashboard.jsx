@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import { useHistory } from "react-router-dom";
 import { useWorkflowPrefix } from "./OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
@@ -28,6 +34,12 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
@@ -41,7 +53,7 @@ import "./order-workflow.scss";
  * - DSH-3/4: "Include external sources" toggle for EMR/referral orders
  * - DSH-5/6: "+ New Order" button and barcode scan bar
  * - DSH-7/8: Filter dropdowns (Status, date range, Priority)
- * - DSH-9: Pagination (25/50/100 items, default 100)
+ * - DSH-9: Pagination, one server page at a time (paging.results.pageSize)
  */
 
 const STATUS_OPTIONS = [
@@ -62,8 +74,6 @@ const PRIORITY_OPTIONS = [
   { id: "routine", label: "Routine" },
 ];
 
-const PAGE_SIZES = [25, 50, 100];
-
 const OrderDashboardContent = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -79,9 +89,11 @@ const OrderDashboardContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: null, end: null });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
-  const [totalItems, setTotalItems] = useState(0);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
 
   const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
   const isEnvOrVector = workflow === "environmental" || workflow === "vector";
@@ -97,13 +109,31 @@ const OrderDashboardContent = () => {
     { label: workflowLabel, link: workflowPrefix },
   ];
 
-  // Fetch orders
+  // Identifies the load in flight, so a superseded response is dropped.
+  const latestRequest = useRef(0);
+
+  const applyPage = useCallback((requestId, response) => {
+    if (requestId !== latestRequest.current) {
+      return;
+    }
+    setIsLoading(false);
+    if (response) {
+      const pageOrders = response.orders || [];
+      setOrders(pageOrders);
+      setPaging(response.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response.paging, pageOrders.length, previous),
+      );
+    }
+  }, []);
+
+  // A new search: the server matches every order against the filters, caches
+  // the list and answers with its first page.
   const fetchOrders = useCallback(() => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
 
     const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
       workflowType: workflow,
     });
 
@@ -120,18 +150,41 @@ const OrderDashboardContent = () => {
     if (dateRange.end)
       params.append("endDate", toLocalIso(new Date(dateRange.end)));
 
-    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) => {
-      setIsLoading(false);
-      if (response) {
-        setOrders(response.orders || []);
-        setTotalItems(response.totalCount || 0);
-      }
-    });
-  }, [page, pageSize, searchQuery, statusFilter, priorityFilter, dateRange]);
+    getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) =>
+      applyPage(requestId, response),
+    );
+  }, [
+    workflow,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    dateRange,
+    applyPage,
+  ]);
+
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = useCallback(
+    (pageNumber) => {
+      const requestId = ++latestRequest.current;
+      setIsLoading(true);
+      getFromOpenElisServer(
+        `/rest/order/dashboard?page=${pageNumber}`,
+        (response) => applyPage(requestId, response),
+      );
+    },
+    [applyPage],
+  );
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  /** A filter change is a new search, which the server answers from page 1. */
+  const applyFilter = (setFilter) => (value) => {
+    setFilter(value);
+  };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   // Handlers
   const handleNewOrder = () => {
@@ -455,7 +508,7 @@ const OrderDashboardContent = () => {
                 itemToString={(item) => item?.label || ""}
                 selectedItem={STATUS_OPTIONS.find((s) => s.id === statusFilter)}
                 onChange={({ selectedItem }) =>
-                  setStatusFilter(selectedItem?.id || "all")
+                  applyFilter(setStatusFilter)(selectedItem?.id || "all")
                 }
               />
             </div>
@@ -473,7 +526,7 @@ const OrderDashboardContent = () => {
                   (p) => p.id === priorityFilter,
                 )}
                 onChange={({ selectedItem }) =>
-                  setPriorityFilter(selectedItem?.id || "all")
+                  applyFilter(setPriorityFilter)(selectedItem?.id || "all")
                 }
               />
             </div>
@@ -481,7 +534,10 @@ const OrderDashboardContent = () => {
               <DatePicker
                 datePickerType="single"
                 onChange={(dates) =>
-                  setDateRange((prev) => ({ ...prev, start: dates[0] }))
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    start: dates[0],
+                  }))
                 }
               >
                 <DatePickerInput
@@ -499,7 +555,10 @@ const OrderDashboardContent = () => {
               <DatePicker
                 datePickerType="single"
                 onChange={(dates) =>
-                  setDateRange((prev) => ({ ...prev, end: dates[0] }))
+                  applyFilter(setDateRange)((prev) => ({
+                    ...prev,
+                    end: dates[0],
+                  }))
                 }
               >
                 <DatePickerInput
@@ -516,6 +575,7 @@ const OrderDashboardContent = () => {
           </div>
 
           {/* Orders Table */}
+          {arrows.show && <ServerPageArrows {...arrows} />}
           <DataTable rows={rows} headers={headers} isSortable>
             {({
               rows,
@@ -545,7 +605,7 @@ const OrderDashboardContent = () => {
                       )}
                       onChange={(e) => {
                         onInputChange(e);
-                        setSearchQuery(e.target.value);
+                        applyFilter(setSearchQuery)(e.target.value);
                       }}
                     />
                   </TableToolbarContent>
@@ -608,16 +668,15 @@ const OrderDashboardContent = () => {
             )}
           </DataTable>
 
-          {/* Pagination (DSH-9) */}
+          {/* Pagination (DSH-9): Carbon's page is the server's page */}
           <Pagination
-            totalItems={totalItems}
-            pageSize={pageSize}
-            pageSizes={PAGE_SIZES}
-            page={page}
-            onChange={({ page: newPage, pageSize: newPageSize }) => {
-              setPage(newPage);
-              setPageSize(newPageSize);
-            }}
+            {...serverPaginationProps({
+              paging,
+              rowsOnPage: orders.length,
+              pageSize: serverPageSize,
+              onPageRequest: loadPage,
+              intl,
+            })}
           />
         </Stack>
       </div>

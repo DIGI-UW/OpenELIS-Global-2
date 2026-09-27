@@ -53,6 +53,7 @@ import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
@@ -487,7 +488,8 @@ public class ResultsValidationRetroCIUtility {
         testItem.setTestId(test.getId());
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
-        testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
+        testItem.setDictionaryResults(
+                StoredDictionaryResult.withStoredValue(getAnyDictonaryValues(testResults), result, dictionaryService));
         testItem.setResultType(getTestResultType(testResults));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());

@@ -97,6 +97,20 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
         results.insert(result);
     }
 
+    private String csvRows(String layout, List<String> ids) throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        var definition = catalog.definition("SAMPLE_TESTING");
+        Map<String, ReportingVariable> available = catalog.variables(definition, layout).stream()
+                .collect(Collectors.toMap(ReportingVariable::id, Function.identity()));
+        var filter = new ExportFilter("2026-08-20", "2026-08-20", List.of("1", "2"), List.of(), List.of("FINALIZED"));
+        var snapshot = new ExportSnapshot(definition, layout, ids.stream().map(available::get).toList(), filter,
+                ZoneId.systemDefault().getId(), List.of(statuses.getStatusID(AnalysisStatus.Finalized)));
+        StringWriter csv = new StringWriter();
+        catalog.source(definition.source()).write(csv, snapshot);
+        return csv.toString();
+    }
+
     private String csv(String layout, List<String> ids, long expectedRows) throws Exception {
         entityManager.flush();
         entityManager.clear();
@@ -150,7 +164,8 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
                         3));
         assertEquals(
                 "Test Name,Result Value,Order to Result (min),Received to Validated (min),Resulted to Validated (min)\r\n"
-                        + "Blood Test,12,690,60,30\r\nUrine Test,7,750,120,30\r\nBlood Test,12,840,240,60\r\n",
+                        + "Test Localization 1,12,690,60,30\r\nTest Localization 2,7,750,120,30\r\n"
+                        + "Test Localization 1,12,840,240,60\r\n",
                 csv("RESULT_LIST", List.of("testName", "resultValue", "orderToResultMinutes",
                         "receivedToValidatedMinutes", "resultedToValidatedMinutes"), 3));
     }
@@ -167,6 +182,41 @@ public class SampleTestingTurnaroundIntegrationTest extends BaseWebContextSensit
                         + "1,,,\r\n1,,,\r\n1,660,-60,-60\r\n",
                 csv("SPREADSHEET", List.of("specimenId", "test:1:orderToResultMinutes",
                         "test:1:receivedToValidatedMinutes", "test:1:resultedToValidatedMinutes"), 3));
+    }
+
+    // OGC-1266: single-component tests exported their primary component's
+    // migrated label ("Créatinine"), repeating the test name in another language.
+    @Test
+    public void componentIsNamedOnlyWhereTheTestHasSeveral() throws Exception {
+        TestResultComponent onlyUrine = new TestResultComponent();
+        onlyUrine.setCode("URINE");
+        onlyUrine.setLabel("Legacy urine label");
+        onlyUrine.setDisplayOrder(0);
+        onlyUrine.setResultType("N");
+        var urineComponent = components.saveSampleResults("2", List.of(onlyUrine), null, null, TEST_SYS_USER_ID).get(0);
+        var urine = analyses.get("2");
+        urine.setSampleItem(analyses.get("1").getSampleItem());
+        reading(timed(urine, "12:30:00", "13:00:00"),
+                options.getAllMatching("componentId", urineComponent.getId()).get(0), "9");
+        TestResultComponent primary = new TestResultComponent();
+        primary.setCode("PRIMARY");
+        primary.setLabel("Primary value");
+        primary.setDisplayOrder(0);
+        primary.setResultType("N");
+        TestResultComponent secondary = new TestResultComponent();
+        secondary.setCode("SECONDARY");
+        secondary.setLabel("Secondary value");
+        secondary.setDisplayOrder(1);
+        secondary.setResultType("N");
+        var blood = components.saveSampleResults("1", List.of(primary, secondary), null, null, TEST_SYS_USER_ID)
+                .stream().filter(c -> c.getCode().equals("SECONDARY")).findFirst().orElseThrow();
+        reading(timed(analyses.get("1"), "11:30:00", "12:00:00"),
+                options.getAllMatching("componentId", blood.getId()).get(0), "6");
+
+        String csv = csvRows("RESULT_LIST", List.of("component", "resultValue"));
+
+        assertTrue(csv, csv.contains("\r\n,9\r\n"));
+        assertTrue(csv, csv.contains("\r\nSecondary value,6\r\n"));
     }
 
     @Test

@@ -217,8 +217,12 @@ describe("AnalyzerConnectionSetup", () => {
     const onClose = vi.fn();
     const history = renderConnection({ onClose });
 
-    expect(await screen.findByLabelText("Transport")).toHaveValue("TCP/IP");
-    expect(screen.getByLabelText("Connection role")).toHaveValue("SERVER");
+    expect(await screen.findByLabelText("Transport")).toHaveDisplayValue(
+      "Network (TCP/IP)",
+    );
+    expect(screen.getByLabelText("Connection role")).toHaveDisplayValue(
+      "Server",
+    );
     expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveValue(55000);
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -237,11 +241,14 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       screen.getByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     expect(screen.getByRole("textbox", { name: "Host" })).toBeVisible();
 
-    await userEvent.selectOptions(screen.getByLabelText("Transport"), "RS-232");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Transport"),
+      "Serial (RS-232)",
+    );
     expect(screen.queryByLabelText("Connection role")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "Host" }),
@@ -307,7 +314,7 @@ describe("AnalyzerConnectionSetup", () => {
 
     await userEvent.selectOptions(
       await screen.findByLabelText("Connection role"),
-      "CLIENT",
+      "Client",
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Test connection" }),
@@ -352,6 +359,135 @@ describe("AnalyzerConnectionSetup", () => {
     expect(await screen.findByText("Connection ready")).toBeVisible();
     expect(screen.getByText("Bridge listener is ready.")).toBeVisible();
     expect(screen.getByText("Bridge listener")).toBeVisible();
+  });
+
+  it.each([
+    [
+      "FAILED",
+      "remote.refused",
+      "Connection override",
+      "Connection override",
+      "The analyzer refused the connection.",
+    ],
+    [
+      "TIMED_OUT",
+      "remote.timeout",
+      "Profile default",
+      "Analyzer type default",
+      "The analyzer did not respond before the timeout.",
+    ],
+    [
+      "FAILED",
+      "remote.host.unknown",
+      "Bridge default",
+      "Bridge default",
+      "The analyzer address could not be resolved.",
+    ],
+    [
+      "PASSED",
+      "remote.hl7.ready",
+      "Profile default",
+      "Analyzer type default",
+      "The analyzer completed the HL7 handshake.",
+    ],
+  ])(
+    "shows the attempted destination and source for %s / %s",
+    async (status, messageKey, portSource, sourceLabel, outcome) => {
+      testConnection.mockImplementation((_id, callback) =>
+        callback({
+          schemaVersion: "1.0",
+          requestId: "probe-destination",
+          connectionId: connection.connectionId,
+          profileRef,
+          configRevision: connection.configRevision,
+          configFingerprint: connection.configFingerprint,
+          nonMutating: true,
+          status: status === "PASSED" ? "SUCCEEDED" : "FAILED",
+          checks: [
+            {
+              key: "listener",
+              status: "PASSED",
+              messageKey: "listener.ready",
+              details: { port: 32001 },
+            },
+            {
+              key: "remote-protocol",
+              status,
+              messageKey,
+              details: {
+                host: "bench.example.test",
+                port: 6501,
+                portSource,
+                remediation: "Server text is not an untranslated UI label",
+                token: "DO-NOT-RENDER",
+              },
+            },
+          ],
+        }),
+      );
+      renderConnection();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Test connection" }),
+      );
+      expect(await screen.findByText(outcome)).toBeVisible();
+      expect(
+        screen.getByText("Destination: bench.example.test, port 6501"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(`Port selected from: ${sourceLabel}`),
+      ).toBeVisible();
+      expect(screen.getByText("Bridge listener port: 32001")).toBeVisible();
+      const remediation =
+        "Check the analyzer address, destination port, listening service and network access, then test again.";
+      if (status === "PASSED")
+        expect(screen.queryByText(remediation)).not.toBeInTheDocument();
+      else {
+        expect(screen.getByText(remediation)).toBeVisible();
+        expect(screen.getByText("Connection failed")).toBeVisible();
+      }
+      expect(screen.queryByText("DO-NOT-RENDER")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Server text is not an untranslated UI label"),
+      ).not.toBeInTheDocument();
+      await userEvent.selectOptions(
+        screen.getByLabelText("Transport"),
+        "Serial (RS-232)",
+      );
+      expect(
+        screen.queryByText("Destination: bench.example.test, port 6501"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("keeps old probe responses usable without inventing a destination or port source", async () => {
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        requestId: "probe-old",
+        connectionId: connection.connectionId,
+        profileRef,
+        configRevision: connection.configRevision,
+        configFingerprint: connection.configFingerprint,
+        nonMutating: true,
+        status: "FAILED",
+        checks: [
+          {
+            key: "remote-protocol",
+            status: "FAILED",
+            messageKey: "remote.refused",
+          },
+        ],
+      }),
+    );
+    renderConnection();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Test connection" }),
+    );
+    expect(
+      await screen.findByText("The analyzer refused the connection."),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Destination:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Port selected from:/)).not.toBeInTheDocument();
   });
 
   it("renders structured failure evidence when an equivalent saved revision advances", async () => {
@@ -472,6 +608,56 @@ describe("AnalyzerConnectionSetup", () => {
         screen.queryByText("Connection check failed."),
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Connection failed")).not.toBeInTheDocument();
+    });
+
+    it("directs missing shared-listener configuration to the Bridge administrator", async () => {
+      await probeWith(
+        serverProbe("BLOCKED", [
+          {
+            key: "listener",
+            status: "SKIPPED",
+            messageKey: "listener.configuration.missing",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(
+        await screen.findByText("Connection settings are incomplete"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          "The shared Bridge listener is not configured. Ask the Bridge administrator to check its listener settings.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("This check could not be run."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains that incoming HTTP messages need delivered-result evidence", async () => {
+      await probeWith(
+        serverProbe("FAILED", [
+          {
+            key: "http-input",
+            status: "FAILED",
+            messageKey: "http.input.verify.with.delivery",
+            durationMillis: 0,
+          },
+        ]),
+      );
+
+      expect(
+        await screen.findByText("Incoming analyzer messages"),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          "This analyzer sends messages to the Bridge, so this connection must be verified by delivering a result.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Connection check failed."),
+      ).not.toBeInTheDocument();
     });
 
     it("reports a listener failure as an error", async () => {
