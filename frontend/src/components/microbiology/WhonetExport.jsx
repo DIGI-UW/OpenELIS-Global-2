@@ -307,7 +307,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
     : [];
 
   return (
-    <main className="whonet-export" data-testid="whonet-export">
+    <div className="whonet-export" data-testid="whonet-export">
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/Dashboard" },
@@ -851,7 +851,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
           )}
         </Column>
       </Grid>
-    </main>
+    </div>
   );
 };
 
