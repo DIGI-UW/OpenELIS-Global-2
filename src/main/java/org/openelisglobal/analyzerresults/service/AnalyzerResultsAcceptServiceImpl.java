@@ -249,6 +249,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
         List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
+        Map<Integer, AnalyzerResultItem> selectedActions = new HashMap<>();
+        for (AnalyzerResultItem item : resultItemList) {
+            if (item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()) {
+                selectedActions.putIfAbsent(item.getSampleGroupingNumber(), item);
+            }
+        }
 
         int currentSampleGrouping = 0;
         boolean acceptResult = false;
@@ -260,10 +266,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
             if (currentSampleGrouping != resultItem.getSampleGroupingNumber()) {
                 currentSampleGrouping = resultItem.getSampleGroupingNumber();
-                acceptResult = resultItem.getIsAccepted();
-                rejectResult = resultItem.getIsRejected();
-                deleteResult = resultItem.getIsDeleted();
+                AnalyzerResultItem action = selectedActions.getOrDefault(currentSampleGrouping, resultItem);
+                acceptResult = action.getIsAccepted();
+                rejectResult = action.getIsRejected();
+                deleteResult = action.getIsDeleted();
                 accessionNumber = resultItem.getAccessionNumber();
+                resultItem.setIsAccepted(acceptResult);
+                resultItem.setIsRejected(rejectResult);
+                resultItem.setIsDeleted(deleteResult);
             } else {
                 resultItem.setAccessionNumber(accessionNumber);
                 resultItem.setIsAccepted(acceptResult);

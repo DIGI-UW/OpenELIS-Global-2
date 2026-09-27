@@ -10,8 +10,9 @@ import messages from "../../languages/en.json";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import Index from "./Index";
 
-const { getFromOpenElisServer } = vi.hoisted(() => ({
+const { getFromOpenElisServer, tableProps } = vi.hoisted(() => ({
   getFromOpenElisServer: vi.fn(),
+  tableProps: vi.fn(),
 }));
 
 vi.mock("../utils/Utils", () => ({
@@ -20,7 +21,10 @@ vi.mock("../utils/Utils", () => ({
 }));
 
 vi.mock("./AnalyserResults", () => ({
-  default: () => <div>Analyzer result table</div>,
+  default: (props) => {
+    tableProps(props);
+    return <div>Analyzer result table</div>;
+  },
 }));
 
 const renderPage = (initialEntry) => {
@@ -59,6 +63,7 @@ const renderPage = (initialEntry) => {
 describe("Analyzer results page", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
+    tableProps.mockReset();
   });
 
   it("returns to the analyzer dashboard when no analyzer is selected", async () => {
@@ -67,6 +72,29 @@ describe("Analyzer results page", () => {
     expect(await screen.findByText("Analyzer dashboard")).toBeInTheDocument();
     expect(history.location.pathname).toBe("/analyzers");
     expect(getFromOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("selects a mapped result as the action row when a held result comes first", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          {
+            id: "held",
+            sampleGroupingNumber: 1,
+            importIssueReason: "unknown_analyzer_result_value",
+          },
+          { id: "mapped", sampleGroupingNumber: 1 },
+        ],
+        paging: { totalPages: 1, currentPage: 1 },
+      }),
+    );
+
+    renderPage("/AnalyzerResults?id=5");
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].sampleGroup[0].id).toBe("mapped"),
+    );
   });
 
   it("finds an accession on a one-page analyzer worklist", async () => {

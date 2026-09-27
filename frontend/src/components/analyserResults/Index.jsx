@@ -98,14 +98,20 @@ const Index = () => {
   };
 
   const extractUniqueGroups = (data) => {
-    const seenGroups = new Set();
-    return data.filter((item) => {
-      if (!seenGroups.has(item.sampleGroupingNumber)) {
-        seenGroups.add(item.sampleGroupingNumber);
-        return true;
+    const reviewPriority = (item) =>
+      !item.importIssueReason
+        ? 2
+        : item.importIssueReason === "awaiting_specimen"
+          ? 1
+          : 0;
+    const groups = new Map();
+    data.forEach((item) => {
+      const current = groups.get(item.sampleGroupingNumber);
+      if (!current || reviewPriority(item) > reviewPriority(current)) {
+        groups.set(item.sampleGroupingNumber, item);
       }
-      return false;
     });
+    return Array.from(groups.values());
   };
 
   /** One server page, the same request for the arrows, the lab number search and Carbon. */

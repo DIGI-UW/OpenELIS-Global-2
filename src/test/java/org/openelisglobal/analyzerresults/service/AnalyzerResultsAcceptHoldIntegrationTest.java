@@ -123,8 +123,8 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         AnalyzerResultItem unresolved = acceptedItem();
         unresolved.setId(heldId);
         unresolved.setReadOnly(true);
-        unresolved.setIsAccepted(true);
-        acceptService.acceptAndPersist(List.of(accepted, unresolved), "1");
+        unresolved.setIsAccepted(false);
+        acceptService.acceptAndPersist(List.of(unresolved, accepted), "1");
 
         assertEquals(Integer.valueOf(1), jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldId));

@@ -51,7 +51,10 @@ const mappedQualitativeResult = {
   sampleGroupingNumber: 1,
 };
 
-const renderResults = (resultList = [heldResult]) =>
+const renderResults = (
+  resultList = [heldResult],
+  sampleGroup = [resultList[0]],
+) =>
   render(
     <MemoryRouter initialEntries={["/AnalyzerResults?id=2001"]}>
       <IntlProvider locale="en" messages={messages}>
@@ -66,7 +69,7 @@ const renderResults = (resultList = [heldResult]) =>
           >
             <AnalyserResults
               results={{ resultList }}
-              sampleGroup={[resultList[0]]}
+              sampleGroup={sampleGroup}
               analyzerId="2001"
             />
           </NotificationContext.Provider>
@@ -103,6 +106,20 @@ describe("AnalyserResults", () => {
     expect(
       document.getElementById("resultList1004.isDeleted"),
     ).not.toBeInTheDocument();
+  });
+
+  it("accepts a mapped result after a held row in the same group", async () => {
+    renderResults(
+      [heldResult, mappedQualitativeResult],
+      [mappedQualitativeResult],
+    );
+
+    fireEvent.click(document.getElementById("resultList1005.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].isAccepted).not.toBe(true);
+    expect(submitted.resultList[1].isAccepted).toBe(true);
   });
 
   it("offers acceptance after choosing a specimen for a held mapped result", async () => {
