@@ -1,0 +1,9 @@
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,significance
+Malaria Parasite Detection,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE
+Malaria Parasite Detection,D,Negative,vecPathogenResult,2,N,Y,Y,,,NEGATIVE
+Pan-Plasmodium CSP ELISA,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE
+Pan-Plasmodium CSP ELISA,D,Negative,vecPathogenResult,2,N,Y,Y,,,NEGATIVE
+Dengue Virus Detection,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE
+Dengue Virus Detection,D,Negative,vecPathogenResult,2,N,Y,Y,,,NEGATIVE
+Japanese Encephalitis Virus Detection,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE
+Japanese Encephalitis Virus Detection,D,Negative,vecPathogenResult,2,N,Y,Y,,,NEGATIVE

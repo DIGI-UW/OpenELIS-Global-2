@@ -205,6 +205,13 @@ public class PresetSnapshotJsonbRoundtripTest extends BaseWebContextSensitiveTes
     }
 
     private String createSampleRow() {
+        // Earlier classes' DBUnit datasets CLEAN_INSERT clinlims.sample with explicit
+        // low ids and leave sample_seq behind them, so nextval here can collide on
+        // samp_pk depending on which classes ran first. Realign before inserting.
+        jdbcTemplate.queryForObject(
+                "SELECT setval('clinlims.sample_seq',"
+                        + " CAST((SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.sample) AS BIGINT), false)",
+                Long.class);
         Long id = jdbcTemplate.queryForObject(
                 "INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date, is_confirmation,"
                         + " lastupdated) VALUES (nextval('clinlims.sample_seq'), ?, CURRENT_TIMESTAMP,"

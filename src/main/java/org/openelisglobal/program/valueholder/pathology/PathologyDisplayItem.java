@@ -20,6 +20,12 @@ public class PathologyDisplayItem {
 
     private String patientPK;
 
+    /**
+     * Derived from the case's pathology_request rows at OPENED, never stored
+     * (AC-6).
+     */
+    private boolean hasOpenRequests;
+
     public Date getRequestDate() {
         return requestDate;
     }
@@ -90,5 +96,13 @@ public class PathologyDisplayItem {
 
     public void setPatientPK(String patientPK) {
         this.patientPK = patientPK;
+    }
+
+    public boolean isHasOpenRequests() {
+        return hasOpenRequests;
+    }
+
+    public void setHasOpenRequests(boolean hasOpenRequests) {
+        this.hasOpenRequests = hasOpenRequests;
     }
 }

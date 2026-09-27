@@ -1,35 +1,19 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
-  Form,
   Heading,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
   Select,
   SelectItem,
-  Stack,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -37,9 +21,10 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import CustomCheckBox from "../../common/CustomCheckBox";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 import { CustomSharedList } from "./CustomSharedList";
+import ServerDataState from "../../utils/ServerDataState";
+
+const PANEL_TEST_ASSIGN_ENDPOINT = "/rest/PanelTestAssign";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -63,16 +48,33 @@ function PanelTestAssign() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(true);
-  const [panelTestList, setPanelTestList] = useState([]);
   const [panelId, setPanelId] = useState("");
-  const [selectedPanelIdData, setSelectedPanelIdData] = useState({});
+  // The tests moved between the two lists but not yet saved. Null means the
+  // panel is shown as it is stored.
+  const [movedTests, setMovedTests] = useState(null);
 
-  const componentMounted = useRef(false);
+  const panelTestQuery = useServerData(PANEL_TEST_ASSIGN_ENDPOINT);
+  const { data: panelTestList } = panelTestQuery;
+  const invalidateServerData = useInvalidateServerData();
+
+  // Held off until a panel is picked and keyed on it. Until the read for a
+  // newly picked panel arrives the hook still serves the one picked before,
+  // so the lists stay empty rather than showing the previous panel's tests.
+  const { data: readPanel, isPreviousData } = useServerData(
+    panelId ? `${PANEL_TEST_ASSIGN_ENDPOINT}?panelId=${panelId}` : null,
+  );
+  const storedPanel = isPreviousData ? undefined : readPanel;
+  const selectedPanelIdData =
+    storedPanel && movedTests
+      ? {
+          ...storedPanel,
+          selectedPanel: { ...storedPanel.selectedPanel, ...movedTests },
+        }
+      : storedPanel;
 
   const handlePostPanelTestTestAssignListCall = () => {
-    if (!panelId || !selectedPanelIdData) {
-      window.location.reload();
+    if (!panelId || !selectedPanelIdData?.selectedPanel) {
+      setMovedTests(null);
       return;
     }
     postToOpenElisServerJsonResponse(
@@ -92,20 +94,19 @@ function PanelTestAssign() {
   };
 
   const handlePostPanelTestTestAssignListCallBack = (res) => {
-    if (res) {
-      setIsLoading(false);
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.delete.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      setNotificationVisible(true);
+      setMovedTests(null);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -113,56 +114,10 @@ function PanelTestAssign() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   };
 
-  const handleSelectedPanelTestList = (res) => {
-    if (!res) {
-      window.location.reload();
-    } else {
-      setSelectedPanelIdData(res);
-    }
-  };
-
-  const handlePanelTestAssignList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setPanelTestList(res);
-    }
-  };
-
-  useEffect(() => {
-    if (componentMounted.current) {
-      if (panelId) {
-        getFromOpenElisServer(
-          `/rest/PanelTestAssign?panelId=${panelId}`,
-          handleSelectedPanelTestList,
-        );
-      }
-    }
-  }, [panelId]);
-
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/PanelTestAssign`, handlePanelTestAssignList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
+  if (!panelTestList) return <ServerDataState query={panelTestQuery} />;
 
   return (
     <>
@@ -214,6 +169,7 @@ function PanelTestAssign() {
                       value={panelId}
                       onChange={(e) => {
                         setPanelId(e.target.value);
+                        setMovedTests(null);
                       }}
                     >
                       <SelectItem
@@ -248,15 +204,9 @@ function PanelTestAssign() {
                   rightList={selectedPanelIdData?.selectedPanel?.availableTests}
                   renderItem={(item) => item}
                   onChange={(newLeft, newRight) => {
-                    setSelectedPanelIdData((prev) => {
-                      return {
-                        ...prev,
-                        selectedPanel: {
-                          ...prev.selectedPanel,
-                          tests: newLeft,
-                          availableTests: newRight,
-                        },
-                      };
+                    setMovedTests({
+                      tests: newLeft,
+                      availableTests: newRight,
                     });
                   }}
                 />

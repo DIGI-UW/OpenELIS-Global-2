@@ -86,6 +86,12 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "archived_date")
     private Timestamp archivedDate;
 
+    @Column(name = "inbound", nullable = false)
+    private Boolean inbound = false;
+
+    @Column(name = "origin_facility_name", length = 255)
+    private String originFacilityName;
+
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
 
@@ -242,6 +248,22 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setSystemUserId(Integer systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    public Boolean getInbound() {
+        return inbound;
+    }
+
+    public void setInbound(Boolean inbound) {
+        this.inbound = inbound;
+    }
+
+    public String getOriginFacilityName() {
+        return originFacilityName;
+    }
+
+    public void setOriginFacilityName(String originFacilityName) {
+        this.originFacilityName = originFacilityName;
     }
 
     public List<BoxSampleItem> getBoxSampleItems() {

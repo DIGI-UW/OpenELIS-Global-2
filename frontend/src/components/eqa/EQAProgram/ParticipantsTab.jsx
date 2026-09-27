@@ -33,6 +33,7 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 
 const ENROLLMENT_STATUS_TAG = {
   Active: "green",
@@ -99,7 +100,7 @@ const ParticipantsTab = ({ programs }) => {
       `/rest/eqa/programs/${selectedProgramId}/enrollments`,
       JSON.stringify({ organizationIds: orgIds }),
       (response) => {
-        if (response) {
+        if (!requestFailed(response)) {
           setEnrollModalOpen(false);
           setSelectedOrgs([]);
           setNotification({
@@ -110,6 +111,11 @@ const ParticipantsTab = ({ programs }) => {
             ),
           });
           fetchEnrollments();
+        } else {
+          setNotification({
+            kind: "error",
+            message: intl.formatMessage({ id: "eqa.enrollment.error" }),
+          });
         }
       },
     );
@@ -125,6 +131,11 @@ const ParticipantsTab = ({ programs }) => {
           setWithdrawReason("");
           setSelectedEnrollment(null);
           fetchEnrollments();
+        } else {
+          setNotification({
+            kind: "error",
+            message: intl.formatMessage({ id: "eqa.enrollment.error" }),
+          });
         }
       },
     );

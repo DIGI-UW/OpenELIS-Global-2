@@ -120,7 +120,7 @@ describe("TestCatalogList", () => {
       const search = screen.getByPlaceholderText(
         messages["label.testCatalog.list.search"],
       );
-      fireEvent.change(search, { target: { value: "x" } });
+      fireEvent.change(search, { target: { value: "xy" } });
       act(() => vi.advanceTimersByTime(300)); // debounce fires -> a new fetch starts
       expect(signals.length).toBe(2);
       // The earlier request is aborted so its late response can't overwrite the newer one.
@@ -141,7 +141,61 @@ describe("TestCatalogList", () => {
     );
     renderList();
     const cell = await screen.findByText("Glucose");
-    fireEvent.click(cell.closest("tr"));
+    fireEvent.click(cell.closest("td"));
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/MasterListsPage/TestCatalogEditor/7/basic-info",
+    );
+  });
+
+  /**
+   * The checkbox selects a row for the "Edit related" batch action, which needs
+   * two or more tests. Opening the editor on the same click made it unusable:
+   * the box did toggle, then the navigation took the list away before a second
+   * row could be picked.
+   *
+   * It cannot be fixed by stopping propagation on TableSelectRow. Carbon
+   * destructures a fixed set of props there and onClick is not among them, so a
+   * handler passed to it never reaches the DOM. The row-opening click therefore
+   * lives on the data cells, leaving the checkbox cell outside it.
+   */
+  it("selects a row without opening the editor when the checkbox is clicked", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(
+        pageOf([
+          { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+          { testId: "8", name: "Sodium", domain: "CLINICAL", active: true },
+        ]),
+      ),
+    );
+    renderList();
+    await screen.findByText("Glucose");
+
+    const boxes = document
+      .querySelector("tbody")
+      .querySelectorAll('input[type="checkbox"]');
+    fireEvent.click(boxes[0]);
+
+    expect(
+      mockHistory.push,
+      "selecting a row must not navigate away from the list",
+    ).not.toHaveBeenCalled();
+    expect(boxes[0].checked).toBe(true);
+  });
+
+  it("still opens the editor from a data cell once a row is selected", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(
+        pageOf([
+          { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+        ]),
+      ),
+    );
+    renderList();
+    const cell = await screen.findByText("Glucose");
+
+    fireEvent.click(document.querySelector('tbody input[type="checkbox"]'));
+    fireEvent.click(cell.closest("td"));
+
     expect(mockHistory.push).toHaveBeenCalledWith(
       "/MasterListsPage/TestCatalogEditor/7/basic-info",
     );
@@ -164,6 +218,84 @@ describe("TestCatalogList", () => {
       expect(getFromOpenElisServer.mock.calls.at(-1)[0]).toContain(
         "search=glu",
       );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * OGC-1134 — one character matches most of the catalog, so it is not a search
+   * yet: nothing is asked of the server until the term reaches two characters,
+   * and clearing the box asks for the unfiltered list again.
+   */
+  it("does not query for a single character, then queries once at two and again when cleared", () => {
+    vi.useFakeTimers();
+    try {
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(pageOf([])));
+      renderList();
+      const before = getFromOpenElisServer.mock.calls.length;
+      const search = screen.getByPlaceholderText(
+        messages["label.testCatalog.list.search"],
+      );
+
+      fireEvent.change(search, { target: { value: "a" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before);
+      expect(mockHistory.replace).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          search: expect.stringContaining("search=a"),
+        }),
+      );
+
+      fireEvent.change(search, { target: { value: "am" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before + 1);
+      expect(getFromOpenElisServer.mock.calls.at(-1)[0]).toContain("search=am");
+
+      fireEvent.change(search, { target: { value: "" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before + 2);
+      expect(getFromOpenElisServer.mock.calls.at(-1)[0]).not.toContain(
+        "search=",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * Typing must not be interrupted: a search refresh leaves the toolbar Search
+   * mounted (focus/cursor kept) and keeps the previous rows on screen instead of
+   * swapping the whole table — search included — for a full-table spinner.
+   * Reverting the fix unmounts both, so this fails.
+   */
+  it("keeps the search box and current rows mounted during a search refresh", () => {
+    vi.useFakeTimers();
+    try {
+      let refreshPending = false;
+      getFromOpenElisServer.mockImplementation((url, cb) => {
+        if (!url.includes("/tests")) return cb([]); // sample-types reference fetch
+        if (refreshPending) return; // hold the refresh in-flight -> loading stays true
+        cb(
+          pageOf([
+            { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+          ]),
+        );
+      });
+      renderList();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
+
+      refreshPending = true;
+      const search = screen.getByPlaceholderText(
+        messages["label.testCatalog.list.search"],
+      );
+      fireEvent.change(search, { target: { value: "glu" } });
+      act(() => vi.advanceTimersByTime(300)); // debounce fires -> refresh now loading
+
+      expect(
+        screen.getByPlaceholderText(messages["label.testCatalog.list.search"]),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

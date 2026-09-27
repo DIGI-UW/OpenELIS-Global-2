@@ -53,6 +53,17 @@ public interface TestResultDAO extends BaseDAO<TestResult, String> {
      */
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result) throws LIMSRuntimeException;
 
+    /**
+     * Finds the option row for a dictionary result id on ONE result component of
+     * the test. Several components of a multi-component test can offer the same
+     * dictionary entry, so the row is looked up by component first; when the
+     * component is blank, or owns no such row (legacy rows carry no component),
+     * this falls back to
+     * {@link #getTestResultsByTestAndDictonaryResult(String, String)}.
+     */
+    TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId)
+            throws LIMSRuntimeException;
+
     List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException;
 
 }

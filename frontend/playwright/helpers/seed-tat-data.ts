@@ -275,6 +275,14 @@ export interface SampleConfig {
   receivedDate: string; // "2026-03-15"
   receivedTime: string; // "09:30"
   priority?: "routine" | "stat";
+  /** Sample type to order against; defaults to the seeded type used by TAT data. */
+  sampleTypeId?: string;
+  /** Comma-separated test ids for that sample type. */
+  testIds?: string;
+  /** Provider person id; defaults to the id seeded with the TAT data. */
+  providerPersonId?: string;
+  /** Referring site (organization) id; defaults to the TAT-seeded site. */
+  referringSiteId?: string;
 }
 
 /**
@@ -294,6 +302,10 @@ export async function createSampleOrder(
   config: SampleConfig,
 ): Promise<string> {
   const { receivedTime, priority } = config;
+  const sampleTypeId = config.sampleTypeId || "2";
+  const testIds = config.testIds || "13";
+  const providerPersonId = config.providerPersonId || "9000002";
+  const referringSiteId = config.referringSiteId || "9000100";
 
   // Navigate to Add Order page so the browser has the right session
   // context. The fetch() below runs inside the browser, same as the
@@ -366,8 +378,8 @@ export async function createSampleOrder(
     sampleTypes: null,
     sampleXML:
       `<?xml version="1.0" encoding="utf-8"?>` +
-      `<samples><sample sampleID='2' date='' time='' ` +
-      `collector='' quantity='' uom='' tests='13' testSectionMap='' testSampleTypeMap='' ` +
+      `<samples><sample sampleID='${sampleTypeId}' date='' time='' ` +
+      `collector='' quantity='' uom='' tests='${testIds}' testSectionMap='' testSampleTypeMap='' ` +
       `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
       `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
       `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
@@ -397,7 +409,7 @@ export async function createSampleOrder(
       nextVisitDate: tomorrow,
       requesterSampleID: "",
       referringPatientNumber: "",
-      referringSiteId: "9000100",
+      referringSiteId: referringSiteId,
       referringSiteDepartmentId: "",
       referringSiteCode: "",
       referringSiteName: "",
@@ -405,8 +417,8 @@ export async function createSampleOrder(
       referringSiteList: [],
       referringSiteDepartmentList: [],
       providersList: [],
-      providerId: "9000002",
-      providerPersonId: "9000002",
+      providerId: providerPersonId,
+      providerPersonId: providerPersonId,
       providerFirstName: "Jim",
       providerLastName: "Jam",
       facilityAddressStreet: "",

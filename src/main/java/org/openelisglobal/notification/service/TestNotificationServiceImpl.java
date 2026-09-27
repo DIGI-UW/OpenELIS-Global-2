@@ -7,6 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.notification.service.sender.ClientNotificationSender;
@@ -26,6 +27,7 @@ import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
 import org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -50,6 +52,10 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private TestNotificationConfigService testNotificationConfigService;
     @Autowired
     private AnalysisNotificationConfigService analysisNotificationConfigService;
+    @Autowired
+    private UserContextHolder userContextHolder;
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     @Value("${org.openelisglobal.ozeki.active:false}")
     private Boolean ozekiActive;
@@ -60,7 +66,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
 
     @PostConstruct
     public void init() {
-        ensureNotificationsPayloadTemplatesExist(NotificationPayloadType.TEST_RESULT);
+        daemonContextExecutor
+                .executeAsDaemon(() -> ensureNotificationsPayloadTemplatesExist(NotificationPayloadType.TEST_RESULT));
     }
 
     private void ensureNotificationsPayloadTemplatesExist(NotificationPayloadType testResult) {
@@ -74,7 +81,7 @@ public class TestNotificationServiceImpl implements TestNotificationService {
         template.setMessageTemplate("[testName] testing results have been finalized for Patient : "
                 + "[patientFirstName] [patientLastNameInitial].\n\n" + "Result : [testResult]");
         template.setSubjectTemplate("[testName] Testing Results");
-        template.setSysUserId("1");
+        template.setSysUserId(userContextHolder.getDaemonSysUserId());
         template.setType(type);
         notificationPayloadTemplateService.save(template);
         return template;
@@ -115,7 +122,6 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private void createAndSendResultsNotificationsToConfiguredSources(NotificationNature nature, Result result,
             Optional<? extends NotificationConfig<?>> notificationConfig) {
         ClientResultsViewBean resultsViewInfo = new ClientResultsViewBean(result);
-        resultsViewInfo.setSysUserId("1");
         resultsViewInfo = clientResultsViewInfoService.save(resultsViewInfo);
 
         String resultForDisplay = "";

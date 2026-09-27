@@ -12,7 +12,7 @@ import {
   FileUploader,
   InlineNotification,
 } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 

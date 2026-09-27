@@ -32,6 +32,10 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/notes.xml");
+        // notes.xml replaces system_user with testUser/anotherUser. Authenticate
+        // as testUser so the fillSysUserIdIfMissing lookup resolves to the
+        // fixture's user (audit rows attribute correctly to a real user).
+        authenticateAs("testUser");
     }
 
     @Test
@@ -60,7 +64,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getNote_shouldReturnNoteForValidId() throws Exception {
         Note note = noteService.get("1");
-        assertNotNull("Note should exist in dataset", note);
         assertEquals("Note ID should match", "1", note.getId());
     }
 
@@ -72,7 +75,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
         List<Note> notes = noteService.getAllNotesByRefIdRefTable(noteCriteria);
 
-        assertNotNull("Returned notes list should not be null", notes);
         assertEquals("There should be exactly 2 notes", 2, notes.size());
 
         assertEquals("First note should be INTERNAL", Note.INTERNAL, notes.get(0).getNoteType());
@@ -87,7 +89,7 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getNotesByRefIAndRefTableAndSubject_shouldReturnMatchingNotes() throws Exception {
         List<Note> notes = noteService.getNoteByRefIAndRefTableAndSubject("1001", "1", "Subject 1");
-        assertFalse("Notes should not be empty", notes.isEmpty());
+        assertEquals(1, notes.size());
         assertEquals("Subject should match", "Subject 1", notes.get(0).getSubject());
     }
 
@@ -112,7 +114,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
         List<Note> notes = noteService.getTestNotesInDateRangeByType(lowDate, highDate, noteType);
 
-        assertNotNull("Returned notes list should not be null", notes);
         assertTrue("Returned notes list should be empty", notes.isEmpty());
     }
 
@@ -124,7 +125,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
         List<Note> notes = noteService.getTestNotesInDateRangeByType(lowDate, highDate, noteType);
 
-        assertNotNull("Returned notes list should not be null", notes);
         assertTrue("Returned notes list should be empty for invalid date range", notes.isEmpty());
     }
 
@@ -147,7 +147,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
             }
         }, "Subject 1");
 
-        assertNotNull("Most recent note should not be null", mostRecentNote);
         assertEquals("Subject should match", "Subject 1", mostRecentNote.getSubject());
     }
 
@@ -159,7 +158,7 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
         noteCriteria.setNoteType(Note.INTERNAL);
 
         List<Note> notes = noteService.getNotesByNoteTypeRefIdRefTable(noteCriteria);
-        assertFalse("Notes should not be empty", notes.isEmpty());
+        assertEquals(1, notes.size());
         assertEquals("Note type should match", Note.INTERNAL, notes.get(0).getNoteType());
     }
 
@@ -169,7 +168,7 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
         filter.add(Note.INTERNAL);
 
         List<Note> notes = noteService.getNotesChronologicallyByRefIdAndRefTableAndType("1001", "1", filter);
-        assertFalse("Notes should not be empty", notes.isEmpty());
+        assertEquals(1, notes.size());
         assertEquals("Note type should match", Note.INTERNAL, notes.get(0).getNoteType());
     }
 
@@ -214,7 +213,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
         Note note = noteService.createSavableNote(noteObject, NoteServiceImpl.NoteType.INTERNAL, "Test Note",
                 "Test Subject", "1");
-        assertNotNull("Created note should not be null", note);
         assertEquals("Reference ID should match", "1001", note.getReferenceId());
         assertEquals("Reference Table ID should match", "1", note.getReferenceTableId());
         assertEquals("Note type should match", Note.INTERNAL, note.getNoteType());
@@ -280,22 +278,15 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getReferenceTableIdForNoteBinding_shouldReturnCorrectId() {
         List<Note> notes = noteService.getNoteByRefIAndRefTableAndSubject("1001", "1", "Subject 1");
-
-        String tableId = null;
-        if (notes != null && !notes.isEmpty()) {
-            tableId = notes.get(0).getReferenceTableId();
-        }
-
-        assertEquals("1", tableId);
+        assertEquals(1, notes.size());
+        assertEquals("1", notes.get(0).getReferenceTableId());
     }
 
     @Test
     public void getTableReferenceId_shouldReturnConstantValue() {
         List<Note> notes = noteService.getNoteByRefIAndRefTableAndSubject("1001", "1", "Subject 1");
-
-        String referenceTableId = notes.isEmpty() ? null : notes.get(0).getReferenceTableId();
-
-        assertEquals("Note should return correct reference", "1", referenceTableId);
+        assertEquals(1, notes.size());
+        assertEquals("Note should return correct reference", "1", notes.get(0).getReferenceTableId());
     }
 
     @Test(expected = ObjectNotFoundException.class)

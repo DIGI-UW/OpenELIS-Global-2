@@ -1,6 +1,8 @@
 package org.openelisglobal.testcatalog.controller;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -8,13 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogNumericIdGuard;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -62,6 +64,40 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
         // the request reached the controller rather than being blocked by auth.
         mockMvc.perform(get("/rest/test-catalog/tests/999999").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * OGC-1153 — the numeric-id guard is a {@code WebMvcConfigurer} that registers
+     * itself, so simply having the bean in an {@code @EnableWebMvc} context must be
+     * enough to make a malformed id 404. This is the wiring proof: no test code
+     * registers the interceptor, only the bean exists.
+     */
+    @Test
+    public void getEnvelope_adminNonNumericTestIdReturns404() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/notanumber").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * The guard is an MVC interceptor, so it runs before {@code @PreAuthorize} — a
+     * non-admin asking for a malformed id sees the same 404 an admin sees rather
+     * than 403. That leaks nothing, and role enforcement is untouched for
+     * well-formed ids (the 403 cases either side of this).
+     */
+    @Test
+    public void getEnvelope_nonAdminNonNumericTestIdReturns404() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/notanumber").with(user("results").roles("RESULTS")))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * The guard must never shadow authentication: the security filter chain runs
+     * ahead of the DispatcherServlet, so an anonymous caller still gets 401 for a
+     * malformed id rather than a 404 that would confirm the URL exists.
+     */
+    @Test
+    public void getEnvelope_withoutAuthenticationNonNumericTestIdStillReturns401() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/notanumber")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -152,9 +188,29 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             return http.build();
         }
 
+        /**
+         * Unknown ids resolve to null as before, but a non-numeric one runs the same
+         * {@code Integer.parseInt} {@code LIMSStringNumberUserType} does when it binds
+         * the id — so if the guard bean below ever stops self-registering, the
+         * malformed-id cases blow up here instead of quietly passing on a null.
+         */
         @Bean
         TestService testService() {
-            return mock(TestService.class);
+            TestService testService = mock(TestService.class);
+            when(testService.getTestById(anyString())).thenAnswer(invocation -> {
+                Integer.parseInt(invocation.getArgument(0));
+                return null;
+            });
+            return testService;
+        }
+
+        /**
+         * Declared as a plain bean on purpose: it is a {@code WebMvcConfigurer} and
+         * must wire its own interceptor into the {@code @EnableWebMvc} context.
+         */
+        @Bean
+        TestCatalogNumericIdGuard testCatalogNumericIdGuard() {
+            return new TestCatalogNumericIdGuard();
         }
 
         @Bean
@@ -163,8 +219,7 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
                     mock(TestResultInterpretationService.class), mock(TestResultService.class),
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
-                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
-                    mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
+                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class), mock(TypeOfSampleService.class),
                     mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
                     mock(PanelService.class), mock(PanelItemService.class));
         }

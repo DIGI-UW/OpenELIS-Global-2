@@ -19,6 +19,7 @@ import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
+import org.openelisglobal.storage.form.SampleUsageForm;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
@@ -114,7 +115,8 @@ public class SampleStorageRestController extends BaseRestController {
                 // Return count metrics only
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
 
-                long totalSampleItems = allAssignments.size();
+                long totalSampleItems = allAssignments.stream()
+                        .filter(assignment -> assignment.getSampleItemId() != null).count();
                 long active = 0;
                 long disposed = 0;
 
@@ -203,26 +205,14 @@ public class SampleStorageRestController extends BaseRestController {
     }
 
     /**
-     * Translate the internal raw-statusId {@code status} field on a sample map to
-     * the spec-compliant enum string before serializing to the client. Spec
-     * contract: specs/001-sample-storage/contracts/storage-api.json:862,885 —
-     * {@code "status": { "enum": ["active", "disposed"] }}. Filter logic in
+     * Translate the raw-statusId {@code status} field to the spec-compliant enum
+     * string before serializing to the client. Filter logic in
      * StorageDashboardServiceImpl still consumes the raw ID via
      * {@code statusService.matches}; this translation happens only at the response
      * boundary.
      */
     private void normalizeStatusForResponse(Map<String, Object> sample) {
-        Object raw = sample.get("status");
-        if (!(raw instanceof String) || ((String) raw).isEmpty()) {
-            sample.put("status", "active");
-            return;
-        }
-        String statusId = (String) raw;
-        if (statusService.matches(statusId, SampleStatus.Disposed)) {
-            sample.put("status", "disposed");
-        } else {
-            sample.put("status", "active");
-        }
+        SampleStatusResponse.normalize(sample, statusService);
     }
 
     /**
@@ -597,6 +587,58 @@ public class SampleStorageRestController extends BaseRestController {
             logger.error("Error disposing SampleItem", e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "An error occurred during disposal: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Record usage against a SampleItem's remaining quantity. POST
+     * /rest/storage/sample-items/record-usage
+     *
+     * <p>
+     * OGC-1026 (Results Entry v3 R7): partial use decrements the remaining quantity
+     * (never below zero); {@code markUsedUp} zeroes it. Exhaustion is remaining ==
+     * 0 — disposal remains an explicit follow-up via /dispose.
+     *
+     * @param form SampleUsageForm containing sampleItemId (flexible identifier),
+     *             amountUsed (decimal string, required unless markUsedUp),
+     *             markUsedUp
+     * @return quantity snapshot: sampleItemId, quantity, remainingQuantity,
+     *         exhausted
+     */
+    @PostMapping("/record-usage")
+    public ResponseEntity<Map<String, Object>> recordSampleUsage(@Valid @RequestBody SampleUsageForm form,
+            HttpServletRequest request) {
+        try {
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            if (sysUserId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "Authentication required for recording usage");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            java.math.BigDecimal amountUsed = null;
+            if (form.getAmountUsed() != null && !form.getAmountUsed().trim().isEmpty()) {
+                try {
+                    amountUsed = new java.math.BigDecimal(form.getAmountUsed().trim());
+                } catch (NumberFormatException e) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("message", "Amount used must be a number");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
+            }
+
+            Map<String, Object> response = sampleStorageService.recordSampleUsage(form.getSampleItemId(), amountUsed,
+                    form.isMarkUsedUp(), sysUserId);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException | IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error recording usage for SampleItem", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "An error occurred while recording usage: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

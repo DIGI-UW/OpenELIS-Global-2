@@ -5,8 +5,10 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import TATFilterBar from "../TATFilterBar";
 
-// Mock the API utility — filter dropdowns load options on mount
-vi.mock("../../../utils/Utils", () => ({
+// Mock the API utility — filter dropdowns load options on mount. Everything
+// else, the date formatting included, stays as shipped.
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (url.includes("test-sections")) {
       callback([

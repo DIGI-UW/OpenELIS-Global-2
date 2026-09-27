@@ -33,6 +33,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import RuleConfigFormModal from "./RuleConfigFormModal";
 import "./RuleConfigPanel.css";
 
@@ -207,6 +208,14 @@ const RuleConfigPanel = () => {
         className="rule-config-panel-header"
         data-testid="rule-config-panel-header"
       >
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            { label: "qc.ruleConfig.title", link: "" },
+          ]}
+        />
         <PageTitle
           breadcrumbs={[
             {
@@ -215,7 +224,7 @@ const RuleConfigPanel = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.ruleConfig.title" }),

@@ -350,6 +350,95 @@ describe("Layout", () => {
       // Note: defaultMode is "lock" for /analyzers
     });
 
+    test("testLayout_MicrobiologyRoute_UsesLockedNavigation", async () => {
+      renderWithProviders(
+        <Layout>
+          <div>Microbiology Content</div>
+        </Layout>,
+        { route: "/Microbiology/worklist" },
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId("content-wrapper")).toHaveClass(
+          "content-nav-locked",
+        ),
+      );
+    });
+
+    test("testLayout_MicrobiologyRoute_DefaultsToCollapsedNavigationOnCompactViewport", async () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === "(max-width: 1056px)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        const { container } = renderWithProviders(
+          <Layout>
+            <div>Microbiology Content</div>
+          </Layout>,
+          { route: "/Microbiology/worklist" },
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+            "content-nav-locked",
+          );
+          expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+            "cds--side-nav--expanded",
+          );
+        });
+        expect(
+          screen.getByRole("button", { name: "Open menu" }),
+        ).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
+    test("testLayout_AdminRoute_DefaultsToCollapsedNavigationOnCompactViewport", async () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === "(max-width: 1056px)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        const { container } = renderWithProviders(
+          <Layout>
+            <Admin />
+          </Layout>,
+          { route: "/MasterListsPage" },
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+            "content-nav-locked",
+          );
+          expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+            "cds--side-nav--expanded",
+          );
+        });
+        expect(
+          screen.getByRole("button", { name: "Open menu" }),
+        ).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
     test.each([
       "/admin",
       "/MasterListsPage",
@@ -470,6 +559,99 @@ describe("Layout", () => {
       );
 
       expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+    });
+  });
+
+  describe("sidenav pin preference", () => {
+    /**
+     * The desktop nav is pinned by default (persistent, pushing content), but
+     * the pin toggle at the top of the sidenav lets the user unpin it into an
+     * on-demand overlay drawer. The preference persists via localStorage.
+     */
+    test("testLayout_Desktop_PinToggleRendered", () => {
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.getByTestId("sidenav-pin-toggle")).toBeInTheDocument();
+    });
+
+    test("testLayout_SmallViewport_NoPinToggle", () => {
+      viewportIsDesktop = false;
+
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.queryByTestId("sidenav-pin-toggle")).toBeNull();
+    });
+
+    test("testLayout_Desktop_UnpinConvertsNavToOverlayDrawer", () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      // Nav stays visible mid-interaction, but as an overlay drawer:
+      // content is no longer pushed and the hamburger appears.
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("false");
+    });
+
+    test("testLayout_Desktop_UnpinnedPreferenceRestoredOnLoad", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      // Unpinned desktop behaves like the small-viewport drawer
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("testLayout_Desktop_RepinRestoresPersistentNav", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("true");
     });
   });
 

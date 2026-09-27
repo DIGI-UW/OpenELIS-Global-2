@@ -71,6 +71,8 @@ public class Test extends EnumValueItemImpl {
     // existing antimicrobialResistance field below — no parallel column)
     private String domain = "CLINICAL";
 
+    private String cultureWorkflowType;
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -125,6 +127,10 @@ public class Test extends EnumValueItemImpl {
 
     private Boolean antimicrobialResistance;
 
+    // OGC-704: total allowable error (percent) for Westgard sigma metrics;
+    // null where not configured (sigma renders as "not calculable")
+    private Double tea;
+
     @Override
     public String getSortOrder() {
         return sortOrder;
@@ -133,6 +139,14 @@ public class Test extends EnumValueItemImpl {
     @Override
     public void setSortOrder(String sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Double getTea() {
+        return tea;
+    }
+
+    public void setTea(Double tea) {
+        this.tea = tea;
     }
 
     public Test() {
@@ -283,6 +297,14 @@ public class Test extends EnumValueItemImpl {
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public String getCultureWorkflowType() {
+        return cultureWorkflowType;
+    }
+
+    public void setCultureWorkflowType(String cultureWorkflowType) {
+        this.cultureWorkflowType = cultureWorkflowType;
     }
 
     public String getStickerRequiredFlag() {

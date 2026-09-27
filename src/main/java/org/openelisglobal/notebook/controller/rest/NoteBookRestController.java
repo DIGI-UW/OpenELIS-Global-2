@@ -1,6 +1,5 @@
 package org.openelisglobal.notebook.controller.rest;
 
-import ca.uhn.fhir.rest.client.api.IGenericClient;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -15,8 +14,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.form.AuditTrailViewForm;
@@ -26,7 +23,6 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
@@ -36,6 +32,7 @@ import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -62,7 +59,7 @@ public class NoteBookRestController extends BaseRestController {
     private FhirConfig fhirConfig;
 
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -224,59 +221,14 @@ public class NoteBookRestController extends BaseRestController {
     @GetMapping(value = "/questionnaires", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<IdValuePair>> getQuestionnaires() {
+        String identifierSystem = fhirConfig.getOeFhirSystem() + "/notebook_questionare";
         List<IdValuePair> questionnaires = new ArrayList<>();
-
-        if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
-            return ResponseEntity.ok(questionnaires);
+        for (Questionnaire questionnaire : questionnaireStorageService
+                .getActiveQuestionnairesByIdentifierSystem(identifierSystem)) {
+            String uuid = questionnaire.getIdElement().getIdPart();
+            questionnaires.add(new IdValuePair(uuid,
+                    StringUtils.firstNonBlank(questionnaire.getTitle(), questionnaire.getName(), uuid)));
         }
-
-        try {
-            IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
-            String identifierSystem = fhirConfig.getOeFhirSystem() + "/notebook_questionare";
-
-            Bundle searchBundle = fhirClient.search().forResource(Questionnaire.class)
-                    .where(Questionnaire.IDENTIFIER.hasSystemWithAnyCode(identifierSystem))
-                    .where(Questionnaire.STATUS.exactly().code("active")).returnBundle(Bundle.class).execute();
-
-            for (BundleEntryComponent entry : searchBundle.getEntry()) {
-                if (entry.hasResource() && entry.getResource() instanceof Questionnaire) {
-                    Questionnaire questionnaire = (Questionnaire) entry.getResource();
-                    String uuid = questionnaire.getIdElement().getIdPart();
-                    String value = questionnaire.getTitle();
-                    if (StringUtils.isBlank(value)) {
-                        value = questionnaire.getName();
-                    }
-                    if (StringUtils.isBlank(value)) {
-                        value = uuid;
-                    }
-                    questionnaires.add(new IdValuePair(uuid, value));
-                }
-            }
-
-            // Handle pagination
-            while (searchBundle.getLink(org.hl7.fhir.instance.model.api.IBaseBundle.LINK_NEXT) != null) {
-                searchBundle = fhirClient.loadPage().next(searchBundle).execute();
-                for (BundleEntryComponent entry : searchBundle.getEntry()) {
-                    if (entry.hasResource() && entry.getResource() instanceof Questionnaire) {
-                        Questionnaire questionnaire = (Questionnaire) entry.getResource();
-                        String uuid = questionnaire.getIdElement().getIdPart();
-                        String value = questionnaire.getTitle();
-                        if (StringUtils.isBlank(value)) {
-                            value = questionnaire.getName();
-                        }
-                        if (StringUtils.isBlank(value)) {
-                            value = uuid;
-                        }
-                        questionnaires.add(new IdValuePair(uuid, value));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Log error and return empty list
-            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "getQuestionnaires",
-                    "Error fetching questionnaires from FHIR server: " + e.getMessage());
-        }
-
         return ResponseEntity.ok(questionnaires);
     }
 

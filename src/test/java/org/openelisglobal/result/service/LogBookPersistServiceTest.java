@@ -126,11 +126,14 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         Sample sample = analysis.getSampleItem().getSample();
         sample.setStatusId(sampleTestingStartedId);
         List<ResultInventory> invResults = resultInventoryService.getAll();
+        invResults.forEach(i -> i.setSysUserId(TEST_SYS_USER_ID));
         resultInventoryService.deleteAll(invResults);
         List<ResultSignature> sigs = resultSigService.getAll();
+        sigs.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSigService.deleteAll(sigs);
         List<Result> existingResults = resultService.getAll();
         existingResults.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        existingResults.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(existingResults);
 
         ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet("");
@@ -195,5 +198,13 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("N", savedResults.get(0).getResultType());
         assertFalse("Results should be persisted", savedResults.isEmpty());
 
+        // The rule engines are handed new plus modified results, and that list
+        // used to be the data set's own new-results collection with the modified
+        // ones appended to it. Callers that read both afterwards - the two
+        // result-entry controllers, which evaluate alert rules over new plus
+        // modified - then saw every edit twice and raised its alert twice.
+        assertTrue("an edited result must not be filed as newly entered",
+                dataSet.getNewResults().stream().noneMatch(rs -> results.contains(rs.result)));
+        assertEquals(results.size(), dataSet.getModifiedResults().size());
     }
 }

@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   Form,
@@ -19,6 +19,7 @@ import {
   Pagination,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { useServerData } from "../../../utils/useServerData";
 import { NotificationContext } from "../../../layout/Layout";
 import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -79,16 +80,12 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
   const [startingRecNo, setStartingRecNo] = useState(1);
-  const [formEntryConfigMenuList, setformEntryConfigMenuList] = useState<
-    ConfigMenuResponse | []
-  >([]);
   const [orderEntryConfigurationList, setOrderEntryConfigurationList] =
     useState<ConfigTableRow[]>([]);
 
@@ -117,12 +114,6 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
     setPageSize(pageSize);
   };
 
-  const handleMenuItems = (res?: ConfigMenuResponse) => {
-    if (res) {
-      setformEntryConfigMenuList(res);
-    }
-  };
-
   const handleLogoResponse = (res: { value: string }, item: ConfigMenuItem) => {
     const value = res.value;
     const updatedItem = {
@@ -147,13 +138,9 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
     });
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    getFromOpenElisServer(`/rest/${props.menuType}`, handleMenuItems);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+  const { data: formEntryConfigMenuList } = useServerData<ConfigMenuResponse>(
+    `/rest/${props.menuType}`,
+  );
 
   useEffect(() => {
     const updateConfigList = () => {
@@ -240,6 +227,7 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
         <GenericConfigEdit
           menuType={props.menuType.substring(0, props.menuType.indexOf("Menu"))}
           ID={selectedRowId as string}
+          onDone={() => setConfigEdit(false)}
         />
       ) : (
         <>

@@ -24,9 +24,6 @@ public class BaseTestConfig {
     @Autowired
     private DataSource dataSource;
 
-    static LocalContainerEntityManagerFactoryBean emf;
-    static JpaTransactionManager transactionManager;
-
     private static final String PASSWORD = "clinlims";
 
     private static final String USER = "clinlims";
@@ -65,10 +62,8 @@ public class BaseTestConfig {
     @DependsOn("liquibase")
     @Profile("test")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        if (emf == null) {
-            emf = new LocalContainerEntityManagerFactoryBean();
-            emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
-        }
+        LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
         return emf;
     }
 
@@ -76,11 +71,7 @@ public class BaseTestConfig {
     @Primary
     @Profile("test")
     public PlatformTransactionManager getTransactionManager(EntityManagerFactory entityManagerFactory) {
-        if (transactionManager == null) {
-            transactionManager = new JpaTransactionManager();
-            transactionManager.setEntityManagerFactory(entityManagerFactory);
-        }
-        return transactionManager;
+        return new JpaTransactionManager(entityManagerFactory);
     }
 
     private void startPostgreSql() {

@@ -157,7 +157,8 @@ public class AlertNotificationService {
             smsNotification.setPayload(new AlertNotificationPayload(subject, subject + "\n\n" + message));
 
             sendNotification(smsNotification);
-            logger.info("Alert SMS notification sent to: {}", phoneNumber);
+            logger.info("Alert SMS notification sent to configured recipient ending {}",
+                    phoneNumber.length() > 4 ? phoneNumber.substring(phoneNumber.length() - 4) : "****");
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendSMSNotification",
                     "Failed to send alert SMS notification");
@@ -202,8 +203,15 @@ public class AlertNotificationService {
      */
     private NotificationNature mapAlertTypeToNotificationNature(AlertType alertType) {
         switch (alertType) {
+        // Humidity shares the cold-storage environmental toggle with temperature:
+        // both describe the same cabinet drifting out of its band, and a lab that
+        // wants one almost always wants the other. Splitting them would need a new
+        // nature, its own constraint value and a row in Alert Settings.
         case FREEZER_TEMPERATURE:
+        case FREEZER_HUMIDITY:
             return NotificationNature.FREEZER_TEMPERATURE_ALERT;
+        // A dead sensor is an equipment failure: no new nature or toggle.
+        case FREEZER_OFFLINE:
         case EQUIPMENT_FAILURE:
             return NotificationNature.EQUIPMENT_ALERT;
         case INVENTORY_LOW:

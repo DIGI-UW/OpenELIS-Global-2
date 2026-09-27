@@ -309,6 +309,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return;
+        }
         PatientService patientPatientService = SpringContext.getBean(PatientService.class);
         PersonService personService = SpringContext.getBean(PersonService.class);
         personService.getData(patient.getPerson());

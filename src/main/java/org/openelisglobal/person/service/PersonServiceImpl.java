@@ -197,4 +197,23 @@ public class PersonServiceImpl extends AuditableBaseObjectServiceImpl<Person, St
     public Person getPersonById(String personId) {
         return getBaseObjectDAO().getPersonById(personId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Person> getPagesOfSearchedRequestorContacts(int startingRecNo, String searchValue,
+            long requesterTypeId) {
+        return getBaseObjectDAO().getPagesOfSearchedRequestorContacts(startingRecNo, searchValue, requesterTypeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedRequestorContactCount(String searchValue, long requesterTypeId) {
+        return getBaseObjectDAO().getTotalSearchedRequestorContactCount(searchValue, requesterTypeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Person getRequestorContactByName(String firstName, String lastName, long requesterTypeId) {
+        return getBaseObjectDAO().getRequestorContactByName(firstName, lastName, requesterTypeId);
+    }
 }

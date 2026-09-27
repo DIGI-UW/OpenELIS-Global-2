@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-analyzer-site-binding-confirmation" author="OGC">
+        <comment>
+            Record who confirmed one exact immutable site-binding revision and
+            its Bridge-owned control-recognition fingerprint. The row snapshots
+            are verification evidence, not another mapping or profile authority.
+        </comment>
+
+        <createSequence schemaName="clinlims"
+            sequenceName="analyzer_site_binding_confirmation_seq"
+            startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_confirmation">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_site_binding_confirmation"/>
+            </column>
+            <column name="site_binding_revision_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_id" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_revision" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="binding_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recognition_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_rows_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="excluded_rows_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_confirmation"
+            columnNames="site_binding_revision_id"
+            constraintName="uq_analyzer_site_binding_confirmation_revision"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_confirmation_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_confirmation"
+            baseColumnNames="site_binding_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE clinlims.analyzer_site_binding_confirmation
+            ADD CONSTRAINT chk_analyzer_site_binding_confirmation_profile_revision
+            CHECK (profile_revision &gt;= 1);
+            ALTER TABLE clinlims.analyzer_site_binding_confirmation
+            ADD CONSTRAINT chk_analyzer_site_binding_confirmation_binding_fingerprint
+            CHECK (binding_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+            ALTER TABLE clinlims.analyzer_site_binding_confirmation
+            ADD CONSTRAINT chk_analyzer_site_binding_confirmation_recognition_fingerprint
+            CHECK (recognition_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_confirmation"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_site_binding_confirmation_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-analyzer-site-binding-confirmation-audit" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_site_binding_confirmation'
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_site_binding_confirmation"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'analyzer_site_binding_confirmation'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

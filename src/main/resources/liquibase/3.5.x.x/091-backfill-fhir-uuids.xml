@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Organizations and providers seeded before fhir_uuid existed still have a null
+    one. The FHIR transforms fall back to the local numeric id so the resource is
+    not dropped, but that id resolves nowhere: the resource comes back in a search
+    bundle and then GET /fhir/Organization/<id> answers 500 and _id finds nothing,
+    which breaks the basic contract that anything in a bundle can be read back.
+
+    Both are created with a uuid today (OrganizationRestController,
+    ProviderServiceImpl), so this is a one-off backfill of legacy rows rather
+    than an ongoing gap.
+    -->
+    <changeSet id="backfill-organization-fhir-uuid" author="OGC">
+        <comment>Give every organization a FHIR uuid so it can be read back</comment>
+        <sql>update clinlims.organization set fhir_uuid = gen_random_uuid() where fhir_uuid is null;</sql>
+        <rollback>
+            <!-- The previous nulls are not recoverable, and re-nulling would only
+                 restore the unreadable-resource bug. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="backfill-provider-fhir-uuid" author="OGC">
+        <comment>Give every provider a FHIR uuid so Practitioner can be read back</comment>
+        <sql>update clinlims.provider set fhir_uuid = gen_random_uuid() where fhir_uuid is null;</sql>
+        <rollback>
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="backfill-analyzer-fhir-uuid" author="OGC">
+        <comment>Give every analyzer a FHIR uuid so Device ids stay stable</comment>
+        <sql>update clinlims.analyzer set fhir_uuid = gen_random_uuid() where fhir_uuid is null;</sql>
+        <rollback>
+            <empty/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

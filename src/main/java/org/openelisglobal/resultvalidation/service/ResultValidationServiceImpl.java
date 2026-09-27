@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.IStatusService;
@@ -16,11 +17,16 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.notification.service.TestNotificationService;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.dao.ValidationQcAcknowledgmentDAO;
+import org.openelisglobal.resultvalidation.exception.QcAcknowledgmentRequiredException;
+import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +38,13 @@ public class ResultValidationServiceImpl implements ResultValidationService {
     private NoteService noteService;
     private SampleService sampleService;
     private TestNotificationService testNotificationService;
+
+    @Autowired
+    private ValidationQcAcknowledgmentDAO qcAcknowledgmentDAO;
+    @Autowired
+    private AuditTrailService auditTrailService;
+    @Autowired
+    private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
 
     public ResultValidationServiceImpl(AnalysisService analysisService, ResultService resultService,
             NoteService noteService, SampleService sampleService, TestNotificationService testNotificationService) {
@@ -49,6 +62,17 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             ArrayList<Note> noteUpdateList, IResultSaveService resultSaveService, List<IResultUpdate> updaters,
             String sysUserId) {
         ResultSaveService.removeDeletedResultsInTransaction(deletableList, sysUserId);
+
+        // S-08 FR-04 release gate: refuse to release any analysis in this batch if its
+        // batch (same sample) has failed QC samples without an acknowledgment row.
+        enforceQcAcknowledgment(analysisUpdateList);
+
+        // Once the client analyses are about to be released, transition any sibling QC
+        // analyses on the same sample to Finalized too — leaves released_date null so
+        // they aren't mistaken for released patient results, but lets the sample roll
+        // up
+        // to "Finished" via the existing finished-status check below.
+        transitionQcAnalysesInBatch(analysisUpdateList, sysUserId);
 
         // update analysis
         for (Analysis analysis : analysisUpdateList) {
@@ -141,6 +165,155 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 sampleFinished = true;
             }
         }
+    }
+
+    /**
+     * Returns the release-status id (Finalized). Cached on first call.
+     */
+    private String getFinalizedStatusId() {
+        return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+    }
+
+    /**
+     * Transitions QC analyses (BLANK / DUPLICATE / CONTROL) on any sample whose
+     * client analyses are being released to Finalized status, so the sample as a
+     * whole can roll up to "Finished". {@code released_date} is intentionally left
+     * null — QC results aren't released to patients.
+     */
+    private void transitionQcAnalysesInBatch(List<Analysis> analysisUpdateList, String sysUserId) {
+        if (analysisUpdateList == null || analysisUpdateList.isEmpty()) {
+            return;
+        }
+        String finalizedStatusId = getFinalizedStatusId();
+        java.util.Set<String> samplesBeingReleased = new java.util.HashSet<>();
+        for (Analysis a : analysisUpdateList) {
+            if (finalizedStatusId.equals(a.getStatusId()) && a.getSampleItem() != null
+                    && a.getSampleItem().getSample() != null) {
+                samplesBeingReleased.add(a.getSampleItem().getSample().getId());
+            }
+        }
+        if (samplesBeingReleased.isEmpty()) {
+            return;
+        }
+
+        java.util.Set<String> alreadyInUpdateList = new java.util.HashSet<>();
+        for (Analysis a : analysisUpdateList) {
+            alreadyInUpdateList.add(a.getId());
+        }
+
+        for (String sampleId : samplesBeingReleased) {
+            List<Analysis> batch = analysisService.getAnalysesBySampleId(sampleId);
+            if (batch == null) {
+                continue;
+            }
+            for (Analysis sibling : batch) {
+                if (sibling.getSampleItem() == null || sibling.getSampleItem().getId() == null) {
+                    continue;
+                }
+                if (alreadyInUpdateList.contains(sibling.getId())) {
+                    continue;
+                }
+                if (finalizedStatusId.equals(sibling.getStatusId())) {
+                    continue;
+                }
+                Integer sampleItemIdInt;
+                try {
+                    sampleItemIdInt = Integer.valueOf(sibling.getSampleItem().getId());
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (sampleItemQcProfileDAO.findBySampleItemId(sampleItemIdInt).isEmpty()) {
+                    continue;
+                }
+                sibling.setStatusId(finalizedStatusId);
+                sibling.setSysUserId(sysUserId);
+                // released_date intentionally left null — these are QC results, not
+                // released patient results.
+                analysisUpdateList.add(sibling);
+            }
+        }
+    }
+
+    /**
+     * Throws {@link QcAcknowledgmentRequiredException} if any analysis being
+     * transitioned to Finalized belongs to a batch (sample) that has failed QC
+     * results without a corresponding acknowledgment row.
+     */
+    private void enforceQcAcknowledgment(List<Analysis> analysisUpdateList) {
+        if (analysisUpdateList == null || analysisUpdateList.isEmpty()) {
+            return;
+        }
+
+        String finalizedStatusId = getFinalizedStatusId();
+        // Distinct sample ids whose batch we need to gate-check.
+        java.util.Set<String> sampleIdsToCheck = new java.util.HashSet<>();
+        for (Analysis a : analysisUpdateList) {
+            if (finalizedStatusId.equals(a.getStatusId()) && a.getSampleItem() != null
+                    && a.getSampleItem().getSample() != null) {
+                sampleIdsToCheck.add(a.getSampleItem().getSample().getId());
+            }
+        }
+        if (sampleIdsToCheck.isEmpty()) {
+            return;
+        }
+
+        java.util.List<String> unacknowledged = new java.util.ArrayList<>();
+        for (String sampleId : sampleIdsToCheck) {
+            List<Analysis> batch = analysisService.getAnalysesBySampleId(sampleId);
+            if (batch == null) {
+                continue;
+            }
+            for (Analysis sibling : batch) {
+                List<Result> siblingResults = resultService.getResultsByAnalysis(sibling);
+                if (siblingResults == null) {
+                    continue;
+                }
+                boolean failed = false;
+                for (Result r : siblingResults) {
+                    if (r.getQcEvaluation() == QcEvaluation.FAIL) {
+                        failed = true;
+                        break;
+                    }
+                }
+                if (!failed) {
+                    continue;
+                }
+                Integer analysisIdInt;
+                try {
+                    analysisIdInt = Integer.valueOf(sibling.getId());
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (qcAcknowledgmentDAO.findByAnalysisId(analysisIdInt).isEmpty()) {
+                    unacknowledged.add(sibling.getId());
+                }
+            }
+        }
+
+        if (!unacknowledged.isEmpty()) {
+            throw new QcAcknowledgmentRequiredException(
+                    "QC failures must be acknowledged before releasing results. Unacknowledged analyses: "
+                            + unacknowledged);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void persistQcAcknowledgment(ValidationQcAcknowledgment acknowledgment) {
+        qcAcknowledgmentDAO.insert(acknowledgment);
+        // Mirror to the generic history audit trail (S-08 FR-04 requires acknowledgment
+        // + justification to be in the audit trail; the dedicated table holds the full
+        // record, this row makes it discoverable from the standard audit-trail UI).
+        if (acknowledgment.getAcknowledgedBy() != null) {
+            auditTrailService.saveNewHistory(acknowledgment, acknowledgment.getAcknowledgedBy().toString(),
+                    "validation_qc_acknowledgment");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ValidationQcAcknowledgment> getQcAcknowledgmentsByAnalysisId(Integer analysisId) {
+        return qcAcknowledgmentDAO.findByAnalysisId(analysisId);
     }
 
     private List<Integer> getSampleFinishedStatuses() {

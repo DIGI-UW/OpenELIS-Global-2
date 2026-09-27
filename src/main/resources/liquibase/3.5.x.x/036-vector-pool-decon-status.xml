@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    V-03 deconvolution status now lives on vector_pool (lot == pool per FRS).
+    Previously written to sample.deconvolution_status, which caused all intake
+    pools of the same sample to show a decon badge when only one pool had a
+    positive result. Moving to pool level so each lot is independent.
+  -->
+
+  <changeSet id="3.5.0-036-vector-pool-add-decon-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_status"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_pool" schemaName="clinlims">
+      <column name="deconvolution_status" type="VARCHAR(30)" defaultValue="NOT_APPLICABLE">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-036-vector-pool-add-decon-outcome-pct" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_outcome_pct"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_pool" schemaName="clinlims">
+      <column name="deconvolution_outcome_pct" type="NUMERIC(5,2)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useIntl } from "react-intl";
 import { EmptyState, ErrorState } from "../commons";
 import { FilterProvider } from "../filter/filter-context";
 import TreeView from "./tree-view.component";
@@ -16,13 +16,15 @@ interface TreeViewWrapperProps {
 const TreeViewWrapper: React.FC<TreeViewWrapperProps> = (props) => {
   //const conceptUuids = config?.concepts?.map((c) => c.conceptUuid) ?? [];
   const { roots, loading, error } = useGetManyObstreeData(props.patientUuid);
-  const { t } = useTranslation();
+  const intl = useIntl();
 
   if (error)
     return (
       <ErrorState
         error={error}
-        headerTitle={t("dataLoadError", "Data Load Error")}
+        headerTitle={intl.formatMessage({
+          id: "label.patientHistory.dataLoadError",
+        })}
       />
     );
 
@@ -36,8 +38,8 @@ const TreeViewWrapper: React.FC<TreeViewWrapperProps> = (props) => {
 
   return (
     <EmptyState
-      headerTitle={t("testResults", "Test Results")}
-      displayText={t("testResultsData", "Test results data")}
+      headerTitle={intl.formatMessage({ id: "label.test.results" })}
+      displayText={intl.formatMessage({ id: "label.test.resultsData" })}
     />
   );
 };

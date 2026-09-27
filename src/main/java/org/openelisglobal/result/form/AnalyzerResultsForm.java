@@ -3,7 +3,6 @@ package org.openelisglobal.result.form;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
-import org.openelisglobal.analyzer.service.BidirectionalAnalyzer.LISAction;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.form.IPagingForm;
@@ -29,9 +28,6 @@ public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
 
     @NotNull
     private Boolean displayMissingTestMsg = false;
-
-    // display only
-    private List<LISAction> supportedLISActions;
 
     public AnalyzerResultsForm() {
         setFormName("AnalyzerResultsForm");
@@ -79,11 +75,4 @@ public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
         this.displayMissingTestMsg = displayMissingTestMsg;
     }
 
-    public List<LISAction> getSupportedLISActions() {
-        return supportedLISActions;
-    }
-
-    public void setSupportedLISActions(List<LISAction> supportedLISActions) {
-        this.supportedLISActions = supportedLISActions;
-    }
 }

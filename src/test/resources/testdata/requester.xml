@@ -9,10 +9,11 @@
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 
 <dataset>
-    <!-- RequesterType data -->
-    <requester_type id="1" requester_type="LABORATORY" />
-    <requester_type id="2" requester_type="CLINIC" />
-    <requester_type id="3" requester_type="HOSPITAL" />
+    <!-- requester_type is a protected static seed (Liquibase-populated: 1=organization,
+        2=provider, 4=requestor_contact — see BaseWebContextSensitiveTest#PROTECTED_SEED_TABLES);
+        rows declared here are silently filtered out at load time and must NOT be
+        relied on. requester_type_id below references real Liquibase-seeded ids (1,
+        2) that are guaranteed to exist, not a locally-declared override. -->
 
     <!-- SampleRequester data -->
     <sample_requester id="1" sample_id="1"
@@ -20,5 +21,5 @@
     <sample_requester id="2" sample_id="2"
         requester_id="2" requester_type_id="1" />
     <sample_requester id="3" sample_id="3"
-        requester_id="1" requester_type_id="3" />
+        requester_id="1" requester_type_id="1" />
 </dataset>

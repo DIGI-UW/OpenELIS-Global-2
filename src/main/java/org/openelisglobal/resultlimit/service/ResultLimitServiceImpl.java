@@ -1,6 +1,7 @@
 package org.openelisglobal.resultlimit.service;
 
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -20,18 +22,28 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.compliance.service.ComplianceThresholdService;
+import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
+import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +68,22 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private TypeOfTestResultService typeOfTestResultService;
     @Autowired
     private SampleHumanService sampleHumanService;
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+    @Autowired
+    private ComplianceThresholdService complianceThresholdService;
+    // Lazy breaks a constructor-time cycle: ResultServiceImpl still resolves
+    // this service through a SpringContext.getBean field initializer, and the
+    // anchor service reaches back to ResultService through Sample and Analysis
+    // (resultService -> resultLimitService -> analysisAnchorService ->
+    // sampleService -> analysisService -> resultService). Which bean enters the
+    // loop first depends on context build order, so an eager reference here
+    // boots or dies by luck.
+    @Lazy
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -80,6 +108,18 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         Map<String, Object> propertyValues = new HashMap<>();
         propertyValues.put("componentId", componentId);
         return baseObjectDAO.getAllMatching(propertyValues);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResultLimit> getNumericRangesForTest(String testId) {
+        List<ResultLimit> numeric = new ArrayList<>();
+        for (ResultLimit limit : getBaseObjectDAO().getAllResultLimitsForTest(testId)) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(limit.getResultTypeId())) {
+                numeric.add(limit);
+            }
+        }
+        return numeric;
     }
 
     @Override
@@ -154,7 +194,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId) {
-        return selectForPatient(scopeToSampleType(getResultLimits(testId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimits(testId), sampleTypeId, patient);
     }
 
     @Override
@@ -169,38 +209,45 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         if (GenericValidator.isBlankOrNull(componentId)) {
             return null;
         }
-        return selectForPatient(scopeToSampleType(getResultLimitsByComponentId(componentId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimitsByComponentId(componentId), sampleTypeId, patient);
     }
 
     /**
-     * OGC-1145 Phase 2 — specimen precedence over a limit pool: rows scoped to the
-     * given sample type win; otherwise the shared (null-scope) rows apply. Without
-     * a specimen in context, shared rows are preferred so an override for one
-     * specimen never leaks into another's evaluation. The full pool is the last
-     * resort (legacy data where every row predates scoping).
+     * OGC-1145 Phase 2 — specimen precedence over a limit pool: a row scoped to the
+     * given sample type wins for the patients it matches, and the shared
+     * (null-scope) rows back every patient the override does not cover. An override
+     * for Female adults on one specimen therefore leaves Male and paediatric
+     * patients on that specimen with the shared ranges, which is what the range
+     * coverage check assumes; selecting from the override rows alone left them with
+     * no range at all. Without a specimen in context, shared rows are preferred so
+     * an override for one specimen never leaks into another's evaluation. The full
+     * pool is the last resort only without a specimen in context (legacy data where
+     * every row predates scoping); with one, a specimen that has neither its own
+     * nor a shared range has none, rather than borrowing another specimen's.
      */
-    private static List<ResultLimit> scopeToSampleType(List<ResultLimit> pool, String sampleTypeId) {
+    private ResultLimit selectWithSpecimenPrecedence(List<ResultLimit> pool, String sampleTypeId, Patient patient) {
         if (pool == null || pool.isEmpty()) {
-            return pool;
-        }
-        if (!GenericValidator.isBlankOrNull(sampleTypeId)) {
-            List<ResultLimit> scoped = new ArrayList<>();
-            for (ResultLimit limit : pool) {
-                if (sampleTypeId.equals(limit.getSampleTypeId())) {
-                    scoped.add(limit);
-                }
-            }
-            if (!scoped.isEmpty()) {
-                return scoped;
-            }
+            return null;
         }
         List<ResultLimit> shared = new ArrayList<>();
+        List<ResultLimit> scoped = new ArrayList<>();
         for (ResultLimit limit : pool) {
             if (GenericValidator.isBlankOrNull(limit.getSampleTypeId())) {
                 shared.add(limit);
+            } else if (sampleTypeId != null && sampleTypeId.equals(limit.getSampleTypeId())) {
+                scoped.add(limit);
             }
         }
-        return shared.isEmpty() ? pool : shared;
+        if (!scoped.isEmpty()) {
+            ResultLimit override = selectForPatient(scoped, patient);
+            if (override != null && !GenericValidator.isBlankOrNull(override.getId()) || shared.isEmpty()) {
+                return override;
+            }
+        }
+        if (shared.isEmpty() && sampleTypeId != null) {
+            return null;
+        }
+        return selectForPatient(shared.isEmpty() ? new ArrayList<>(pool) : shared, patient);
     }
 
     /** Pick the best-matching limit from a pool for the patient's age/gender. */
@@ -357,15 +404,41 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         }
 
         if (high == Float.POSITIVE_INFINITY) {
-            return "> " + StringUtil.doubleWithSignificantDigits(low, significantDigits);
+            return "> " + StringUtil.doubleWithSignificantDigits(low, rangeDigits(significantDigits, low));
         }
 
         if (low == Float.NEGATIVE_INFINITY) {
-            return "< " + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+            return "< " + StringUtil.doubleWithSignificantDigits(high, rangeDigits(significantDigits, high));
         }
 
-        return StringUtil.doubleWithSignificantDigits(low, significantDigits) + separator
-                + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+        String digits = rangeDigits(significantDigits, low, high);
+        return StringUtil.doubleWithSignificantDigits(low, digits) + separator
+                + StringUtil.doubleWithSignificantDigits(high, digits);
+    }
+
+    /**
+     * The test's decimal places, widened to what the limits themselves need, so a
+     * range of 0.7 to 1.1 on a test set to whole numbers reads 0.7 - 1.1 rather
+     * than 1 - 1. At most four places are added for a limit stored inexactly.
+     */
+    static String rangeDigits(String significantDigits, double... limits) {
+        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
+            return significantDigits;
+        }
+        int digits;
+        try {
+            digits = Integer.parseInt(significantDigits.trim());
+        } catch (NumberFormatException e) {
+            return significantDigits;
+        }
+        for (double limit : limits) {
+            if (Double.isInfinite(limit) || Double.isNaN(limit)) {
+                continue;
+            }
+            int needed = Math.max(0, new java.math.BigDecimal(Double.toString(limit)).stripTrailingZeros().scale());
+            digits = Math.max(digits, Math.min(needed, 4));
+        }
+        return String.valueOf(digits);
     }
 
     @Override
@@ -580,11 +653,140 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
     @Override
     @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient) {
+        return getResultLimitForResult(analysis, result, patient, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId) {
+        String sampleTypeId = analysis == null || analysis.getSampleItem() == null ? null
+                : analysis.getSampleItem().getTypeOfSampleId();
+        String testId = analysis == null || analysis.getTest() == null ? null : analysis.getTest().getId();
+        if (testId == null) {
+            return null;
+        }
+        String scope = componentId;
+        if (scope == null) {
+            TestResultComponent component = resolveComponentForResult(testId, result);
+            scope = component == null ? null : component.getId();
+        }
+        return scope == null ? getResultLimitForTestAndPatient(testId, patient, sampleTypeId)
+                : getResultLimitForComponentAndPatient(scope, patient, sampleTypeId);
+    }
+
+    /**
+     * The component whose range governs this result, or null when the test is not
+     * multi-component and therefore has only test-level ranges. A result points at
+     * its component through its test_result row; legacy rows with no component id
+     * belong to the primary.
+     */
+    private TestResultComponent resolveComponentForResult(String testId, Result result) {
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
+        if (components.size() < 2) {
+            return null;
+        }
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId != null) {
+            for (TestResultComponent component : components) {
+                if (componentId.equals(component.getId())) {
+                    return component;
+                }
+            }
+        }
+        for (TestResultComponent component : components) {
+            if (component.getIsPrimary()) {
+                return component;
+            }
+        }
+        return components.get(0);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ResultLimit getResultLimitForAnalysis(Analysis analysis) {
+        // Pool-anchored analyses have no direct sample item; resolve the
+        // representative sample so the patient lookup still works.
+        org.openelisglobal.sample.valueholder.Sample sample = analysisAnchorService.resolveSample(analysis);
         // OGC-1145 Phase 2: the analysis's sample item pins the specimen, so a
         // limit scoped to that sample type wins over the shared set.
         String sampleTypeId = analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null;
         return getResultLimitForTestAndPatient(analysis.getTest().getId(),
-                sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()), sampleTypeId);
+                sample != null ? sampleHumanService.getPatientForSample(sample) : null, sampleTypeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis) {
+        return getComplianceResultsForAnalysis(analysis, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue) {
+        if (GenericValidator.isBlankOrNull(resultValue)) {
+            return List.of();
+        }
+
+        org.openelisglobal.sample.valueholder.Sample resolvedSample = analysisAnchorService.resolveSample(analysis);
+        if (resolvedSample == null) {
+            return List.of();
+        }
+        String sampleId = resolvedSample.getId();
+        List<SampleComplianceStandard> links = sampleComplianceStandardService.getAllForSample(sampleId);
+
+        if (links.isEmpty()) {
+            return List.of();
+        }
+
+        String testId = analysis.getTest().getId();
+        List<ComplianceEvaluation> evaluations = new ArrayList<>();
+
+        for (SampleComplianceStandard link : links) {
+            String standardId = link.getComplianceStandard().getId();
+            List<ComplianceThreshold> thresholds = complianceThresholdService
+                    .getThresholdsByTestAndStandard(testId, standardId).stream()
+                    .filter(t -> Boolean.TRUE.equals(t.getIsActive())).collect(Collectors.toList());
+
+            if (thresholds.isEmpty()) {
+                continue;
+            }
+
+            String standardName = buildStandardLabel(link);
+            boolean pass = evaluatePassAgainstThresholds(resultValue, thresholds);
+            evaluations.add(new ComplianceEvaluation(standardId, standardName, pass));
+        }
+
+        return evaluations;
+    }
+
+    private boolean evaluatePassAgainstThresholds(String rawValue, List<ComplianceThreshold> thresholds) {
+        String cleaned = rawValue.replace("<", "").replace(">", "").trim();
+        BigDecimal value;
+        try {
+            value = new BigDecimal(cleaned);
+        } catch (NumberFormatException e) {
+            return true;
+        }
+        for (ComplianceThreshold threshold : thresholds) {
+            ThresholdType type = threshold.getThresholdType();
+            if (type == null || type.requiresManualReview() || type.usesValueMapping()) {
+                continue;
+            }
+            if (!type.evaluate(value, threshold.getMinValue(), threshold.getMaxValue(), threshold.getTargetValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String buildStandardLabel(SampleComplianceStandard link) {
+        String regulationNumber = link.getComplianceStandard().getRegulationNumber();
+        String name = link.getComplianceStandard().getName();
+        if (!GenericValidator.isBlankOrNull(regulationNumber)) {
+            return regulationNumber;
+        }
+        return name;
     }
 }

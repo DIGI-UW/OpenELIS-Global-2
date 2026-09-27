@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Admin-gated "+ Add new site" affordance for sampling site inline-create. -->
+
+  <changeSet id="3.5.0-055-add-restrict-free-text-sampling-site-entry" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'restrictFreeTextSampSiteEntry'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="site_information" schemaName="clinlims">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="restrictFreeTextSampSiteEntry"/>
+      <column name="lastupdated" valueComputed="now()"/>
+      <column name="description" value="Users cannot enter new Environmental/Vector Sampling Sites through sample entry"/>
+      <column name="value" value="false"/>
+      <column name="encrypted" valueBoolean="false"/>
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+      <column name="value_type" value="boolean"/>
+      <column name="instruction_key" value="siteInfo.instruction.freesampsite.req.i"/>
+      <column name="group" valueNumeric="0"/>
+      <column name="description_key" value="siteInfo.instruction.freesampsite.req.d"/>
+      <column name="name_key" value="siteInfo.restrictFreeTextSampSiteEntry"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

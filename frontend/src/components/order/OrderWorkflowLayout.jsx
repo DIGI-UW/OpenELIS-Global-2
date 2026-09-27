@@ -1,10 +1,20 @@
 import React from "react";
-import { Stack, Button, Tag, InlineLoading } from "@carbon/react";
+import {
+  Stack,
+  Button,
+  Tag,
+  InlineLoading,
+  ActionableNotification,
+} from "@carbon/react";
 import { Edit } from "@carbon/icons-react";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import OrderStepper, { ORDER_STEPS } from "./OrderStepper";
+import OrderStepper, {
+  CLINICAL_ORDER_STEPS,
+  ENVIRONMENTAL_ORDER_STEPS,
+  VECTOR_ORDER_STEPS,
+} from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
@@ -12,7 +22,7 @@ import { useOrderContext, SaveStatus } from "./OrderContext";
 import "./order-workflow.scss";
 
 /**
- * OrderWorkflowLayout - Shared layout wrapper for all 4 workflow steps.
+ * OrderWorkflowLayout - Shared layout wrapper for all order workflow steps.
  *
  * Provides consistent layout with:
  * - Breadcrumb navigation
@@ -25,9 +35,20 @@ import "./order-workflow.scss";
  * - Save navigation buttons (NAV-4)
  */
 
+/**
+ * The save state of an order that exists. An order the user has not saved yet
+ * has no save state to report: saying "Saved" on an untouched new form claims
+ * something that never happened, and saying "Unsaved changes" invents changes
+ * the user has not made. Both were reported as defects; the indicator is
+ * simply absent until there is a saved order or an edit to describe.
+ */
 const SaveStatusIndicator = () => {
   const intl = useIntl();
-  const { saveStatus, isDirty } = useOrderContext();
+  const { saveStatus, isDirty, labNumber, orderId } = useOrderContext();
+
+  if (!orderId && !labNumber && !isDirty && saveStatus !== SaveStatus.SAVING) {
+    return null;
+  }
 
   if (saveStatus === SaveStatus.SAVING) {
     return (
@@ -71,33 +92,94 @@ const SaveStatusIndicator = () => {
   );
 };
 
+/**
+ * After the entry step saves, the screen states plainly that the order exists
+ * and what comes next, instead of a passing toast.
+ */
+const SavedNextAction = ({ steps, activeStep }) => {
+  const intl = useIntl();
+  const history = useHistory();
+  const { saveStatus, isDirty, labNumber } = useOrderContext();
+  const next = steps[activeStep + 1];
+  if (
+    activeStep !== 0 ||
+    isDirty ||
+    saveStatus !== SaveStatus.SAVED ||
+    !labNumber ||
+    !next
+  ) {
+    return null;
+  }
+  return (
+    <ActionableNotification
+      kind="success"
+      lowContrast
+      hideCloseButton
+      inline
+      className="order-saved-next-action"
+      title={intl.formatMessage(
+        { id: "order.saved.title", defaultMessage: "Order {labNumber} saved" },
+        { labNumber },
+      )}
+      subtitle={intl.formatMessage(
+        { id: "order.saved.next", defaultMessage: "Next: {step}" },
+        { step: intl.formatMessage({ id: next.label }) },
+      )}
+      actionButtonLabel={intl.formatMessage({ id: next.label })}
+      onActionButtonClick={() => history.push(next.path)}
+    />
+  );
+};
+
 const OrderWorkflowLayout = ({
   children,
   currentStep,
   title,
   canProceed = true,
+  canSave = true,
   onSave,
   onSaveAndNext,
   extraButtons,
   showSaveButtons = true,
 }) => {
-  const intl = useIntl();
   const location = useLocation();
   const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
     useOrderContext();
+
+  // Infer step set from URL prefix — no workflowType context read needed.
+  const steps = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
+    if (path.startsWith("/order/environmental"))
+      return ENVIRONMENTAL_ORDER_STEPS;
+    return CLINICAL_ORDER_STEPS;
+  })();
 
   // Determine current step from URL if not provided
   const activeStep =
     currentStep !== undefined
       ? currentStep
-      : ORDER_STEPS.findIndex((step) => location.pathname === step.path);
+      : steps.findIndex((step) => location.pathname === step.path);
+
+  const workflowRoot = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return "/order/vector";
+    if (path.startsWith("/order/environmental")) return "/order/environmental";
+    return "/order/clinical";
+  })();
+
+  const workflowLabel = {
+    "/order/vector": "sidenav.label.vector.order",
+    "/order/environmental": "sidenav.label.environmental.order",
+    "/order/clinical": "sidenav.label.clinical.order",
+  }[workflowRoot];
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sidenav.label.addorder", link: "/order" },
+    { label: workflowLabel, link: workflowRoot },
     {
-      label: ORDER_STEPS[activeStep]?.label || "order.step.enter",
-      link: ORDER_STEPS[activeStep]?.path || "/order/enter",
+      label: steps[activeStep]?.label || "order.step.enter",
+      link: steps[activeStep]?.path || `${workflowRoot}/enter`,
     },
   ];
 
@@ -167,6 +249,8 @@ const OrderWorkflowLayout = ({
             <OrderContextCard className="order-context-section" />
           )}
 
+          <SavedNextAction steps={steps} activeStep={activeStep} />
+
           {/* Main Content Area */}
           <div
             className={`order-content-section ${isReadOnly && !isEditMode ? "readonly-mode" : ""}`}
@@ -180,6 +264,7 @@ const OrderWorkflowLayout = ({
               <SaveNavigationButtons
                 currentStep={activeStep}
                 canProceed={canProceed}
+                canSave={canSave}
                 onSave={onSave}
                 onSaveAndNext={onSaveAndNext}
               />

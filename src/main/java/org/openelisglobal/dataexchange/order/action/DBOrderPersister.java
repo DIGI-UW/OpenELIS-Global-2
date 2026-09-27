@@ -367,8 +367,11 @@ public class DBOrderPersister implements IOrderPersister {
     @Transactional
     public void persist(MessagePatient orderPatient, ElectronicOrder eOrder) {
         try {
-            persist(orderPatient);
-            eOrder.setPatient(patient);
+            // env/vector samples have no patient
+            if (orderPatient != null) {
+                persist(orderPatient);
+                eOrder.setPatient(patient);
+            }
             eOrderService.insert(eOrder);
             if (eOrder.getPriority().equals(OrderPriority.STAT)) {
                 String message = MessageUtil.getMessage("notification.eorder.stat", eOrder.getExternalId());

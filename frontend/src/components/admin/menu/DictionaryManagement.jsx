@@ -1,4 +1,10 @@
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import {
   Button,
   Column,
@@ -47,7 +53,6 @@ function DictionaryManagement() {
   const [dictionaryMenuList, setDictionaryMenuList] = useState([]);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [open, setOpen] = useState(false);
 
   const [categoryDescription, setCategoryDescription] = useState([]);
@@ -62,16 +67,18 @@ function DictionaryManagement() {
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
 
-  const [paging, setPaging] = useState(null);
-  const [startingRecNo, setStartingRecNo] = useState(1);
-  const [isSearching, setIsSearching] = useState(false);
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchedMenuList, setSearchedMenuList] = useState([]);
+  const isSearching = Boolean(panelSearchTerm);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
 
@@ -81,16 +88,27 @@ function DictionaryManagement() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Browse and search are separate response snapshots. When search is cleared,
+  // the now-visible browse page is fetched instead of exposing the copy that
+  // was held before a dictionary write.
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer(
-      `/rest/DictionaryMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      fetchedDictionaryMenu,
-    );
+    if (panelSearchTerm) {
+      getFromOpenElisServer(
+        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
+        fetchedSearchedDictionaryMenu,
+      );
+    } else {
+      setSearchedMenuList([]);
+      getFromOpenElisServer(
+        `/rest/DictionaryMenu?startingRecNo=${startingRecNo}`,
+        fetchedDictionaryMenu,
+      );
+    }
     return () => {
       componentMounted.current = false;
     };
-  }, [paging, startingRecNo]);
+  }, [panelSearchTerm, startingRecNo]);
 
   useEffect(() => {
     if (selectedRowIds.length === 1) {
@@ -105,18 +123,6 @@ function DictionaryManagement() {
     }
   }, [selectedRowIds]);
 
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-    setSelectedRowIds([]);
-  };
-
   const yesOrNo = [
     {
       id: "Y",
@@ -128,15 +134,22 @@ function DictionaryManagement() {
     },
   ];
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
+  const handlePageChange = ({ page: newPage }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
     }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   const fetchedDictionaryMenu = (res) => {
     if (componentMounted.current) {
@@ -149,6 +162,14 @@ function DictionaryManagement() {
           setToRecordCount(res.toRecordCount);
           setFromRecordCount(res.fromRecordCount);
           setTotalRecordCount(res.totalRecordCount);
+          setServerPageSize((previous) =>
+            serverPageSizeFrom(
+              res.fromRecordCount,
+              res.toRecordCount,
+              res.totalRecordCount,
+              previous,
+            ),
+          );
         }
         if (res.menuList) {
           const menuList = res.menuList.map((item) => ({
@@ -174,17 +195,6 @@ function DictionaryManagement() {
     }
   };
 
-  useEffect(() => {
-    if (panelSearchTerm) {
-      getFromOpenElisServer(
-        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=1&searchString=${panelSearchTerm}`,
-        fetchedSearchedDictionaryMenu,
-      );
-    } else {
-      setSearchedMenuList([]);
-    }
-  }, [panelSearchTerm]);
-
   const fetchedSearchedDictionaryMenu = (res) => {
     if (componentMounted.current) {
       if (res) {
@@ -196,6 +206,14 @@ function DictionaryManagement() {
           setToRecordCount(res.toRecordCount);
           setFromRecordCount(res.fromRecordCount);
           setTotalRecordCount(res.totalRecordCount);
+          setServerPageSize((previous) =>
+            serverPageSizeFrom(
+              res.fromRecordCount,
+              res.toRecordCount,
+              res.totalRecordCount,
+              previous,
+            ),
+          );
         }
         if (res.menuList) {
           const menuList = res.menuList.map((item) => ({
@@ -217,14 +235,6 @@ function DictionaryManagement() {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/DictionaryMenu", fetchedDictionaryMenu);
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    componentMounted.current = true;
     getFromOpenElisServer(
       "/rest/dictionary-categories",
       fetchedDictionaryCategory,
@@ -233,6 +243,24 @@ function DictionaryManagement() {
       componentMounted.current = false;
     };
   }, []);
+
+  /**
+   * Rereads whichever list is on screen: the search results if a search
+   * term is active, the paged browse list otherwise.
+   */
+  const refreshDictionaryList = () => {
+    if (panelSearchTerm) {
+      getFromOpenElisServer(
+        `/rest/SearchDictionaryMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
+        fetchedSearchedDictionaryMenu,
+      );
+    } else {
+      getFromOpenElisServer(
+        `/rest/DictionaryMenu?startingRecNo=${startingRecNo}`,
+        fetchedDictionaryMenu,
+      );
+    }
+  };
 
   const postData = {
     id: dictionaryNumber,
@@ -259,7 +287,10 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
     }
-    window.location.reload();
+    if (res.status == "201" || res.status == "200") {
+      setSelectedRowIds([]);
+      refreshDictionaryList();
+    }
   }
 
   const handleSubmitModal = (e) => {
@@ -391,14 +422,13 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    if (selectedRowIds) {
+    if (selectedRowIds.length > 0) {
       postToOpenElisServer(
         `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
         {},
         handleDelete,
       );
     }
-    reloadConfiguration();
   };
 
   const handleDelete = (status) => {
@@ -411,6 +441,8 @@ function DictionaryManagement() {
           id: "dictionary.menu.deactivate.success",
         }),
       });
+      setSelectedRowIds([]);
+      reloadConfiguration();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -418,17 +450,13 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
     }
-    window.location.reload();
+    refreshDictionaryList();
   };
 
   const handlePanelSearchChange = (event) => {
     const query = event.target.value;
     setPanelSearchTerm(query);
-    if (query) {
-      setIsSearching(true);
-    } else {
-      setIsSearching(false);
-    }
+    setPage(1);
   };
 
   return (
@@ -641,45 +669,6 @@ function DictionaryManagement() {
                   {toRecordCount} <FormattedMessage id="of" />{" "}
                   {totalRecordCount}
                 </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.previous",
-                    })}
-                    disabled={parseInt(fromRecordCount) <= 1}
-                    onClick={handlePreviousPage}
-                    renderIcon={ArrowLeft}
-                  />
-                  <Button
-                    style={{
-                      minWidth: isMobile ? "2rem" : "2.5rem",
-                      minHeight: isMobile ? "2rem" : "2.5rem",
-                      padding: "0.5rem",
-                    }}
-                    hasIconOnly
-                    iconDescription={intl.formatMessage({
-                      id: "organization.next",
-                    })}
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
-                    disabled={
-                      parseInt(toRecordCount) >= parseInt(totalRecordCount)
-                    }
-                  />
-                </div>
               </Column>
             </Form>
           </Section>
@@ -705,19 +694,10 @@ function DictionaryManagement() {
         <br />
         <Grid fullWidth={true} className="gridBoundary">
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
               size="sm"
-              rows={
-                isSearching
-                  ? searchedMenuList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-                  : dictionaryMenuList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-              }
+              rows={isSearching ? searchedMenuList : dictionaryMenuList}
               headers={[
                 {
                   key: "select",
@@ -787,13 +767,10 @@ function DictionaryManagement() {
             <Pagination
               onChange={handlePageChange}
               page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20]}
-              totalItems={
-                isSearching
-                  ? searchedMenuList.length
-                  : dictionaryMenuList.length
-              }
+              pageSize={serverPageSize}
+              pageSizes={[serverPageSize]}
+              pageSizeInputDisabled
+              totalItems={Number(totalRecordCount) || 0}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
               size="sm"

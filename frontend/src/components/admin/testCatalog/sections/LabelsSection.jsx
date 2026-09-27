@@ -47,6 +47,10 @@ const LabelsSection = ({ testId }) => {
   const [presets, setPresets] = useState([]);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [saving, setSaving] = useState(false);
+  // What the server holds, so the section can tell whether anything is pending and
+  // put it back on Cancel.
+  const [baseline, setBaseline] = useState({ links: [], allowOverride: true });
 
   const load = useCallback(() => {
     if (!testId) {
@@ -62,6 +66,10 @@ const LabelsSection = ({ testId }) => {
       }
       setAllowOverride(res.allowOrderEntryOverride !== false);
       setLinks(res.links || []);
+      setBaseline({
+        links: res.links || [],
+        allowOverride: res.allowOrderEntryOverride !== false,
+      });
     });
     // Every active per-sample preset feeds the "Add Label Type" picker — both
     // system and custom presets (FR-66). Only order-only presets (printsPerSample
@@ -81,6 +89,47 @@ const LabelsSection = ({ testId }) => {
 
   // Full-replace PUT of the whole config (toggle + links). Optimistic: callers
   // update local state first; on failure we reload from the server.
+  const configOf = (nextLinks, nextAllowOverride) => ({
+    allowOrderEntryOverride: nextAllowOverride,
+    links: (nextLinks || []).map((l) => ({
+      presetId: l.presetId,
+      defaultQty: l.defaultQty,
+      maxQty: l.maxQty,
+      allowOverride: l.allowOverride,
+    })),
+  });
+
+  const dirty =
+    JSON.stringify(configOf(links, allowOverride)) !==
+    JSON.stringify(configOf(baseline.links, baseline.allowOverride));
+
+  /** Every row must keep max >= default, checked once for the whole set on Save. */
+  const invalidRow = links.find((l) => Number(l.maxQty) < Number(l.defaultQty));
+
+  const handleSave = () => {
+    if (!dirty || saving) {
+      return;
+    }
+    if (invalidRow) {
+      setNotification({
+        kind: "error",
+        text: intl.formatMessage({
+          id: "label.testCatalog.labels.maxLtDefault",
+        }),
+      });
+      return;
+    }
+    setSaving(true);
+    setNotification(null);
+    persist(links, allowOverride);
+  };
+
+  const handleCancel = () => {
+    setLinks(baseline.links);
+    setAllowOverride(baseline.allowOverride);
+    setNotification(null);
+  };
+
   const persist = (nextLinks, nextAllowOverride) => {
     const payload = {
       allowOrderEntryOverride: nextAllowOverride,
@@ -95,7 +144,12 @@ const LabelsSection = ({ testId }) => {
       `/rest/api/tests/${testId}/labelConfig`,
       JSON.stringify(payload),
       (status) => {
+        setSaving(false);
         if (status >= 200 && status < 300) {
+          setBaseline({
+            links: nextLinks,
+            allowOverride: nextAllowOverride,
+          });
           setNotification({
             kind: "success",
             text: intl.formatMessage({ id: "label.testCatalog.labels.saved" }),
@@ -131,7 +185,6 @@ const LabelsSection = ({ testId }) => {
       },
     ];
     setLinks(next);
-    persist(next, allowOverride);
   };
 
   const setLinkField = (presetId, field, value) => {
@@ -140,37 +193,17 @@ const LabelsSection = ({ testId }) => {
     );
   };
 
-  const saveRow = (presetId) => {
-    const link = links.find((l) => l.presetId === presetId);
-    if (!link) {
-      return;
-    }
-    if (link.maxQty < link.defaultQty) {
-      setNotification({
-        kind: "error",
-        text: intl.formatMessage({
-          id: "label.testCatalog.labels.maxLtDefault",
-        }),
-      });
-      return;
-    }
-    persist(links, allowOverride);
-  };
-
   const confirmRemove = () => {
     const target = removeTarget;
     setRemoveTarget(null);
     if (!target) {
       return;
     }
-    const next = links.filter((l) => l.presetId !== target.presetId);
-    setLinks(next);
-    persist(next, allowOverride);
+    setLinks(links.filter((l) => l.presetId !== target.presetId));
   };
 
   const toggleOverride = (checked) => {
     setAllowOverride(checked);
-    persist(links, checked);
   };
 
   const headers = [
@@ -326,7 +359,6 @@ const LabelsSection = ({ testId }) => {
                                 Number(ev.target.value || 0),
                               )
                             }
-                            onBlur={() => saveRow(link.presetId)}
                           />
                         </TableCell>
                         <TableCell>
@@ -345,7 +377,6 @@ const LabelsSection = ({ testId }) => {
                                 Number(ev.target.value || 0),
                               )
                             }
-                            onBlur={() => saveRow(link.presetId)}
                           />
                         </TableCell>
                         <TableCell>
@@ -353,21 +384,13 @@ const LabelsSection = ({ testId }) => {
                             id={`override-${row.id}`}
                             labelText=""
                             checked={!!link.allowOverride}
-                            onChange={(_e, { checked }) => {
+                            onChange={(_e, { checked }) =>
                               setLinkField(
                                 link.presetId,
                                 "allowOverride",
                                 checked,
-                              );
-                              persist(
-                                links.map((l) =>
-                                  l.presetId === link.presetId
-                                    ? { ...l, allowOverride: checked }
-                                    : l,
-                                ),
-                                allowOverride,
-                              );
-                            }}
+                              )
+                            }
                           />
                         </TableCell>
                         <TableCell>
@@ -409,6 +432,37 @@ const LabelsSection = ({ testId }) => {
 
       {/* FR-67: show how Order Entry will pre-populate labels for this test. */}
       <OrderEntryPreview links={links} masterOverride={allowOverride} />
+
+      {dirty && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.labels.unsaved",
+          })}
+        />
+      )}
+
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button
+          kind="primary"
+          data-testid="labels-save"
+          disabled={saving || !dirty}
+          onClick={handleSave}
+        >
+          <FormattedMessage id="label.button.save" />
+        </Button>
+
+        <Button
+          kind="ghost"
+          data-testid="labels-cancel"
+          disabled={saving || !dirty}
+          onClick={handleCancel}
+        >
+          <FormattedMessage id="label.button.cancel" />
+        </Button>
+      </div>
 
       <Modal
         open={!!removeTarget}

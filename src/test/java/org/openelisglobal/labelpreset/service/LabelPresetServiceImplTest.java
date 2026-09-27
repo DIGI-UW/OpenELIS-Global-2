@@ -102,7 +102,7 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
             createPreset("  " + TEST_PREFIX + "beta  ");
             fail("Expected IllegalArgumentException for whitespace variant collision");
         } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage());
+            assertTrue("Error should mention the colliding name", e.getMessage().contains(TEST_PREFIX + "beta"));
         }
     }
 
@@ -110,8 +110,6 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
     public void create_differentName_succeeds() {
         LabelPreset p1 = createPreset(TEST_PREFIX + "gamma");
         LabelPreset p2 = createPreset(TEST_PREFIX + "delta");
-        assertNotNull(p1.getId());
-        assertNotNull(p2.getId());
         assertFalse("IDs should differ", p1.getId().equals(p2.getId()));
     }
 
@@ -159,7 +157,6 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         form.setDefaultPerSample(systemPreset.getDefaultPerSample());
         form.setMaxPerSample(systemPreset.getMaxPerSample());
         LabelPreset updated = labelPresetService.update(systemPreset.getId(), form, SYS_USER);
-        assertNotNull(updated);
         assertEquals(systemPreset.getId(), updated.getId());
     }
 
@@ -191,7 +188,6 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         assertNotNull("Created preset should have an id", created.getId());
 
         LabelPreset fetched = labelPresetService.get(created.getId());
-        assertNotNull("Fetched preset should not be null", fetched);
         assertEquals(TEST_PREFIX + "roundtrip", fetched.getName());
         assertEquals(Integer.valueOf(20), fetched.getHeightMm());
         assertEquals(Integer.valueOf(40), fetched.getWidthMm());
@@ -225,7 +221,6 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         LabelPreset original = createPreset(TEST_PREFIX + "orig_dup");
         LabelPreset copy = labelPresetService.duplicate(original.getId(), TEST_PREFIX + "copy_dup", SYS_USER);
 
-        assertNotNull(copy.getId());
         assertFalse("Copy id should differ from original", copy.getId().equals(original.getId()));
         assertEquals(TEST_PREFIX + "copy_dup", copy.getName());
         assertFalse("Copy should not be system", Boolean.TRUE.equals(copy.getIsSystem()));
@@ -240,7 +235,8 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
             labelPresetService.duplicate(original.getId(), TEST_PREFIX + "existing_copy", SYS_USER);
             fail("Expected IllegalArgumentException for name collision in duplicate");
         } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage());
+            assertTrue("Error should mention the colliding name",
+                    e.getMessage().contains(TEST_PREFIX + "existing_copy"));
         }
     }
 
