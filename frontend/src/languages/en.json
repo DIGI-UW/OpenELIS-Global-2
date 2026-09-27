@@ -5010,6 +5010,7 @@
   "order.save.requirement.patient": "a patient",
   "order.save.requirement.samplingSite": "a sampling site",
   "order.save.requirement.collectionSite": "a collection site",
+  "order.save.requirement.requesterOrRequestor": "a requesting organisation or requestor",
   "order.save.requirement.sampleType": "at least one sample type",
   "order.save.requirement.site": "a requesting site",
   "order.requestDate": "Order Date",

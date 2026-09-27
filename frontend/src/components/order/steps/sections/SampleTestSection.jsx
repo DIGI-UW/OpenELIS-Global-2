@@ -1180,12 +1180,17 @@ const SampleTestSection = ({
         </div>
 
         <div className="env-manifest-footer">
-          <Link onClick={handleAddSample} disabled={isReadOnly}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={handleAddSample}
+            disabled={isReadOnly}
+          >
             <FormattedMessage
               id="env.sample.addRow"
               defaultMessage="+ Add sample row"
             />
-          </Link>
+          </Button>
           <span className="env-manifest-count">
             <FormattedMessage
               id="env.sample.total"

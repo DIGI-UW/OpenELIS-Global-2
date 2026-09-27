@@ -69,10 +69,29 @@ describe("SaveFailureNotice", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "sampleOrderItems: Enter at least one of Requesting Organization or Requester contact.",
+        "Enter at least one of Requesting Organization or Requester contact.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/errors\./)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sampleOrderItems/)).not.toBeInTheDocument();
+  });
+
+  // OGC-1266: the server's summary is its first field error, so an
+  // environmental order refused for a missing requester said it twice.
+  it("says a rejection once when the summary repeats the field error", () => {
+    orderContextValue.saveStatus = "error";
+    orderContextValue.error =
+      "sampleOrderItems: errors.requester.org.or.requestor.required";
+    orderContextValue.fieldErrors = {
+      sampleOrderItems: "errors.requester.org.or.requestor.required",
+    };
+    renderNotice([]);
+
+    expect(
+      screen.getAllByText(
+        /Enter at least one of Requesting Organization or Requester contact\./,
+      ),
+    ).toHaveLength(1);
   });
 
   it("keeps a server message that is not a known key", () => {

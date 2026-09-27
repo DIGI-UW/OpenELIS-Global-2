@@ -16,7 +16,10 @@ import SaveFailureNotice from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
-import { describeUnmetRequirements } from "../saveRequirements";
+import {
+  describeUnmetRequirements,
+  hasRequesterOrRequestor,
+} from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
 import {
@@ -133,6 +136,10 @@ const EnvironmentalOrderEnter = () => {
       labelId: "order.save.requirement.labNumber",
     },
     { met: hasPatientOrSite, labelId: "order.save.requirement.samplingSite" },
+    {
+      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
+      labelId: "order.save.requirement.requesterOrRequestor",
+    },
     { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
     {
       met: hasSampleTypes && allSamplesHaveTests,
