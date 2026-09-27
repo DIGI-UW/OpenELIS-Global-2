@@ -1,6 +1,9 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { applyPlugin } from "jspdf-autotable";
 import bwipjs from "bwip-js";
+
+// jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
+applyPlugin(jsPDF);
 
 /**
  * Generate a Code128 barcode as a base64 PNG data URL.

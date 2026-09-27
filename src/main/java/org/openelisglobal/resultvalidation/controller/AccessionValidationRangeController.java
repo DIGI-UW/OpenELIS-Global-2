@@ -369,6 +369,10 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        // This legacy endpoint finalizes analyses exactly like the REST save, so it
+        // takes the same QC hold.
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
+
         List<String> analysisIdList = new ArrayList<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
@@ -379,7 +383,10 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
 
                 if (!analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    if (analysisItem.getIsAccepted() && blocked.contains(analysis.getId())) {
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    } else if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));

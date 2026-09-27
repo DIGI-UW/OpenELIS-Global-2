@@ -12,7 +12,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.person.service.PersonService;
-import org.openelisglobal.provider.valueholder.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -77,12 +76,12 @@ public class ProviderRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void insertOrUpdateProviderByFhirUuid_shouldUpdateProviderGivenTheFhirUUID() throws Exception {
 
-        Provider provider1 = new Provider();
-        provider1.setPerson(personService.get("3"));
-        provider1.setId("2");
-        provider1.setFhirUuid(FH_UUID2);
-
-        String providerJson = new ObjectMapper().writeValueAsString(provider1);
+        // The UI-shaped payload (ProviderMenu.tsx handleUpdateProvider): a
+        // whitelist of bindable fields. Serializing the Hibernate entity emits
+        // derived getters the strict production mapper rejects with 400.
+        String providerJson = "{\"id\":\"2\",\"fhirUuid\":\"" + FH_UUID2 + "\",\"person\":{\"id\":\"3\","
+                + "\"firstName\":\"" + PERSON1_FIRSTNAME + "\",\"lastName\":\"" + PERSON1_LASTNAME + "\","
+                + "\"middleName\":\"" + PERSON1_MIDDLENAME + "\"},\"active\":true}";
 
         MvcResult urlResult = super.mockMvc.perform(post("/rest/Provider/FhirUuid")
                 .contentType(MediaType.APPLICATION_JSON_VALUE).accept(MediaType.APPLICATION_JSON_VALUE)

@@ -118,6 +118,46 @@ Lab C: GeneXpert (File) → USB export to shared folder
 | All      | HIV Viral Load            | 10351-5              |
 | ASTM     | CBC (WBC, RBC, HGB, etc.) | 6690-2, 789-8, 718-7 |
 
+## Multi-Component (Per-Target) Mapping
+
+Multiplex GeneXpert assays report more than one value per sample — an overall
+call plus per-target/probe values (e.g. SARS-CoV-2 `N2` / `E`, or Xpert MTB/RIF
+`rpoB` probe Cts). OpenELIS can capture each of these against a **result
+component** of a single test instead of fragmenting the run into separate tests
+(OGC-1129).
+
+**Resolution order** for an incoming target/channel:
+
+1. **Test** — resolved first, exactly as today: by LOINC (preferred) or the
+   lab's per-analyzer `analyzer_test_map` entry. No component ever changes this.
+2. **Component within that test** — resolved by a **stable code**, never a
+   display string:
+   - an explicit analyzer mapping — `analyzer_test_map.component_id` for the
+     target/channel; otherwise
+   - a **component whose `code` equals the incoming target code** (zero-config).
+     The seeded molecular components use target codes directly (`N2`, `E`,
+     `RPOB_A`…`RPOB_E`, from changeset `055`), so a bridge that emits those
+     codes binds automatically.
+   - No component resolved ⇒ the test's **PRIMARY** component (single-component
+     behavior, unchanged).
+
+**Rules of the road:**
+
+- **Additive only.** Enabling component mapping must not merge assays currently
+  modeled as separate tests (MTB, RIF, CT, NG) and must not re-point existing
+  `analyzer_test_map` rows — those keep `component_id` null (PRIMARY).
+- **Blank Ct** ⇒ no amplification / negative; it stages blank, not `0`.
+- **Unmapped target** is surfaced as a visible import exception
+  (`import_issue_reason = unmapped_component:<code>`), never silently dropped.
+- **Internal controls** (GeneXpert SPC/PCC, a qPCR IPC channel) may be modeled
+  as components (typically not shown on report). The **QC program** (control
+  materials, Levey-Jennings, Westgard, lots) stays in the QC domain — it is
+  **not** modeled as result components.
+
+Imported per-component values arrive prefilled on Results Entry against their
+component, and print per component on the patient report (subject to each
+component's "show on report" setting).
+
 ## Troubleshooting
 
 ### ASTM Issues

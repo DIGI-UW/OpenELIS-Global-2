@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Patient search matches names and identifiers with `ilike '%term%'`, which a
+    B-tree index cannot serve, so every search scans patient joined to person.
+    A GIN trigram index does serve a leading wildcard, and the same extension
+    supplies the similarity() used to match misspelled names; fuzzystrmatch
+    supplies levenshtein() for the short terms trigrams score too low.
+
+    Both extensions are trusted in PostgreSQL 13+, so the database owner can
+    install them without superuser rights.
+    -->
+    <changeSet id="patient-search-trigram-extensions" author="OGC">
+        <comment>Enable pg_trgm and fuzzystrmatch for patient search</comment>
+        <sql>create extension if not exists pg_trgm;</sql>
+        <sql>create extension if not exists fuzzystrmatch;</sql>
+        <rollback>
+            <!--
+            Deliberately not dropped: another feature may since have come to
+            depend on either extension, and leaving them installed is harmless.
+            -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="patient-search-trigram-indexes" author="OGC">
+        <comment>Trigram indexes backing the patient search predicates</comment>
+        <sql>
+            create index if not exists idx_person_last_name_trgm
+                on clinlims.person using gin (lower(last_name) gin_trgm_ops);
+        </sql>
+        <sql>
+            create index if not exists idx_person_first_name_trgm
+                on clinlims.person using gin (lower(first_name) gin_trgm_ops);
+        </sql>
+        <sql>
+            create index if not exists idx_patient_national_id_trgm
+                on clinlims.patient using gin (lower(national_id) gin_trgm_ops);
+        </sql>
+        <sql>
+            create index if not exists idx_patient_external_id_trgm
+                on clinlims.patient using gin (lower(external_id) gin_trgm_ops);
+        </sql>
+        <sql>
+            create index if not exists idx_patient_identity_data_trgm
+                on clinlims.patient_identity using gin (lower(identity_data) gin_trgm_ops);
+        </sql>
+        <rollback>
+            <sql>drop index if exists clinlims.idx_person_last_name_trgm;</sql>
+            <sql>drop index if exists clinlims.idx_person_first_name_trgm;</sql>
+            <sql>drop index if exists clinlims.idx_patient_national_id_trgm;</sql>
+            <sql>drop index if exists clinlims.idx_patient_external_id_trgm;</sql>
+            <sql>drop index if exists clinlims.idx_patient_identity_data_trgm;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

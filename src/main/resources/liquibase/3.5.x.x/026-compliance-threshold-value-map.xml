@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        Persists the option-value → ComplianceStatus mappings that power
+        SELECT_MAP threshold rows (FR-3-013, FR-3-014). The
+        ComplianceThresholdValueMap entity already exists in code (and was
+        registered in persistence.xml), but the table itself was never
+        migrated — Hibernate fails with "relation does not exist" the first
+        time a SELECT_MAP threshold tries to write its mappings.
+
+        Schema mirrors the entity:
+        - id              numeric(10,0) PK, populated from
+                          compliance_threshold_value_map_seq
+        - threshold_id    FK → compliance_threshold(id), CASCADE on delete
+                          so removing a parent threshold removes its mappings
+        - option_value    VARCHAR(255) NOT NULL
+        - compliance_status VARCHAR(50) NOT NULL (COMPLIANT / BORDERLINE /
+                          NON_COMPLIANT)
+        - last_updated    TIMESTAMP for the BaseObject @Version column
+        - sys_user_id     INT NOT NULL audit FK
+
+        A composite unique index on (threshold_id, option_value) enforces the
+        natural key the handler relies on for idempotent upserts.
+    -->
+
+    <changeSet id="026-1-create-compliance-threshold-value-map-sequence" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists schemaName="clinlims" sequenceName="compliance_threshold_value_map_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="compliance_threshold_value_map_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="compliance_threshold_value_map_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="026-2-create-compliance-threshold-value-map-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="compliance_threshold_value_map"/>
+            </not>
+        </preConditions>
+        <createTable tableName="compliance_threshold_value_map">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="threshold_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="option_value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="compliance_status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="compliance_threshold_value_map"/>
+        </rollback>
+    </changeSet>
+
+    <!--
+        compliance_threshold.id is declared as INTEGER in changeset 018, but
+        the initial draft of 026-2 above used numeric(10,0) for the PK and
+        threshold_id (matching the JPA @Column precision/scale) — Postgres
+        rejects an FK between numeric and integer. Cast both columns to
+        INTEGER to match the parent table before adding the FK. Idempotent:
+        the alter is a no-op once the type already matches.
+    -->
+    <changeSet id="026-2a-align-id-types-to-integer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="compliance_threshold_value_map"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.compliance_threshold_value_map
+            ALTER COLUMN id TYPE INTEGER USING id::integer,
+            ALTER COLUMN threshold_id TYPE INTEGER USING threshold_id::integer;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.compliance_threshold_value_map
+                ALTER COLUMN id TYPE numeric(10,0) USING id::numeric(10,0),
+                ALTER COLUMN threshold_id TYPE numeric(10,0) USING threshold_id::numeric(10,0);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="026-3-add-compliance-threshold-value-map-fk" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="compliance_threshold_value_map"/>
+                <not>
+                    <foreignKeyConstraintExists schemaName="clinlims"
+                        foreignKeyName="fk_compliance_threshold_value_map_threshold"/>
+                </not>
+            </and>
+        </preConditions>
+        <addForeignKeyConstraint
+            baseTableName="compliance_threshold_value_map"
+            baseColumnNames="threshold_id"
+            constraintName="fk_compliance_threshold_value_map_threshold"
+            referencedTableName="compliance_threshold"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="026-4-unique-threshold-option" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="compliance_threshold_value_map"/>
+        </preConditions>
+        <addUniqueConstraint
+            tableName="compliance_threshold_value_map"
+            columnNames="threshold_id, option_value"
+            constraintName="uq_compliance_threshold_value_map_option"/>
+    </changeSet>
+
+    <changeSet id="026-5-add-compliance-status-check" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="compliance_threshold_value_map"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.compliance_threshold_value_map
+            ADD CONSTRAINT chk_compliance_threshold_value_map_status
+            CHECK (compliance_status IN ('COMPLIANT', 'BORDERLINE', 'NON_COMPLIANT'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.compliance_threshold_value_map
+                DROP CONSTRAINT chk_compliance_threshold_value_map_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

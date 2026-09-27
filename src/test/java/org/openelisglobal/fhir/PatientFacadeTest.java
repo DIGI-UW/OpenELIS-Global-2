@@ -263,4 +263,19 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals(404, response.getStatus());
     }
+
+    @Test
+    public void createPatient_withInvalidName_returns422() throws Exception {
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+        request.setContent("""
+                {"resourceType": "Patient", "name": [{"family": "Probe123", "given": ["Live"]}],
+                 "gender": "female", "birthDate": "1990-05-05"}
+                """.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+        JsonNode outcome = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", outcome.get("resourceType").asText());
+    }
 }

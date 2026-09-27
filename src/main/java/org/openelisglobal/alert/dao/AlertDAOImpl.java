@@ -54,6 +54,32 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Alert> getAlertsByEntityRef(String entityType, String entityRef) {
+        if (entityType == null) {
+            return Collections.emptyList();
+        }
+        try {
+            String hql;
+            if (entityRef != null) {
+                hql = "FROM Alert a WHERE a.alertEntityType = :entityType AND a.alertEntityRef = :entityRef "
+                        + "ORDER BY a.startTime DESC";
+            } else {
+                hql = "FROM Alert a WHERE a.alertEntityType = :entityType ORDER BY a.startTime DESC";
+            }
+            Query<Alert> query = entityManager.unwrap(Session.class).createQuery(hql, Alert.class);
+            query.setParameter("entityType", entityType);
+            if (entityRef != null) {
+                query.setParameter("entityRef", entityRef);
+            }
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error retrieving alerts for entity type: {}, ref: {}", entityType, entityRef, e);
+            throw new LIMSRuntimeException("Error retrieving alerts for entity: " + entityType + "/" + entityRef, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Alert> getAlertsByAlertType(AlertType alertType) {
         try {
             String hql = "FROM Alert a WHERE a.alertType = :alertType ORDER BY a.startTime DESC";

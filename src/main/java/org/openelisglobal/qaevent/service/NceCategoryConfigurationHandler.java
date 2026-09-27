@@ -173,7 +173,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             category.setDisplayKey(displayKey.isEmpty() ? null : displayKey);
             category.setActive(active.isEmpty() || "Y".equalsIgnoreCase(active));
             category.setNameLocalization(localization);
-            category.setSysUserId("1");
 
             nceCategoryService.insert(category);
 
@@ -203,14 +202,12 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             localizationService.update(localization);
         }
 
-        category.setSysUserId("1");
     }
 
     private Localization createLocalization(String description, String[] values,
             Map<String, Integer> localeColumnIndexes) {
         Localization localization = new Localization();
         localization.setDescription("NCE Category: " + description);
-        localization.setSysUserId("1");
 
         for (Map.Entry<String, Integer> entry : localeColumnIndexes.entrySet()) {
             String locale = entry.getKey();
@@ -233,7 +230,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
                 localization.setLocalizedValue(locale, value);
             }
         }
-        localization.setSysUserId("1");
     }
 
     private String getValueOrEmpty(String[] values, int index) {

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-803 / OGC-804 reception actions on referral.
+    reconciled/at/by back the Accept (reconciliation-ack) flow; reject_reason_*
+    back the Reject flow. All nullable/defaulted so existing rows are unaffected.
+  -->
+
+  <changeSet id="3.5.0.0-054-referral-add-reconciled" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="referral" columnName="reconciled" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="referral" schemaName="clinlims">
+      <column name="reconciled" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="reconciled_at" type="TIMESTAMP"/>
+      <column name="reconciled_by" type="numeric(10,0)"/>
+      <column name="reject_reason_code" type="VARCHAR(64)"/>
+      <column name="reject_reason_text" type="TEXT"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="referral" columnName="reconciled" schemaName="clinlims"/>
+      <dropColumn tableName="referral" columnName="reconciled_at" schemaName="clinlims"/>
+      <dropColumn tableName="referral" columnName="reconciled_by" schemaName="clinlims"/>
+      <dropColumn tableName="referral" columnName="reject_reason_code" schemaName="clinlims"/>
+      <dropColumn tableName="referral" columnName="reject_reason_text" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

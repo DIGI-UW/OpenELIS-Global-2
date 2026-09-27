@@ -25,7 +25,6 @@ import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.IStatusService;
@@ -70,6 +69,9 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
         analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
         analysisStatusIds
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+        // Include samples rejected at order entry so they appear on the report
+        // (as "Rejected order") rather than being silently omitted (OGC #3).
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected));
         validatedAnalysisStatusIds
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
     }
@@ -131,8 +133,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                     validatedAnalysisStatusIds);
         }
 
-        List<Analysis> filteredAnalysisList = userService.filterAnalysesByLabUnitRoles(systemUserId, analysisList,
-                Constants.ROLE_REPORTS);
+        List<Analysis> filteredAnalysisList = filterAnalysesForReportUser(analysisList);
         List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(filteredAnalysisList.size());
         currentConclusion = null;
         for (Analysis analysis : filteredAnalysisList) {
@@ -142,6 +143,10 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
+                    // Reflect the analysis's real status (in progress / waiting
+                    // validation / validated / rejected) rather than always "in
+                    // progress" and blank-for-validated.
+                    resultsData.setAnalysisStatus(reportAnalysisStatus(currentAnalysis));
                     if (isConfirmationSample) {
                         String alerts = resultsData.getAlerts();
                         if (!GenericValidator.isBlankOrNull(alerts)) {
@@ -175,6 +180,33 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
     @Override
     protected void setEmptyResult(ClinicalPatientData data) {
         data.setAnalysisStatus(MessageUtil.getMessage("report.test.status.inProgress"));
+    }
+
+    /**
+     * The report status for an analysis: Validated (finalized), Rejected
+     * (technical/biologist rejected), Waiting validation (results entered,
+     * technically accepted), else In progress.
+     */
+    private String reportAnalysisStatus(Analysis analysis) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        String statusId = analysisService.getStatusId(analysis);
+        if (statusService.matches(statusId, AnalysisStatus.Finalized)) {
+            return MessageUtil.getMessage("report.test.status.validated");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.SampleRejected)) {
+            return MessageUtil.getMessage("report.test.status.rejectedOrder");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.TechnicalRejected)
+                || statusService.matches(statusId, AnalysisStatus.BiologistRejected)) {
+            return MessageUtil.getMessage("report.test.status.rejected");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.Canceled)) {
+            return MessageUtil.getMessage("report.test.status.canceled");
+        }
+        if (statusService.matches(statusId, AnalysisStatus.TechnicalAcceptance)) {
+            return MessageUtil.getMessage("report.test.status.waitingValidation");
+        }
+        return MessageUtil.getMessage("report.test.status.inProgress");
     }
 
     @Override
@@ -219,7 +251,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 copyParentData(data, parentData);
 
                 data.setResult(reportReferralResultValue);
-                data.setNote(note);
+                data.setNote(noteWithReferralAttribution(note, referral));
                 data.setSampleType(parentData.getSampleType());
                 data.setSampleId(parentData.getSampleId());
                 String testId = referralResult.getTestId();
@@ -227,7 +259,8 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                     Test test = new Test();
                     test.setId(testId);
                     testService.getData(test);
-                    data.setTestName(TestServiceImpl.getUserLocalizedReportingTestName(test));
+                    data.setTestName(TestServiceImpl.getUserLocalizedReportingTestName(test,
+                            appendSampleTypeToTestName() ? parentData.getSampleType() : null));
 
                     String uom = getUnitOfMeasure(test);
                     if (reportReferralResultValue != null) {
@@ -425,6 +458,11 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
 
     @Override
     protected boolean useReportingDescription() {
+        return true;
+    }
+
+    @Override
+    protected boolean appendSampleTypeToTestName() {
         return true;
     }
 }

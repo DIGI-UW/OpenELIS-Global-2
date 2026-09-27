@@ -50,7 +50,13 @@ public interface ProviderDAO extends BaseDAO<Provider, String> {
 
     int getTotalSearchedProviderCount(String parameter);
 
+    /** The same count, narrowed to one provider title (OGC-1223). */
+    int getTotalSearchedProviderCount(String parameter, String titleCode);
+
     List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter);
+
+    /** The same page, narrowed to one provider title (OGC-1223). */
+    List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode);
 
     /**
      * Search providers by phone number (primary phone, work phone, or fax).

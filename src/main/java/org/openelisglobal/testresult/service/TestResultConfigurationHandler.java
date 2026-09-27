@@ -5,7 +5,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
@@ -14,6 +16,9 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresult.valueholder.TestResultSignificance;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +61,17 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     @Autowired
     private DictionaryService dictionaryService;
 
+    // The config loader writes tests/test_results in the legacy shape; these bridge
+    // that to the new editor's model so loaded tests appear correctly under Sample
+    // &
+    // Results (components), Ranges (result_limits repointed to the PRIMARY
+    // component) and Terminology (LOINC mapping).
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+
     @Override
     public String getDomainName() {
         return "test-results";
@@ -96,12 +112,16 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int isNormalIndex = findColumnIndex(headers, "isNormal");
         int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
         int flagsIndex = findColumnIndex(headers, "flags");
+        int significanceIndex = findColumnIndex(headers, "significance");
 
         String line;
         int lineNumber = 1;
         int skippedRows = 0;
         int dataRows = 0;
         int totalResultsCreated = 0;
+        // Tests whose legacy results were loaded — bridged to the new editor model
+        // once, after all rows for the file are in.
+        Set<String> touchedTestIds = new LinkedHashSet<>();
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
@@ -115,7 +135,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, lineNumber, fileName);
+                        significantDigitsIndex, flagsIndex, significanceIndex, lineNumber, fileName, touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -125,6 +145,22 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 skippedRows++;
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Bridge every loaded test to the new editor model: create/refresh its
+        // PRIMARY result component (Sample & Results) + repoint its options and
+        // ranges onto that component, and sync its LOINC into a terminology mapping.
+        for (String testId : touchedTestIds) {
+            try {
+                testResultComponentService.syncPrimaryComponentFromLegacy(testId, "1");
+                Test test = testService.getTestById(testId);
+                if (test != null && test.getLoinc() != null && !test.getLoinc().trim().isEmpty()) {
+                    terminologyMappingService.syncLegacyLoinc(testId, test.getLoinc(), "1");
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
+                        "Failed to bridge test " + testId + " to the new editor model: " + e.getMessage());
             }
         }
 
@@ -207,7 +243,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
+            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex, int lineNumber,
+            String fileName, Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -295,15 +332,16 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                        isNormalIndex, significantDigitsIndex, flagsIndex);
+                        isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
                 createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
-                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex);
+                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
+            touchedTestIds.add(test.getId());
             resultsCreated++;
         }
 
@@ -316,6 +354,27 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         }
 
         return resultsCreated;
+    }
+
+    /**
+     * Normalizes a catalog significance cell: blank -&gt; null; a recognized value
+     * (case-insensitive) -&gt; its canonical upper form; anything else is rejected
+     * with a clear error and stored as null. Positivity indices match the exact
+     * canonical name, so an unrecognized value (e.g. a typo or a localized
+     * "POSITIF") could never be counted and must not be silently persisted.
+     */
+    private String normalizeSignificance(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        String normalized = raw.toUpperCase();
+        if (TestResultSignificance.isRecognized(normalized)) {
+            return normalized;
+        }
+        LogEvent.logError(this.getClass().getSimpleName(), "normalizeSignificance",
+                "CONFIGURATION ERROR: unrecognized test_result significance '" + raw
+                        + "'. Expected one of POSITIVE, NEGATIVE, INDETERMINATE. Storing null (unclassified).");
+        return null;
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -403,7 +462,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
-            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex) {
+            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex,
+            int significanceIndex) {
 
         // Update sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -442,14 +502,20 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // A missing column (legacy catalog) leaves the prior value untouched; a
+        // present-but-blank cell explicitly clears it to null.
+        if (significanceIndex != -1) {
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
+        }
+
         testResultService.update(testResult);
         return testResult;
     }
 
     private TestResult createTestResult(Test test, String resultType, String resultValue, String[] values,
             int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int significantDigitsIndex, int flagsIndex) {
+            int significantDigitsIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
@@ -503,7 +569,12 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // Consistent with the update path: a present-but-blank cell sets null.
+        if (significanceIndex != -1) {
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
+        }
+
         String testResultId = testResultService.insert(testResult);
         testResult.setId(testResultId);
 

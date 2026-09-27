@@ -33,6 +33,12 @@ public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, St
 
     @Override
     @Transactional(readOnly = true)
+    public Method findById(String id) {
+        return getBaseObjectDAO().get(id).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Method> getMethods(String filter) {
         return getBaseObjectDAO().getMethods(filter);
     }

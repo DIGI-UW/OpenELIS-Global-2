@@ -24,7 +24,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
@@ -58,6 +58,7 @@ function ExternalConnectionAddModify() {
   const [authTypeOptions, setAuthTypeOptions] = useState([]);
 
   const location = useLocation();
+  const history = useHistory();
   const ID = (() => {
     const search = location.search;
     if (search) {
@@ -77,7 +78,7 @@ function ExternalConnectionAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage/externalConnections");
+        history.replace("/MasterListsPage/externalConnections");
       }, 1000);
     }
     return () => {
@@ -198,7 +199,7 @@ function ExternalConnectionAddModify() {
     });
     setNotificationVisible(true);
     setTimeout(() => {
-      window.location.assign("/MasterListsPage/externalConnections");
+      history.push("/MasterListsPage/externalConnections");
     }, 200);
   };
 
@@ -418,7 +419,7 @@ function ExternalConnectionAddModify() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign("/MasterListsPage/externalConnections")
+                  history.push("/MasterListsPage/externalConnections")
                 }
                 kind="tertiary"
                 type="button"

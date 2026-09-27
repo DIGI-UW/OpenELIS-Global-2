@@ -13,10 +13,12 @@
  */
 package org.openelisglobal.analyzerresults.action.beanitems;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.result.form.AnalyzerResultsForm;
@@ -62,6 +64,19 @@ public class AnalyzerResultItem implements Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String testId;
 
+    // OGC-1129 — the resolved result component (test_result_component.id); null =
+    // PRIMARY. Carried from the staged AnalyzerResults row through to accept.
+    private String componentId;
+
+    // OGC-1145 FR-8 — the sample type the reviewer chose for a specimen-ambiguous
+    // row (test runs on several sample types, message carried no specimen).
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    private String typeOfSampleId;
+
+    // Display-only: the candidate sample types offered by the review page's
+    // chooser when the row is specimen-ambiguous; never bound from the request.
+    private List<IdValuePair> sampleTypeOptions;
+
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
 
@@ -92,6 +107,13 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
     private String significantDigits = "";
+    private String importIssueReason;
+    private String sourceProfileId;
+    private Integer sourceProfileRevision;
+    private String sourceProtocol;
+    private String sourceTransport;
+    private String rawTestCode;
+    private String rawResultValue;
 
     public String getSignificantDigits() {
         return significantDigits;
@@ -226,6 +248,30 @@ public class AnalyzerResultItem implements Serializable {
         return testId;
     }
 
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public String getTypeOfSampleId() {
+        return typeOfSampleId;
+    }
+
+    public void setTypeOfSampleId(String typeOfSampleId) {
+        this.typeOfSampleId = typeOfSampleId;
+    }
+
+    public List<IdValuePair> getSampleTypeOptions() {
+        return sampleTypeOptions;
+    }
+
+    public void setSampleTypeOptions(List<IdValuePair> sampleTypeOptions) {
+        this.sampleTypeOptions = sampleTypeOptions;
+    }
+
     public void setCompleteDate(String completeDate) {
         this.completeDate = completeDate;
     }
@@ -310,6 +356,7 @@ public class AnalyzerResultItem implements Serializable {
         this.dictionaryResultList = dictionaryResultList;
     }
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     public List<Dictionary> getDictionaryResultList() {
         return dictionaryResultList;
     }
@@ -392,5 +439,61 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    public String getSourceProfileId() {
+        return sourceProfileId;
+    }
+
+    public void setSourceProfileId(String sourceProfileId) {
+        this.sourceProfileId = sourceProfileId;
+    }
+
+    public Integer getSourceProfileRevision() {
+        return sourceProfileRevision;
+    }
+
+    public void setSourceProfileRevision(Integer sourceProfileRevision) {
+        this.sourceProfileRevision = sourceProfileRevision;
+    }
+
+    public String getSourceProtocol() {
+        return sourceProtocol;
+    }
+
+    public void setSourceProtocol(String sourceProtocol) {
+        this.sourceProtocol = sourceProtocol;
+    }
+
+    public String getSourceTransport() {
+        return sourceTransport;
+    }
+
+    public void setSourceTransport(String sourceTransport) {
+        this.sourceTransport = sourceTransport;
+    }
+
+    public String getRawTestCode() {
+        return rawTestCode;
+    }
+
+    public void setRawTestCode(String rawTestCode) {
+        this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
     }
 }

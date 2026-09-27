@@ -54,18 +54,21 @@ public class SampleStorageAssignmentListener {
 
             String sampleItemId = sampleItem.getId();
 
-            logger.info("Assigning storage location for SampleItem {}: locationId={}, locationType={}", sampleItemId,
-                    storageLocationId, storageLocationType);
+            java.util.Map<String, Object> existing = sampleStorageService.getSampleItemLocation(sampleItemId);
+            boolean alreadyAssigned = existing != null && !existing.isEmpty();
 
-            // Propagate any failure (e.g. position-already-occupied) up to the
-            // caller so the order-save endpoint can surface the message to the
-            // UI instead of silently logging it. Previously this was wrapped in
-            // a try/catch that just logged — which is why the order appeared
-            // to save successfully even though storage failed.
-            sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                    storagePositionCoordinate, "Auto-assigned on order creation");
+            logger.info("Storage assignment [v2]: sampleItemId={}, alreadyAssigned={}, locationId={}, locationType={}",
+                    sampleItemId, alreadyAssigned, storageLocationId, storageLocationType);
 
-            logger.info("Successfully assigned storage location for SampleItem {}", sampleItemId);
+            if (alreadyAssigned) {
+                sampleStorageService.moveSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Reassignment on order save", "");
+            } else {
+                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Auto-assigned on order creation");
+            }
+
+            logger.info("Successfully processed storage location for SampleItem {}", sampleItemId);
         }
     }
 }

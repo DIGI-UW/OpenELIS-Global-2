@@ -8,7 +8,6 @@ import {
   Breadcrumb,
   BreadcrumbItem,
 } from "@carbon/react";
-import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState } from "./commons";
 import { FilterProvider } from "./filter";
 import { useGetManyObstreeData } from "./grouped-timeline";
@@ -71,13 +70,13 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
 
   const { roots, loading, error } = useGetManyObstreeData(patientId);
 
-  const { t } = useTranslation();
-
   if (error) {
     return (
       <ErrorState
         error={error}
-        headerTitle={t("dataLoadError", "Data Load Error")}
+        headerTitle={intl.formatMessage({
+          id: "label.patientHistory.dataLoadError",
+        })}
       />
     );
   }

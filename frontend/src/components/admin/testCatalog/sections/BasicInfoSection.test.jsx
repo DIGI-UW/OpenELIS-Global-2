@@ -1,0 +1,518 @@
+/**
+ * BasicInfoSection — OGC-949 M4 / OGC-748.
+ *
+ * Validates the Domain-switch confirmation modal (US4 AC#1, fix M-04): changing
+ * the Domain radio does not apply immediately — it opens a confirmation modal;
+ * confirming applies the change, cancelling reverts to the current domain.
+ */
+
+// ========== MOCKS (before imports) ==========
+// Factory must be self-contained (hoisted above imports) — no outer refs.
+vi.mock("../../../layout/Layout", async () => {
+  const React = await import("react");
+  return {
+    NotificationContext: React.createContext({
+      addNotification: () => {},
+      setNotificationVisible: () => {},
+    }),
+  };
+});
+
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  putToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
+}));
+
+// ========== IMPORTS ==========
+import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
+import BasicInfoSection from "./BasicInfoSection";
+import { NotificationContext } from "../../../layout/Layout";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+  putToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
+import messages from "../../../../languages/en.json";
+
+const renderSection = (testId = "42") =>
+  render(
+    <MemoryRouter
+      initialEntries={[
+        `/MasterListsPage/TestCatalogEditor/${testId}/basic-info`,
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <BasicInfoSection testId={testId} />
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+
+// The domain the section persists on Save is the source of truth for whether
+// the modal applied or reverted the change — assert on that rather than on
+// Carbon's controlled-radio checked state (unreliable to read in jsdom).
+const savedDomain = () =>
+  JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).domain;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url.endsWith("/domains")) {
+      cb([
+        { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+        { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+        { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+      ]);
+    } else if (url.endsWith("/lab-units")) {
+      cb([{ id: "7", name: "Chemistry" }]);
+    } else if (url.endsWith("/sample-types")) {
+      // Serum carries no domain (legacy shape) so domain-switch tests keep a
+      // compatible selection; Plasma is guarded to the CLINICAL domain.
+      cb([
+        { id: "2", name: "Serum" },
+        { id: "3", name: "Plasma", domain: "H" },
+      ]);
+    } else {
+      cb({
+        name: "Glucose",
+        code: "GLU",
+        description: "",
+        domain: "CLINICAL",
+        // OGC-1145: an active test must carry ≥1 sample type or Save disables
+        sampleTypeIds: ["2"],
+        cultureWorkflowType: "",
+        antimicrobialResistance: false,
+        active: true,
+        orderable: true,
+      });
+    }
+  });
+  // Success echoes the saved BasicInfo body (no status field).
+  putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+    cb({ testId: "42" }),
+  );
+});
+
+describe("BasicInfoSection domain-switch modal", () => {
+  it("confirming a domain change persists the new domain", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedDomain()).toBe("ENVIRONMENTAL");
+  });
+
+  it("cancelling a domain change reverts the radio and keeps the saved domain", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    // The radio must snap back to the current domain — not stay visually stuck
+    // on the rejected choice (Carbon RadioButtonGroup internal-state desync).
+    await waitFor(() =>
+      expect(screen.getByLabelText("Clinical")).toBeChecked(),
+    );
+    expect(screen.getByLabelText("Environmental")).not.toBeChecked();
+
+    // ...and a subsequent Save persists the unchanged domain.
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedDomain()).toBe("CLINICAL");
+  });
+
+  it("persists the AMR toggle", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    // AMR starts false in the loaded form; flip it on.
+    fireEvent.click(screen.getByRole("switch", { name: /AMR surveillance/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1])
+        .antimicrobialResistance,
+    ).toBe(true);
+  });
+
+  it("persists the culture workflow selection", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("Culture workflow"), {
+      target: { value: "BACTERIOLOGY" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toMatchObject({ cultureWorkflowType: "BACTERIOLOGY" });
+  });
+
+  it("persists the Active toggle (boolean → Y/N)", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    // Active starts true in the loaded form; flip it off.
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).active,
+    ).toBe(false);
+  });
+
+  // Activation sets orderable server-side, so deactivating has to clear it —
+  // otherwise the test is left at active=false, orderable=true, which reads as
+  // orderable in the editor while Add Order ignores it.
+  it("clears orderable when the test is deactivated", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(screen.getByRole("switch", { name: /Orderable/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    expect(screen.getByRole("switch", { name: /Orderable/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
+    expect(body.active).toBe(false);
+    expect(body.orderable).toBe(false);
+  });
+
+  it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
+    // Load the test INACTIVE so toggling Active on triggers the activation gate.
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry" }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          cultureWorkflowType: "",
+          antimicrobialResistance: false,
+          active: false,
+          orderable: true,
+          sampleTypeIds: ["2"],
+        });
+      }
+    });
+    const gapReport = {
+      status: 409,
+      male: {
+        sex: "M",
+        status: "GAP",
+        gaps: [{ fromAge: 0, toAge: 1 }],
+        overlaps: [],
+      },
+      female: { sex: "F", status: "EMPTY", gaps: [], overlaps: [] },
+    };
+    // First activate (no ack) → 409 with the gap report; second (with ack) → 200.
+    postToOpenElisServerJsonResponse
+      .mockImplementationOnce((url, body, cb) => cb(gapReport))
+      .mockImplementationOnce((url, body, cb) => cb({ male: gapReport.male }));
+
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+      "/rest/test-catalog/tests/42/activate",
+    );
+    // The 409 surfaces the acknowledgment modal.
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.ranges.ackModal.warning"],
+      ),
+    ).toBeInTheDocument();
+
+    // Acknowledge → re-POST carrying the acknowledged gap report.
+    fireEvent.click(
+      screen.getByText(messages["label.testCatalog.ranges.ackModal.confirm"]),
+    );
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
+    const secondBody = JSON.parse(
+      postToOpenElisServerJsonResponse.mock.calls[1][1],
+    );
+    expect(secondBody.gapsAcknowledged).toBeTruthy();
+
+    // The acknowledged activation succeeded → the modal closes and Active turns on.
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          messages["label.testCatalog.ranges.ackModal.warning"],
+        ),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
+  });
+
+  // OGC-1119 FR-18 — activation re-surfaces the LOINC guardrails: a shared
+  // LOINC is named beside the toggle once the test is Active, without blocking.
+  it("shows the LOINC warnings the activation response carries", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([{ id: "CLINICAL", labelKey: "label.domain.CLINICAL" }]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry" }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else if (url.endsWith("/completeness")) {
+        cb({ complete: true, missing: [], messages: [] });
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          sampleTypeIds: ["2"],
+          cultureWorkflowType: "",
+          antimicrobialResistance: false,
+          active: false,
+          orderable: false,
+        });
+      }
+    });
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        testId: "42",
+        active: true,
+        orderable: true,
+        male: { sex: "M", status: "COMPLETE", gaps: [], overlaps: [] },
+        female: { sex: "F", status: "COMPLETE", gaps: [], overlaps: [] },
+        loincIntegrity: {
+          loinc: "4548-4",
+          active: true,
+          noLoinc: false,
+          duplicates: [{ testId: "43", name: "Glucose(Plasma)" }],
+        },
+      }),
+    );
+
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(
+      screen.queryByTestId("activation-duplicate-loinc-warning"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+
+    const warning = await screen.findByTestId(
+      "activation-duplicate-loinc-warning",
+    );
+    expect(warning).toHaveTextContent("4548-4");
+    expect(warning).toHaveTextContent("Glucose(Plasma)");
+    expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
+    expect(
+      screen.queryByTestId("activation-no-loinc-warning"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("edits the lab unit and sample types on modify and persists them", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([
+          { id: "CLINICAL", labelKey: "label.domain.CLINICAL" },
+          { id: "ENVIRONMENTAL", labelKey: "label.domain.ENVIRONMENTAL" },
+          { id: "VECTOR", labelKey: "label.domain.VECTOR" },
+        ]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([
+          { id: "7", name: "Chemistry" },
+          { id: "8", name: "Hematology" },
+        ]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([
+          { id: "2", name: "Serum" },
+          { id: "3", name: "Plasma" },
+        ]);
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          labUnitId: "7",
+          sampleTypeIds: ["2"],
+          antimicrobialResistance: false,
+          active: true,
+          orderable: true,
+        });
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(container.querySelector("#basic-info-edit-lab-unit"), {
+      target: { value: "Hematology" },
+    });
+    fireEvent.click(await screen.findByText("Hematology"));
+
+    // OGC-1145: sample types are a multi-select — add Plasma alongside Serum.
+    const multiselect = container.querySelector(
+      "#basic-info-edit-sample-types",
+    );
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(multiselect.querySelector("input"));
+    await user.click(await screen.findByRole("option", { name: /Plasma/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
+    expect(body.labUnitId).toBe("8");
+    expect(body.sampleTypeIds).toEqual(expect.arrayContaining(["2", "3"]));
+  });
+
+  it("disables Save and warns when an active test would lose its last sample type", async () => {
+    const { container } = renderSection();
+    await screen.findByLabelText("Clinical");
+
+    // remove the only chip (Serum) → required-error + disabled Save (FR-1)
+    fireEvent.click(
+      container.querySelector(".cds--tag__close-icon, .cds--tag button"),
+    );
+    expect(
+      await screen.findByTestId("sample-type-required-error"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(putToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+
+  it("shows an error state when the fetch fails", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
+    renderSection();
+    expect(
+      await screen.findByText(messages["label.testCatalog.editor.loadError"]),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("BasicInfoSection create mode (testId=new)", () => {
+  beforeEach(() => {
+    // Create mode fetches the Lab Unit + Sample type reference lists only.
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
+  });
+
+  it("renders a blank create form and gates Save until required fields are filled", async () => {
+    renderSection("new");
+    // Test name field is present (create-only label).
+    expect(
+      await screen.findByLabelText(messages["label.testCatalog.testName"]),
+    ).toBeInTheDocument();
+    // Save is disabled with an empty form (name/reportingName/code/sampleType required).
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    // It does not fetch the edit-mode basic-info payload.
+    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+      "/rest/test-catalog/tests/new/basic-info",
+      expect.anything(),
+    );
+  });
+});
+
+/**
+ * OGC-1180 — TEST.description is unique in the database. The save used to hand
+ * a duplicate straight to the constraint: an HTTP 500 with an empty body and
+ * the generic "server error" toast. The endpoint now answers 409 with
+ * {conflict: "description"}, and the section must tell the user which field to
+ * change rather than shrugging.
+ */
+describe("BasicInfoSection duplicate-description conflict (OGC-1180)", () => {
+  const renderWithNotificationSpy = (addNotification) =>
+    render(
+      <MemoryRouter
+        initialEntries={["/MasterListsPage/TestCatalogEditor/42/basic-info"]}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{ addNotification, setNotificationVisible: () => {} }}
+          >
+            <BasicInfoSection testId="42" />
+          </NotificationContext.Provider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("a 409 naming the description shows the duplicate-description message", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 409, conflict: "description" }),
+    );
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].kind).toBe("error");
+    expect(addNotification.mock.calls[0][0].message).toBe(
+      messages["error.testCatalog.description.inUse"],
+    );
+  });
+
+  it("any other failure keeps the generic error message", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 500, error: "Internal Server Error" }),
+    );
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].message).toBe(
+      messages["server.error.msg"],
+    );
+  });
+
+  it("a successful save still reports success", async () => {
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].kind).toBe("success");
+  });
+});

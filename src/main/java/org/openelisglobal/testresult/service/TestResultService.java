@@ -21,8 +21,29 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
 
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result);
 
+    /**
+     * The option row for a dictionary result id on one result component, falling
+     * back to the test-wide lookup when the component is blank or owns no such row.
+     */
+    TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId);
+
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();
+
+    /**
+     * OGC-949 M5 / OGC-964 — active select-list options for a result component,
+     * ordered by sort order. Options are TEST_RESULT rows scoped by component_id.
+     */
+    List<TestResult> getActiveOptionsByComponentId(String componentId);
+
+    /**
+     * Reconciles a component's active select-list options to the desired set:
+     * update by id, insert new (sequence-assigned id, FK to the given test),
+     * soft-delete (is_active=false) those omitted. Returns the resulting active
+     * list. {@code test} must be the persistent Test (its id fills
+     * TEST_RESULT.TEST_ID).
+     */
+    List<TestResult> saveOptionsForComponent(Test test, String componentId, List<TestResult> desired, String sysUserId);
 
 }

@@ -31,6 +31,9 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/qc-initial-runs.xml");
+        // qc-initial-runs.xml provides testUser; authenticate as that user so
+        // audit attribution lands on a real fixture user.
+        authenticateAs("testUser");
     }
 
     @Test

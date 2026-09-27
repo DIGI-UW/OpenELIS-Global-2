@@ -13,6 +13,15 @@ import { Link } from "react-router-dom";
 // with existing callers that pass `[{Home}, {SubPage}]`. A *single* crumb
 // is always rendered as a link — pages that pass just `[{Home}]` (e.g.
 // reports/Index.jsx) expect that Home stays clickable.
+//
+// A crumb with no `link` names a menu section that has no page of its own
+// (the EQA and Generic Sample groups, for instance). It renders as text
+// rather than as a <Link to={undefined}>, which would navigate nowhere.
+//
+// `label` is a message id. Callers that already hold a literal string (a
+// sample's accession number, a box label) can pass it directly: an id that
+// has no translation falls back to itself instead of raising a react-intl
+// missing-message error.
 const PageBreadCrumb = ({ breadcrumbs }) => {
   const intl = useIntl();
   const anyExplicitCurrent = breadcrumbs.some((b) => b.isCurrentPage === true);
@@ -24,7 +33,10 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
       <Column lg={16} md={8} sm={4}>
         <Breadcrumb>
           {breadcrumbs.map((breadcrumb, index) => {
-            const label = intl.formatMessage({ id: breadcrumb.label });
+            const label = intl.formatMessage({
+              id: breadcrumb.label,
+              defaultMessage: breadcrumb.label,
+            });
             const isCurrent =
               breadcrumb.isCurrentPage === true ||
               (defaultsLastAsCurrent && index === lastIndex);
@@ -34,7 +46,7 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
                 isCurrentPage={isCurrent}
                 aria-current={isCurrent ? "page" : undefined}
               >
-                {isCurrent ? (
+                {isCurrent || !breadcrumb.link ? (
                   <span>{label}</span>
                 ) : (
                   <Link to={breadcrumb.link}>{label}</Link>

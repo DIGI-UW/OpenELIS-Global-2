@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- M3: immutable Manual Entry submission audit (FR-008 / US4) -->
+
+  <changeSet id="3.5.0.0-create-manual-entry-submission-audit-seq" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="manual_entry_submission_audit_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="manual_entry_submission_audit_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <rollback>
+      <dropSequence sequenceName="manual_entry_submission_audit_seq" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-manual-entry-submission-audit-table" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="manual_entry_submission_audit" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>One immutable row per "mark week submitted" action; re-submissions are distinct rows</comment>
+    <createTable tableName="manual_entry_submission_audit" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="period_start" type="DATE">
+        <constraints nullable="false"/>
+      </column>
+      <column name="period_end" type="DATE">
+        <constraints nullable="false"/>
+      </column>
+      <column name="site_id" type="NUMERIC(10,0)"/>
+      <column name="value_snapshot" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="submitted_by_user_id" type="VARCHAR(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="submitted_at" type="TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+    <rollback>
+      <dropTable tableName="manual_entry_submission_audit" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

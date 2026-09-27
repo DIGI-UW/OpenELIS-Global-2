@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="questionnaire-008-questionnaire-local-storage" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="questionnaire"/>
+            <not>
+                <columnExists tableName="questionnaire" columnName="resource_json"/>
+            </not>
+        </preConditions>
+        <comment>
+            Store the canonical FHIR Questionnaire JSON in OpenELIS so programme forms no longer
+            depend on the FHIR store; relax the columns FHIR does not guarantee.
+        </comment>
+
+        <addColumn tableName="questionnaire">
+            <column name="resource_json" type="TEXT"/>
+            <column name="identifier_system" type="VARCHAR(255)"/>
+            <column name="identifier_value" type="VARCHAR(255)"/>
+        </addColumn>
+
+        <dropNotNullConstraint tableName="questionnaire" columnName="code" columnDataType="VARCHAR(10)"/>
+        <dropNotNullConstraint tableName="questionnaire" columnName="purpose" columnDataType="VARCHAR(255)"/>
+        <modifyDataType tableName="questionnaire" columnName="questionnaire_name" newDataType="VARCHAR(255)"/>
+        <dropNotNullConstraint tableName="questionnaire" columnName="questionnaire_name" columnDataType="VARCHAR(255)"/>
+
+        <createIndex indexName="idx_questionnaire_identifier_system" tableName="questionnaire">
+            <column name="identifier_system"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_questionnaire_identifier_system" tableName="questionnaire"/>
+            <dropColumn tableName="questionnaire" columnName="identifier_value"/>
+            <dropColumn tableName="questionnaire" columnName="identifier_system"/>
+            <dropColumn tableName="questionnaire" columnName="resource_json"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="questionnaire-009-questionnaire-response-local-storage" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="questionnaire_response"/>
+            <columnExists tableName="questionnaire_response" columnName="subject_id"/>
+        </preConditions>
+        <comment>
+            Store the canonical FHIR QuestionnaireResponse JSON locally. The subject becomes a FHIR
+            reference and is optional (environmental samples have no patient); the answered
+            questionnaire is tracked by UUID so responses survive without a local questionnaire row.
+        </comment>
+
+        <renameColumn tableName="questionnaire_response" oldColumnName="subject_id"
+            newColumnName="subject_reference" columnDataType="VARCHAR(20)"/>
+        <modifyDataType tableName="questionnaire_response" columnName="subject_reference" newDataType="VARCHAR(100)"/>
+        <dropNotNullConstraint tableName="questionnaire_response" columnName="subject_reference"
+            columnDataType="VARCHAR(100)"/>
+        <dropNotNullConstraint tableName="questionnaire_response" columnName="questionnaire_id"
+            columnDataType="INTEGER"/>
+        <dropNotNullConstraint tableName="questionnaire_response" columnName="status" columnDataType="VARCHAR(30)"/>
+
+        <addColumn tableName="questionnaire_response">
+            <column name="questionnaire_fhir_uuid" type="UUID"/>
+            <column name="resource_json" type="TEXT"/>
+        </addColumn>
+
+        <createIndex indexName="idx_questionnaire_response_questionnaire_fhir_uuid" tableName="questionnaire_response">
+            <column name="questionnaire_fhir_uuid"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_questionnaire_response_questionnaire_fhir_uuid" tableName="questionnaire_response"/>
+            <dropColumn tableName="questionnaire_response" columnName="resource_json"/>
+            <dropColumn tableName="questionnaire_response" columnName="questionnaire_fhir_uuid"/>
+            <renameColumn tableName="questionnaire_response" oldColumnName="subject_reference"
+                newColumnName="subject_id" columnDataType="VARCHAR(100)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

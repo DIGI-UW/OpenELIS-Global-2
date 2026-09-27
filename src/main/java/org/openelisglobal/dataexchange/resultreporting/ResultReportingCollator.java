@@ -205,10 +205,12 @@ public class ResultReportingCollator {
             testResult.setNormalRange(normalRange);
         }
 
-        // For valid range min/max
+        // For valid range min/max — the analysis's specimen selects a scoped
+        // limit over the shared set (OGC-1145 Phase 2).
         ResultLimit validLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(
-                result.getAnalysis().getTest(),
-                sampleHumanService.getPatientForSample(result.getAnalysis().getSampleItem().getSample()));
+                result.getAnalysis().getTest().getId(),
+                sampleHumanService.getPatientForSample(result.getAnalysis().getSampleItem().getSample()),
+                result.getAnalysis().getSampleItem().getTypeOfSampleId());
         if (validLimit != null && (validLimit.getLowValid() != validLimit.getHighValid())) {
             TestRangeXmit validRange = new TestRangeXmit();
             validRange.setLow(String.valueOf(validLimit.getLowValid()));

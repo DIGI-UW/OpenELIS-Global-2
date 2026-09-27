@@ -1,0 +1,118 @@
+{
+  "$schema": "https://openelis-global.org/contracts/analyzer/v1/analyzer-profile.schema.json",
+  "schemaVersion": "1.0",
+  "profileMeta": {
+    "id": "fluorocycler-xt",
+    "version": "3.0.0",
+    "displayName": "Bruker FluoroCycler XT",
+    "confidence": "MEDIUM_HIGH"
+  },
+  "analyzer_name": "Bruker FluoroCycler XT",
+  "manufacturer": "Bruker",
+  "model": "FluoroCycler XT",
+  "category": "MOLECULAR",
+  "protocol": {
+    "name": "FILE",
+    "format": "XLSX"
+  },
+  "capabilities": {
+    "inboundResults": true,
+    "outboundOrders": false,
+    "connectionTest": true
+  },
+  "supported_extensions": [".ods", ".xlsx", ".xls"],
+  "column_mapping": {
+    "Sample ID": "sampleId",
+    "SampleID": "sampleId",
+    "Type": "qcTask",
+    "Calc. Conc.": "result",
+    "CalcConc": "result",
+    "Result": "interpretation",
+    "Interpretation": "interpretation",
+    "TargetName": "testCode",
+    "testCode": "testCode",
+    "WellPosition": "position"
+  },
+  "result_value_order": ["result", "interpretation"],
+  "default_test_mappings": [
+    {
+      "test_code": "VIH-1",
+      "test_name_hint": "HIV-1 Viral Load",
+      "loinc": "20447-9",
+      "unit": "copies/mL"
+    }
+  ],
+  "configDefaults": {
+    "dataFlow": "RESULTS_ONLY",
+    "fileFormat": "XLSX",
+    "filePattern": "*.{ods,ODS,xlsx,XLSX,xls,XLS}",
+    "hasHeader": true,
+    "sheetIndex": 0
+  },
+  "connectionFields": [
+    {
+      "key": "dataFlow",
+      "labelKey": "analyzer.setup.connect.dataFlow",
+      "inputKind": "SELECT",
+      "required": true,
+      "choices": [
+        {
+          "value": "RESULTS_ONLY",
+          "labelKey": "analyzer.setup.connect.dataFlow.resultsOnly"
+        }
+      ]
+    },
+    {
+      "key": "directory",
+      "labelKey": "analyzer.connection.field.directory",
+      "inputKind": "FILE_PATH",
+      "required": true,
+      "choices": []
+    },
+    {
+      "key": "filePattern",
+      "labelKey": "analyzer.connection.field.filePattern",
+      "helpTextKey": "analyzer.connection.field.filePattern.help",
+      "inputKind": "TEXT",
+      "required": true,
+      "choices": []
+    }
+  ],
+  "controlResultRecognition": {
+    "mode": "RULES",
+    "rules": {
+      "positive-control-task": {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Positive"
+      },
+      "negative-control-task": {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Negative"
+      },
+      "standard-control-task": {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "QC_TASK",
+        "operand": "Standard"
+      },
+      "positive-control-prefix": {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C+"
+      },
+      "negative-control-prefix": {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "C-"
+      }
+    }
+  },
+  "catalog": {
+    "revision": 3,
+    "revisionFingerprint": "sha256:566234eb28f34c491c5bc9cdccdace50a303d622c67c0d06f5b1b8076bee8525",
+    "recognitionFingerprint": "sha256:5c0de42e1135b772b23e4c1ea04b0162b30fe36fc08ecef76a70108ba031be26",
+    "source": "SHIPPED",
+    "status": "ACTIVE",
+    "publishedAt": "2026-08-26T01:00:00Z",
+    "publishedBy": "distribution"
+  }
+}

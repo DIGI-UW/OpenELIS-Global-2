@@ -64,7 +64,7 @@ public class SampleTypeRequest extends BaseObject<Integer> {
     private Integer sortOrder = 0;
 
     @Column(name = "requested_quantity")
-    private Double requestedQuantity = 1.0;
+    private Double requestedQuantity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_of_measure_id")

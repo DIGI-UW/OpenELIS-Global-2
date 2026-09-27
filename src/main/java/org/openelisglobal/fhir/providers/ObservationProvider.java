@@ -1,10 +1,12 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Count;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.Offset;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
@@ -13,15 +15,15 @@ import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.SortSpec;
+import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
-import ca.uhn.fhir.rest.param.QuantityAndListParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
-import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.text.SimpleDateFormat;
@@ -29,13 +31,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.DiagnosticReport;
-import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.OperationOutcome;
-import org.hl7.fhir.r4.model.Patient;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -48,6 +47,8 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.fhir.search.searchparams.ObservationSearchParams;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -60,6 +61,7 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.search.service.ObservationSearchService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -71,9 +73,8 @@ import org.springframework.validation.ObjectError;
  *
  * <p>
  * Exposes lab results from OpenELIS directly via the native FHIR facade. Read
- * and Write operations query OpenELIS DB directly for consistency with the
- * source of truth. Search forwards to the HAPI FHIR store to support the full
- * FHIR search parameter set.
+ * Write and Search operations query the OpenELIS DB directly for consistency
+ * with the source of truth.
  *
  * <p>
  * Note: {@code @Create} is not yet supported because creating an Observation
@@ -118,6 +119,9 @@ public class ObservationProvider implements IResourceProvider {
     @Autowired
     private FhirUtil util;
 
+    @Autowired
+    private ObservationSearchService observationSearchService;
+
     @Override
     public Class<Observation> getResourceType() {
         return Observation.class;
@@ -147,6 +151,9 @@ public class ObservationProvider implements IResourceProvider {
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Observation", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error reading observation: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error retrieving Observation");
@@ -162,6 +169,8 @@ public class ObservationProvider implements IResourceProvider {
             LogEvent.logError(getClass().getSimpleName(), method, "Observation resource is null");
             throw new InvalidRequestException("Observation resource cannot be null");
         }
+
+        validateObservation(observation);
 
         try {
 
@@ -201,6 +210,9 @@ public class ObservationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Observation", e);
+            }
 
             LogEvent.logError(e);
 
@@ -231,6 +243,8 @@ public class ObservationProvider implements IResourceProvider {
             LogEvent.logError(getClass().getSimpleName(), method, "Observation resource is null");
             throw new InvalidRequestException("Observation resource cannot be null");
         }
+
+        validateObservation(fhirObservation);
 
         try {
 
@@ -298,6 +312,9 @@ public class ObservationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Observation", e);
+            }
 
             LogEvent.logError(getClass().getSimpleName(), method, "Unexpected error during Observation update");
 
@@ -347,7 +364,14 @@ public class ObservationProvider implements IResourceProvider {
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
+        } catch (LIMSDuplicateRecordException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), method, "Duplicate rejection note: " + e.getMessage());
+            throw new ResourceVersionConflictException(
+                    "Observation cannot be deleted: its analysis already carries an identical rejection note");
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Observation", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error deleting observation: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error deleting Observation", e);
@@ -355,50 +379,43 @@ public class ObservationProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle search(
-            @OptionalParam(name = Observation.SP_ENCOUNTER, chainWhitelist = { "",
-                    Encounter.SP_TYPE }, targetTypes = Encounter.class) ReferenceAndListParam encounterReference,
-            @OptionalParam(name = Observation.SP_SUBJECT, chainWhitelist = { "", Patient.SP_IDENTIFIER,
-                    Patient.SP_GIVEN, Patient.SP_FAMILY,
-                    Patient.SP_NAME }, targetTypes = Patient.class) ReferenceAndListParam patientReference,
-            @OptionalParam(name = Observation.SP_HAS_MEMBER, chainWhitelist = { "",
-                    Observation.SP_CODE }, targetTypes = Observation.class) ReferenceAndListParam hasMemberReference,
-            @OptionalParam(name = Observation.SP_VALUE_CONCEPT) TokenAndListParam valueConcept,
-            @OptionalParam(name = Observation.SP_VALUE_DATE) DateRangeParam valueDateParam,
-            @OptionalParam(name = Observation.SP_VALUE_QUANTITY) QuantityAndListParam valueQuantityParam,
-            @OptionalParam(name = Observation.SP_VALUE_STRING) StringAndListParam valueStringParam,
-            @OptionalParam(name = Observation.SP_DATE) DateRangeParam date,
+    public IBundleProvider searchObservations(@OptionalParam(name = Observation.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = Observation.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Observation.SP_PATIENT) ReferenceAndListParam patient,
+            @OptionalParam(name = Observation.SP_SUBJECT) ReferenceAndListParam subject,
+            @OptionalParam(name = Observation.SP_BASED_ON) ReferenceAndListParam basedOn,
+            @OptionalParam(name = Observation.SP_SPECIMEN) ReferenceAndListParam specimen,
             @OptionalParam(name = Observation.SP_CODE) TokenAndListParam code,
-            @OptionalParam(name = Observation.SP_CATEGORY) TokenAndListParam category,
-            @OptionalParam(name = Observation.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = Observation.SP_STATUS) TokenAndListParam status,
+            @OptionalParam(name = Observation.SP_DATE) DateRangeParam date,
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
-            @OptionalParam(name = Observation.SP_PATIENT, chainWhitelist = { "", Patient.SP_IDENTIFIER,
-                    Patient.SP_GIVEN, Patient.SP_FAMILY,
-                    Patient.SP_NAME }, targetTypes = Patient.class) ReferenceAndListParam patientParam,
-            @IncludeParam(allow = { "Observation:" + Observation.SP_ENCOUNTER, "Observation:" + Observation.SP_PATIENT,
-                    "Observation:" + Observation.SP_HAS_MEMBER }) HashSet<Include> includes,
-            @IncludeParam(reverse = true, allow = { "Observation:" + Observation.SP_HAS_MEMBER,
-                    "DiagnosticReport:" + DiagnosticReport.SP_RESULT }) HashSet<Include> revIncludes,
+            @Offset Integer offset, @Count Integer count,
+            @IncludeParam(allow = { FhirConstants.OBSERVATION_PATIENT_INCLUDE,
+                    FhirConstants.OBSERVATION_SUBJECT_INCLUDE, FhirConstants.OBSERVATION_BASED_ON_INCLUDE,
+                    FhirConstants.OBSERVATION_SPECIMEN_INCLUDE,
+                    FhirConstants.OBSERVATION_PERFORMER_INCLUDE }) HashSet<Include> includes,
+            @IncludeParam(reverse = true, allow = {
+                    FhirConstants.DIAGNOSTIC_REPORT_RESULT_REV_INCLUDE }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
-        String method = "search";
+
+        String method = "searchObservations";
+        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Searching for Observations");
+
         try {
-
-            Bundle resultBundle = util.forwardSearchToFhirStore(request);
-
-            if (resultBundle == null) {
-                resultBundle = new Bundle();
-            }
-
-            if (resultBundle.getType() == null) {
-                resultBundle.setType(Bundle.BundleType.SEARCHSET);
-            }
-
-            if (resultBundle.getEntry() == null) {
-                resultBundle.setEntry(new ArrayList<>());
-            }
-
-            return resultBundle;
+            ObservationSearchParams params = new ObservationSearchParams(id, identifier,
+                    FhirProviderUtils.merge(patient, subject), basedOn, specimen, code, status, date, lastUpdated, sort,
+                    includes, revIncludes);
+            return FhirProviderUtils.withPaging(observationSearchService.searchObservations(params), offset, count);
+        } catch (InvalidRequestException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Invalid Observation search parameter: " + e.getMessage());
+            throw new InvalidRequestException("Invalid Observation search parameter: " + e.getMessage(), e);
         } catch (Exception e) {
+            if (FhirProviderUtils.isDataError(e)) {
+                throw FhirProviderUtils.unprocessableData("Observation", e);
+            }
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Error searching Observations: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error searching Observations");
@@ -630,5 +647,30 @@ public class ObservationProvider implements IResourceProvider {
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 
         return actionDataSet;
+    }
+
+    /**
+     * Rejects bodies the result workflow cannot persist before any lookup runs, so
+     * an incomplete Observation is a 422 rather than a 500 from deep inside the
+     * transform.
+     */
+    private void validateObservation(Observation observation) {
+        if (!observation.hasSubject()) {
+            throw new UnprocessableEntityException("Observation.subject is required");
+        }
+
+        if (!observation.hasSpecimen()) {
+            throw new UnprocessableEntityException("Observation.specimen is required");
+        }
+
+        if (!observation.hasBasedOn()) {
+            throw new UnprocessableEntityException("Observation.basedOn is required");
+        }
+        if (!observation.hasStatus()) {
+            throw new UnprocessableEntityException("Observation.status is required");
+        }
+        if (!observation.hasCode()) {
+            throw new UnprocessableEntityException("Observation.code is required");
+        }
     }
 }

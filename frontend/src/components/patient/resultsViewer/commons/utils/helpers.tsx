@@ -21,13 +21,6 @@ export const PaddingContainer = React.forwardRef<HTMLElement, any>(
   (props, ref) => <div ref={ref} className="padding-container" {...props} />,
 );
 
-const TimeSlotsInner: React.FC<{
-  style?: React.CSSProperties;
-  className?: string;
-}> = ({ className, ...props }) => (
-  <div className="time-slot-inner" {...props} />
-);
-
 export const Main: React.FC = () => <main className="padded-main" />;
 
 export const ShadowBox: React.FC = () => <div className="shadow-box" />;

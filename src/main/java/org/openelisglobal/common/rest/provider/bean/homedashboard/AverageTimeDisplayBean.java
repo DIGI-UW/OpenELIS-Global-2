@@ -2,33 +2,33 @@ package org.openelisglobal.common.rest.provider.bean.homedashboard;
 
 public class AverageTimeDisplayBean {
 
-    Double receptionToResult = 0.0;
+    Long receptionToResult = 0L;
 
-    Double resultToValidation = 0.0;
+    Long resultToValidation = 0L;
 
-    Double receptionToValidation = 0.0;
+    Long receptionToValidation = 0L;
 
-    public Double getReceptionToResult() {
+    public Long getReceptionToResult() {
         return receptionToResult;
     }
 
-    public void setReceptionToResult(Double receptionToResult) {
+    public void setReceptionToResult(Long receptionToResult) {
         this.receptionToResult = receptionToResult;
     }
 
-    public Double getResultToValidation() {
+    public Long getResultToValidation() {
         return resultToValidation;
     }
 
-    public void setResultToValidation(Double resultToValidation) {
+    public void setResultToValidation(Long resultToValidation) {
         this.resultToValidation = resultToValidation;
     }
 
-    public Double getReceptionToValidation() {
+    public Long getReceptionToValidation() {
         return receptionToValidation;
     }
 
-    public void setReceptionToValidation(Double receptionToValidation) {
+    public void setReceptionToValidation(Long receptionToValidation) {
         this.receptionToValidation = receptionToValidation;
     }
 }

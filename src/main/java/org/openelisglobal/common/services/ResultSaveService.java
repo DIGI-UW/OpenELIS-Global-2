@@ -85,7 +85,24 @@ public class ResultSaveService {
                 try {
                     JSONObject jsonResult = (JSONObject) parser.parse(serviceBean.getMultiSelectResultValues());
 
-                    List<Result> existingResults = resultService.getResultsByAnalysis(analysis);
+                    // Only this item's own multiselect selections may be reconciled
+                    // (and leftovers deleted). A multi-component analysis also holds
+                    // the other components' results — deleting those here orphans
+                    // their rows mid-save and their own update then fails.
+                    List<Result> existingResults = new ArrayList<>();
+                    for (Result existingResult : resultService.getResultsByAnalysis(analysis)) {
+                        if (!TypeOfTestResultServiceImpl.ResultType
+                                .isMultiSelectVariant(existingResult.getResultType())) {
+                            continue;
+                        }
+                        String existingComponentId = existingResult.getTestResult() == null ? null
+                                : existingResult.getTestResult().getComponentId();
+                        if (serviceBean.getTestResultComponentId() != null && existingComponentId != null
+                                && !serviceBean.getTestResultComponentId().equals(existingComponentId)) {
+                            continue;
+                        }
+                        existingResults.add(existingResult);
+                    }
                     for (Object key : jsonResult.keySet()) {
                         getResultsForMultiSelect(results, existingResults, serviceBean, (String) key,
                                 (String) jsonResult.get(key), isQualifiedResult);
@@ -117,14 +134,26 @@ public class ResultSaveService {
 
             if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(serviceBean.getResultType())
                     || isQualifiedResult) {
-                setTestResultsForDictionaryResult(serviceBean.getTestId(), serviceBean.getResultValue(), result); // support
-                // qualified
-                // result
+                setTestResultsForDictionaryResult(serviceBean.getTestId(), serviceBean.getResultValue(),
+                        serviceBean.getTestResultComponentId(), result);
             } else {
                 List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(serviceBean.getTestId());
-                // we are assuming there is only one testResult for a numeric
-                // type result
-                if (!testResultList.isEmpty()) {
+                // Multi-component tests post one bean per component; bind the result
+                // to that component's test_result row so it stays attributable to
+                // its component. Single-component tests keep the historic
+                // first-row assumption.
+                TestResult boundTestResult = null;
+                if (!GenericValidator.isBlankOrNull(serviceBean.getTestResultComponentId())) {
+                    for (TestResult testResult : testResultList) {
+                        if (serviceBean.getTestResultComponentId().equals(testResult.getComponentId())) {
+                            boundTestResult = testResult;
+                            break;
+                        }
+                    }
+                }
+                if (boundTestResult != null) {
+                    result.setTestResult(boundTestResult);
+                } else if (result.getTestResult() == null && !testResultList.isEmpty()) {
                     result.setTestResult(testResultList.get(0));
                 }
             }
@@ -138,6 +167,9 @@ public class ResultSaveService {
 
             setAnalyteForResult(result);
             setStandardResultValues(serviceBean.getResultValue(), result);
+            result.setExpandedUncertainty(serviceBean.getExpandedUncertainty());
+            result.setCoverageFactor(
+                    serviceBean.getExpandedUncertainty() != null ? serviceBean.getCoverageFactor() : null);
             results.add(result);
 
             if (isQualifiedResult) {
@@ -191,11 +223,12 @@ public class ResultSaveService {
 
             Result result = new Result();
 
-            setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString, result);
+            setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString,
+                    serviceBean.getTestResultComponentId(), result);
             setNewResultValues(serviceBean, result);
             setAnalyteForResult(result);
             setStandardResultValues(resultAsString, result);
-            result.setSortOrder(getResultSortOrder(result.getValue()));
+            result.setSortOrder(getResultSortOrder(result.getValue(), serviceBean.getTestResultComponentId()));
             result.setGrouping(groupingKey);
 
             results.add(result);
@@ -238,9 +271,17 @@ public class ResultSaveService {
         }
     }
 
-    private TestResult setTestResultsForDictionaryResult(String testId, String dictValue, Result result) {
-        TestResult testResult;
-        testResult = testResultService.getTestResultsByTestAndDictonaryResult(testId, dictValue);
+    /**
+     * Binds the result to the option row of the component it was entered on. A
+     * multi-component test can offer the same dictionary entry on several
+     * components, and a lookup by test and value alone filed the value on whichever
+     * component's row came first (OGC-1186). Rows without a component are legacy
+     * rows and keep the test-wide match.
+     */
+    private TestResult setTestResultsForDictionaryResult(String testId, String dictValue, String componentId,
+            Result result) {
+        TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(testId, dictValue,
+                componentId);
 
         if (testResult != null) {
             result.setTestResult(testResult);
@@ -267,8 +308,8 @@ public class ResultSaveService {
     }
 
     private void setStandardResultValues(String value, Result result) {
-        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getValue()))
-                && !StringUtil.blankIfNull(value).equals(result.getValue())) {
+        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getEnteredValue()))
+                && !isSameValue(value, result)) {
             updatedResult = true;
         }
         result.setValue(value);
@@ -276,9 +317,23 @@ public class ResultSaveService {
         result.setSortOrder("0");
     }
 
-    private String getResultSortOrder(String resultValue) {
+    /**
+     * A numeric result rewritten in another scientific notation is the same result,
+     * so it must not book a correction against a report that has already gone out.
+     */
+    private boolean isSameValue(String value, Result result) {
+        String entered = StringUtil.blankIfNull(result.getEnteredValue());
+        String incoming = StringUtil.blankIfNull(value);
+        if ("N".equals(result.getResultType())) {
+            return StringUtil.normalizeScientificNotation(incoming.trim())
+                    .equals(StringUtil.normalizeScientificNotation(entered.trim()));
+        }
+        return incoming.equals(entered);
+    }
+
+    private String getResultSortOrder(String resultValue, String componentId) {
         TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(analysis.getTest().getId(),
-                resultValue);
+                resultValue, componentId);
         return testResult == null ? "0" : testResult.getSortOrder();
     }
 

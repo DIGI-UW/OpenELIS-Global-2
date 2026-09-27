@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Split Workflow Menus (015)
+        Replaces the unified "Add Order" menu tree with three independent workflow trees:
+          - Add Clinical Order    (/order/clinical/*)
+          - Add Environmental Order (/order/environmental/*)
+          - Add Vector Order      (/order/vector/*)
+
+        The old unified menu_order_workflow and its children are deactivated (not deleted)
+        so that existing role-permission rows referencing those menu IDs remain intact.
+    -->
+
+    <!-- ================================================================
+         1. Deactivate old unified workflow menus
+         ================================================================ -->
+    <changeSet id="nav-015-deactivate-old-order-workflow" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Deactivate old unified order workflow menu and all its children</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id IN (
+                'menu_order_workflow',
+                'menu_order_dashboard',
+                'menu_order_enter',
+                'menu_order_collect',
+                'menu_order_label',
+                'menu_order_qa'
+            )</where>
+        </update>
+    </changeSet>
+
+    <!-- ================================================================
+         2. Shared parent: "Add Order" (expandable group, no URL)
+         ================================================================ -->
+    <changeSet id="nav-015-create-add-order-parent" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_add_order'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create shared Add Order parent menu under Sample menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_add_order"/>
+            <column name="action_url" value=""/>
+            <column name="display_key" value="sidenav.label.add.order"/>
+            <column name="tool_tip_key" value="sidenav.label.add.order"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- ================================================================
+         3. Clinical workflow parent + steps
+         ================================================================ -->
+    <changeSet id="nav-015-create-clinical-workflow-parent" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Clinical workflow parent menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_clinical_workflow"/>
+            <column name="action_url" value=""/>
+            <column name="display_key" value="sidenav.label.clinical.order"/>
+            <column name="tool_tip_key" value="sidenav.label.clinical.order"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-clinical-dashboard" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical workflow: dashboard</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow')"/>
+            <column name="presentation_order" valueNumeric="0"/>
+            <column name="element_id" value="menu_clinical_dashboard"/>
+            <column name="action_url" value="/order/clinical"/>
+            <column name="display_key" value="sidenav.label.order.dashboard"/>
+            <column name="tool_tip_key" value="sidenav.label.order.dashboard"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-clinical-enter" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_enter'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical workflow: enter order step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_clinical_enter"/>
+            <column name="action_url" value="/order/clinical/enter"/>
+            <column name="display_key" value="sidenav.label.order.enter"/>
+            <column name="tool_tip_key" value="sidenav.label.order.enter"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-clinical-collect" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_collect'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical workflow: collect sample step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <column name="element_id" value="menu_clinical_collect"/>
+            <column name="action_url" value="/order/clinical/collect"/>
+            <column name="display_key" value="sidenav.label.order.collect"/>
+            <column name="tool_tip_key" value="sidenav.label.order.collect"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-clinical-label" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_label'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical workflow: label and store step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <column name="element_id" value="menu_clinical_label"/>
+            <column name="action_url" value="/order/clinical/label"/>
+            <column name="display_key" value="sidenav.label.order.label"/>
+            <column name="tool_tip_key" value="sidenav.label.order.label"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-clinical-qa" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical workflow: QA review step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_clinical_workflow')"/>
+            <column name="presentation_order" valueNumeric="4"/>
+            <column name="element_id" value="menu_clinical_qa"/>
+            <column name="action_url" value="/order/clinical/qa"/>
+            <column name="display_key" value="sidenav.label.order.qa"/>
+            <column name="tool_tip_key" value="sidenav.label.order.qa"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- ================================================================
+         4. Environmental workflow parent + steps
+         ================================================================ -->
+    <changeSet id="nav-015-create-environmental-workflow-parent" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Environmental workflow parent menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <column name="element_id" value="menu_environmental_workflow"/>
+            <column name="action_url" value=""/>
+            <column name="display_key" value="sidenav.label.environmental.order"/>
+            <column name="tool_tip_key" value="sidenav.label.environmental.order"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-environmental-dashboard" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Environmental workflow: dashboard</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow')"/>
+            <column name="presentation_order" valueNumeric="0"/>
+            <column name="element_id" value="menu_environmental_dashboard"/>
+            <column name="action_url" value="/order/environmental"/>
+            <column name="display_key" value="sidenav.label.order.dashboard"/>
+            <column name="tool_tip_key" value="sidenav.label.order.dashboard"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-environmental-enter" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_enter'
+            </sqlCheck>
+        </preConditions>
+        <comment>Environmental workflow: enter order step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_environmental_enter"/>
+            <column name="action_url" value="/order/environmental/enter"/>
+            <column name="display_key" value="sidenav.label.order.enter"/>
+            <column name="tool_tip_key" value="sidenav.label.order.enter"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-environmental-collect" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_collect'
+            </sqlCheck>
+        </preConditions>
+        <comment>Environmental workflow: collect sample step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <column name="element_id" value="menu_environmental_collect"/>
+            <column name="action_url" value="/order/environmental/collect"/>
+            <column name="display_key" value="sidenav.label.order.collect"/>
+            <column name="tool_tip_key" value="sidenav.label.order.collect"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-environmental-label" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_label'
+            </sqlCheck>
+        </preConditions>
+        <comment>Environmental workflow: label and store step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <column name="element_id" value="menu_environmental_label"/>
+            <column name="action_url" value="/order/environmental/label"/>
+            <column name="display_key" value="sidenav.label.order.label"/>
+            <column name="tool_tip_key" value="sidenav.label.order.label"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-environmental-qa" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Environmental workflow: QA review step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_environmental_workflow')"/>
+            <column name="presentation_order" valueNumeric="4"/>
+            <column name="element_id" value="menu_environmental_qa"/>
+            <column name="action_url" value="/order/environmental/qa"/>
+            <column name="display_key" value="sidenav.label.order.qa"/>
+            <column name="tool_tip_key" value="sidenav.label.order.qa"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- ================================================================
+         5. Vector workflow parent + steps (no collect)
+         ================================================================ -->
+    <changeSet id="nav-015-create-vector-workflow-parent" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Vector workflow parent menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <column name="element_id" value="menu_vector_workflow"/>
+            <column name="action_url" value=""/>
+            <column name="display_key" value="sidenav.label.vector.order"/>
+            <column name="tool_tip_key" value="sidenav.label.vector.order"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-vector-dashboard" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Vector workflow: dashboard</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_vector_workflow')"/>
+            <column name="presentation_order" valueNumeric="0"/>
+            <column name="element_id" value="menu_vector_dashboard"/>
+            <column name="action_url" value="/order/vector"/>
+            <column name="display_key" value="sidenav.label.order.dashboard"/>
+            <column name="tool_tip_key" value="sidenav.label.order.dashboard"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-vector-enter" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_enter'
+            </sqlCheck>
+        </preConditions>
+        <comment>Vector workflow: enter order step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_vector_workflow')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_vector_enter"/>
+            <column name="action_url" value="/order/vector/enter"/>
+            <column name="display_key" value="sidenav.label.order.enter"/>
+            <column name="tool_tip_key" value="sidenav.label.order.enter"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-vector-label" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_label'
+            </sqlCheck>
+        </preConditions>
+        <comment>Vector workflow: label and store step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_vector_workflow')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <column name="element_id" value="menu_vector_label"/>
+            <column name="action_url" value="/order/vector/label"/>
+            <column name="display_key" value="sidenav.label.order.label"/>
+            <column name="tool_tip_key" value="sidenav.label.order.label"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="nav-015-create-vector-qa" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Vector workflow: QA review step</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_vector_workflow')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <column name="element_id" value="menu_vector_qa"/>
+            <column name="action_url" value="/order/vector/qa"/>
+            <column name="display_key" value="sidenav.label.order.qa"/>
+            <column name="tool_tip_key" value="sidenav.label.order.qa"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

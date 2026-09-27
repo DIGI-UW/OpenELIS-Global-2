@@ -20,8 +20,13 @@ public class ResultSaveBean {
 
     private boolean hasQualifiedResult;
     private String resultType;
+    private java.math.BigDecimal expandedUncertainty;
+    private java.math.BigDecimal coverageFactor;
     private String multiSelectResultValues;
     private String testId;
+    // Result component this value belongs to (multi-component tests post one
+    // bean per component); null for single-component tests.
+    private String testResultComponentId;
     private String qualifiedResultId;
     private String qualifiedResultValue;
     private String qualifiedDictionaryId;
@@ -62,6 +67,14 @@ public class ResultSaveBean {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public String getQualifiedResultId() {
@@ -134,5 +147,21 @@ public class ResultSaveBean {
 
     public void setSignificantDigits(int significantDigits) {
         this.significantDigits = significantDigits;
+    }
+
+    public java.math.BigDecimal getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(java.math.BigDecimal expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public java.math.BigDecimal getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(java.math.BigDecimal coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 }

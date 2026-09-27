@@ -16,13 +16,10 @@ import {
   Button,
 } from "@carbon/react";
 import {
-  Time,
   SendFilled,
-  CheckmarkFilled,
   GroupPresentation,
   Add,
   ChartBar,
-  InProgress,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";

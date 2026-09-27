@@ -29,6 +29,7 @@ import java.util.Map;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;
@@ -66,6 +67,17 @@ public class SampleOrderItem implements Serializable {
     @ValidAccessionNumber(groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
             SampleEditForm.SampleEdit.class })
     private String labNo;
+
+    private String requiredBy;
+
+    /**
+     * Client-generated key for a new order, kept for the life of the draft. It
+     * becomes the order's FHIR UUID, so a save retried after its reply was lost is
+     * recognised as the same order.
+     */
+    @Pattern(regexp = "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?$", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
+    private String orderKey;
 
     @OptionalNotBlank(formFields = { Field.SampleEntryUseRequestDate }, groups = {
             SamplePatientEntryForm.SamplePatientEntry.class, SampleEditForm.SampleEdit.class })
@@ -155,6 +167,64 @@ public class SampleOrderItem implements Serializable {
             SampleEditForm.SampleEdit.class })
     private String providerEmail;
 
+    /**
+     * The picked provider's title (OGC-1223), echoed by order entry. It is stored
+     * on the provider, so it only applies when the save creates a new provider.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleCode;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleAbbreviation;
+
+    // Requesting Organization contact info (Environmental/Vector) — the
+    // organization itself is addressed via referringSite*; these are the
+    // org's own phone/fax/email, distinct from any Requestor contact person.
+    @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String referringSitePhone;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String referringSiteFax;
+
+    @Email(groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
+    private String referringSiteEmail;
+
+    // Requestor contact person (Environmental/Vector) — independent of the
+    // Requesting Organization above; at least one of the two is required
+    // (enforced in SamplePatientEntryRestController for env/vector workflows).
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorPersonId;
+
+    @ValidName(nameType = NameType.FIRST_NAME, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorFirstName;
+
+    @ValidName(nameType = NameType.LAST_NAME, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorLastName;
+
+    @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorPhone;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorFax;
+
+    @Email(groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
+    private String requestorEmail;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String requestorDepartment;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
     private String facilityAddressStreet;
@@ -231,6 +301,17 @@ public class SampleOrderItem implements Serializable {
      * (for backwards compatibility with locationHierarchy as object).
      */
     private Map<String, Object> environmentalFields = new HashMap<>();
+
+    /**
+     * A deliberate, recorded decision to order without a patient (OGC-1201 AL).
+     * Carried on the order form so the server can accept the order and record why,
+     * instead of the caller fabricating a patient to satisfy the gate.
+     */
+    private boolean noPatientOverride;
+
+    private String noPatientReasonCode;
+
+    private String noPatientReason;
 
     private boolean isEQASample;
     private String eqaProgramId;
@@ -335,12 +416,28 @@ public class SampleOrderItem implements Serializable {
         this.labNo = labNo;
     }
 
+    public String getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(String requiredBy) {
+        this.requiredBy = requiredBy;
+    }
+
+    public String getOrderKey() {
+        return orderKey;
+    }
+
+    public void setOrderKey(String orderKey) {
+        this.orderKey = orderKey;
+    }
+
     public String getRequestDate() {
         return requestDate;
     }
 
     public void setRequestDate(String requestDate) {
-        this.requestDate = requestDate;
+        this.requestDate = IsoDateNormalizer.toDisplayFormat(requestDate);
     }
 
     public String getReceivedDateForDisplay() {
@@ -348,7 +445,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setReceivedDateForDisplay(String receivedDateForDisplay) {
-        this.receivedDateForDisplay = receivedDateForDisplay;
+        this.receivedDateForDisplay = IsoDateNormalizer.toDisplayFormat(receivedDateForDisplay);
     }
 
     public String getReceivedTime() {
@@ -364,7 +461,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setNextVisitDate(String nextVisitDate) {
-        this.nextVisitDate = nextVisitDate;
+        this.nextVisitDate = IsoDateNormalizer.toDisplayFormat(nextVisitDate);
     }
 
     public String getRequesterSampleID() {
@@ -471,12 +568,108 @@ public class SampleOrderItem implements Serializable {
         this.providerFax = providerFax;
     }
 
+    public String getProviderTitleCode() {
+        return providerTitleCode;
+    }
+
+    public void setProviderTitleCode(String providerTitleCode) {
+        this.providerTitleCode = providerTitleCode;
+    }
+
+    public String getProviderTitleAbbreviation() {
+        return providerTitleAbbreviation;
+    }
+
+    public void setProviderTitleAbbreviation(String providerTitleAbbreviation) {
+        this.providerTitleAbbreviation = providerTitleAbbreviation;
+    }
+
     public String getProviderEmail() {
         return providerEmail;
     }
 
     public void setProviderEmail(String providerEmail) {
         this.providerEmail = providerEmail;
+    }
+
+    public String getReferringSitePhone() {
+        return referringSitePhone;
+    }
+
+    public void setReferringSitePhone(String referringSitePhone) {
+        this.referringSitePhone = referringSitePhone;
+    }
+
+    public String getReferringSiteFax() {
+        return referringSiteFax;
+    }
+
+    public void setReferringSiteFax(String referringSiteFax) {
+        this.referringSiteFax = referringSiteFax;
+    }
+
+    public String getReferringSiteEmail() {
+        return referringSiteEmail;
+    }
+
+    public void setReferringSiteEmail(String referringSiteEmail) {
+        this.referringSiteEmail = referringSiteEmail;
+    }
+
+    public String getRequestorPersonId() {
+        return requestorPersonId;
+    }
+
+    public void setRequestorPersonId(String requestorPersonId) {
+        this.requestorPersonId = requestorPersonId;
+    }
+
+    public String getRequestorFirstName() {
+        return requestorFirstName;
+    }
+
+    public void setRequestorFirstName(String requestorFirstName) {
+        this.requestorFirstName = requestorFirstName;
+    }
+
+    public String getRequestorLastName() {
+        return requestorLastName;
+    }
+
+    public void setRequestorLastName(String requestorLastName) {
+        this.requestorLastName = requestorLastName;
+    }
+
+    public String getRequestorPhone() {
+        return requestorPhone;
+    }
+
+    public void setRequestorPhone(String requestorPhone) {
+        this.requestorPhone = requestorPhone;
+    }
+
+    public String getRequestorFax() {
+        return requestorFax;
+    }
+
+    public void setRequestorFax(String requestorFax) {
+        this.requestorFax = requestorFax;
+    }
+
+    public String getRequestorEmail() {
+        return requestorEmail;
+    }
+
+    public void setRequestorEmail(String requestorEmail) {
+        this.requestorEmail = requestorEmail;
+    }
+
+    public String getRequestorDepartment() {
+        return requestorDepartment;
+    }
+
+    public void setRequestorDepartment(String requestorDepartment) {
+        this.requestorDepartment = requestorDepartment;
     }
 
     public String getFacilityAddressStreet() {
@@ -655,6 +848,30 @@ public class SampleOrderItem implements Serializable {
         this.programId = programId;
     }
 
+    public boolean isNoPatientOverride() {
+        return noPatientOverride;
+    }
+
+    public void setNoPatientOverride(boolean noPatientOverride) {
+        this.noPatientOverride = noPatientOverride;
+    }
+
+    public String getNoPatientReasonCode() {
+        return noPatientReasonCode;
+    }
+
+    public void setNoPatientReasonCode(String noPatientReasonCode) {
+        this.noPatientReasonCode = noPatientReasonCode;
+    }
+
+    public String getNoPatientReason() {
+        return noPatientReason;
+    }
+
+    public void setNoPatientReason(String noPatientReason) {
+        this.noPatientReason = noPatientReason;
+    }
+
     public boolean getIsEQASample() {
         return isEQASample;
     }
@@ -755,7 +972,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setConsentRecordedAt(String consentRecordedAt) {
-        this.consentRecordedAt = consentRecordedAt;
+        this.consentRecordedAt = IsoDateNormalizer.toDisplayFormat(consentRecordedAt);
     }
 
     public String getConsentRecordedBy() {

@@ -19,16 +19,37 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+const CORE_DEMO_TESTS = [
+  "**/demo/core/**/*.spec.ts",
+  "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
+];
 
-// Core foundational verification (ci-safe).
+// Core foundational verification on the build stack.
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
 
-// Harness demo story proof (video-ready).
-const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
+// Focused WCAG 2.1 AA qualification for stable core-app feature surfaces.
+const CORE_ACCESSIBILITY_TESTS = ["**/accessibility/core/**/*.spec.ts"];
 
-// Harness foundational verification (ci-safe).
-const HARNESS_FOUNDATIONAL_TESTS = ["**/foundational/harness/**/*.spec.ts"];
+// Explicit disposable-stack performance qualification for core-app surfaces.
+const CORE_PERFORMANCE_TESTS = ["**/performance/core/**/*.spec.ts"];
+
+// Explicit operator-run verification against a deployed review target.
+const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
+
+// Foundational stories verify the catalog and shared mapping surfaces used by
+// setup. The demo project owns the guided connection and assembled result
+// stories. Video evidence targets the assembled result story alone.
+const HARNESS_FOUNDATIONAL_TESTS = [
+  "**/foundational/harness/**/*.spec.ts",
+  "**/demo/harness/ogc-1054-m1-analyzer-types.spec.ts",
+  "**/demo/harness/ogc-1054-m2-shared-mapping.spec.ts",
+];
+const HARNESS_DEMO_TESTS = [
+  "**/demo/harness/ogc-1054-m3-guided-setup.spec.ts",
+  "**/demo/harness/ogc-1054-analyzer-mvp.spec.ts",
+  "**/demo/harness/ogc-1054-delivery-issues.spec.ts",
+];
+const HARNESS_VIDEO_TESTS = ["**/demo/harness/ogc-1054-analyzer-mvp.spec.ts"];
 
 // Manual-only harness coverage (real hardware or operator-managed infra).
 const HARNESS_MANUAL_ONLY_TESTS = [
@@ -40,9 +61,14 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
-  // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
-  // CI uses 1 worker to avoid OOM browser crashes on GH Actions runners (7GB RAM)
+  // Single worker EVERYWHERE, not just CI: all projects share one webapp + one
+  // database, so parallel workers interleave writes into shared state that CI
+  // (which has always run 1 worker per shard) can never reproduce — local
+  // multi-worker runs were a parity gap that produced local-only "mystery"
+  // failures. Parallelism comes from CI sharding (--shard=current/total), each
+  // shard owning its own full stack. CI also needs 1 worker to avoid OOM
+  // browser crashes on GH Actions runners (7GB RAM).
+  workers: 1,
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
@@ -60,6 +86,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL || "https://localhost",
     ignoreHTTPSErrors: true,
+    // Story assertions use the source English copy, not regional translations.
+    locale: "en",
 
     // Evidence collection
     trace: "retain-on-failure",
@@ -95,6 +123,45 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-accessibility",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-accessibility-mobile",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      testIgnore: "**/microbiology-keyboard.spec.ts",
+      use: {
+        ...devices["Pixel 5"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-performance",
+      testMatch: CORE_PERFORMANCE_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
       },
       dependencies: ["setup"],
     },
@@ -125,7 +192,26 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Analyzer-stack demo story proof (CI: reusable harness workflow only).
+    {
+      name: "core-live-uat",
+      testMatch: CORE_LIVE_UAT_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Analyzer-stack verification (CI: reusable harness workflow only).
+    {
+      name: "harness-foundational",
+      testMatch: HARNESS_FOUNDATIONAL_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
     {
       name: "harness-demo",
       testMatch: HARNESS_DEMO_TESTS,
@@ -137,25 +223,15 @@ export default defineConfig({
     },
     {
       name: "harness-demo-video",
-      testMatch: HARNESS_DEMO_TESTS,
+      testMatch: HARNESS_VIDEO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        trace: "on",
         video: "on",
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
-      },
-      dependencies: ["setup"],
-    },
-
-    // Analyzer-stack foundational verification (non-demo, ci-safe).
-    {
-      name: "harness-foundational",
-      testMatch: HARNESS_FOUNDATIONAL_TESTS,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },

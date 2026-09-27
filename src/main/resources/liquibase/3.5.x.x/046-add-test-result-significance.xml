@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Result-value significance classification (POSITIVE / NEGATIVE / INDETERMINATE)
+    per (test, result value). Nullable + additive: deployments that do not configure
+    it (e.g. develop without the SILNAS vector catalog) simply have NULL, and the
+    vector surveillance dashboard degrades to "not configured" rather than guessing.
+    Populated from the test-catalog config (test-results.csv `significance` column).
+  -->
+  <changeSet id="046-add-test-result-significance" author="pmanko">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="test_result" columnName="significance"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="test_result">
+      <column name="significance" type="VARCHAR(20)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="test_result" columnName="significance"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

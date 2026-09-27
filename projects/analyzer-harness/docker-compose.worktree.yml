@@ -1,0 +1,123 @@
+# Worktree-local analyzer harness overrides used only through scripts/dev-stack.
+services:
+  certs:
+    container_name: !reset null
+
+  db.openelis.org:
+    container_name: !reset null
+    ports: !override
+      - name: postgres
+        target: 5432
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  oe.openelis.org:
+    container_name: !reset null
+    ports: !override
+      - name: http
+        target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: https
+        target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    environment:
+      CATALINA_OPTS: >-
+        -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims
+        -Ddatasource.username=clinlims
+        -Dspring.liquibase.contexts=test
+        -Dorg.openelisglobal.uat.scenarios.enabled=${OE_UAT_SCENARIOS_ENABLED:-true}
+    networks: !override
+      default: {}
+      analyzer-net:
+        aliases:
+          - oe.openelis.org
+
+  fhir.openelis.org:
+    container_name: !reset null
+    ports: !override
+      - name: http
+        target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: https
+        target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  frontend.openelis.org:
+    container_name: !reset null
+    image: ${DEV_STACK_FRONTEND_IMAGE:-itechuw/openelis-global-2-frontend-dev:develop}
+
+  proxy:
+    container_name: !reset null
+    ports: !override
+      - name: http
+        target: 80
+        published: "${DEV_STACK_HTTP_PORT:-0}"
+        host_ip: ${DEV_STACK_INGRESS_BIND_ADDRESS:-127.0.0.1}
+        protocol: tcp
+      - name: https
+        target: 443
+        published: "${DEV_STACK_HTTPS_PORT:-0}"
+        host_ip: ${DEV_STACK_INGRESS_BIND_ADDRESS:-127.0.0.1}
+        protocol: tcp
+
+  astm-simulator:
+    container_name: !reset null
+    image: ${DEV_STACK_PROJECT}-analyzer-mock:dev
+    ports: !override
+      - name: astm
+        target: 9600
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: api
+        target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: hl7
+        target: 5380
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    environment:
+      BRIDGE_CONTAINER_NAME: ${DEV_STACK_PROJECT}-openelis-analyzer-bridge-1
+      MOCK_CONTAINER_NAME: ${DEV_STACK_PROJECT}-astm-simulator-1
+      ANALYZER_NETWORK_NAMESPACE: ${ANALYZER_NETWORK_NAMESPACE}
+      ANALYZER_SUBNET_PREFIX: ${ANALYZER_SUBNET_PREFIX}
+    networks: !override
+      analyzer-net: {}
+
+  openelis-analyzer-bridge:
+    container_name: !reset null
+    image: ${DEV_STACK_PROJECT}-analyzer-bridge:dev
+    ports: !override
+      - name: https
+        target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: astm
+        target: 12001
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - name: mllp
+        target: 2575
+        published: "0"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+networks:
+  default:
+    ipam: !reset null
+  analyzer-net:
+    ipam: !reset null

@@ -9,6 +9,8 @@
  * With `includeFileImportOverride`, `FILE_IMPORT_DB_CONTAINER` is checked first.
  */
 
+import { execFileSync } from "child_process";
+
 import { DEFAULT_HARNESS_DB_CONTAINER } from "./harness-contract";
 
 function assertValidContainerName(name: string): void {
@@ -41,4 +43,37 @@ export function resolveDbContainer(includeFileImportOverride = false): string {
   }
 
   return DEFAULT_HARNESS_DB_CONTAINER;
+}
+
+/** Schema every OpenELIS table lives in. */
+export const SCHEMA = "clinlims";
+
+/** Run one SQL script in the database container and return its trimmed output. */
+export function psql(sql: string): string {
+  return execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      resolveDbContainer(),
+      "psql",
+      "-U",
+      "clinlims",
+      "-d",
+      "clinlims",
+      "-tAc",
+      sql,
+    ],
+    { encoding: "utf8" },
+  ).trim();
+}
+
+/** Guard against anything but a bare integer reaching an interpolated SQL id. */
+export function asInt(value: string, label: string): string {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(
+      `Expected integer for ${label}, got: ${JSON.stringify(value)}`,
+    );
+  }
+  return value;
 }

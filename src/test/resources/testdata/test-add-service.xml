@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Test dataset for TestAddServiceTest integration tests. Contains minimum
+    required seed data: localizations, locales, an inactive test_section (so
+    we can assert it gets activated), and a type_of_sample. -->
+<dataset>
+    <!-- localization entries (include lastupdated to match the schema/mappings
+        used in integration tests) -->
+    <localization id="1" description="whole blood"
+        lastupdated="2023-11-01 12:00:00" />
+    <localization id="2" description="Urine"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Blood" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="sang" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urine" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urine" />
+
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <!-- test_section starts INACTIVE (is_active="N"). TestAddServiceImpl.addTests()
+        must flip it to Y when a new test is added to it. -->
+    <test_section id="1" name="Hematology"
+        description="Hematology lab section" is_external="N"
+        lastupdated="2025-03-20 12:00:00.0" sort_order="10" is_active="N"
+        name_localization_id="1" display_key="TestKey.Hematology" />
+
+    <type_of_test_result id="1" description="Numeric"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- type_of_sample that will be linked to the newly inserted test -->
+    <type_of_sample id="1" description="whole blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"
+        is_active="true" sort_order="4" name_localization_id="1"
+        display_key="sample.type.Sang" />
+
+    <!-- panel starts INACTIVE (is_active="N"). TestAddServiceImpl must flip
+        it to Y. -->
+    <panel id="1" name="Basic Metabolic Panel"
+        description="BMP Panel" lastupdated="2023-11-01 12:00:00"
+        is_active="N" name_localization_id="1" />
+
+</dataset>

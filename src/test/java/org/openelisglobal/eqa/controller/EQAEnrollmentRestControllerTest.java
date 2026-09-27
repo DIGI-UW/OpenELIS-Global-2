@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -36,9 +35,6 @@ public class EQAEnrollmentRestControllerTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpSession session;
-
     @InjectMocks
     private EQAEnrollmentRestController controller;
 
@@ -49,8 +45,7 @@ public class EQAEnrollmentRestControllerTest {
     public void setUp() {
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId(1);
-        when(request.getSession()).thenReturn(session);
-        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+        when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
 
         program = new EQAProgram();
         program.setId(1L);

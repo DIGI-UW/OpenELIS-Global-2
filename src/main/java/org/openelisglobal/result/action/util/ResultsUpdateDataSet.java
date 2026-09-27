@@ -35,6 +35,7 @@ public class ResultsUpdateDataSet implements IResultSaveService {
     private List<ResultSet> newResults = new ArrayList<>();
     private List<Analysis> modifiedAnalysis = new ArrayList<>();
     private List<Result> deletableResults = new ArrayList<>();
+    private List<Result> calculatedResults = new ArrayList<>();
     private List<ReferralSet> savableReferralSets = new ArrayList<>();
     private List<String> referredAnalysisIds = new ArrayList<>();
     private Analysis previousAnalysis = new Analysis();
@@ -76,6 +77,20 @@ public class ResultsUpdateDataSet implements IResultSaveService {
 
     public List<Analysis> getModifiedAnalysis() {
         return modifiedAnalysis;
+    }
+
+    public Analysis findModifiedAnalysis(String analysisId) {
+        for (Analysis analysis : modifiedAnalysis) {
+            if (analysis.getId() != null && analysis.getId().equals(analysisId)) {
+                return analysis;
+            }
+        }
+        return null;
+    }
+
+    /** Results the calculated-value rules wrote while this data set was saved. */
+    public List<Result> getCalculatedResults() {
+        return calculatedResults;
     }
 
     public List<Result> getDeletableResults() {

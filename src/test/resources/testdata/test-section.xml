@@ -51,16 +51,19 @@
     <test_section id="1" name="Hematology"
         description="Blood-related tests" org_id="1001" is_external="N"
         lastupdated="2025-06-10 10:00:00" sort_order="1" is_active="Y"
-        name_localization_id="201" display_key="section.hematology" />
+        name_localization_id="201" display_key="section.hematology"
+        domain="CLINICAL" />
 
     <test_section id="2" name="Microbiology"
         description="Infectious diseases" org_id="1002" is_external="N"
         lastupdated="2025-06-10 10:15:00" sort_order="2" is_active="Y"
-        name_localization_id="202" display_key="section.microbiology" />
+        name_localization_id="202" display_key="section.microbiology"
+        domain="CLINICAL" />
 
     <test_section id="3" name="Toxicology"
         description="Toxic substances analysis" org_id="1003" is_external="Y"
         lastupdated="2025-06-10 10:30:00" sort_order="3" is_active="Y"
-        name_localization_id="203" display_key="section.toxicology" />
+        name_localization_id="203" display_key="section.toxicology"
+        domain="ENVIRONMENTAL" />
 
 </dataset>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - a calculation produces one value, and that value has to
+    land on a specific component of the resulting test.
+
+    Only the input side of a calculation was made component-aware. The
+    destination still resolved by test: the writer took whichever test_result
+    row happened to sort last, so on a multi-component test the value landed
+    wherever that fell rather than where the lab meant it to.
+
+    Existing calculations resolve to their resulting test's primary component,
+    which is where an unqualified test-level calculation has always effectively
+    written and what keeps their behaviour unchanged. Reflex rules get no
+    equivalent column: a reflex triggers a whole test, so every component of it
+    is created and there is no single destination to name.
+    -->
+
+    <changeSet id="calc-destination-001-component" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="calculation"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="calculation" columnName="component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Name the component a calculation writes its value to</comment>
+        <addColumn schemaName="clinlims" tableName="calculation">
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="calculation"
+            baseColumnNames="component_id" constraintName="fk_calculation_destination_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+    <changeSet id="calc-destination-002-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="calculation" columnName="component_id"/>
+        </preConditions>
+        <comment>Existing calculations write to their resulting test's primary component</comment>
+        <sql>
+            UPDATE clinlims.calculation c
+            SET component_id = comp.id
+            FROM clinlims.test_result_component comp
+            WHERE c.component_id IS NULL
+              AND c.test_id IS NOT NULL
+              AND comp.test_id = c.test_id
+              AND comp.is_primary = TRUE
+              AND comp.is_active = 'Y';
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.calculation SET component_id = NULL;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

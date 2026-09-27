@@ -51,7 +51,7 @@ public class StatusService implements IStatusService {
 
     public enum AnalysisStatus {
         SampleRejected, NotStarted, Canceled, TechnicalAcceptance, TechnicalRejected, BiologistRejected,
-        NonConforming_depricated, Finalized
+        NonConforming_depricated, Finalized, RejectedByReferenceLab
     }
 
     public enum RecordStatus {
@@ -67,7 +67,10 @@ public class StatusService implements IStatusService {
     }
 
     public enum ExternalOrderStatus {
-        Entered, Cancelled, Realized, NonConforming
+        // AwaitingSpecimen (OGC-1145 FR-8): queued like Entered, but flags that
+        // the coded test runs on several sample types and the message carried no
+        // specimen — the accessioner resolves it via the order-entry chooser.
+        Entered, Cancelled, Realized, NonConforming, AwaitingSpecimen
     }
 
     private Map<String, OrderStatus> idToOrderStatusMap = null;
@@ -418,6 +421,8 @@ public class StatusService implements IStatusService {
             analysisStatusToObjectMap.put(AnalysisStatus.NonConforming_depricated, status);
         } else if (name.equals("Sample Rejected")) {
             analysisStatusToObjectMap.put(AnalysisStatus.SampleRejected, status);
+        } else if (name.equals("RejectedByReferenceLab")) {
+            analysisStatusToObjectMap.put(AnalysisStatus.RejectedByReferenceLab, status);
         }
     }
 
@@ -432,6 +437,8 @@ public class StatusService implements IStatusService {
             externalOrderStatusToObjectMap.put(ExternalOrderStatus.Realized, status);
         } else if (name.equals("NonConforming")) {
             externalOrderStatusToObjectMap.put(ExternalOrderStatus.NonConforming, status);
+        } else if (name.equals("AwaitingSpecimen")) {
+            externalOrderStatusToObjectMap.put(ExternalOrderStatus.AwaitingSpecimen, status);
         }
     }
 

@@ -100,6 +100,15 @@ public interface TestDAO extends BaseDAO<Test, String> {
 
     Test getTestByNormalizedDescription(String description) throws LIMSRuntimeException;
 
+    Test getTestByLocalCode(String localCode) throws LIMSRuntimeException;
+
+    /**
+     * Tests whose normalized description starts with the normalized form of the
+     * plain name (see {@code TestDescriptionNormalizer}), oldest first. Empty when
+     * the name normalizes to nothing.
+     */
+    List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) throws LIMSRuntimeException;
+
     List<Test> getTestsByTestSectionId(String id) throws LIMSRuntimeException;
 
     List<Test> getTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException;
@@ -109,6 +118,8 @@ public interface TestDAO extends BaseDAO<Test, String> {
     List<Test> getTestsByLoincCode(String loincCode);
 
     List<Test> getActiveTestsByLoinc(String loincCode);
+
+    boolean isNameLocalization(String localizationId);
 
     List<Test> getActiveTestsByLoinc(String[] loincCodes);
 

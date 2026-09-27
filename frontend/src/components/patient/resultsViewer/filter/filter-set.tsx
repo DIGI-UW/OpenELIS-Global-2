@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   TreeView,
   TreeNode as CarbonTreeNode,
@@ -32,7 +32,7 @@ const FilterSet: React.FC<FilterSetProps> = ({
   hideFilterSetHeader = false,
 }) => {
   const { roots } = useContext(FilterContext);
-  const { t } = useTranslation();
+  const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchInput, setShowSearchInput] = useState(false);
 
@@ -40,7 +40,7 @@ const FilterSet: React.FC<FilterSetProps> = ({
     <div className="stickyFilterSet">
       {!hideFilterSetHeader && !showSearchInput && (
         <h4 className="filterTreeLabel">
-          {t("Filter by test category", "Filter by test category")}
+          <FormattedMessage id="label.patientHistory.filterByCategory" />
         </h4>
       )}
       {!hideFilterSetHeader && showSearchInput && (
@@ -52,7 +52,7 @@ const FilterSet: React.FC<FilterSetProps> = ({
             light
           />
           <Button kind="secondary" size="sm" onClick={() => {}}>
-            {t("search", "Search")}
+            <FormattedMessage id="label.button.search" />
           </Button>
           <Button
             hasIconOnly
@@ -65,7 +65,9 @@ const FilterSet: React.FC<FilterSetProps> = ({
       )}
       <div className="filterSetContent">
         <TreeView
-          label={t("Test categories", "Test categories")}
+          label={intl.formatMessage({
+            id: "label.patientHistory.testCategories",
+          })}
           hideLabel
           size="sm"
         >

@@ -7,6 +7,5 @@ import lombok.Data;
  */
 @Data
 public class AcknowledgeAlertRequest {
-    private Integer userId;
     private String notes; // Optional acknowledgment notes
 }

@@ -22,6 +22,8 @@ Or manually: `git config core.hooksPath .githooks`
 
 The hook runs on **staged files only**:
 
+- **Java runtime**: Uses the `.sdkmanrc` Java candidate when it is installed,
+  then verifies that Java 21 is active before invoking Maven.
 - **Format**: Java, Markdown, Shell, XML, .gitignore, pom.xml (spotless),
   frontend (prettier), Python (ruff format). Formatted files are re-staged.
 - **Lint**: For staged Catalyst Python files, runs `ruff check` (same as
@@ -33,7 +35,8 @@ The hook runs on **staged files only**:
 2. Hook detects file types in staging area
 3. Runs appropriate formatters
 4. Re-stages formatted files
-5. Commit proceeds
+5. Stops the commit if a required runtime or formatter fails; otherwise the
+   commit proceeds
 
 ### Benefits
 
@@ -62,7 +65,8 @@ git config core.hooksPath
 # If not, run setup command above
 ```
 
-**Formatter not found?**
+**Required runtime or formatter not found?**
 
-- Ensure tools are installed (npm, maven, uv)
-- Hook gracefully skips missing formatters
+- Install Maven for Spotless-managed files and Node.js/npm for frontend files
+- Install the Java version named in `.sdkmanrc`, or activate another Java 21 JDK
+- A missing required tool or formatter failure stops the commit

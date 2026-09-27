@@ -14,6 +14,9 @@ export async function goToAnalyzerDashboard(
   await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
+  await expect(page.locator('[data-testid="analyzers-table"]')).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
   if (testInfo) {
     await videoPause(page, 1_000, testInfo);
   }

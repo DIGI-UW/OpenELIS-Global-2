@@ -17,6 +17,7 @@ import org.openelisglobal.testconfiguration.validator.SampleTypeOrderFormValidat
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -64,14 +65,14 @@ public class SampleTypeOrderRestController extends BaseController {
     }
 
     @PostMapping(value = "/SampleTypeOrder")
-    public SampleTypeOrderForm postSampleTypeOrder(HttpServletRequest request,
+    public ResponseEntity<?> postSampleTypeOrder(HttpServletRequest request,
             @RequestBody @Valid SampleTypeOrderForm form, BindingResult result) throws ParseException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String changeList = form.getJsonChangeList();
@@ -92,7 +93,7 @@ public class SampleTypeOrderRestController extends BaseController {
         try {
             typeOfSampleService.updateAll(typeOfSamples);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
@@ -100,7 +101,7 @@ public class SampleTypeOrderRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private List<ActivateSet> getActivateSetForActions(String key, JSONObject root, JSONParser parser) {

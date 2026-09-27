@@ -1,0 +1,84 @@
+# Analyzer Bridge and analyzer mock for the published-image stack.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.analyzers.yml up -d
+#
+# Image tags must match the tools/openelis-analyzer-bridge and
+# tools/analyzer-mock-server submodule pins (checked in deployment-checks.yml).
+# The mock needs no Docker socket: each ASTM connection owns its own Bridge
+# listener port, so the mock only has to send to that port.
+
+services:
+  openelis-analyzer-bridge:
+    container_name: openelis-analyzer-bridge
+    image: itechuw/openelis-analyzer-bridge:3.2.1
+    platform: linux/amd64
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global:ro
+      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - analyzer-imports:/data/analyzer-imports
+      # FILE state store and delivery outbox; the outbox holds results OpenELIS
+      # has not accepted yet, so it must survive container recreation.
+      - bridge-state:/data/openelis-analyzer-bridge
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - TZ=${TZ:-UTC}
+      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+      - BRIDGE_FILE_ENABLED=true
+      - BRIDGE_FILE_STATE_STORE_PATH=/data/openelis-analyzer-bridge/state.db
+      - BRIDGE_OUTBOX_DB_PATH=/data/openelis-analyzer-bridge/outbox.db
+      - LOGGING_LEVEL_ORG_ITECH=INFO
+      # Delivery and health must name the same host, or a failing delivery
+      # hides behind a passing health check.
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_HEALTH_URI=https://oe.openelis.org:8443/OpenELIS-Global/health
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=${TEST_USER:-${OE_ADMIN_USERNAME:-admin}}
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=${TEST_PASS:-${OE_ADMIN_PASSWORD:-adminADMIN!}}
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
+      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
+    networks:
+      default:
+        aliases:
+          - bridge.openelis.org
+    restart: unless-stopped
+
+  astm-simulator:
+    container_name: openelis-astm-simulator
+    image: itechuw/astm-mock-server:0.1.1
+    platform: linux/amd64
+    volumes:
+      - analyzer-imports:/data/analyzer-imports
+      # Profile-backed templates resolve exact Bridge profile revisions.
+      - ./tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles:/data/bridge-profiles:ro
+    ports:
+      - "127.0.0.1:${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080"
+    environment:
+      - RESPONSE_DELAY_MS=0
+      - ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles
+    command: python -u server.py --port 9600 --simulate-api-port 8080
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  oe.openelis.org:
+    environment:
+      - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+    volumes:
+      # The deployer seeds this persistent directory once; Catalog Import can write to it.
+      - ./configuration/backend:/var/lib/openelis-global/configuration/backend
+
+volumes:
+  analyzer-imports:
+  bridge-state:

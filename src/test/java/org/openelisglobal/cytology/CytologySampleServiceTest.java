@@ -30,6 +30,9 @@ public class CytologySampleServiceTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/cytology.xml");
+        // Fixture replaces system_user with technician1 / pathologist1 etc.;
+        // authenticate as technician1 so audit attribution lands on a real user.
+        authenticateAs("technician1");
     }
 
     @Test

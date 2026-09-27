@@ -27,3 +27,6 @@ https://openelis-global.org/community/get-involved/
   archived under [.specify/plan-archive/](.specify/plan-archive/).
 
 For code of conduct expectations, see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+For **security vulnerabilities**, see [SECURITY.md](SECURITY.md). Do not open
+public GitHub issues for security reports.

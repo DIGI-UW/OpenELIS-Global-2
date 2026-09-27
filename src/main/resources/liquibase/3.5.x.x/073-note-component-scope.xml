@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-811 (Results Entry v3) - a note authored on one component row of a
+    multi-component test is scoped to that component. The column is nullable:
+    legacy notes and notes authored outside a component context stay
+    analysis-level (null) and keep displaying on every component row.
+    ON DELETE SET NULL demotes a scoped note back to analysis level rather
+    than losing it.
+    -->
+    <changeSet id="note-001-component-scope" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="note"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="note" columnName="test_result_component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Scope notes to a result component; null stays analysis-level</comment>
+        <addColumn schemaName="clinlims" tableName="note">
+            <column name="test_result_component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="note"
+            baseColumnNames="test_result_component_id" constraintName="fk_note_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+</databaseChangeLog>

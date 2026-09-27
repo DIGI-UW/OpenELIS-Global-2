@@ -7,16 +7,33 @@
 import { Page, expect } from "@playwright/test";
 import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
-export class SiteInformationPage {
-  constructor(private page: Page) {}
+/**
+ * The admin settings menus that share the same table + Modify + Save screen.
+ * Each shows one site_information domain: Site Information holds the identity
+ * settings (electronic signature), Result Entry Configuration the result ones.
+ */
+export type SettingsMenu = "SiteInformationMenu" | "ResultConfigurationMenu";
 
-  /** Navigate to Admin > Site Information */
+const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
+  SiteInformationMenu: /site information/i,
+  ResultConfigurationMenu: /result entry configuration/i,
+};
+
+export class SiteInformationPage {
+  constructor(
+    private page: Page,
+    private menu: SettingsMenu = "SiteInformationMenu",
+  ) {}
+
+  /** Navigate to the admin settings menu this page object was built for. */
   async goto() {
-    await this.page.goto("/MasterListsPage/SiteInformationMenu", {
+    await this.page.goto(`/MasterListsPage/${this.menu}`, {
       waitUntil: "domcontentloaded",
     });
     await expect(
-      this.page.getByRole("heading", { name: /site information/i }),
+      this.page.getByRole("heading", {
+        name: SETTINGS_MENU_HEADING[this.menu],
+      }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 
@@ -74,4 +91,35 @@ export class SiteInformationPage {
     const valueCell = cells.nth(3); // select, name, description, value
     return (await valueCell.textContent()) || "";
   }
+}
+
+/**
+ * Which admin menu each boolean setting is edited on: the unified-route flag
+ * lives in the result configuration domain, the e-signature flag in site
+ * identity.
+ */
+const SETTING_MENU: Record<string, SettingsMenu> = {
+  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
+  electronicSignatureEnabled: "SiteInformationMenu",
+};
+
+/** Read a boolean site_information setting off its admin menu. */
+export async function isSettingOn(
+  page: Page,
+  setting: string,
+): Promise<boolean> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  return /true/i.test(await menu.getSettingValue(setting));
+}
+
+/** Set a boolean site_information setting through its admin menu. */
+export async function setSetting(
+  page: Page,
+  setting: string,
+  on: boolean,
+): Promise<void> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  await menu.setBooleanSetting(setting, on);
 }

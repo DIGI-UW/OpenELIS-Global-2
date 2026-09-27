@@ -1,9 +1,9 @@
 package org.openelisglobal.dictionary.rest.controller;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -38,6 +38,7 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
         // dictionary.xml declares no system_user; ensure the audit user so the delete
         // flow can emit history regardless of which sibling test ran (and wiped it)
@@ -71,7 +72,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertEquals(200, status);
         String content = mvcResult.getResponse().getContentAsString();
         List<DictionaryCategory> menuList = Arrays.asList(super.mapFromJson(content, DictionaryCategory[].class));
-        assertThat(menuList, notNullValue());
+        assertFalse("fetchDictionaryCategories must return at least one category", menuList.isEmpty());
+        assertThat(menuList.get(0).getCategoryName(), is("Category Name 1"));
     }
 
     @Test
@@ -101,7 +103,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
         content = mvcResult.getResponse().getContentAsString();
-        assertEquals(content, "Dictionary Menu deleted successfully");
+        // production's Jackson-at-index-0 serializes String bodies as JSON
+        assertEquals(content, "\"Dictionary Menu deleted successfully\"");
     }
 
     private Dictionary createDictionaryObject() {

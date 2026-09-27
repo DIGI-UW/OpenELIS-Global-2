@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-658 Part D: generated inventory_item codes are prefix + per-prefix counter
+    (PAR-500MG-001, PAR-500MG-002). One row per prefix holds the next counter value;
+    InventoryItemCodeSequenceDAO creates the row on first use, so the table starts empty.
+    -->
+    <changeSet id="OGC-658-part-d-inventory-item-code-sequence" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_item_code_sequence" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Per-prefix counter behind generated inventory item codes</comment>
+        <createTable schemaName="clinlims" tableName="inventory_item_code_sequence">
+            <column name="prefix" type="VARCHAR(32)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_inventory_item_code_sequence"/>
+            </column>
+            <column name="next_value" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="inventory_item_code_sequence"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

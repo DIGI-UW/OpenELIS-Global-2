@@ -19,7 +19,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import net.sf.jasperreports.engine.JRDataSource;
@@ -27,8 +26,8 @@ import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.service.dto.FreezerExcursionData;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
-import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -37,9 +36,8 @@ import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
 
 /**
- * Report implementation for freezer temperature excursions (threshold
- * violations). Groups consecutive readings that exceed thresholds into
- * excursion events.
+ * Jasper rendering of the excursions grouped by
+ * FreezerReadingService#findExcursions, which the on-screen preview also reads.
  */
 public class FreezerExcursionReport extends Report implements IReportCreator {
 
@@ -97,18 +95,15 @@ public class FreezerExcursionReport extends Report implements IReportCreator {
                 // Single freezer report
                 Freezer freezer = freezerService.findById(freezerId).orElse(null);
                 if (freezer != null) {
-                    List<FreezerReading> readings = freezerReadingService.getReadingsBetween(freezerId, start, end);
-                    processExcursions(readings, freezer);
+                    addExcursions(freezer, start, end);
                 } else {
                     add1LineErrorMessage("report.error.message.noPrintableItems");
                 }
             } else {
                 // All freezers report
-                List<Freezer> allFreezers = freezerService.getAllFreezers("");
+                List<Freezer> allFreezers = freezerService.getAllFreezersForReporting();
                 for (Freezer freezer : allFreezers) {
-                    List<FreezerReading> readings = freezerReadingService.getReadingsBetween(freezer.getId(), start,
-                            end);
-                    processExcursions(readings, freezer);
+                    addExcursions(freezer, start, end);
                 }
             }
 
@@ -121,105 +116,43 @@ public class FreezerExcursionReport extends Report implements IReportCreator {
         }
     }
 
-    private void processExcursions(List<FreezerReading> readings, Freezer freezer) {
-        if (readings.isEmpty()) {
-            return;
-        }
-
-        // Group consecutive excursion readings into excursion events
-        List<FreezerReading> currentExcursion = new ArrayList<>();
-        FreezerReading.Status currentStatus = null;
-
-        for (FreezerReading reading : readings) {
-            // Only process WARNING and CRITICAL status readings
-            if (reading.getStatus() == FreezerReading.Status.WARNING
-                    || reading.getStatus() == FreezerReading.Status.CRITICAL) {
-
-                if (currentExcursion.isEmpty() || reading.getStatus() == currentStatus) {
-                    // Continue current excursion
-                    currentExcursion.add(reading);
-                    currentStatus = reading.getStatus();
-                } else {
-                    // Status changed - save current excursion and start new one
-                    saveExcursion(currentExcursion, freezer);
-                    currentExcursion = new ArrayList<>();
-                    currentExcursion.add(reading);
-                    currentStatus = reading.getStatus();
-                }
-            } else {
-                // Normal reading - save any ongoing excursion
-                if (!currentExcursion.isEmpty()) {
-                    saveExcursion(currentExcursion, freezer);
-                    currentExcursion = new ArrayList<>();
-                    currentStatus = null;
-                }
-            }
-        }
-
-        // Save final excursion if any
-        if (!currentExcursion.isEmpty()) {
-            saveExcursion(currentExcursion, freezer);
+    private void addExcursions(Freezer freezer, OffsetDateTime start, OffsetDateTime end) {
+        for (FreezerExcursionData excursion : freezerReadingService.findExcursions(freezer, start, end)) {
+            reportItems.add(toReportData(excursion));
         }
     }
 
-    private void saveExcursion(List<FreezerReading> excursionReadings, Freezer freezer) {
-        if (excursionReadings.isEmpty()) {
-            return;
-        }
-
+    private FreezerExcursionReportData toReportData(FreezerExcursionData excursion) {
         FreezerExcursionReportData data = new FreezerExcursionReportData();
 
-        FreezerReading firstReading = excursionReadings.get(0);
-        FreezerReading lastReading = excursionReadings.get(excursionReadings.size() - 1);
-
-        // Generate excursion ID
-        data.setExcursionId("EXC-" + freezer.getId() + "-" + firstReading.getId());
-
-        data.setFreezerId(String.valueOf(freezer.getId()));
-        data.setFreezerName(freezer.getName() != null ? freezer.getName() : "Freezer " + freezer.getId());
-        data.setLocation(freezer.getRoom() != null ? freezer.getRoom() : "Unknown");
-
-        // Timestamps
-        if (firstReading.getRecordedAt() != null) {
-            data.setStartTime(
-                    firstReading.getRecordedAt().atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER));
+        data.setExcursionId("EXC-" + excursion.getFreezerId() + "-" + excursion.getAlertId());
+        data.setFreezerId(String.valueOf(excursion.getFreezerId()));
+        data.setFreezerName(excursion.getFreezerName() != null ? excursion.getFreezerName()
+                : "Freezer " + excursion.getFreezerId());
+        data.setLocation(excursion.getLocationName() != null ? excursion.getLocationName() : "Unknown");
+        data.setStartTime(formatTimestamp(excursion.getStartTime()));
+        data.setEndTime(formatTimestamp(excursion.getEndTime()));
+        if (excursion.getDurationSeconds() != null) {
+            data.setDuration(formatDuration(excursion.getDurationSeconds() / 60));
         }
-        if (lastReading.getRecordedAt() != null) {
-            data.setEndTime(
-                    lastReading.getRecordedAt().atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER));
+        data.setMinTemperature(excursion.getMinTemperature());
+        data.setMaxTemperature(excursion.getMaxTemperature());
+        data.setTemperatureRange(formatTemperatureRange(excursion.getMinTemperature(), excursion.getMaxTemperature()));
+        data.setSeverity(excursion.getSeverity());
+        data.setStatus(excursion.getStatus());
+
+        return data;
+    }
+
+    /**
+     * FreezerExcursionData carries the boundary instants as ISO-8601 text, which
+     * the report columns show in the site's own zone.
+     */
+    private String formatTimestamp(String isoTimestamp) {
+        if (GenericValidator.isBlankOrNull(isoTimestamp)) {
+            return null;
         }
-
-        // Calculate duration
-        if (firstReading.getRecordedAt() != null && lastReading.getRecordedAt() != null) {
-            long minutes = ChronoUnit.MINUTES.between(firstReading.getRecordedAt(), lastReading.getRecordedAt());
-            data.setDuration(formatDuration(minutes));
-        }
-
-        // Find min/max temperatures during excursion
-        BigDecimal minTemp = null;
-        BigDecimal maxTemp = null;
-        for (FreezerReading reading : excursionReadings) {
-            if (reading.getTemperatureCelsius() != null) {
-                if (minTemp == null || reading.getTemperatureCelsius().compareTo(minTemp) < 0) {
-                    minTemp = reading.getTemperatureCelsius();
-                }
-                if (maxTemp == null || reading.getTemperatureCelsius().compareTo(maxTemp) > 0) {
-                    maxTemp = reading.getTemperatureCelsius();
-                }
-            }
-        }
-        data.setMinTemperature(minTemp);
-        data.setMaxTemperature(maxTemp);
-        data.setTemperatureRange(formatTemperatureRange(minTemp, maxTemp));
-
-        // Severity (use the highest severity from the excursion)
-        data.setSeverity(firstReading.getStatus().name());
-
-        // Status (for now, all excursions are considered RESOLVED after the excursion
-        // ends)
-        data.setStatus("RESOLVED");
-
-        reportItems.add(data);
+        return OffsetDateTime.parse(isoTimestamp).atZoneSameInstant(ZoneId.systemDefault()).format(DATE_FORMATTER);
     }
 
     private String formatDuration(long minutes) {

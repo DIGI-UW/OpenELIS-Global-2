@@ -466,25 +466,6 @@ public class OrganizationRestController extends BaseController {
         return ResponseEntity.ok(organizationTypeService.getAll());
     }
 
-    /**
-     * Generate a unique, sequential site code for new sampling sites. Format:
-     * SYYMMDD-NNNNN (e.g., S260408-00001) — max 14 chars, fits short_name(15). Uses
-     * a DB sequence (site_code_seq) for guaranteed uniqueness.
-     */
-    @GetMapping(value = "/organization/generate-site-code", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> generateSiteCode() {
-        try {
-            String code = organizationService.generateSiteCode();
-            Map<String, String> response = new HashMap<>();
-            response.put("siteCode", code);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "generateSiteCode",
-                    "Error generating site code: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     private void persistAddressParts(Organization organization, Map<String, OrganizationAddress> addressParts) {
         OrganizationAddress departmentAddress = addressParts.get(DEPARTMENT_ADDRESS_KEY);
         if (departmentAddress != null) {
@@ -676,6 +657,9 @@ public class OrganizationRestController extends BaseController {
                 orgData.put("streetAddress", org.getStreetAddress());
                 orgData.put("city", org.getCity() != null ? org.getCity() : "");
                 orgData.put("state", org.getState());
+                orgData.put("phone", org.getPhone());
+                orgData.put("fax", org.getFax());
+                orgData.put("email", org.getEmail());
                 orgData.put("isActive", "Y".equals(org.getIsActive()));
 
                 List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());

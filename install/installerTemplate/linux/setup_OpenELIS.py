@@ -322,8 +322,6 @@ def create_docker_compose_file():
             line = line.replace("[% db_port %]", DB_PORT) 
         if line.find("[% secrets_dir %]")  >= 0:
             line = line.replace("[% secrets_dir %]", SECRETS_DIR)  
-        if line.find("[% plugins_dir %]")  >= 0:
-            line = line.replace("[% plugins_dir %]", PLUGINS_DIR)
         if line.find("[% logs_dir %]")  >= 0:
             line = line.replace("[% logs_dir %]", LOGS_DIR)
         if line.find("[% tomcat_logs_dir %]")  >= 0:
@@ -910,7 +908,7 @@ def uninstall_program_files():
 #             GET/SET SETUP PROPERTIES
 #---------------------------------------------------------------------
 def read_setup_properties_file():
-    global DB_BACKUPS_DIR, SECRETS_DIR, PLUGINS_DIR
+    global DB_BACKUPS_DIR, SECRETS_DIR
     global DB_DATA_DIR, DB_ENVIRONMENT_DIR, DB_INIT_DIR, DOCKER_DB, DOCKER_DB_BACKUPS_DIR, DOCKER_DB_HOST_PORT
     global DB_HOST, DB_PORT
     global LOCAL_DB
@@ -922,7 +920,6 @@ def read_setup_properties_file():
     install_dirs_info = "INSTALL_DIRS"
     DB_BACKUPS_DIR = ensure_dir_string(config.get(install_dirs_info, 'backup_dir'))
     SECRETS_DIR = ensure_dir_string(config.get(install_dirs_info,'secrets_dir'))
-    PLUGINS_DIR = ensure_dir_string(config.get(install_dirs_info,'plugins_dir'))
     
     database_info = "DATABASE_CONNECTION"
     DB_HOST = config.get(database_info, "host") # unused if docker_db

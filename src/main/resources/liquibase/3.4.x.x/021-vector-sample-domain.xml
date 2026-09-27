@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.4.0.0-add-vector-sample-domain" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.sample_domain WHERE domain = 'V'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add Vector Surveillance as a sample domain (domain code V)</comment>
+    <insert tableName="sample_domain" schemaName="clinlims">
+      <column name="id" valueSequenceNext="sample_domain_seq"/>
+      <column name="domain" value="V"/>
+      <column name="domain_description" value="Vector Surveillance"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>
