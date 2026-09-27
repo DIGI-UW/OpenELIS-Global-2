@@ -697,7 +697,7 @@ public class OrderSearchRestController extends BaseRestController {
                     var typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
                     if (typeOfSample != null) {
                         sampleItemData.put("name", typeOfSample.getLocalizedName());
-                        sampleItemData.put("sampleTypeName", typeOfSample.getDescription());
+                        sampleItemData.put("sampleTypeName", typeOfSample.getLocalizedName());
                     }
                 }
 

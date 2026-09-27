@@ -7806,7 +7806,7 @@
   "success.delete.msg": "Succesfuly Deleted",
   "success.import.patient": "Patient Succesfully Imported",
   "success.report.status": "Succesfuly Generated Report",
-  "success.save.msg": "Successfullly saved",
+  "success.save.msg": "Successfully saved",
   "success.save.patient": "Patient Saved Successfully",
   "systemuser.firstName": "System User First Name",
   "systemuser.isActive": "Is Active",
