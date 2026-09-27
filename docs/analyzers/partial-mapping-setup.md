@@ -27,9 +27,9 @@ reopened.
    their incoming results will remain held.
 4. From a held result's mapping link, choose **Apply mappings and retry held
    results** to adopt the current revision for that analyzer and retry its held
-   rows in place. The setup **Verify → Continue to Connect** action does the same
-   for an analyzer being configured. Saving or confirming a shared mapping alone
-   does not change a running analyzer's selected revision.
+   rows in place. The setup **Verify → Continue to Connect** action does the
+   same for an analyzer being configured. Saving or confirming a shared mapping
+   alone does not change a running analyzer's selected revision.
 5. Check Analyzer Results again. Resolved rows become available for the usual
    review. Unresolved rows remain held. Adoption does not accept results into a
    patient's clinical record.
