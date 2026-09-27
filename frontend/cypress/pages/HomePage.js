@@ -53,7 +53,6 @@ class HomePage {
       immunochemMenu: "#menu_immunochem",
       cytologyMenu: "#menu_cytology",
       administrationMenu: "#menu_administration",
-      administrationDashboard: "#menu_administration_dashboard_nav",
       helpMenu: "#menu_help",
       minimizeIcon: "#minimizeIcon",
       searchIcon: "#search-Icon",
@@ -308,15 +307,9 @@ class HomePage {
   }
 
   goToAdminPage() {
+    // Admin has no submenu: the menu entry itself opens the dashboard.
     this.openNavigationMenu();
-    cy.get(this.selectors.administrationMenu)
-      .should("be.visible")
-      .then(($menu) => {
-        if ($menu.attr("aria-expanded") !== "true") {
-          cy.wrap($menu).click();
-        }
-      });
-    cy.get(this.selectors.administrationDashboard).should("be.visible").click();
+    cy.get(this.selectors.administrationMenu).should("be.visible").click();
     cy.location("pathname").should("eq", "/MasterListsPage");
     this.closeNavigationMenu();
     return new AdminPage();

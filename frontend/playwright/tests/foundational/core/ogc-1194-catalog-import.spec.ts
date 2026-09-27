@@ -160,6 +160,71 @@ test.describe("Catalog import (CSV)", () => {
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
+  test("a batch the server refuses is shown as a failure, never as an empty load (OGC-1228)", async ({
+    page,
+  }) => {
+    await page.goto(IMPORT_PAGE, { waitUntil: "domcontentloaded" });
+
+    // A file whose name fits no catalog area, with none chosen, is refused by
+    // the server with a 422 that names the reason.
+    await dropFiles(page, [
+      file("unnamed.csv", ["testSectionName", `${SECTION} extra`]),
+    ]);
+    await expect(page.locator("#domain-unnamed\\.csv")).toHaveValue("");
+    await expect(page.getByTestId("catalog-import-apply-hint")).toBeVisible();
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+
+    const failure = page.getByTestId("catalog-import-failure");
+    await expect(failure).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(failure).toContainText("could not be sent");
+    await expect(failure).toContainText("unnamed.csv");
+    await expect(page.getByTestId("catalog-import-plan")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Apply", exact: true }),
+    ).toBeDisabled();
+
+    // The server side of a refused apply (a configuration tree the webapp
+    // cannot write to) needs a broken deployment to happen for real, so the
+    // answer is played back here; the page must keep the preview and say why.
+    await page.getByRole("button", { name: "Remove" }).click();
+    await dropFiles(page, [sectionsCsv()]);
+    await preview(page);
+    await page.route("**/rest/configuration/import/apply", (route) =>
+      route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({
+          importRunId: null,
+          unresolvedCount: 0,
+          files: [
+            {
+              domain: null,
+              fileName: null,
+              created: 0,
+              updated: 0,
+              skipped: 0,
+              rows: [],
+              error:
+                "Could not save test-sections-e2e.csv to /cfg/test-sections: permission denied",
+            },
+          ],
+        }),
+      }),
+    );
+    await page.getByRole("button", { name: "Apply", exact: true }).click();
+
+    await expect(failure).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(failure).toContainText("were not applied");
+    await expect(failure).toContainText("permission denied");
+    await expect(
+      page.getByRole("heading", { name: "What these files would do" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "What was loaded" }),
+    ).toHaveCount(0);
+    await page.unroute("**/rest/configuration/import/apply");
+  });
+
   test("a specimen the catalog does not know waits for a decision, and the remembered name resolves it", async ({
     page,
   }) => {

@@ -60,22 +60,43 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             + "    AND ct.threshold_type = 'BORDERLINE' " + "    AND ct.is_active = TRUE AND ct.archived = FALSE "
             + "  LIMIT 1" + ") borderline_ct ON TRUE ";
 
-    private static final String IS_NUMERIC = "r.value ~ '^-?[0-9]+(\\.[0-9]+)?$'";
+    /**
+     * A numeric result is stored in the notation the technologist wrote it in.
+     * Postgres casts e-notation natively but not "1.5 x 10^5" or
+     * "1.5\u00d710\u2075", so those written forms are rewritten before the cast,
+     * mirroring StringUtil.normalizeScientificNotation. Anything that is not a
+     * power of ten is left alone, so a stray superscript is never read as another
+     * digit.
+     */
+    private static final String SUPERSCRIPT_CHARS = "\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079\u207a\u207b";
+
+    private static final String WRITTEN_POWER_OF_TEN = "^\\s*(?:[+-]?(?:[0-9]+\\.?[0-9]*|\\.[0-9]+)\\s*[xX\u00d7*]\\s*)?"
+            + "[+-]?10\\s*(?:\\^\\s*[+-]?[0-9]+|[\u207a\u207b]?[\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079]+)\\s*$";
+
+    private static final String NUMERIC_VALUE = "(CASE WHEN r.value ~ '" + WRITTEN_POWER_OF_TEN + "' THEN "
+            + "translate(regexp_replace(regexp_replace(regexp_replace(btrim(r.value), "
+            + "'\\s*[xX\u00d7*]\\s*10\\s*\\^?\\s*', 'e'), " + "'^\\+?10([" + SUPERSCRIPT_CHARS + "])', '1e\\1'), "
+            + "'^-10([" + SUPERSCRIPT_CHARS + "])', '-1e\\1'), " + "'" + SUPERSCRIPT_CHARS
+            + "', '0123456789+-') ELSE r.value END)";
+
+    private static final String NUMERIC_CAST = "CAST(" + NUMERIC_VALUE + " AS numeric)";
+
+    private static final String IS_NUMERIC = NUMERIC_VALUE + " ~ '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'";
 
     // Passes primary threshold (RANGE/MIN/MAX/EXACT)
-    private static final String PRIMARY_PASSES = "("
-            + "  (primary_ct.ct_type = 'RANGE'   AND CAST(r.value AS numeric) BETWEEN primary_ct.ct_min AND primary_ct.ct_max) OR "
-            + "  (primary_ct.ct_type = 'MINIMUM' AND CAST(r.value AS numeric) >= primary_ct.ct_min) OR "
-            + "  (primary_ct.ct_type = 'MAXIMUM' AND CAST(r.value AS numeric) <= primary_ct.ct_max) OR "
-            + "  (primary_ct.ct_type = 'EXACT'   AND CAST(r.value AS numeric) = primary_ct.ct_target)" + ")";
+    private static final String PRIMARY_PASSES = "(" + "  (primary_ct.ct_type = 'RANGE'   AND " + NUMERIC_CAST
+            + " BETWEEN primary_ct.ct_min AND primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'MINIMUM' AND "
+            + NUMERIC_CAST + " >= primary_ct.ct_min) OR " + "  (primary_ct.ct_type = 'MAXIMUM' AND " + NUMERIC_CAST
+            + " <= primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'EXACT'   AND " + NUMERIC_CAST
+            + " = primary_ct.ct_target)" + ")";
 
     // Has an applicable primary threshold
     private static final String HAS_PRIMARY = "primary_ct.ct_type IS NOT NULL";
 
     // Within the BORDERLINE advisory zone (value outside primary but inside
     // borderline bounds)
-    private static final String IN_BORDERLINE = "borderline_ct.bl_min IS NOT NULL "
-            + "AND CAST(r.value AS numeric) BETWEEN borderline_ct.bl_min AND borderline_ct.bl_max";
+    private static final String IN_BORDERLINE = "borderline_ct.bl_min IS NOT NULL " + "AND " + NUMERIC_CAST
+            + " BETWEEN borderline_ct.bl_min AND borderline_ct.bl_max";
 
     private static final String IS_PASSING = IS_NUMERIC + " AND " + HAS_PRIMARY + " AND " + PRIMARY_PASSES;
 
@@ -233,11 +254,11 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
 
         StringBuilder sql = new StringBuilder(
                 "SELECT TO_CHAR(CAST(si.collection_date AS date), 'YYYY-MM-DD') AS coll_date, "
-                        + "t.name AS param_name, " + "AVG(CASE WHEN " + IS_NUMERIC
-                        + " THEN CAST(r.value AS numeric) END) AS avg_val, " + "MAX(CASE WHEN " + IS_NUMERIC
-                        + " THEN CAST(r.value AS numeric) END) AS max_val, " + "SUM(CASE WHEN " + IS_FAILING
-                        + " THEN 1 ELSE 0 END) AS exceedances, " + "MIN(primary_ct.ct_max) AS threshold_max, "
-                        + "MIN(primary_ct.ct_min) AS threshold_min, " + "MIN(primary_ct.ct_type) AS threshold_type ");
+                        + "t.name AS param_name, " + "AVG(CASE WHEN " + IS_NUMERIC + " THEN " + NUMERIC_CAST
+                        + " END) AS avg_val, " + "MAX(CASE WHEN " + IS_NUMERIC + " THEN " + NUMERIC_CAST
+                        + " END) AS max_val, " + "SUM(CASE WHEN " + IS_FAILING + " THEN 1 ELSE 0 END) AS exceedances, "
+                        + "MIN(primary_ct.ct_max) AS threshold_max, " + "MIN(primary_ct.ct_min) AS threshold_min, "
+                        + "MIN(primary_ct.ct_type) AS threshold_type ");
         sql.append(coreFrom());
         sql.append("WHERE oh_site.value = :siteId "
                 + "AND CAST(si.collection_date AS date) BETWEEN :start AND :end AND s.domain = 'E' ");

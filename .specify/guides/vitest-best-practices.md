@@ -35,10 +35,10 @@ keep mocks visually above imports for readability):
      render,
      screen,
      fireEvent,
+     waitFor,
      within,
      act,
    } from "@testing-library/react";
-   import { waitFor } from "@testing-library/dom";
    ```
 
 3. **userEvent** (PREFERRED for user interactions)
@@ -147,7 +147,7 @@ pre-Vite test runner. Everything else should use `vi.*`.
    const element = await screen.findByText("Loaded Data");
    ```
 
-4. **Inside waitFor** → assert the expected state; thrown assertions/queries retry
+4. **Inside waitFor** → `queryBy*` (NOT `getBy*`)
    ```javascript
    await waitFor(() => {
      const element = screen.queryByText("Loaded Data");
@@ -195,7 +195,7 @@ await waitFor(
     const element = screen.queryByText("Loaded Data");
     expect(element).toBeInTheDocument();
   },
-  { timeout: 5000 },
+  { timeout: 5000 }
 );
 ```
 
@@ -220,10 +220,10 @@ await act(async () => {
 await new Promise((resolve) => setTimeout(resolve, 1000));
 ```
 
-**DO - getBy\* in waitFor for expected presence**:
+**DON'T - getBy\* in waitFor**:
 
 ```javascript
-// waitFor retries thrown queries/assertions until success or timeout
+// ❌ WRONG: Throws during retries
 await waitFor(() => {
   expect(screen.getByText("Loaded Data")).toBeInTheDocument();
 });
@@ -319,7 +319,7 @@ expect(input.value.length).toBe(100);
 **DO NOT**:
 
 - ❌ Use `setTimeout` (use `waitFor` instead)
-- ❌ Return false instead of asserting inside `waitFor` (only thrown errors retry)
+- ❌ Use `getBy*` in `waitFor` (use `queryBy*` instead)
 - ❌ Use `fireEvent` when `userEvent` works (prefer `userEvent`)
 - ❌ Test implementation details (test user-visible behavior)
 - ❌ Test internal state (test outputs)
@@ -389,7 +389,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 };
 ```

@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from "react";
 import {
   ActionableNotification,
@@ -13,6 +14,7 @@ import {
   DatePickerInput,
   Grid,
   Heading,
+  Loading,
   Pagination,
   Search,
   Section,
@@ -32,6 +34,12 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -72,6 +80,7 @@ import { ReferralDraft } from "./ReferralAction";
 import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
+import { resultFlagFor } from "./resultFlagFor";
 import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -146,6 +155,7 @@ interface StatusOption {
  */
 interface WorklistResponse {
   testResult?: WorklistRow[];
+  paging?: { currentPage?: string | number; totalPages?: string | number };
   status?: number;
   error?: string;
 }
@@ -190,8 +200,16 @@ const UnifiedResults: React.FC = () => {
   const [editingAnalysisId, setEditingAnalysisId] = useState<string | null>(
     null,
   );
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(25);
+  // The server's page announcement for the worklist shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
+  // The worklist request last sent, so a page of it can be asked for.
+  const worklistUrl = useRef<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   // ---- R2 (OGC-1021) panel state ----
@@ -227,6 +245,11 @@ const UnifiedResults: React.FC = () => {
   const [rejectDrafts, setRejectDrafts] = useState<Record<string, RejectDraft>>(
     {},
   );
+  // The date the reference laboratory reported a result that is being typed in
+  // here, per referred row.
+  const [referenceLabReportDates, setReferenceLabReportDates] = useState<
+    Record<string, string>
+  >({});
   const [interpretationDrafts, setInterpretationDrafts] = useState<
     Record<string, string>
   >({});
@@ -270,8 +293,14 @@ const UnifiedResults: React.FC = () => {
     );
   }, []);
 
+  const rowsRef = useRef<WorklistRow[]>(rows);
+  rowsRef.current = rows;
+  const rowStatesRef = useRef(rowStates);
+  rowStatesRef.current = rowStates;
+
   const applyLoadedRows = useCallback(
-    (results: WorklistResponse | undefined) => {
+    (results: WorklistResponse | undefined, savedRowKey?: string) => {
+      const keepUnsaved = savedRowKey !== undefined;
       // A worklist that failed to load and a worklist with nothing in it look
       // the same once the rows are empty, and the page said nothing either
       // way: a technician was shown an empty queue with no sign the request
@@ -288,8 +317,36 @@ const UnifiedResults: React.FC = () => {
         return;
       }
       setLoadError(false);
-      const loaded = (results?.testResult || []).filter((r) => r.analysisId);
+      let loaded = (results?.testResult || []).filter((r) => r.analysisId);
+      const unsaved: Record<string, WorklistRow> = {};
+      if (keepUnsaved) {
+        for (const row of rowsRef.current) {
+          const key = worklistRowKey(row);
+          if (
+            key !== savedRowKey &&
+            showSave(rowStatesRef.current[key] || "EMPTY")
+          ) {
+            unsaved[key] = row;
+          }
+        }
+        loaded = loaded.map((row) => {
+          const edited = unsaved[worklistRowKey(row)];
+          return edited
+            ? {
+                ...row,
+                resultValue: edited.resultValue,
+                multiSelectResultValues: edited.multiSelectResultValues,
+                testMethod: edited.testMethod,
+                analyzerId: edited.analyzerId,
+              }
+            : row;
+        });
+      }
       setRows(loaded);
+      setPaging(results?.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(results?.paging, loaded.length, previous),
+      );
       const states: Record<string, RowEditState> = {};
       for (const row of loaded) {
         // one analysis may render N component rows (FR-A′1) — each row keeps
@@ -301,6 +358,10 @@ const UnifiedResults: React.FC = () => {
               row.multiSelectResultValues !== "{}",
             ),
         );
+        if (unsaved[worklistRowKey(row)]) {
+          states[worklistRowKey(row)] =
+            rowStatesRef.current[worklistRowKey(row)];
+        }
       }
       setRowStates(states);
       const loadedByKey: Record<string, string> = {};
@@ -310,19 +371,35 @@ const UnifiedResults: React.FC = () => {
         }
       }
       setLoadedAnalyzers(loadedByKey);
-      setNoteDrafts({});
-      setDilutionDrafts({});
-      setReferralDrafts({});
-      setRejectDrafts({});
-      setInterpretationDrafts({});
-      setNceOpenKey(null);
-      setExpandedRowKey(null);
-      setStaleInfo({});
-      setEditingAnalysisId(null);
-      setPage(1);
+      if (!keepUnsaved) {
+        setNoteDrafts({});
+        setDilutionDrafts({});
+        setReferralDrafts({});
+        setRejectDrafts({});
+        setInterpretationDrafts({});
+        setNceOpenKey(null);
+        setExpandedRowKey(null);
+        setStaleInfo({});
+        setEditingAnalysisId(null);
+      }
       setLoading(false);
     },
     [],
+  );
+
+  /** One server page of the worklist last requested, asked for by Carbon's pagination. */
+  const loadWorklistPage = useCallback(
+    (pageNumber: number) => {
+      if (!worklistUrl.current) {
+        return;
+      }
+      setLoading(true);
+      getFromOpenElisServer(
+        worklistUrl.current + "&page=" + pageNumber,
+        applyLoadedRows,
+      );
+    },
+    [applyLoadedRows],
   );
 
   /**
@@ -333,7 +410,11 @@ const UnifiedResults: React.FC = () => {
    * mode while the state still holds a patient (the Clear button).
    */
   const loadWorklist = useCallback(
-    (labNumberOverride?: string, patientOverride?: PatientRecord | null) => {
+    (
+      labNumberOverride?: string,
+      patientOverride?: PatientRecord | null,
+      savedRowKey?: string,
+    ) => {
       setLoading(true);
       const params = new URLSearchParams();
       // guard: when wired directly to onClick the argument is the click
@@ -358,9 +439,9 @@ const UnifiedResults: React.FC = () => {
       }
       params.set("doRange", "false");
       params.set("finished", "false");
-      getFromOpenElisServer(
-        "/rest/LogbookResults?" + params.toString(),
-        applyLoadedRows,
+      worklistUrl.current = "/rest/LogbookResults?" + params.toString();
+      getFromOpenElisServer(worklistUrl.current, (results?: WorklistResponse) =>
+        applyLoadedRows(results, savedRowKey),
       );
       // FRS: the selected Lab Unit (and filters) are the page's primary
       // state — keep them in the URL so refresh and share links reproduce
@@ -488,10 +569,11 @@ const UnifiedResults: React.FC = () => {
     [rows, statusFilter],
   );
 
-  const pagedRows = useMemo(
-    () => filteredRows.slice((page - 1) * pageSize, page * pageSize),
-    [filteredRows, page, pageSize],
-  );
+  const pagedRows = filteredRows;
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadWorklistPage,
+  });
 
   const visibleAnalysisIds = useMemo(
     () => pagedRows.map((row) => row.analysisId),
@@ -590,6 +672,25 @@ const UnifiedResults: React.FC = () => {
       if (draft) {
         setEditingAnalysisId(target.analysisId);
       }
+    },
+    [],
+  );
+
+  /**
+   * The reference laboratory's own report date belongs to the referral, so
+   * recording it makes an already-saved row savable without unlocking the
+   * result or counting the save as a revision of it.
+   */
+  const handleReferenceLabReportDateChange = useCallback(
+    (target: WorklistRow, value: string) => {
+      const key = worklistRowKey(target);
+      setReferenceLabReportDates((current) => ({ ...current, [key]: value }));
+      setRowStates((current) => ({
+        ...current,
+        [key]: nextRowState(current[key] || "EMPTY", {
+          type: value.trim() ? "DISPOSITION_CHANGED" : "DISPOSITION_CLEARED",
+        }),
+      }));
     },
     [],
   );
@@ -825,10 +926,10 @@ const UnifiedResults: React.FC = () => {
       // A reflex or calculation adds analyses to this order that the save
       // response only names. Naming them in a toast and leaving the worklist
       // as it was asks the user to refresh to see the work they just caused,
-      // so the rows are re-read when — and only when — some were generated:
-      // an unconditional reload would discard every other row's unsaved edit.
+      // so the rows are re-read when — and only when — some were generated,
+      // keeping every other row's unsaved edit rather than discarding it.
       if (triggered.length) {
-        loadWorklist();
+        loadWorklist(undefined, undefined, key);
       }
     },
     [addNotification, intl, setNotificationVisible, loadWorklist],
@@ -889,6 +990,15 @@ const UnifiedResults: React.FC = () => {
           referredTestId: row.testId,
         };
       }
+      // A result typed in for a test already at a reference laboratory: carry
+      // that laboratory's own report date so the referral records it.
+      const reportedOn = referenceLabReportDates[key];
+      if (row.referredOut && reportedOn && reportedOn.trim()) {
+        item.referralItem = {
+          ...(item.referralItem || {}),
+          referredReportDate: reportedOn.trim(),
+        };
+      }
       // R4 (FR-E3): reject disposition — legacy shadowRejected mechanics
       // (clears the value, writes the rejection-reason note, TechnicalRejected)
       const reject = rejectDrafts[key];
@@ -923,6 +1033,13 @@ const UnifiedResults: React.FC = () => {
               delete next[key];
               return next;
             });
+            // The referral now holds the date, so the row must not carry it
+            // into its next save the way a draft would.
+            setReferenceLabReportDates((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
             setRejectDrafts((current) => {
               const next = { ...current };
               delete next[key];
@@ -942,6 +1059,7 @@ const UnifiedResults: React.FC = () => {
       noteDrafts,
       dilutionDrafts,
       referralDrafts,
+      referenceLabReportDates,
       rejectDrafts,
       interpretationDrafts,
       rowStates,
@@ -1001,6 +1119,11 @@ const UnifiedResults: React.FC = () => {
     <>
       <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {loading && (
+        <Loading
+          description={intl.formatMessage({ id: "label.results.loading" })}
+        />
+      )}
       <Grid fullWidth className="unifiedResultsPage">
         <Column lg={16} md={8} sm={4}>
           <Section>
@@ -1215,6 +1338,7 @@ const UnifiedResults: React.FC = () => {
         )}
 
         <Column lg={16} md={8} sm={4}>
+          {arrows.show && <ServerPageArrows {...arrows} />}
           <TableContainer>
             {/* The expanded panel renders a second table (History) inside this
                 one, so naming the outer table is what tells a screen-reader
@@ -1267,6 +1391,7 @@ const UnifiedResults: React.FC = () => {
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   const isExpanded = expandedRowKey === key;
+                  const flag = resultFlagFor(row);
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
@@ -1301,6 +1426,14 @@ const UnifiedResults: React.FC = () => {
                         </TableCell>
                         <TableCell className="unifiedTestCell">
                           {row.testName}
+                          {/* Whoever types in a value phoned through by the
+                              reference laboratory reads this row, not the
+                              expanded panel, so the tag belongs here too. */}
+                          {row.referredOut && (
+                            <Tag type="cyan" size="sm">
+                              <FormattedMessage id="label.results.referredOut" />
+                            </Tag>
+                          )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
                           {methods.find((m) => m.id === row.testMethod)
@@ -1331,7 +1464,7 @@ const UnifiedResults: React.FC = () => {
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
                         </TableCell>
                         <TableCell className="unifiedResultsValueCell">
-                          <span className={accentClass(row.resultFlag)}>
+                          <span className={accentClass(flag)}>
                             <PolymorphicResultCell
                               row={row}
                               editable={isRowEditable(state)}
@@ -1354,7 +1487,7 @@ const UnifiedResults: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <FlagChip flag={row.resultFlag} />
+                          <FlagChip flag={flag} />
                         </TableCell>
                         <TableCell>
                           {showEdit(state) && (
@@ -1398,6 +1531,7 @@ const UnifiedResults: React.FC = () => {
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}
                               analyzers={analyzers}
@@ -1450,6 +1584,12 @@ const UnifiedResults: React.FC = () => {
                               referralDraft={referralDrafts[key] || null}
                               onReferralDraftChange={(draft) =>
                                 handleReferralDraftChange(row, draft)
+                              }
+                              referenceLabReportDate={
+                                referenceLabReportDates[key] || ""
+                              }
+                              onReferenceLabReportDateChange={(value) =>
+                                handleReferenceLabReportDateChange(row, value)
                               }
                               rejectReasons={rejectReasons}
                               rejectDraft={rejectDrafts[key] || null}
@@ -1562,20 +1702,13 @@ const UnifiedResults: React.FC = () => {
             </Table>
           </TableContainer>
           <Pagination
-            page={page}
-            pageSize={pageSize}
-            pageSizes={[25, 50, 100]}
-            totalItems={filteredRows.length}
-            onChange={({
-              page: newPage,
-              pageSize: newPageSize,
-            }: {
-              page: number;
-              pageSize: number;
-            }) => {
-              setPage(newPage);
-              setPageSize(newPageSize);
-            }}
+            {...serverPaginationProps({
+              paging,
+              rowsOnPage: filteredRows.length,
+              pageSize: serverPageSize,
+              onPageRequest: loadWorklistPage,
+              intl,
+            })}
           />
         </Column>
       </Grid>

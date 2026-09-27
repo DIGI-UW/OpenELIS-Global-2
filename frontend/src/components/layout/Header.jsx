@@ -16,10 +16,10 @@ import HelpMenu from "./HelpMenu";
 import AdminSideNav from "../admin/AdminSideNav";
 import React, { createRef, useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation, useHistory } from "react-router-dom";
-import { useMenuAutoExpand } from "./useMenuAutoExpand";
+import ConfiguredSideNav from "./ConfiguredSideNav";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
+import "./ApplicationSideNav.scss";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
 import { languages as defaultLanguages } from "../../languages";
@@ -32,8 +32,6 @@ import {
   HeaderPanel,
   SideNav,
   SideNavItems,
-  SideNavMenu,
-  SideNavMenuItem,
   Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
@@ -51,7 +49,6 @@ function OEHeader({
   toggleNavPinned,
   toggleSideNav,
   closeSideNav,
-  storageKeyPrefix = "main",
   navContext = "main",
   showSideNav = true,
 }) {
@@ -67,8 +64,6 @@ function OEHeader({
   const headerPanelRef = createRef();
 
   const intl = useIntl();
-  const location = useLocation();
-  const history = useHistory();
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -76,12 +71,6 @@ function OEHeader({
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
-
-  // Auto-expand menu items based on current route
-  const autoExpandedMenus = useMenuAutoExpand(
-    menus["menu"],
-    `${storageKeyPrefix}ExpandedMap`,
-  );
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -307,296 +296,6 @@ function OEHeader({
     );
   };
 
-  /**
-   * Returns true if ANY child/grandchild matches currentPath.
-   *
-   * Important: Do NOT match the item itself here. Otherwise a parent item like
-   * /analyzers would be considered an "active child" for /analyzers/types.
-   */
-  const hasActiveDescendant = (item, currentPath) => {
-    const normalizePath = (url) => {
-      if (!url) return "";
-      const pathOnly = url.split(/[?#]/)[0] || "";
-      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
-        return pathOnly.slice(0, -1);
-      }
-      return pathOnly;
-    };
-
-    const isPathActive = (url) => {
-      const normalized = normalizePath(url);
-      if (!normalized) return false;
-      const exact = currentPath === normalized;
-      const prefix =
-        normalized.length > 1 && currentPath.startsWith(normalized + "/");
-      return exact || prefix;
-    };
-
-    const result = item.childMenus?.some(
-      (child) =>
-        isPathActive(child.menu.actionURL) ||
-        hasActiveDescendant(child, currentPath),
-    );
-    return result;
-  };
-
-  /**
-   * Check if a menu item has siblings with paths that start with its own path.
-   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/types).
-   */
-  const hasSiblingWithLongerPath = (menuItem, parentMenuItems) => {
-    if (!parentMenuItems || !menuItem.menu.actionURL) return false;
-    const normalizePath = (url) => {
-      if (!url) return "";
-      const pathOnly = url.split(/[?#]/)[0] || "";
-      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
-        return pathOnly.slice(0, -1);
-      }
-      return pathOnly;
-    };
-    const itemPath = normalizePath(menuItem.menu.actionURL);
-    if (!itemPath) return false;
-    return parentMenuItems.some(
-      (sibling) =>
-        sibling !== menuItem &&
-        sibling.menu.actionURL &&
-        normalizePath(sibling.menu.actionURL).startsWith(itemPath + "/"),
-    );
-  };
-
-  const generateMenuItems = (
-    menuItem,
-    index,
-    level,
-    path,
-    parentMenuItems = null,
-  ) => {
-    // Skip inactive menu items
-    if (!menuItem.menu.isActive) {
-      return (
-        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
-      );
-    }
-
-    // OGC-1020 (R1): the unified /Results worklist consolidates the legacy
-    // result-entry pages behind the results.entry.unifiedRoute site flag —
-    // show exactly one of the two menu shapes, never both.
-    const unifiedResultsOn =
-      configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE === "true";
-    const legacyResultEntryItems = [
-      "menu_results_logbook",
-      "menu_results_patient",
-      "menu_results_accession",
-      "menu_results_range",
-      "menu_results_status",
-    ];
-    if (
-      (menuItem.menu.elementId === "menu_results_unified" &&
-        !unifiedResultsOn) ||
-      (legacyResultEntryItems.includes(menuItem.menu.elementId) &&
-        unifiedResultsOn)
-    ) {
-      return (
-        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
-      );
-    }
-
-    // URL matching helpers
-    // Normalize to ignore query/hash to fix cases like /WorkPlanByTest?type=test
-    const normalizePath = (url) => {
-      if (!url) return "";
-      const pathOnly = url.split(/[?#]/)[0] || "";
-      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
-        return pathOnly.slice(0, -1);
-      }
-      return pathOnly;
-    };
-
-    // The app serves the dashboard at both "/" and "/Dashboard"
-    const currentPath =
-      location.pathname === "/"
-        ? "/Dashboard"
-        : normalizePath(location.pathname);
-    const actionPath = normalizePath(menuItem.menu.actionURL);
-    const itemId = menuItem.menu.elementId || "unknown";
-
-    const exactMatch = actionPath && currentPath === actionPath;
-    const prefixMatch =
-      actionPath &&
-      actionPath.length > 1 &&
-      currentPath.startsWith(actionPath + "/");
-    const hasChildren = menuItem.childMenus.length > 0;
-
-    // Check if this menu item has siblings with paths that start with its own path.
-    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/types).
-    const hasSiblingConflict = hasChildren
-      ? false // Parent items don't need this check
-      : hasSiblingWithLongerPath(menuItem, parentMenuItems);
-
-    // Check if the current URL has query parameters and this menu item's normalized path matches.
-    // If so, we need to compare full URLs (including query params) to avoid conflicts where
-    // multiple menu items map to the same route with different query params
-    // (e.g., /SampleEdit?type=readonly vs /SampleEdit?type=readwrite).
-    // Note: We check this for ALL menu items with matching normalized paths, not just siblings,
-    // because items in different branches (like "View" under "Study" vs "Edit Order" under "Order")
-    // can still conflict.
-    const currentHasQueryParams = location.search && location.search.length > 0;
-    const needsFullUrlComparison =
-      !hasChildren &&
-      currentHasQueryParams &&
-      exactMatch &&
-      menuItem.menu.actionURL &&
-      menuItem.menu.actionURL.includes("?");
-
-    // Active rule:
-    // - Parent items: exact match only
-    // - Leaf items with query param conflicts: exact match AND full URL match (including query params)
-    // - Leaf items with prefix-conflict siblings: exact match only
-    // - Other leaf items: exact OR prefix match
-    let isLeafActive;
-    if (hasChildren) {
-      // Parent items: exact match only
-      isLeafActive = !!actionPath && exactMatch;
-    } else if (needsFullUrlComparison) {
-      // When the current URL has query params and this menu item's actionURL also has query params,
-      // compare full URLs to ensure only the exact match is active
-      // This handles cases like /SampleEdit?type=readonly vs /SampleEdit?type=readwrite
-      const currentFullUrl = location.pathname + location.search;
-      const actionFullUrl = menuItem.menu.actionURL || "";
-      // Normalize both by removing trailing slashes for comparison
-      const normalizeUrl = (url) => {
-        if (!url) return "";
-        const trimmed = url.trim();
-        return trimmed.endsWith("/") && trimmed.length > 1
-          ? trimmed.slice(0, -1)
-          : trimmed;
-      };
-      const currentNormalized = normalizeUrl(currentFullUrl);
-      const actionNormalized = normalizeUrl(actionFullUrl);
-      isLeafActive = currentNormalized === actionNormalized;
-    } else {
-      // Normal case: exact or prefix match (if no sibling conflicts)
-      isLeafActive =
-        !!actionPath && (exactMatch || (!hasSiblingConflict && prefixMatch));
-    }
-
-    // Handler for label click - navigate (leaf items only)
-    const handleLabelClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (hasChildren) {
-        return; // parent handled by SideNavMenu toggle
-      }
-
-      if (menuItem.menu.actionURL) {
-        // Internal SPA routes (path starts with "/") always use history.push,
-        // even when the menu row was seeded with new_window=true. The flag
-        // only fires window.open() for true external URLs (http(s)://, mailto:, etc.).
-        const isInternalUrl = menuItem.menu.actionURL.startsWith("/");
-        if (menuItem.menu.openInNewWindow && !isInternalUrl) {
-          // noopener,noreferrer prevents reverse-tabnabbing — the new tab
-          // can't navigate this app's window via window.opener.
-          window.open(menuItem.menu.actionURL, "_blank", "noopener,noreferrer");
-        } else {
-          history.push(menuItem.menu.actionURL);
-        }
-      }
-    };
-
-    const hasActiveChild = hasActiveDescendant(menuItem, currentPath);
-
-    // Parent with children: use Carbon SideNavMenu; on expand, optionally navigate to first child
-    if (hasChildren) {
-      // CRITICAL FIX: Only mark parent menu items as active if they themselves match the path exactly.
-      // Do NOT mark them as active just because they have active children - this causes Carbon to
-      // apply active styles to ALL submenu buttons, not just the active one.
-      // Instead, use expanded state to show which parent has active children.
-      const carbonIsActive = isLeafActive; // Only true if this parent item's own path matches
-      // Use controlled expanded prop instead of defaultExpanded to ensure proper collapse behavior
-      const carbonExpanded = !!menuItem.expanded || hasActiveChild;
-      return (
-        <SideNavMenu
-          key={itemId}
-          ref={(button) => {
-            if (button) {
-              button.id = menuItem.menu.elementId;
-              button.dataset.cy = menuItem.menu.elementId?.replace(
-                /[^\w\s]/gi,
-                "_",
-              );
-            }
-          }}
-          title={intl.formatMessage({
-            id: menuItem.menu.displayKey,
-            defaultMessage: menuItem.menu.displayKey,
-          })}
-          defaultExpanded={carbonExpanded}
-          isActive={carbonIsActive}
-          className={
-            level === 0
-              ? "top-level-menu-item"
-              : "reduced-padding-nav-menu-item"
-          }
-        >
-          {menuItem.childMenus.map((childMenuItem, childIndex) => {
-            return generateMenuItems(
-              childMenuItem,
-              childIndex,
-              level + 1,
-              path + ".childMenus[" + childIndex + "]",
-              menuItem.childMenus, // Pass parent's children for sibling check
-            );
-          })}
-        </SideNavMenu>
-      );
-    }
-
-    return (
-      <SideNavMenuItem
-        key={itemId}
-        id={menuItem.menu.elementId + "_nav"}
-        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-        className={
-          level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"
-        }
-        isActive={isLeafActive}
-        href={menuItem.menu.actionURL || undefined}
-        target={
-          menuItem.menu.openInNewWindow &&
-          !menuItem.menu.actionURL?.startsWith("/")
-            ? "_blank"
-            : undefined
-        }
-        rel={
-          menuItem.menu.openInNewWindow &&
-          !menuItem.menu.actionURL?.startsWith("/")
-            ? "noreferrer"
-            : undefined
-        }
-        onClick={handleLabelClick}
-        aria-current={isLeafActive ? "page" : undefined}
-        style={level === 0 ? undefined : { width: "100%" }}
-      >
-        <span
-          id={menuItem.menu.elementId}
-          style={{
-            display: "flex",
-            width: "100%",
-            marginLeft: level === 0 ? 0 : `${(level - 1) * 0.5}rem`,
-          }}
-        >
-          <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
-            <FormattedMessage
-              id={menuItem.menu.displayKey}
-              defaultMessage={menuItem.menu.displayKey}
-            />
-          </span>
-        </span>
-      </SideNavMenuItem>
-    );
-  };
-
   return (
     <>
       <div className="container">
@@ -806,12 +505,10 @@ function OEHeader({
               </ul>
             </HeaderPanel>
             {userSessionDetails.authenticated && showSideNav && (
-              <>
+              <Theme theme="white">
                 <SideNav
                   aria-label="Side navigation"
-                  className={
-                    navContext === "admin" ? "admin-shell-side-nav" : undefined
-                  }
+                  className={`application-side-nav${navContext === "admin" ? " admin-shell-side-nav" : ""}`}
                   expanded={navOpen}
                   // Pinned desktop: always-rendered fixed nav;
                   // unpinned desktop + small viewports: overlay drawer
@@ -849,19 +546,17 @@ function OEHeader({
                     />
                   ) : (
                     <SideNavItems>
-                      {autoExpandedMenus.map((childMenuItem, index) => {
-                        return generateMenuItems(
-                          childMenuItem,
-                          index,
-                          0,
-                          "$.menu[" + index + "]",
-                          null, // Top level items have no parent siblings
-                        );
-                      })}
+                      <ConfiguredSideNav
+                        menus={menus.menu}
+                        unifiedResultsOn={
+                          configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE ===
+                          "true"
+                        }
+                      />
                     </SideNavItems>
                   )}
                 </SideNav>
-              </>
+              </Theme>
             )}
           </Header>
           {userSessionDetails.authenticated && (

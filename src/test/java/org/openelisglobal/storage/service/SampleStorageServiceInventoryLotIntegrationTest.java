@@ -15,6 +15,7 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -378,6 +379,190 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
                     ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 assertEquals("fk_assignment_inventory_lot must carry ON DELETE CASCADE", 0, rs.getInt(1));
+            }
+        }
+    }
+
+    @Test
+    public void releaseInventoryLotLocation_freesTheSlotAndKeepsTheAssignmentForAudit() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+        assertEquals("Box should read as occupied before release", 1,
+                sampleStorageAssignmentDAO.countByLocationTypeAndId("box", Integer.valueOf(BOX)));
+
+        Map<String, Object> result = sampleStorageService.releaseInventoryLotLocation(LOT_1, "Disposal: expired", "1");
+
+        // The slot is free again: occupancy filters on locationType/locationId.
+        assertEquals("Box should be empty after release", 0,
+                sampleStorageAssignmentDAO.countByLocationTypeAndId("box", Integer.valueOf(BOX)));
+
+        // The row survives for the audit trail, with its location cleared.
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNotNull("Assignment row should be kept for audit", assignment);
+        assertNull(assignment.getLocationId());
+        assertNull(assignment.getLocationType());
+        assertNull(assignment.getPositionCoordinate());
+
+        assertNotNull("Should report where the lot used to be", result.get("previousLocation"));
+
+        SampleStorageMovement release = sampleStorageMovementDAO.findByInventoryLotId(7000L).stream()
+                .filter(m -> m.getNewLocationType() == null).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a release movement"));
+        assertEquals(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT, release.getOccupantType());
+        assertEquals("box", release.getPreviousLocationType());
+        assertEquals("Disposal: expired", release.getReason());
+    }
+
+    @Test
+    public void releaseInventoryLotLocation_isANoOpForAnUnassignedLot() {
+        Map<String, Object> result = sampleStorageService.releaseInventoryLotLocation(LOT_2, "Disposal", "1");
+
+        assertTrue("Nothing to release should return an empty result", result.isEmpty());
+        assertTrue("No movement should be written", sampleStorageMovementDAO.findByInventoryLotId(7001L).isEmpty());
+    }
+
+    @Test
+    public void updateInventoryLotAssignmentMetadata_editsPositionAndNotesWithoutMoving() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        Map<String, Object> result = sampleStorageService.updateInventoryLotAssignmentMetadata(LOT_1, "B2",
+                "shifted within the box");
+
+        assertEquals("B2", result.get("positionCoordinate"));
+        assertEquals("shifted within the box", result.get("notes"));
+
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertEquals("B2", assignment.getPositionCoordinate());
+        assertEquals("Container must not change", "box", assignment.getLocationType());
+        assertEquals(Integer.valueOf(BOX), assignment.getLocationId());
+
+        // Editing in place is not a move, so it writes no movement row.
+        assertEquals("Only the initial assignment movement", 1,
+                sampleStorageMovementDAO.findByInventoryLotId(7000L).size());
+    }
+
+    @Test
+    public void updateInventoryLotAssignmentMetadata_blankClearsAndNullLeavesAlone() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "keep me", "1");
+
+        sampleStorageService.updateInventoryLotAssignmentMetadata(LOT_1, "", null);
+
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNull("Blank coordinate should clear it", assignment.getPositionCoordinate());
+        assertEquals("Null notes should leave the existing value", "keep me", assignment.getNotes());
+    }
+
+    @Test
+    public void updateInventoryLotAssignmentMetadata_throwsWhenLotHasNoAssignment() {
+        try {
+            sampleStorageService.updateInventoryLotAssignmentMetadata(LOT_2, "A1", null);
+            fail("Expected LIMSRuntimeException for a lot with no assignment");
+        } catch (LIMSRuntimeException expected) {
+            assertTrue(expected.getMessage().contains("No storage assignment"));
+        }
+    }
+
+    // The lots listing asks the DAO for lot rows, so its cost tracks lots not
+    // samples.
+    @Test
+    public void findByOccupantType_returnsTheLotAssignmentsAndNotTheSampleOnes() throws Exception {
+        executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
+        try {
+            sampleStorageService.assignSampleItemWithLocation("1002", "1000", "room", null, "sample occupant");
+            sampleStorageService.assignInventoryLotWithLocation(LOT_1, "1000", "room", null, "lot occupant", "1");
+
+            List<SampleStorageAssignment> sampleAssignments = sampleStorageAssignmentDAO
+                    .findByOccupantType(SampleStorageAssignment.OCCUPANT_SAMPLE_ITEM);
+            List<SampleStorageAssignment> lotAssignments = sampleStorageAssignmentDAO
+                    .findByOccupantType(SampleStorageAssignment.OCCUPANT_INVENTORY_LOT);
+
+            assertFalse("There must be sample assignments for the filter to exclude", sampleAssignments.isEmpty());
+            assertTrue("The lot assignment should be returned",
+                    lotAssignments.stream().anyMatch(a -> Long.valueOf(7000L).equals(a.getInventoryLotId())));
+            assertTrue("No sample assignment should be returned",
+                    lotAssignments.stream().allMatch(a -> a.getSampleItemId() == null));
+        } finally {
+            executeDataSetWithStateManagement("testdata/inventory-lot-storage-test-data.xml");
+        }
+    }
+
+    @Test
+    public void getAllInventoryLotsWithAssignments_listsLotsWithTheirResolvedLocation() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        List<Map<String, Object>> lots = sampleStorageService.getAllInventoryLotsWithAssignments();
+
+        Map<String, Object> row = lots.stream().filter(m -> Long.valueOf(7000L).equals(m.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected lot 7000 in the listing"));
+        assertNotNull(row.get("lotNumber"));
+        assertEquals("A1", row.get("positionCoordinate"));
+        assertFalse("Location should resolve to a path", row.get("location").toString().isEmpty());
+    }
+
+    // The listing is paged, so its order must not depend on where PostgreSQL
+    // happened to rewrite a row that was updated.
+    @Test
+    public void getAllInventoryLotsWithAssignments_listsTheHighestLotIdFirstAfterAnUpdate() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_2, BOX, "box", "B2", "second lot", "1");
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "first lot", "1");
+        sampleStorageService.updateInventoryLotAssignmentMetadata(LOT_2, "B3", null);
+
+        List<Object> ids = sampleStorageService.getAllInventoryLotsWithAssignments().stream().map(row -> row.get("id"))
+                .collect(Collectors.toList());
+
+        assertEquals("Highest lot id first, whatever the insert and update order", Arrays.asList(7001L, 7000L), ids);
+    }
+
+    @Test
+    public void getAllInventoryLotsWithAssignments_reportsAReleasedLotAsUnassigned() {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+        sampleStorageService.releaseInventoryLotLocation(LOT_1, "Disposal", "1");
+
+        List<Map<String, Object>> lots = sampleStorageService.getAllInventoryLotsWithAssignments();
+
+        Map<String, Object> row = lots.stream().filter(m -> Long.valueOf(7000L).equals(m.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Released lot should still be listed"));
+        assertEquals("Released lot has no location", "", row.get("location"));
+    }
+
+    @Test
+    public void disposeInventoryLot_disposesAndFreesTheSlot() throws SQLException {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        sampleStorageService.disposeInventoryLot(7000L, "expired", "bin 3", "1");
+
+        assertEquals("DISPOSED", lotStatus(7000L));
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNull("Disposal must free the slot", assignment.getLocationId());
+        List<SampleStorageMovement> movements = sampleStorageMovementDAO.findByInventoryLotId(7000L);
+        assertTrue("Disposal must leave a movement naming the reason",
+                movements.stream().anyMatch(m -> "Disposal: expired | Notes: bin 3".equals(m.getReason())));
+    }
+
+    @Test
+    public void disposeInventoryLot_rollsBackTheStatusWhenTheReleaseFails() throws SQLException {
+        sampleStorageService.assignInventoryLotWithLocation(LOT_1, BOX, "box", "A1", "initial", "1");
+
+        try {
+            // No such system_user, so only the movement insert in the release half fails.
+            sampleStorageService.disposeInventoryLot(7000L, "expired", null, "424242");
+            fail("Expected fk_movement_user to reject the movement row");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.toString().contains("ConstraintViolationException"));
+        }
+
+        assertEquals("A lot whose release failed must not stay DISPOSED", "ACTIVE", lotStatus(7000L));
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findByInventoryLotId(7000L);
+        assertNotNull("The lot must still occupy its box", assignment.getLocationId());
+    }
+
+    private String lotStatus(long lotId) throws SQLException {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement ps = conn
+                        .prepareStatement("SELECT status FROM clinlims.inventory_lot WHERE id = ?")) {
+            ps.setLong(1, lotId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getString(1);
             }
         }
     }

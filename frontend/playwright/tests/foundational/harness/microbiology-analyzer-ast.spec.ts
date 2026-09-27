@@ -128,18 +128,18 @@ test.describe("Microbiology analyzer AST review", () => {
     await page.goto("/Dashboard", {
       waitUntil: "domcontentloaded",
     });
-    const adminMenu = page.getByRole("button", { name: "Admin", exact: true });
+    // Admin opens its dashboard in one click, and the stuck analyzer events
+    // are one of its tiles, inside the admin shell.
+    const adminMenu = page.getByRole("link", { name: "Admin", exact: true });
     await expect(adminMenu).toBeVisible({ timeout: LONG_TIMEOUT });
     await adminMenu.click();
     await page
-      .getByRole("link", { name: "Stuck analyzer events", exact: true })
+      .getByTestId("admin-dashboard-tile")
+      .filter({ hasText: "Stuck analyzer events" })
       .click();
-    await page.waitForURL((url) => {
-      return (
-        url.pathname === "/AnalyzerResults" &&
-        url.searchParams.get("view") === "import-issues"
-      );
-    });
+    await page.waitForURL((url) =>
+      url.pathname.endsWith("/stuckAnalyzerEvents"),
+    );
 
     await expect(
       page.getByRole("heading", { name: "Analyzer import issues" }),

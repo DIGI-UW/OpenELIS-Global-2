@@ -92,3 +92,34 @@ export class SiteInformationPage {
     return (await valueCell.textContent()) || "";
   }
 }
+
+/**
+ * Which admin menu each boolean setting is edited on: the unified-route flag
+ * lives in the result configuration domain, the e-signature flag in site
+ * identity.
+ */
+const SETTING_MENU: Record<string, SettingsMenu> = {
+  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
+  electronicSignatureEnabled: "SiteInformationMenu",
+};
+
+/** Read a boolean site_information setting off its admin menu. */
+export async function isSettingOn(
+  page: Page,
+  setting: string,
+): Promise<boolean> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  return /true/i.test(await menu.getSettingValue(setting));
+}
+
+/** Set a boolean site_information setting through its admin menu. */
+export async function setSetting(
+  page: Page,
+  setting: string,
+  on: boolean,
+): Promise<void> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  await menu.setBooleanSetting(setting, on);
+}

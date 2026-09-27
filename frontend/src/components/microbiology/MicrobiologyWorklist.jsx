@@ -1147,7 +1147,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                             kind="ghost"
                             size="sm"
                             renderIcon={Launch}
-                            onClick={() => history.push("/analyzers/qc/db")}
+                            onClick={() => history.push("/qa/qc/dashboard")}
                           >
                             {intl.formatMessage({
                               id: "microbiology.worklist.qcDashboard",

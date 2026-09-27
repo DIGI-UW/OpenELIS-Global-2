@@ -18,9 +18,12 @@
             <column name="SYS_USER_ID" precision="10" scale="0"
                 not-null="true" />
         </property>
-        <!-- Polymorphic references include both legacy numeric IDs and UUIDs. -->
-        <property name="referenceId" type="java.lang.String">
-            <column name="REFERENCE_ID" length="255" not-null="true" />
+        <property name="referenceId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="REFERENCE_ID" precision="22" scale="0" />
+        </property>
+        <property name="referenceKey" type="java.lang.String">
+            <column name="REFERENCE_KEY" length="64" />
         </property>
         <property name="referenceTable"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">

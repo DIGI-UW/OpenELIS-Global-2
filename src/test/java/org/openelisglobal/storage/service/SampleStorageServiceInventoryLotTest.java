@@ -153,6 +153,13 @@ public class SampleStorageServiceInventoryLotTest {
         verify(sampleStorageAssignmentDAO, times(1)).insert(any(SampleStorageAssignment.class));
     }
 
+    @Test(expected = LIMSRuntimeException.class)
+    public void releaseInventoryLotLocation_rejectsANonNumericActingUser() {
+        when(sampleStorageAssignmentDAO.findByInventoryLotId(42L)).thenReturn(existingAssignment(7, "room", null));
+
+        sampleStorageService.releaseInventoryLotLocation("42", "disposal", "not-a-number");
+    }
+
     @Test
     public void getInventoryLotLocation_returnsEmptyMapWhenUnassigned() {
         when(sampleStorageAssignmentDAO.findByInventoryLotId(42L)).thenReturn(null);

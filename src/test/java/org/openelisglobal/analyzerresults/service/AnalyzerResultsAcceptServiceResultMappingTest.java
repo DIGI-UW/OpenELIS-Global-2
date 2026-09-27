@@ -9,7 +9,6 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
-import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -23,8 +22,7 @@ public class AnalyzerResultsAcceptServiceResultMappingTest {
     @Before
     public void setUp() {
         testResultService = mock(TestResultService.class);
-        service = new AnalyzerResultsAcceptServiceImpl(mock(TypeOfSampleService.class),
-                mock(ConfigurationProperties.class));
+        service = new AnalyzerResultsAcceptServiceImpl(mock(TypeOfSampleService.class));
         ReflectionTestUtils.setField(service, "testResultService", testResultService);
     }
 

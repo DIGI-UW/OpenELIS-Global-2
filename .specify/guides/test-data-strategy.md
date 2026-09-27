@@ -1,63 +1,54 @@
 # Test Data Strategy Guide
 
-Choose setup and cleanup according to the behavior and boundary under test.
-The shared sources are the existing test code, `BaseWebContextSensitiveTest`,
-`BaseTestConfig`, and the registered browser projects.
+**Audience**: AI Agents and Human Developers  
+**Purpose**: Define the canonical test data/fixture approach across unit,
+integration, and E2E tests in OpenELIS Global 2.
 
-## Unit and component tests
+## Canonical sources of truth
 
-Use in-memory objects or existing builders. Mock collaborators outside the
-behavior being tested. A component test with mocked backend responses does not
-prove persistence or an end-to-end workflow.
+- **Unified fixture loader (canonical entry point)**:
+  - Script: `src/test/resources/load-test-fixtures.sh`
+    (`--profile=core|harness`)
+  - Overview: `src/test/resources/FIXTURE_LOADER_README.md`
+- **DBUnit datasets** (for DB-backed tests and E2E baseline data):
+  - Location: `src/test/resources/testdata/*.xml`
+  - Loader: `org.openelisglobal.testutils.DbUnitFixtureLoader` (invoked by
+    `load-test-fixtures.sh`)
 
-## Backend database integration tests
+## Principles
 
-Create only the initial state the test needs, using owned records and real
-services where appropriate. Existing DBUnit XML under
-`src/test/resources/testdata/` may be loaded through
-`executeDataSetWithStateManagement("testdata/<file>.xml")`. Exercise the real
-internal services and DAOs for the behavior under test; inspect `AppTestConfig`
-for substitutions that would weaken that claim.
+- **Prefer real data paths**: If you are validating persistence/integration
+  behavior, use real backend + DB fixtures rather than stubbing network
+  responses.
+- **Separate “fixtures” from “test-created” data**:
+  - Fixtures: stable baseline rows required for many tests.
+  - Test-created: rows created during a test run; must be cleaned up (or created
+    with safe prefixes/ID ranges).
+- **Use the same baseline across test types**:
+  - Manual testing, Cypress E2E, and backend integration tests should share the
+    same fixture loader where possible.
 
-- The shared base defaults to `Propagation.NOT_SUPPORTED`. Add explicit Spring
-  `@Transactional` for tests whose setup and assertions can share a rollback
-  transaction.
-- Fixture loading and `cleanRowsInCurrentConnection` join an active Spring
-  transaction. Without one, each operation owns an atomic committed operation.
-- Truncation uses `RESTART IDENTITY CASCADE`. It can affect dependent tables not
-  listed in the XML; a fixture file is not a complete cleanup boundary.
-- Commit-time behavior, concurrency, and independent connections require
-  committed setup. Name the data and affected tables the test owns, clean up
-  after failures as well as success, and do not run destructive fixture loaders
-  concurrently against shared tables.
-- Follow the helper's protected seed and cache lifecycle. Consult the current
-  `PROTECTED_SEED_TABLES` and explicit sequence mappings rather than assuming
-  every table/sequence is restored automatically.
-- Flush and clear the persistence context before database rereads where needed
-  to distinguish persisted state from cached entities. Check exact changed
-  fields, required history, and relevant negative outcomes.
+## When to use what
 
-A fixture reset before a test is not evidence that the test cleans up afterward.
+- **Unit tests**:
 
-## Browser and manual testing
+  - Use builders/factories (in-memory objects).
+  - Mock external dependencies as needed.
 
-Start the local worktree environment with `scripts/dev-stack up`. Feature setup
-uses property-gated application scenario services and supported application
-APIs. Export `scripts/dev-stack env` before invoking frontend Playwright scripts,
-or use `scripts/dev-stack playwright` with one registered project/spec.
+- **Backend integration tests**:
 
-Existing CI jobs still call `src/test/resources/load-test-fixtures.sh`; this is
-CI infrastructure, not a universal local feature-setup command. Do not copy its
-SQL reset path into new tests or local setup instructions.
+  - Prefer DBUnit datasets for setup and deterministic cleanup via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`.
+  - If inserting rows outside DBUnit, perform targeted cleanup in `@After`.
 
-Use Playwright for new end-to-end tests and maintain existing Cypress tests as
-needed. Keep the real backend and database for end-to-end claims. Choose setup
-that follows the registered project's rules: demo scenarios have stricter
-UI-only constraints than foundational tests. See
-[`frontend/playwright/README.md`](../../frontend/playwright/README.md).
+- **Cypress E2E tests**:
+  - Prefer the unified fixture loader via `cy.loadStorageFixtures()` (see
+    `e2e-fixtures-readme.md`).
+  - Prefer API-based setup (`cy.request()`) for per-test setup that must be
+    unique.
 
-## Related guidance
+## Related docs
 
-- [Testing Roadmap](testing-roadmap.md)
-- [Backend Testing Best Practices](backend-testing-best-practices.md)
-- [Playwright Best Practices](playwright-best-practices.md)
+- `.specify/guides/testing-roadmap.md` (authoritative testing guide)
+- `.specify/guides/e2e-fixtures-readme.md` (Cypress fixture usage quick
+  reference)

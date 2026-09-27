@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   Column,
+  DefinitionTooltip,
   Grid,
   InlineNotification,
   Modal,
@@ -24,6 +25,11 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
@@ -32,6 +38,7 @@ import {
   LANE_CLEAR,
   bulkOutcomeKey,
   bulkReleaseRequest,
+  bulkUnavailableReasons,
   clearRows,
   countByFilter,
   filterTriaged,
@@ -89,8 +96,6 @@ const Validation = (props) => {
     return "on-time";
   };
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -121,6 +126,10 @@ const Validation = (props) => {
   const visibleRows = filterTriaged(triaged, activeFilter).map(
     (item) => item.row,
   );
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
@@ -129,6 +138,48 @@ const Validation = (props) => {
   // OGC-1029 (FR-B4): the whole bulk capability is an admin switch.
   const bulkAllowed =
     configurationProperties?.ALLOW_BULK_RELEASE_CLEAR === "true";
+  // OGC-1226 (FR-13): a disabled bulk button always says why, next to itself.
+  const bulkReasons = bulkUnavailableReasons(triaged, { bulkAllowed });
+
+  const signalName = (key) =>
+    intl.formatMessage({
+      id:
+        key === "abnormal"
+          ? "label.validation.filter.abnormal"
+          : `label.validation.signal.${key}`,
+    });
+
+  const bulkReasonText = (reason) => {
+    switch (reason.key) {
+      case "bulkDisabled":
+        return intl.formatMessage({ id: "label.validation.bulk.disabled" });
+      case "queueEmpty":
+        return intl.formatMessage({
+          id: "label.validation.emptyState.queueEmpty",
+        });
+      case "noReference":
+        return `${intl.formatMessage(
+          { id: "label.validation.emptyState.noReference" },
+          { count: reason.count },
+        )} ${intl.formatMessage({
+          id: "label.validation.emptyState.noReferenceHint",
+        })}`;
+      case "signals":
+      default: {
+        const lead = intl.formatMessage(
+          { id: "label.validation.emptyState.signals" },
+          { count: reason.count },
+        );
+        if (!reason.dominant || reason.dominant.length === 0) {
+          return lead;
+        }
+        return `${lead} ${intl.formatMessage(
+          { id: "label.validation.emptyState.signalsDetail" },
+          { signals: reason.dominant.map(signalName).join(", ") },
+        )}`;
+      }
+    }
+  };
 
   useEffect(() => {
     componentMounted.current = true;
@@ -206,11 +257,10 @@ const Validation = (props) => {
    * batch that has now been released.
    */
   const refreshQueue = () => {
-    setPage(1);
     setExpandedRowIds([]);
     setQcAckChecked(false);
     setQcJustification("");
-    props.refreshResults?.();
+    props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
   };
 
   /**
@@ -291,15 +341,6 @@ const Validation = (props) => {
       setNotificationVisible(true);
       // Re-throw so ESignatureButton aborts the ceremony.
       throw error;
-    }
-  };
-
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
     }
   };
 
@@ -486,6 +527,24 @@ const Validation = (props) => {
                 />
               </picture>
             )}
+            {/* OGC-1147: a control covering this result failed. A tag rather
+                than another icon — the reason has to be readable, or a tech clears
+                the hold out of confusion and the safety argument evaporates.
+                DefinitionTooltip, not a title prop: Carbon's Tag swallows title
+                and renders its own wrapper, so the reason never showed. */}
+            {row.qcHold && (
+              <DefinitionTooltip
+                definition={intl.formatMessage({
+                  id: "validation.qcHold.tooltip",
+                })}
+                align="bottom"
+                openOnHover
+              >
+                <Tag type="red" size="sm">
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+              </DefinitionTooltip>
+            )}
           </>
         );
       case "testName": {
@@ -494,6 +553,13 @@ const Validation = (props) => {
           <div className="sampleInfo" data-testid="sampleInfo">
             <br></br>
             {testName}
+            {/* Releasing a reference laboratory's result is a different
+                decision from releasing this laboratory's own bench work. */}
+            {row.referredOut && (
+              <Tag type="cyan" size="sm">
+                <FormattedMessage id="label.results.referredOut" />
+              </Tag>
+            )}
             {unitsOnly && (
               <>
                 <br></br>
@@ -640,7 +706,12 @@ const Validation = (props) => {
                 style={{ padding: "2px", ...holdingStyle }}
                 data-testid={`validation-result-${row.id}`}
               >
-                {row.result}
+                <span
+                  style={{ whiteSpace: "nowrap" }}
+                  data-testid={`validation-result-value-${row.id}`}
+                >
+                  {row.result}
+                </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
             );
@@ -653,23 +724,39 @@ const Validation = (props) => {
     return row.result;
   };
 
+  const hasRows = props.results?.resultList?.length > 0;
+  // OGC-1226 (FR-13, FR-14c): after a search the bulk button stays on screen even
+  // over an empty queue, disabled, so its explanation has somewhere to attach.
+  const showBulkBar = hasRows || props.results?.searched === true;
+
   return (
     <>
-      {props.results?.resultList?.length > 0 && (
+      {showBulkBar && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
-            <picture>
-              <img
-                src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                alt="nonconforming"
-                width="25" // Set your desired width
-                height="20" // Set your desired height
-              />
-            </picture>
-            <b>
-              {" "}
-              <FormattedMessage id="validation.label.nonconform" />
-            </b>
+            {hasRows && (
+              <>
+                <picture>
+                  <img
+                    src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                    alt="nonconforming"
+                    width="25" // Set your desired width
+                    height="20" // Set your desired height
+                  />
+                </picture>
+                <b>
+                  {" "}
+                  <FormattedMessage id="validation.label.nonconform" />
+                </b>
+                <Tag type="red" size="sm" style={{ marginLeft: "1rem" }}>
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+                <b>
+                  {" "}
+                  <FormattedMessage id="validation.legend.qcHold" />
+                </b>
+              </>
+            )}
           </Column>
           <Column
             lg={9}
@@ -677,30 +764,37 @@ const Validation = (props) => {
             sm={4}
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: "0.5rem",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "0.25rem",
             }}
           >
-            {bulkAllowed ? (
-              <Button
-                size="sm"
-                data-testid="release-all-clear"
-                disabled={clearLaneRows.length === 0 || bulkBusy}
-                onClick={() => setBulkOpen(true)}
-              >
-                {intl.formatMessage(
-                  { id: "label.validation.bulk.releaseAllClear" },
-                  { count: clearLaneRows.length },
-                )}
-              </Button>
-            ) : (
-              <span
+            <Button
+              size="sm"
+              data-testid="release-all-clear"
+              disabled={!bulkAllowed || clearLaneRows.length === 0 || bulkBusy}
+              onClick={() => setBulkOpen(true)}
+            >
+              {intl.formatMessage(
+                { id: "label.validation.bulk.releaseAllClear" },
+                { count: clearLaneRows.length },
+              )}
+            </Button>
+            {bulkReasons.length > 0 && (
+              <div
                 className="cds--label"
-                data-testid="release-all-clear-disabled"
+                data-testid="release-all-clear-why"
+                style={{ textAlign: "right", maxWidth: "40rem" }}
               >
-                {intl.formatMessage({ id: "label.validation.bulk.disabled" })}
-              </span>
+                {bulkReasons.map((reason) => (
+                  <div
+                    key={reason.key}
+                    data-testid={`release-all-clear-why-${reason.key}`}
+                  >
+                    {bulkReasonText(reason)}
+                  </div>
+                ))}
+              </div>
             )}
           </Column>
         </Grid>
@@ -721,6 +815,9 @@ const Validation = (props) => {
                 { id: "label.validation.bulk.body" },
                 { count: clearLaneRows.length },
               )}
+            </p>
+            <p data-testid="release-all-clear-scope">
+              {intl.formatMessage({ id: "label.validation.release.scope" })}
             </p>
             <table
               className="cds--data-table cds--data-table--sm"
@@ -833,10 +930,7 @@ const Validation = (props) => {
               kind={activeFilter === filter ? "primary" : "tertiary"}
               aria-pressed={activeFilter === filter}
               data-testid={`triage-filter-${filter}`}
-              onClick={() => {
-                setActiveFilter(filter);
-                setPage(1);
-              }}
+              onClick={() => setActiveFilter(filter)}
             >
               {intl.formatMessage({ id: `label.validation.filter.${filter}` })}{" "}
               ({filterCounts[filter]})
@@ -883,8 +977,9 @@ const Validation = (props) => {
       <>
         <>
           <>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
+              data={visibleRows}
               columns={columns}
               isSortable
               expandableRows
@@ -914,43 +1009,13 @@ const Validation = (props) => {
               }}
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={visibleRows.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: visibleRows.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
             {qcAckRequired && (

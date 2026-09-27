@@ -19,6 +19,7 @@ import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
+import ProviderTitleMenu from "./providerTitle/ProviderTitleMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
@@ -83,6 +84,7 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
 function Admin() {
@@ -104,6 +106,10 @@ function Admin() {
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
+        path={`${path}/stuckAnalyzerEvents`}
+        render={() => <StuckAnalyzerEvents basePath={path} />}
+      />
+      <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}
       />
@@ -120,8 +126,12 @@ function Admin() {
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
+      {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
+          and deep links survive; /programV2 was its pre-release alias. */}
+      <Redirect from={`${path}/programV2`} to={`${path}/program`} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
+      <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
       <Redirect

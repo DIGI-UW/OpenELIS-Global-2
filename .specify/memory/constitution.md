@@ -1,6 +1,38 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Branch strategy: main and release branches
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.1 → 1.11.2
+Change Type: PATCH - Correct the description of the primary branches
+Date: 2026-09-25
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * `main` was described as "Production releases only (reviewers backport
+      from develop)". It now holds the latest release and changes only
+      through a reviewed release pull request from a release branch, merged
+      with a merge commit; each release is tagged on `main`.
+    * Added `release/<X.Y>.x` branches, which receive fixes cherry-picked from
+      `develop`.
+  - Pull Request Requirements > Target Branch
+    * Hotfixes also target `develop`; released lines receive them by
+      cherry-pick onto their release branch.
+
+Rationale:
+  No `main` branch existed when the old text was written, and releases were
+  tagged on `develop`. `master` was renamed to `main` and set to release
+  3.2.3.0 on 2026-09-25. RELEASES.md is the operational reference.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - branch strategy and target branch corrected in this change
+  ✅ SECURITY.md, PULL_REQUEST_TIPS.md - same correction
+
+Follow-up TODOs:
+  - None.
+-->
+
+<!--
 SYNC IMPACT REPORT - Frontend tech stack: data fetching
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.11.0 → 1.11.1
@@ -821,7 +853,7 @@ MUST adhere to the standards and procedures outlined in the authoritative
 **Core Requirements**:
 
 - **TDD Workflow**: Red-Green-Refactor cycle is mandatory for complex logic
-- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Vitest)
+- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Jest)
 - **Checkpoint Validations**: Tests must pass at each SDD phase checkpoint (per
   Spec-Driven Development workflow)
 - **Test Data Management**: Use builders/factories, NOT hardcoded values
@@ -830,15 +862,13 @@ MUST adhere to the standards and procedures outlined in the authoritative
 
 - Backend: `src/test/java/org/openelisglobal/{module}/`
 - Frontend: `frontend/src/components/{feature}/*.test.js`
-- E2E: `frontend/playwright/tests/{feature}.spec.ts` for new coverage;
-  `frontend/cypress/e2e/{feature}.cy.js` for existing Cypress coverage
+- E2E: `frontend/cypress/e2e/{feature}.cy.js`
 
 **CI/CD Gates**:
 
 - `mvn spotless:check` (code formatting)
 - `mvn clean install` (build + unit tests)
-- Applicable Playwright and existing Cypress checks from the current CI workflows
-  (local commands and project selection: `.specify/guides/testing-roadmap.md`)
+- `npm run cy:run` (E2E tests)
 - All must pass before merge to `develop`
 
 **Rationale**: Healthcare software failures impact patient care. Automated
@@ -884,7 +914,7 @@ seconds rather than at deployment.
 1. Unit Tests (Mockito mocked) - Business logic validation
 2. ORM Validation Tests - Framework configuration validation
 3. Integration Tests (with database) - Full stack validation
-4. E2E Tests (Playwright; existing Cypress maintained) - User workflow validation
+4. E2E Tests (Cypress) - User workflow validation
 ```
 
 **Example** (Hibernate with annotations):
@@ -1530,8 +1560,14 @@ naming conventions and milestone workflow.
 
 **Primary Branches**:
 
-- **`develop`** - Main development branch (all PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release
+  pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
+  each release is tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`.
+
+Supported lines and versioning rules: [RELEASES.md](../../RELEASES.md).
 
 **Feature Development Branches** (per Principle IX):
 
@@ -1558,7 +1594,8 @@ naming conventions and milestone workflow.
    - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
    - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
    - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
-3. **Target Branch**: Always `develop` (unless hotfix)
+3. **Target Branch**: Development PRs target `develop`, including hotfixes.
+   Release PRs from a release branch target `main`.
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
    - Frontend: `npm run format` (Prettier) - MUST run before committing
@@ -1730,7 +1767,7 @@ sync.
 
 ---
 
-**Version**: 1.11.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-07
+**Version**: 1.11.2 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-25
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team

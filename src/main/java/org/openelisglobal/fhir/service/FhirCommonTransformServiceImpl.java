@@ -220,6 +220,13 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
         person.setFirstName(
                 humanName.getGivenAsSingleString() == null ? "" : humanName.getGivenAsSingleString().strip());
         person.setLastName(humanName.getFamily() == null ? "" : humanName.getFamily().strip());
+        if (humanName.hasPrefix()) {
+            person.setTitleCode(humanName.getPrefix().get(0).getValueNotNull().strip());
+            if (humanName.getPrefix().size() > 1) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "addHumanNameToPerson", "a name arrived with "
+                        + humanName.getPrefix().size() + " prefixes; keeping the first and dropping the rest");
+            }
+        }
     }
 
     /**

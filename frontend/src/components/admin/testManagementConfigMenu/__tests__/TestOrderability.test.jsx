@@ -15,6 +15,8 @@ import { createQueryClient } from "../../../utils/queryClient";
 import { NotificationContext } from "../../../layout/Layout";
 import TestOrderability from "../TestOrderability";
 
+const notify = vi.fn();
+
 vi.mock("../../../utils/Utils", async () => {
   const actual = await vi.importActual("../../../utils/Utils");
   const getFromOpenElisServer = vi.fn();
@@ -67,7 +69,7 @@ describe("TestOrderability", () => {
               value={{
                 notificationVisible: false,
                 setNotificationVisible: vi.fn(),
-                addNotification: vi.fn(),
+                addNotification: notify,
               }}
             >
               <TestOrderability />
@@ -137,6 +139,30 @@ describe("TestOrderability", () => {
     await waitFor(() => expect(glucose()).toBeChecked());
     expect(assign).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status; it used
+  // to be read as saved, which dropped the change and said so.
+  it("keeps the change and reports an error when the save is refused", async () => {
+    notify.mockReset();
+    await turnGlucoseOff();
+
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "validation", fieldErrors: [], status: 400 }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "Submit" })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+    expect(glucose()).not.toBeChecked();
   });
 
   it("sends the test that was turned off and forgets it once saved", async () => {

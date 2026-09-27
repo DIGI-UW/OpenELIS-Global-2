@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
@@ -113,6 +114,43 @@ public class ValidationSignalsTest {
         result.setResultType("N");
         result.setValue(value);
         return result;
+    }
+
+    private static Result dictionary(String value) {
+        Result result = new Result();
+        result.setResultType("D");
+        result.setValue(value);
+        return result;
+    }
+
+    // OGC-1266: validation judged a component's answer against the test-level
+    // range, so "SARS-CoV-2 RNA NOT DETECTED" (the component's normal answer)
+    // showed Abnormal.
+    @Test
+    public void isNormalResult_aSelectListAnswerIsNormalWhenItIsTheRangesNormalChoice() {
+        ResultLimit componentRange = new ResultLimit();
+        componentRange.setDictionaryNormalId("1334");
+
+        assertTrue(ValidationSignals.isNormalResult(componentRange, dictionary("1334")));
+        assertFalse(ValidationSignals.isNormalResult(componentRange, dictionary("1335")));
+        assertFalse(ValidationSignals.isNormalResult(new ResultLimit(), dictionary("1334")));
+    }
+
+    @Test
+    public void isNormalResult_aNumberIsNormalInsideTheBoundsInclusive() {
+        ResultLimit range = authoredLimit();
+
+        assertTrue(ValidationSignals.isNormalResult(range, numeric("5")));
+        assertTrue(ValidationSignals.isNormalResult(range, numeric("100")));
+        assertFalse(ValidationSignals.isNormalResult(range, numeric("4.99")));
+        assertFalse(ValidationSignals.isNormalResult(range, numeric("100.1")));
+    }
+
+    @Test
+    public void isNormalResult_falseWithoutARangeOrAValue() {
+        assertFalse(ValidationSignals.isNormalResult(null, numeric("5")));
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), null));
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), numeric("")));
     }
 
     @Test
@@ -244,13 +282,34 @@ public class ValidationSignalsTest {
         assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("", false))));
     }
 
-    // ---- Clear lane, server-side (OGC-1029, FR-B1) ---------------------------
+    private static History history(String activity, String sysUserId) {
+        History entry = new History();
+        entry.setActivity(activity);
+        entry.setSysUserId(sysUserId);
+        return entry;
+    }
+
+    @Test
+    public void lastWriterId_isTheNewestInsertOrUpdate() {
+        assertEquals("7",
+                ValidationSignals.lastWriterId(Arrays.asList(history("D", "9"), history("U", "7"), history("I", "1"))));
+        assertEquals("1", ValidationSignals.lastWriterId(Collections.singletonList(history("I", "1"))));
+    }
+
+    @Test
+    public void lastWriterId_nullWithoutAWrite() {
+        assertNull(ValidationSignals.lastWriterId(null));
+        assertNull(ValidationSignals.lastWriterId(Collections.emptyList()));
+        assertNull(ValidationSignals.lastWriterId(Arrays.asList(history("D", "9"), history("U", ""))));
+    }
+
+    // ---- Clear lane, server-side (OGC-1029 FR-B1, OGC-1226 FR-1 to FR-4) ------
 
     private static AnalysisItem clearRow() {
         AnalysisItem row = new AnalysisItem();
         row.setNormalRange("10 - 20");
         row.setNormal(true);
-        row.setQcStatus(ValidationSignals.QC_PASS);
+        row.setQcStatus(ValidationSignals.QC_UNKNOWN);
         row.setNceOpen(false);
         row.setModified(false);
         row.setCritical(false);
@@ -268,6 +327,16 @@ public class ValidationSignalsTest {
     @Test
     public void isClear_whenEveryClearanceInputIsAffirmativelyClean() {
         assertTrue(ValidationSignals.isClear(clearRow()));
+        assertTrue(ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_PASS))));
+    }
+
+    @Test
+    public void isClear_anAbsentQcVerdictIsNotAnInput() {
+        assertTrue("a patient result never carries a QC evaluation and must still clear",
+                ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_UNKNOWN))));
+        assertTrue(ValidationSignals.isClear(rowWith(row -> row.setQcStatus(null))));
+        assertFalse("a recorded failure still stops the row",
+                ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_FAIL))));
     }
 
     @Test
@@ -282,14 +351,66 @@ public class ValidationSignalsTest {
     }
 
     @Test
-    public void isClear_failSafeOnIndeterminateInputs() {
+    public void isClear_failSafeOnIndeterminateInputsTheRowGenuinelyHas() {
         assertFalse("no reference range means no in-range verdict",
                 ValidationSignals.isClear(rowWith(row -> row.setNormalRange(""))));
         assertFalse(ValidationSignals.isClear(rowWith(row -> row.setNormalRange(null))));
-        assertFalse("QC not evaluated is never read as QC passed",
-                ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_UNKNOWN))));
-        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setQcStatus(null))));
         assertFalse(ValidationSignals.isClear(null));
+    }
+
+    // ---- the same rule at result entry (OGC-1226 FR-7) ------------------------
+
+    @Test
+    public void isClearAtEntry_numericInsideAnAuthoredNormalRange() {
+        assertTrue(ValidationSignals.isClearAtEntry(authoredLimit(), "N", "50", ValidationSignals.QC_UNKNOWN, false,
+                false, false));
+        assertTrue(ValidationSignals.isClearAtEntry(authoredLimit(), "N", " 5 ", null, false, false, false));
+    }
+
+    @Test
+    public void isClearAtEntry_abnormalCriticalOrInvalidNumericIsNotClear() {
+        assertFalse("abnormal", ValidationSignals.isClearAtEntry(authoredLimit(), "N", "120",
+                ValidationSignals.QC_UNKNOWN, false, false, false));
+        assertFalse("critical", ValidationSignals.isClearAtEntry(authoredLimit(), "N", "1",
+                ValidationSignals.QC_UNKNOWN, false, false, false));
+        assertFalse("invalid", ValidationSignals.isClearAtEntry(authoredLimit(), "N", "5000",
+                ValidationSignals.QC_UNKNOWN, false, false, false));
+        assertFalse("not a number", ValidationSignals.isClearAtEntry(authoredLimit(), "N", "high",
+                ValidationSignals.QC_UNKNOWN, false, false, false));
+    }
+
+    @Test
+    public void isClearAtEntry_noRangeToJudgeAgainstIsNotClear() {
+        assertFalse("no limit", ValidationSignals.isClearAtEntry(null, "N", "50", null, false, false, false));
+        ResultLimit unauthored = authoredLimit();
+        unauthored.setLowNormal(Double.NEGATIVE_INFINITY);
+        unauthored.setHighNormal(Double.POSITIVE_INFINITY);
+        assertFalse("numeric limit with no authored normal bounds",
+                ValidationSignals.isClearAtEntry(unauthored, "N", "50", null, false, false, false));
+        assertFalse("free text has no range",
+                ValidationSignals.isClearAtEntry(authoredLimit(), "A", "negative", null, false, false, false));
+        assertFalse("a select list with no expected-normal choice",
+                ValidationSignals.isClearAtEntry(authoredLimit(), "D", "12", null, false, false, false));
+    }
+
+    @Test
+    public void isClearAtEntry_selectListClearsOnlyOnTheExpectedNormalChoice() {
+        ResultLimit limit = authoredLimit();
+        limit.setDictionaryNormalId("12");
+        assertTrue(ValidationSignals.isClearAtEntry(limit, "D", "12", null, false, false, false));
+        assertFalse(ValidationSignals.isClearAtEntry(limit, "D", "13", null, false, false, false));
+    }
+
+    @Test
+    public void isClearAtEntry_anyRaisedSignalHoldsTheResultForAValidator() {
+        assertFalse("recorded QC failure", ValidationSignals.isClearAtEntry(authoredLimit(), "N", "50",
+                ValidationSignals.QC_FAIL, false, false, false));
+        assertFalse("open non-conformity",
+                ValidationSignals.isClearAtEntry(authoredLimit(), "N", "50", null, true, false, false));
+        assertFalse("modified after first save",
+                ValidationSignals.isClearAtEntry(authoredLimit(), "N", "50", null, false, true, false));
+        assertFalse("nonconforming",
+                ValidationSignals.isClearAtEntry(authoredLimit(), "N", "50", null, false, false, true));
     }
 
     @Test

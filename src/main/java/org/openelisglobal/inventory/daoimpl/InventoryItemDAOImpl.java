@@ -129,24 +129,4 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItem> getLowStockItems() throws LIMSRuntimeException {
-        try {
-            // For this complex query with aggregations, we'll keep using native SQL
-            // or use a more complex Criteria API with subqueries
-            // For now, using a simpler approach with native query
-            String sql = "SELECT DISTINCT i.* FROM clinlims.inventory_item i "
-                    + "LEFT JOIN clinlims.inventory_lot l ON l.inventory_item_id = i.id "
-                    + "WHERE i.is_active = 'Y' AND i.low_stock_threshold IS NOT NULL " + "GROUP BY i.id "
-                    + "HAVING COALESCE(SUM(l.current_quantity), 0) < i.low_stock_threshold " + "ORDER BY i.name";
-
-            @SuppressWarnings("unchecked")
-            List<InventoryItem> results = entityManager.createNativeQuery(sql, InventoryItem.class).getResultList();
-
-            return results;
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting low stock items", e);
-        }
-    }
 }

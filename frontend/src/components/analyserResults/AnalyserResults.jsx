@@ -24,6 +24,11 @@ import { Link as RouterLink } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -67,8 +72,6 @@ const AnalyserResults = (props) => {
 
   const intl = useIntl();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -80,6 +83,10 @@ const AnalyserResults = (props) => {
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
   );
@@ -180,10 +187,7 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      // The accepted rows leave the worklist, so the page it was showing may
-      // no longer exist.
-      setPage(1);
-      props.refreshResults?.();
+      props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -196,15 +200,6 @@ const AnalyserResults = (props) => {
       message: message,
     });
     setNotificationVisible(true);
-  };
-
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
   };
 
   const handleChange = (e, rowId) => {
@@ -637,52 +632,20 @@ const AnalyserResults = (props) => {
       >
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={patientResults.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              data={patientResults}
               columns={columns}
               isSortable
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={patientResults.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: patientResults.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
             {actionablePatientResults.length > 0 && (

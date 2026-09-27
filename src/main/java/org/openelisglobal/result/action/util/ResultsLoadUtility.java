@@ -18,6 +18,7 @@ package org.openelisglobal.result.action.util;
 import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisAnchor;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
@@ -341,8 +343,8 @@ public class ResultsLoadUtility {
                         : nationalId;
             } else {
                 patientName = patientService.getLastFirstName(currentPatient);
-                patientInfo = nationalId + ", " + patientService.getGender(currentPatient) + ", "
-                        + patientService.getBirthdayForDisplay(currentPatient);
+                patientInfo = patientInfo(nationalId, patientService.getGender(currentPatient),
+                        patientService.getBirthdayForDisplay(currentPatient));
             }
 
             currSample = sample;
@@ -548,6 +550,16 @@ public class ResultsLoadUtility {
     private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, String patientName,
             String patientInfo, String nationalId) throws LIMSRuntimeException {
         return getTestResultItemFromAnalysis(analysis, null, patientName, patientInfo, nationalId);
+    }
+
+    /**
+     * The patient's identifier, sex and birth date as one line, leaving out what
+     * the order does not have: an environmental or vector order has no patient, and
+     * showed a row of bare commas.
+     */
+    static String patientInfo(String... parts) {
+        return Arrays.stream(parts).filter(part -> !GenericValidator.isBlankOrNull(part))
+                .collect(Collectors.joining(", "));
     }
 
     private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, AnalysisAnchor anchor,
@@ -1068,8 +1080,13 @@ public class ResultsLoadUtility {
         testItem.setTestMethod(analysisService.getMethodId(analysis));
         testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
+        // Persisted-result id: the saved-state signal the frontend gates
+        // post-save actions on (e.g. OGC-714 critical-callback logging).
+        if (result != null && result.getId() != null) {
+            testItem.setResultId(result.getId());
+        }
         testItem.setResultValue(getFormattedResultValue(result));
-        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getValue()));
+        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
         // Display type selection:
@@ -1280,7 +1297,7 @@ public class ResultsLoadUtility {
             testItem.setHasQualifiedResult(true);
         }
 
-        testItem.setDictionaryResults(values);
+        testItem.setDictionaryResults(StoredDictionaryResult.withStoredValue(values, result, dictionaryService));
     }
 
     private void setQualifiedValues(TestResultItem testItem, Result result) {
@@ -1352,7 +1369,8 @@ public class ResultsLoadUtility {
 
         if (!GenericValidator.isBlankOrNull(resultValue) && resultLimit != null) {
             try {
-                double value = Double.valueOf(resultValue);
+                // the row carries the value as written, so read the number it denotes
+                double value = Double.valueOf(StringUtil.normalizeScientificNotation(resultValue));
 
                 valid = value >= resultLimit.getLowValid() && value <= resultLimit.getHighValid();
 
@@ -1381,7 +1399,8 @@ public class ResultsLoadUtility {
 
         if (!GenericValidator.isBlankOrNull(resultValue) && resultLimit != null) {
             try {
-                double value = Double.valueOf(resultValue);
+                // the row carries the value as written, so read the number it denotes
+                double value = Double.valueOf(StringUtil.normalizeScientificNotation(resultValue));
 
                 normal = value >= resultLimit.getLowNormal() && value <= resultLimit.getHighNormal();
             } catch (NumberFormatException e) {

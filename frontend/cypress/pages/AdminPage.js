@@ -2,7 +2,6 @@
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import MenuConfigPage from "./MenuConfigPage";
 import BarcodeConfigPage from "./BarcodeConfigPage";
-import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import OrganizationManagementPage from "./OrganizationManagementPage";
 import UserManagementPage from "./UserManagementPage";
@@ -158,14 +157,6 @@ class AdminPage {
       .should("exist")
       .click({ force: true });
     return new BarcodeConfigPage();
-  }
-
-  goToProgramEntry() {
-    cy.get(this.selectors.programEntry)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new ProgramEntryPage();
   }
 
   goToDictionaryMenuPage() {

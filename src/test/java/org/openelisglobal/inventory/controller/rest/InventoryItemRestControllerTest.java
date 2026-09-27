@@ -28,7 +28,11 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest {
 
-    private static final String CODE_PREFIX = "ITTEST_";
+    private static final String CODE_PREFIX = "ITTEST-";
+
+    // Names carry this token so their generated codes fall under one prefix this
+    // suite owns.
+    private static final String GENERATED_PREFIX = "ITT-4471";
 
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -57,7 +61,9 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     // Prefix-scoped, never TRUNCATE: other suites' fixtures share inventory_item.
     private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.inventory_item WHERE code LIKE ?", CODE_PREFIX + "%");
+        jdbc.update("DELETE FROM clinlims.inventory_item WHERE code LIKE ? OR code LIKE ?", CODE_PREFIX + "%",
+                GENERATED_PREFIX + "-%");
+        jdbc.update("DELETE FROM clinlims.inventory_item_code_sequence WHERE prefix = ?", GENERATED_PREFIX);
     }
 
     private MvcResult createItem(String code, String name) throws Exception {
@@ -72,11 +78,11 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     @Test
     public void create_autoGeneratesCodeFromName_whenCodeBlank() throws Exception {
-        MvcResult result = createItem(null, CODE_PREFIX + "Import Widget");
+        MvcResult result = createItem(null, "Ittest Import Widget 4471");
 
         assertEquals(201, result.getResponse().getStatus());
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertEquals("ITTEST_IMPORT_WIDGET", created.get("code").asText());
+        assertEquals(GENERATED_PREFIX + "-001", created.get("code").asText());
         assertNotNull("The surrogate id is still assigned by the sequence", created.get("id"));
     }
 
@@ -86,7 +92,7 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
         assertEquals(201, result.getResponse().getStatus());
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertEquals(CODE_PREFIX + "EXPLICIT_CODE", created.get("code").asText());
+        assertEquals(CODE_PREFIX + "EXPLICIT-CODE", created.get("code").asText());
     }
 
     @Test
@@ -109,7 +115,7 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         String code = created.get("code").asText();
 
         HashMap<String, Object> updateBody = new HashMap<>();
-        updateBody.put("code", CODE_PREFIX + "SHOULD_NOT_APPLY");
+        updateBody.put("code", CODE_PREFIX + "SHOULD-NOT-APPLY");
         updateBody.put("name", CODE_PREFIX + "Locked Renamed");
         updateBody.put("itemType", "REAGENT");
         updateBody.put("units", "mL");
@@ -130,10 +136,10 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
 
     @Test
     public void create_stripsPunctuation_whenGeneratingCodeFromName() throws Exception {
-        MvcResult result = createItem(null, CODE_PREFIX + "Punctuation!!! Test");
+        MvcResult result = createItem(null, "Ittest Punctuation!!! 44.71% Test");
 
         assertEquals(201, result.getResponse().getStatus());
         JsonNode created = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertEquals("ITTEST_PUNCTUATION_TEST", created.get("code").asText());
+        assertEquals(GENERATED_PREFIX + "-001", created.get("code").asText());
     }
 }

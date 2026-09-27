@@ -129,7 +129,7 @@ const ViewAuditModal = ({ open, sample, onClose }) => {
     <ComposedModal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="md"
       data-testid="view-audit-modal"
     >
       <ModalHeader

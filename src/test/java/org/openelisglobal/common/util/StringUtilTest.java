@@ -57,6 +57,93 @@ public class StringUtilTest {
     }
 
     @Test
+    public void isNumeric_shouldAcceptScientificNotationInEveryWrittenForm() {
+        assertTrue(StringUtil.isNumeric("1.5e5"));
+        assertTrue(StringUtil.isNumeric("1.5E+05"));
+        assertTrue(StringUtil.isNumeric("1.5 x 10^5"));
+        assertTrue(StringUtil.isNumeric("1.5×10⁵"));
+        assertTrue(StringUtil.isNumeric("2 X 10^-3"));
+        assertTrue(StringUtil.isNumeric("10⁻³"));
+    }
+
+    @Test
+    public void isNumeric_shouldRejectBareSuperscriptsAndNonFiniteValues() {
+        assertFalse(StringUtil.isNumeric("3²"));
+        assertFalse(StringUtil.isNumeric("3.5⁻³"));
+        assertFalse(StringUtil.isNumeric("NaN"));
+        assertFalse(StringUtil.isNumeric("Infinity"));
+        assertFalse(StringUtil.isNumeric("1e400"));
+        assertFalse(StringUtil.isNumeric("1.5e"));
+    }
+
+    @Test
+    public void normalizeScientificNotation_shouldRewriteEveryFormAsCanonicalENotation() {
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5e5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5E+05"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5 x 10^5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation(" 1.5*10^5 "));
+        assertEquals("2e-3", StringUtil.normalizeScientificNotation("2×10⁻³"));
+        assertEquals("1e-3", StringUtil.normalizeScientificNotation("10⁻³"));
+        assertEquals("-1e3", StringUtil.normalizeScientificNotation("-10^3"));
+        assertEquals("-2.5e-7", StringUtil.normalizeScientificNotation("-2.5E-07"));
+    }
+
+    @Test
+    public void normalizeScientificNotation_shouldLeaveEverythingElseUnchanged() {
+        assertEquals("3", StringUtil.normalizeScientificNotation("3"));
+        assertEquals("3.14", StringUtil.normalizeScientificNotation("3.14"));
+        assertEquals("3²", StringUtil.normalizeScientificNotation("3²"));
+        assertEquals("abc", StringUtil.normalizeScientificNotation("abc"));
+        assertEquals("", StringUtil.normalizeScientificNotation(""));
+        assertEquals(null, StringUtil.normalizeScientificNotation(null));
+    }
+
+    @Test
+    public void getActualNumericValue_shouldStripTheComparatorAndNormalize() {
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("<1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("1.5E5"));
+        assertEquals("12.5", StringUtil.getActualNumericValue(">12.5"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("3²"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("abc"));
+    }
+
+    @Test
+    public void padMantissa_shouldPadWithoutChangingTheNotationWritten() {
+        assertEquals("1.50e5", StringUtil.padMantissa("1.5e5", 2));
+        assertEquals("1.50E+05", StringUtil.padMantissa("1.5E+05", 2));
+        assertEquals("1.50 x 10^5", StringUtil.padMantissa("1.5 x 10^5", 2));
+        assertEquals("1.50×10⁵", StringUtil.padMantissa("1.5×10⁵", 2));
+        assertEquals("<2.50e-3", StringUtil.padMantissa("<2.5e-3", 2));
+        assertEquals("12.50", StringUtil.padMantissa("12.5", 2));
+    }
+
+    @Test
+    public void padMantissa_shouldLeaveAValueThatNeedsNoPaddingAlone() {
+        assertEquals("1.567e5", StringUtil.padMantissa("1.567e5", 2));
+        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", 0));
+        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", -1));
+        // A bare power of ten has no mantissa to pad.
+        assertEquals("10⁻³", StringUtil.padMantissa("10⁻³", 2));
+        assertEquals("10^-3", StringUtil.padMantissa("10^-3", 2));
+        assertEquals(null, StringUtil.padMantissa(null, 2));
+    }
+
+    @Test
+    public void isScientificNotation_shouldRecogniseEveryWrittenFormAndNothingElse() {
+        assertTrue(StringUtil.isScientificNotation("1.5e5"));
+        assertTrue(StringUtil.isScientificNotation("1.5E+05"));
+        assertTrue(StringUtil.isScientificNotation("1.5 x 10^5"));
+        assertTrue(StringUtil.isScientificNotation("1.5×10⁵"));
+        assertTrue(StringUtil.isScientificNotation("10⁻³"));
+        assertTrue(StringUtil.isScientificNotation("<1.5E-3"));
+        assertFalse(StringUtil.isScientificNotation("150000"));
+        assertFalse(StringUtil.isScientificNotation("3²"));
+        assertFalse(StringUtil.isScientificNotation("abc"));
+        assertFalse(StringUtil.isScientificNotation(null));
+    }
+
+    @Test
     public void blankIfNull_shouldReturnEmptyStringForNull() {
         assertEquals("", StringUtil.blankIfNull(null));
     }

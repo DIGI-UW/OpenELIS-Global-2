@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   DataTable,
@@ -14,32 +14,44 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import BreadcrumbNav from "../components/BreadcrumbNav";
 import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
 import DisposeSampleModal from "../SampleStorage/DisposeSampleModal";
 import ViewAuditModal from "../SampleStorage/ViewAuditModal";
+import LocationPickerModal from "../LocationPicker/LocationPickerModal";
+import { LEVEL_ORDER } from "../LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../LocationPicker/locationSelectionMapper";
+import useSampleStorage from "../hooks/useSampleStorage";
 import useStorageTableData from "../hooks/useStorageTableData";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
 /**
  * SampleItemsPage — /Storage/sample-items.
  *
- * Breadcrumb + h1 + search + paginated DataTable of sample items.
- * Per-row overflow menu navigates to
- * /Storage/sample-items/:id/manage-location.
+ * Search + paginated DataTable of sample items.
+ * Per-row overflow menu opens the shared LocationPickerModal, the same
+ * picker the results and inventory surfaces use.
  */
 export default function SampleItemsPage() {
   const history = useHistory();
   const location = useLocation();
   const intl = useIntl();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(5);
   const [searchTerm, setSearchTerm] = useState("");
   const [disposeTarget, setDisposeTarget] = useState(null);
   const [auditTarget, setAuditTarget] = useState(null);
+  const [locationTarget, setLocationTarget] = useState(null);
+  const { assignSampleItem, moveSampleItem } = useSampleStorage();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
-  // URL-driven refresh: when the Manage Location page navigates back with
-  // a `?t=<timestamp>` query, this changes and triggers a refetch.
+  // URL-driven refresh: `refreshList` stamps a `?t=<timestamp>` query,
+  // which changes this and triggers a refetch.
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",
     [location.search],
@@ -54,22 +66,13 @@ export default function SampleItemsPage() {
     refreshKey,
   });
 
-  const crumbs = [
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.storage",
-        defaultMessage: "Storage",
-      }),
-      href: "/Storage",
-    },
-    {
-      label: intl.formatMessage({
-        id: "storage.breadcrumb.sampleitems",
-        defaultMessage: "Sample Items",
-      }),
-      href: "/Storage/sample-items",
-    },
-  ];
+  // The list endpoint is paged by the server, but the search endpoint returns
+  // every match and takes no page or size, so a search is cut to a page here.
+  const searching = (searchTerm || "").trim().length > 0;
+  const visibleItems = useMemo(() => {
+    if (!searching) return items || [];
+    return (items || []).slice((page - 1) * pageSize, page * pageSize);
+  }, [items, searching, page, pageSize]);
 
   const headers = [
     {
@@ -111,13 +114,7 @@ export default function SampleItemsPage() {
   ];
 
   const handleManageLocation = (sample) => {
-    const id = sample.sampleItemId || sample.id;
-    // Pass the full sample row via router state so ManageLocationPage
-    // doesn't need a separate GET — the list already has everything.
-    history.push({
-      pathname: `/Storage/sample-items/${id}/manage-location`,
-      state: { sample },
-    });
+    setLocationTarget(sample);
   };
 
   const refreshList = () => {
@@ -133,6 +130,91 @@ export default function SampleItemsPage() {
 
   const handleViewAudit = (sample) => {
     setAuditTarget(sample);
+  };
+
+  const notifyError = (message) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.error" }),
+      message,
+    });
+  };
+
+  // A sample that already sits somewhere is a move: the modal then shows
+  // the current location and asks for a reason, and the save posts to
+  // /move rather than /assign.
+  const locationTargetCurrent = useMemo(() => {
+    if (!locationTarget) return null;
+    const hasAnyLevel = LEVEL_ORDER.some((lvl) => locationTarget[`${lvl}Id`]);
+    const locationPath =
+      locationTarget.location || locationTarget.hierarchicalPath || "";
+    if (!hasAnyLevel && !locationPath) return null;
+    const selection = {};
+    LEVEL_ORDER.forEach((lvl) => {
+      if (locationTarget[`${lvl}Id`]) {
+        selection[lvl] = {
+          id: locationTarget[`${lvl}Id`],
+          name: locationTarget[`${lvl}Name`] || "",
+        };
+      }
+    });
+    return {
+      selection,
+      hierarchicalPath: locationPath,
+      position: locationTarget.positionCoordinate
+        ? { mode: "text", value: locationTarget.positionCoordinate }
+        : null,
+    };
+  }, [locationTarget]);
+
+  const handleLocationConfirm = async ({
+    selection,
+    position,
+    reason,
+    notes,
+  }) => {
+    if (!locationTarget) return;
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
+    if (!deepest) {
+      notifyError(
+        intl.formatMessage({
+          id: "storage.manageLocation.error.selectTarget",
+          defaultMessage: "Select a storage location before saving",
+        }),
+      );
+      return;
+    }
+
+    const payload = {
+      sampleItemId: locationTarget.sampleItemId || locationTarget.id,
+      locationId: String(deepest.value.id),
+      locationType: deepest.type,
+      positionCoordinate: positionToCoordinate(position, {
+        emptyValue: null,
+      }),
+      notes: notes || null,
+    };
+
+    try {
+      if (locationTargetCurrent) {
+        await moveSampleItem({ ...payload, reason: reason || null });
+      } else {
+        await assignSampleItem(payload);
+      }
+      setLocationTarget(null);
+      refreshList();
+    } catch (e) {
+      notifyError(
+        e.message ||
+          intl.formatMessage({
+            id: "storage.manageLocation.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+      );
+    }
   };
 
   const handleConfirmDispose = ({ sample, reason, method, notes }) => {
@@ -151,14 +233,24 @@ export default function SampleItemsPage() {
         if (response && !response.error && !response.statusCode) {
           setDisposeTarget(null);
           refreshList();
+          return;
         }
+        // Without this the modal stays open and silent, so Confirm reads as a
+        // click that did nothing rather than as a disposal that was refused.
+        notifyError(
+          response?.message ||
+            response?.error ||
+            intl.formatMessage({
+              id: "storage.dispose.error",
+              defaultMessage: "Disposal failed",
+            }),
+        );
       },
     );
   };
 
   const rows = useMemo(() => {
-    if (!items) return [];
-    return items.map((it) => {
+    return visibleItems.map((it) => {
       const sampleItemId = String(it.sampleItemId || it.id || "");
       const externalId = it.sampleItemExternalId || null;
       const displayId = externalId || sampleItemId;
@@ -210,18 +302,10 @@ export default function SampleItemsPage() {
         ),
       };
     });
-  }, [items]);
+  }, [visibleItems]);
 
   return (
-    <div className="storage-sample-items-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>
-        <FormattedMessage
-          id="storage.tab.samples"
-          defaultMessage="Sample Items"
-        />
-      </h1>
-
+    <div className="storage-sample-items-page">
       <div
         className="storage-sample-items-page-toolbar"
         style={{ margin: "1rem 0" }}
@@ -229,7 +313,7 @@ export default function SampleItemsPage() {
         <Search
           id="storage-sample-items-search"
           size="md"
-          placeHolderText={intl.formatMessage({
+          placeholder={intl.formatMessage({
             id: "storage.search.samples.placeholder",
             defaultMessage: "Search sample items…",
           })}
@@ -286,7 +370,7 @@ export default function SampleItemsPage() {
           data-testid="sample-items-pagination"
           page={page}
           pageSize={pageSize}
-          pageSizes={[25, 50, 100]}
+          pageSizes={[5, 25, 50, 100]}
           totalItems={totalItems}
           onChange={({ page: p, pageSize: s }) => {
             setPage(p);
@@ -318,6 +402,22 @@ export default function SampleItemsPage() {
         open={Boolean(auditTarget)}
         sample={auditTarget}
         onClose={() => setAuditTarget(null)}
+      />
+
+      <LocationPickerModal
+        isOpen={Boolean(locationTarget)}
+        occupantType="SAMPLE_ITEM"
+        occupant={{
+          label:
+            locationTarget?.sampleAccessionNumber ||
+            locationTarget?.sampleItemId ||
+            "",
+          type: locationTarget?.type || "",
+          status: locationTarget?.status || "Active",
+        }}
+        currentLocation={locationTargetCurrent}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => setLocationTarget(null)}
       />
     </div>
   );

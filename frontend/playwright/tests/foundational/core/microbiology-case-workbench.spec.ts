@@ -154,7 +154,7 @@ test.describe("Microbiology case workbench", () => {
 
   test("records inoculation lineage and completes two-pass isolate identification", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const seeded = await seedMicrobiologyCase(page);
     if (!seeded.organismId) {
       throw new Error(
@@ -260,6 +260,39 @@ test.describe("Microbiology case workbench", () => {
         .getByTestId("microbiology-isolates-card")
         .getByText("Gram negative rods", { exact: true }),
     ).toBeVisible();
+    const isolate = page
+      .getByTestId("microbiology-isolates-card")
+      .getByRole("listitem")
+      .filter({ has: page.getByText("Gram negative rods", { exact: true }) });
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(isolate).toBeVisible();
+      await expect(
+        isolate.getByText("Gram negative rods", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        isolate.getByRole("button", { name: "Identify organism", exact: true }),
+      ).toBeVisible();
+      await expect
+        .poll(() =>
+          isolate.evaluate(
+            (element) => element.scrollWidth <= element.clientWidth,
+          ),
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+          ),
+        )
+        .toBe(true);
+      await isolate.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: testInfo.outputPath(`isolate-details-${width}.png`),
+      });
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
     await caseView
       .getByRole("button", { name: "Manual AST", exact: true })
       .click();

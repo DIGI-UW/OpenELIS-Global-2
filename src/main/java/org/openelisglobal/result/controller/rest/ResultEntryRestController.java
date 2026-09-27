@@ -356,6 +356,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                         LogEvent.logError(ex);
                     }
                 });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
             }
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -397,7 +404,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);

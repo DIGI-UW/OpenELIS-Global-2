@@ -1,25 +1,38 @@
 import { LEVEL_ORDER } from "./useLocationPicker";
 
-/**
- * Map a flat search result into a REPLACE_SELECTION action.
- *
- * The picker's search endpoint returns a single node whose `type` names
- * its level in the hierarchy (room | device | shelf | rack | box). The
- * pick must atomically replace the whole selection so a previous partial
- * selection (say, Room A chosen in create-mode) does not linger under a
- * newly-picked Device B whose parent is Room B. Returning null signals
- * "not a valid location result; ignore" so callers can guard trivially.
- *
- * Shared by LocationPickerInline, LocationPickerPage, and
- * LocationPickerModal. Centralising the mapping prevents drift between
- * the three shells as the search payload evolves.
- */
+const ANCESTOR_FIELDS = {
+  room: { idKey: "parentRoomId", nameKeys: ["parentRoomName", "roomName"] },
+  device: {
+    idKey: "parentDeviceId",
+    nameKeys: ["parentDeviceName", "deviceName"],
+  },
+  shelf: {
+    idKey: "parentShelfId",
+    nameKeys: ["parentShelfLabel", "shelfLabel"],
+  },
+  rack: { idKey: "parentRackId", nameKeys: ["parentRackLabel", "rackLabel"] },
+};
+
+const firstDefined = (result, keys) => {
+  const key = keys.find((k) => result[k] !== undefined && result[k] !== null);
+  return key ? result[key] : undefined;
+};
+
 export function searchResultToReplaceAction(result) {
   if (!result || typeof result !== "object") return null;
-  const { type, id, name } = result;
+  const { type, id } = result;
   if (!type || !LEVEL_ORDER.includes(type)) return null;
-  return {
-    type: "REPLACE_SELECTION",
-    selection: { [type]: { id, name } },
-  };
+
+  const selection = { [type]: { id, name: result.name || result.label } };
+
+  const leafIndex = LEVEL_ORDER.indexOf(type);
+  for (let i = leafIndex - 1; i >= 0; i--) {
+    const level = LEVEL_ORDER[i];
+    const { idKey, nameKeys } = ANCESTOR_FIELDS[level];
+    const ancestorId = result[idKey];
+    if (ancestorId === undefined || ancestorId === null) break;
+    selection[level] = { id: ancestorId, name: firstDefined(result, nameKeys) };
+  }
+
+  return { type: "REPLACE_SELECTION", selection };
 }

@@ -159,9 +159,173 @@
     OGC-657: delete the non-functional inventory storage skeleton (inventory_storage_location
     and inventory_lot.storage_location_id). A lot's location is now tracked via
     sample_storage_assignment (occupant_type='INVENTORY_LOT'), the same mechanism samples
-    use, not a direct FK on the lot row. Inventory had no users at the time of removal, so
-    no data migration is performed (see OGC-657 ticket: breaking change, clean break).
+    use, not a direct FK on the lot row. Locations and lot placements recorded by earlier
+    releases were carried over by OGC-657-migrate-inventory-storage-locations above.
     -->
+    <!--
+    Upgrades from 3.2.x carry real inventory storage locations: the 3.2.x lot form
+    required one and created them inline. Before the skeleton is dropped, every
+    location is carried into the storage hierarchy (ROOM -> storage_room;
+    REFRIGERATOR/FREEZER/CABINET -> storage_device; SHELF/DRAWER -> storage_shelf,
+    under the nearest migrated ancestor or a "Migrated inventory storage" room and
+    device), and every lot's location becomes an INVENTORY_LOT storage assignment.
+    The original rows are kept verbatim in *_archive tables. Databases with no
+    locations to carry (fresh installs, already-upgraded develop) MARK_RAN.
+    -->
+    <changeSet id="OGC-657-migrate-inventory-storage-locations" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_storage_location" schemaName="clinlims"/>
+            <columnExists tableName="inventory_lot" columnName="storage_location_id" schemaName="clinlims"/>
+            <columnExists tableName="sample_storage_assignment" columnName="inventory_lot_id" schemaName="clinlims"/>
+            <sqlCheck expectedResult="t">SELECT EXISTS (SELECT 1 FROM clinlims.inventory_storage_location)</sqlCheck>
+        </preConditions>
+        <comment>Carry 3.2.x inventory storage locations and lot placements into the storage hierarchy</comment>
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                v_sys_user text := coalesce((SELECT min(id)::text FROM clinlims.system_user), '1');
+                v_mapped integer;
+                v_loc record;
+                v_parent record;
+                v_room numeric;
+                v_device numeric;
+                v_new_id numeric;
+                v_new_type text;
+                v_code text;
+                v_fallback_room numeric;
+            BEGIN
+                CREATE TABLE clinlims.inventory_storage_location_archive AS
+                    SELECT * FROM clinlims.inventory_storage_location;
+                CREATE TABLE clinlims.inventory_lot_location_archive AS
+                    SELECT id AS inventory_lot_id, storage_location_id
+                    FROM clinlims.inventory_lot WHERE storage_location_id IS NOT NULL;
+
+                CREATE TEMP TABLE inv_loc_map (old_id bigint PRIMARY KEY, new_id numeric, new_type text,
+                    map_room numeric, map_device numeric) ON COMMIT DROP;
+                CREATE TEMP TABLE inv_fallback_device (fb_room numeric PRIMARY KEY, fb_device numeric) ON COMMIT DROP;
+
+                LOOP
+                    v_mapped := 0;
+                    FOR v_loc IN
+                        SELECT l.* FROM clinlims.inventory_storage_location l
+                        WHERE NOT EXISTS (SELECT 1 FROM inv_loc_map m WHERE m.old_id = l.id)
+                          AND (l.parent_location_id IS NULL
+                               OR EXISTS (SELECT 1 FROM inv_loc_map m WHERE m.old_id = l.parent_location_id)
+                               OR NOT EXISTS (SELECT 1 FROM clinlims.inventory_storage_location p
+                                              WHERE p.id = l.parent_location_id))
+                        ORDER BY l.id
+                    LOOP
+                        v_mapped := v_mapped + 1;
+                        SELECT * INTO v_parent FROM inv_loc_map WHERE old_id = v_loc.parent_location_id;
+                        v_room := v_parent.map_room;
+                        v_device := v_parent.map_device;
+                        IF v_loc.location_type IN ('REFRIGERATOR', 'FREEZER', 'CABINET', 'SHELF', 'DRAWER')
+                                AND v_room IS NULL THEN
+                            IF v_fallback_room IS NULL THEN
+                                v_fallback_room := nextval('clinlims.storage_room_seq');
+                                v_code := 'INVMIG';
+                                IF EXISTS (SELECT 1 FROM clinlims.storage_room WHERE code = v_code) THEN
+                                    v_code := left('IM' || v_fallback_room, 10);
+                                END IF;
+                                INSERT INTO clinlims.storage_room (id, fhir_uuid, name, code, description, active,
+                                        sys_user_id, last_updated)
+                                VALUES (v_fallback_room, gen_random_uuid(), 'Migrated inventory storage', v_code,
+                                        'Inventory storage locations carried over from the previous release', true,
+                                        v_sys_user, now());
+                            END IF;
+                            v_room := v_fallback_room;
+                        END IF;
+
+                        IF v_loc.location_type IN ('REFRIGERATOR', 'FREEZER', 'CABINET') THEN
+                            v_new_id := nextval('clinlims.storage_device_seq');
+                            v_code := left(coalesce(nullif(trim(v_loc.location_code), ''), 'INV' || v_loc.id), 10);
+                            IF EXISTS (SELECT 1 FROM clinlims.storage_device
+                                       WHERE parent_room_id = v_room AND code = v_code) THEN
+                                v_code := left('INV' || v_loc.id, 10);
+                            END IF;
+                            INSERT INTO clinlims.storage_device (id, fhir_uuid, name, code, type, temperature_setting,
+                                    active, parent_room_id, sys_user_id, last_updated)
+                            VALUES (v_new_id, coalesce(v_loc.fhir_uuid, gen_random_uuid()), v_loc.name, v_code,
+                                    lower(v_loc.location_type),
+                                    CASE WHEN v_loc.temperature_min IS NOT NULL AND v_loc.temperature_max IS NOT NULL
+                                         THEN (v_loc.temperature_min + v_loc.temperature_max) / 2
+                                         ELSE coalesce(v_loc.temperature_max, v_loc.temperature_min) END,
+                                    coalesce(v_loc.is_active, true), v_room, v_sys_user, now());
+                            v_new_type := 'device';
+                            v_device := v_new_id;
+                        ELSIF v_loc.location_type IN ('SHELF', 'DRAWER') THEN
+                            IF v_device IS NULL THEN
+                                SELECT fb_device INTO v_device FROM inv_fallback_device WHERE fb_room = v_room;
+                                IF v_device IS NULL THEN
+                                    v_device := nextval('clinlims.storage_device_seq');
+                                    INSERT INTO clinlims.storage_device (id, fhir_uuid, name, code, type, active,
+                                            parent_room_id, sys_user_id, last_updated)
+                                    VALUES (v_device, gen_random_uuid(), 'Migrated inventory storage',
+                                            left('INVD' || v_device, 10), 'other', true, v_room, v_sys_user, now());
+                                    INSERT INTO inv_fallback_device (fb_room, fb_device) VALUES (v_room, v_device);
+                                END IF;
+                            END IF;
+                            v_new_id := nextval('clinlims.storage_shelf_seq');
+                            v_code := left(v_loc.name, 100);
+                            IF EXISTS (SELECT 1 FROM clinlims.storage_shelf
+                                       WHERE parent_device_id = v_device AND label = v_code) THEN
+                                v_code := left(v_loc.name, 80) || ' (' || v_loc.id || ')';
+                            END IF;
+                            INSERT INTO clinlims.storage_shelf (id, fhir_uuid, label, code, active, parent_device_id,
+                                    sys_user_id, last_updated)
+                            VALUES (v_new_id, coalesce(v_loc.fhir_uuid, gen_random_uuid()), v_code,
+                                    left(coalesce(nullif(trim(v_loc.location_code), ''), 'INV' || v_loc.id), 10),
+                                    coalesce(v_loc.is_active, true), v_device, v_sys_user, now());
+                            v_new_type := 'shelf';
+                        ELSE
+                            v_new_id := nextval('clinlims.storage_room_seq');
+                            v_code := left(coalesce(nullif(trim(v_loc.location_code), ''), 'INV' || v_loc.id), 10);
+                            IF EXISTS (SELECT 1 FROM clinlims.storage_room WHERE code = v_code) THEN
+                                v_code := left('INV' || v_loc.id, 10);
+                                IF EXISTS (SELECT 1 FROM clinlims.storage_room WHERE code = v_code) THEN
+                                    v_code := left('IR' || v_new_id, 10);
+                                END IF;
+                            END IF;
+                            INSERT INTO clinlims.storage_room (id, fhir_uuid, name, code, description, active,
+                                    sys_user_id, last_updated)
+                            VALUES (v_new_id, coalesce(v_loc.fhir_uuid, gen_random_uuid()), v_loc.name, v_code,
+                                    v_loc.description, coalesce(v_loc.is_active, true), v_sys_user, now());
+                            v_new_type := 'room';
+                            v_room := v_new_id;
+                            v_device := NULL;
+                        END IF;
+                        INSERT INTO inv_loc_map (old_id, new_id, new_type, map_room, map_device)
+                        VALUES (v_loc.id, v_new_id, v_new_type, v_room, v_device);
+                    END LOOP;
+                    IF v_mapped = 0 THEN
+                        EXIT WHEN NOT EXISTS (SELECT 1 FROM clinlims.inventory_storage_location l
+                                              WHERE NOT EXISTS (SELECT 1 FROM inv_loc_map m WHERE m.old_id = l.id));
+                        UPDATE clinlims.inventory_storage_location SET parent_location_id = NULL
+                        WHERE id = (SELECT min(l.id) FROM clinlims.inventory_storage_location l
+                                    WHERE NOT EXISTS (SELECT 1 FROM inv_loc_map m WHERE m.old_id = l.id));
+                    END IF;
+                END LOOP;
+
+                INSERT INTO clinlims.sample_storage_assignment (id, occupant_type, inventory_lot_id, location_id,
+                        location_type, assigned_by_user_id, assigned_date, notes, last_updated)
+                SELECT nextval('clinlims.sample_storage_assignment_seq'), 'INVENTORY_LOT', lot.id, m.new_id,
+                       m.new_type, v_sys_user::numeric, coalesce(lot.receipt_date, now()),
+                       'Migrated from inventory storage location ' || l.name, now()
+                FROM clinlims.inventory_lot lot
+                JOIN inv_loc_map m ON m.old_id = lot.storage_location_id
+                JOIN clinlims.inventory_storage_location l ON l.id = lot.storage_location_id
+                WHERE NOT EXISTS (SELECT 1 FROM clinlims.sample_storage_assignment a
+                                  WHERE a.inventory_lot_id = lot.id);
+            END $$;
+        </sql>
+        <rollback>
+            <sql>
+                DROP TABLE IF EXISTS clinlims.inventory_storage_location_archive;
+                DROP TABLE IF EXISTS clinlims.inventory_lot_location_archive;
+            </sql>
+        </rollback>
+    </changeSet>
+
     <changeSet id="OGC-657-drop-inventory-lot-storage-location-column" author="OGC">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="inventory_lot" columnName="storage_location_id" schemaName="clinlims"/>

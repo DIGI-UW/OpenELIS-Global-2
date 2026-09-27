@@ -1,6 +1,7 @@
 import React, { useContext, useState } from "react";
 import { Heading, Button, Loading, Grid, Column, Section } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useServerData,
   useInvalidateServerData,
@@ -62,23 +63,21 @@ function TestSectionOrder() {
   };
 
   const handlePostTestSectionOrderListCallBack = (res) => {
-    if (res) {
-      if (res) {
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        setPendingOrder(null);
-        setTestSectionOrderListPost([]);
-        setConfirmSelection(false);
-        refreshTestSectionOrderList("/rest/TestSectionOrder");
-        setNotificationVisible(true);
-      }
+    if (!requestFailed(res)) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "save.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setPendingOrder(null);
+      setTestSectionOrderListPost([]);
+      setConfirmSelection(false);
+      refreshTestSectionOrderList("/rest/TestSectionOrder");
+      setNotificationVisible(true);
     } else {
       addNotification({
         kind: NotificationKinds.error,

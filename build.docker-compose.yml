@@ -72,6 +72,7 @@ services:
         - ./volume/lucene:/var/lib/lucene_index
         - ./volume/programs/:/var/lib/openelis-global/programs
         - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+        - reporting-data:/var/lib/openelis-global/reporting
         - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
         - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
         - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
@@ -175,3 +176,4 @@ volumes:
   certs-vol:
   keys-vol:
   lucene_index-vol:
+  reporting-data:

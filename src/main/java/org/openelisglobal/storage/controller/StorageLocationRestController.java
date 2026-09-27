@@ -12,6 +12,7 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
@@ -53,6 +54,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private StorageSearchService storageSearchService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private StorageRoomService storageRoomService;
@@ -1719,6 +1723,9 @@ public class StorageLocationRestController extends BaseRestController {
     public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageSearchService.searchSamples(q);
+            // Same translation the listing applies: without it a disposed hit
+            // carries its raw status id and the client draws an Active tag.
+            results.forEach(result -> SampleStatusResponse.normalize(result, statusService));
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching sample items with query: " + q, e);
@@ -1798,15 +1805,22 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // ========== Dashboard Endpoints ==========
+    @GetMapping("/boxes/search")
+    public ResponseEntity<List<Map<String, Object>>> searchBoxes(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchBoxes(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching boxes", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
-     * Get location counts by type for active locations only (FR-057, FR-057a). GET
-     * /rest/storage/dashboard/location-counts Returns counts for Room, Device,
-     * Shelf, and Rack levels (Position excluded). Only counts active
-     * (non-decommissioned) locations.
+     * Count the active locations of each type (FR-057, FR-057a); inactive ones are
+     * not counted.
      * 
-     * @return JSON map with keys: "rooms", "devices", "shelves", "racks" and
+     * @return JSON map with keys: "rooms", "devices", "shelves", "racks", "boxes"
      *         integer count values
      */
     @GetMapping("/dashboard/location-counts")
@@ -1822,6 +1836,7 @@ public class StorageLocationRestController extends BaseRestController {
             emptyCounts.put("devices", 0);
             emptyCounts.put("shelves", 0);
             emptyCounts.put("racks", 0);
+            emptyCounts.put("boxes", 0);
             return ResponseEntity.ok(emptyCounts);
         }
     }

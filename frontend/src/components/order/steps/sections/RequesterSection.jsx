@@ -20,6 +20,7 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
 import {
   forgetRequester,
@@ -171,6 +172,8 @@ const RequesterSection = ({
           id: providerPersonId,
           firstName: sampleOrderItems.providerFirstName || "",
           lastName: sampleOrderItems.providerLastName || "",
+          titleCode: sampleOrderItems.providerTitleCode || "",
+          titleAbbreviation: sampleOrderItems.providerTitleAbbreviation || "",
           phone: sampleOrderItems.providerWorkPhone || "",
           fax: sampleOrderItems.providerFax || "",
           email: sampleOrderItems.providerEmail || "",
@@ -263,6 +266,9 @@ const RequesterSection = ({
         id: providerPersonId,
         firstName: orderData?.sampleOrderItems?.providerFirstName || "",
         lastName: orderData?.sampleOrderItems?.providerLastName || "",
+        titleCode: orderData?.sampleOrderItems?.providerTitleCode || "",
+        titleAbbreviation:
+          orderData?.sampleOrderItems?.providerTitleAbbreviation || "",
         phone: orderData?.sampleOrderItems?.providerWorkPhone || "",
         fax: orderData?.sampleOrderItems?.providerFax || "",
         email: orderData?.sampleOrderItems?.providerEmail || "",
@@ -339,6 +345,7 @@ const RequesterSection = ({
     setSelectedSite(site);
     setIsSiteLocked(true);
     setSiteResults([]);
+    setSiteSearchTerm(site.organizationName || "");
 
     setOrderData((prev) => ({
       ...prev,
@@ -389,6 +396,7 @@ const RequesterSection = ({
     }
     setSelectedSite({ organizationName: trimmedName, isNew: true });
     setSiteResults([]);
+    setSiteSearchTerm(trimmedName);
 
     setOrderData((prev) => ({
       ...prev,
@@ -481,6 +489,9 @@ const RequesterSection = ({
     setSelectedRequestor(requestor);
     setIsRequestorLocked(true);
     setRequestorResults([]);
+    setRequestorSearchTerm(
+      [requestor.lastName, requestor.firstName].filter(Boolean).join(", "),
+    );
 
     setOrderData((prev) => ({
       ...prev,
@@ -660,6 +671,12 @@ const RequesterSection = ({
     setSelectedProvider(provider);
     setIsProviderLocked(true);
     setProviderResults([]);
+    setProviderSearch((prev) => ({
+      ...prev,
+      name:
+        provider.name ||
+        [provider.lastName, provider.firstName].filter(Boolean).join(", "),
+    }));
 
     // If personId is already in the search results (after backend rebuild), use it directly
     if (provider.personId) {
@@ -671,6 +688,8 @@ const RequesterSection = ({
           providerPersonId: provider.personId,
           providerFirstName: provider.firstName,
           providerLastName: provider.lastName,
+          providerTitleCode: provider.titleCode || "",
+          providerTitleAbbreviation: provider.titleAbbreviation || "",
           providerWorkPhone: provider.phone,
           providerFax: provider.fax || "",
           providerEmail: provider.email || "",
@@ -728,6 +747,8 @@ const RequesterSection = ({
         providerPersonId: "",
         providerFirstName: "",
         providerLastName: "",
+        providerTitleCode: "",
+        providerTitleAbbreviation: "",
         providerWorkPhone: "",
         providerFax: "",
         providerEmail: "",
@@ -976,7 +997,7 @@ const RequesterSection = ({
               })}
               value={siteSearchTerm}
               onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || effectiveSelectedSite}
+              disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
           </Column>
           <Column lg={5} md={4} sm={4}>
@@ -1009,7 +1030,9 @@ const RequesterSection = ({
                 size="md"
                 onClick={handleSiteSearch}
                 disabled={
-                  isSearchingSites || isReadOnly || effectiveSelectedSite
+                  isSearchingSites ||
+                  isReadOnly ||
+                  Boolean(effectiveSelectedSite)
                 }
               >
                 <FormattedMessage
@@ -1374,7 +1397,9 @@ const RequesterSection = ({
                   size="md"
                   onClick={() => handleRequestorSearch()}
                   disabled={
-                    isSearchingRequestors || isReadOnly || selectedRequestor
+                    isSearchingRequestors ||
+                    isReadOnly ||
+                    Boolean(selectedRequestor)
                   }
                 >
                   <FormattedMessage
@@ -1386,7 +1411,7 @@ const RequesterSection = ({
                   kind="ghost"
                   size="md"
                   onClick={handleClearRequestorSearch}
-                  disabled={selectedRequestor}
+                  disabled={Boolean(selectedRequestor)}
                 >
                   <FormattedMessage
                     id="label.button.clear"
@@ -1745,7 +1770,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("name", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
             <Column lg={6} md={4} sm={4}>
@@ -1760,7 +1785,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("phone", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
 
@@ -1774,7 +1799,7 @@ const RequesterSection = ({
                   disabled={
                     isSearchingProviders ||
                     isReadOnly ||
-                    effectiveSelectedProvider
+                    Boolean(effectiveSelectedProvider)
                   }
                 >
                   <FormattedMessage
@@ -2083,10 +2108,7 @@ const RequesterSection = ({
                 </Link>
               </div>
               <div className="selected-card-content">
-                <h5>
-                  {effectiveSelectedProvider.firstName}{" "}
-                  {effectiveSelectedProvider.lastName}
-                </h5>
+                <h5>{providerDisplayName(effectiveSelectedProvider)}</h5>
                 <p>
                   {effectiveSelectedProvider.phone &&
                     `Phone: ${effectiveSelectedProvider.phone}`}

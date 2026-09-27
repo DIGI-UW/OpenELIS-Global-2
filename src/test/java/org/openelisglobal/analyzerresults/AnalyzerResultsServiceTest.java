@@ -120,6 +120,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         sample.setEnteredDate(Date.valueOf("2025-07-01"));
         sample.setReceivedDate(Date.valueOf("2025-07-01"));
         sample.setIsConfirmation(true);
+        sample.setSysUserId(TEST_SYS_USER_ID);
         sampleGrouping.sample = sample;
 
         SampleItem sampleItem = new SampleItem();
@@ -127,12 +128,16 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         sampleItem.setSample(sample);
         sampleItem.setLastupdated(Timestamp.valueOf("2025-02-01 12:00:00"));
         sampleItem.setStatusId("401");
+        sampleItem.setSysUserId(TEST_SYS_USER_ID);
         sampleGrouping.sampleItem = sampleItem;
 
+        Person person = new Person();
+        person.setSysUserId(TEST_SYS_USER_ID);
         Patient patient = new Patient();
-        patient.setPerson(new Person());
+        patient.setPerson(person);
         patient.setRace("Red");
         patient.setBirthDate(Timestamp.valueOf("2014-03-20 12:00:00"));
+        patient.setSysUserId(TEST_SYS_USER_ID);
         sampleGrouping.patient = patient;
 
         List<Note> notes = noteService.getAll();
@@ -152,6 +157,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         analysis.setSampleItem(sampleItem);
         analysis.setAnalysisType("Endoscopy");
         analysis.setStartedDate(Date.valueOf("2024-06-17"));
+        analysis.setSysUserId(TEST_SYS_USER_ID);
         List<Analysis> analysisList = new ArrayList<>();
         analysisList.add(analysis);
         sampleGrouping.analysisList = analysisList;
@@ -161,6 +167,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         result.setIsReportable("Y");
         result.setResultType("N");
         result.setLastupdated(Timestamp.valueOf("2025-11-16 10:00:00"));
+        result.setSysUserId(TEST_SYS_USER_ID);
         List<Result> resultList = new ArrayList<>();
         resultList.add(result);
         sampleGrouping.resultList = resultList;

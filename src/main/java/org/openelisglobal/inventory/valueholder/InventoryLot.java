@@ -133,6 +133,16 @@ public class InventoryLot extends BaseObject<Long> {
     }
 
     /**
+     * Stock a reorder decision can count on: usable now or only awaiting QC. Wider
+     * than {@link #isAvailableForUse()}, which gates consumption.
+     */
+    public boolean countsAsAvailableStock() {
+        return !isExpired() && currentQuantity != null && currentQuantity > 0
+                && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
+                && (qcStatus == QCStatus.PASSED || qcStatus == QCStatus.PENDING);
+    }
+
+    /**
      * Check if lot has been opened
      */
     public boolean isOpened() {

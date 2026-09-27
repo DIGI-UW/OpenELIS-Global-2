@@ -1,5 +1,62 @@
 # AGENTS.md - README for AI Coding Agents
 
+## Start here — do these three things before any other work
+
+These are not optional and not "if needed". Skipping them is the single most
+common way an agent wastes a session in this repository.
+
+### 1. Install the agent command assets
+
+```bash
+python3 scripts/install-agent-skills.py -y claude
+```
+
+This installs `/fix-ci`, `/download-ci-logs`, `/address-pr-comments`,
+`/careful-rebase` and ~22 others, plus the packaged skills.
+
+**`.claude/` is gitignored.** It is created by this script, not by `git clone`
+and not by `git pull`. A second clone or worktree of this repository therefore
+has **no commands at all** until you run the installer there — and nothing warns
+you, the commands are simply absent. Run it once per checkout, including every
+worktree.
+
+### 2. Never judge CI from a run's conclusion
+
+Use `gh pr checks <PR>`. It matches the GitHub UI and exits non-zero unless
+everything passes.
+
+```bash
+gh pr checks 1234                      # the whole picture
+gh pr checks 1234 | grep -E "fail"     # just the failures
+```
+
+Three checks are required — `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
+them exist, so **confirm all three are present and none are `pending`** before
+calling a PR green.
+
+Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
+a `workflow_run` follow-up stage, so the underlying run's own conclusion does
+not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
+failure for this pipeline. Do not hand-parse `--json statusCheckRollup` either:
+it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes (`.state`),
+and an in-flight check reports an empty conclusion rather than null, so naive
+`jq` reports passing checks as queued and single checks as "all green".
+
+`/fix-ci` automates the whole diagnose-fix-push-recheck loop.
+`specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
+semantics.
+
+### 3. Work in the worktree that owns the branch
+
+```bash
+git worktree list
+```
+
+This project keeps several worktrees. When asked to work on a branch or PR, find
+its worktree first and make every edit there — never in the primary directory.
+Note that each worktree needs its own installer run, per step 1.
+
 ## FILE Ownership Model (014 Remediation)
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
@@ -126,7 +183,9 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (main development), `main` (production releases)
+- Branch strategy: `develop` (integration and default branch; development PRs
+  target it), `main` (the latest release; changes only through a reviewed
+  release PR). See [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
@@ -168,18 +227,21 @@ sdk use java 21.0.1-tem
 
 ### Test Skipping (CRITICAL)
 
-Use both flags for a development build that skips test compilation and
-execution:
+**IMPORTANT:** Use BOTH flags to properly skip tests during development builds:
 
 ```bash
+# CORRECT (skips all tests including Surefire and Failsafe)
 mvn clean install -DskipTests -Dmaven.test.skip=true
+
+# WRONG (only skips Surefire tests, Failsafe integration tests still run)
+mvn clean install -DskipTests
 ```
 
-`-DskipTests` skips execution but still compiles tests. The root `pom.xml` uses
-Surefire for both unit and integration test classes; it does not configure a
-separate Failsafe runner. Builds that need the test JAR for analyzer plugins
-must keep test compilation enabled; see the shared-build exception in
-`CLAUDE.md`.
+**Why both flags?**
+
+- `-DskipTests`: Skips Surefire unit test execution
+- `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
+  Failsafe integration tests)
 
 ### Other Prerequisites
 
@@ -283,10 +345,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Playwright** (version in `frontend/package.json`) (E2E tests — **recommended
-  for all new tests**)
-- **Cypress** (version in `frontend/package.json`) (E2E tests — **deprecated**,
-  existing tests will be migrated to Playwright)
+- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
+- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+  migrated to Playwright)
 - **Vitest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -454,10 +515,9 @@ complex logic.
 2. **ORM Validation Tests** - Framework configuration validation (<5s, no
    database)
 3. **Integration Tests** - Full stack with database
-4. **E2E Tests** (Playwright; existing Cypress maintained) - User workflow
-   validation
+4. **E2E Tests** (Cypress) - User workflow validation
 
-**Coverage Goals:** >80% backend (JaCoCo), >70% frontend (per Constitution V)
+**Coverage Goal:** >70% for new code (JaCoCo)
 
 **Section V.4: ORM Validation Tests**
 
@@ -832,10 +892,7 @@ npm run format
 # Run unit tests
 npm test
 
-# Run a registered Playwright test after exporting scripts/dev-stack env
-npm run pw:test -- --project=core-app playwright/tests/foundational/core/{feature}.spec.ts
-
-# Maintain an existing Cypress test
+# Run E2E tests (individual file during development)
 npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
 
 # Run full E2E suite (CI/CD only, not during development)
@@ -864,8 +921,14 @@ scripts/dev-stack logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Main development branch (ALL PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release PR
+  from a `release/<X.Y>.x` branch, merged with a merge commit; each release is
+  tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`, cherry-picked by the release manager.
+
+See [RELEASES.md](RELEASES.md) for supported lines and versioning.
 
 **Feature Development (Principle IX):**
 
@@ -1076,24 +1139,57 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-Choose data setup for the test boundary; see the
-[Test Data Strategy Guide](.specify/guides/test-data-strategy.md).
+**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
+fixture loading system.
 
-- Unit/component tests use in-memory objects and may mock collaborators outside
-  the behavior under test.
-- Database integration tests create only the initial state they need. Existing
-  DBUnit XML under `src/test/resources/testdata/` may be loaded through
-  `executeDataSetWithStateManagement`; owned records created through real
-  services are also appropriate. The loader and `cleanRowsInCurrentConnection`
-  join an active Spring transaction; otherwise each operation commits its own
-  work. The base class defaults to `Propagation.NOT_SUPPORTED`, so rollback
-  requires an explicit test `@Transactional` annotation.
-- Fixture truncation uses `CASCADE`, which can affect tables absent from the
-  XML. Committed/concurrency tests must own setup, affected data, and cleanup;
-  fixture loading alone does not guarantee isolation.
-- For local browser/manual testing, use `scripts/dev-stack up` and the
-  property-gated application scenario services. Existing CI fixture scripts are
-  separate infrastructure, not the local feature-setup interface.
+**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
+for comprehensive guide.
+
+**Key Principles:**
+
+- Single source of truth: `storage-test-data.sql` contains all test fixtures
+- Unified loader: `load-test-fixtures.sh` used by all test types
+- Dependency validation: Scripts verify required tables exist before loading
+- Comprehensive verification: Automatic verification after loading
+- Safe cleanup: Only removes test-created data, preserves fixtures
+
+**Quick Start:**
+
+```bash
+# Load test fixtures (basic usage)
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
+```
+
+**Fixture Loading:**
+
+- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
+  `load-test-fixtures.sh`
+- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
+- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**DBUnit datasets (MANDATORY for DB-backed tests):**
+
+- **Where**: `src/test/resources/testdata/*.xml`
+- **How**: Load via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
+  data pollution and keep tests maintainable.
+
+**For detailed information**, see:
+
+- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -
+  Comprehensive guide
+- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) -
+  E2E-specific reference
 
 **Key Resources**:
 
@@ -1125,7 +1221,7 @@ Choose data setup for the test boundary; see the
 
 ```
         ┌─────────────┐
-        │   E2E (5%)   │  Playwright - User workflows
+        │   E2E (5%)   │  Cypress - User workflows
         │   Slow       │
         └──────┬───────┘
        ┌───────▼────────┐
@@ -1166,60 +1262,210 @@ for common patterns and cheat sheets.
 - **After Phase 3 (Controllers)**: Integration tests MUST pass
 - **Coverage Goal**: >80% (measured via JaCoCo)
 
-### Choose the Test Boundary
+### Test Slicing Strategy
 
-Use the taxonomy in the [Testing Roadmap](.specify/guides/testing-roadmap.md):
-unit, component, integration, and end-to-end. Permissions, history, and
-concurrency are behaviors to cover at the relevant boundary; human acceptance is
-separate. Existing file names do not prove what boundary a test covers.
+**CRITICAL**: Use focused test slices when possible for faster execution.
 
-This is traditional Spring MVC. Spring Boot `@WebMvcTest`, `@DataJpaTest`,
-`@SpringBootTest`, `@MockBean`, and `TestEntityManager` are not available.
+**Decision Tree**:
 
-| Boundary             | Existing pattern                                                         | What it proves                                                                                          |
-| -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Unit                 | JUnit 4 + `MockitoJUnitRunner`, `@Mock`, `@InjectMocks`                  | Real branching, validation, or transformation with isolated collaborators                               |
-| Controller component | `MockMvcBuilders.standaloneSetup` or a focused Spring test configuration | Request mapping and response behavior; security only when the relevant security configuration is loaded |
-| Integration          | `BaseWebContextSensitiveTest`, real relevant services/DAOs, PostgreSQL   | Connected application behavior and persisted effects                                                    |
-| End-to-end           | Playwright with the running application                                  | Browser workflow through the real backend and database                                                  |
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
+`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests use
+`BaseWebContextSensitiveTest`.
 
-Use the smallest context that proves the behavior. For examples of focused
-controller tests, see `AnalyzerConnectionProbeRestControllerTest` and
-`AnalyzerWorkflowAuthorizationSecurityTest`. Loading a full context does not
-prove integration if the relevant internal services are mocked. Inspect
-`AppTestConfig` replacements before choosing an integration setup.
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+3. **Testing complete workflow with full application context?** → Use
+   `BaseWebContextSensitiveTest` ✅
+4. **All integration tests** → Use `BaseWebContextSensitiveTest` ✅
+
+**When to Use Each**:
+
+| Test Type   | Base Class/Pattern            | Use Case               | Speed  | Context      |
+| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
+
+**Why not Spring Boot test annotations?**
+
+- This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**, not
+  Spring Boot
+- No `spring-boot-starter-test` dependency
+- No `@SpringBootApplication` - uses `@EnableWebMvc` + `@Configuration` instead
+- WAR packaging (not JAR) - deployed to Tomcat
+
+**Reference**:
+[Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
 
 ### Unit Tests (JUnit 4 + Mockito)
 
-Use `org.junit.Test` and `org.junit.Assert` with expected value first. Mocking
-DAOs or services is appropriate when they are outside the unit under test.
-Assert real decisions, transformed values, rejected input, or exact delegated
-arguments; merely asserting that a service returns its mock's return value
-provides no useful business regression coverage. Include negative and boundary
-cases required by Constitution V.6.
+**Location:** `src/test/java/org/openelisglobal/{module}/service/`
 
-Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`.
+**Pattern:**
 
-### Controller and DAO Tests
+```java
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
-The filenames `WebMvcTestController.java.template` and
-`DataJpaTestDao.java.template` are retained template names, not Spring Boot
-annotations. Read their current contents before use.
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.when;
 
-- Controller component tests may mock the service boundary. Integration tests
-  must exercise the relevant real internal services and persistence.
-- The shared base builds a protected `mockMvc` field in `@Before`; do not
-  autowire another `MockMvc` field. Its default principal and MockMvc setup do
-  not establish coverage of production security filters.
-- Database tests that can use rollback must explicitly add `@Transactional`. Use
-  DBUnit for fixtures and injected JPA/Hibernate objects for persistence
-  assertions; flush and clear before rereading persisted state when applicable.
-- Tests of independent connections, concurrency, or commit-time behavior need
-  committed setup and explicit cleanup instead of an enclosing test transaction.
+@RunWith(MockitoJUnitRunner.class)
+public class SampleServiceTest {
+    @Mock  // ✅ Use @Mock for isolated unit tests (NOT @MockBean)
+    private SampleDAO sampleDAO;
 
-See
-[Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
-for fixture ownership and transaction examples.
+    @InjectMocks
+    private SampleServiceImpl sampleService;
+
+    @Test
+    public void testGetSampleById_ReturnsCorrectSample() {
+        // Arrange
+        Sample expected = SampleBuilder.create()
+            .withId("123")
+            .build();
+        when(sampleDAO.get("123")).thenReturn(expected);
+
+        // Act
+        Sample actual = sampleService.getSampleById("123");
+
+        // Assert
+        assertNotNull("Sample should not be null", actual);
+        assertEquals("Sample ID should match", "123", actual.getId());
+    }
+}
+```
+
+**Key Points:**
+
+- Use JUnit 4 imports (`org.junit.Test`, NOT `org.junit.jupiter.api.Test`)
+- Use `@Mock` for isolated unit tests (NOT `@MockBean` - that's for Spring
+  context tests)
+- Assertion order: `assertEquals(expected, actual)`
+- Mock DAO layer, test service logic only
+- Use builders/factories for test data (NOT hardcoded values)
+- Test business logic only (mock dependencies)
+
+**Template:** `.specify/templates/testing/JUnit4ServiceTest.java.template`
+
+### Controller Tests (BaseWebContextSensitiveTest)
+
+**Location:** `src/test/java/org/openelisglobal/{module}/controller/`
+
+**Use for**: Testing REST controllers with full Spring context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@WebMvcTest` is **NOT available**. All controller
+tests extend `BaseWebContextSensitiveTest`.
+
+**Pattern:**
+
+```java
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean  // ✅ Use @MockBean for Spring context tests (NOT @Mock)
+    private StorageLocationService storageLocationService;
+
+    @Test
+    public void testGetLocation_WithValidId_ReturnsLocation() throws Exception {
+        StorageRoom room = StorageRoomBuilder.create()
+            .withId("ROOM-001")
+            .withName("Main Laboratory")
+            .build();
+        when(storageLocationService.getLocationById("ROOM-001")).thenReturn(room);
+
+        mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("ROOM-001"));
+    }
+}
+```
+
+**Key Points:**
+
+- Extends `BaseWebContextSensitiveTest` (provides MockMvc)
+- Use `@MockBean` (NOT `@Mock`) for Spring context mocking
+- Use `MockMvc` for HTTP request/response testing
+- Use JSONPath for response assertions
+- Mock service layer, test HTTP layer only
+
+**Template:** `.specify/templates/testing/WebMvcTestController.java.template`
+
+### DAO Tests (BaseWebContextSensitiveTest)
+
+**Location:** `src/test/java/org/openelisglobal/{module}/dao/`
+
+**Use for**: Testing persistence layer with real HQL query execution.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@DataJpaTest` is **NOT available**. All DAO tests
+extend `BaseWebContextSensitiveTest`.
+
+**Pattern:**
+
+```java
+public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private StorageLocationDAO storageLocationDAO;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
+    @Test
+    public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
+        StorageRoom room = StorageRoomBuilder.create()
+            .withId("ROOM-001")
+            .withName("Main Lab")
+            .build();
+        entityManager.persist(room);
+
+        StorageDevice device = StorageDeviceBuilder.create()
+            .withId("DEV-001")
+            .withName("Freezer 1")
+            .withParentRoom(room)
+            .build();
+        entityManager.persist(device);
+        entityManager.flush();
+
+        List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
+
+        assertEquals("Should return one device", 1, devices.size());
+        assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
+    }
+}
+```
+
+**Key Points:**
+
+- Use `TestEntityManager` for test data (NOT JdbcTemplate)
+- Automatic transaction rollback (no manual cleanup needed)
+- Test HQL queries, CRUD operations, relationships
+
+**Template:** `.specify/templates/testing/DataJpaTestDao.java.template`
 
 ### Frontend Unit Tests (Vitest + React Testing Library)
 
@@ -1232,7 +1478,7 @@ for fixture ownership and transaction examples.
 `@testing-library/jest-dom` matchers are wired via `frontend/src/setupTests.js`.
 
 **For Comprehensive Guidance**: See
-[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#vitest--react-testing-library-unit-and-component-tests)
+[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
 for detailed patterns, code examples, and best practices.
 
 **For Quick Reference**: See
@@ -1246,15 +1492,13 @@ common patterns, cheat sheets, and a Vitest↔Jest API mapping table.
 - **Refactor**: Improve code quality while keeping tests green
 
 **SDD Checkpoint:** After Phase 4 (Frontend), all unit tests MUST pass  
-**Coverage Goal:** >70%. Vitest runs the tests; a coverage provider is not
-currently declared in `frontend/package.json`.
+**Coverage Goal:** >70% (measured via Vitest + `@vitest/coverage-v8`)
 
 **Pattern:**
 
 ```javascript
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/dom";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -1262,7 +1506,7 @@ import { BrowserRouter } from "react-router-dom";
 import ComponentName from "./ComponentName";
 import messages from "../../../languages/en.json";
 
-// Vitest hoists vi.mock automatically, regardless of its position here.
+// Mock utilities BEFORE imports (Vitest hoists vi.mock automatically)
 vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
@@ -1289,7 +1533,7 @@ describe("ComponentName", () => {
     const button = screen.getByRole("button", { name: /submit/i });
     await userEvent.click(button);
 
-    // Assert: waitFor retries thrown queries or assertions until success.
+    // Assert: Wait for async element (use queryBy* in waitFor)
     await waitFor(() => {
       const element = screen.queryByText("Success");
       expect(element).toBeInTheDocument();
@@ -1304,9 +1548,8 @@ describe("ComponentName", () => {
   Router → Component → Utils → Messages
 - **userEvent vs fireEvent**: Prefer `userEvent` for user interactions (more
   realistic)
-- **Async Testing**: Prefer `findBy*` for elements that appear asynchronously.
-  In `waitFor`, assert the expected state; thrown queries and assertions retry.
-  Use `queryBy*` for absence checks.
+- **Async Testing**: Use `waitFor` with `queryBy*` (NOT `getBy*`) or `findBy*`
+  for async elements
 - **DON'T**: Use `setTimeout` (no retry logic - use `waitFor` instead)
 - **Carbon Components**: Use `userEvent`, `waitFor` for portals, `within()` for
   scoped queries
@@ -1316,8 +1559,7 @@ describe("ComponentName", () => {
 **Anti-Patterns:**
 
 - ❌ Using `setTimeout` for async operations (use `waitFor` instead)
-- ❌ Returning false from `waitFor` instead of asserting (only thrown errors
-  retry)
+- ❌ Using `getBy*` in `waitFor` (use `queryBy*` instead)
 - ❌ Using `fireEvent` when `userEvent` works (prefer `userEvent`)
 - ❌ Testing implementation details (test user-visible behavior)
 - ❌ Inconsistent import order
@@ -1364,15 +1606,60 @@ public class HibernateMappingValidationTest {
 
 ### Integration Tests (BaseWebContextSensitiveTest)
 
-Exercise real services, DAO queries, and PostgreSQL for the behavior under test.
-Use the [backend guide](.specify/guides/backend-testing-best-practices.md) to
-choose rollback isolation or committed setup. Do not hide commit/transaction
-failures by wrapping every workflow in a test transaction, and do not replace
-relevant internal services with mocks merely to make full-context setup pass.
+**Location:** `src/test/java/org/openelisglobal/{module}/controller/` or
+`src/test/java/org/openelisglobal/{module}/service/`
 
-Run one class with `mvn test -Dtest=YourIntegrationTest`. Both unit and
-integration classes run through Surefire; there is no separate `integration`
-Maven profile.
+**Use for**: Testing complete workflows that require full application context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@SpringBootTest` is **NOT available**. All
+integration tests extend `BaseWebContextSensitiveTest`.
+
+**Pattern:**
+
+```java
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+
+public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
+    @Test
+    public void testSaveSample_PersistsToDatabase() {
+        Sample sample = SampleBuilder.create()
+            .withAccessionNumber("2025-00001")
+            .build();
+
+        sampleService.save(sample);
+
+        Sample retrieved = sampleService.getSampleByAccessionNumber("2025-00001");
+        assertNotNull("Sample should be persisted", retrieved);
+    }
+}
+```
 
 ### E2E Tests (Cypress) — DEPRECATED
 
@@ -1506,6 +1793,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides
@@ -1515,9 +1821,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - For local execution, start `scripts/dev-stack up` and export
->   `scripts/dev-stack env` before selecting a registered project. Analyzer
->   projects require the bridge and simulator services provided by that stack.
+> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
+>   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
+>   `core-demo-video` run on the build stack only.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -1537,24 +1843,21 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-Common projects are listed below; `playwright.config.ts` contains the full list
-and exact test selections.
-
-| Project                | Purpose                                    |
-| ---------------------- | ------------------------------------------ |
-| `core-app`             | Core application browser tests             |
-| `core-demo`            | Core demonstration workflows               |
-| `core-demo-video`      | Core demonstrations with video             |
-| `harness-foundational` | Analyzer infrastructure and workflow tests |
-| `harness-demo`         | Analyzer demonstration workflows           |
-| `harness-demo-video`   | Analyzer demonstrations with video         |
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
 
 #### CI Workflows
 
-The build entry point is `.github/workflows/e2e-playwright.yml`; browser
-execution is defined in `.github/workflows/e2e-playwright-reusable.yml` and its
-callers. Check those files for the current project selection and fixture mode.
-CI fixture setup is separate from local development through `scripts/dev-stack`.
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 
@@ -1681,7 +1984,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
 ```
 
 **Harness demos:**
@@ -1803,15 +2106,22 @@ import org.junit.Assert.*;  // JUnit 4
 
 ### Incomplete Test Skipping
 
-`-DskipTests` skips execution but retains test compilation. For a development
-build that also skips compilation, use both flags:
+**Symptom:** "Skipping tests" message shown but tests still run (Failsafe
+integration tests)
+
+**Cause:** Using only `-DskipTests` flag
+
+**Wrong:**
+
+```bash
+mvn clean install -DskipTests
+```
+
+**Correct:**
 
 ```bash
 mvn clean install -DskipTests -Dmaven.test.skip=true
 ```
-
-Keep test compilation enabled for the shared-build plugin test-JAR requirement
-in `CLAUDE.md`. A build with tests skipped is not test validation.
 
 ### @Transactional in Controllers
 
@@ -1997,7 +2307,10 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop` (unless hotfix to `main`)
+   - Development PRs target `develop`, including hotfixes. Fixes for a released
+     line are cherry-picked onto its `release/<X.Y>.x` branch after they merge.
+     Release PRs from a release branch target `main` (see
+     [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
 
@@ -2063,15 +2376,14 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
-  tests (PR + push)
-- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
-  harness) with required Playwright gate (PR)
-- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
-  required frontend gate (PR)
-- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
-  deprecated Cypress gate (PR)
-- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
-  releases only)
+  tests; reports the required `01 Checkpoint - Backend` check
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks; reports
+  the required `02 Checkpoint - Frontend` check
+- `e2e-playwright.yml` (`03 - E2E`) — builds the E2E images; `e2e-tests.yml`
+  then runs Playwright (core + analyzer harness) and the deprecated Cypress
+  suite and reports the required `03 Checkpoint - E2E` check
+- `publish-images.yml` (`Publish Images`) — after `03 - E2E` passes, publishes
+  the tested images to Docker Hub (push to `develop`, and releases)
 
 ### Code Review Standards
 
@@ -2202,6 +2514,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

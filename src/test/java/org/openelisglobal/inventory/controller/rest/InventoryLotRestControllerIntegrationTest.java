@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.config.AppConfig;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -195,6 +197,32 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         JsonNode movements = objectMapper.readTree(movementsResult.getResponse().getContentAsString());
         assertTrue("Should be an array of movements", movements.isArray());
         assertEquals("One movement for the assign, one for the move", 2, movements.size());
+    }
+
+    @Test
+    public void put_keepsTheStoredBarcode_whenTheBodyOmitsIt() throws Exception {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        // The fields a partial update carries, with no barcode among them.
+        Map<String, Object> body = new HashMap<>();
+        body.put("inventoryItem", Map.of("id", 7000));
+        body.put("lotNumber", "OGC657-LOT-001");
+        body.put("initialQuantity", 10.0);
+        body.put("currentQuantity", 3.0);
+        body.put("qcStatus", "PASSED");
+        body.put("status", "ACTIVE");
+        body.put("version", 0);
+
+        mockMvc.perform(put("/rest/inventory/lots/7000").contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd).content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/rest/inventory/lots/7000")).andExpect(status().isOk()).andReturn();
+        JsonNode lot = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals("A PUT without a barcode must not orphan the printed label", "OGC657-TEST-REAGENT-OGC657-LOT-001",
+                lot.get("barcode").asText());
+        assertEquals("The fields the body did carry must still be applied", 3.0, lot.get("currentQuantity").asDouble(),
+                0.001);
     }
 
     @Test

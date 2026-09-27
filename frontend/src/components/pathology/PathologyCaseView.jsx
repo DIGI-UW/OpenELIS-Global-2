@@ -36,6 +36,7 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { stageLabel } from "./pathologyStages";
 
 function PathologyCaseView() {
   const intl = useIntl();
@@ -419,11 +420,23 @@ function PathologyCaseView() {
               });
             }}
           >
-            <SelectItem disabled value="placeholder" text="Status" />
+            <SelectItem
+              disabled
+              value="placeholder"
+              text={intl.formatMessage({ id: "common.status" })}
+            />
 
+            {/* The list arrives from the server in bench order (FR-2.1) with an
+                English value; the stage label is localized here so the option
+                text follows the user's language, while the option value stays
+                the raw enum name the save payload and the backend expect. */}
             {statuses.map((status, index) => {
               return (
-                <SelectItem key={index} text={status.value} value={status.id} />
+                <SelectItem
+                  key={index}
+                  text={stageLabel(intl, status.id, status.value)}
+                  value={status.id}
+                />
               );
             })}
           </Select>

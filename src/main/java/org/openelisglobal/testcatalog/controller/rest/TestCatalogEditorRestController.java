@@ -981,7 +981,7 @@ public class TestCatalogEditorRestController {
     public ResponseEntity<SampleResults> copySampleResults(@PathVariable String testId, @PathVariable String sourceId,
             HttpServletRequest request) {
         Test test = testService.getTestById(testId);
-        if (test == null) {
+        if (test == null || testService.getTestById(sourceId) == null) {
             return ResponseEntity.notFound().build();
         }
         componentService.copyComponentsFromTest(sourceId, testId, ControllerUtills.getSysUserId(request));
@@ -1091,6 +1091,9 @@ public class TestCatalogEditorRestController {
     public static class RangeDto {
         public String id;
         public String componentId;
+        // Read-only: the component's code, the same across a test's specimen
+        // siblings, so a group edit can compare ranges across tests (OGC-1238).
+        public String componentCode;
         // OGC-1145 Phase 2: null = shared (every specimen the test runs on);
         // a value overrides this range for that sample type only.
         public String sampleTypeId;
@@ -1366,10 +1369,16 @@ public class TestCatalogEditorRestController {
         RangesResponse resp = new RangesResponse();
         resp.testId = testId;
         List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
-        for (ResultLimit l : limits) {
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        Map<String, String> codeById = new HashMap<>();
+        for (TestResultComponent c : comps) {
+            codeById.put(c.getId(), c.getCode());
+        }
+        for (ResultLimit l : resultLimitService.getNumericRangesForTest(testId)) {
             RangeDto d = new RangeDto();
             d.id = l.getId();
             d.componentId = l.getComponentId();
+            d.componentCode = l.getComponentId() == null ? null : codeById.get(l.getComponentId());
             d.sampleTypeId = l.getSampleTypeId();
             d.gender = l.getGender();
             d.minAge = finiteOrNull(l.getMinAge());
@@ -1387,7 +1396,6 @@ public class TestCatalogEditorRestController {
         resp.coverage = coverageService.validate(limits);
         // Name the component behind each gap/overlap so the UI can say which
         // component is uncovered — only meaningful when the test has several.
-        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
         if (comps.size() > 1) {
             Map<String, String> labelById = new HashMap<>();
             for (TestResultComponent c : comps) {
@@ -1498,18 +1506,50 @@ public class TestCatalogEditorRestController {
     public static class GroupStorageUpdate {
         public List<String> testIds = new ArrayList<>();
         public StorageDto storage;
+        // The StorageDto fields the admin changed. Only these are written; every
+        // test keeps its own value for the rest. Null writes the whole form.
+        public List<String> fields;
     }
+
+    private static final Map<String, java.util.function.BiConsumer<StorageDto, StorageDto>> STORAGE_FIELDS = Map
+            .ofEntries(Map.entry("storageCondition", (t, s) -> t.storageCondition = s.storageCondition),
+                    Map.entry("storageConditionCustom", (t, s) -> t.storageConditionCustom = s.storageConditionCustom),
+                    Map.entry("storageDuration", (t, s) -> t.storageDuration = s.storageDuration),
+                    Map.entry("storageDurationUnit", (t, s) -> t.storageDurationUnit = s.storageDurationUnit),
+                    Map.entry("stabilityNotes", (t, s) -> t.stabilityNotes = s.stabilityNotes),
+                    Map.entry("protectFromLight", (t, s) -> t.protectFromLight = s.protectFromLight),
+                    Map.entry("doNotFreeze", (t, s) -> t.doNotFreeze = s.doNotFreeze),
+                    Map.entry("doNotRefrigerate", (t, s) -> t.doNotRefrigerate = s.doNotRefrigerate),
+                    Map.entry("disposalMethod", (t, s) -> t.disposalMethod = s.disposalMethod),
+                    Map.entry("disposalTimeframe", (t, s) -> t.disposalTimeframe = s.disposalTimeframe),
+                    Map.entry("disposalUnit", (t, s) -> t.disposalUnit = s.disposalUnit),
+                    Map.entry("specialInstructions", (t, s) -> t.specialInstructions = s.specialInstructions),
+                    Map.entry("overrideRestricted", (t, s) -> t.overrideRestricted = s.overrideRestricted));
 
     @PutMapping(value = "/group/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> saveGroupStorage(@RequestBody GroupStorageUpdate body, HttpServletRequest request) {
         if (body == null || body.testIds == null || body.testIds.isEmpty() || body.storage == null) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        if (body.fields != null && !STORAGE_FIELDS.keySet().containsAll(body.fields)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.fields != null && body.fields.isEmpty()) {
+            return ResponseEntity.ok().build();
+        }
         String sysUserId = ControllerUtills.getSysUserId(request);
         for (String testId : body.testIds) {
-            if (testService.getTestById(testId) != null) {
-                handlingService.saveForTest(testId, toHandling(body.storage), sysUserId);
+            if (testService.getTestById(testId) == null) {
+                continue;
             }
+            StorageDto desired = body.storage;
+            if (body.fields != null) {
+                desired = toStorage(testId, handlingService.getByTestId(testId));
+                for (String field : body.fields) {
+                    STORAGE_FIELDS.get(field).accept(desired, body.storage);
+                }
+            }
+            handlingService.saveForTest(testId, toHandling(desired), sysUserId);
         }
         return ResponseEntity.ok().build();
     }
@@ -1633,7 +1673,7 @@ public class TestCatalogEditorRestController {
             }
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
-            o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            o.name = t.getLocalizedName();
             o.domain = Domain.normalize(t.getDomain());
             options.add(o);
         }
@@ -1853,6 +1893,38 @@ public class TestCatalogEditorRestController {
          * can say so on the row. Empty when the panel is consistent.
          */
         public List<String> sampleTypesOutsideDomain = new ArrayList<>();
+        /**
+         * Set only on a 422 body: the rule that refused a Basic Info save —
+         * {@code name.required}, {@code name.tooLong}, {@code description.tooLong},
+         * {@code domain.unknown}, {@code domain.conflict} or
+         * {@code activation.needsTest}.
+         */
+        public String refusal;
+        /** Set only on a 422 body: why the domain guard refused this write. */
+        public DomainConflict domainConflict;
+    }
+
+    /** A member test the domain guard refused, with the domain it actually has. */
+    public static class ConflictingTest {
+        public String testId;
+        public String name;
+        public String domain;
+    }
+
+    /**
+     * OGC-1232 — the body of a domain-guard 422. A panel never mixes domains, so a
+     * write that would leave member tests outside the panel's domain is refused;
+     * this names the domain in force and every test that stands in the way, so the
+     * operator knows which tests to re-domain or remove before trying again.
+     */
+    public static class DomainConflict {
+        /** The domain the panel has, or was asked to take. */
+        public String domain;
+        /** Set on the test-side membership write: the panel that refused the test. */
+        public String panelId;
+        public String panelName;
+        /** The tests whose own domain is not {@link #domain}. */
+        public List<ConflictingTest> tests = new ArrayList<>();
     }
 
     /** A panel this test belongs to, and its position within that panel. */
@@ -1865,6 +1937,8 @@ public class TestCatalogEditorRestController {
     public static class TestPanelsResponse {
         public String testId;
         public List<PanelMembership> memberships = new ArrayList<>();
+        /** Set only on a 422 body: why the domain guard refused this write. */
+        public DomainConflict domainConflict;
     }
 
     /** A test within a panel — the read-only preview for the position editor. */
@@ -2091,12 +2165,29 @@ public class TestCatalogEditorRestController {
         return ResponseEntity.ok(toPanelOption(panel));
     }
 
+    private static final int PANEL_NAME_MAX_LENGTH = 20;
+
+    private static final int PANEL_DESCRIPTION_MAX_LENGTH = 60;
+
     /**
      * OGC-224 — Basic Info save with the FRS rules: name required (also updates the
      * display localization so order entry follows the rename); domain must be a
      * real Domain and cannot change while member tests of another domain exist;
      * activation requires ≥1 member test ("never active with zero tests"); editing
      * never auto-flips the active state — only this explicit toggle.
+     * <p>
+     * OGC-1232 — every rule is checked before anything is written, so a refused
+     * save leaves the panel exactly as it was (a rename used to reach the display
+     * localization before the domain guard refused), and every refusal says why:
+     * {@link PanelOption#refusal} names the rule and
+     * {@link PanelOption#domainConflict} the member tests in the way. A name the
+     * panel already carries is never a reason to refuse, so a panel created
+     * elsewhere with a longer name stays editable here; the localization is only
+     * rewritten on an actual rename.
+     * <p>
+     * OGC-1234: a rename onto another panel's name is refused as
+     * {@code name.duplicate} instead of failing with a 500; a description is free
+     * text and may repeat another panel's.
      */
     @PutMapping(value = "/panels/{panelId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PanelOption> savePanelBasicInfo(@PathVariable String panelId,
@@ -2107,11 +2198,51 @@ public class TestCatalogEditorRestController {
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
 
-        if (body.name != null) {
-            String name = body.name.trim();
-            if (name.isEmpty() || name.length() > 20) {
-                return ResponseEntity.unprocessableEntity().build();
+        String name = body.name == null ? null : body.name.trim();
+        boolean renamed = name != null && !name.equals(panel.getPanelName());
+        if (name != null && name.isEmpty()) {
+            return refused(panel, "name.required");
+        }
+        if (renamed && name.length() > PANEL_NAME_MAX_LENGTH) {
+            return refused(panel, "name.tooLong");
+        }
+        if (renamed && panelNameTakenByAnother(name, panel.getId())) {
+            return refused(panel, "name.duplicate");
+        }
+        String description = body.description == null ? null : body.description.trim();
+        if (description != null && description.length() > PANEL_DESCRIPTION_MAX_LENGTH) {
+            return refused(panel, "description.tooLong");
+        }
+        List<PanelItem> members = panelItemService.getPanelItemsForPanel(panel.getId());
+        Domain requested = null;
+        if (body.domain != null) {
+            try {
+                requested = Domain.valueOf(body.domain);
+            } catch (IllegalArgumentException e) {
+                return refused(panel, "domain.unknown");
             }
+            // domain-guard: a panel never mixes domains — the domain cannot move
+            // away from its member tests, and the refusal names them
+            List<Test> outside = new ArrayList<>();
+            for (PanelItem member : members) {
+                if (member.getTest() != null
+                        && !requested.name().equals(Domain.normalize(member.getTest().getDomain()))) {
+                    outside.add(member.getTest());
+                }
+            }
+            if (!outside.isEmpty()) {
+                PanelOption refusal = toPanelOption(panel);
+                refusal.refusal = "domain.conflict";
+                refusal.domainConflict = domainConflict(requested.name(), outside);
+                return ResponseEntity.unprocessableEntity().body(refusal);
+            }
+        }
+        if (Boolean.TRUE.equals(body.active) && members.isEmpty()) {
+            // FRS activation rule: never active with zero tests
+            return refused(panel, "activation.needsTest");
+        }
+
+        if (renamed) {
             panel.setPanelName(name);
             Localization localization = panel.getLocalization();
             if (localization != null) {
@@ -2121,44 +2252,39 @@ public class TestCatalogEditorRestController {
                 localizationService.update(localization);
             }
         }
-        if (body.description != null) {
-            String description = body.description.trim();
-            if (description.length() > 60) {
-                return ResponseEntity.unprocessableEntity().build();
-            }
+        if (description != null) {
             // the DESCRIPTION column is NOT NULL — a cleared field falls back
             // to the panel's name, matching the create flow
             panel.setDescription(description.isEmpty() ? panel.getPanelName() : description);
         }
-        List<PanelItem> members = panelItemService.getPanelItemsForPanel(panel.getId());
-        if (body.domain != null) {
-            Domain requested;
-            try {
-                requested = Domain.valueOf(body.domain);
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.unprocessableEntity().build();
-            }
-            // domain-guard: a panel never mixes domains — the domain cannot move
-            // away from its member tests
-            for (PanelItem member : members) {
-                if (member.getTest() != null
-                        && !requested.name().equals(Domain.normalize(member.getTest().getDomain()))) {
-                    return ResponseEntity.unprocessableEntity().build();
-                }
-            }
+        if (requested != null) {
             panel.setDomain(requested.name());
         }
         if (body.active != null) {
-            if (body.active && members.isEmpty()) {
-                // FRS activation rule: never active with zero tests
-                return ResponseEntity.unprocessableEntity().build();
-            }
             panel.setIsActive(body.active ? "Y" : "N");
         }
         panel.setSysUserId(sysUserId);
         panelService.update(panel);
         refreshPanelDisplayLists();
         return ResponseEntity.ok(toPanelOption(panelService.getPanelById(panel.getId())));
+    }
+
+    /** Same rule as the panel DAO's duplicate check: trimmed, case-insensitive. */
+    private boolean panelNameTakenByAnother(String name, String panelId) {
+        String wanted = name.trim().toLowerCase(Locale.ROOT);
+        for (Panel other : panelService.getAllPanels()) {
+            if (!other.getId().equals(panelId) && other.getPanelName() != null
+                    && other.getPanelName().trim().toLowerCase(Locale.ROOT).equals(wanted)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ResponseEntity<PanelOption> refused(Panel panel, String refusal) {
+        PanelOption body = toPanelOption(panel);
+        body.refusal = refusal;
+        return ResponseEntity.unprocessableEntity().body(body);
     }
 
     @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2282,9 +2408,15 @@ public class TestCatalogEditorRestController {
                     return ResponseEntity.unprocessableEntity().build();
                 }
                 // OGC-224 domain guard — a panel never mixes domains, from
-                // either side of the one model.
+                // either side of the one model; the refusal names the panel
+                // and this test (OGC-1232).
                 if (!Domain.normalize(panel.getDomain()).equals(Domain.normalize(test.getDomain()))) {
-                    return ResponseEntity.unprocessableEntity().build();
+                    TestPanelsResponse refused = new TestPanelsResponse();
+                    refused.testId = testId;
+                    refused.domainConflict = domainConflict(Domain.normalize(panel.getDomain()), List.of(test));
+                    refused.domainConflict.panelId = panel.getId();
+                    refused.domainConflict.panelName = panel.getPanelName();
+                    return ResponseEntity.unprocessableEntity().body(refused);
                 }
                 positionByPanelId.put(item.panelId, item.position != null ? item.position : fallback);
             }
@@ -2323,6 +2455,8 @@ public class TestCatalogEditorRestController {
     public static class PanelTestsResponse {
         public PanelOption panel;
         public List<PanelTestRow> tests = new ArrayList<>();
+        /** Set only on a 422 body: why the domain guard refused this write. */
+        public DomainConflict domainConflict;
     }
 
     @PutMapping(value = "/panels/{panelId}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2334,6 +2468,7 @@ public class TestCatalogEditorRestController {
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         Map<String, Integer> positionByTestId = new LinkedHashMap<>();
+        List<Test> outside = new ArrayList<>();
         int fallback = 1;
         for (PanelTestItem item : body.tests) {
             if (isBlank(item.testId) || positionByTestId.containsKey(item.testId)) {
@@ -2345,12 +2480,18 @@ public class TestCatalogEditorRestController {
                 return ResponseEntity.unprocessableEntity().build();
             }
             // OGC-224 domain guard — only tests in the panel's domain are
-            // accepted; a panel never mixes domains.
+            // accepted; a panel never mixes domains. Every offender is
+            // collected so the refusal can name them all (OGC-1232).
             if (!Domain.normalize(panel.getDomain()).equals(Domain.normalize(test.getDomain()))) {
-                return ResponseEntity.unprocessableEntity().build();
+                outside.add(test);
             }
             positionByTestId.put(item.testId, item.position != null ? item.position : fallback);
             fallback++;
+        }
+        if (!outside.isEmpty()) {
+            PanelTestsResponse refused = new PanelTestsResponse();
+            refused.domainConflict = domainConflict(Domain.normalize(panel.getDomain()), outside);
+            return ResponseEntity.unprocessableEntity().body(refused);
         }
         int priorCount = panelItemService.getPanelItemsForPanel(panel.getId()).size();
         panelItemService.setMembershipsForPanel(panel, positionByTestId, sysUserId);
@@ -2391,6 +2532,19 @@ public class TestCatalogEditorRestController {
             return an.compareToIgnoreCase(bn);
         });
         return resp;
+    }
+
+    private static DomainConflict domainConflict(String domain, List<Test> outside) {
+        DomainConflict conflict = new DomainConflict();
+        conflict.domain = domain;
+        for (Test test : outside) {
+            ConflictingTest offender = new ConflictingTest();
+            offender.testId = test.getId();
+            offender.name = TestServiceImpl.getLocalizedTestNameWithType(test);
+            offender.domain = Domain.normalize(test.getDomain());
+            conflict.tests.add(offender);
+        }
+        return conflict;
     }
 
     private static boolean isBlank(String s) {

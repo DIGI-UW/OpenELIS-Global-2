@@ -3,8 +3,7 @@ package org.openelisglobal.test.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -12,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
@@ -46,7 +46,6 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,24 +54,25 @@ import org.springframework.web.servlet.LocaleResolver;
 @Service
 @DependsOn({ "springContext" })
 public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String>
-        implements TestService, TestDisplayNameService, LocaleChangeListener {
+        implements TestService, LocaleChangeListener {
+
+    public enum Entity {
+        TEST_NAME, TEST_AUGMENTED_NAME, TEST_REPORTING_NAME
+    }
 
     public static final String HIV_TYPE = "HIV_TEST_KIT";
     public static final String SYPHILIS_TYPE = "SYPHILIS_TEST_KIT";
-    private String variableTypeOfSampleId;
+    private static String VARIABLE_TYPE_OF_SAMPLE_ID;
     // private static String LANGUAGE_LOCALE = ConfigurationProperties.getInstance()
     // .getPropertyValue(ConfigurationProperties.Property.DEFAULT_LANG_LOCALE);
-    private volatile Map<NameMap, Map<String, String>> entityToMap = Collections.emptyMap();
+    private static Map<Entity, Map<String, String>> entityToMap;
 
-    @Autowired
-    protected TestDAO baseObjectDAO;
+    protected static TestDAO baseObjectDAO = SpringContext.getBean(TestDAO.class);
 
-    @Autowired
-    private TestResultService testResultService;
-    @Autowired
-    private TypeOfSampleTestService typeOfSampleTestService;
-    @Autowired
-    private TypeOfSampleService typeOfSampleService;
+    private static TestResultService testResultService = SpringContext.getBean(TestResultService.class);
+    private static TypeOfSampleTestService typeOfSampleTestService = SpringContext
+            .getBean(TypeOfSampleTestService.class);
+    private static TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
     private PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
     private PanelService panelService = SpringContext.getBean(PanelService.class);
     private TestAnalyteService testAnalyteService = SpringContext.getBean(TestAnalyteService.class);
@@ -81,7 +81,6 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @PostConstruct
     private void initialize() {
-        initializeGlobalVariables();
         LocaleResolver localeResolver = SpringContext.getBean(LocaleResolver.class);
         if (localeResolver instanceof GlobalLocaleResolver) {
             ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
@@ -90,21 +89,24 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     synchronized void initializeGlobalVariables() {
         TypeOfSample variableTypeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("Variable", "H");
-        variableTypeOfSampleId = variableTypeOfSample == null ? "-1" : variableTypeOfSample.getId();
-        createEntityMap();
+        VARIABLE_TYPE_OF_SAMPLE_ID = variableTypeOfSample == null ? "-1" : variableTypeOfSample.getId();
+
+        if (entityToMap == null) {
+            createEntityMap();
+        }
     }
 
     private synchronized void createEntityMap() {
-        Map<NameMap, Map<String, String>> refreshedNames = new EnumMap<>(NameMap.class);
-        refreshedNames.put(NameMap.TEST_NAME, createTestIdToNameMap());
-        refreshedNames.put(NameMap.TEST_AUGMENTED_NAME, createTestIdToAugmentedNameMap());
-        refreshedNames.put(NameMap.TEST_REPORTING_NAME, createTestIdToReportingNameMap());
-        entityToMap = refreshedNames;
+        entityToMap = new HashMap<>();
+        entityToMap.put(Entity.TEST_NAME, createTestIdToNameMap());
+        entityToMap.put(Entity.TEST_AUGMENTED_NAME, createTestIdToAugmentedNameMap());
+        entityToMap.put(Entity.TEST_REPORTING_NAME, createTestIdToReportingNameMap());
     }
 
     public TestServiceImpl() {
         super(Test.class);
         this.auditTrailLog = true;
+        initializeGlobalVariables();
     }
 
     @Override
@@ -113,7 +115,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     public static List<Test> getTestsInTestSectionById(String testSectionId) {
-        return SpringContext.getBean(TestService.class).getTestsByTestSectionId(testSectionId);
+        return baseObjectDAO.getTestsByTestSectionId(testSectionId);
     }
 
     @Override
@@ -124,7 +126,9 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @Override
     public void refreshTestNames() {
-        createEntityMap();
+        entityToMap.put(Entity.TEST_NAME, createTestIdToNameMap());
+        entityToMap.put(Entity.TEST_AUGMENTED_NAME, createTestIdToAugmentedNameMap());
+        entityToMap.put(Entity.TEST_REPORTING_NAME, createTestIdToReportingNameMap());
     }
 
     @Override
@@ -257,9 +261,8 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         return testSectionService.getUserLocalizedTesSectionName(getTestSection(test));
     }
 
-    @Override
-    public Map<String, String> getNameMap(NameMap nameMap) {
-        return entityToMap.getOrDefault(nameMap, Collections.emptyMap());
+    public static Map<String, String> getMap(Entity entiy) {
+        return entityToMap.get(entiy);
     }
 
     /**
@@ -282,7 +285,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return the localized test name
      */
     public static String getUserLocalizedTestName(String testId) {
-        Optional<Test> testOpt = SpringContext.getBean(TestDAO.class).get(testId);
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
@@ -322,7 +325,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return the localized reporting test name
      */
     public static String getUserLocalizedReportingTestName(String testId) {
-        Optional<Test> testOpt = SpringContext.getBean(TestDAO.class).get(testId);
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
@@ -342,7 +345,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         if (test == null) {
             return "";
         }
-        return SpringContext.getBean(TestDisplayNameService.class).localizeNameWithType(test);
+        return buildAugmentedTestNameForLocale(test);
     }
 
     /**
@@ -355,11 +358,11 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return The test name or the augmented test name
      */
     public static String getLocalizedTestNameWithType(String testId) {
-        Optional<Test> testOpt = SpringContext.getBean(TestDAO.class).get(testId);
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
-        return getLocalizedTestNameWithType(testOpt.get());
+        return buildAugmentedTestNameForLocale(testOpt.get());
     }
 
     /**
@@ -375,7 +378,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         if (test == null) {
             return "";
         }
-        return SpringContext.getBean(TestDisplayNameService.class).localizeNameWithType(test, sampleTypeName);
+        return buildAugmentedTestNameForLocale(test, sampleTypeName);
     }
 
     /**
@@ -388,11 +391,6 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         if (test == null) {
             return "";
         }
-        return SpringContext.getBean(TestDisplayNameService.class).localizeNameWithAllTypes(test);
-    }
-
-    @Override
-    public String localizeNameWithAllTypes(Test test) {
         Localization localization = test.getLocalizedTestName();
         String baseName;
         try {
@@ -412,7 +410,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         List<String> names = new ArrayList<>();
         for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTests) {
             TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
-            if (typeOfSample == null || typeOfSample.getId().equals(variableTypeOfSampleId)) {
+            if (typeOfSample == null || typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
                 continue;
             }
             String name = typeOfSample.getLocalizedName();
@@ -423,17 +421,15 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         return names.isEmpty() ? baseName : baseName + "(" + String.join(", ", names) + ")";
     }
 
-    @Override
-    public String localizeNameWithType(Test test) {
+    /**
+     * Build augmented test name using current request's locale. This is a static
+     * helper that doesn't use instance state.
+     */
+    private static String buildAugmentedTestNameForLocale(Test test) {
         return buildAugmentedTestNameForLocale(test, null);
     }
 
-    @Override
-    public String localizeNameWithType(Test test, String sampleTypeName) {
-        return buildAugmentedTestNameForLocale(test, sampleTypeName);
-    }
-
-    private String buildAugmentedTestNameForLocale(Test test, String explicitSampleName) {
+    private static String buildAugmentedTestNameForLocale(Test test, String explicitSampleName) {
         Localization localization = test.getLocalizedTestName();
 
         String sampleName = "";
@@ -448,7 +444,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
                 if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
                     TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
                     TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
-                    if (typeOfSample != null && !typeOfSample.getId().equals(variableTypeOfSampleId)) {
+                    if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
                         // OGC-1145: a test may associate several sample types; with no
                         // specimen in hand the display name summarizes rather than
                         // implying one
@@ -470,7 +466,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         }
     }
 
-    private Map<String, String> createTestIdToNameMap() {
+    private static Map<String, String> createTestIdToNameMap() {
         Map<String, String> testIdToNameMap = new HashMap<>();
 
         List<Test> tests = baseObjectDAO.getAllTests(false);
@@ -514,7 +510,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Transactional
-    private Map<String, String> createTestIdToReportingNameMap() {
+    private static Map<String, String> createTestIdToReportingNameMap() {
         Map<String, String> testIdToNameMap = new HashMap<>();
 
         List<Test> tests = baseObjectDAO.getAllActiveTests(false);
@@ -552,7 +548,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
             TypeOfSample typeOfSample = getTypeOfSample(test);
-            if (typeOfSample != null && !typeOfSample.getId().equals(variableTypeOfSampleId)) {
+            if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
                 sampleName = "(" + typeOfSample.getLocalizedName() + ")";
             }
         }
@@ -762,6 +758,32 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getTestById(String testId) {
         return getBaseObjectDAO().getTestById(testId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByIds(Collection<String> testIds) {
+        if (testIds == null || testIds.isEmpty()) {
+            return List.of();
+        }
+        return getBaseObjectDAO().get(new ArrayList<>(testIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getLabelOrDefault(String testId, Function<Test, String> label, String fallback) {
+        if (testId == null) {
+            return fallback;
+        }
+        try {
+            Test test = getBaseObjectDAO().getTestById(testId);
+            String resolved = test == null ? null : label.apply(test);
+            return resolved == null || resolved.isBlank() ? fallback : resolved;
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "getLabelOrDefault",
+                    "Could not resolve test name for " + testId + ": " + e.getMessage());
+            return fallback;
+        }
     }
 
     @Override
@@ -985,5 +1007,11 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
             ids.put("reportingName", reportingName.getId());
         }
         return ids;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isNameLocalization(String localizationId) {
+        return getBaseObjectDAO().isNameLocalization(localizationId);
     }
 }

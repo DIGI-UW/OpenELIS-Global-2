@@ -34,6 +34,15 @@ async function run(checks, state = "success", context = buildContext) {
         checks: {
           async listForRef(request) {
             assert.equal(request.ref, sha);
+            if (request.check_name === "02 Checkpoint - Frontend") {
+              return {
+                data: {
+                  check_runs: [
+                    { ...backend("success"), name: request.check_name },
+                  ],
+                },
+              };
+            }
             return { data: { check_runs: checks } };
           },
         },
@@ -48,7 +57,7 @@ async function run(checks, state = "success", context = buildContext) {
   });
 }
 
-test("both checkpoints for the candidate allow publication", () =>
+test("all checkpoints for the candidate allow publication", () =>
   run([backend("success")]));
 test("an upgrade/backend failure blocks publication even when E2E passes", async () => {
   await assert.rejects(run([backend("failure")]), /Backend.*failure/);

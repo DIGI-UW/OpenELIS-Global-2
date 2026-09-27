@@ -45,7 +45,7 @@ public class InventoryManagementServiceLotNumberTest {
     public void setup() {
         item = new InventoryItem();
         item.setId(1000L);
-        item.setCode("TAQ_DNA_POLYMERASE");
+        item.setCode("TAQ-DNA-POLYMERASE");
         item.setName("Taq DNA Polymerase");
         item.setUnits("mL");
         item.setItemType(ItemType.REAGENT);
@@ -76,7 +76,7 @@ public class InventoryManagementServiceLotNumberTest {
 
         InventoryLot received = inventoryManagementService.receiveInventory(lotWithNumber(null), "1");
 
-        assertEquals("TAQ_DNA_POLYMERASE_" + today(), received.getLotNumber());
+        assertEquals("TAQ-DNA-POLYMERASE-" + today(), received.getLotNumber());
     }
 
     @Test
@@ -85,18 +85,18 @@ public class InventoryManagementServiceLotNumberTest {
 
         InventoryLot received = inventoryManagementService.receiveInventory(lotWithNumber("   "), "1");
 
-        assertEquals("TAQ_DNA_POLYMERASE_" + today(), received.getLotNumber());
+        assertEquals("TAQ-DNA-POLYMERASE-" + today(), received.getLotNumber());
     }
 
     @Test
     public void receiveInventory_suffixesGeneratedLotNumber_whenTodaysAlreadyExists() {
-        InventoryLot existing = lotWithNumber("TAQ_DNA_POLYMERASE_" + today());
+        InventoryLot existing = lotWithNumber("TAQ-DNA-POLYMERASE-" + today());
         when(inventoryLotService.getByInventoryItemId(1000L)).thenReturn(List.of(existing));
 
         InventoryLot received = inventoryManagementService.receiveInventory(lotWithNumber(null), "1");
 
         assertTrue("A second lot received today must not reuse the first one's number",
-                received.getLotNumber().endsWith("_2"));
+                received.getLotNumber().endsWith("-2"));
     }
 
     @Test

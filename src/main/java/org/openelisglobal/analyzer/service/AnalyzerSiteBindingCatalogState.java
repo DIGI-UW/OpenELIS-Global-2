@@ -97,11 +97,6 @@ final class AnalyzerSiteBindingCatalogState {
             return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0);
         }
 
-        boolean allRowsCurrent() {
-            return currentBoundTestRows.size() + currentExcludedTestRows.size() == testRows
-                    && currentBoundResultRows.size() + currentExcludedResultRows.size() == resultRows;
-        }
-
         boolean isCurrentTest(String sourceRowKey) {
             return isCurrentBoundTest(sourceRowKey) || isCurrentExcludedTest(sourceRowKey);
         }

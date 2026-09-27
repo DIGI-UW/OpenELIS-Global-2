@@ -58,6 +58,7 @@ const CatalogImport = () => {
   const [staged, setStaged] = useState([]);
   const [plan, setPlan] = useState(null);
   const [applied, setApplied] = useState(false);
+  const [failure, setFailure] = useState(null);
   const [busy, setBusy] = useState(false);
   const [unresolved, setUnresolved] = useState([]);
   const [candidates, setCandidates] = useState({});
@@ -92,6 +93,7 @@ const CatalogImport = () => {
   const addFiles = (addedFiles) => {
     setPlan(null);
     setApplied(false);
+    setFailure(null);
     setStaged((previous) => [
       ...previous,
       ...addedFiles.map((file) => ({
@@ -105,6 +107,7 @@ const CatalogImport = () => {
   const removeFile = (name) => {
     setPlan(null);
     setApplied(false);
+    setFailure(null);
     setStaged((previous) => previous.filter((entry) => entry.name !== name));
   };
 
@@ -116,6 +119,37 @@ const CatalogImport = () => {
     );
   };
 
+  const notify = (kind, messageId) => {
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({ id: messageId }),
+    });
+    setNotificationVisible(true);
+  };
+
+  /**
+   * The server's own reason for a refused batch: the file errors of a 422, the
+   * status text of anything else.
+   */
+  const reasonOf = (response) => {
+    const errors = (response?.files || [])
+      .map((file) => file.error)
+      .filter(Boolean);
+    if (errors.length > 0) {
+      return errors.join("; ");
+    }
+    if (response?.error) {
+      return response.error;
+    }
+    return response?.status ? `HTTP ${response.status}` : "";
+  };
+
+  /**
+   * Sends the staged files. A response without a file list, or with an error
+   * status, is a refused batch: nothing was kept, so a preview shows no plan and
+   * an apply keeps the preview it had, and the reason is shown on the page.
+   */
   const send = (endpoint, isApply) => {
     const formData = new FormData();
     staged.forEach((entry) => {
@@ -123,27 +157,34 @@ const CatalogImport = () => {
       formData.append("domains", entry.domain || "");
     });
     setBusy(true);
+    setFailure(null);
     postToOpenElisServerFormDataJsonResponse(endpoint, formData, (response) => {
       setBusy(false);
-      if (!response) {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "catalog.import.failed" }),
+      const refused =
+        !response || response.status >= 400 || !Array.isArray(response.files);
+      if (refused) {
+        const messageId = isApply
+          ? "catalog.import.apply.failed"
+          : "catalog.import.failed";
+        if (!isApply) {
+          setPlan(null);
+        }
+        setFailure({
+          title: intl.formatMessage({ id: messageId }),
+          reason: reasonOf(response),
         });
-        setNotificationVisible(true);
+        notify(NotificationKinds.error, messageId);
         return;
       }
       setPlan(response);
       setApplied(isApply);
       loadUnresolved();
       if (isApply) {
-        addNotification({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "catalog.import.applied" }),
-        });
-        setNotificationVisible(true);
+        const partial = response.files.some((file) => file.error);
+        notify(
+          partial ? NotificationKinds.error : NotificationKinds.success,
+          partial ? "catalog.import.applied.partial" : "catalog.import.applied",
+        );
       }
     });
   };
@@ -284,9 +325,28 @@ const CatalogImport = () => {
               >
                 <FormattedMessage id="catalog.import.apply" />
               </Button>
+              {staged.length > 0 && !plan && (
+                <p data-testid="catalog-import-apply-hint">
+                  <FormattedMessage id="catalog.import.apply.hint" />
+                </p>
+              )}
               <br />
               <br />
             </Column>
+
+            {failure && (
+              <Column lg={16} md={8} sm={4}>
+                <InlineNotification
+                  kind="error"
+                  lowContrast
+                  hideCloseButton
+                  title={failure.title}
+                  subtitle={failure.reason}
+                  data-testid="catalog-import-failure"
+                />
+                <br />
+              </Column>
+            )}
 
             {plan && (
               <Column lg={16} md={8} sm={4}>

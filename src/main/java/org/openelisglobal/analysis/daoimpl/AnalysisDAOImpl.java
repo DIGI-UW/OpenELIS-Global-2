@@ -141,6 +141,60 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) throws LIMSRuntimeException {
+        // An empty test list means the user holds no lab unit, which is "sees
+        // nothing", not "sees everything" - so short-circuit rather than drop the
+        // predicate.
+        if (statusIdList == null || statusIdList.isEmpty() || testIdList == null || testIdList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        boolean hasExclusions = excludedAnalysisIds != null && !excludedAnalysisIds.isEmpty();
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.statusId IN (:statusIdList) " + "AND t.id IN (:testIdList) "
+                    + (hasExclusions ? "AND a.id NOT IN (:excludedAnalysisIds) " : "")
+                    + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("statusIdList", statusIdList);
+            query.setParameterList("testIdList", testIdList);
+            if (hasExclusions) {
+                query.setParameterList("excludedAnalysisIds", excludedAnalysisIds);
+            }
+            if (maxResults > 0) {
+                query.setMaxResults(maxResults);
+            }
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getPendingAnalysesForWorkplan()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) throws LIMSRuntimeException {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            String hql = "SELECT DISTINCT a FROM Analysis a " + "LEFT JOIN FETCH a.sampleItem si "
+                    + "LEFT JOIN FETCH si.sample s " + "LEFT JOIN FETCH si.typeOfSample " + "LEFT JOIN FETCH a.test t "
+                    + "LEFT JOIN FETCH a.testSection ts " + "LEFT JOIN FETCH a.method m "
+                    + "WHERE a.id IN (:analysisIds) " + "ORDER BY s.accessionNumber, t.description";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameterList("analysisIds", analysisIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAnalysesByIdsWithDetails()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<String> testIdList,
             List<String> statusIdList, Date lowDate, Date highDate) throws LIMSRuntimeException {
         try {
@@ -1553,6 +1607,77 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException {
+        return getAffectedSampleItemIds("a.analyzerId", analyzerId, testId, lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId,
+            String testId, Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException {
+        return getAffectedSampleItemIds("a.testSection.id", testSectionId, testId, lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId,
+            Timestamp before) throws LIMSRuntimeException {
+        return existsAnalysisCompletedBefore("a.testSection.id", testSectionId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before)
+            throws LIMSRuntimeException {
+        return existsAnalysisCompletedBefore("a.analyzerId", analyzerId, testId, before);
+    }
+
+    /**
+     * {scopeField} is one of the two constant HQL paths above (analyzer or lab
+     * unit), never caller input.
+     */
+    private List<Object[]> getAffectedSampleItemIds(String scopeField, String scopeId, String testId, Timestamp lowDate,
+            Timestamp highDate) {
+        String sql = "SELECT a.sampleItem.id, a.id FROM Analysis a" + " WHERE " + scopeField
+                + " = :scopeId AND a.test.id = :testId AND a.sampleItem IS NOT NULL"
+                + " AND a.completedDate >= :lowDate AND a.completedDate < :highDate"
+                + " ORDER BY a.completedDate DESC, a.id DESC";
+
+        try {
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(sql, Object[].class);
+            query.setParameter("scopeId", scopeId);
+            query.setParameter("testId", testId);
+            query.setParameter("lowDate", lowDate);
+            query.setParameter("highDate", highDate);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAffectedSampleItemIds");
+        }
+
+        return null;
+    }
+
+    private boolean existsAnalysisCompletedBefore(String scopeField, String scopeId, String testId, Timestamp before) {
+        String sql = "SELECT a.id FROM Analysis a WHERE " + scopeField + " = :scopeId AND a.test.id = :testId"
+                + " AND a.sampleItem IS NOT NULL AND a.completedDate < :before";
+
+        try {
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(sql, String.class);
+            query.setParameter("scopeId", scopeId);
+            query.setParameter("testId", testId);
+            query.setParameter("before", before);
+            query.setMaxResults(1);
+            return !query.list().isEmpty();
+        } catch (HibernateException e) {
+            handleException(e, "existsAnalysisCompletedBefore");
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysisEnteredAfterDate(Timestamp date) throws LIMSRuntimeException {
         String sql = "From Analysis a where a.enteredDate > :date";
 
@@ -2047,6 +2172,39 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
         } catch (HibernateException e) {
             handleException(e, "getCountOfCollectedAnalysesForStatusIdsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}, narrowed
+     * to a set of test sections, so the In Progress tile of a user assigned to part
+     * of the lab counts exactly the rows that user's list shows.
+     */
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String hql = "SELECT COUNT(*) From Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND a.testSection.id IN (:testSectionIds)" //
+                + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc");
         }
 
         return 0;
