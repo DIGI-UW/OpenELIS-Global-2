@@ -193,7 +193,11 @@ upgrade scenario replaces its broader claim. The current FluoroCycler story
 uses sample IDs embedded in a captured XLSX file and is therefore limited to a
 fresh stack or a controlled file fixture. After R5 fixes the shipped VIH-1
 binding, make its file and order prerequisites repeatable without selecting or
-repairing clinical mappings in the harness.
+repairing clinical mappings in the harness. The captured file contains 1250 and
+450 for its two sample IDs; the FILE story now requires those exact clinical
+quantities (allowing trailing decimal zeros) instead of accepting any number.
+The focused run still stops at the unresolved VIH-1 binding, so the stronger
+downstream assertion is not yet end-to-end validated.
 
 The analyzer SQL fixture and its mapping-repair/native-traffic script were
 removed. The surviving seed script creates missing profile-pinned Bridge
