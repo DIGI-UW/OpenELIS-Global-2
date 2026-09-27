@@ -8,9 +8,8 @@ import CreatePatientForm from "../../../patient/CreatePatientForm";
  * PatientSearchSection - Patient search with results table and selection card
  *
  * The search itself is the shared SearchPatientForm, so the order lanes and
- * Patient Management search the same way. It stays mounted while a patient is
- * selected or the New Patient tab is open, so clearing the selection brings
- * back the criteria and results the user had.
+ * Patient Management search the same way. Clearing the selected patient
+ * starts a new, empty search.
  *
  * Implements:
  * - ORD-2: Patient search (local + Client Registry)
@@ -26,6 +25,7 @@ const PatientSearchSection = ({
 }) => {
   const [activeTab, setActiveTab] = useState("search");
   const [locallySelectedPatient, setSelectedPatient] = useState(null);
+  const [searchInstance, setSearchInstance] = useState(0);
 
   const selectedPatient = orderData?.patientProperties?.patientPK
     ? orderData.patientProperties
@@ -45,6 +45,7 @@ const PatientSearchSection = ({
 
   const handleClearSelection = () => {
     setSelectedPatient(null);
+    setSearchInstance((instance) => instance + 1);
     setOrderData((prev) => ({
       ...prev,
       patientUpdateStatus: "",
@@ -141,6 +142,7 @@ const PatientSearchSection = ({
           hidden={!showSearchForm}
         >
           <SearchPatientForm
+            key={searchInstance}
             idPrefix="order-patient-search"
             getSelectedPatient={handleSelectPatient}
             renderNotifications={false}

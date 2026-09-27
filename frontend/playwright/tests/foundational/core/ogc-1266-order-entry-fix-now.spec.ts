@@ -86,7 +86,7 @@ async function selectPatient(page: Page, lastName: string) {
 }
 
 test.describe("OGC-1266 order entry fix-now bundle", () => {
-  test("Enter Order searches with the shared patient search form", async ({
+  test("Enter Order searches with the shared patient search form and Clear starts a new search", async ({
     page,
   }) => {
     const lastName = await seedPatient(page);
@@ -99,8 +99,11 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     const search = page.getByTestId("order-patient-search");
     await expect(search).toBeVisible();
     await expect(
-      search.locator('[data-cy^="patient-result-row-"]').first(),
-    ).toBeVisible();
+      search.locator('[data-cy^="patient-result-row-"]'),
+    ).toHaveCount(0);
+    await expect(
+      search.getByRole("textbox", { name: "Last Name" }),
+    ).toHaveValue("");
     await expect(page.locator(".selected-entity-card")).toHaveCount(0);
   });
 

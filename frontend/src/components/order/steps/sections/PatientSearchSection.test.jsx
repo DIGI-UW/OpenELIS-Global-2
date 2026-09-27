@@ -6,29 +6,35 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../../languages/en.json";
 
-const searchFormProps = vi.hoisted(() => ({ current: null }));
-vi.mock("../../../patient/SearchPatientForm", () => ({
-  default: (props) => {
-    searchFormProps.current = props;
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          props.getSelectedPatient({
-            patientPK: "12",
-            firstName: "Mary",
-            lastName: "Kila",
-            birthDateForDisplay: "01/02/1990",
-            gender: "F",
-            nationalId: "NID-12",
-          })
-        }
-      >
-        shared search pick
-      </button>
-    );
-  },
-}));
+const searchFormProps = vi.hoisted(() => ({ current: null, mounts: 0 }));
+vi.mock("../../../patient/SearchPatientForm", async () => {
+  const { useEffect } = await import("react");
+  return {
+    default: (props) => {
+      searchFormProps.current = props;
+      useEffect(() => {
+        searchFormProps.mounts += 1;
+      }, []);
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            props.getSelectedPatient({
+              patientPK: "12",
+              firstName: "Mary",
+              lastName: "Kila",
+              birthDateForDisplay: "01/02/1990",
+              gender: "F",
+              nationalId: "NID-12",
+            })
+          }
+        >
+          shared search pick
+        </button>
+      );
+    },
+  };
+});
 vi.mock("../../../patient/CreatePatientForm", () => ({
   default: (props) => (
     <div data-testid="create-patient-form">
@@ -65,6 +71,7 @@ const Host = ({ isReadOnly = false, initial = {}, onChange = () => {} }) => {
 describe("PatientSearchSection", () => {
   beforeEach(() => {
     searchFormProps.current = null;
+    searchFormProps.mounts = 0;
   });
 
   it("searches with the shared patient search form and leaves toasts to the page", () => {
@@ -99,7 +106,7 @@ describe("PatientSearchSection", () => {
     ).not.toBeVisible();
   });
 
-  it("clearing the selection brings the search back and empties the patient", async () => {
+  it("clearing the selection empties the patient and starts a new search", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<Host onChange={onChange} />);
@@ -107,9 +114,12 @@ describe("PatientSearchSection", () => {
       screen.getByRole("button", { name: "shared search pick" }),
     );
 
+    const mountsBeforeClear = searchFormProps.mounts;
+
     await user.click(screen.getByText("Clear"));
 
     expect(onChange.mock.calls.at(-1)[0].patientProperties.patientPK).toBe("");
+    expect(searchFormProps.mounts).toBe(mountsBeforeClear + 1);
     expect(
       screen.getByRole("button", { name: "shared search pick" }),
     ).toBeVisible();
