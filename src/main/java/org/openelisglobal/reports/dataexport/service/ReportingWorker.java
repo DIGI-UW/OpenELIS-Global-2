@@ -1,5 +1,6 @@
 package org.openelisglobal.reports.dataexport.service;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,6 +27,8 @@ public class ReportingWorker {
     private ReportingCatalogService catalog;
     @Autowired
     private ReportingAccess access;
+    @Autowired
+    private ReportingFiles files;
     @Value("${reporting.export.enabled:true}")
     private boolean enabled;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(task -> {
@@ -85,6 +88,20 @@ public class ReportingWorker {
                 org.openelisglobal.common.log.LogEvent.logWarn(getClass().getSimpleName(), "tick",
                         "Reporting output cleanup is pending for job " + job.id());
             }
+        }
+    }
+
+    /**
+     * Says at startup, in the application log, when exports cannot be written, so
+     * an unwritable directory is found by the administrator rather than by the
+     * first user whose report fails.
+     */
+    @PostConstruct
+    public void checkOutput() {
+        if (enabled && !files.outputWritable()) {
+            org.openelisglobal.common.log.LogEvent.logError(getClass().getSimpleName(), "checkOutput",
+                    "Custom Data Export cannot write files to its export directory; every export will fail until"
+                            + " the directory is writable by the application user (reporting.export.directory)");
         }
     }
 

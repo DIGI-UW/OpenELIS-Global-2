@@ -93,6 +93,7 @@
   "reporting.filters.unsupported": "Some requested filters are unavailable for this report. Review the current report options.",
   "reporting.filters.unavailable": "Some previous filters are unavailable for this report. Review the current filters before generating.",
   "reporting.job.generationFailed": "The CSV could not be generated. Your report request has been retained.",
+  "reporting.job.outputUnavailable": "The server cannot save export files. Ask your administrator to make the export folder writable, then retry this report.",
   "reporting.job.expired": "This file has expired. Run the report again with a new reporting period.",
   "reporting.job.notReady": "This report is not ready to download yet.",
   "reporting.job.notFound": "This report could not be found.",

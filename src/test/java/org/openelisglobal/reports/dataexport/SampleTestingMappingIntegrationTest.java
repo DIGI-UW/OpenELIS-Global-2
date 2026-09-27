@@ -341,7 +341,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
                 java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
         assertEquals(
                 "Accession Number,Specimen ID,Collection Date,Collection Time,Received Date,Received Time,Order Date,Sample Type,Sample Status,Priority,Number of Tests Ordered,Patient Name,Date of Birth,Sex,National ID,Phone Number,Address\r\n"
-                        + "12345,1,2023-11-15,10:00,2023-11-15,11:00,2024-06-03,Blood Sample,"
+                        + "12345,1,2023-11-15,10:00,2023-11-15,11:00,2024-06-03,Test Localization 1,"
                         + MessageUtil.getMessage("status.sample.entered")
                         + ",STAT,1,Ada Q Public,1980-02-03,F,WA-1001,555-0100,\"42 Lab Road, Seattle, WA, USA\"\r\n",
                 csv.toString().substring(1));
