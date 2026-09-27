@@ -70,6 +70,11 @@ public class ReportingWorker {
             jobs.publish(owner, job.id(), worker, rows);
         } catch (Exception error) {
             String code = error instanceof ReportingException ? error.getMessage() : "reporting.job.generationFailed";
+            if (!(error instanceof ReportingException)) {
+                org.openelisglobal.common.log.LogEvent.logError(getClass().getSimpleName(), "generate",
+                        "Reporting job " + job.id() + " failed: " + error);
+                org.openelisglobal.common.log.LogEvent.logError(error);
+            }
             if (owner != null)
                 jobs.failed(owner, job.id(), worker, code);
         } finally {
