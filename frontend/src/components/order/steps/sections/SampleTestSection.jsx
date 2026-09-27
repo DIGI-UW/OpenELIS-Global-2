@@ -1398,10 +1398,15 @@ const SampleTestSection = ({
               <Column lg={8} md={4} sm={4}>
                 <Select
                   id={`sampleType-${sampleIndex}`}
-                  labelText={intl.formatMessage({
-                    id: "sample.type",
-                    defaultMessage: "Sample Type",
-                  })}
+                  labelText={
+                    <span>
+                      {intl.formatMessage({
+                        id: "sample.type",
+                        defaultMessage: "Sample Type",
+                      })}
+                      <span className="required-indicator"> *</span>
+                    </span>
+                  }
                   value={sample.sampleTypeId || ""}
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)

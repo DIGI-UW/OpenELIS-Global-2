@@ -22,6 +22,7 @@ const PatientSearchSection = ({
   setOrderData,
   setPhoneValidation,
   isReadOnly,
+  required = false,
 }) => {
   const [activeTab, setActiveTab] = useState("search");
   const [locallySelectedPatient, setSelectedPatient] = useState(null);
@@ -71,6 +72,7 @@ const PatientSearchSection = ({
     >
       <h4 className="section-title">
         <FormattedMessage id="banner.menu.patient" defaultMessage="Patient" />
+        {required && <span className="required-indicator"> *</span>}
       </h4>
       <p className="helper-text">
         <FormattedMessage
