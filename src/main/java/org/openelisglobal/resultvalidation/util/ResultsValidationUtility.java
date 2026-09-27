@@ -599,7 +599,7 @@ public class ResultsValidationUtility {
         testItem.setQualifiedDictionaryId(getQualifiedDictionaryId(testResults));
         testItem.setPastNotes(notes);
 
-        testItem.setNormalResult(isNormalResult(analysis, result));
+        testItem.setNormalResult(ValidationSignals.isNormalResult(resultLimit, result));
 
         return testItem;
     }
@@ -614,29 +614,6 @@ public class ResultsValidationUtility {
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
         }
-    }
-
-    private boolean isNormalResult(Analysis analysis, Result result) {
-        boolean normalResult = false;
-        ResultLimit resultLimit = resultLimitService.getResultLimitForAnalysis(analysis);
-        if (resultLimit != null && result != null) {
-            if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && result.getValue().equals(resultLimit.getDictionaryNormalId())) {
-                normalResult = true;
-            } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            } else if (!TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && GenericValidator.isDouble(result.getValue(true))
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            }
-        }
-        return normalResult;
     }
 
     protected final String getQualifiedDictionaryId(List<TestResult> testResults) {

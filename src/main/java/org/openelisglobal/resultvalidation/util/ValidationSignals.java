@@ -143,6 +143,29 @@ public final class ValidationSignals {
         }
     }
 
+    /**
+     * Whether a result sits in the range the row shows: a select-list answer when
+     * it is the range's expected-normal choice, a number when it lies inside the
+     * normal bounds. {@code limit} is the one the row was built with (a component's
+     * own range on a multi-component test, chosen for the patient and specimen);
+     * judging against the test-level range instead flagged a component's normal
+     * answer ("SARS-CoV-2 RNA NOT DETECTED") as abnormal.
+     */
+    public static boolean isNormalResult(ResultLimit limit, Result result) {
+        if (limit == null || result == null || GenericValidator.isBlankOrNull(result.getValue())) {
+            return false;
+        }
+        if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())) {
+            return result.getValue().equals(limit.getDictionaryNormalId());
+        }
+        String numeric = result.getValue(true);
+        if (!GenericValidator.isDouble(numeric)) {
+            return false;
+        }
+        double value = Double.parseDouble(numeric);
+        return limit.getLowNormal() <= value && value <= limit.getHighNormal();
+    }
+
     /** An authored (finite) bound as itself, an unauthored one as null. */
     public static Double authoredBound(double bound) {
         return Double.isFinite(bound) ? Double.valueOf(bound) : null;
