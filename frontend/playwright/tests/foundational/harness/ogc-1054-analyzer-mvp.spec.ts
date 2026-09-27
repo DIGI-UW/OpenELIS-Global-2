@@ -205,6 +205,17 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       order.testId,
       "NOT DETECTED",
     );
+    await page.goto(
+      `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+      { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+    );
+    const clinicalRow = page.getByRole("row", {
+      name: new RegExp(order.accession),
+    });
+    await expect(clinicalRow).toContainText("Xpert MTB/RIF", {
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(clinicalRow).toContainText("NOT DETECTED");
     await capture(page, testInfo, "gene-clinical-result-saved");
   });
 

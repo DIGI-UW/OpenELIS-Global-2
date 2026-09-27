@@ -146,23 +146,23 @@ Coordinate merge order or a temporary test-candidate branch with the actual prod
 
 The #4332 branch was brought forward to `develop` `899f59248e` (merge commit
 `e1c52b5640`). Its checked-in Bridge and mock pins are `b4a9f2cbff` and
-`6df789111d`; the local development stack reported Bridge 3.2.1. The following
-local observations use the isolated `scripts/dev-stack` and uncommitted
-replacement Playwright work; they are **not** exact-head CI, deployment or release
+`6df789111d`; the local development stack reported Bridge 3.2.1. Replacement
+Playwright work was pushed as `e12926c0a3`. The following observations use the
+isolated `scripts/dev-stack`; they are **not** exact-head CI, deployment or release
 qualification.
 
 | Check | Observed result | Next owner |
 | --- | --- | --- |
 | Clinical prerequisite | A patient, Sputum order and Xpert MTB/RIF test created and read back through OE2 APIs; API-order test passed. | #4332 |
-| GeneXpert ASTM | Shipped MTB-RIF default, mapping review, UI activation, native mock ASTM, Bridge delivery, UI acceptance and resolved dictionary-value clinical readback passed. | #4332, then exact-head CI/video |
+| GeneXpert ASTM | Shipped MTB-RIF default, mapping review, UI activation, native mock ASTM, Bridge delivery, UI acceptance and resolved dictionary-value clinical readback passed. A later local rerun also displayed the accepted result on OE2's Results page; that UI assertion still needs exact-head video and CI evidence. | #4332, then exact-head CI/video |
 | Delivery issue | Native ASTM from an unregistered mock source was retained in Bridge's dead-message queue, surfaced in OE2 and dismissed through the UI; test passed. Bridge records source identity before accession parsing. | #4332 |
 | Shared mapping and guided setup | Three shared-mapping tests and the guided UI setup test passed after removing assumptions created by the old seed traffic script. | #4332 |
 | Stock default bindings | MTB-RIF passed. GeneXpert RIF's `DETECTED` result choice, GeneXpert HIV-VL's test and FluoroCycler VIH-1's test were `UNRESOLVED`. For COVID19, OE2 presents two active COVID-19 PCR tests for Respiratory Swab with LOINC `94500-6`; both carry its own `DUPLICATE_LOINC_SAME_SPECIMEN` error, so the independent clinical target is ambiguous. The FluoroCycler FILE story correctly stops at its missing binding. | R5 core profile/catalog defaults; keep #4332 tests red |
 | HL7 | No active core HL7 profile is present in the Bridge's checked-in catalog; a full native HL7 story cannot yet use a shipped core type. | R5, then #4332 test |
 | Replay and populated upgrade | Full service-restart replay and supported-version populated upgrade scenarios have not run. | #4332 plus R1–R5 dependencies |
-| CI and video | GitHub API was unavailable during the checkpoint; exact-head checks and reviewed recordings are pending. | #4332 C4–C5 |
+| CI and video | GitHub checks started on `e12926c0a3`, but their conclusions were unavailable from this host. A focused two-story Playwright video run passed locally; review showed the guided setup and analyzer intake, while the result video did not yet show the saved clinical Results page. The later UI readback assertion passed locally and must be recorded on the next code head. | #4332 C4–C5 |
 
-The analyzer SQL fixture and its mapping-repair/native-traffic script are being
+The analyzer SQL fixture and its mapping-repair/native-traffic script were
 removed. The surviving seed script creates missing profile-pinned Bridge
 connections through OE2 APIs for CI/local setup; it does not confirm mappings or
 activate analyzers in those paths. Its explicit `--activate` option belongs only
