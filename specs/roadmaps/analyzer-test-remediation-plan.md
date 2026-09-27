@@ -162,6 +162,20 @@ qualification.
 | Replay and populated upgrade | Full service-restart replay and supported-version populated upgrade scenarios have not run. | #4332 plus R1–R5 dependencies |
 | CI and video | GitHub checks started on `5e2a1f7c52`; shared build, static, and backend test jobs were still pending at this checkpoint. A focused two-story video run on that head passed and was reviewed, including the saved Results page. The newer same-analyzer UI-to-traffic test passed locally and needs its own exact-head recording and CI. | #4332 C4–C5 |
 
+The same-analyzer video subsequently passed on `e4393ba630` and shows the
+clinical Results page. Its setup screen still displays a pre-save “port
+required” warning after the port is entered; **Finish and activate** saves that
+port and works. Treat the warning as a setup-clarity finding for R3, not as
+evidence that an inbound analyzer port must be mandatory in every profile.
+
+An exploratory browser-network assertion found a separate uncertainty during
+result acceptance: Playwright reported `net::ERR_ABORTED` for the POST to
+`/rest/AnalyzerResults`, while its trace recorded HTTP 200 response headers and
+the accepted result appeared in OE2's clinical API and Results page. In one
+rerun the success notification did not appear. No result loss was observed, but
+the response/feedback behavior is not explained; investigate it before R7
+signoff rather than using the network event alone as a delivery assertion.
+
 The analyzer SQL fixture and its mapping-repair/native-traffic script were
 removed. The surviving seed script creates missing profile-pinned Bridge
 connections through OE2 APIs for CI/local setup; it does not confirm mappings or
