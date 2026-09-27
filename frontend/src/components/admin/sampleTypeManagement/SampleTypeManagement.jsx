@@ -70,7 +70,7 @@ import useDomains from "../../common/useDomains";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 
 // Breadcrumbs
@@ -210,6 +210,8 @@ function SampleTypeManagement({ intl }) {
               domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
+              abbreviation: item.abbreviation || "",
+              sortOrder: item.sortOrder || 0,
               whonetCode: item.whonetCode || "",
             }));
             setSampleTypes(sampleTypeData);
@@ -492,7 +494,12 @@ function SampleTypeManagement({ intl }) {
       if (view === "add") {
         // Snapshot existing ids so we can identify the newly-created row after
         // refresh regardless of how its name is stored/localized.
-        const existingIds = new Set(sampleTypes.map((t) => String(t.id)));
+        const before = await refreshSampleTypes();
+        const existingIds = new Set(
+          (Array.isArray(before) ? before : sampleTypes).map((t) =>
+            String(t.id),
+          ),
+        );
         // The legacy create flow also wires the workplan/results/validation
         // role modules for the new type, so creation goes through it.
         const sampleTypeData = {
@@ -507,7 +514,32 @@ function SampleTypeManagement({ intl }) {
             "/rest/SampleTypeCreate",
             JSON.stringify(sampleTypeData),
             (result) => {
-              if (result && result.error) {
+              if (result && result.status === 409) {
+                const duplicate = new Error(
+                  intl.formatMessage({
+                    id: "error.sampleType.create.duplicateName",
+                  }),
+                );
+                duplicate.fieldErrors = { name: duplicate.message };
+                reject(duplicate);
+              } else if (result && result.status === 400) {
+                const nameRefused = (result.fieldErrors || []).some(
+                  (fe) =>
+                    fe.field === "sampleTypeEnglishName" ||
+                    fe.field === "sampleTypeFrenchName",
+                );
+                const refusal = new Error(
+                  intl.formatMessage({
+                    id: nameRefused
+                      ? "error.sampleType.create.invalidName"
+                      : "error.sampleType.create.invalid",
+                  }),
+                );
+                refusal.fieldErrors = nameRefused
+                  ? { name: refusal.message }
+                  : {};
+                reject(refusal);
+              } else if (result && result.error) {
                 reject(new Error(result.message || result.error));
               } else if (result && result.status && result.status !== 200) {
                 reject(new Error(result.message || "Save failed"));
@@ -552,15 +584,33 @@ function SampleTypeManagement({ intl }) {
           whonetCode: editingType.whonetCode?.trim() || "",
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/sample-types/${editingType.id}`,
             JSON.stringify(updateData),
-            (status) => {
-              if (status === 200) {
-                resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+            async (response) => {
+              if (response && response.ok) {
+                resolve(response.status);
+                return;
               }
+              let body = null;
+              try {
+                body = response ? await response.json() : null;
+              } catch (e) {
+                body = null;
+              }
+              const messageId = body?.field
+                ? `error.sampleType.update.${body.field}.${response.status}`
+                : null;
+              const refusal = new Error(
+                messageId && intl.messages[messageId]
+                  ? intl.formatMessage({ id: messageId })
+                  : body?.message ||
+                      `Update failed (HTTP ${response ? response.status : 0})`,
+              );
+              refusal.fieldErrors = body?.field
+                ? { [body.field]: refusal.message }
+                : {};
+              reject(refusal);
             },
           );
         });
@@ -597,6 +647,7 @@ function SampleTypeManagement({ intl }) {
     } catch (error) {
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
+        ...(error.fieldErrors || {}),
         submit: `Failed to ${operation} sample type: ${error.message}`,
       });
     } finally {
@@ -610,6 +661,7 @@ function SampleTypeManagement({ intl }) {
     listUrl,
     refreshSampleTypes,
     whonetRepair.returnTo,
+    intl,
   ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
@@ -1015,9 +1067,12 @@ function SampleTypeManagement({ intl }) {
                       { current: current, total: total },
                     )
                   }
-                  pageText={intl.formatMessage({
-                    id: "pagination.page",
-                  })}
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
                   size="md"
                 />
               </div>
@@ -1300,7 +1355,7 @@ function SampleTypeManagement({ intl }) {
                                 id: "label.active",
                                 defaultMessage: "Active",
                               })}
-                              toggled={editingType?.active}
+                              toggled={!!editingType?.active}
                               onToggle={(checked) =>
                                 setEditingType((prev) => ({
                                   ...prev,
@@ -1415,7 +1470,10 @@ function SampleTypeManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
-                              !!Object.keys(formErrors).length ||
+                              Object.entries(formErrors).some(
+                                ([field, message]) =>
+                                  field !== "submit" && !!message,
+                              ) ||
                               !editingType?.name?.trim() ||
                               !editingType?.description?.trim()
                             }

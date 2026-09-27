@@ -16,6 +16,7 @@ import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import { describeUnmetRequirements } from "../saveRequirements";
+import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -268,6 +269,7 @@ const ClinicalOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -384,6 +386,7 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           setPhoneValidation={setPhoneValidation}
           isReadOnly={isReadOnly && !isEditMode}
+          required={patientRequired && !noPatientOverride}
         />
 
         {/* Program Selection */}
@@ -392,6 +395,7 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="CLINICAL"
         />
 
         {/* Clinical Information */}
@@ -426,6 +430,7 @@ const ClinicalOrderEnter = () => {
           labNumber={localLabNumber}
           isReadOnly={isReadOnly && !isEditMode}
         />
+        <SaveRequirementsNotice requirements={saveRequirements} />
       </Stack>
     </OrderWorkflowLayout>
   );

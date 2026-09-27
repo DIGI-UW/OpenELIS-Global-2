@@ -53,6 +53,61 @@ const formatCheckMessage = (intl, check) => {
   });
 };
 
+const PORT_SOURCE_MESSAGES = new Map([
+  ["Connection override", "analyzer.setup.connect.portSource.override"],
+  ["Profile default", "analyzer.setup.connect.portSource.profile"],
+  ["Bridge default", "analyzer.setup.connect.portSource.bridge"],
+]);
+
+// Render only endpoint evidence from the probe, never settings inferred by OE2
+// or arbitrary detail fields returned by a newer Bridge.
+const ProbeEndpointDetails = ({ check }) => {
+  const intl = useIntl();
+  const kind = normalizedCheckKey(check.key);
+  const { host, port, portSource } = check.details || {};
+  const hasHost = typeof host === "string" && host.trim().length > 0;
+  const hasPort = Number.isInteger(port) && port > 0 && port <= 65535;
+  const sourceId = PORT_SOURCE_MESSAGES.get(portSource);
+  if (kind === "listener") {
+    return hasPort ? (
+      <p>
+        {intl.formatMessage(
+          { id: "analyzer.setup.connect.listenerPort" },
+          { port: String(port) },
+        )}
+      </p>
+    ) : null;
+  }
+  if (kind !== "remote_protocol") return null;
+  return (
+    <>
+      {hasHost && hasPort && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.destination" },
+            { host, port: String(port) },
+          )}
+        </p>
+      )}
+      {sourceId && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.portSource" },
+            { source: intl.formatMessage({ id: sourceId }) },
+          )}
+        </p>
+      )}
+      {check.status !== "PASSED" && (
+        <p>
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.destinationRemediation",
+          })}
+        </p>
+      )}
+    </>
+  );
+};
+
 const probeOutcomeMessage = (status) => {
   switch (status) {
     case "SUCCEEDED":
@@ -91,6 +146,17 @@ const isProbeResult = (response, saved) => {
   );
 };
 
+// Blockers cleared by the Verify step: it pins the analyzer to the current shared mapping revision.
+const MAPPING_BLOCKERS = new Set([
+  "analyzer.activation.blocker.mappings",
+  "analyzer.activation.blocker.recognition",
+]);
+
+export const needsMappingVerification = (readiness) =>
+  Boolean(
+    readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
+  );
+
 const formatActivationBlocker = (intl, blocker) => {
   const id = blocker?.code;
   return intl.formatMessage(
@@ -104,7 +170,13 @@ const formatActivationBlocker = (intl, blocker) => {
   );
 };
 
-const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
+const AnalyzerConnectionSetup = ({
+  candidate,
+  onCandidateChange,
+  onClose,
+  onVerifyMappings,
+  onReadinessChange,
+}) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
   const [settings, setSettings] = useState(() =>
@@ -144,6 +216,10 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
     }
     return () => controller.abort();
   }, [candidate?.id]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
 
   const refreshReadiness = (analyzerId = candidate.id) => {
     setReadinessLoading(true);
@@ -316,7 +392,10 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
             {probe.checks.map((check) => (
               <div key={check.key}>
                 <dt>{formatCheckKind(intl, check)}</dt>
-                <dd>{formatCheckMessage(intl, check)}</dd>
+                <dd>
+                  {formatCheckMessage(intl, check)}
+                  <ProbeEndpointDetails check={check} />
+                </dd>
               </div>
             ))}
           </dl>
@@ -372,6 +451,19 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
             title={formatActivationBlocker(intl, blocker)}
           />
         ))}
+        {onVerifyMappings && needsMappingVerification(readiness) && (
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            disabled={submitting}
+            onClick={onVerifyMappings}
+          >
+            {intl.formatMessage({
+              id: "analyzer.setup.connect.activation.verifyMappings",
+            })}
+          </Button>
+        )}
       </section>
 
       <div className="analyzer-setup__completion-actions">

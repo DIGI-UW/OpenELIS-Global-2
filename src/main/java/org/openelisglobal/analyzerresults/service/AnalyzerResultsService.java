@@ -17,7 +17,9 @@ public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResult
     void persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults, List<SampleGrouping> sampleGroupList,
             String sysUserId);
 
-    List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision);
+    List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId);
+
+    List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision);
 
     Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 }

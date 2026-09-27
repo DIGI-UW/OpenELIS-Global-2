@@ -1,12 +1,16 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.domain.Domain;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -20,6 +24,8 @@ import org.openelisglobal.testconfiguration.service.SampleTypeCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -84,14 +90,17 @@ public class SampleTypeCreateRestController extends BaseController {
         return builder.toString();
     }
 
+    /**
+     * Creates a sample type. A form refused by bean validation (a blank name, or
+     * markup refused by {@code @SafeHtml}) answers 400 with the field errors and
+     * creates nothing (OGC-1234); it used to answer 200 with the form echoed back,
+     * which the editor read as a successful create.
+     */
     @PostMapping(value = "/SampleTypeCreate")
-    public SampleTypeCreateForm postSampleTypeCreate(HttpServletRequest request,
+    public ResponseEntity<?> postSampleTypeCreate(HttpServletRequest request,
             @RequestBody @Valid SampleTypeCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
-            saveErrors(result);
-            setupDisplayItems(form);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationErrorBody(result));
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
@@ -101,6 +110,9 @@ public class SampleTypeCreateRestController extends BaseController {
 
         TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
                 Boolean.TRUE.equals(form.getActive()));
+        if (typeOfSampleService.nameInUse(identifyingName)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
+        }
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -116,16 +128,43 @@ public class SampleTypeCreateRestController extends BaseController {
         try {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
+        } catch (LIMSDuplicateRecordException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "postSampleTypeCreate", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
-            throw e;
+            Map<String, Object> body = new HashMap<>();
+            body.put("error", "insertFailed");
+            body.put("message", "The sample type could not be created.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
         }
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
+    }
+
+    private static Map<String, Object> duplicateNameBody(String name) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "duplicate");
+        body.put("field", "sampleTypeEnglishName");
+        body.put("message", "A sample type named '" + name + "' already exists.");
+        return body;
+    }
+
+    private Map<String, Object> validationErrorBody(BindingResult result) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "validation");
+        body.put("message", "The sample type was not created: the form has invalid fields.");
+        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+            Map<String, String> entry = new HashMap<>();
+            entry.put("field", fe.getField());
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            return entry;
+        }).collect(Collectors.toList()));
+        return body;
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {
@@ -154,8 +193,8 @@ public class SampleTypeCreateRestController extends BaseController {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
         typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
-        typeOfSample.setLocalAbbreviation(
-                identifyingName.length() > 10 ? identifyingName.substring(0, 10) : identifyingName);
+        typeOfSample
+                .setLocalAbbreviation(typeOfSampleService.uniqueLocalAbbreviation(identifyingName, backendDomainCode));
         if (whonetCode != null) {
             String trimmed = whonetCode.trim();
             if (!trimmed.isEmpty() && trimmed.length() <= 5) {

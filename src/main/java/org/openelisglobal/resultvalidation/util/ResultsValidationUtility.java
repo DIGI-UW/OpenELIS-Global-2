@@ -52,6 +52,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
@@ -71,8 +72,11 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.result.action.util.CriticalRangeFormat;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
@@ -87,6 +91,8 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -573,7 +579,8 @@ public class ResultsValidationUtility {
         testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
-        testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
+        testItem.setDictionaryResults(
+                StoredDictionaryResult.withStoredValue(getAnyDictonaryValues(testResults), result, dictionaryService));
         // The test-level type is the first test_result row's, which for a
         // multi-component test is the primary's; an entered result knows its
         // own component's type, so prefer the stored one.
@@ -592,7 +599,7 @@ public class ResultsValidationUtility {
         testItem.setQualifiedDictionaryId(getQualifiedDictionaryId(testResults));
         testItem.setPastNotes(notes);
 
-        testItem.setNormalResult(isNormalResult(analysis, result));
+        testItem.setNormalResult(ValidationSignals.isNormalResult(resultLimit, result));
 
         return testItem;
     }
@@ -607,29 +614,6 @@ public class ResultsValidationUtility {
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
         }
-    }
-
-    private boolean isNormalResult(Analysis analysis, Result result) {
-        boolean normalResult = false;
-        ResultLimit resultLimit = resultLimitService.getResultLimitForAnalysis(analysis);
-        if (resultLimit != null && result != null) {
-            if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && result.getValue().equals(resultLimit.getDictionaryNormalId())) {
-                normalResult = true;
-            } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            } else if (!TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && GenericValidator.isDouble(result.getValue(true))
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            }
-        }
-        return normalResult;
     }
 
     protected final String getQualifiedDictionaryId(List<TestResult> testResults) {
@@ -887,7 +871,9 @@ public class ResultsValidationUtility {
         if (result != null) {
             List<ResultSignature> signatures = SpringContext.getBean(ResultSignatureService.class)
                     .getResultSignaturesByResult(result);
-            analysisResultItem.setEnteredBy(ValidationSignals.enteredBy(signatures));
+            String enteredBy = ValidationSignals.enteredBy(signatures);
+            analysisResultItem.setEnteredBy(
+                    GenericValidator.isBlankOrNull(enteredBy) ? recordedByFromHistory(result) : enteredBy);
         }
         if (analysis != null && analysis.getEnteredDate() != null) {
             analysisResultItem.setEnteredDate(DateUtil.convertTimestampToStringDate(analysis.getEnteredDate()) + " "
@@ -915,6 +901,28 @@ public class ResultsValidationUtility {
         analysisResultItem.setAnalyzerName(analyzerNameFor(analysis));
         analysisResultItem.setAnalysisNotes(
                 analysis == null ? new ArrayList<>() : reviewNotesLoader().buildAnalysisNotes(analysis));
+    }
+
+    /**
+     * "Entered by" when no bench signature exists (technician names switched off):
+     * the user the audit trail records as last writing the result.
+     */
+    private String recordedByFromHistory(Result result) {
+        if (GenericValidator.isBlankOrNull(result.getId())) {
+            return "";
+        }
+        ReferenceTables resultTable = SpringContext.getBean(ReferenceTablesService.class)
+                .getReferenceTableByName("RESULT");
+        if (resultTable == null) {
+            return "";
+        }
+        String userId = ValidationSignals.lastWriterId(SpringContext.getBean(HistoryService.class)
+                .getHistoryByRefIdAndRefTableId(result.getId(), resultTable.getId()));
+        if (userId == null) {
+            return "";
+        }
+        return SpringContext.getBean(SystemUserService.class).getMatch("id", userId).map(SystemUser::getNameForDisplay)
+                .orElse("");
     }
 
     private ResultsLoadUtility reviewNotesLoader;

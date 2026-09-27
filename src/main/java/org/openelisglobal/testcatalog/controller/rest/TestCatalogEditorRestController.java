@@ -981,7 +981,7 @@ public class TestCatalogEditorRestController {
     public ResponseEntity<SampleResults> copySampleResults(@PathVariable String testId, @PathVariable String sourceId,
             HttpServletRequest request) {
         Test test = testService.getTestById(testId);
-        if (test == null) {
+        if (test == null || testService.getTestById(sourceId) == null) {
             return ResponseEntity.notFound().build();
         }
         componentService.copyComponentsFromTest(sourceId, testId, ControllerUtills.getSysUserId(request));
@@ -1091,6 +1091,9 @@ public class TestCatalogEditorRestController {
     public static class RangeDto {
         public String id;
         public String componentId;
+        // Read-only: the component's code, the same across a test's specimen
+        // siblings, so a group edit can compare ranges across tests (OGC-1238).
+        public String componentCode;
         // OGC-1145 Phase 2: null = shared (every specimen the test runs on);
         // a value overrides this range for that sample type only.
         public String sampleTypeId;
@@ -1366,10 +1369,16 @@ public class TestCatalogEditorRestController {
         RangesResponse resp = new RangesResponse();
         resp.testId = testId;
         List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
-        for (ResultLimit l : limits) {
+        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
+        Map<String, String> codeById = new HashMap<>();
+        for (TestResultComponent c : comps) {
+            codeById.put(c.getId(), c.getCode());
+        }
+        for (ResultLimit l : resultLimitService.getNumericRangesForTest(testId)) {
             RangeDto d = new RangeDto();
             d.id = l.getId();
             d.componentId = l.getComponentId();
+            d.componentCode = l.getComponentId() == null ? null : codeById.get(l.getComponentId());
             d.sampleTypeId = l.getSampleTypeId();
             d.gender = l.getGender();
             d.minAge = finiteOrNull(l.getMinAge());
@@ -1387,7 +1396,6 @@ public class TestCatalogEditorRestController {
         resp.coverage = coverageService.validate(limits);
         // Name the component behind each gap/overlap so the UI can say which
         // component is uncovered — only meaningful when the test has several.
-        List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
         if (comps.size() > 1) {
             Map<String, String> labelById = new HashMap<>();
             for (TestResultComponent c : comps) {
@@ -1498,18 +1506,50 @@ public class TestCatalogEditorRestController {
     public static class GroupStorageUpdate {
         public List<String> testIds = new ArrayList<>();
         public StorageDto storage;
+        // The StorageDto fields the admin changed. Only these are written; every
+        // test keeps its own value for the rest. Null writes the whole form.
+        public List<String> fields;
     }
+
+    private static final Map<String, java.util.function.BiConsumer<StorageDto, StorageDto>> STORAGE_FIELDS = Map
+            .ofEntries(Map.entry("storageCondition", (t, s) -> t.storageCondition = s.storageCondition),
+                    Map.entry("storageConditionCustom", (t, s) -> t.storageConditionCustom = s.storageConditionCustom),
+                    Map.entry("storageDuration", (t, s) -> t.storageDuration = s.storageDuration),
+                    Map.entry("storageDurationUnit", (t, s) -> t.storageDurationUnit = s.storageDurationUnit),
+                    Map.entry("stabilityNotes", (t, s) -> t.stabilityNotes = s.stabilityNotes),
+                    Map.entry("protectFromLight", (t, s) -> t.protectFromLight = s.protectFromLight),
+                    Map.entry("doNotFreeze", (t, s) -> t.doNotFreeze = s.doNotFreeze),
+                    Map.entry("doNotRefrigerate", (t, s) -> t.doNotRefrigerate = s.doNotRefrigerate),
+                    Map.entry("disposalMethod", (t, s) -> t.disposalMethod = s.disposalMethod),
+                    Map.entry("disposalTimeframe", (t, s) -> t.disposalTimeframe = s.disposalTimeframe),
+                    Map.entry("disposalUnit", (t, s) -> t.disposalUnit = s.disposalUnit),
+                    Map.entry("specialInstructions", (t, s) -> t.specialInstructions = s.specialInstructions),
+                    Map.entry("overrideRestricted", (t, s) -> t.overrideRestricted = s.overrideRestricted));
 
     @PutMapping(value = "/group/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> saveGroupStorage(@RequestBody GroupStorageUpdate body, HttpServletRequest request) {
         if (body == null || body.testIds == null || body.testIds.isEmpty() || body.storage == null) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        if (body.fields != null && !STORAGE_FIELDS.keySet().containsAll(body.fields)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.fields != null && body.fields.isEmpty()) {
+            return ResponseEntity.ok().build();
+        }
         String sysUserId = ControllerUtills.getSysUserId(request);
         for (String testId : body.testIds) {
-            if (testService.getTestById(testId) != null) {
-                handlingService.saveForTest(testId, toHandling(body.storage), sysUserId);
+            if (testService.getTestById(testId) == null) {
+                continue;
             }
+            StorageDto desired = body.storage;
+            if (body.fields != null) {
+                desired = toStorage(testId, handlingService.getByTestId(testId));
+                for (String field : body.fields) {
+                    STORAGE_FIELDS.get(field).accept(desired, body.storage);
+                }
+            }
+            handlingService.saveForTest(testId, toHandling(desired), sysUserId);
         }
         return ResponseEntity.ok().build();
     }
@@ -1633,7 +1673,7 @@ public class TestCatalogEditorRestController {
             }
             SampleTypeOption o = new SampleTypeOption();
             o.id = t.getId();
-            o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            o.name = t.getLocalizedName();
             o.domain = Domain.normalize(t.getDomain());
             options.add(o);
         }
@@ -2144,6 +2184,10 @@ public class TestCatalogEditorRestController {
      * panel already carries is never a reason to refuse, so a panel created
      * elsewhere with a longer name stays editable here; the localization is only
      * rewritten on an actual rename.
+     * <p>
+     * OGC-1234: a rename onto another panel's name is refused as
+     * {@code name.duplicate} instead of failing with a 500; a description is free
+     * text and may repeat another panel's.
      */
     @PutMapping(value = "/panels/{panelId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PanelOption> savePanelBasicInfo(@PathVariable String panelId,
@@ -2161,6 +2205,9 @@ public class TestCatalogEditorRestController {
         }
         if (renamed && name.length() > PANEL_NAME_MAX_LENGTH) {
             return refused(panel, "name.tooLong");
+        }
+        if (renamed && panelNameTakenByAnother(name, panel.getId())) {
+            return refused(panel, "name.duplicate");
         }
         String description = body.description == null ? null : body.description.trim();
         if (description != null && description.length() > PANEL_DESCRIPTION_MAX_LENGTH) {
@@ -2220,6 +2267,18 @@ public class TestCatalogEditorRestController {
         panelService.update(panel);
         refreshPanelDisplayLists();
         return ResponseEntity.ok(toPanelOption(panelService.getPanelById(panel.getId())));
+    }
+
+    /** Same rule as the panel DAO's duplicate check: trimmed, case-insensitive. */
+    private boolean panelNameTakenByAnother(String name, String panelId) {
+        String wanted = name.trim().toLowerCase(Locale.ROOT);
+        for (Panel other : panelService.getAllPanels()) {
+            if (!other.getId().equals(panelId) && other.getPanelName() != null
+                    && other.getPanelName().trim().toLowerCase(Locale.ROOT).equals(wanted)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ResponseEntity<PanelOption> refused(Panel panel, String refusal) {

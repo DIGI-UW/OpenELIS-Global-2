@@ -32,3 +32,37 @@ tr.oddRowHead {
   background-color: #e0e3e3;
   line-height: normal;
 }
+
+.batch-workplan {
+  padding-top: 1rem;
+}
+
+.batch-workplan__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.batch-workplan__actions,
+.batch-workplan__row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.batch-workplan__select-col {
+  inline-size: 5rem;
+}
+
+@media (max-width: 671px) {
+  .batch-workplan__header {
+    display: block;
+  }
+
+  .batch-workplan__actions {
+    margin-top: 1rem;
+  }
+}

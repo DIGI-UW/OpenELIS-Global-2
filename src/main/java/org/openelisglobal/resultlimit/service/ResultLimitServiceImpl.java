@@ -111,6 +111,18 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ResultLimit> getNumericRangesForTest(String testId) {
+        List<ResultLimit> numeric = new ArrayList<>();
+        for (ResultLimit limit : getBaseObjectDAO().getAllResultLimitsForTest(testId)) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(limit.getResultTypeId())) {
+                numeric.add(limit);
+            }
+        }
+        return numeric;
+    }
+
+    @Override
     @Transactional
     public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
         // The Ranges editor only manages NUMERIC reference ranges. Dictionary /
@@ -182,7 +194,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId) {
-        return selectForPatient(scopeToSampleType(getResultLimits(testId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimits(testId), sampleTypeId, patient);
     }
 
     @Override
@@ -197,38 +209,45 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         if (GenericValidator.isBlankOrNull(componentId)) {
             return null;
         }
-        return selectForPatient(scopeToSampleType(getResultLimitsByComponentId(componentId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimitsByComponentId(componentId), sampleTypeId, patient);
     }
 
     /**
-     * OGC-1145 Phase 2 — specimen precedence over a limit pool: rows scoped to the
-     * given sample type win; otherwise the shared (null-scope) rows apply. Without
-     * a specimen in context, shared rows are preferred so an override for one
-     * specimen never leaks into another's evaluation. The full pool is the last
-     * resort (legacy data where every row predates scoping).
+     * OGC-1145 Phase 2 — specimen precedence over a limit pool: a row scoped to the
+     * given sample type wins for the patients it matches, and the shared
+     * (null-scope) rows back every patient the override does not cover. An override
+     * for Female adults on one specimen therefore leaves Male and paediatric
+     * patients on that specimen with the shared ranges, which is what the range
+     * coverage check assumes; selecting from the override rows alone left them with
+     * no range at all. Without a specimen in context, shared rows are preferred so
+     * an override for one specimen never leaks into another's evaluation. The full
+     * pool is the last resort only without a specimen in context (legacy data where
+     * every row predates scoping); with one, a specimen that has neither its own
+     * nor a shared range has none, rather than borrowing another specimen's.
      */
-    private static List<ResultLimit> scopeToSampleType(List<ResultLimit> pool, String sampleTypeId) {
+    private ResultLimit selectWithSpecimenPrecedence(List<ResultLimit> pool, String sampleTypeId, Patient patient) {
         if (pool == null || pool.isEmpty()) {
-            return pool;
-        }
-        if (!GenericValidator.isBlankOrNull(sampleTypeId)) {
-            List<ResultLimit> scoped = new ArrayList<>();
-            for (ResultLimit limit : pool) {
-                if (sampleTypeId.equals(limit.getSampleTypeId())) {
-                    scoped.add(limit);
-                }
-            }
-            if (!scoped.isEmpty()) {
-                return scoped;
-            }
+            return null;
         }
         List<ResultLimit> shared = new ArrayList<>();
+        List<ResultLimit> scoped = new ArrayList<>();
         for (ResultLimit limit : pool) {
             if (GenericValidator.isBlankOrNull(limit.getSampleTypeId())) {
                 shared.add(limit);
+            } else if (sampleTypeId != null && sampleTypeId.equals(limit.getSampleTypeId())) {
+                scoped.add(limit);
             }
         }
-        return shared.isEmpty() ? pool : shared;
+        if (!scoped.isEmpty()) {
+            ResultLimit override = selectForPatient(scoped, patient);
+            if (override != null && !GenericValidator.isBlankOrNull(override.getId()) || shared.isEmpty()) {
+                return override;
+            }
+        }
+        if (shared.isEmpty() && sampleTypeId != null) {
+            return null;
+        }
+        return selectForPatient(shared.isEmpty() ? new ArrayList<>(pool) : shared, patient);
     }
 
     /** Pick the best-matching limit from a pool for the patient's age/gender. */
@@ -385,15 +404,41 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         }
 
         if (high == Float.POSITIVE_INFINITY) {
-            return "> " + StringUtil.doubleWithSignificantDigits(low, significantDigits);
+            return "> " + StringUtil.doubleWithSignificantDigits(low, rangeDigits(significantDigits, low));
         }
 
         if (low == Float.NEGATIVE_INFINITY) {
-            return "< " + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+            return "< " + StringUtil.doubleWithSignificantDigits(high, rangeDigits(significantDigits, high));
         }
 
-        return StringUtil.doubleWithSignificantDigits(low, significantDigits) + separator
-                + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+        String digits = rangeDigits(significantDigits, low, high);
+        return StringUtil.doubleWithSignificantDigits(low, digits) + separator
+                + StringUtil.doubleWithSignificantDigits(high, digits);
+    }
+
+    /**
+     * The test's decimal places, widened to what the limits themselves need, so a
+     * range of 0.7 to 1.1 on a test set to whole numbers reads 0.7 - 1.1 rather
+     * than 1 - 1. At most four places are added for a limit stored inexactly.
+     */
+    static String rangeDigits(String significantDigits, double... limits) {
+        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
+            return significantDigits;
+        }
+        int digits;
+        try {
+            digits = Integer.parseInt(significantDigits.trim());
+        } catch (NumberFormatException e) {
+            return significantDigits;
+        }
+        for (double limit : limits) {
+            if (Double.isInfinite(limit) || Double.isNaN(limit)) {
+                continue;
+            }
+            int needed = Math.max(0, new java.math.BigDecimal(Double.toString(limit)).stripTrailingZeros().scale());
+            digits = Math.max(digits, Math.min(needed, 4));
+        }
+        return String.valueOf(digits);
     }
 
     @Override

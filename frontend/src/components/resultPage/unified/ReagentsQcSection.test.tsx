@@ -21,7 +21,9 @@ import ReagentsQcSection from "./ReagentsQcSection";
 /**
  * OGC-1024 (R5) — reagent links (catalog) + FEFO lots (inventory) + record
  * use via the shipped consume endpoint; analyzer rows read-only.
- * OGC-1025 (R6) — manual control capture renders the documented gray state.
+ * OGC-1025 — polymorphic control capture: RDT control-line
+ * outcome + kit lot, or manual quantitative measured/expected/uncertainty +
+ * Pass/Fail against a bench lot, POSTed to /rest/qc/results.
  */
 const wrap = (node: React.ReactElement) =>
   render(
@@ -147,13 +149,281 @@ describe("ReagentsQcSection (R5/R6)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("record-use-1")).not.toBeInTheDocument();
     expect(screen.getByText("Liquichek L1")).toBeInTheDocument();
-    expect(screen.queryByTestId("control-blocked")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("qc-capture")).not.toBeInTheDocument();
   });
 
-  it("manual row shows the R6 control-capture blocker note", () => {
-    respondWith({ "/rest/results-entry/test/6/reagents": [] });
-    wrap(<ReagentsQcSection testId="6" editable open onToggle={() => {}} />);
-    expect(screen.getByTestId("control-blocked")).toBeInTheDocument();
+  it("RDT row records an Invalid control line with its kit lot", () => {
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ id: "qc-1" });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        resultType="D"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    // RDT capture needs no lot record — no bench-lot fetch
+    expect(getMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("/rest/qc/controlLots"),
+      expect.any(Function),
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "INVALID" },
+    });
+    expect(screen.getByTestId("qc-blocked-hint")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "UAT-1025 kit" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(postMock).toHaveBeenCalledWith(
+      "/rest/qc/results",
+      JSON.stringify({
+        source: "RDT",
+        qualitativeOutcome: "INVALID",
+        controlLabel: "UAT-1025 kit",
+        testId: "13",
+        testSectionId: "36",
+      }),
+      expect.any(Function),
+    );
+    expect(
+      screen.getByText(
+        "Control result recorded. Reporting is blocked for covered results until a passing repeat is recorded.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("manual quantitative row records measured/expected/uncertainty against a bench lot", () => {
+    respondWith({
+      "/rest/results-entry/test/6/reagents": [],
+      "/rest/qc/controlLots?testId=6": [
+        {
+          id: "cl-9",
+          productName: "Liquichek L1",
+          lotNumber: "QC-2026-031",
+          controlLevel: "NORMAL",
+          status: "ACTIVE",
+        },
+      ],
+    });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ id: "qc-2", zScore: 2.5 });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="6"
+        testSectionId="36"
+        resultType="N"
+        unitOfMeasure="mg/dL"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Outcome"), {
+      target: { value: "FAIL" },
+    });
+    fireEvent.change(screen.getByLabelText("Control lot"), {
+      target: { value: "cl-9" },
+    });
+    fireEvent.change(screen.getByLabelText("Measured value"), {
+      target: { value: "112.5" },
+    });
+    fireEvent.change(screen.getByLabelText("Expected value"), {
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByLabelText("Uncertainty (±)"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(postMock).toHaveBeenCalledWith(
+      "/rest/qc/results",
+      JSON.stringify({
+        source: "MANUAL",
+        qualitativeOutcome: "FAIL",
+        resultValue: "112.5",
+        expectedValue: "100",
+        uncertainty: "5",
+        controlLotId: "cl-9",
+        testId: "6",
+        testSectionId: "36",
+        unitOfMeasure: "mg/dL",
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it("incomplete capture never POSTs and shows the inline error", () => {
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(postMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Complete the control result fields before recording."),
+    ).toBeInTheDocument();
+
+    // an outcome without the kit lot is equally incomplete
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "VALID" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("a 400 capture response surfaces the backend message verbatim", () => {
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ status: 400, message: "Control lot QC-1 is not a bench lot" });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "VALID" },
+    });
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "kit A" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(
+      screen.getByText("Control lot QC-1 is not a bench lot"),
+    ).toBeInTheDocument();
+  });
+
+  it("a transport failure is never reported as recorded", () => {
+    // the fetch helper reports a network error as {error, status: 0} — a falsy
+    // status, so a status-only check would call this a success
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({
+            error: "Failed to fetch",
+            message: "Failed to fetch",
+            status: 0,
+          });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "INVALID" },
+    });
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "kit A" },
+    });
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(screen.getByText("Failed to fetch")).toBeInTheDocument();
+    expect(screen.queryByText(/Control result recorded/)).toBeNull();
+  });
+
+  it("a passing control confirms without the reporting-blocked warning", () => {
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({ id: "qc-3" });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Control line"), {
+      target: { value: "VALID" },
+    });
+    fireEvent.change(screen.getByLabelText("Kit lot"), {
+      target: { value: "kit A" },
+    });
+    expect(screen.queryByTestId("qc-blocked-hint")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("qc-record"));
+    expect(screen.getByText("Control result recorded.")).toBeInTheDocument();
+  });
+
+  it("a quantitative row with no bench lot says so instead of offering an empty picker", () => {
+    respondWith({
+      "/rest/results-entry/test/6/reagents": [],
+      "/rest/qc/controlLots?testId=6": [],
+    });
+    wrap(
+      <ReagentsQcSection
+        testId="6"
+        testSectionId="36"
+        resultType="N"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("qc-no-bench-lots")).toBeInTheDocument();
+  });
+
+  it("without a lab-unit scope neither the capture form nor its heading render", () => {
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    wrap(<ReagentsQcSection testId="13" editable open onToggle={() => {}} />);
+    expect(screen.queryByTestId("qc-capture")).not.toBeInTheDocument();
+    expect(screen.queryByText("Control result")).not.toBeInTheDocument();
+  });
+
+  it("a saved (read-only) row can still record a control", () => {
+    // the hold covers results already at Technical Acceptance, so capture must
+    // survive the row going non-editable after Save
+    respondWith({ "/rest/results-entry/test/13/reagents": [] });
+    wrap(
+      <ReagentsQcSection
+        testId="13"
+        testSectionId="36"
+        editable={false}
+        open
+        onToggle={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("qc-capture")).toBeInTheDocument();
   });
 
   it("a 4xx consume response surfaces the server message", () => {

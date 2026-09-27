@@ -1180,12 +1180,17 @@ const SampleTestSection = ({
         </div>
 
         <div className="env-manifest-footer">
-          <Link onClick={handleAddSample} disabled={isReadOnly}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={handleAddSample}
+            disabled={isReadOnly}
+          >
             <FormattedMessage
               id="env.sample.addRow"
               defaultMessage="+ Add sample row"
             />
-          </Link>
+          </Button>
           <span className="env-manifest-count">
             <FormattedMessage
               id="env.sample.total"
@@ -1398,10 +1403,15 @@ const SampleTestSection = ({
               <Column lg={8} md={4} sm={4}>
                 <Select
                   id={`sampleType-${sampleIndex}`}
-                  labelText={intl.formatMessage({
-                    id: "sample.type",
-                    defaultMessage: "Sample Type",
-                  })}
+                  labelText={
+                    <span>
+                      {intl.formatMessage({
+                        id: "sample.type",
+                        defaultMessage: "Sample Type",
+                      })}
+                      <span className="required-indicator"> *</span>
+                    </span>
+                  }
                   value={sample.sampleTypeId || ""}
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)
