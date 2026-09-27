@@ -306,6 +306,10 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
         assertEquals(42.0, Double.parseDouble((String) written.get("value")), 0.0);
         assertEquals("the component's range on this specimen", 41.0, (Double) written.get("min_normal"), 0.0);
         assertEquals(44.0, (Double) written.get("max_normal"), 0.0);
+        Long writtenId = jdbc.queryForObject("SELECT r.id FROM clinlims.result r JOIN clinlims.test_result tr"
+                + " ON tr.id = r.test_result_id WHERE tr.component_id = ?", Long.class, componentB);
+        assertEquals("the calculated result is handed back for the alert rules", List.of(String.valueOf(writtenId)),
+                testCalculatedUtil.getCalculatedResults().stream().map(result -> result.getId()).toList());
     }
 
     @Test
@@ -336,5 +340,7 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
                 Double.parseDouble(jdbc.queryForObject("SELECT value FROM clinlims.result WHERE analysis_id = ?",
                         String.class, glucoseAnalysis)),
                 0.0);
+        assertEquals("validation shows when the value was entered", Boolean.TRUE, jdbc.queryForObject(
+                "SELECT entry_date IS NOT NULL FROM clinlims.analysis WHERE id = ?", Boolean.class, glucoseAnalysis));
     }
 }

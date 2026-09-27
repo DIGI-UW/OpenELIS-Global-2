@@ -62,11 +62,21 @@ public class TestCalculatedUtil {
     private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
 
     private RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
+    private final List<Result> calculatedResults = new ArrayList<>();
+
+    /**
+     * The results this instance calculated and stored, so the caller can put them
+     * through the same alert rules as results a user entered.
+     */
+    public List<Result> getCalculatedResults() {
+        return calculatedResults;
+    }
 
     private String CALCULATION_SUBJECT = "Calculated Result Note";
 
     public List<Analysis> addNewTestsToDBForCalculatedTests(List<ResultSet> resultSetList, String sysUserId)
             throws IllegalStateException {
+        calculatedResults.clear();
         List<Analysis> analyses = new ArrayList<>();
         for (ResultSet resultSet : resultSetList) {
             if (resultSet.result == null) {
@@ -334,6 +344,9 @@ public class TestCalculatedUtil {
             }
             resultCalculation.setResult(result);
             resultcalculationService.update(resultCalculation);
+            if (resultCalculated) {
+                calculatedResults.add(result);
+            }
         }
         return analysis;
     }
@@ -660,6 +673,9 @@ public class TestCalculatedUtil {
         if (target.getStartedDate() == null) {
             target.setStartedDate(DateUtil.getNowAsTimestamp());
         }
+        if (resultCalculated) {
+            target.setEnteredDate(DateUtil.getNowAsTimestamp());
+        }
         target.setResultCalculated(resultCalculated);
         target.setSysUserId(systemUserId);
         try {
@@ -708,6 +724,7 @@ public class TestCalculatedUtil {
         if (resultCalculated) {
             generatedAnalysis.setStatusId(
                     SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+            generatedAnalysis.setEnteredDate(DateUtil.getNowAsTimestamp());
         } else {
             generatedAnalysis
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
