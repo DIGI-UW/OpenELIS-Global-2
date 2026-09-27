@@ -168,6 +168,15 @@ required” warning after the port is entered; **Finish and activate** saves tha
 port and works. Treat the warning as a setup-clarity finding for R3, not as
 evidence that an inbound analyzer port must be mandatory in every profile.
 
+The first authoritative E2E executor on `f978a5e4a8` exposed a GeneXpert test
+race alongside the expected stock-default failures. The mock reported one
+successful send, Bridge registered the new connection and delivered the outbox
+entry to OE2, but the intake page had read its worklist about three seconds
+before delivery and does not poll for new rows. The test now waits for that
+accession in OE2's ordinary worklist API before navigating to the visible
+review screen; the focused local rerun passed. This readiness wait does not
+create, map, exclude or accept a result. The full CI rerun remains pending.
+
 An exploratory browser-network assertion found a separate uncertainty during
 result acceptance: Playwright reported `net::ERR_ABORTED` for the POST to
 `/rest/AnalyzerResults`, while its trace recorded HTTP 200 response headers and
@@ -175,6 +184,16 @@ the accepted result appeared in OE2's clinical API and Results page. In one
 rerun the success notification did not appear. No result loss was observed, but
 the response/feedback behavior is not explained; investigate it before R7
 signoff rather than using the network event alone as a delivery assertion.
+
+Two test gaps remain explicit. `AnalyzerUpgradeIntegrationTest` inserts legacy
+analyzer rows directly into the current schema and replaces the Bridge client;
+it checks migration-service behavior but cannot serve as the populated-upgrade
+proof in C3. Keep that focused service check until a previous-version API/UI
+upgrade scenario replaces its broader claim. The current FluoroCycler story
+uses sample IDs embedded in a captured XLSX file and is therefore limited to a
+fresh stack or a controlled file fixture. After R5 fixes the shipped VIH-1
+binding, make its file and order prerequisites repeatable without selecting or
+repairing clinical mappings in the harness.
 
 The analyzer SQL fixture and its mapping-repair/native-traffic script were
 removed. The surviving seed script creates missing profile-pinned Bridge

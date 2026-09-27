@@ -208,6 +208,23 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       "MTB-RIF",
       "NOT DETECTED",
     );
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(
+            `${API}/AnalyzerResults?id=${analyzer.id}`,
+          );
+          if (!response.ok()) return false;
+          const worklist = (await response.json()) as {
+            resultList?: Array<{ accessionNumber?: string }>;
+          };
+          return (worklist.resultList ?? []).some(
+            (result) => result.accessionNumber === order.accession,
+          );
+        },
+        { timeout: LONG_TIMEOUT },
+      )
+      .toBe(true);
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
       waitUntil: "domcontentloaded",
       timeout: NAV_TIMEOUT,
