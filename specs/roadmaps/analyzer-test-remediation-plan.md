@@ -1,7 +1,7 @@
 # R0 — Restore trustworthy analyzer testing in PR #4332
 
 Decision recorded: 27 September 2026. Owner: [OE2 PR #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332).
-Status: approved scope and implementation plan; the replacement tests and full workflow evidence are not yet complete.
+Status: implementation in #4332; the complete workflow and video acceptance remain open.
 
 ## Outcome and ordering
 
@@ -142,11 +142,78 @@ C0–C3 work may be published while genuine product failures remain; this avoids
 Required scenarios keep their failing/pending status until the compatible product candidate passes; R7 cannot claim complete workflow acceptance before that point.
 Coordinate merge order or a temporary test-candidate branch with the actual product dependencies rather than disabling required coverage to obtain green CI.
 
+## Implementation checkpoint — 27 September 2026
+
+The #4332 branch was brought forward to `develop` `899f59248e` (merge commit
+`e1c52b5640`). Its checked-in Bridge and mock pins are `b4a9f2cbff` and
+`6df789111d`; the local development stack reported Bridge 3.2.1. The following
+local observations use the isolated `scripts/dev-stack` and uncommitted
+replacement Playwright work; they are **not** exact-head CI, deployment or release
+qualification.
+
+| Check | Observed result | Next owner |
+| --- | --- | --- |
+| Clinical prerequisite | A patient, Sputum order and Xpert MTB/RIF test created and read back through OE2 APIs; API-order test passed. | #4332 |
+| GeneXpert ASTM | Shipped MTB-RIF default, mapping review, UI activation, native mock ASTM, Bridge delivery, UI acceptance and resolved dictionary-value clinical readback passed. | #4332, then exact-head CI/video |
+| Delivery issue | Native ASTM from an unregistered mock source was retained in Bridge's dead-message queue, surfaced in OE2 and dismissed through the UI; test passed. Bridge records source identity before accession parsing. | #4332 |
+| Shared mapping and guided setup | Three shared-mapping tests and the guided UI setup test passed after removing assumptions created by the old seed traffic script. | #4332 |
+| Stock default bindings | MTB-RIF passed. GeneXpert RIF's `DETECTED` result choice, GeneXpert HIV-VL's test and FluoroCycler VIH-1's test were `UNRESOLVED`. For COVID19, OE2 presents two active COVID-19 PCR tests for Respiratory Swab with LOINC `94500-6`; both carry its own `DUPLICATE_LOINC_SAME_SPECIMEN` error, so the independent clinical target is ambiguous. The FluoroCycler FILE story correctly stops at its missing binding. | R5 core profile/catalog defaults; keep #4332 tests red |
+| HL7 | No active core HL7 profile is present in the Bridge's checked-in catalog; a full native HL7 story cannot yet use a shipped core type. | R5, then #4332 test |
+| Replay and populated upgrade | Full service-restart replay and supported-version populated upgrade scenarios have not run. | #4332 plus R1–R5 dependencies |
+| CI and video | GitHub API was unavailable during the checkpoint; exact-head checks and reviewed recordings are pending. | #4332 C4–C5 |
+
+The analyzer SQL fixture and its mapping-repair/native-traffic script are being
+removed. The surviving seed script creates missing profile-pinned Bridge
+connections through OE2 APIs for CI/local setup; it does not confirm mappings or
+activate analyzers in those paths. Its explicit `--activate` option belongs only
+to the separate published-testing deployment smoke path; it checks an already
+confirmed mapping and must not be counted as UI setup evidence. API-created
+orders use explicit test and specimen identities, and the Playwright story checks
+the saved clinical value independently of the displayed intake row.
+The UI-only guided setup remains in the `harness-demo` lane. Native ASTM/FILE
+and order-API scenarios run in `harness-foundational`, which permits external
+instrument input and independent clinical readback. The video project registers
+those same scenario files; no demo guard exception or alternate evidence test
+was added.
+
+### #4336 ownership reconciliation
+
+Compared `origin/fix/ogc-1220-mapping-lifecycle` at `d4316d67e1` against
+`develop` `899f59248e` and #4332. The shared transaction fixture tests are
+already on #4332's merged baseline. The following analyzer tests remain
+product-coupled on #4336; #4332 must not copy them without their corresponding
+mapping, query and security behavior:
+
+| Test file under `src/test/java/org/openelisglobal/` | Disposition |
+| --- | --- |
+| `analyzer/AnalyzerServiceTest.java` | #4336 product-coupled update |
+| `analyzer/AnalyzerTestProfileCatalog.java` | #4336 fixture for its mapping behavior |
+| `analyzer/HibernateMappingValidationTest.java` | #4336 entity behavior |
+| `analyzer/controller/AnalyzerMappingMutationSecurityIntegrationTest.java` | Unique authorization assertions retained on #4336 |
+| `analyzer/controller/AnalyzerTestCleanup.java` | Removal retained on #4336; review with its callers |
+| `analyzer/dao/AnalyzerProfileBindingDAOImplTest.java` | #4336 persistence behavior |
+| `analyzer/integration/QCResultServiceIntegrationTest.java` | #4336 compatibility update |
+| `analyzer/service/AnalyzerInstanceLocalStateServiceTest.java` | #4336 lifecycle behavior |
+| `analyzer/service/AnalyzerMappingLifecycleIntegrationTest.java` | Unique lifecycle and audit assertions retained on #4336 |
+| `analyzer/service/AnalyzerSiteBindingConfirmationServiceTest.java` | #4336 confirmation behavior |
+| `analyzer/service/AnalyzerSiteBindingPersistenceIntegrationTest.java` | #4336 persistence behavior |
+| `analyzer/service/AnalyzerTypeMappingServiceTest.java` | #4336 mapping behavior |
+| `analyzerimport/action/AnalyzerFhirImportControllerTest.java` | #4336 import behavior |
+| `analyzerimport/service/AnalyzerNormalizedResultImportIntegrationTest.java` | #4336 import behavior |
+| `analyzerimport/service/AnalyzerNormalizedResultImportServiceTest.java` | #4336 import behavior |
+| `analyzerresults/AnalyzerResultsServiceTest.java` | #4336 review/query behavior |
+| `analyzerresults/dao/AnalyzerHeldMappingResultsQueryTest.java` | Unique held-result query assertions retained on #4336 |
+| `analyzerresults/service/AnalyzerResultsAcceptHoldIntegrationTest.java` | #4336 recovery behavior |
+| `analyzerresults/service/AnalyzerResultsAcceptServiceResultMappingTest.java` | #4336 acceptance behavior |
+
+This is a source ownership decision, not a claim that #4336 is merge-ready. Its
+current code, CI and compatibility with #4332 need a separate exact-head review.
+
 ## Source pointers for implementation
 
-- `projects/analyzer-harness/seed-mvp-traffic.sh` — current mapping preparation and native traffic calls.
+- `projects/analyzer-harness/seed-mvp-traffic.sh` — removed mapping-repair and traffic shortcut (historical pointer).
 - `projects/analyzer-harness/seed-analyzers.sh` and `scripts/dev-stack` — setup entry points and shared stack behavior.
-- `src/test/resources/fixtures/analyzer-harness-lane-data.sql` and `src/test/resources/load-test-fixtures.sh` — analyzer SQL state and callers to retire/migrate.
+- `src/test/resources/fixtures/analyzer-harness-lane-data.sql` — removed analyzer SQL state (historical pointer); `src/test/resources/load-test-fixtures.sh` retains unrelated fixtures.
 - `src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingDefaults.java` — production default resolution to exercise.
 - `src/main/java/org/openelisglobal/sample/controller/rest/SamplePatientEntryRestController.java` — validated order API.
 - `frontend/playwright/tests/foundational/core/ogc-1266-order-entry-fix-now.spec.ts` and `frontend/playwright/tests/foundational/core/ogc-557-informed-consent.spec.ts` — existing API mechanics to review.

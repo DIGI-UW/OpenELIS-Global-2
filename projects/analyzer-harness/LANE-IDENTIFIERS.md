@@ -4,12 +4,9 @@ Canonical accession strings for the ten analyzer lanes. All use valid
 SiteYearNum format: `DEV0126{LANE}{SEQ:011d}` (prefix `DEV01`, year `26`,
 2-digit lane code, 11-digit sequence). Total: exactly 20 characters.
 
-Pre-seeded accessions for analyzer traffic use sequence range
-0000000001–0000000099. Demo flow accessions (auto-created on accept) use
-sequence range 0000000100–0000000199.
-
-Loaded by `src/test/resources/fixtures/analyzer-harness-lane-data.sql`. A full
-harness reset recreates the isolated database before loading the fixture.
+Captured analyzer files contain the example accessions below. A workflow test
+creates matching patient orders and specimens through the ordinary OpenELIS API
+before sending the file; these clinical records are not SQL fixtures.
 
 | Lane                | Analyzer (seed name)          | Lane Code | Example Accession    | Notes                                                |
 | ------------------- | ----------------------------- | --------- | -------------------- | ---------------------------------------------------- |
@@ -37,6 +34,5 @@ characters: `{PREFIX:5}{YEAR:2}{SEQUENCE:13}`.
 
 - **GeneXpert specimen id:** pass `sample_id` to the mock simulation request;
   profile-owned assay fields always come from the pinned Bridge profile.
-- After changing lane SQL or cleanup, run
-  `./src/test/resources/load-test-fixtures.sh --profile=harness` against the
-  harness DB container.
+- Start a fresh isolated stack with `scripts/dev-stack up`, then run the
+  registered analyzer Playwright scenarios to create orders and send traffic.

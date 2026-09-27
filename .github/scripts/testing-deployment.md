@@ -37,14 +37,14 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
   grants its Tomcat group write access.
 - `.openelis-ci/`: the image override and `target.json`.
 
-After the application reports ready, the deploy seeds the default analyzers
-(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). Only
-newly created priority connections are activated. An existing shared mapping is
-reused only when already confirmed; it is never rewritten or confirmed by a
-deployment. Existing connections retain their configuration and activation
-state. If setup was interrupted, complete that connection's setup in OpenELIS
-before retrying; deployment does not guess whether an inactive connection was
-intentionally disabled.
+After the application reports ready, the deploy creates missing default
+analyzers
+(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). It
+activates only newly created priority connections whose shipped mapping is
+already confirmed. It never selects, excludes or confirms mapping rows. Existing
+connections retain their configuration and activation state. If the stock
+mapping needs review, complete it in OpenELIS before retrying; deployment does
+not guess whether an inactive connection was intentionally disabled.
 
 The deploy then sends one GeneXpert result through the mock with an accession
 derived from the run ID. The deployment is ready only when that result appears

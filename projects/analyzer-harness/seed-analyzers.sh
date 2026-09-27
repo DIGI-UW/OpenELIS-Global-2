@@ -8,13 +8,11 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# --activate: initialize mappings and activate newly created priority connections,
-#   preserving existing shared mappings and connection activation choices.
+# --activate: activate only newly created priority connections when their
+#   shipped mapping is already confirmed. It never edits clinical mappings.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
 ACTIVATE=false
-ACTIVATION_ARGS=()
-HAS_NEW_PRIORITY=false
 for arg in "$@"; do
   case "$arg" in
     --ensure-connections) ENSURE_CONNECTIONS=true ;;
@@ -24,7 +22,7 @@ for arg in "$@"; do
   esac
 done
 if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
-  echo "--activate requires --ensure-connections; the full seed already activates" >&2
+  echo "--activate requires --ensure-connections" >&2
   exit 2
 fi
 
@@ -42,6 +40,7 @@ MOCK_URL="${MOCK_URL:-http://localhost:8085}"
 ANALYZER_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers"
 TYPE_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer-types"
 LAB_UNITS_API="$BASE_URL/api/OpenELIS-Global/rest/test-catalog/lab-units"
+HARNESS_LAB_UNIT_NAME="${HARNESS_LAB_UNIT_NAME:-Molecular Biology}"
 
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
@@ -59,7 +58,8 @@ CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
 LAB_UNITS_FILE="$(mktemp)"
 RESPONSE_FILE="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE"' EXIT
+ACTIVATION_PAYLOAD_FILE="$(mktemp)"
+trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE"' EXIT
 
 fetch_json() {
   local url="$1"
@@ -105,18 +105,19 @@ PY
 }
 
 resolve_lab_unit_id() {
-  python3 - "$LAB_UNITS_FILE" <<'PY'
+  python3 - "$LAB_UNITS_FILE" "$HARNESS_LAB_UNIT_NAME" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     lab_units = json.load(handle)
 
-if not isinstance(lab_units, list) or not lab_units:
-    raise SystemExit("expected at least one active lab unit")
-lab_unit_id = lab_units[0].get("id")
+matches = [unit for unit in lab_units if unit.get("name") == sys.argv[2]]
+if len(matches) != 1:
+    raise SystemExit(f"expected one active lab unit named {sys.argv[2]!r}; found {len(matches)}")
+lab_unit_id = matches[0].get("id")
 if lab_unit_id is None or str(lab_unit_id).strip() == "":
-    raise SystemExit("first active lab unit has no ID")
+    raise SystemExit(f"lab unit {sys.argv[2]!r} has no ID")
 print(lab_unit_id)
 PY
 }
@@ -139,6 +140,51 @@ if matches:
         raise SystemExit(f"analyzer named {sys.argv[2]!r} has no ID")
     print(analyzer_id)
 PY
+}
+
+activate_confirmed_analyzer() {
+  local analyzer_id="$1"
+  local profile_id="$2"
+  local profile_revision="$3"
+  local status
+
+  fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id mapping"
+  python3 - "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    mapping = json.load(handle)
+if mapping.get("confirmation", {}).get("state") != "CURRENT":
+    raise SystemExit(
+        f"{mapping.get('profileId')} has no confirmed stock mapping; review it in OpenELIS before activation"
+    )
+if not mapping.get("siteBindingId") or not mapping.get("bindingFingerprint"):
+    raise SystemExit("Confirmed mapping has no persisted binding reference")
+with open(sys.argv[2], "w", encoding="utf-8") as handle:
+    json.dump({
+        "siteBindingId": mapping["siteBindingId"],
+        "revision": mapping["siteBindingRevision"],
+        "bindingFingerprint": mapping["bindingFingerprint"],
+    }, handle)
+PY
+  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
+    -u "$TEST_USER:$TEST_PASS" -X PUT -H "Content-Type: application/json" \
+    --data-binary "@$ACTIVATION_PAYLOAD_FILE" "$ANALYZER_API/$analyzer_id/site-binding")"
+  if [ "$status" != "200" ]; then
+    echo "ERROR: Could not adopt confirmed $profile_id binding (HTTP $status)" >&2
+    sed 's/^/  /' "$RESPONSE_FILE" >&2
+    return 1
+  fi
+  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
+    -u "$TEST_USER:$TEST_PASS" -X POST -H "Content-Type: application/json" \
+    -d '{}' "$ANALYZER_API/$analyzer_id/activate")"
+  if [ "$status" != "200" ]; then
+    echo "ERROR: Could not activate $profile_id analyzer $analyzer_id (HTTP $status)" >&2
+    sed 's/^/  /' "$RESPONSE_FILE" >&2
+    return 1
+  fi
+  echo "  Activated newly created $profile_id analyzer $analyzer_id"
 }
 
 reconcile_profile_analyzer() {
@@ -185,12 +231,6 @@ PY
     action_label="Updated"
   fi
 
-  local mapping_mode="preserve"
-  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id site mapping"
-    mapping_mode="$(python3 -c 'import json,sys; print("preserve" if json.load(open(sys.argv[1])).get("siteBindingId") else "initialize")' "$RESPONSE_FILE")"
-  fi
-
   local status
   status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
   if [ "$status" != "$expected_status" ]; then
@@ -200,8 +240,7 @@ PY
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
   if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    ACTIVATION_ARGS+=("$name" "$mapping_mode")
-    HAS_NEW_PRIORITY=true
+    activate_confirmed_analyzer "$(find_analyzer_id "$name")" "$profile_id" "$profile_revision"
   fi
 }
 
@@ -319,24 +358,10 @@ reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUD
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
-if [ "$ACTIVATE" = true ] && [ "$HAS_NEW_PRIORITY" = true ]; then
-  echo "Initializing newly created priority connections..."
-  BASE_URL="$BASE_URL" \
-  TEST_USER="$TEST_USER" \
-  TEST_PASS="$TEST_PASS" \
-    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate "${ACTIVATION_ARGS[@]}"
-fi
-
 if [ "$ENSURE_CONNECTIONS" = true ]; then
   echo "Done. Missing harness connections created; existing configuration and review data preserved."
   exit 0
 fi
 
 verify_profile_pins
-echo "Preparing analyzer mappings and result traffic for visible stories..."
-BASE_URL="$BASE_URL" \
-TEST_USER="$TEST_USER" \
-TEST_PASS="$TEST_PASS" \
-DB_CONTAINER="${DB_CONTAINER:-openelisglobal-database}" \
-  bash "$SCRIPT_DIR/seed-mvp-traffic.sh"
-echo "Done. Four instances use the three validated Bridge profile families."
+echo "Done. Four instances use the three pinned Bridge profile families; mappings and traffic remain untouched."

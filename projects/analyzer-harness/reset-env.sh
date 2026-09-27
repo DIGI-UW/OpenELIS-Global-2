@@ -7,7 +7,6 @@
 #   --build        Build WAR + harness Docker images first (start from scratch)
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
 #   --skip-fixtures   Skip loading test fixtures after startup
-#   --mvp-story     Seed the real analyzer traffic used by the OGC-1054 story
 #   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
 #   --ci-parity    Bring up the CI-parity stack (build.docker-compose.yml +
 #                  ci.analyzer-harness.yml) instead of the local dev stack.
@@ -56,7 +55,6 @@ DO_BUILD=false
 USE_LETSENCRYPT=false
 SKIP_LETSENCRYPT=false
 CI_PARITY=false
-MVP_STORY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -74,10 +72,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-fixtures)
             SKIP_FIXTURES=true
-            shift
-            ;;
-        --mvp-story)
-            MVP_STORY=true
             shift
             ;;
         --skip-letsencrypt)
@@ -212,12 +206,8 @@ else
     # seed-analyzers.sh defaults TEST_USER=admin / TEST_PASS=adminADMIN! internally; a .env
     # file or explicit exports still take precedence. No manual credential setup needed.
     set -a && [ -f .env ] && . ./.env && set +a
-    BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+    BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
     echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
-    if [ "$MVP_STORY" = true ]; then
-        BASE_URL=https://localhost bash projects/analyzer-harness/seed-mvp-traffic.sh
-        echo -e "  ${GREEN}✓ OGC-1054 MVP traffic seeded${NC}"
-    fi
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

@@ -354,7 +354,7 @@ jobs:
           cp -R "bridge/$profiles" "bundle/tools/openelis-analyzer-bridge/$profiles"
           tar -czf deploy-bundle.tgz docker-compose.yml docker-compose.analyzers.yml volume \
             projects/analyzer-harness/config-templates \
-            projects/analyzer-harness/seed-analyzers.sh projects/analyzer-harness/seed-mvp-traffic.sh \
+            projects/analyzer-harness/seed-analyzers.sh \
             -C bundle tools
       - name: Validate deployment request
         env:

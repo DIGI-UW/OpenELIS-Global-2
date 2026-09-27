@@ -53,6 +53,33 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByRole("button", { name: "Edit Instrument" }),
     ).toBeVisible();
+    await expect(
+      page
+        .getByText("Not confirmed", { exact: true })
+        .or(page.getByText("Current", { exact: true })),
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Review mappings in Analyzer Types" })
+      .click();
+    await expect(page).toHaveURL(/\/analyzers\/types\/genexpert-astm\/mapping/);
+    await expect(
+      page.getByRole("button", { name: "Update shared mappings" }),
+    ).toBeDisabled();
+    const confirm = page.getByRole("button", {
+      name: "Confirm mappings and control recognition",
+    });
+    await expect(confirm).toBeVisible({ timeout: LONG_TIMEOUT });
+    if (await confirm.isEnabled()) {
+      await confirm.click();
+      await expect(
+        page.getByText("Mappings and control recognition confirmed"),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+    } else {
+      await expect(page.getByText("Current confirmation")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+    }
+    await page.goBack({ waitUntil: "domcontentloaded" });
     await expect(page.getByText("Current", { exact: true })).toBeVisible({
       timeout: LONG_TIMEOUT,
     });

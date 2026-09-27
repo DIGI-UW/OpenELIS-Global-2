@@ -15,7 +15,7 @@
 #   projects/analyzer-harness/ci-parity-test.sh --seed-only
 #   projects/analyzer-harness/ci-parity-test.sh --mode video
 #   projects/analyzer-harness/ci-parity-test.sh --project harness-demo-video
-#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts
+#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/foundational/harness/ogc-1054-analyzer-mvp.spec.ts
 #   projects/analyzer-harness/ci-parity-test.sh --shard 2/2
 #   projects/analyzer-harness/ci-parity-test.sh --artifact-dir /tmp/oe-ci-parity
 
@@ -29,7 +29,6 @@ source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
-MVP_TRAFFIC_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-mvp-traffic.sh"
 FIXTURE_DB_TARGET_TEST="$REPO_ROOT/projects/analyzer-harness/scripts/test-fixture-loader-db-target.sh"
 REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
@@ -337,7 +336,6 @@ check_file "$CI_BUILD_COMPOSE"
 check_file "$CI_HARNESS_COMPOSE"
 check_file "$FIXTURE_SCRIPT"
 check_file "$SEED_SCRIPT"
-check_file "$MVP_TRAFFIC_SCRIPT"
 check_file "$FIXTURE_DB_TARGET_TEST"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
@@ -446,7 +444,7 @@ with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --ma
   TEST_USER="$TEST_USER_RESOLVED" \
   TEST_PASS="$TEST_PASS_RESOLVED" \
   DB_CONTAINER="openelisglobal-database" \
-  bash projects/analyzer-harness/seed-analyzers.sh
+  bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
 ) 2>&1 | tee -a "$RUN_LOG"
 
 if rg -n "WARN: Mock API failed|fallback|using stable IP|using fallback" "$RUN_LOG" >/dev/null 2>&1; then

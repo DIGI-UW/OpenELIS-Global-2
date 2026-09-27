@@ -33,8 +33,9 @@ The authoritative harness startup catalog lives under
 - Local harness bootstrap copies that same directory into the harness volume.
 - Do not add or update harness test catalog CSVs under any other source tree.
 
-`seed-analyzers.sh` now hard-fails if the startup catalog cannot realize the
-required profile mappings for the seeded analyzers.
+The registered Playwright tests read the startup catalog and fail visibly when a
+shipped profile cannot resolve its intended clinical test. The seeder does not
+select or confirm those mappings for CI.
 
 ## Local Compose Layers
 
@@ -65,9 +66,9 @@ The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It calls `seed-analyzers.sh --ensure-connections` to create missing
 profile-backed harness connections through authenticated application services.
 Ordinary restarts preserve existing connection configuration, mappings, and
-review data; they do not replay result traffic. The seeder's default mode
-remains the explicit full fixture setup used by CI. Feature-specific scenarios
-follow the same service-layer rule. CI parity is a separate validation command
+review data; they do not replay result traffic. CI uses the same
+`--ensure-connections` mode. The Playwright scenarios own their API-created
+clinical orders and native traffic. CI parity is a separate validation command
 because it intentionally reproduces CI packaging.
 
 To remove this worktree's data explicitly:

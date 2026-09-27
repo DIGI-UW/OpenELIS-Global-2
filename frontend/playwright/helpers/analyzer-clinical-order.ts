@@ -16,7 +16,7 @@ type MappingRow = {
 type MappingView = { tests: MappingRow[] };
 
 export type AnalyzerClinicalOrder = {
-  accession: string;
+  accession?: string;
   profileId: string;
   profileRevision: number;
   sourceCode: string;
@@ -39,24 +39,64 @@ export async function stockClinicalBinding(
   page: Page,
   scenario: StockBindingExpectation,
 ): Promise<string> {
+  const catalog = await jsonGet<{
+    total: number;
+    rows: Array<{
+      testId: string;
+      name: string;
+      active: boolean;
+      sampleTypes: string[];
+    }>;
+  }>(
+    page,
+    `/test-catalog/tests?status=active&search=${encodeURIComponent(scenario.expectedTestName)}&pageSize=100`,
+  );
+  expect(
+    catalog.total,
+    `Catalog search for ${scenario.expectedTestName} fits one page`,
+  ).toBeLessThanOrEqual(100);
+  const clinicalTests = catalog.rows.filter(
+    (test) =>
+      test.active &&
+      (test.name === scenario.expectedTestName ||
+        test.name.startsWith(`${scenario.expectedTestName}(`) ||
+        test.name.startsWith(`${scenario.expectedTestName} (`)) &&
+      test.sampleTypes.includes(scenario.specimenName),
+  );
+  expect(
+    clinicalTests,
+    `One active ${scenario.expectedTestName} test for ${scenario.specimenName}`,
+  ).toHaveLength(1);
+  const expectedTestId = clinicalTests[0].testId;
+
   const mapping = await jsonGet<MappingView>(
     page,
     `/analyzer-types/${scenario.profileId}/mapping?revision=${scenario.profileRevision}`,
   );
-  const rows = mapping.tests.filter((row) => row.rawCode === scenario.sourceCode);
+  const rows = mapping.tests.filter(
+    (row) => row.rawCode === scenario.sourceCode,
+  );
   expect(rows, `One shipped ${scenario.sourceCode} row`).toHaveLength(1);
   const row = rows[0];
   expect(row.loinc).toBe(scenario.expectedLoinc);
-  expect(row.mappingState, `${scenario.sourceCode} must be mapped by the product`).toBe("BOUND");
-  expect(row.testId).toBeTruthy();
+  expect(
+    row.mappingState,
+    `${scenario.sourceCode} must be mapped by the product`,
+  ).toBe("BOUND");
+  expect(row.testId).toBe(expectedTestId);
   expect(row.selectedTest?.name).toBe(scenario.expectedTestName);
   expect(row.selectedTest?.loincCodes).toContain(scenario.expectedLoinc);
   if (scenario.expectedMappedValue) {
-    const values = row.results.filter((result) => result.rawValue === scenario.expectedMappedValue);
-    expect(values, `${scenario.sourceCode} ${scenario.expectedMappedValue} row`).toHaveLength(1);
+    const values = row.results.filter(
+      (result) => result.rawValue === scenario.expectedMappedValue,
+    );
+    expect(
+      values,
+      `${scenario.sourceCode} ${scenario.expectedMappedValue} row`,
+    ).toHaveLength(1);
     expect(values[0].mappingState).toBe("BOUND");
   }
-  return row.testId!;
+  return expectedTestId;
 }
 
 function nextDateInServerFormat(currentDate: string, isoDate: string): string {
@@ -78,7 +118,12 @@ function nextDateInServerFormat(currentDate: string, isoDate: string): string {
 export async function createAnalyzerClinicalOrder(
   page: Page,
   scenario: AnalyzerClinicalOrder,
-): Promise<{ accession: string; patientLastName: string; testId: string; specimenId: string }> {
+): Promise<{
+  accession: string;
+  patientLastName: string;
+  testId: string;
+  specimenId: string;
+}> {
   const testId = await stockClinicalBinding(page, scenario);
   const compatibility = await jsonGet<{
     tests: Array<{
@@ -91,18 +136,43 @@ export async function createAnalyzerClinicalOrder(
   const specimens = compatibility.tests[0].compatibleSampleTypes.filter(
     (type) => type.name === scenario.specimenName,
   );
-  expect(specimens, `${scenario.expectedTestName} accepts ${scenario.specimenName}`).toHaveLength(1);
+  expect(
+    specimens,
+    `${scenario.expectedTestName} accepts ${scenario.specimenName}`,
+  ).toHaveLength(1);
   const specimenId = specimens[0].id;
 
-  const existing = await page.request.get(
-    `${API}/order/search?labNumber=${encodeURIComponent(scenario.accession)}`,
-  );
-  expect(existing.status(), `Fresh fixture accession ${scenario.accession}`).toBe(404);
+  let accession = scenario.accession;
+  if (!accession) {
+    const generated = await page.request.get(
+      `${API}/SampleEntryGenerateScanProvider`,
+      {
+        headers: { "X-CSRF-Token": await csrfToken(page) },
+      },
+    );
+    expect(
+      generated.ok(),
+      `Generate analyzer order accession: ${generated.status()}`,
+    ).toBeTruthy();
+    accession = ((await generated.json()) as { body?: string }).body;
+    expect(accession, "OpenELIS generated an accession").toBeTruthy();
+  }
 
-  const entry = await jsonGet<{ currentDate: string }>(page, "/SamplePatientEntry");
+  const existing = await page.request.get(
+    `${API}/order/search?labNumber=${encodeURIComponent(accession!)}`,
+  );
+  expect(existing.status(), `Fresh fixture accession ${accession}`).toBe(404);
+
+  const entry = await jsonGet<{ currentDate: string }>(
+    page,
+    "/SamplePatientEntry",
+  );
   const serverTime = await jsonGet<{ date: string }>(page, "/server-time");
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
-  const patientLastName = `ANALYZER${suffix}`;
+  const nameSuffix = Array.from(suffix, (digit) =>
+    String.fromCharCode(65 + Number.parseInt(digit, 16)),
+  ).join("");
+  const patientLastName = `ANALYZER${nameSuffix}`;
   const form = {
     rememberSiteAndRequester: false,
     currentDate: entry.currentDate,
@@ -128,7 +198,7 @@ export async function createAnalyzerClinicalOrder(
       subjectNumber: suffix,
     },
     sampleOrderItems: {
-      labNo: scenario.accession,
+      labNo: accession,
       requestDate: entry.currentDate,
       receivedDateForDisplay: entry.currentDate,
       receivedTime: "09:00",
@@ -151,18 +221,18 @@ export async function createAnalyzerClinicalOrder(
   });
   expect(
     response.ok(),
-    `POST ${scenario.accession}: ${response.status()} ${(await response.text()).slice(0, 500)}`,
+    `POST ${accession}: ${response.status()} ${(await response.text()).slice(0, 500)}`,
   ).toBeTruthy();
 
   const order = await jsonGet<{
     labNumber: string;
     patientProperties?: { lastName?: string };
     samples: Array<{ sampleTypeId: string; tests: Array<{ id: string }> }>;
-  }>(page, `/order/search?labNumber=${encodeURIComponent(scenario.accession)}`);
-  expect(order.labNumber).toBe(scenario.accession);
+  }>(page, `/order/search?labNumber=${encodeURIComponent(accession!)}`);
+  expect(order.labNumber).toBe(accession);
   expect(order.patientProperties?.lastName).toBe(patientLastName);
   expect(order.samples).toHaveLength(1);
   expect(order.samples[0].sampleTypeId).toBe(specimenId);
   expect(order.samples[0].tests.map((test) => test.id)).toContain(testId);
-  return { accession: scenario.accession, patientLastName, testId, specimenId };
+  return { accession: accession!, patientLastName, testId, specimenId };
 }

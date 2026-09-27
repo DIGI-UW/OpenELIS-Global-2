@@ -623,6 +623,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_endpoints(context, environment, shell_exports=True)
     elif args.command == "playwright":
         playwright_environment = environment.copy()
+        playwright_environment.update(endpoint_environment(context, environment))
         playwright_environment["BASE_URL"] = playwright_base_url(context, environment)
         print(f"Running Playwright against {playwright_environment['BASE_URL']}")
         run(

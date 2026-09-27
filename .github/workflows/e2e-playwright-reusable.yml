@@ -312,7 +312,7 @@ jobs:
 
       - name: Seed analyzers via REST API
         if: inputs.setup_analyzer_harness
-        run: bash projects/analyzer-harness/seed-analyzers.sh
+        run: bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}

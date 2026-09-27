@@ -211,10 +211,7 @@ export async function completeAnalysisChains(
  * generated accession numbers.
  *
  * Works in any environment with foundational fixtures loaded, including
- * the core-mode Playwright CI job that runs specs under
- * `tests/demo/core/`. Unlike `completeAnalysisChains(page,
- * HARNESS_LANE_ACCESSIONS)` it does not require pre-loaded HARN lane
- * fixtures — the spec becomes self-contained.
+ * the core-mode Playwright CI job that runs specs under `tests/demo/core/`.
  *
  * Each accession ends up with `released_date` populated, which is what
  * the TAT Report queries.
@@ -240,26 +237,6 @@ export async function createAndCompleteAccessions(
   }
   return accessionNumbers;
 }
-
-/**
- * Fixture accessions seeded by `analyzer-harness-lane-data.sql`.
- * 13 samples, each with 1 analysis in NotStarted status.
- */
-export const HARNESS_LANE_ACCESSIONS = [
-  "DEV01261000000000001",
-  "DEV01262000000000001",
-  "DEV01262000000000002",
-  "DEV01262000000000003",
-  "DEV01262000000000004",
-  "DEV01262000000000005",
-  "DEV01262000000000007",
-  "DEV01262100000000001",
-  "DEV01262100000000002",
-  "DEV01262100000000005",
-  "DEV01263000000000001",
-  "DEV01263000000000002",
-  "DEV01263000000000003",
-];
 
 /* ---------------------------------------------------------------------
  * createSampleOrder — create a fresh sample order from scratch.

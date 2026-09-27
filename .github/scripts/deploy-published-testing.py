@@ -39,7 +39,6 @@ BUNDLE_FILES = (
     "volume/properties/common.properties",
     "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
-    "projects/analyzer-harness/seed-mvp-traffic.sh",
     "projects/analyzer-harness/config-templates/tests/harness-tests.csv",
 )
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
