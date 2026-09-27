@@ -145,6 +145,31 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void retryUpdatesTheReasonWhenAResultRemainsHeldUnderTheCurrentMapping() throws IOException {
+        analyzer = analyzer("site.unknown-capable", 3);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(), List.of());
+        service.importBundle(fixture("normalized-unknown-test.fhir.json"), "7");
+        AnalyzerResults held = capturedRow();
+        held.setId("9001");
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
+
+        arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
+        when(confirmationService.assessCurrent(any(), any()))
+                .thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+
+        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
+        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(analyzerResultsService).update(updated.capture());
+        assertEquals("9001", updated.getValue().getId());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, updated.getValue().getImportIssueReason());
+        assertTrue(updated.getValue().isReadOnly());
+    }
+
+    @Test
     public void unknownQualitativeValueIsHeldAgainstItsMappedTest() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "701")));
 

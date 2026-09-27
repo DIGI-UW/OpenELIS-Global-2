@@ -340,6 +340,7 @@ public class AnalyzerResultsController extends BaseController {
 
         AnalyzerResultItem resultItem = new AnalyzerResultItem();
         boolean held = !GenericValidator.isBlankOrNull(result.getImportIssueReason());
+        boolean awaitingSpecimen = AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason());
         resultItem.setAccessionNumber(result.getAccessionNumber());
         resultItem.setAnalyzerId(result.getAnalyzerId());
         resultItem.setIsControl(result.getIsControl());
@@ -350,11 +351,12 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setComponentId(result.getComponentId());
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
-        resultItem.setReadOnly(held || result.isReadOnly() || result.getTestId() == null);
-        resultItem.setResult(held ? result.getRawResultValue() : getResultForItem(result));
+        resultItem.setReadOnly((held && !awaitingSpecimen) || result.isReadOnly() || result.getTestId() == null);
+        resultItem.setResult(held && !awaitingSpecimen ? result.getRawResultValue() : getResultForItem(result));
         resultItem.setSignificantDigits(getSignificantDigitsFromAnalyzerResults(result));
         resultItem.setTestResultType(result.getResultType());
-        resultItem.setDictionaryResultList(held ? new ArrayList<>() : getDictionaryResultList(result));
+        resultItem.setDictionaryResultList(
+                held && !awaitingSpecimen ? new ArrayList<>() : getDictionaryResultList(result));
         resultItem.setIsHighlighted(!GenericValidator.isBlankOrNull(result.getDuplicateAnalyzerResultId())
                 || GenericValidator.isBlankOrNull(result.getTestId()));
         resultItem.setUserChoiceReflex(giveUserChoice(result));

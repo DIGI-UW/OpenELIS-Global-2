@@ -44,12 +44,18 @@ export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
 };
 
 export const buildHeldResultResolutionUrl = (row, analyzerId) => {
+  const mappingIssues = [
+    "unknown_analyzer_test",
+    "test_mapping_not_ready",
+    "unknown_analyzer_result_value",
+    "result_mapping_not_ready",
+    "invalid_result_mapping",
+  ];
   if (
-    row.importIssueReason !== "unknown_analyzer_result_value" ||
+    !mappingIssues.includes(row.importIssueReason) ||
     !row.sourceProfileId ||
     !row.sourceProfileRevision ||
     !row.rawTestCode ||
-    !row.rawResultValue ||
     !analyzerId
   ) {
     return null;
@@ -57,10 +63,13 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 
   const query = new URLSearchParams({
     revision: String(row.sourceProfileRevision),
+    analyzerId: String(analyzerId),
     returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
     focusTest: row.rawTestCode,
-    focusValue: row.rawResultValue,
   });
+  if (row.rawResultValue) {
+    query.set("focusValue", row.rawResultValue);
+  }
   return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
 };
 const AnalyserResults = (props) => {
@@ -91,7 +100,9 @@ const AnalyserResults = (props) => {
     (result) => result.importIssueReason,
   );
   const actionablePatientResults = patientResults.filter(
-    (result) => !result.importIssueReason,
+    (result) =>
+      !result.importIssueReason ||
+      result.importIssueReason === "awaiting_specimen",
   );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
@@ -252,6 +263,7 @@ const AnalyserResults = (props) => {
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
+    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -315,6 +327,9 @@ const AnalyserResults = (props) => {
                 labelText={intl.formatMessage({
                   id: "label.testCatalog.specimenType",
                 })}
+                aria-label={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
                 helperText={intl.formatMessage({
                   id: "notice.testCatalog.intake.awaitingSpecimen",
                 })}
@@ -335,7 +350,7 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           return null;
         }
         return (
@@ -423,7 +438,7 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           const resolutionUrl = buildHeldResultResolutionUrl(
             row,
             props.analyzerId,

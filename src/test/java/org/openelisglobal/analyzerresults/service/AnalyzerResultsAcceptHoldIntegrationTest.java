@@ -110,8 +110,39 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void acceptingMixedGroupKeepsUnresolvedObservationStaged() {
+        String heldId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, read_only, import_issue_reason, last_updated)"
+                        + " VALUES (?::numeric, ?, ?, 'Held result', 'RAW', false, ?, true, ?, NOW())",
+                heldId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+
+        AnalyzerResultItem accepted = acceptedItem();
+        accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem unresolved = acceptedItem();
+        unresolved.setId(heldId);
+        unresolved.setReadOnly(true);
+        unresolved.setIsAccepted(true);
+        acceptService.acceptAndPersist(List.of(accepted, unresolved), "1");
+
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldId));
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, stagedRowId));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        Integer.class, ACCESSION));
+    }
+
+    @org.junit.Test
     public void reviewerChoice_removesTheHold() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
         AnalyzerResultItem item = acceptedItem();
+        item.setReadOnly(true); // A stale client flag must not override the valid specimen choice.
         item.setTypeOfSampleId(String.valueOf(TYPE_B));
         acceptService.acceptAndPersist(List.of(item), "1");
 

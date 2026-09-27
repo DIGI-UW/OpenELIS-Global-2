@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
@@ -59,6 +60,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.Errors;
 
 @Service
@@ -105,8 +107,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // ---------------------------------------------------------------
 
     @Override
+    @Transactional
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
+        retainResolvableResults(actionableResults);
 
         if (actionableResults.isEmpty()) {
             return;
@@ -137,12 +141,34 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 "Accept: " + actionableResults.size() + " actionable, " + sampleGroupList.size() + " sample groupings, "
                         + deletableAnalyzerResults.size() + " to delete from staging");
 
-        if (sampleGroupList.isEmpty() && !actionableResults.isEmpty()) {
-            LogEvent.logError(this.getClass().getSimpleName(), "acceptAndPersist",
-                    "BUG: actionable results exist but no sample groupings were built — staging will be deleted without creating accepted records!");
+        long expectedResults = actionableResults.stream().filter(item -> !item.getIsDeleted()).count();
+        long builtResults = sampleGroupList.stream().mapToLong(group -> group.resultList.size()).sum();
+        if (builtResults != expectedResults) {
+            throw new IllegalStateException(
+                    "Analyzer review would remove " + expectedResults + " observations but persist " + builtResults);
         }
 
         analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+    }
+
+    /**
+     * Never use client-supplied review flags to remove a server-held observation.
+     */
+    private void retainResolvableResults(List<AnalyzerResultItem> actionableResults) {
+        actionableResults.removeIf(item -> {
+            AnalyzerResults staged = analyzerResultsService.get(item.getId());
+            if (staged == null) {
+                throw new IllegalStateException("Analyzer result is no longer staged: " + item.getId());
+            }
+            if (AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(staged.getImportIssueReason())
+                    && item.getIsAccepted() && Objects.equals(staged.getTestId(), item.getTestId())
+                    && !needsSpecimenChoice(item) && staged.getTestId() != null) {
+                item.setReadOnly(false);
+                return false;
+            }
+            return staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
+                    || GenericValidator.isBlankOrNull(staged.getTestId());
+        });
     }
 
     // ---------------------------------------------------------------
@@ -191,12 +217,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * (RetroCI LDBS→DBS) applies.
      */
     private boolean needsSpecimenChoice(AnalyzerResultItem item) {
-        if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())
-                || !GenericValidator.isBlankOrNull(item.getTypeOfSampleId())) {
+        if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())) {
             return false;
         }
         List<TypeOfSampleTest> candidates = typeOfSampleTestService.getTypeOfSampleTestsForTest(item.getTestId());
-        if (candidates.size() <= 1) {
+        if (candidates.size() <= 1 || candidates.stream()
+                .anyMatch(candidate -> candidate.getTypeOfSampleId().equals(item.getTypeOfSampleId()))) {
             return false;
         }
         if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null

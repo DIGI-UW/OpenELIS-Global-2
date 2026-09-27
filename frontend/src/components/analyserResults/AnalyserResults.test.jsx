@@ -3,9 +3,12 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
 import messages from "../../languages/en.json";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
-import AnalyserResults from "./AnalyserResults";
+import AnalyserResults, {
+  buildHeldResultResolutionUrl,
+} from "./AnalyserResults";
 
 const { postResults } = vi.hoisted(() => ({ postResults: vi.fn() }));
 
@@ -88,7 +91,7 @@ describe("AnalyserResults", () => {
       screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
     ).toHaveAttribute(
       "href",
-      "/analyzers/types/genexpert-astm/mapping?revision=3&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
+      "/analyzers/types/genexpert-astm/mapping?revision=3&analyzerId=2001&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
     );
 
     expect(
@@ -100,6 +103,40 @@ describe("AnalyserResults", () => {
     expect(
       document.getElementById("resultList1004.isDeleted"),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers acceptance after choosing a specimen for a held mapped result", async () => {
+    const result = {
+      ...mappedQualitativeResult,
+      importIssueReason: "awaiting_specimen",
+      readOnly: false,
+      sampleTypeOptions: [{ id: "40", value: "Vaginal Swab" }],
+    };
+    renderResults([result]);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Sample type" }), {
+      target: { value: "40" },
+    });
+    fireEvent.click(document.getElementById("resultList1005.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].typeOfSampleId).toBe("40");
+    expect(submitted.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("links an unknown analyzer test to its mapping and named analyzer", () => {
+    const url = buildHeldResultResolutionUrl(
+      {
+        ...heldResult,
+        importIssueReason: "unknown_analyzer_test",
+        rawResultValue: null,
+      },
+      "2001",
+    );
+    expect(url).toContain("analyzerId=2001");
+    expect(url).toContain("focusTest=QUAL_RESULT");
+    expect(url).not.toContain("focusValue=");
   });
 
   it("shows the lab-facing label for a mapped qualitative result", async () => {

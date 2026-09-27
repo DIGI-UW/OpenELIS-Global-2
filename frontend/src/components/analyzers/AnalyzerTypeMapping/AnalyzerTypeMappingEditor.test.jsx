@@ -14,6 +14,7 @@ import {
   getAnalyzerTypeMapping,
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
 } from "../../../services/analyzerService";
 import AnalyzerTypeMappingEditor from "./AnalyzerTypeMappingEditor";
 
@@ -24,6 +25,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerTypeMapping: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   saveAnalyzerTypeMapping: vi.fn(),
+  selectAnalyzerSiteBinding: vi.fn(),
 }));
 
 const recognition = {
@@ -248,6 +250,36 @@ describe("AnalyzerTypeMappingEditor", () => {
     getAnalyzerMappingResultOptions.mockImplementation((testId, callback) =>
       callback(resultOptions[testId] || []),
     );
+  });
+
+  it("applies the current mapping only to the named analyzer and retries its holds", async () => {
+    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+      callback({ id: "501" }),
+    );
+    renderEditor(
+      "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501&returnTo=%2FAnalyzerResults%3Fid%3D501",
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    );
+
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+      "501",
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      expect.any(Function),
+    );
+    expect(
+      screen.getByText(
+        "Current mappings applied to this analyzer. Eligible held results were retried.",
+      ),
+    ).toBeVisible();
   });
 
   it("restores a bookmarkable shared-type editor with breadcrumbs and every independent source row", async () => {

@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -140,18 +141,24 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
                     List.of(source));
             List<AnalyzerResults> mapped = mapResults(contract, analyzer);
-            if (mapped.isEmpty() || mapped.get(0).isReadOnly()) {
+            if (mapped.isEmpty()) {
                 continue;
             }
             AnalyzerResults recovered = mapped.get(0);
+            if (recovered.isReadOnly() && Objects.equals(held.getImportIssueReason(), recovered.getImportIssueReason())
+                    && Objects.equals(held.getTestId(), recovered.getTestId())) {
+                continue;
+            }
             recovered.setId(held.getId());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
-            if (recovered.getIsControl()) {
-                processControl(recovered, analyzer);
+            if (!recovered.isReadOnly()) {
+                if (recovered.getIsControl()) {
+                    processControl(recovered, analyzer);
+                }
+                recoveredCount++;
             }
-            recoveredCount++;
         }
         return recoveredCount;
     }

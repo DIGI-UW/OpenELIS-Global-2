@@ -37,6 +37,7 @@ import {
   getAnalyzerTypeMapping,
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
 } from "../../../services/analyzerService";
 import { includesComboBoxText } from "../comboBoxSearch";
 import "./AnalyzerTypeMappingEditor.scss";
@@ -91,6 +92,7 @@ const AnalyzerTypeMappingEditor = () => {
   const returnTo = safeInternalPath(query.get("returnTo"), "/analyzers/types");
   const focusTest = query.get("focusTest");
   const focusValue = query.get("focusValue");
+  const analyzerId = query.get("analyzerId");
   const [mapping, setMapping] = useState(null);
   const [typeSummary, setTypeSummary] = useState(null);
   const [draftTests, setDraftTests] = useState([]);
@@ -101,6 +103,7 @@ const AnalyzerTypeMappingEditor = () => {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
   const focusedResultRow = useRef(null);
@@ -414,6 +417,42 @@ const AnalyzerTypeMappingEditor = () => {
     );
   };
 
+  const applyToAnalyzer = () => {
+    if (
+      !analyzerId ||
+      dirty ||
+      saving ||
+      applying ||
+      !mapping?.siteBindingId ||
+      !mapping?.bindingFingerprint
+    ) {
+      return;
+    }
+    setApplying(true);
+    selectAnalyzerSiteBinding(
+      analyzerId,
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      (response) => {
+        setApplying(false);
+        const applied =
+          !hasApiError(response) && String(response?.id) === String(analyzerId);
+        setNotification({
+          kind: applied ? "success" : "error",
+          title: intl.formatMessage({
+            id: applied
+              ? "analyzerType.mappingEditor.appliedToAnalyzer"
+              : "analyzerType.mappingEditor.error.applyToAnalyzer",
+          }),
+          subtitle: applied ? "" : errorText(response, ""),
+        });
+      },
+    );
+  };
+
   const mappingMatchesRoute =
     mapping?.profileId === profileId && mapping?.profileRevision === revision;
   const currentTypeSummary =
@@ -503,6 +542,21 @@ const AnalyzerTypeMappingEditor = () => {
               >
                 <FormattedMessage id="analyzerType.mappingEditor.return" />
               </Button>
+              {analyzerId && (
+                <Button
+                  kind="primary"
+                  disabled={
+                    dirty ||
+                    saving ||
+                    applying ||
+                    !mapping.siteBindingId ||
+                    !mapping.bindingFingerprint
+                  }
+                  onClick={applyToAnalyzer}
+                >
+                  <FormattedMessage id="analyzerType.mappingEditor.applyToAnalyzer" />
+                </Button>
+              )}
               <Button
                 as={Link}
                 kind="secondary"
