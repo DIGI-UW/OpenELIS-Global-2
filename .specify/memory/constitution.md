@@ -1,6 +1,113 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Branch strategy: main and release branches
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.1 → 1.11.2
+Change Type: PATCH - Correct the description of the primary branches
+Date: 2026-09-25
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * `main` was described as "Production releases only (reviewers backport
+      from develop)". It now holds the latest release and changes only
+      through a reviewed release pull request from a release branch, merged
+      with a merge commit; each release is tagged on `main`.
+    * Added `release/<X.Y>.x` branches, which receive fixes cherry-picked from
+      `develop`.
+  - Pull Request Requirements > Target Branch
+    * Hotfixes also target `develop`; released lines receive them by
+      cherry-pick onto their release branch.
+
+Rationale:
+  No `main` branch existed when the old text was written, and releases were
+  tagged on `develop`. `master` was renamed to `main` and set to release
+  3.2.3.0 on 2026-09-25. RELEASES.md is the operational reference.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - branch strategy and target branch corrected in this change
+  ✅ SECURITY.md, PULL_REQUEST_TIPS.md - same correction
+
+Follow-up TODOs:
+  - None.
+-->
+
+<!--
+SYNC IMPACT REPORT - Frontend tech stack: data fetching
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.0 → 1.11.1
+Change Type: PATCH - Correct a factual error in the frontend stack list
+Date: 2026-09-07
+
+Modified Sections:
+  - Technology Stack > Frontend (React)
+    * "SWR 2.0.3 for data fetching + caching" removed: SWR is not in
+      package.json, not in node_modules, and imported by no file. All 735
+      getFromOpenElisServer calls (273 files) hand-roll fetch in useEffect.
+    * Replaced with the actual state and the adopted target, TanStack Query v4,
+      tracked in docs/planning/query-layer-adoption.md.
+
+Rationale:
+  The false entry misled work on OGC-782 #4196 into assuming a cache existed to
+  invalidate. The absence of any refetch primitive is why 84 screens reload the
+  document after a save and 13 navigate to their own URL to the same end.
+  TanStack Query v4 over SWR: hierarchical keys refresh every panel of a
+  microbiology case from one invalidateQueries call, and useMutation replaces
+  the hand-rolled saving/.finally state that has already produced bugs.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - same line corrected in this change
+
+Follow-up TODOs:
+  - Land the adoption PR (feat/query-layer-tanstack); then update this entry to
+    the installed version and remove the "not installed yet" wording.
+-->
+
+<!--
+SYNC IMPACT REPORT - Principle VII: i18n Key Reuse & Hygiene
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.10.0 → 1.11.0
+Change Type: MINOR - Materially expanded guidance (Principle VII)
+Date: 2026-07-15
+
+Added Sections:
+  - Principle VII > Key Reuse & Hygiene (MANDATORY)
+    * NEW: Search before minting (npm run i18n:find); reuse canonical keys
+    * NEW: Generic UI strings MUST use common.* canonical keys
+    * NEW: No cross-feature key references; promote to common.* instead
+    * NEW: Context exceptions recorded in i18n-context-exceptions.json
+    * NEW: Dynamic key families declared via // i18n-keys: prefix.* pragma
+    * NEW: Referenced ids must exist in en.json; orphans swept periodically
+    * NEW: CI ratchet - PRs may not increase duplicate/orphan counts
+
+Rationale:
+  en.json grew 2,385 → 7,133 keys (2026-01 → 2026-07). Audit of develop
+  @ 06d531e found 1,786 keys (25%) duplicate existing English values
+  (56× "Status", 34× "Active", 28× "Cancel"), ~2,500 keys (35%) referenced
+  nowhere in frontend/src, and 386 ids referenced at react-intl call sites
+  but missing from en.json (render as raw ids to users). Every redundant
+  key multiplies into ~20 locales of translator work on Transifex.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/spec-template.md - string reuse table
+  ⚠️ .specify/templates/plan-template.md - Existing Assets Survey
+  ⚠️ .specify/templates/tasks-template.md - Existing Assets Survey
+  ⚠️ .specify/core/commands/speckit.implement.md (+ oe variant) - reuse constraint
+  ⚠️ .specify/core/commands/speckit.analyze.md - validate string table
+  ⚠️ CLAUDE.md / AGENTS.md - key-reuse rule + i18n:find pointer
+  ⚠️ .github/workflows/i18n-check.yml - value-duplicate, missing-key, ratchet jobs
+  ⚠️ .githooks/pre-commit - local duplicate-value check
+  ⚠️ .claude/settings.json (NEW) - PostToolUse hook on en.json edits
+
+Follow-up TODOs:
+  - Seed common.* canonical key set (~150 keys) BEFORE CI check activates
+  - Ship npm run i18n:find and npm run i18n:audit
+  - Fix 386 missing keys (user-visible bugs; independent of this amendment)
+  - Pragma-annotate 336 dynamic key sites, then first orphan sweep
+  - Migrate resultsViewer (14 files) from react-i18next to react-intl
+-->
+
+<!--
 SYNC IMPACT REPORT - Principle X: Legacy Code Removal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.9.1 → 1.10.0
@@ -655,7 +762,6 @@ direct database access from controllers, NO business logic in DAOs.
 **Layers**:
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
-
    - Extend `BaseObject<String>` (provides id, sys_user_id, lastupdated)
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
@@ -666,7 +772,6 @@ direct database access from controllers, NO business logic in DAOs.
      extended or integrated with when required for backward compatibility. This
      exception is intended to support incremental modernization in a large,
      mission-critical codebase.
-
      - New entities SHOULD be annotation-based.
      - If a change requires introducing or extending XML mappings, the PR MUST
        document why, list the impacted entities, and include an explicit
@@ -677,14 +782,12 @@ direct database access from controllers, NO business logic in DAOs.
    - `@PrePersist` hook for fhir_uuid generation
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
-
    - Interface + Implementation (extends `BaseDAOImpl<Entity, String>`)
    - Annotate with `@Component` + `@Transactional`
    - Methods: get, insert, update, delete, custom queries
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL in code
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
-
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - **Transactions start here (NOT in controllers)** - `@Transactional`
      annotations MUST NOT appear on controller methods. DAOs retain
@@ -706,7 +809,6 @@ direct database access from controllers, NO business logic in DAOs.
      use `JOIN FETCH` in HQL queries to eagerly load all required relationships.
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
-
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - Methods: `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`
@@ -864,7 +966,6 @@ implementation details.
 **Test Execution Workflow**:
 
 1. **During Development (Fast Iteration):**
-
    - Run tests individually or in small chunks (5-10 tests)
    - Playwright: `npm run pw:test -- {spec}.spec.ts`
    - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
@@ -873,7 +974,6 @@ implementation details.
      debugging, and prevents cascading failures from masking root causes.
 
 2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
-
    - MUST validate full suite locally with fail-fast enabled
    - Cypress: `npm run cy:failfast`
    - Playwright: `npm run pw:test`
@@ -1115,6 +1215,32 @@ hardcoded English text in components.
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Key Reuse & Hygiene (MANDATORY — ADDED 2026-07-15)**:
+
+Translation keys are shared vocabulary, not per-component variables. Every key
+in `en.json` creates translation work in ~20 locales on Transifex.
+
+- **Search before minting**: run `npm run i18n:find "<english text>"` before
+  adding any key. If a canonical key exists, REUSE it.
+- Generic UI strings (Status, Actions, Cancel, Save, Edit, Delete, Active,
+  Inactive, Name, Description, Search, Type, Notes, …) MUST use the
+  `common.*` canonical key.
+- **NEVER reference another feature's namespaced key.** If a needed string
+  exists only under a feature-scoped key, promote it to `common.*` and
+  repoint both features. Cross-feature key references create hidden coupling.
+- New keys require genuinely new English text, or a context exception
+  recorded in `frontend/src/languages/i18n-context-exceptions.json` (same
+  English word, different translation in the new grammatical context).
+- Namespace new keys by domain (`qc.controlLot.field.expiry`), never by
+  component (`myModal.expiryLabel`).
+- Dynamically-constructed keys MUST declare their family with an
+  `// i18n-keys: prefix.*` pragma at the construction site so tooling can
+  resolve them.
+- Every id referenced in code MUST exist in `en.json` (CI-enforced). Keys
+  with no reference and no pragma are orphans and are removed in periodic
+  sweeps.
+- **CI ratchet**: PRs may not increase the duplicate-value or orphan counts.
+
 **Translation Workflow (Transifex)**:
 
 Transifex is the **source of truth** for all non-English translations. The
@@ -1259,7 +1385,6 @@ additional slashes) for sub-scoping like milestones.
 **Workflow**:
 
 1. **Specification Phase** (on `spec/{issue-id}-{name}` branch):
-
    - Create spec branch from `develop`
    - Complete `spec.md` (user stories, requirements)
    - Complete `plan.md` (architecture, milestone plan)
@@ -1380,7 +1505,11 @@ require architecture review + documented justification.
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2) for data visualization
-- **SWR 2.0.3** for data fetching + caching
+- **Data fetching**: no query/cache layer is installed yet; data is fetched by
+  hand through `getFromOpenElisServer` callbacks inside `useEffect`.
+  **TanStack Query v4** is the adopted target (v4 is the React 17 line); see
+  `docs/planning/query-layer-adoption.md`. SWR was listed here for years but
+  was never installed or used.
 - **React Router DOM 5.2.0** for routing
 - **React Intl 5.20.12** for i18n (MANDATORY)
 - **Formik 2.2.9** + **Yup 0.29.2** for forms/validation
@@ -1431,8 +1560,14 @@ naming conventions and milestone workflow.
 
 **Primary Branches**:
 
-- **`develop`** - Main development branch (all PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release
+  pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
+  each release is tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`.
+
+Supported lines and versioning rules: [RELEASES.md](../../RELEASES.md).
 
 **Feature Development Branches** (per Principle IX):
 
@@ -1459,7 +1594,8 @@ naming conventions and milestone workflow.
    - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
    - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
    - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
-3. **Target Branch**: Always `develop` (unless hotfix)
+3. **Target Branch**: Development PRs target `develop`, including hotfixes.
+   Release PRs from a release branch target `main`.
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
    - Frontend: `npm run format` (Prettier) - MUST run before committing
@@ -1631,7 +1767,7 @@ sync.
 
 ---
 
-**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
+**Version**: 1.11.2 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-25
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team

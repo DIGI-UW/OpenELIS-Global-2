@@ -31,9 +31,12 @@ import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.testconfiguration.validator.TestAddFormValidator;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -78,7 +81,23 @@ public class TestAddRestController extends BaseRestController {
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_INACTIVE));
 
+        // Add environmental sample types to the list
+        TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
+        List<TypeOfSample> envTypes = typeOfSampleService.getTypesForDomainBySortOrder(SampleDomain.ENVIRONMENTAL);
+        List<String> envIds = new ArrayList<>();
+        for (TypeOfSample envType : envTypes) {
+            if (envType.isActive()) {
+                envIds.add(envType.getId());
+                boolean alreadyPresent = allSampleTypesList.stream()
+                        .anyMatch(pair -> pair.getId().equals(envType.getId()));
+                if (!alreadyPresent) {
+                    allSampleTypesList.add(new IdValuePair(envType.getId(), envType.getLocalizedName()));
+                }
+            }
+        }
+
         form.setSampleTypeList(allSampleTypesList);
+        form.setEnvironmentalSampleTypeIds(envIds);
         form.setPanelList(DisplayListService.getInstance().getList(ListType.PANELS));
         form.setResultTypeList(DisplayListService.getInstance().getList(ListType.RESULT_TYPE_LOCALIZED));
         form.setUomList(DisplayListService.getInstance().getList(ListType.UNIT_OF_MEASURE));
@@ -97,7 +116,7 @@ public class TestAddRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/TestAdd")
-    public TestAddForm postTestAdd(HttpServletRequest request, @RequestBody @Valid TestAddForm form,
+    public ResponseEntity<?> postTestAdd(HttpServletRequest request, @RequestBody @Valid TestAddForm form,
             BindingResult result) {
         formValidator.validate(form, result);
 
@@ -110,7 +129,8 @@ public class TestAddRestController extends BaseRestController {
         try {
             obj = (JSONObject) parser.parse(jsonString);
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            result.reject("error.jsonWad.invalid");
+            return validationRefusal(result);
         }
         TestAddParams testAddParams = testAddControllerUtills.extractTestAddParms(obj, parser);
         validateLoinc(testAddParams.loinc, result);
@@ -121,7 +141,7 @@ public class TestAddRestController extends BaseRestController {
         try {
             testAddService.addTests(testSets, nameLocalization, reportingNameLocalization, currentUserId);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         testService.refreshTestNames();
@@ -134,7 +154,7 @@ public class TestAddRestController extends BaseRestController {
         displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_BY_NAME);
         displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private Errors validateLoinc(String loincCode, Errors errors) {

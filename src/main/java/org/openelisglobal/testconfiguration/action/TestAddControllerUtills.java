@@ -108,6 +108,7 @@ public class TestAddControllerUtills {
             test.setNotifyResults("Y".equals(testAddParams.notifyResults));
             test.setInLabOnly("Y".equals(testAddParams.inLabOnly));
             test.setAntimicrobialResistance("Y".equals(testAddParams.antimicrobialResistance));
+            test.setTimeHolding(testAddParams.timeHolding);
             test.setIsReportable("N");
             test.setTestSection(testSection);
             test.setGuid(String.valueOf(UUID.randomUUID()));
@@ -236,6 +237,7 @@ public class TestAddControllerUtills {
             testAddParams.notifyResults = (String) obj.get("notifyResults");
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
+            testAddParams.timeHolding = (String) obj.get("timeHolding");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = obj.get("lowValid").toString();
                 testAddParams.highValid = obj.get("highValid").toString();
@@ -348,6 +350,7 @@ public class TestAddControllerUtills {
         String notifyResults;
         String inLabOnly;
         String antimicrobialResistance;
+        String timeHolding;
         String lowValid;
         String highValid;
         String lowReportingRange;

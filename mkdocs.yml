@@ -37,6 +37,10 @@ nav:
        - Entity Relation Diagram: entity relation diagram.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
+    - Security:
+        - Security Documentation: security/index.md
+        - Security Policy: https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/SECURITY.md
+        - Module Authentication Interceptor Fail-Closed Rollout: security/module-auth-interceptor-fail-closed-rollout.md
     - Google Summer of Code :
         - GSoC 2024: gsoc.md
     - GSoC ‐ Guidelines for Students : gsocstudentguide.md

@@ -86,5 +86,8 @@
         <property name="componentId" type="java.lang.String">
             <column name="component_id" length="36" />
         </property>
+        <property name="sampleTypeId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="sample_type_id" />
     </class>
 </hibernate-mapping>

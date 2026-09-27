@@ -60,6 +60,8 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getPageOfSamples(int startingRecNo);
 
+    List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize);
+
     List<Sample> getSamplesForPatient(String patientID);
 
     String generateAccessionNumberAndInsert(Sample sample);
@@ -67,6 +69,14 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     Organization getOrganizationRequester(Sample sample, String orgTypeId);
 
     Person getPersonRequester(Sample sample);
+
+    /**
+     * Generic form of getPersonRequester, taking an explicit requesterTypeId so
+     * callers can look up a Person requester of any type (e.g. the
+     * "requestor_contact" type used by Environmental/Vector Requestor contacts)
+     * rather than only the hardcoded "provider" type.
+     */
+    Person getPersonRequester(Sample sample, long requesterTypeId);
 
     List<SampleQaEvent> getSampleQAEventList(Sample sample);
 
@@ -120,4 +130,6 @@ public interface SampleService extends BaseObjectService<Sample, String> {
             LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority);
+
+    List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
 }

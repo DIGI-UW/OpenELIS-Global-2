@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Fixture for SampleAcceptanceRecordServiceTest (S-09 / OGC-580). Lab-wide
+    checklist (3 items, domain categories left empty so every sample falls back
+    to the lab-wide list) + samples with H/E/V/null domains to exercise domain
+    resolution. Acceptance records are created at runtime via the service (sequence-allocated
+    ids), so none are declared here. -->
+<dataset>
+
+    <dictionary_category id="1"
+        description="Sample Acceptance - lab-wide" local_Abbrev="SAcceptAll"
+        name="SampleAcceptanceItem" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="2"
+        description="Sample Acceptance - Clinical" local_Abbrev="SAcceptCli"
+        name="SampleAcceptanceItem_CLINICAL" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="3"
+        description="Sample Acceptance - Environmental"
+        local_Abbrev="SAcceptEnv" name="SampleAcceptanceItem_ENVIRONMENTAL"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="4"
+        description="Sample Acceptance - Vector" local_Abbrev="SAcceptVec"
+        name="SampleAcceptanceItem_VECTOR" lastUpdated="2026-01-01 12:00:00" />
+
+    <dictionary id="1" is_active="Y"
+        dict_entry="containerIntact"
+        local_Abbrev="Container intact / undamaged" dictionary_category_id="1"
+        sort_order="1" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="2" is_active="Y" dict_entry="labelLegible"
+        local_Abbrev="Label legible and matches request"
+        dictionary_category_id="1" sort_order="2"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="3" is_active="Y" dict_entry="volumeAdequate"
+        local_Abbrev="Sample volume adequate" dictionary_category_id="1"
+        sort_order="3" lastUpdated="2026-01-01 12:00:00" />
+
+    <!-- Samples: H=clinical, E=environmental, V=vector, null=unknown/lab-wide -->
+    <sample id="1001" accession_number="SAR-CLIN-001" domain="H"
+        is_confirmation="false" entered_date="2026-01-01 09:00:00.0"
+        received_date="2026-01-01 09:00:00.0"
+        lastupdated="2026-01-01 09:00:00.0" />
+    <sample id="1002" accession_number="SAR-ENV-001" domain="E"
+        is_confirmation="false" entered_date="2026-01-01 09:00:00.0"
+        received_date="2026-01-01 09:00:00.0"
+        lastupdated="2026-01-01 09:00:00.0" />
+    <sample id="1003" accession_number="SAR-VEC-001" domain="V"
+        is_confirmation="false" entered_date="2026-01-01 09:00:00.0"
+        received_date="2026-01-01 09:00:00.0"
+        lastupdated="2026-01-01 09:00:00.0" />
+    <sample id="1004" accession_number="SAR-NODOM-001"
+        is_confirmation="false" entered_date="2026-01-01 09:00:00.0"
+        received_date="2026-01-01 09:00:00.0"
+        lastupdated="2026-01-01 09:00:00.0" />
+
+    <!-- One specimen per sample. Acceptance is keyed to sample_item, and domain
+        resolves through sample_item -> parent sample. status_id=1 is the base-seeded
+        status (this fixture does not seed status_of_sample, so it is left intact). -->
+    <sample_item id="2001" samp_id="1001" sort_order="1"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <!-- A second specimen on the clinical order (1001) — exercises evaluateOrder
+        returning one evaluation per live sample_item. -->
+    <sample_item id="2005" samp_id="1001" sort_order="2"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2002" samp_id="1002" sort_order="1"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2003" samp_id="1003" sort_order="1"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2004" samp_id="1004" sort_order="1"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+
+    <!-- A pooled vector order (1005): one trap catch fanned out into 3 member
+        specimens grouped by a vector_pool. Exercises pool-level acceptance — recordAssessmentForPool
+        cascades the decision to all members, and rejectPool rejects them all (the
+        pool is the unit of acceptance). -->
+    <sample id="1005" accession_number="SAR-VEC-POOL-001" domain="V"
+        is_confirmation="false" entered_date="2026-01-01 09:00:00.0"
+        received_date="2026-01-01 09:00:00.0"
+        lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2010" samp_id="1005" sort_order="1"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2011" samp_id="1005" sort_order="2"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <sample_item id="2012" samp_id="1005" sort_order="3"
+        status_id="1" lastupdated="2026-01-01 09:00:00.0" />
+    <vector_pool id="5001" sample_id="1005" active="true"
+        deconvolution_status="NOT_APPLICABLE"
+        lastupdated="2026-01-01 09:00:00.0" />
+    <vector_pool_member vector_pool_id="5001"
+        sample_item_id="2010" lastupdated="2026-01-01 09:00:00.0" />
+    <vector_pool_member vector_pool_id="5001"
+        sample_item_id="2011" lastupdated="2026-01-01 09:00:00.0" />
+    <vector_pool_member vector_pool_id="5001"
+        sample_item_id="2012" lastupdated="2026-01-01 09:00:00.0" />
+
+</dataset>

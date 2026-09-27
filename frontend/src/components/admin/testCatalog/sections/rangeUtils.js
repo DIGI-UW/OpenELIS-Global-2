@@ -20,19 +20,42 @@ export const toDays = (value, unit) => {
   return n * (DAYS_PER[unit] || 1);
 };
 
-/** Format a day count in the most readable unit (<60d → days, <2y → months, else years). */
+/**
+ * Format a day count in the most readable unit (<60d → days, <2y → months, else
+ * years).
+ *
+ * An open-ended bound is not a number: a trailing coverage gap arrives as
+ * `AgeInterval(coveredTo, POSITIVE_INFINITY)`, which Jackson serialises as the
+ * quoted string "Infinity", so both that and a real ±Infinity are handled here and
+ * rendered as a directional open-ended label. Unparseable input renders as
+ * nothing.
+ */
 export const formatAgeDays = (days, intl) => {
   if (days === null || days === undefined) {
     return "";
   }
   const unitLabel = (u) =>
     intl.formatMessage({ id: `label.testCatalog.ranges.${u}` });
-  if (days < 60) {
-    return `${Math.round(days)} ${unitLabel("days")}`;
+  const n = Number(days);
+  if (!Number.isFinite(n)) {
+    if (n === Number.POSITIVE_INFINITY) {
+      return intl.formatMessage({
+        id: "label.testCatalog.ranges.noUpperLimit",
+      });
+    }
+    if (n === Number.NEGATIVE_INFINITY) {
+      return intl.formatMessage({
+        id: "label.testCatalog.ranges.noLowerLimit",
+      });
+    }
+    return "";
   }
-  if (days < 730) {
-    return `${Math.round(days / DAYS_PER.months)} ${unitLabel("months")}`;
+  if (n < 60) {
+    return `${Math.round(n)} ${unitLabel("days")}`;
   }
-  const years = Math.round((days / DAYS_PER.years) * 10) / 10;
+  if (n < 730) {
+    return `${Math.round(n / DAYS_PER.months)} ${unitLabel("months")}`;
+  }
+  const years = Math.round((n / DAYS_PER.years) * 10) / 10;
   return `${years} ${unitLabel("years")}`;
 };

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useCallback, useContext, useRef, useState } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 
@@ -8,8 +8,30 @@ const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(
     props.value ? props.value : "",
   );
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties = { DEFAULT_DATE_LOCALE: "en-US" } } =
+    useContext(ConfigurationContext) || {};
   const intl = useIntl();
+  const dateLocale = useRef(configurationProperties.DEFAULT_DATE_LOCALE);
+  dateLocale.current = configurationProperties.DEFAULT_DATE_LOCALE;
+  // The calendar keeps the parser it was created with. Carbon's built-in one
+  // only reads month-first dates, so a picker created before the site's
+  // day-first format loaded read "26/09/2026" as 9 January. This parser reads
+  // whichever format the site uses at the time.
+  const parseDisplayDate = useCallback((text) => {
+    const parsed = parse(
+      text,
+      dateLocale.current == "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy",
+      new Date(),
+    );
+    return isValid(parsed) ? parsed : undefined;
+  }, []);
+  // Today's bounds as timestamps. A formatted date string is parsed back by
+  // the calendar with its own rules, which read "26/09/2026" as a January
+  // date, and a value set after mount was then clamped to that bound.
+  const [todayBounds] = useState(() => ({
+    start: new Date().setHours(0, 0, 0, 0),
+    end: new Date().setHours(23, 59, 59, 999),
+  }));
   function handleDatePickerChange(e) {
     const raw = e?.[0];
     if (!raw || isNaN(new Date(raw).getTime())) {
@@ -36,6 +58,7 @@ const CustomDatePicker = (props) => {
     // place.
     if (inputValue === "") {
       setCurrentDate("");
+      props.onChange("");
       return;
     }
 
@@ -55,23 +78,18 @@ const CustomDatePicker = (props) => {
     }
     if (fullDateRegex.test(inputValue)) {
       setCurrentDate(inputValue);
+      props.onChange(inputValue);
     }
   }
 
-  useEffect(() => {
-    props.onChange(currentDate);
-  }, [currentDate]);
-
-  useEffect(() => {
-    if (props.updateStateValue) {
-      setCurrentDate(props.value);
-    }
-  }, [props.value]);
+  const displayedDate = props.updateStateValue
+    ? props.value || ""
+    : currentDate;
 
   return (
     <>
       <DatePicker
-        id={props.id}
+        id={`${props.id}-picker`}
         dateFormat={
           configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
             ? "d/m/Y"
@@ -79,28 +97,13 @@ const CustomDatePicker = (props) => {
         }
         className={props.className}
         datePickerType="single"
-        value={currentDate}
+        parseDate={parseDisplayDate}
+        value={displayedDate}
         onChange={(e) => handleDatePickerChange(e)}
-        maxDate={
-          props.disallowFutureDate
-            ? format(
-                new Date(),
-                configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-                  ? "dd/MM/yyyy"
-                  : "MM/dd/yyyy",
-              )
-            : ""
-        }
-        minDate={
-          props.disallowPastDate
-            ? format(
-                new Date(),
-                configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-                  ? "dd/MM/yyyy"
-                  : "MM/dd/yyyy",
-              )
-            : ""
-        }
+        invalid={props.invalid}
+        invalidText={props.invalidText}
+        maxDate={props.disallowFutureDate ? todayBounds.end : ""}
+        minDate={props.disallowPastDate ? todayBounds.start : ""}
       >
         <DatePickerInput
           id={props.id}
@@ -116,10 +119,12 @@ const CustomDatePicker = (props) => {
           })}
           type="text"
           labelText={props.labelText}
+          helperText={props.helperText}
           invalid={props.invalid}
           invalidText={props.invalidText}
+          aria-invalid={props.invalid || undefined}
           disabled={props.disabled}
-          onChange={handleInputChange}
+          onInput={handleInputChange}
         />
       </DatePicker>
     </>

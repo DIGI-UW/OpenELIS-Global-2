@@ -55,7 +55,8 @@ public class ExternalConnectionMenuRestControllerTest extends BaseWebContextSens
         int status = urlResult.getResponse().getStatus();
         assertTrue("Status should be 200", 200 == status);
         String content = urlResult.getResponse().getContentAsString();
-        assertEquals("External connection(s) deactivated successfully.", content);
+        // production's Jackson-at-index-0 serializes String bodies as JSON
+        assertEquals("\"External connection(s) deactivated successfully.\"", content);
         ExternalConnection connection = externalConnectionService.get(1);
         assertFalse(connection.getActive());
 

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <!--
+        FRS S-01 v2.0 — data-model alignment.
+
+        Tightens the compliance schema against the published spec:
+
+         1. Widens compliance_standard column lengths to FRS Section 5
+            limits (regulation_number 100→255, version 50→100,
+            country_region 100→255). Pure widening — no risk of data loss.
+
+         2. Switches the natural-key uniqueness constraint on
+            compliance_standard from (issuing_body, regulation_number, version)
+            to the FRS-specified (name, regulation_number, version). Two
+            standards with the same name + regulation_number + version are not
+            distinct regardless of which body issued them.
+
+         3. Adds is_active BOOLEAN to compliance_threshold (FRS Section 5,
+            Threshold value object). Defaults to TRUE; supports the
+            FR-3-010 "archive instead of delete" pathway when a threshold
+            already participated in evaluations.
+
+         4. Adds unique constraint
+            compliance_threshold (test_id, group_id, threshold_type)
+            so a test can have at most one HIGH (etc.) limit per group while
+            still allowing both HIGH and BORDERLINE alongside each other.
+            CSV-seeded thresholds that have test_id IS NULL are unaffected
+            because Postgres treats NULLs as distinct in unique indexes.
+    -->
+
+    <changeSet id="027-1-widen-compliance-standard-columns" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_standard"/>
+        </preConditions>
+        <modifyDataType tableName="compliance_standard" columnName="regulation_number" newDataType="VARCHAR(255)"/>
+        <modifyDataType tableName="compliance_standard" columnName="version" newDataType="VARCHAR(100)"/>
+        <modifyDataType tableName="compliance_standard" columnName="country_region" newDataType="VARCHAR(255)"/>
+        <rollback>
+            <modifyDataType tableName="compliance_standard" columnName="regulation_number" newDataType="VARCHAR(100)"/>
+            <modifyDataType tableName="compliance_standard" columnName="version" newDataType="VARCHAR(50)"/>
+            <modifyDataType tableName="compliance_standard" columnName="country_region" newDataType="VARCHAR(100)"/>
+        </rollback>
+    </changeSet>
+
+    <!--
+        Replace the natural key (issuing_body, regulation_number, version) with
+        (name, regulation_number, version). Split into drop + add and gate each
+        step with a <sqlCheck> against information_schema so re-runs on a
+        database that already has the new shape (or never had the old one) are
+        a no-op rather than a hard failure.
+    -->
+    <changeSet id="027-2a-drop-old-compliance-standard-natural-key" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="compliance_standard"/>
+                <sqlCheck expectedResult="1">
+                    SELECT count(*) FROM information_schema.table_constraints
+                    WHERE constraint_name = 'uk_compliance_standard_natural_key'
+                    AND table_name = 'compliance_standard'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <dropUniqueConstraint
+                tableName="compliance_standard"
+                constraintName="uk_compliance_standard_natural_key"/>
+        <rollback>
+            <addUniqueConstraint
+                    tableName="compliance_standard"
+                    columnNames="issuing_body,regulation_number,version"
+                    constraintName="uk_compliance_standard_natural_key"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="027-2b-add-new-compliance-standard-natural-key" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="compliance_standard"/>
+                <sqlCheck expectedResult="0">
+                    SELECT count(*) FROM information_schema.table_constraints
+                    WHERE constraint_name = 'uk_compliance_standard_natural_key'
+                    AND table_name = 'compliance_standard'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addUniqueConstraint
+                tableName="compliance_standard"
+                columnNames="name,regulation_number,version"
+                constraintName="uk_compliance_standard_natural_key"/>
+        <rollback>
+            <dropUniqueConstraint
+                    tableName="compliance_standard"
+                    constraintName="uk_compliance_standard_natural_key"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="027-3-add-is-active-to-compliance-threshold" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="compliance_threshold"/>
+                <not>
+                    <columnExists tableName="compliance_threshold" columnName="is_active"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="compliance_threshold">
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="compliance_threshold" columnName="is_active"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="027-4-add-threshold-test-group-type-uniqueness" author="mherman22">
+        <!--
+            Skip if the constraint already exists (partial-migration reruns /
+            manual hotfixes that pre-applied it). Without this guard the
+            addUniqueConstraint would error on the second run.
+        -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="compliance_threshold"/>
+                <sqlCheck expectedResult="0">
+                    SELECT count(*) FROM information_schema.table_constraints
+                    WHERE constraint_name = 'uk_compliance_threshold_test_group_type'
+                    AND table_name = 'compliance_threshold'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addUniqueConstraint
+                tableName="compliance_threshold"
+                columnNames="test_id,group_id,threshold_type"
+                constraintName="uk_compliance_threshold_test_group_type"/>
+        <rollback>
+            <dropUniqueConstraint
+                    tableName="compliance_threshold"
+                    constraintName="uk_compliance_threshold_test_group_type"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

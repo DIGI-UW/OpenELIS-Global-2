@@ -1,5 +1,12 @@
 # Tasks: Westgard QC Rules Dashboard (OGC-41)
 
+> **Superseded analyzer-identification tasks:** Entries involving
+> `AnalyzerQcRule`, OpenELIS-pushed classifiers, or profile-to-rule copying are
+> historical and must not be resumed. The
+> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+> owns their one-way removal. The retained work here is OpenELIS operational
+> Quality Control only.
+
 **Input**: [spec.md](spec.md), [plan.md](plan.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) **Organization**: By
 milestone (Constitution Principle IX) **Tests**: MANDATORY (Constitution
@@ -13,46 +20,45 @@ Principle V)
 
 ---
 
-## M1: MVP Release (current PR #3390 + Bridge #33)
+## M1: Operational-QC Foundation (historical PR #3390 + Bridge #33)
 
-**State**: 95% implemented. All backend services, frontend components, bridge
-rule engine, and 327 tests exist. Remaining: test gaps + flow validation.
+**State**: Historical foundation requiring acceptance against the amended
+specification. The canonical OGC-1054 roadmap owns analyzer-boundary removal,
+linked-QC validation, deployment, and human acceptance; historical completion
+percentages and test counts are not evidence.
 
 **Branch**: `feat/qc_westgard_rules` (stacked on
 `fix/madagascar-accession-results-file-e2e`)
 
 ### M1.1 — End-to-end flow validation
 
-**Goal**: Prove the full pipeline works before declaring MVP ready. **Context**:
-Harness is running locally with 10 seeded analyzers. QC rules are populated from
-profiles. Need to exercise: lot creation → QC result ingestion → z-score →
-Westgard evaluation → violation → alert → dashboard.
+**Goal**: Prove the full pipeline works before declaring the operational-QC
+slice ready. Exercise: profile-owned Bridge recognition → QC result ingestion →
+z-score → Westgard evaluation → violation → alert → dashboard. OpenELIS must
+not provide or push a second analyzer classifier.
 
 - [ ] T001 [M1] Create a control lot via UI at `/analyzers/qc/control-lots/new`
       for HIV Viral Load (LOINC 20447-9) on QuantStudio 5 using Manufacturer
       Fixed method (mean=1000, SD=50). Verify lot appears in list with ACTIVE
       status. **Endpoint**: POST `/rest/qc/controlLot`
 
-- [ ] T002 [M1] Generate a mock QC file for QuantStudio 5 containing a control
-      row (specimen ID `CNEG001`, Target Name `VIH-1`, Task `STANDARD`, Quantity
-      Mean `1180`). Use the mock server's HTTP API or drop a crafted Excel file
-      into
-      `projects/analyzer-harness/volume/analyzer-imports/quantstudio-5/incoming/`.
-      **Context**: z-score = (1180 - 1000) / 50 = 3.6, which should trigger 1-3s
-      REJECTION rule.
+- [ ] T002 [M1] In Bridge plus analyzer-mock contract tests, send representative
+      control traffic that matches the pinned profile revision and produces a
+      value 3.6 standard deviations above the configured mean. Assert Bridge
+      recognizes it only from that profile definition. Use the visible mock
+      control for the assembled UI story; do not mutate a user story through an
+      API or manually introduce a second classifier.
 
-- [ ] T003 [M1] Verify end-to-end pipeline after file drop:
-
+- [ ] T003 [M1] Verify the processing pipeline with automated integration
+      assertions at the owning layers:
   1. Bridge logs show QC identification (rule match on CNEG prefix or STANDARD
      field) and FHIR bundle with `meta.tag code="QC"`
   2. OE logs show `QCResultProcessingService` creating a QCResult with z-score
      ~3.6
   3. OE logs show `QCResultCreatedEventListener` firing async evaluation
-  4. DB query: `SELECT * FROM clinlims.qc_result WHERE control_lot_id = ?`
-     returns the result with `result_status = 'REJECTED'`
-  5. DB query: `SELECT * FROM clinlims.qc_rule_violation WHERE ...` returns a
-     1-3s violation
-  6. DB query: `SELECT * FROM clinlims.qc_alert WHERE ...` returns an alert
+  4. OpenELIS integration tests assert the QC result is rejected, the 1-3s
+     violation is durable, and the alert is created through services and
+     persistence rather than manual database queries
 
 - [ ] T004 [M1] Verify dashboard reflects the violation:
   1. Navigate to `/analyzers/qc/db` — QuantStudio 5 should show RED status
@@ -65,14 +71,14 @@ Westgard evaluation → violation → alert → dashboard.
 
 **Goal**: Verify Spring wiring for all QC REST endpoints. 4 controllers, 0 tests
 currently. **Pattern**: Follow `BaseWebContextSensitiveTest` + MockMvc pattern
-from [Testing Roadmap](.specify/guides/testing-roadmap.md#backend-testing).
+from
+[Testing Roadmap](../../.specify/guides/testing-roadmap.md#backend-testing).
 **Test data**: Use existing QC test builders (QCControlLotBuilder,
 QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 
 - [ ] T005 [P] [M1] Write controller tests for `QCRestController` in
       `src/test/java/org/openelisglobal/qc/controller/QCRestControllerTest.java`.
       Test endpoints:
-
   - GET `/rest/qc/control-lots` → 200 + list response
   - GET `/rest/qc/controlLot/{id}` → 200 + lot detail
   - POST `/rest/qc/controlLot` → 201 + created lot
@@ -85,7 +91,6 @@ QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 - [ ] T006 [P] [M1] Write controller tests for `QCChartDataRestController` in
       `src/test/java/org/openelisglobal/qc/controller/QCChartDataRestControllerTest.java`.
       Test endpoints:
-
   - GET `/rest/qc/charts/{controlLotId}` → 200 + chart data with points array
   - GET `/rest/qc/charts/{controlLotId}/statistics` → 200 + mean/SD/reference
     lines **Reference**:
@@ -102,15 +107,15 @@ QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 
 ### M1.3 — Playwright QC smoke test
 
-**Goal**: 1 E2E test proving QC dashboard routing + API + UI in CI. **Pattern**:
+**Goal**: 1 E2E test proving the visible QC dashboard workflow in CI. **Pattern**:
 Follow
-[Playwright best practices](.specify/guides/playwright-best-practices.md). Use
+[Playwright best practices](../../.specify/guides/playwright-best-practices.md).
+Use
 `/plan-record-playwright` for planning, `/write-playwright-test` for authoring.
-Register in `harness-foundational` project.
+Register in the `harness-demo` project.
 
 - [ ] T008 [M1] Plan the Playwright QC smoke test via `/plan-record-playwright`.
       Test outline:
-
   1. Auth setup (reuse existing `auth.setup.ts`)
   2. Navigate to `/analyzers/qc/db`
   3. Assert: `[data-testid="qc-summary-tiles"]` visible
@@ -124,16 +129,17 @@ Register in `harness-foundational` project.
      `{ force: true }` on Carbon inputs.
 
 - [ ] T009 [M1] Author the Playwright test via `/write-playwright-test` in
-      `frontend/src/tests/e2e/harness-foundational/qc-dashboard-smoke.spec.ts`.
-      Register in the harness-foundational Playwright project config.
+      `frontend/playwright/tests/demo/harness/ogc-41-qc-dashboard.spec.ts`.
+      Register it in `HARNESS_DEMO_TESTS`.
 
 - [ ] T010 [M1] Run `/audit-playwright` on the new test. Fix any anti-patterns
       flagged. Run `/debug-playwright` if the test fails on first execution.
 
 ### M1.4 — Cleanup + CI green
 
-- [ ] T011 [M1] Remove unused `PropTypes` import from
-      `frontend/src/components/analyzers/QcRules/QcRuleBuilderModal.jsx`
+- [ ] T011 [M1] Keep the repository removal contract green: no OpenELIS
+      per-analyzer classifier entity, service, controller, UI, schema, payload,
+      or activation gate remains.
 
 - [ ] T012 [M1] Delete the stale `003-westgard-qc` remote branch:
       `git push origin --delete 003-westgard-qc`
@@ -148,9 +154,10 @@ Register in `harness-foundational` project.
       `pull_request.branches`) before merging to develop. **File**:
       `.github/workflows/e2e-playwright.yml` line 8
 
-**M1 Checkpoint**: Full pipeline validated locally, controller tests pass in CI,
-Playwright smoke test green, PR #3390 CI fully green. Ready for test-server
-deploy and eventual merge to develop.
+**M1 Checkpoint**: OpenELIS operational-QC tests, Bridge plus analyzer-mock
+recognition contracts, RTL, and the visible Playwright story pass. The accepted
+build contains no superseded classifier path and is ready for the deployment and
+human-review gates defined by the canonical OGC-1054 roadmap.
 
 ---
 
@@ -186,7 +193,6 @@ deploy and eventual merge to develop.
       action for REJECTION severity.
 
 - [ ] T020 [M2] Implement DAO + Service (5-layer) for corrective actions:
-
   - `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAO.java`
   - `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAOImpl.java`
   - `src/main/java/org/openelisglobal/qc/service/QCCorrectiveActionService.java`
@@ -197,7 +203,6 @@ deploy and eventual merge to develop.
 
 - [ ] T022 [M2] Add REST endpoints to existing `QCRestController` or new
       controller:
-
   - POST `/rest/qc/violations/{id}/corrective-action` → create action
   - PUT `/rest/qc/corrective-actions/{id}` → update status/notes
   - GET `/rest/qc/corrective-actions?status=PENDING` → list active actions
@@ -269,21 +274,18 @@ on**: M1 merged
       `develop`
 
 - [ ] T034 [P] [M4] Write unit tests for `QCTrendService`:
-
   - Compliance percentage over time (by date range)
   - Violation frequency distribution by rule type
   - Instruments with recurring violations **File**:
     `src/test/java/org/openelisglobal/qc/service/QCTrendServiceTest.java`
 
 - [ ] T035 [M4] Implement `QCTrendService` + DAO queries:
-
   - `getComplianceTrend(dateRange, instrumentId?, testId?)` → time series
   - `getViolationFrequency(dateRange)` → rule_code → count map
   - `getRecurringViolationInstruments(dateRange, threshold)` → list **File**:
     `src/main/java/org/openelisglobal/qc/service/QCTrendServiceImpl.java`
 
 - [ ] T036 [M4] Add REST endpoints for trend data:
-
   - GET `/rest/qc/trends/compliance?from=&to=&instrumentId=` → time series
   - GET `/rest/qc/trends/violation-frequency?from=&to=` → distribution **File**:
     Add to `QCRestController.java` or new `QCTrendRestController.java`
@@ -325,14 +327,12 @@ on**: M2, M3, M4 merged
       `develop`
 
 - [ ] T043 [P] [M5] Write unit tests for manual re-evaluation service:
-
   - Evaluate a date range without persisting violations (preview mode)
   - Evaluate specific rule subsets
   - Re-evaluate after statistics recalculation **File**:
     `src/test/java/org/openelisglobal/qc/service/QCManualEvaluationServiceTest.java`
 
 - [ ] T044 [M5] Implement manual re-evaluation service + endpoint:
-
   - POST `/rest/qc/evaluate-range` with `{ lotId, from, to, preview, rules[] }`
   - Returns evaluation results without persisting when `preview=true` **File**:
     `src/main/java/org/openelisglobal/qc/service/QCManualEvaluationServiceImpl.java`
@@ -349,7 +349,6 @@ on**: M2, M3, M4 merged
       export API. Add export button to chart toolbar.
 
 - [ ] T048 [M5] Add manual evaluation UI: date range picker + rule checkboxes
-
   - "Evaluate" button + preview toggle. Display results in a table below the
     chart without navigating away. **File**:
     `frontend/src/components/qc/charts/ManualEvaluationPanel.jsx`
@@ -369,7 +368,7 @@ Manual re-evaluation works in preview mode. Full OGC-41 design spec delivered.
 
 ```mermaid
 graph LR
-    M1[M1: MVP Release] --> M2[M2: Corrective Actions]
+    M1[M1: Operational-QC Foundation] --> M2[M2: Corrective Actions]
     M1 --> M3["[P] M3: Email Alerts"]
     M1 --> M4["[P] M4: Trend + Reporting"]
     M2 --> M5[M5: Advanced Charts]
@@ -398,7 +397,7 @@ graph LR
 
 ## Implementation Strategy
 
-### MVP (M1 only — current session)
+### Operational-QC Foundation
 
 1. Validate end-to-end flow locally (T001-T004)
 2. Write controller tests (T005-T007) — parallel
@@ -406,10 +405,10 @@ graph LR
 4. Cleanup + CI green (T011-T014)
 5. **STOP and VALIDATE**: PR #3390 CI fully green, local flow proven
 
-### Post-MVP Delivery
+### Later Operational-QC Delivery
 
 1. Merge M1 to develop via #3372 → develop, then #3390 → develop
-2. M2 (corrective actions) — highest priority post-MVP
+2. M2 (corrective actions) — next operational-QC priority
 3. M3 (email) + M4 (trends) — parallel, assigned to available developers
 4. M5 (polish) — after M2-M4 land
 
@@ -417,11 +416,10 @@ graph LR
 
 ## Summary
 
-| Milestone                   | Tasks                | New tests                             | Status               |
-| --------------------------- | -------------------- | ------------------------------------- | -------------------- |
-| **M1 MVP**                  | T001-T014 (14 tasks) | ~10 controller tests + 1 Playwright   | 95% done, completing |
-| **M2 Corrective Actions**   | T015-T025 (11 tasks) | ~8 unit + 1 controller + 1 Playwright | Not started          |
-| **[P] M3 Email Alerts**     | T026-T032 (7 tasks)  | ~4 unit + 1 integration               | Not started          |
-| **[P] M4 Trends + Reports** | T033-T041 (9 tasks)  | ~6 unit + 1 Playwright                | Not started          |
-| **M5 Advanced Charts**      | T042-T050 (9 tasks)  | ~4 unit + 1 Playwright                | Not started          |
-| **Total**                   | **50 tasks**         | **~37 new tests**                     |                      |
+| Milestone                        | Tasks     | Acceptance focus                                                   |
+| -------------------------------- | --------- | ------------------------------------------------------------------ |
+| **M1 Operational-QC Foundation** | T001-T014 | Current OE/Bridge/mock contracts, routed RTL, and visible UI story |
+| **M2 Corrective Actions**        | T015-T025 | Durable corrective-action workflow and release-policy behavior     |
+| **[P] M3 Email Alerts**          | T026-T032 | Notification delivery and preference behavior                      |
+| **[P] M4 Trends + Reports**      | T033-T041 | Trend calculation, visible reporting, and exports                  |
+| **M5 Advanced Charts**           | T042-T050 | Chart interaction and non-destructive evaluation                   |

@@ -58,13 +58,18 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException {
 
         if (ObjectUtils.isNotEmpty(analysisId)) {
-            String sql = "From Referral r where r.analysis.id = :analysisId";
+            // An analysis can carry more than one referral: a rejected or cancelled one
+            // is re-raised, or the sample goes to a second lab. Newest first, so the
+            // caller always gets the referral currently in play rather than whichever
+            // row the database happened to return first.
+            String sql = "From Referral r where r.analysis.id = :analysisId order by r.id desc";
 
             try {
                 Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
                 query.setParameter("analysisId", analysisId);
+                query.setMaxResults(1);
                 List<Referral> referralList = query.list();
-                return referralList.isEmpty() ? null : referralList.get(referralList.size() - 1);
+                return referralList.isEmpty() ? null : referralList.get(0);
             } catch (HibernateException e) {
                 handleException(e, "getReferralByAnalysisId");
             }
@@ -238,7 +243,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Transactional(readOnly = true)
     @Override
-    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId) {
+    public List<Referral> getReferralsBySampleItemId(String sampleItemId) {
         String hql = "SELECT DISTINCT r" + " FROM Referral r" + " JOIN FETCH r.analysis a"
                 + " JOIN FETCH a.sampleItem si" + " LEFT JOIN FETCH a.test t" + " LEFT JOIN FETCH r.organization org"
                 + " WHERE si.id = :sampleItemId" + "   AND r.status != 'CANCELED'"

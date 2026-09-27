@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { SampleOrderFormValues } from "../innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../innitialValues/OrderEntryFormValues";
 import { createOrderEntryValidationSchema } from "./OrderEntryValidationSchema";
 
 const minimalOrderValues = {
-  ...SampleOrderFormValues,
+  ...createSampleOrderFormValues(),
   sampleXML: "<sample/>",
   patientProperties: {
-    ...SampleOrderFormValues.patientProperties,
+    ...createSampleOrderFormValues().patientProperties,
     firstName: "Test",
     lastName: "Patient",
     nationalId: "",
@@ -15,7 +15,7 @@ const minimalOrderValues = {
     email: "",
   },
   sampleOrderItems: {
-    ...SampleOrderFormValues.sampleOrderItems,
+    ...createSampleOrderFormValues().sampleOrderItems,
     labNo: "TEST-ORDER-1",
     referringSiteName: "Central Lab",
     providerFirstName: "Provider",
@@ -114,5 +114,40 @@ describe("createOrderEntryValidationSchema", () => {
     const schema = createOrderEntryValidationSchema({});
 
     await expect(schema.isValid(minimalOrderValues)).resolves.toBe(false);
+  });
+
+  test("accepts empty requester first/last name when REQUESTER_REQUIRED is false (default)", async () => {
+    const schema = createOrderEntryValidationSchema({
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+    });
+
+    const valuesWithoutRequester = {
+      ...minimalOrderValues,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        providerFirstName: "",
+        providerLastName: "",
+      },
+    };
+
+    await expect(schema.isValid(valuesWithoutRequester)).resolves.toBe(true);
+  });
+
+  test("rejects empty requester first/last name when REQUESTER_REQUIRED is true", async () => {
+    const schema = createOrderEntryValidationSchema({
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+      REQUESTER_REQUIRED: "true",
+    });
+
+    const valuesWithoutRequester = {
+      ...minimalOrderValues,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        providerFirstName: "",
+        providerLastName: "",
+      },
+    };
+
+    await expect(schema.isValid(valuesWithoutRequester)).resolves.toBe(false);
   });
 });

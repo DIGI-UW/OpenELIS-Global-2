@@ -6,6 +6,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CapabilityStatement;
@@ -14,6 +15,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,6 +50,8 @@ public class FhirQueryRestController extends BaseController {
 
     @Autowired
     private FhirUtil fhirUtil;
+    @Autowired
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -162,6 +166,18 @@ public class FhirQueryRestController extends BaseController {
             @PathVariable("resourceId") String resourceId) {
 
         try {
+            if ("Questionnaire".equals(resourceType) || "QuestionnaireResponse".equals(resourceType)) {
+                Optional<? extends org.hl7.fhir.instance.model.api.IBaseResource> stored = "Questionnaire"
+                        .equals(resourceType) ? questionnaireStorageService.getQuestionnaire(resourceId)
+                                : questionnaireStorageService.getQuestionnaireResponse(resourceId);
+                if (stored.isPresent()) {
+                    return ResponseEntity.ok(stored.get());
+                }
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Failed to get FHIR resource: " + resourceType + "/" + resourceId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
             if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error", "FHIR store path is not configured");

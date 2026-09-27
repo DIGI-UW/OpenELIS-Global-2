@@ -1,4 +1,5 @@
 import { test, expect, Page } from "../../../helpers/test-base";
+import { csrfToken } from "../../../helpers/api-session";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
 
 const API = "/api/OpenELIS-Global/rest/esig";
@@ -11,20 +12,9 @@ const CERTIFICATION_TEXT =
 
 // ── CSRF helper ─────────────────────────────────────────────────
 
-/** Extract CSRF token from the page context's storageState. */
-async function getCsrfToken(page: Page): Promise<string> {
-  const state = await page.context().storageState();
-  for (const origin of state.origins) {
-    for (const item of origin.localStorage) {
-      if (item.name === "CSRF") return item.value;
-    }
-  }
-  return "";
-}
-
 /** Build headers with CSRF token for authenticated API calls. */
 async function csrfHeaders(page: Page): Promise<Record<string, string>> {
-  return { "X-CSRF-Token": await getCsrfToken(page) };
+  return { "X-CSRF-Token": await csrfToken(page) };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────

@@ -9,6 +9,9 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
     /** Active terminology mappings for a test. */
     List<TestTerminologyMapping> getActiveByTestId(String testId);
 
+    /** Active terminology mappings for a terminology source, across all tests. */
+    List<TestTerminologyMapping> getActiveBySource(String source);
+
     /**
      * OGC-949 M10: reconcile a test's terminology mappings to exactly the desired
      * set, in one transaction. Identity is the natural key {@code (source, code)}
@@ -29,4 +32,24 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
      * mappings. Non-LOINC mappings (SNOMED/CIEL/OCL) are left untouched.
      */
     void syncLegacyLoinc(String testId, String loinc, String sysUserId);
+
+    /**
+     * OGC-1145 (FR-14) — active mappings for a standard-terminology code, honoring
+     * specimen scope: mappings scoped to {@code sampleTypeId} win over shared
+     * ({@code sample_type_id} null) mappings; the shared set is returned when no
+     * specimen-scoped mapping exists (or no specimen is given).
+     */
+    List<TestTerminologyMapping> getActiveMappingsForCode(String source, String code, String sampleTypeId);
+
+    /**
+     * Test ids carrying at least one active mapping for {@code source}, in any
+     * scope — whole test, a component, or one specimen. One query, so a catalog
+     * listing can decorate every row without a per-test lookup.
+     */
+    java.util.Set<String> getTestIdsWithActiveSource(String source);
+
+    /**
+     * Whether this test has any active mapping for {@code source}, in any scope.
+     */
+    boolean hasActiveMappingForSource(String testId, String source);
 }

@@ -2,6 +2,7 @@ package org.openelisglobal.testconfiguration.form;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -59,6 +60,9 @@ public class TestModifyEntryForm extends BaseForm {
 
     // for display
     private List testCatBeanList;
+
+    // IDs of sample types with environmental domain ("E")
+    private List<String> environmentalSampleTypeIds = new ArrayList<>();
 
     public TestModifyEntryForm() {
         setFormName("testModifyEntryForm");
@@ -198,5 +202,13 @@ public class TestModifyEntryForm extends BaseForm {
 
     public void setTestCatBeanList(List testCatBeanList) {
         this.testCatBeanList = testCatBeanList;
+    }
+
+    public List<String> getEnvironmentalSampleTypeIds() {
+        return environmentalSampleTypeIds;
+    }
+
+    public void setEnvironmentalSampleTypeIds(List<String> environmentalSampleTypeIds) {
+        this.environmentalSampleTypeIds = environmentalSampleTypeIds;
     }
 }

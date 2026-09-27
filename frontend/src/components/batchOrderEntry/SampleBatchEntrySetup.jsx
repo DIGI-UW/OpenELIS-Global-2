@@ -9,7 +9,6 @@ import {
   Button,
   Grid,
   Column,
-  Row,
   Section,
   TimePicker,
   Loading,
@@ -50,7 +49,10 @@ const SampleBatchEntrySetup = () => {
   const [showSampleComponent, setShowSampleComponent] = useState(false);
   const [postRequestMade, setPostRequestMade] = useState(false);
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "banner.menu.sampleBatchEntry", link: "/SampleBatchEntrySetup" },
+  ];
 
   function handleFacilityCheckboxChange() {
     setFacilityChecked(!facilityChecked);
@@ -169,8 +171,10 @@ const SampleBatchEntrySetup = () => {
     }
   };
 
+  // See AddOrder.loadDepartments: undefined here would throw on the later
+  // .find()/.map() over departments.
   const loadDepartments = (data) => {
-    setDepartments(data);
+    setDepartments(data || []);
   };
 
   const updateFormValues = (updatedValues) => {

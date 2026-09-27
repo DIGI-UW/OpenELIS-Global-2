@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-ordered-antibiotics" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_ast_run_antibiotic">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_micro_ast_run_antibiotic"/>
+            </column>
+            <column name="ast_run_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="antibiotic_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tier" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="report_behavior" type="VARCHAR(30)" defaultValue="ALWAYS">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_ast_run_antibiotic_run"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run_antibiotic"
+            baseColumnNames="ast_run_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_run"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint constraintName="fk_micro_ast_run_antibiotic_antibiotic"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run_antibiotic"
+            baseColumnNames="antibiotic_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic"
+            referencedColumnNames="id"/>
+        <addUniqueConstraint constraintName="uq_micro_ast_run_antibiotic"
+            schemaName="clinlims" tableName="micro_ast_run_antibiotic"
+            columnNames="ast_run_id, antibiotic_id"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_run_antibiotic"
+            indexName="idx_micro_ast_run_antibiotic_order">
+            <column name="ast_run_id"/>
+            <column name="display_order"/>
+        </createIndex>
+        <sql>
+            INSERT INTO clinlims.micro_ast_run_antibiotic
+                (id, ast_run_id, antibiotic_id, display_order, tier, report_behavior)
+            SELECT md5(r.id || ':' || p.antibiotic_id), r.id, p.antibiotic_id,
+                   p.display_order, p.tier, p.report_behavior
+              FROM clinlims.micro_ast_run r
+              JOIN clinlims.micro_ast_panel_antibiotic p ON p.panel_id = r.panel_id
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_ast_run_antibiotic"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -64,9 +64,6 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
 
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -95,8 +92,7 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         // dependency is a compile error here, not a runtime NPE.
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"
@@ -180,8 +176,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertEquals(String.valueOf(TEST_ID), env.testId);
         assertEquals("CLINICAL", env.domain);
         // The full v1 section set, in order, is the whole point of the envelope (M2).
-        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "storage", "panels",
-                "terminology", "analyzers", "display-order"), env.applicableSections);
+        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "qc-targets", "storage",
+                "panels", "terminology", "analyzers", "display-order"), env.applicableSections);
     }
 
     @org.junit.Test
@@ -222,9 +218,31 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         BasicInfo on = new BasicInfo();
         on.active = true;
         ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
-        assertEquals(200, resp.getStatusCode().value());
+        // The request is refused rather than answered 200 and dropped: a caller that
+        // asked for activation and got a success it did not receive has no way to
+        // notice the flag never moved.
+        assertEquals(409, resp.getStatusCode().value());
         assertTrue("basic-info must not bypass the activation coverage gate",
                 !testService.getTestById(String.valueOf(TEST_ID)).isActive());
+    }
+
+    /**
+     * Re-sending active=true for a test that is already active is not a change, so
+     * a client round-tripping the whole form must still be accepted.
+     */
+    @org.junit.Test
+    public void basicInfo_acceptsActiveTrueWhenTheTestIsAlreadyActive() {
+        BasicInfo on = new BasicInfo();
+        on.active = true;
+        on.description = "still active";
+        assertTrue(testService.getTestById(String.valueOf(TEST_ID)).isActive());
+
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
+
+        assertEquals(200, resp.getStatusCode().value());
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertTrue(reloaded.isActive());
+        assertEquals("still active", reloaded.getDescription());
     }
 
     @org.junit.Test

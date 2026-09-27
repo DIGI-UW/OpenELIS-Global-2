@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- OGC-782 remediation: explicit, configurable bridge from a microbiology
+       case to the standard OpenELIS analysis/result reporting path. -->
+  <changeSet id="OGC-782-microbiology-report-projection" author="OGC">
+    <addColumn tableName="micro_culture_setup" schemaName="clinlims">
+      <column name="reportable_test_analyte_id" type="numeric(10)"/>
+    </addColumn>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_setup"
+      baseColumnNames="reportable_test_analyte_id" constraintName="fk_micro_culture_setup_reportable_analyte"
+      referencedTableSchemaName="clinlims" referencedTableName="test_analyte" referencedColumnNames="id"/>
+
+    <createTable tableName="micro_case_analysis" schemaName="clinlims">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" primaryKeyName="pk_micro_case_analysis" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="analysis_id" type="numeric(10)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="reportable_test_analyte_id" type="numeric(10)"/>
+      <column name="projected_result_id" type="numeric(10)"/>
+      <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+      <column name="last_updated" type="timestamp"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis"
+      baseColumnNames="case_id" constraintName="fk_micro_case_analysis_case"
+      referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"
+      onDelete="CASCADE"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis"
+      baseColumnNames="analysis_id" constraintName="fk_micro_case_analysis_analysis"
+      referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis"
+      baseColumnNames="reportable_test_analyte_id" constraintName="fk_micro_case_analysis_reportable_analyte"
+      referencedTableSchemaName="clinlims" referencedTableName="test_analyte" referencedColumnNames="id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis"
+      baseColumnNames="projected_result_id" constraintName="fk_micro_case_analysis_projected_result"
+      referencedTableSchemaName="clinlims" referencedTableName="result" referencedColumnNames="id"/>
+    <addUniqueConstraint tableName="micro_case_analysis" schemaName="clinlims"
+      columnNames="case_id,analysis_id" constraintName="uq_micro_case_analysis_case_analysis"/>
+    <createIndex tableName="micro_case_analysis" schemaName="clinlims" indexName="idx_micro_case_analysis_case">
+      <column name="case_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable tableName="micro_case_analysis" schemaName="clinlims"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_setup"
+        constraintName="fk_micro_culture_setup_reportable_analyte"/>
+      <dropColumn tableName="micro_culture_setup" schemaName="clinlims" columnName="reportable_test_analyte_id"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

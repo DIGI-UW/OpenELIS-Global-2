@@ -1,0 +1,3 @@
+regulationNumber,standardName,groupName,parameterCode,optionValue,complianceStatus
+"PP 22/2021","PP No. 22/2021 - Water Quality","Microbiology","E_COLI_PRESENCE","Absent","COMPLIANT"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Microbiology","E_COLI_PRESENCE","Present","NON_COMPLIANT"

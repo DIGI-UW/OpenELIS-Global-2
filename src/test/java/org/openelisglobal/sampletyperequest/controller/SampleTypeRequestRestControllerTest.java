@@ -2,14 +2,12 @@ package org.openelisglobal.sampletyperequest.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,16 +19,15 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
-import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampletyperequest.controller.rest.SampleTypeRequestRestController;
 import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
-import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -46,25 +43,13 @@ public class SampleTypeRequestRestControllerTest {
     private SampleTypeRequestService sampleTypeRequestService;
 
     @Mock
-    private SampleService sampleService;
-
-    @Mock
-    private TypeOfSampleService typeOfSampleService;
-
-    @Mock
-    private UnitOfMeasureService unitOfMeasureService;
-
-    @Mock
     private TestService testService;
 
     @Mock
+    private TestMethodService testMethodService;
+
+    @Mock
     private PanelService panelService;
-
-    @Mock
-    private HttpServletRequest httpRequest;
-
-    @Mock
-    private HttpSession httpSession;
 
     private SampleTypeRequestRestController controller;
 
@@ -72,12 +57,9 @@ public class SampleTypeRequestRestControllerTest {
     public void setUp() {
         controller = new SampleTypeRequestRestController();
         ReflectionTestUtils.setField(controller, "sampleTypeRequestService", sampleTypeRequestService);
-        ReflectionTestUtils.setField(controller, "sampleService", sampleService);
-        ReflectionTestUtils.setField(controller, "typeOfSampleService", typeOfSampleService);
-        ReflectionTestUtils.setField(controller, "unitOfMeasureService", unitOfMeasureService);
         ReflectionTestUtils.setField(controller, "testService", testService);
+        ReflectionTestUtils.setField(controller, "testMethodService", testMethodService);
         ReflectionTestUtils.setField(controller, "panelService", panelService);
-
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -155,132 +137,48 @@ public class SampleTypeRequestRestControllerTest {
         assertEquals(0, response.getBody().size());
     }
 
-    // ─── createRequest ────────────────────────────────────────────────────────
-
     @Test
-    public void createRequest_validDto_returns201WithDto() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
-        Sample sample = new Sample();
-        sample.setId("5");
-        TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setId("2");
+    public void getPendingRequests_includesWorkflowAndMethodsNeededToRestoreSelection() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        when(cultureTest.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+        method.methodName = "Blood Culture Standard";
+        method.isDefault = true;
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(method));
 
-        when(sampleService.get("5")).thenReturn(sample);
-        when(typeOfSampleService.get("2")).thenReturn(typeOfSample);
-        when(sampleTypeRequestService.insert(any(SampleTypeRequest.class))).thenReturn(77);
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
 
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("5");
-        dto.setTypeOfSampleId("2");
-        dto.setSortOrder(1);
-        dto.setRequestedQuantity(2.0);
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        SampleTypeRequestDTO body = (SampleTypeRequestDTO) response.getBody();
-        assertNotNull(body);
-        assertEquals("77", body.getId());
-        assertEquals("REQUESTED", body.getStatus());
+        assertEquals("BACTERIOLOGY", dto.getRequestedTestDetails().get(0).getCultureWorkflowType());
+        assertSame(method, dto.getRequestedTestDetails().get(0).getMethods().get(0));
     }
 
     @Test
-    public void createRequest_missingSampleId_returns400() {
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setTypeOfSampleId("2");
+    public void getPendingRequests_fallsBackToAlignedIdsAndNamesWhenCatalogDetailsAreIncomplete() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42,missing-test");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testService.getTestById("missing-test")).thenReturn(null);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of());
 
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("sampleId is required", response.getBody());
-    }
-
-    @Test
-    public void createRequest_missingTypeOfSampleId_returns400() {
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("5");
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("typeOfSampleId is required", response.getBody());
-    }
-
-    @Test
-    public void createRequest_sampleNotFound_returns400() {
-        when(sampleService.get("99")).thenReturn(null);
-
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("99");
-        dto.setTypeOfSampleId("2");
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-    }
-
-    @Test
-    public void createRequest_typeOfSampleNotFound_returns400() {
-        Sample sample = new Sample();
-        sample.setId("5");
-        when(sampleService.get("5")).thenReturn(sample);
-        when(typeOfSampleService.get("99")).thenReturn(null);
-
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("5");
-        dto.setTypeOfSampleId("99");
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-    }
-
-    @Test
-    public void createRequest_withUnitOfMeasure_setsUom() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
-        Sample sample = new Sample();
-        sample.setId("5");
-        TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setId("2");
-        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom =
-                new org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure();
-        uom.setId("3");
-
-        when(sampleService.get("5")).thenReturn(sample);
-        when(typeOfSampleService.get("2")).thenReturn(typeOfSample);
-        when(unitOfMeasureService.get("3")).thenReturn(uom);
-        when(sampleTypeRequestService.insert(any(SampleTypeRequest.class))).thenReturn(88);
-
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("5");
-        dto.setTypeOfSampleId("2");
-        dto.setUnitOfMeasureId("3");
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-    }
-
-    @Test
-    public void createRequest_defaultsApplied_whenNullOptionalFields() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
-        Sample sample = new Sample();
-        sample.setId("5");
-        TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setId("2");
-
-        when(sampleService.get("5")).thenReturn(sample);
-        when(typeOfSampleService.get("2")).thenReturn(typeOfSample);
-        when(sampleTypeRequestService.insert(any(SampleTypeRequest.class))).thenReturn(50);
-
-        SampleTypeRequestDTO dto = new SampleTypeRequestDTO();
-        dto.setSampleId("5");
-        dto.setTypeOfSampleId("2");
-        // sortOrder and requestedQuantity are null — should default to 0 and 1.0
-
-        ResponseEntity<?> response = controller.createRequest(dto, httpRequest);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals("Blood culture,missing-test", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
     }
 
     // ─── fulfillRequest ───────────────────────────────────────────────────────
@@ -411,7 +309,8 @@ public class SampleTypeRequestRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         SampleTypeRequestDTO dto = response.getBody().get(0);
-        assertEquals("Blood Glucose", dto.getRequestedTestNames());
+        assertEquals("Blood Glucose,8", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
     }
 
     @org.junit.Test

@@ -76,3 +76,16 @@ body {
 .ruleFieldButton {
   margin-top: 5px;
 }
+
+/*
+ * The add/remove buttons for a condition sit at the end of its row rather than
+ * each owning a grid column. A button that owns a column is the first thing to
+ * wrap when the row runs out of width, which detached the add button from the
+ * condition it belongs to.
+ */
+.ruleRowActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}

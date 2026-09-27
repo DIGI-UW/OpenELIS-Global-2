@@ -1,6 +1,7 @@
 package org.openelisglobal.testcatalog.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -71,14 +72,24 @@ public class RangeCoverageValidationService {
 
     public CoverageReport validate(List<ResultLimit> limits) {
         // Ranges for different result components are independent: a Male 0-10 range on
-        // component A and a Male 0-10 range on component B are NOT an overlap. Group by
-        // component (null = test-level, its own group) and validate each group in
+        // component A and a Male 0-10 range on component B are NOT an overlap. The
+        // same holds for specimen scopes (OGC-1145 Phase 2): a specimen override and
+        // the shared set never overlap each other. Group by (component, sample type)
+        // — null = test-level / shared, its own group — and validate each group in
         // isolation, then merge — so overlaps/gaps are only ever reported between
-        // ranges that apply to the same component (OGC-1127/OGC-949).
-        Map<String, List<ResultLimit>> byComponent = new LinkedHashMap<>();
+        // ranges that apply to the same component AND scope (OGC-1127/OGC-949).
+        Map<String, List<ResultLimit>> byScope = new LinkedHashMap<>();
+        // The shared (test-level) ranges per component, which back the ages a
+        // specimen override does not claim. Keyed by component so a shared range on
+        // component A never backs an override on component B.
+        Map<String, List<ResultLimit>> sharedByComponent = new LinkedHashMap<>();
         for (ResultLimit limit : limits) {
-            String key = limit.getComponentId() == null ? "" : limit.getComponentId();
-            byComponent.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
+            String componentKey = limit.getComponentId() == null ? "" : limit.getComponentId();
+            String key = componentKey + "|" + (limit.getSampleTypeId() == null ? "" : limit.getSampleTypeId());
+            byScope.computeIfAbsent(key, k -> new ArrayList<>()).add(limit);
+            if (limit.getSampleTypeId() == null) {
+                sharedByComponent.computeIfAbsent(componentKey, k -> new ArrayList<>()).add(limit);
+            }
         }
 
         CoverageReport report = new CoverageReport();
@@ -87,18 +98,60 @@ public class RangeCoverageValidationService {
         report.female = new SexCoverage();
         report.female.sex = "F";
 
-        if (byComponent.isEmpty()) {
+        if (byScope.isEmpty()) {
             report.male.status = Status.EMPTY;
             report.female.status = Status.EMPTY;
             return report;
         }
 
-        for (Map.Entry<String, List<ResultLimit>> entry : byComponent.entrySet()) {
-            String componentId = entry.getKey().isEmpty() ? null : entry.getKey();
-            mergeSexCoverage(report.male, tagComponent(coverageForSex(entry.getValue(), "M"), componentId));
-            mergeSexCoverage(report.female, tagComponent(coverageForSex(entry.getValue(), "F"), componentId));
+        for (Map.Entry<String, List<ResultLimit>> entry : byScope.entrySet()) {
+            String[] scope = entry.getKey().split("\\|", -1);
+            String componentId = scope[0].isEmpty() ? null : scope[0];
+            boolean specimenScoped = !scope[1].isEmpty();
+            List<ResultLimit> backing = specimenScoped
+                    ? sharedByComponent.getOrDefault(scope[0], Collections.emptyList())
+                    : Collections.emptyList();
+            SexCoverage male = tagComponent(scopeCoverage(entry.getValue(), backing, "M"), componentId);
+            SexCoverage female = tagComponent(scopeCoverage(entry.getValue(), backing, "F"), componentId);
+            mergeSexCoverage(report.male, male);
+            mergeSexCoverage(report.female, female);
         }
         return report;
+    }
+
+    /**
+     * Coverage for one scope group. Gaps are judged against the group plus the
+     * component's shared ranges, because at resolution time a specimen override
+     * takes precedence in the ages it claims and the shared set backs the rest — so
+     * an override covering 0–30 on a component whose shared set runs 0–∞ has no
+     * gap, while the same override with no shared set behind it leaves 30+
+     * uncovered.
+     *
+     * <p>
+     * Overlaps stay confined to the group: an override deliberately restates an age
+     * window the shared set also covers, and that is the feature, not a finding.
+     */
+    private SexCoverage scopeCoverage(List<ResultLimit> group, List<ResultLimit> backing, String sex) {
+        SexCoverage own = coverageForSex(group, sex);
+        if (backing.isEmpty()) {
+            return own;
+        }
+        List<ResultLimit> effective = new ArrayList<>(group);
+        effective.addAll(backing);
+        SexCoverage merged = new SexCoverage();
+        merged.sex = sex;
+        merged.gaps = coverageForSex(effective, sex).gaps;
+        merged.overlaps = own.overlaps;
+        merged.status = statusFor(merged);
+        return merged;
+    }
+
+    /** Gaps drive the safety gate, so they outrank overlaps for the status. */
+    private Status statusFor(SexCoverage coverage) {
+        if (!coverage.gaps.isEmpty()) {
+            return Status.GAP;
+        }
+        return coverage.overlaps.isEmpty() ? Status.COMPLETE : Status.OVERLAP;
     }
 
     /** Stamp every gap/overlap of a group's coverage with its component id. */
@@ -114,9 +167,29 @@ public class RangeCoverageValidationService {
 
     /** Fold one component group's coverage into the running per-sex aggregate. */
     private void mergeSexCoverage(SexCoverage target, SexCoverage part) {
-        target.gaps.addAll(part.gaps);
+        for (AgeInterval gap : part.gaps) {
+            if (!alreadyReported(target.gaps, gap)) {
+                target.gaps.add(gap);
+            }
+        }
         target.overlaps.addAll(part.overlaps);
         target.status = target.status == null ? part.status : worse(target.status, part.status);
+    }
+
+    /**
+     * Two specimen scopes of the same component can leave the same window
+     * uncovered; the window is one finding, so it is listed once.
+     */
+    private boolean alreadyReported(List<AgeInterval> gaps, AgeInterval candidate) {
+        for (AgeInterval gap : gaps) {
+            boolean sameComponent = gap.componentId == null ? candidate.componentId == null
+                    : gap.componentId.equals(candidate.componentId);
+            if (sameComponent && Math.abs(gap.fromAge - candidate.fromAge) < EPSILON
+                    && (gap.toAge == candidate.toAge || Math.abs(gap.toAge - candidate.toAge) < EPSILON)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Precedence for the merged status: GAP > OVERLAP > COMPLETE > EMPTY. */

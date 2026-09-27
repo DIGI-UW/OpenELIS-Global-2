@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openelis-global.org/contracts/analyzer/v1/analyzer-migration-manifest.schema.json",
+  "title": "One-time OpenELIS analyzer migration manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "mode",
+    "sourceSnapshotFingerprint",
+    "startedAt",
+    "completedAt",
+    "outcomes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "runId": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["PLAN", "APPLY", "VERIFY"] },
+    "sourceSnapshotFingerprint": { "$ref": "#/$defs/fingerprint" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "outcomes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/outcome" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "mode": { "const": "PLAN" } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "outcomes": {
+            "items": {
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "READY",
+                    "NEEDS_CORRECTION",
+                    "INTENTIONALLY_EXCLUDED"
+                  ]
+                }
+              },
+              "required": ["outcome"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "mode": { "enum": ["APPLY", "VERIFY"] } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "outcomes": {
+            "items": {
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "MIGRATED",
+                    "NEEDS_CORRECTION",
+                    "INTENTIONALLY_EXCLUDED"
+                  ]
+                }
+              },
+              "required": ["outcome"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "profileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "revision", "fingerprint"],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      }
+    },
+    "profileSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "profileRef", "selectedBy", "selectedAt"],
+      "properties": {
+        "method": { "const": "EXPLICIT" },
+        "profileRef": { "$ref": "#/$defs/profileRef" },
+        "selectedBy": { "type": "string", "minLength": 1 },
+        "selectedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "migrationKey",
+        "sourceAnalyzerId",
+        "sourceConfigFingerprint",
+        "outcome"
+      ],
+      "properties": {
+        "migrationKey": { "type": "string", "minLength": 1 },
+        "sourceAnalyzerId": { "type": "string", "minLength": 1 },
+        "sourceConfigFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "outcome": {
+          "enum": [
+            "READY",
+            "MIGRATED",
+            "NEEDS_CORRECTION",
+            "INTENTIONALLY_EXCLUDED"
+          ]
+        },
+        "profileSelection": { "$ref": "#/$defs/profileSelection" },
+        "bridgeConnectionId": { "type": "string", "minLength": 1 },
+        "bridgeConfigRevision": { "type": "integer", "minimum": 1 },
+        "reasonCode": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "outcome": { "enum": ["READY", "MIGRATED"] } },
+            "required": ["outcome"]
+          },
+          "then": { "required": ["profileSelection"] }
+        },
+        {
+          "if": {
+            "properties": { "outcome": { "const": "MIGRATED" } },
+            "required": ["outcome"]
+          },
+          "then": { "required": ["bridgeConnectionId", "bridgeConfigRevision"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": ["NEEDS_CORRECTION", "INTENTIONALLY_EXCLUDED"]
+              }
+            },
+            "required": ["outcome"]
+          },
+          "then": { "required": ["reasonCode"] }
+        }
+      ]
+    }
+  }
+}

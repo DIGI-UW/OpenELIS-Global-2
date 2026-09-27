@@ -1,37 +1,20 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
-  Form,
   Heading,
-  Button,
-  Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
   Select,
   SelectItem,
-  Stack,
   ClickableTile,
   Modal,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -39,8 +22,17 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import CustomCheckBox from "../../common/CustomCheckBox";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import ServerDataState from "../../utils/ServerDataState";
+
+const SAMPLE_TYPE_TEST_ASSIGN_ENDPOINT = "/rest/SampleTypeTestAssign";
+const NO_SELECTION = {
+  testId: "",
+  testValue: "",
+  sampleTypeIdNew: "",
+  sampleTypeNameNew: "",
+  sampleTypeIdOld: "",
+  sampleTypeNameOld: "",
+};
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -64,35 +56,25 @@ function SampleTypeTestAssign() {
     useContext(NotificationContext);
 
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [sampleTypeTestAssignModal, setSampleTypeTestAssignModal] =
     useState(false);
-  const [sampleTypeTestAssign, setSampleTypeTestAssign] = useState({});
-  const [sampleTypeTestAssignPost, setSampleTypeTestAssignPost] = useState({
-    testId: "",
-    testValue: "",
-    sampleTypeIdNew: "",
-    sampleTypeNameNew: "",
-    sampleTypeIdOld: "",
-    sampleTypeNameOld: "",
-  });
-  const componentMounted = useRef(false);
-
-  const handleSampleTypeTestAssignList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setSampleTypeTestAssign(res);
-    }
-  };
+  const sampleTypeTestAssignQuery = useServerData(
+    SAMPLE_TYPE_TEST_ASSIGN_ENDPOINT,
+  );
+  const { data: sampleTypeTestAssign } = sampleTypeTestAssignQuery;
+  const invalidateServerData = useInvalidateServerData();
+  const [sampleTypeTestAssignPost, setSampleTypeTestAssignPost] =
+    useState(NO_SELECTION);
 
   const handlePostSampleTypeTestAssignListCall = () => {
     if (
       !sampleTypeTestAssignPost.testId ||
       !sampleTypeTestAssignPost.sampleTypeIdNew
     ) {
-      window.location.reload();
+      setSampleTypeTestAssignModal(false);
+      setConfirmation(false);
+      setSampleTypeTestAssignPost(NO_SELECTION);
       return;
     }
     postToOpenElisServerJsonResponse(
@@ -109,20 +91,20 @@ function SampleTypeTestAssign() {
   };
 
   const handlePostSampleTypeTestAssignListCallBack = (res) => {
-    if (res) {
-      setIsLoading(false);
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.delete.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      setNotificationVisible(true);
+      setConfirmation(false);
+      setSampleTypeTestAssignPost(NO_SELECTION);
+      invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -130,32 +112,11 @@ function SampleTypeTestAssign() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(
-      `/rest/SampleTypeTestAssign`,
-      handleSampleTypeTestAssignList,
-    );
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
-
-  if (!isLoading) {
-    return (
-      <>
-        <Loading />
-      </>
-    );
-  }
+  if (!sampleTypeTestAssign)
+    return <ServerDataState query={sampleTypeTestAssignQuery} />;
 
   return (
     <>
@@ -290,7 +251,8 @@ function SampleTypeTestAssign() {
         }}
         onRequestClose={() => {
           setSampleTypeTestAssignModal(false);
-          window.location.reload();
+          setConfirmation(false);
+          setSampleTypeTestAssignPost(NO_SELECTION);
         }}
         preventCloseOnClickOutside={true}
         shouldSubmitOnEnter={true}

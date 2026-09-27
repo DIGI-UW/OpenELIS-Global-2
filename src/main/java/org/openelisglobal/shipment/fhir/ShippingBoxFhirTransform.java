@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliverySuppliedItemComponent;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -49,6 +50,8 @@ public class ShippingBoxFhirTransform {
     private static final String EXT_SPECIMEN = "http://openelis.org/fhir/extension/shipment-specimen";
     private static final String EXT_SPECIMEN_TYPE_SUMMARY = "http://openelis.org/fhir/extension/shipment-specimen-type-summary";
     private static final String EXT_NON_CONFORMITY = "http://openelis.org/fhir/extension/shipment-non-conformity";
+    private static final String EXT_DESTINATION_ORG = "http://openelis.org/fhir/extension/shipment-destination-org";
+    private static final String EXT_SOURCE_ORG = "http://openelis.org/fhir/extension/shipment-source-org";
 
     @Autowired
     private BoxSampleItemDAO boxSampleItemDAO;
@@ -111,19 +114,29 @@ public class ShippingBoxFhirTransform {
             supplyDelivery.setOccurrence(new DateTimeType(new Date(box.getCreatedDate().getTime())));
         }
 
-        // Destination — reference to Organization (must include UUID for cross-site
-        // matching)
+        // destination must be Reference(Location) in R4; carry the org UUID in an
+        // extension instead.
         if (box.getDestinationFacility() != null) {
             Reference destination = new Reference();
+            destination.setDisplay(box.getDestinationFacility().getOrganizationName());
+            supplyDelivery.setDestination(destination);
+
             if (box.getDestinationFacility().getFhirUuid() != null) {
-                destination.setReference("Organization/" + box.getDestinationFacility().getFhirUuid().toString());
+                Extension destOrgExt = new Extension(EXT_DESTINATION_ORG);
+                destOrgExt.setValue(new StringType(box.getDestinationFacility().getFhirUuid().toString()));
+                supplyDelivery.addExtension(destOrgExt);
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery",
                         "Destination facility '" + box.getDestinationFacility().getOrganizationName()
                                 + "' has no FHIR UUID — remote sites may not be able to match it");
             }
-            destination.setDisplay(box.getDestinationFacility().getOrganizationName());
-            supplyDelivery.setDestination(destination);
+        }
+
+        // Extension — source org (sending lab name for receiver display)
+        String configName = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.configurationName);
+        if (configName != null && !configName.isBlank()) {
+            supplyDelivery.addExtension(new Extension(EXT_SOURCE_ORG, new StringType(configName)));
         }
 
         // Extensions — temperature requirement
@@ -298,14 +311,13 @@ public class ShippingBoxFhirTransform {
     public void syncToFhir(ShippingBox box, boolean isCreate) {
         try {
             SupplyDelivery supplyDelivery = transformToSupplyDelivery(box);
-            persistSupplyDelivery(supplyDelivery, isCreate);
+            persistSupplyDelivery(supplyDelivery);
         } catch (Exception e) {
             LogEvent.logError("Error syncing ShippingBox to FHIR: " + e.getMessage(), e);
         }
     }
 
-    private void persistSupplyDelivery(SupplyDelivery supplyDelivery, boolean isCreate)
-            throws FhirLocalPersistingException {
+    private void persistSupplyDelivery(SupplyDelivery supplyDelivery) throws FhirLocalPersistingException {
         try {
             FhirPersistanceService fhirPersistanceService = SpringContext.getBean(FhirPersistanceService.class);
             if (fhirPersistanceService == null) {
@@ -321,11 +333,9 @@ public class ShippingBoxFhirTransform {
             }
             resourceMap.put(resourceId != null ? resourceId : "", supplyDelivery);
 
-            if (isCreate) {
-                fhirPersistanceService.createFhirResourcesInFhirStore(resourceMap);
-            } else {
-                fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
-            }
+            // PUT under the box's own fhirUuid; the create path mints a random id,
+            // duplicating it.
+            fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
         } catch (Exception e) {
             LogEvent.logError("Error persisting SupplyDelivery to FHIR server: " + e.getMessage(), e);
             throw new FhirLocalPersistingException(e);

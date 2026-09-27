@@ -273,8 +273,6 @@ public class ReportImplementationFactory {
                 return new ExportTrendsByDate();
             } else if (report.equals("TBOrderExport")) {
                 return new ExportTBOrdersByDate();
-            } else if (report.equals("MauritiusProtocolSheet")) {
-                return new MauritiusProtocolSheet();
             } else if (report.equals("ExportWHONETReportByDate")) {
                 return new WHONETExportRoutineByDate();
             } else if (report.equals("covidResultsReport")) {

@@ -2,6 +2,7 @@ import {
   Add,
   Dashboard,
   Download,
+  Microscope,
   Report,
   Settings,
 } from "@carbon/icons-react";
@@ -35,6 +36,12 @@ const ShipmentNavigation = () => {
       path: "/SampleShipment/receive",
     },
     {
+      key: "referenceLabResults",
+      label: intl.formatMessage({ id: "shipment.nav.referenceLabResults" }),
+      icon: Microscope,
+      path: "/SampleShipment/reference-lab-results",
+    },
+    {
       key: "reports",
       label: intl.formatMessage({ id: "shipment.nav.reports" }),
       icon: Report,
@@ -54,8 +61,9 @@ const ShipmentNavigation = () => {
     if (path === "/SampleShipment") return 0;
     if (path.includes("/create-box")) return 1;
     if (path.includes("/receive")) return 2;
-    if (path.includes("/reports")) return 3;
-    if (path.includes("/settings")) return 4;
+    if (path.includes("/reference-lab-results")) return 3;
+    if (path.includes("/reports")) return 4;
+    if (path.includes("/settings")) return 5;
     // Default to dashboard if viewing box details
     if (path.includes("/SampleShipment/box/")) return 0;
     return 0;

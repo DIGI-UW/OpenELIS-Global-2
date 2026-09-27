@@ -36,6 +36,7 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -51,6 +52,7 @@ import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -73,12 +75,15 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.service.ReferralReasonService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -93,7 +98,10 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 
 public abstract class PatientReport extends Report {
 
@@ -124,6 +132,7 @@ public abstract class PatientReport extends Report {
     protected SampleOrganizationService sampleOrganizationService = SpringContext
             .getBean(SampleOrganizationService.class);
     protected UserService userService = SpringContext.getBean(UserService.class);;
+    private Set<String> reportUserTestIds;
     private List<String> handledOrders;
     private List<Analysis> updatedAnalysis = new ArrayList<>();
 
@@ -184,6 +193,34 @@ public abstract class PatientReport extends Report {
 
     protected boolean useReportingDescription() {
         return true;
+    }
+
+    /**
+     * The analyses of one sample that the report's reader may see, keeping only
+     * tests in their Reports lab units.
+     *
+     * <p>
+     * The set of allowed tests is resolved once per report rather than once per
+     * sample: resolving it re-reads every test in the reader's lab units, so a
+     * patient with hundreds of samples read the whole catalogue hundreds of times
+     * and the report took minutes, long past the point where the browser gives up.
+     * A report instance serves a single request, so the set cannot go stale within
+     * one run.
+     */
+    protected List<Analysis> filterAnalysesForReportUser(List<Analysis> analyses) {
+        if (analyses == null) {
+            return new ArrayList<>();
+        }
+        if (reportUserTestIds == null) {
+            reportUserTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_REPORTS);
+        }
+        List<Analysis> allowed = new ArrayList<>(analyses.size());
+        for (Analysis analysis : analyses) {
+            if (analysis.getTest() != null && reportUserTestIds.contains(analysis.getTest().getId())) {
+                allowed.add(analysis);
+            }
+        }
+        return allowed;
     }
 
     protected String convertToAlphaNumericDisplay(Sample currentSample) {
@@ -274,6 +311,9 @@ public abstract class PatientReport extends Report {
                 sampleCompleteMap.put(convertToAlphaNumericDisplay(sample), Boolean.TRUE);
                 findCompletionDate();
                 findPatientFromSample();
+                if (currentPatient == null) {
+                    continue;
+                }
                 findContactInfo();
                 findPatientInfo();
                 createReportItems();
@@ -282,6 +322,9 @@ public abstract class PatientReport extends Report {
                 add1LineErrorMessage("report.error.message.noPrintableItems");
             } else {
                 postSampleBuild();
+                // OGC-686: after the last report item, so the test set is complete.
+                // Not in postSampleBuild — that is abstract in five subclasses.
+                addAccreditationParameters();
             }
         }
 
@@ -470,6 +513,13 @@ public abstract class PatientReport extends Report {
     protected void findPatientFromSample() {
         Patient patient = sampleHumanService.getPatientForSample(currentSample);
 
+        if (patient == null) {
+            STNumber = null;
+            patientDOB = null;
+            currentPatient = null;
+            return;
+        }
+
         if (currentPatient == null || !patient.getId().equals(patientService.getPatientId(currentPatient))) {
             STNumber = null;
             patientDOB = null;
@@ -545,6 +595,10 @@ public abstract class PatientReport extends Report {
         List<Result> resultList = analysisService.getResults(currentAnalysis);
 
         Test test = analysisService.getTest(currentAnalysis);
+        // OGC-686: the one place every printed analysis of this family passes
+        // through with its test in hand. The recorder filters to claimable statuses
+        // itself.
+        recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
         String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);
         if (note != null) {
@@ -583,13 +637,15 @@ public abstract class PatientReport extends Report {
             if (resultList.isEmpty()) {
                 setEmptyResult(data);
             } else {
-                setAppropriateResults(resultList, data);
+                boolean perComponent = setAppropriateResults(resultList, data);
                 Result result = resultList.get(0);
                 setCorrectedStatus(result, data);
-                setNormalRange(data, test, result);
-                data.setResult(getAugmentedResult(data, result));
                 data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
-                data.setAlerts(getResultFlag(result, null, data));
+                if (!perComponent) {
+                    setNormalRange(data, test, result);
+                    data.setResult(getAugmentedResult(data, result));
+                    data.setAlerts(getResultFlag(result, null, data));
+                }
             }
         }
 
@@ -599,6 +655,26 @@ public abstract class PatientReport extends Report {
 
     protected void setReferredOutResult(ClinicalPatientData data) {
         data.setResult(MessageUtil.getMessage("report.test.status.inProgress"));
+    }
+
+    /**
+     * A result that came back from a reference laboratory prints on the patient
+     * report like any other, so the clinician has the value, but the report has to
+     * say who produced it. Returns the row's note with that attribution appended.
+     */
+    protected String noteWithReferralAttribution(String note, Referral referral) {
+        if (referral == null || referral.getOrganization() == null) {
+            return note;
+        }
+        String labName = referral.getOrganization().getOrganizationName();
+        if (GenericValidator.isBlankOrNull(labName)) {
+            return note;
+        }
+        // The note prints through Jasper's styled-text parser, which reads '<' and
+        // '&' as markup.
+        String attribution = MessageUtil.getMessage("report.referral.performedBy") + " "
+                + labName.replace("&", "&amp;").replace("<", "&lt;");
+        return GenericValidator.isBlankOrNull(note) ? attribution : note + "<br/>" + attribution;
     }
 
     protected void setEmptyResult(ClinicalPatientData data) {
@@ -625,8 +701,13 @@ public abstract class PatientReport extends Report {
         String resultValue = data.getResult();
         if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
             try {
-                resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(resultValue))) + ")log ";
-            } catch (IllegalFormatException e) {
+                // the printed value carries the notation the technologist wrote,
+                // so read the number it denotes before taking its log
+                resultValue += " ("
+                        + formatTwoDecimals(
+                                Math.log10(Double.parseDouble(StringUtil.normalizeScientificNotation(resultValue))))
+                        + ")log ";
+            } catch (IllegalFormatException | NumberFormatException e) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
                 // no-op
             }
@@ -656,6 +737,10 @@ public abstract class PatientReport extends Report {
                     } else if (Double.valueOf(result.getValue(true)) > result.getMaxNormal()) {
                         flag = "E";
                     }
+                }
+                String critical = criticalAlertFlag(result);
+                if (!GenericValidator.isBlankOrNull(critical)) {
+                    flag = critical;
                 }
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
                 boolean isAbnormal;
@@ -693,6 +778,27 @@ public abstract class PatientReport extends Report {
         return "";
     }
 
+    /**
+     * OGC-1121 — BB / EE mark a value beyond the authored critical bound of the
+     * result's own range, the tier the B / E letters cannot express. The result row
+     * carries no critical snapshot, so the bound is read from the range the catalog
+     * resolves for this analysis and patient today.
+     */
+    protected String criticalAlertFlag(Result result) {
+        if (currentAnalysis == null || result == null) {
+            return "";
+        }
+        try {
+            ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
+                    result, currentPatient);
+            return ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+        } catch (RuntimeException e) {
+            LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
+                    + result.getId() + ": the report prints the value without it", e);
+            return "";
+        }
+    }
+
     protected String getRange(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         return resultResultService.getDisplayReferenceRange(result, true);
@@ -702,15 +808,19 @@ public abstract class PatientReport extends Report {
         return (test != null && test.getUnitOfMeasure() != null) ? test.getUnitOfMeasure().getName() : "";
     }
 
-    private void setAppropriateResults(List<Result> resultList, ClinicalPatientData data) {
+    /**
+     * @return true when the row was filled per component, so the caller must not
+     *         overwrite the unit and reference range with test-level values
+     */
+    private boolean setAppropriateResults(List<Result> resultList, ClinicalPatientData data) {
         String reportResult = "";
         if (!resultList.isEmpty()) {
 
             List<TestResultComponent> activeComponents = SpringContext.getBean(TestResultComponentService.class)
                     .getActiveComponentsByTestId(analysisService.getTest(currentAnalysis).getId());
             if (activeComponents.size() > 1) {
-                data.setResult(buildMultiComponentResult(resultList, activeComponents));
-                return;
+                buildMultiComponentRow(resultList, activeComponents, data);
+                return true;
             }
 
             // If only one result just get it and get out
@@ -827,6 +937,7 @@ public abstract class PatientReport extends Report {
             }
         }
         data.setResult(reportResult);
+        return false;
     }
 
     /**
@@ -834,6 +945,97 @@ public abstract class PatientReport extends Report {
      * formatted by its component's own type. Results whose test_result row has no
      * component (legacy rows) belong to the primary component.
      */
+    /**
+     * Fill a multi-component row: one line per rendered component in the Result
+     * cell, and the matching line in the Unit and Reference-value cells. A
+     * component carries its own unit, and its own range for the patient's age and
+     * sex, this specimen and that component — resolved through the same selection
+     * Results Entry and Validation use, so all three agree.
+     */
+    private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
+            ClinicalPatientData data) {
+        ResultService resultResultService = SpringContext.getBean(ResultService.class);
+        ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
+        UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
+        String testUom = getUnitOfMeasure(analysisService.getTest(currentAnalysis));
+
+        StringBuilder results = new StringBuilder();
+        StringBuilder uoms = new StringBuilder();
+        StringBuilder ranges = new StringBuilder();
+        List<String> alerts = new ArrayList<>();
+        for (TestResultComponent component : components) {
+            // OGC-1127: a component flagged not to print is omitted from the report.
+            // The primary is always kept so the test never renders with no result.
+            if (!component.getIsPrimary() && !component.getShowOnReport()) {
+                continue;
+            }
+            List<Result> componentResults = new ArrayList<>();
+            for (Result result : resultList) {
+                if (result.getParentResult() != null) {
+                    continue;
+                }
+                String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+                if (componentId == null ? component.getIsPrimary() : component.getId().equals(componentId)) {
+                    componentResults.add(result);
+                }
+            }
+            if (componentResults.isEmpty()) {
+                continue;
+            }
+            String componentValue = formatComponentResults(component, componentResults, resultResultService);
+            if (GenericValidator.isBlankOrNull(componentValue)) {
+                continue;
+            }
+            Result first = componentResults.get(0);
+            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
+                    component.getId());
+            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(), first.getValue(true));
+            alerts.add(letter);
+            results.append(component.getLabel()).append(": ").append(componentValue);
+            if (!letter.isEmpty()) {
+                results.append(" <b>").append(letter).append("</b>");
+            }
+            results.append("\n");
+
+            String componentUom = componentUomName(component, unitOfMeasureService);
+            uoms.append(GenericValidator.isBlankOrNull(componentUom) ? testUom : componentUom).append("\n");
+
+            String significantDigits = first.getTestResult() == null ? "0"
+                    : first.getTestResult().getSignificantDigits();
+            String range = limit == null ? ""
+                    : resultLimitService.getDisplayReferenceRange(limit,
+                            GenericValidator.isBlankOrNull(significantDigits) ? "0" : significantDigits, " - ");
+            ranges.append(range).append("\n");
+        }
+        trimTrailingNewline(results);
+        trimTrailingNewline(uoms);
+        trimTrailingNewline(ranges);
+
+        data.setResult(results.toString());
+        data.setUom(uoms.toString());
+        data.setTestRefRange(ranges.toString());
+        data.setHasRangeAndUOM(ranges.length() > 0 || uoms.length() > 0);
+        if (alerts.stream().anyMatch(letter -> !letter.isEmpty())) {
+            data.setAbnormalResult(Boolean.TRUE);
+            data.setAlerts(" <b>" + ResultAlertFlags.ABNORMAL + "</b>");
+        }
+    }
+
+    private static void trimTrailingNewline(StringBuilder builder) {
+        if (builder.length() > 0) {
+            builder.setLength(builder.length() - 1);
+        }
+    }
+
+    /** A component's own unit of measure, blank when it has none of its own. */
+    private String componentUomName(TestResultComponent component, UnitOfMeasureService unitOfMeasureService) {
+        if (component.getUomId() == null) {
+            return "";
+        }
+        UnitOfMeasure uom = unitOfMeasureService.getUnitOfMeasureById(component.getUomId());
+        return uom == null || uom.getUnitOfMeasureName() == null ? "" : uom.getUnitOfMeasureName();
+    }
+
     private String buildMultiComponentResult(List<Result> resultList, List<TestResultComponent> components) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         StringBuilder reportBuilder = new StringBuilder();
@@ -981,9 +1183,11 @@ public abstract class PatientReport extends Report {
 
         if (doAnalysis) {
             testName = getTestName(hasParent);
-            // Not sure if it is a bug in escapeHtml but the wrong markup is
-            // generated
-            testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            if (escapesTestNameAsHtml()) {
+                // Not sure if it is a bug in escapeHtml but the wrong markup is
+                // generated
+                testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
+            }
         }
 
         if (FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour)) {
@@ -1079,6 +1283,25 @@ public abstract class PatientReport extends Report {
         return data;
     }
 
+    /**
+     * Whether the Test column names the specimen each result was run on. Off by
+     * default: it widens the column, and the existing templates were laid out
+     * without it.
+     */
+    protected boolean appendSampleTypeToTestName() {
+        return false;
+    }
+
+    /**
+     * Whether this report's template renders the Test column as HTML. The patient
+     * templates do, so an accented name has to arrive escaped. A template that
+     * prints the column as plain text must turn this off, or it shows the escape
+     * sequence itself rather than the character.
+     */
+    protected boolean escapesTestNameAsHtml() {
+        return true;
+    }
+
     private String getTestName(boolean indent) {
         String testName;
 
@@ -1090,6 +1313,13 @@ public abstract class PatientReport extends Report {
 
         if (GenericValidator.isBlankOrNull(testName)) {
             testName = TestServiceImpl.getUserLocalizedTestName(analysisService.getTest(currentAnalysis));
+        }
+        if (appendSampleTypeToTestName() && !GenericValidator.isBlankOrNull(testName)) {
+            TypeOfSample typeOfSample = analysisService.getTypeOfSample(currentAnalysis);
+            String sampleTypeName = typeOfSample == null ? null : typeOfSample.getLocalizedName();
+            if (!GenericValidator.isBlankOrNull(sampleTypeName)) {
+                testName = testName + " (" + sampleTypeName + ")";
+            }
         }
         return (indent ? "    " : "") + testName;
     }

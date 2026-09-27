@@ -20,13 +20,14 @@ import {
   Tabs,
   TabList,
   Tag,
+  InlineNotification,
+  Stack,
 } from "@carbon/react";
+import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
 import {
   Minimize,
   Maximize,
-  ArrowLeft,
-  ArrowRight,
   InProgress,
   TaskView,
   CheckmarkFilled,
@@ -39,6 +40,11 @@ import {
   WarningSquareFilled,
 } from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
 
 // Map each metric type to a representative icon shown in the top-left of its card.
 const TILE_ICONS: Record<string, any> = {
@@ -53,7 +59,7 @@ const TILE_ICONS: Record<string, any> = {
   AVERAGE_TURN_AROUND_TIME: Time,
   DELAYED_TURN_AROUND: WarningSquareFilled,
 };
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
@@ -96,6 +102,19 @@ interface Notification {
   addNotification: any;
 }
 
+const TILES_WITH_TABS = [
+  "ORDERS_IN_PROGRESS",
+  "ORDERS_READY_FOR_VALIDATION",
+  "ORDERS_COMPLETED_TODAY",
+  "ORDERS_REJECTED_TODAY",
+  "UN_PRINTED_RESULTS",
+  "DELAYED_TURN_AROUND",
+  "ORDERS_FOR_USER",
+  "ORDERS_PARTIALLY_COMPLETED_TODAY",
+];
+
+const ALL_SECTIONS = "all";
+
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
 
@@ -119,18 +138,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   });
 
   const [data, setData] = useState([]);
-  const [testSections, setTestSections] = useState([]);
+  const [testSections, setTestSections] = useState<
+    { id: string; value: string }[]
+  >([]);
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
-  const componentMounted = useRef(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [metricsFailed, setMetricsFailed] = useState(false);
+  const [metricsAttempt, setMetricsAttempt] = useState(0);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState<{
+    currentPage?: string | number;
+    totalPages?: string | number;
+  }>();
+  const [serverPageSize, setServerPageSize] = useState<number | undefined>();
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
+  // Identifies the tile load in flight, so a superseded response is dropped.
+  const latestRequest = useRef(0);
   const [url, setUrl] = useState("");
   const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
@@ -139,25 +164,46 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     useContext(NotificationContext) as Notification;
 
   useEffect(() => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-  }, []);
+    const controller = new AbortController();
+    setLoading(true);
+    setMetricsFailed(false);
+    getFromOpenElisServer<typeof counts>(
+      "/rest/home-dashboard/metrics",
+      (data) => {
+        if (controller.signal.aborted) return;
+        if (data == null) {
+          setMetricsFailed(true);
+        } else {
+          setCounts(data);
+        }
+        setLoading(false);
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [metricsAttempt]);
 
-  useEffect(() => {
-    getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, []);
+  /**
+   * The query the open tile's list is read with. The selected tab travels to
+   * the server, so the rows, the page count and the tile's number all describe
+   * the same population; filtering a server page in the browser used to leave
+   * pages that held nothing for the reader.
+   */
+  const listQuery = (params: string[] = []) => {
+    const query = [...params];
+    if (
+      TILES_WITH_TABS.includes(selectedTile?.type) &&
+      selectedTestSection &&
+      selectedTestSection !== ALL_SECTIONS
+    ) {
+      query.push("testSectionId=" + selectedTestSection);
+    }
+    return query.length > 0 ? "?" + query.join("&") : "";
+  };
 
   useEffect(() => {
     if (selectedTile != null) {
-      setNextPage(null);
-      setPreviousPage(null);
-      setPagination(false);
+      const requestId = ++latestRequest.current;
       setLoading(true);
       if (selectedTile.type == "AVERAGE_TURN_AROUND_TIME") {
         getFromOpenElisServer(
@@ -168,95 +214,67 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         getFromOpenElisServer(
           "/rest/home-dashboard/" +
             selectedTile.type +
-            "?systemUserId=" +
-            selectedTile.id,
-          loadData,
+            listQuery(["systemUserId=" + selectedTile.id]),
+          (res) => loadData(res, requestId),
         );
       } else {
         getFromOpenElisServer(
-          "/rest/home-dashboard/" + selectedTile.type,
-          loadData,
+          "/rest/home-dashboard/" + selectedTile.type + listQuery(),
+          (res) => loadData(res, requestId),
         );
       }
     }
-
-    return () => {
-      // This code runs when component is unmounted
-      componentMounted.current = false;
-    };
-  }, [selectedTile]);
+  }, [selectedTile, selectedTestSection]);
 
   useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/user-test-sections/ALL",
-      (fetchedTestSections) => {
-        fetchTestSections(fetchedTestSections);
-      },
-    );
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+    if (!userSessionDetails?.loginName) return;
+    getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
+      const sections = Array.isArray(res) ? res : [];
+      setTestSections(sections);
+      setSelectedTestSection(
+        hasRole(userSessionDetails, "Global Administrator")
+          ? ALL_SECTIONS
+          : sections[0]?.id,
+      );
+    });
+  }, [userSessionDetails]);
 
-  const fetchTestSections = (res) => {
-    setTestSections(res);
-    hasRole(userSessionDetails, "Global Administrator")
-      ? setSelectedTestSection("all")
-      : setSelectedTestSection(res[0]?.id);
-  };
-
-  const loadNextResultsPage = () => {
+  /**
+   * One server page of the open tile's list, the same request for the arrows
+   * above the table and for Carbon's pagination below it.
+   */
+  const loadResultsPage = (pageNumber: number | string) => {
+    const requestId = ++latestRequest.current;
     setLoading(true);
     getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + nextPage,
-      loadData,
+      "/rest/home-dashboard/" +
+        selectedTile.type +
+        listQuery(["page=" + pageNumber]),
+      (res) => loadData(res, requestId),
     );
   };
 
-  const loadPreviousResultsPage = () => {
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/home-dashboard/" + selectedTile.type + "?page=" + previousPage,
-      loadData,
-    );
-  };
+  const arrows = serverPageArrowsProps({
+    paging,
+    onPageRequest: loadResultsPage,
+  });
 
-  const loadCount = (data) => {
-    if (componentMounted.current) {
-      setCounts(data);
-      setLoading(false);
+  const loadData = (res, requestId: number) => {
+    // A newer tile was opened while this request was in flight; its data wins.
+    if (requestId !== latestRequest.current) {
+      return;
     }
-  };
 
-  const loadData = (res) => {
     // If the response object is not null and has displayItems array with length greater than 0 then set it as data.
-    if (res && res.displayItems && res.displayItems.length > 0) {
-      setData(res.displayItems);
-    } else {
-      setData([]);
-    }
-
-    // Sets next and previous page numbers based on the total pages and current page number.
-    if (res && res.paging) {
-      const { totalPages, currentPage } = res.paging;
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      }
-    }
-
+    const items =
+      res && res.displayItems && res.displayItems.length > 0
+        ? res.displayItems
+        : [];
+    setData(items);
+    setPaging(res?.paging);
+    setServerPageSize((previous) =>
+      serverPageSizeOf(res?.paging, items.length, previous),
+    );
     setLoading(false);
   };
 
@@ -353,16 +371,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
   ];
 
-  const tilesWithTabs = [
-    "ORDERS_IN_PROGRESS",
-    "ORDERS_READY_FOR_VALIDATION",
-    "ORDERS_COMPLETED_TODAY",
-    "ORDERS_REJECTED_TODAY",
-    "UN_PRINTED_RESULTS",
-    "DELAYED_TURN_AROUND",
-    "ORDERS_FOR_USER",
-    "ORDERS_PARTIALLY_COMPLETED_TODAY",
-  ];
+  const tilesWithTabs = TILES_WITH_TABS;
 
   const handleMinimizeClick = () => {
     console.log("Icon clicked!");
@@ -376,7 +385,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     } else {
       setSelectedTile(null);
       hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection("all")
+        ? setSelectedTestSection(ALL_SECTIONS)
         : setSelectedTestSection(testSections[0]?.id);
     }
   };
@@ -419,15 +428,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setSelectedTile(tile);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
   const renderCell = (cell, row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
@@ -518,6 +518,27 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
   ];
 
+  if (metricsFailed) {
+    return (
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <Stack gap={5}>
+            <InlineNotification
+              kind="error"
+              role="alert"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "dashboard.metrics.loadFailed" })}
+            />
+            <Button onClick={() => setMetricsAttempt((attempt) => attempt + 1)}>
+              <FormattedMessage id="common.retry" />
+            </Button>
+          </Stack>
+        </Column>
+      </Grid>
+    );
+  }
+
   return (
     <>
       {loading && <Loading description="Loading Dasboard..." />}
@@ -604,108 +625,48 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               ) : (
                 <Grid>
                   <Column lg={16} md={8} sm={4}>
-                    {pagination && (
-                      <Grid>
-                        <Column lg={14} />
-                        <Column
-                          lg={2}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "10px",
-                            width: "110%",
-                          }}
-                        >
-                          <Link>
-                            {currentApiPage} / {totalApiPages}
-                          </Link>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <Button
-                              hasIconOnly
-                              id="loadpreviousresults"
-                              onClick={loadPreviousResultsPage}
-                              disabled={previousPage != null ? false : true}
-                              renderIcon={ArrowLeft}
-                              iconDescription="previous"
-                            ></Button>
-                            <Button
-                              hasIconOnly
-                              id="loadnextresults"
-                              onClick={loadNextResultsPage}
-                              disabled={nextPage != null ? false : true}
-                              renderIcon={ArrowRight}
-                              iconDescription="next"
-                            ></Button>
-                          </div>
-                        </Column>
-                      </Grid>
-                    )}
+                    {arrows.show && <ServerPageArrows {...arrows} />}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
+                            <TabList
+                              style={{ width: "100%" }}
+                              aria-label="List of tabs"
+                              contained
+                            >
+                              {hasRole(
+                                userSessionDetails,
+                                "Global Administrator",
+                              ) ? (
                                 <Tab
-                                  onClick={() => setSelectedTestSection("all")}
+                                  onClick={() =>
+                                    setSelectedTestSection(ALL_SECTIONS)
+                                  }
                                 >
                                   <FormattedMessage id="all.label" />
                                 </Tab>
+                              ) : null}
 
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            ) : (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            )}
+                              {testSections?.map((item, id) => {
+                                return (
+                                  <Tab
+                                    key={id}
+                                    onClick={() =>
+                                      setSelectedTestSection(item.id)
+                                    }
+                                  >
+                                    {item.value}
+                                  </Tab>
+                                );
+                              })}
+                            </TabList>
                           </Tabs>
                         </Column>
                       </Grid>
                     )}
                     <DataTable
-                      rows={data
-                        .filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        )
-                        .slice((page - 1) * pageSize, page * pageSize)}
+                      rows={data}
                       headers={
                         selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
                           ? orderHeaders
@@ -752,54 +713,13 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       )}
                     </DataTable>
                     <Pagination
-                      onChange={handlePageChange}
-                      page={page}
-                      pageSize={pageSize}
-                      pageSizes={[10, 20, 30, 50, 100]}
-                      totalItems={
-                        data.filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        ).length
-                      }
-                      forwardText={intl.formatMessage({
-                        id: "pagination.forward",
+                      {...serverPaginationProps({
+                        paging,
+                        rowsOnPage: data.length,
+                        pageSize: serverPageSize,
+                        onPageRequest: loadResultsPage,
+                        intl,
                       })}
-                      backwardText={intl.formatMessage({
-                        id: "pagination.backward",
-                      })}
-                      itemRangeText={(min, max, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.item-range" },
-                          { min: min, max: max, total: total },
-                        )
-                      }
-                      itemsPerPageText={intl.formatMessage({
-                        id: "pagination.items-per-page",
-                      })}
-                      itemText={(min, max) =>
-                        intl.formatMessage(
-                          { id: "pagination.item" },
-                          { min: min, max: max },
-                        )
-                      }
-                      pageNumberText={intl.formatMessage({
-                        id: "pagination.page-number",
-                      })}
-                      pageRangeText={(_current, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.page-range" },
-                          { total: total },
-                        )
-                      }
-                      pageText={(page, pagesUnknown) =>
-                        intl.formatMessage(
-                          { id: "pagination.page" },
-                          { page: pagesUnknown ? "" : page },
-                        )
-                      }
                     />
                   </Column>
                 </Grid>

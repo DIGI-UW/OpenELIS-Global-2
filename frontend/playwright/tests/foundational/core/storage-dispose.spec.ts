@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, Locator } from "@playwright/test";
+import { StorageManagement } from "../../../fixtures/storage-management";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -50,13 +51,15 @@ async function pickDisposableSample(
 
 test.describe("Storage Dispose", () => {
   test("dispose sample item from overflow menu", async ({ page }) => {
-    await test.step("load Sample Items listing", async () => {
+    const storage = new StorageManagement(page);
+
+    await test.step("load the Sample Items tab", async () => {
       await page.goto("/Storage/sample-items", {
         waitUntil: "domcontentloaded",
       });
-      await expect(
-        page.getByRole("heading", { name: "Sample Items", exact: true }),
-      ).toBeVisible();
+      // Sample Items is a tab of the Storage Management container now.
+      await storage.expectContainer();
+      await storage.expectTabSelected("Sample Items");
     });
 
     const { row: sampleRow, sampleItemId } = await pickDisposableSample(page);

@@ -1,11 +1,13 @@
 package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -51,8 +53,6 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -75,8 +75,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
@@ -91,6 +90,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_terminology_mapping WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
     }
 
@@ -229,5 +229,107 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
         assertEquals(404, controller.getTerminology("99999999").getStatusCode().value());
         assertEquals(404, controller.saveTerminology("99999999", new TerminologyResponse(), authedRequest())
                 .getStatusCode().value());
+    }
+
+    // ── "No LOINC" flag ───────────────────────────────────────────────────────
+    // The flag warns that analyzer / electronic-order results can never route to
+    // this test. A LOINC mapping scoped to a component or a specimen is still a
+    // LOINC the resolver can match, so only a test with none at all is flagged.
+
+    /** A real component row, so a component-scoped mapping's FK resolves. */
+    private String insertComponent() {
+        String componentId = UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active, lastupdated)"
+                + " VALUES (?, ?, 'C1', 'Component 1', 0, 'Y', NOW())", componentId, TEST_ID);
+        return componentId;
+    }
+
+    private void insertLoincMapping(String componentId, Long sampleTypeId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, sample_type_id, source, code, relationship, is_active,"
+                        + " lastupdated) VALUES (?, ?, ?, ?, 'LOINC', '1234-5', 'SAME_AS', 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, componentId, sampleTypeId);
+    }
+
+    @Test
+    public void noLoinc_isTrueOnlyWhenTheTestCarriesNoLoincAnywhere() {
+        assertTrue("a test with no LOINC at all is flagged", controller.getLoincIntegrity(testId()).getBody().noLoinc);
+
+        insertLoincMapping(insertComponent(), null);
+
+        assertFalse("a component-scoped LOINC mapping means the test is identifiable",
+                controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /**
+     * A whole-test mapping clears the flag even though the legacy
+     * {@code test.loinc} column is empty — the mappings are the source of truth,
+     * not the column.
+     */
+    @Test
+    public void noLoinc_isFalseForAWholeTestMappingWithNoLegacyColumn() {
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+
+        insertLoincMapping(null, null);
+
+        assertFalse(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /** A non-LOINC mapping is not a LOINC, so the warning stands. */
+    @Test
+    public void noLoinc_staysTrueForASnomedOnlyTest() {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, source, code, relationship, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, 'SNOMED', '119364003', 'SAME_AS', 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, insertComponent());
+
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /**
+     * FR-16/17 (OGC-1119) — another ACTIVE test carrying the same legacy LOINC is
+     * reported (the resolver would route that code to whichever comes first); the
+     * test itself never is, and deactivating the twin clears the warning (FR-18).
+     */
+    @Test
+    public void duplicates_listOtherActiveTestsSharingTheLoinc_neverTheTestItself() {
+        long twinId = TEST_ID + 1;
+        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+        jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        jdbc.update("UPDATE clinlims.test SET loinc = '4548-4' WHERE id = ?", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", twinId,
+                "TerminologyIT twin");
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, loinc, guid, lastupdated,"
+                        + " name_localization_id) VALUES (?, ?, ?, 'Y', '4548-4', ?, NOW(), ?)",
+                twinId, "TerminologyIT twin", "TerminologyIT twin desc", UUID.randomUUID().toString(), twinId);
+        try {
+            java.util.List<org.openelisglobal.testcatalog.service.LoincIntegrityService.TestRef> duplicates = controller
+                    .getLoincIntegrity(testId()).getBody().duplicates;
+            assertEquals("exactly the twin is reported", 1, duplicates.size());
+            assertEquals(String.valueOf(twinId), duplicates.get(0).testId);
+
+            jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", twinId);
+            assertTrue("deactivating the twin clears the warning",
+                    controller.getLoincIntegrity(testId()).getBody().duplicates.isEmpty());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        }
+    }
+
+    /** A soft-deleted mapping does not count. */
+    @Test
+    public void noLoinc_ignoresAnInactiveMapping() {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, source, code, relationship, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, 'LOINC', '1234-5', 'SAME_AS', 'N', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, insertComponent());
+
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
     }
 }

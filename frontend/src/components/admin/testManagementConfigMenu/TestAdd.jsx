@@ -1,6 +1,7 @@
-import { useContext, useState, useRef } from "react";
+import { useContext, useState } from "react";
 import { Heading, Loading, Grid, Column, Section, Toggle } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -31,8 +32,11 @@ function TestAdd() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
+  // Nothing here comes from a read: a blank form is a new form, which is what
+  // reloading the document gave. Changing the key builds one.
+  const [formKey, setFormKey] = useState(0);
+  const startBlankForm = () => setFormKey((key) => key + 1);
 
   const [showGuide, setShowGuide] = useState(false);
 
@@ -48,9 +52,6 @@ function TestAdd() {
         message: "Form submission failed due to missing data.",
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     }
     setIsLoading(true);
     postToOpenElisServerJsonResponse(
@@ -63,21 +64,19 @@ function TestAdd() {
   };
 
   const handelTestAddPostCallback = (res) => {
-    if (res) {
-      setIsLoading(false);
+    setIsLoading(false);
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      startBlankForm();
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -85,9 +84,6 @@ function TestAdd() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   };
 
@@ -215,8 +211,10 @@ function TestAdd() {
           </Grid>
           {showGuide && <CustomShowGuide rows={rows} />}
           <TestStepForm
+            key={formKey}
             initialData={TestFormData}
             postCall={handleTestAddPostCall}
+            cancelCall={startBlankForm}
             mode="add"
           />
         </div>

@@ -107,8 +107,7 @@ class PatientEntryPage {
 
   searchPatientByDateOfBirth(dateOfBirth) {
     cy.enterText(this.dateOfBirth, dateOfBirth);
-    // Close the datepicker by clicking outside (prevents it from covering other elements)
-    cy.get("body").click(0, 0);
+    cy.get("body").type("{esc}"); // close datepicker without clicking (0,0) — that pixel is the logo link on desktop
   }
 
   clearPatientInfo() {

@@ -37,7 +37,7 @@ const SampleType = (props) => {
   const componentMounted = useRef(false);
   const sampleTypesRef = useRef(null);
 
-  const { index, rejectSampleReasons, removeSample, sample } = props;
+  const { index, rejectSampleReasons, removeSample, sample, domain } = props;
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleType, setSelectedSampleType] = useState({
@@ -299,7 +299,7 @@ const SampleType = (props) => {
         if (isChecked) {
           if (!testIsSelected(test.id)) {
             setSelectedTests((prevState) => {
-              return [...prevState, { id: test.id, name: test.name }];
+              return [...prevState, { ...test }];
             });
           }
         } else {
@@ -310,16 +310,9 @@ const SampleType = (props) => {
   };
 
   const removedTestFromSelectedTests = (test) => {
-    let index = 0;
-    for (let i in selectedTests) {
-      if (selectedTests[i].id === test.id) {
-        const newTests = selectedTests;
-        newTests.splice(index, 1);
-        setSelectedTests([...newTests]);
-        break;
-      }
-      index++;
-    }
+    setSelectedTests((currentTests) =>
+      currentTests.filter((selectedTest) => selectedTest.id !== test.id),
+    );
   };
 
   function removeReferralRequest(test) {
@@ -460,7 +453,7 @@ const SampleType = (props) => {
 
   function addTestToSelectedTests(test) {
     if (!testIsSelected(test.id)) {
-      setSelectedTests([...selectedTests, { id: test.id, name: test.name }]);
+      setSelectedTests([...selectedTests, { ...test }]);
     }
   }
 
@@ -539,11 +532,35 @@ const SampleType = (props) => {
       displayReferralOrgOptions,
     );
     repopulateUI();
-    getFromOpenElisServer("/rest/user-sample-types", fetchSamplesTypes);
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesEndpoint, fetchSamplesTypes);
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  const domainFetchRef = useRef(0);
+  useEffect(() => {
+    const fetchId = ++domainFetchRef.current;
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    setLoading(true);
+    getFromOpenElisServer(sampleTypesEndpoint, (res) => {
+      if (componentMounted.current && fetchId === domainFetchRef.current) {
+        setSampleTypes(res);
+        setLoading(false);
+      }
+    });
+  }, [domain]);
 
   return (
     <>

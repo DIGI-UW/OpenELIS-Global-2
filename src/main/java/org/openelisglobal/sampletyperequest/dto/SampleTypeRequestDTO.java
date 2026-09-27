@@ -1,6 +1,8 @@
 package org.openelisglobal.sampletyperequest.dto;
 
+import java.util.List;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 
 /**
  * DTO for SampleTypeRequest - used in REST API responses.
@@ -17,6 +19,7 @@ public class SampleTypeRequestDTO {
     private String unitOfMeasureName;
     private String requestedTests;
     private String requestedTestNames;
+    private List<TestSelectionDTO> requestedTestDetails;
     private String requestedPanels;
     private String requestedPanelNames;
     private String status;
@@ -133,6 +136,14 @@ public class SampleTypeRequestDTO {
 
     public void setRequestedTestNames(String requestedTestNames) {
         this.requestedTestNames = requestedTestNames;
+    }
+
+    public List<TestSelectionDTO> getRequestedTestDetails() {
+        return requestedTestDetails;
+    }
+
+    public void setRequestedTestDetails(List<TestSelectionDTO> requestedTestDetails) {
+        this.requestedTestDetails = requestedTestDetails;
     }
 
     public String getRequestedPanelNames() {

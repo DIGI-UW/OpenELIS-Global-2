@@ -17,6 +17,8 @@ import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
@@ -26,11 +28,15 @@ import org.springframework.mock.web.MockHttpServletRequest;
 public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String DATASET_XML = "testdata/sample-edit-service.xml";
+    private static final String REMOVE_SAMPLE_DATASET_XML = "testdata/sample-edit-service-remove-sample.xml";
     private static final String SYS_USER_ID = "1";
     private static final String ACCESSION_NUMBER = "24-00001";
     private static final String EXISTING_ANALYSIS_ID = "1";
     private static final String EXISTING_SAMPLE_ITEM_ID = "1";
     private static final String TEST_ID = "1";
+    private static final String SECOND_ANALYSIS_ON_SAME_ITEM_ID = "2";
+    private static final String OTHER_SAMPLE_ITEM_ID = "2";
+    private static final String ANALYSIS_ON_OTHER_ITEM_ID = "3";
 
     @Autowired
     private SampleEditService sampleEditService;
@@ -43,6 +49,9 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleHumanService sampleHumanService;
 
     @Before
     public void setUp() throws Exception {
@@ -85,6 +94,28 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("Reference should match", "REF-123", updatedSample.getConsentFormReference());
         assertEquals("Recorded At should match exactly", "2024-02-15 00:00:00.0",
                 updatedSample.getConsentRecordedAt().toString());
+    }
+
+    /**
+     * OGC-1266: an order saved without a patient (EQA, environmental, a declared
+     * no-patient order) could not be modified at all; the save dereferenced the
+     * missing patient.
+     */
+    @Test
+    public void editSample_onAnOrderWithoutAPatient_shouldSaveTheChange() {
+        Sample sample = sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER);
+        SampleHuman lookup = new SampleHuman();
+        lookup.setSampleId(sample.getId());
+        SampleHuman link = sampleHumanService.getDataBySample(lookup);
+        link.setPatientId(null);
+        link.setSysUserId(SYS_USER_ID);
+        sampleHumanService.update(link);
+        SampleEditForm form = createBaseForm();
+        form.getSampleOrderItems().setPriority(OrderPriority.STAT);
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(), sample, true, SYS_USER_ID);
+
+        assertEquals(OrderPriority.STAT, sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER).getPriority());
     }
 
     @Test
@@ -199,6 +230,61 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("Sample item status should be Canceled", canceledSampleStatus, freshItem.getStatusId());
         assertEquals("Associated analysis status should be Canceled", canceledAnalysisStatus,
                 freshAnalysis.getStatusId());
+    }
+
+    @Test
+    public void editSample_withRemovedSampleItem_shouldCancelEveryAnalysisOnThatItemOnly() throws Exception {
+        executeDataSetWithStateManagement(REMOVE_SAMPLE_DATASET_XML);
+        SampleEditForm form = createBaseForm();
+
+        SampleEditItem firstRow = new SampleEditItem();
+        firstRow.setAccessionNumber(ACCESSION_NUMBER + "-1");
+        firstRow.setRemoveSample(true);
+        firstRow.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        firstRow.setAnalysisId(EXISTING_ANALYSIS_ID);
+        form.getExistingTests().add(firstRow);
+
+        SampleEditItem secondRow = new SampleEditItem();
+        secondRow.setAccessionNumber("");
+        secondRow.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        secondRow.setAnalysisId(SECOND_ANALYSIS_ON_SAME_ITEM_ID);
+        form.getExistingTests().add(secondRow);
+
+        SampleEditItem otherItemRow = new SampleEditItem();
+        otherItemRow.setAccessionNumber(ACCESSION_NUMBER + "-2");
+        otherItemRow.setSampleItemId(OTHER_SAMPLE_ITEM_ID);
+        otherItemRow.setAnalysisId(ANALYSIS_ON_OTHER_ITEM_ID);
+        form.getExistingTests().add(otherItemRow);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        Sample sample = sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER);
+        String otherItemStatusBefore = sampleItemService.get(OTHER_SAMPLE_ITEM_ID).getStatusId();
+
+        sampleEditService.editSample(form, request, sample, true, SYS_USER_ID);
+
+        String canceledSampleStatus = SpringContext.getBean(IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Canceled);
+        String canceledAnalysisStatus = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.Canceled);
+        String notStartedAnalysisStatus = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.NotStarted);
+
+        assertEquals("Removed sample item should be Canceled", canceledSampleStatus,
+                sampleItemService.get(EXISTING_SAMPLE_ITEM_ID).getStatusId());
+        assertEquals("Analysis on the ticked row should be Canceled", canceledAnalysisStatus,
+                analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+        assertEquals("Second analysis on the removed sample item should be Canceled too", canceledAnalysisStatus,
+                analysisService.get(SECOND_ANALYSIS_ON_SAME_ITEM_ID).getStatusId());
+        assertEquals("Analysis on the other sample item must stay untouched", notStartedAnalysisStatus,
+                analysisService.get(ANALYSIS_ON_OTHER_ITEM_ID).getStatusId());
+        assertEquals("Other sample item must stay untouched", otherItemStatusBefore,
+                sampleItemService.get(OTHER_SAMPLE_ITEM_ID).getStatusId());
+
+        List<String> updatedAnalyses = sampleEditService.getUpdatedAnalysisList();
+        assertTrue("Updated list should carry the ticked row's analysis",
+                updatedAnalyses.contains(EXISTING_ANALYSIS_ID));
+        assertTrue("Updated list should carry the second analysis on the removed item",
+                updatedAnalyses.contains(SECOND_ANALYSIS_ON_SAME_ITEM_ID));
     }
 
     @Test

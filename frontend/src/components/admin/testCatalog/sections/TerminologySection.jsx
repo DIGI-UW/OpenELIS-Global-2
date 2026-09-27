@@ -54,6 +54,9 @@ const TerminologySection = ({ testId }) => {
   // The test's result components (id, code, label), so a mapping can be scoped
   // to a single component ("Applies to") instead of the whole test.
   const [components, setComponents] = useState([]);
+  // OGC-1145 FR-13: the test's associated sample types — a mapping may
+  // override for one specimen (null = shared across all of them).
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [loincIntegrity, setLoincIntegrity] = useState(null);
   const [draft, setDraft] = useState({
     source: "",
@@ -62,6 +65,7 @@ const TerminologySection = ({ testId }) => {
     relationship: "SAME_AS",
     displayName: "",
     componentId: "",
+    sampleTypeId: "",
   });
 
   const componentLabel = (id) => {
@@ -71,6 +75,13 @@ const TerminologySection = ({ testId }) => {
     }
     return c.label || c.code || "";
   };
+
+  const sampleTypeLabel = (id) => {
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : "";
+  };
+  // The override picker only matters once the test runs on several specimens.
+  const showSampleTypeColumn = sampleTypes.length > 1;
   // Row indices currently in edit mode; a row's fields are editable only after
   // its Edit button is clicked.
   const [editingRows, setEditingRows] = useState(() => new Set());
@@ -104,6 +115,7 @@ const TerminologySection = ({ testId }) => {
         }
         setMappings(res.mappings || []);
         setComponents(res.components || []);
+        setSampleTypes(res.sampleTypes || []);
       },
     );
   };
@@ -129,7 +141,9 @@ const TerminologySection = ({ testId }) => {
   // duplicate — the backend rejects it with a bodyless 422, which used to
   // surface as nothing more than a generic failure.
   const mappingKey = (m) =>
-    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}`;
+    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}|${
+      m.sampleTypeId || ""
+    }`;
 
   const notifyDuplicate = (m) => {
     setNotificationVisible(true);
@@ -162,6 +176,7 @@ const TerminologySection = ({ testId }) => {
         relationship: draft.relationship || "SAME_AS",
         displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       },
     ]);
     setDraft({
@@ -170,6 +185,7 @@ const TerminologySection = ({ testId }) => {
       relationship: "SAME_AS",
       displayName: "",
       componentId: "",
+      sampleTypeId: "",
     });
   };
 
@@ -192,6 +208,7 @@ const TerminologySection = ({ testId }) => {
         relationship: draft.relationship || "SAME_AS",
         displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       });
     }
     // Persist only complete rows (source + code); drop blank/partial ones.
@@ -219,6 +236,7 @@ const TerminologySection = ({ testId }) => {
         relationship: m.relationship || "SAME_AS",
         displayName: m.displayName || null,
         componentId: m.componentId || null,
+        sampleTypeId: m.sampleTypeId || null,
       })),
     };
     putToOpenElisServer(
@@ -357,6 +375,11 @@ const TerminologySection = ({ testId }) => {
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.appliesTo" />
               </TableHeader>
+              {showSampleTypeColumn && (
+                <TableHeader>
+                  <FormattedMessage id="label.testCatalog.override.col.sampleType" />
+                </TableHeader>
+              )}
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.actions" />
               </TableHeader>
@@ -484,6 +507,36 @@ const TerminologySection = ({ testId }) => {
                       <FormattedMessage id="label.testCatalog.terminology.appliesTo.test" />
                     )}
                   </TableCell>
+                  {showSampleTypeColumn && (
+                    <TableCell>
+                      {editing ? (
+                        <Select
+                          id={`mapping-sample-type-${i}`}
+                          labelText=""
+                          value={m.sampleTypeId || ""}
+                          onChange={(e) =>
+                            updateMapping(i, {
+                              sampleTypeId: e.target.value || null,
+                            })
+                          }
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage({
+                              id: "label.testCatalog.override.shared",
+                            })}
+                          />
+                          {sampleTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.id} text={t.name} />
+                          ))}
+                        </Select>
+                      ) : m.sampleTypeId ? (
+                        <Tag type="blue">{sampleTypeLabel(m.sampleTypeId)}</Tag>
+                      ) : (
+                        <FormattedMessage id="label.testCatalog.override.shared" />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       kind="ghost"
@@ -582,6 +635,28 @@ const TerminologySection = ({ testId }) => {
             <SelectItem key={c.id} value={c.id} text={c.label || c.code} />
           ))}
         </Select>
+        {showSampleTypeColumn && (
+          <Select
+            id="terminology-sample-type"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.override.col.sampleType",
+            })}
+            value={draft.sampleTypeId}
+            onChange={(e) =>
+              setDraft({ ...draft, sampleTypeId: e.target.value })
+            }
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.override.shared",
+              })}
+            />
+            {sampleTypes.map((t) => (
+              <SelectItem key={t.id} value={t.id} text={t.name} />
+            ))}
+          </Select>
+        )}
         <Button kind="tertiary" renderIcon={Add} onClick={addMapping}>
           <FormattedMessage id="label.testCatalog.terminology.addMapping" />
         </Button>

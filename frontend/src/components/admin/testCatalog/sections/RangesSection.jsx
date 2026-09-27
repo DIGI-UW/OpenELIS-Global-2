@@ -42,6 +42,9 @@ const RangesSection = ({ testId }) => {
   const [ranges, setRanges] = useState([]);
   const [coverage, setCoverage] = useState(null);
   const [components, setComponents] = useState([]);
+  // OGC-1145 Phase 2: the test's associated sample types — a range may
+  // override for one specimen (null = shared across all of them).
+  const [sampleTypes, setSampleTypes] = useState([]);
   // null = modal closed; -1 = adding a new range; >=0 = editing ranges[idx].
   const [editingIndex, setEditingIndex] = useState(null);
 
@@ -58,6 +61,7 @@ const RangesSection = ({ testId }) => {
         }
         setRanges(res.ranges);
         setCoverage(res.coverage);
+        setSampleTypes(res.sampleTypes || []);
       },
     );
   };
@@ -104,6 +108,7 @@ const RangesSection = ({ testId }) => {
       ranges: ranges.map((r) => ({
         id: r.id,
         componentId: r.componentId,
+        sampleTypeId: r.sampleTypeId,
         gender: r.gender,
         minAge: r.minAge,
         maxAge: r.maxAge,
@@ -145,6 +150,16 @@ const RangesSection = ({ testId }) => {
 
   // Only worth a Component column when the test actually has several components.
   const showComponentColumn = components.length > 1;
+  // The specimen-override column only matters with several sample types.
+  const showSampleTypeColumn = sampleTypes.length > 1;
+
+  const sampleTypeLabel = (id) => {
+    if (!id) {
+      return intl.formatMessage({ id: "label.testCatalog.override.shared" });
+    }
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : id;
+  };
 
   const componentLabel = (id) => {
     if (!id) {
@@ -247,6 +262,13 @@ const RangesSection = ({ testId }) => {
                   })}
                 </TableHeader>
               )}
+              {showSampleTypeColumn && (
+                <TableHeader>
+                  {intl.formatMessage({
+                    id: "label.testCatalog.override.col.sampleType",
+                  })}
+                </TableHeader>
+              )}
               <TableHeader>
                 {intl.formatMessage({ id: "label.testCatalog.ranges.col.sex" })}
               </TableHeader>
@@ -280,6 +302,9 @@ const RangesSection = ({ testId }) => {
               <TableRow key={r.id || `new-${i}`}>
                 {showComponentColumn && (
                   <TableCell>{componentLabel(r.componentId)}</TableCell>
+                )}
+                {showSampleTypeColumn && (
+                  <TableCell>{sampleTypeLabel(r.sampleTypeId)}</TableCell>
                 )}
                 <TableCell>{sexLabel(r.gender)}</TableCell>
                 <TableCell>{ageLabel(r)}</TableCell>
@@ -324,6 +349,7 @@ const RangesSection = ({ testId }) => {
         <RangeModal
           range={editingIndex >= 0 ? ranges[editingIndex] : null}
           components={components}
+          sampleTypes={sampleTypes}
           onSave={handleSaveRange}
           onCancel={() => setEditingIndex(null)}
         />

@@ -97,9 +97,17 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         test.setSysUserId(sysUserId);
         String testId = testService.insert(test);
 
-        if (!GenericValidator.isBlankOrNull(params.sampleTypeId)) {
+        // OGC-1145 FR-2: link every requested sample type (deduped, order kept);
+        // the legacy scalar still works for callers that send a single type.
+        java.util.Set<String> sampleTypeIds = new java.util.LinkedHashSet<>();
+        if (params.sampleTypeIds != null) {
+            params.sampleTypeIds.stream().filter(id -> !GenericValidator.isBlankOrNull(id)).forEach(sampleTypeIds::add);
+        } else if (!GenericValidator.isBlankOrNull(params.sampleTypeId)) {
+            sampleTypeIds.add(params.sampleTypeId);
+        }
+        for (String sampleTypeId : sampleTypeIds) {
             TypeOfSampleTest sampleTypeLink = new TypeOfSampleTest();
-            sampleTypeLink.setTypeOfSampleId(params.sampleTypeId);
+            sampleTypeLink.setTypeOfSampleId(sampleTypeId);
             sampleTypeLink.setTestId(testId);
             sampleTypeLink.setSysUserId(sysUserId);
             typeOfSampleTestService.insert(sampleTypeLink);
