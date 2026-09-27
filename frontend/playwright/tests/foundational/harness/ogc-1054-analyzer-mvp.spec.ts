@@ -1,5 +1,6 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import {
@@ -32,7 +33,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function shippedAnalyzer(
+async function analyzerByName(
   page: Page,
   name: string,
   profileId: string,
@@ -162,11 +163,20 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
-    const analyzer = await shippedAnalyzer(
-      page,
-      "Cepheid GeneXpert (ASTM Mode)",
-      "genexpert-astm",
-    );
+    const runId = Date.now();
+    const analyzerName = `E2E GeneXpert ${runId}`;
+    const listenerPort = String(40_000 + (runId % 20_000));
+    const list = new AnalyzerListPage(page);
+    const setup = new AnalyzerSetupPage(page);
+    await list.goto();
+    await list.clickAdd();
+    await setup.expectOpen();
+    await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
+    await setup.fillName(analyzerName);
+    await setup.selectLabUnit("Molecular Biology");
+    await setup.continueToVerify();
+    const verifyUrl = page.url();
+    const analyzer = await analyzerByName(page, analyzerName, "genexpert-astm");
     const order = await createAnalyzerClinicalOrder(page, {
       profileId: analyzer.profileId,
       profileRevision: analyzer.profileRevision,
@@ -178,7 +188,17 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     });
     await confirmShippedMapping(page, analyzer);
     await capture(page, testInfo, "gene-shipped-mapping-confirmed");
-    await activateSavedConnection(page, analyzer);
+    await page.goto(verifyUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: NAV_TIMEOUT,
+    });
+    await setup.continueToConnect();
+    await setup.fillPort(listenerPort);
+    await page.getByRole("button", { name: "Finish and activate" }).click();
+    const analyzerRow = page.getByTestId(`analyzer-row-${analyzer.id}`);
+    await expect(analyzerRow).toContainText("Active", {
+      timeout: LONG_TIMEOUT,
+    });
     await capture(page, testInfo, "gene-connection-active");
 
     await sendGeneXpertAstm(
@@ -223,7 +243,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
-    const analyzer = await shippedAnalyzer(
+    const analyzer = await analyzerByName(
       page,
       "FluoroCycler XT",
       "fluorocycler-xt",
