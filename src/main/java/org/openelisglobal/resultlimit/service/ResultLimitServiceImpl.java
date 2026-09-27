@@ -221,7 +221,9 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
      * coverage check assumes; selecting from the override rows alone left them with
      * no range at all. Without a specimen in context, shared rows are preferred so
      * an override for one specimen never leaks into another's evaluation. The full
-     * pool is the last resort (legacy data where every row predates scoping).
+     * pool is the last resort only without a specimen in context (legacy data where
+     * every row predates scoping); with one, a specimen that has neither its own
+     * nor a shared range has none, rather than borrowing another specimen's.
      */
     private ResultLimit selectWithSpecimenPrecedence(List<ResultLimit> pool, String sampleTypeId, Patient patient) {
         if (pool == null || pool.isEmpty()) {
@@ -241,6 +243,9 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             if (override != null && !GenericValidator.isBlankOrNull(override.getId()) || shared.isEmpty()) {
                 return override;
             }
+        }
+        if (shared.isEmpty() && sampleTypeId != null) {
+            return null;
         }
         return selectForPatient(shared.isEmpty() ? new ArrayList<>(pool) : shared, patient);
     }
