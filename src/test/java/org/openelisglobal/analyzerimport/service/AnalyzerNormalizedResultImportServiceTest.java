@@ -25,16 +25,15 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingVerificationAssessment;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
@@ -59,6 +58,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Mock
     private AnalyzerSiteBindingConfirmationService confirmationService;
     @Mock
+    private AnalyzerMappingCatalogService mappingCatalogService;
+    @Mock
     private AnalyzerResultsService analyzerResultsService;
     @Mock
     private TestResultService testResultService;
@@ -77,10 +78,15 @@ public class AnalyzerNormalizedResultImportServiceTest {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
                 analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO,
-                confirmationService);
+                confirmationService, mappingCatalogService);
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
-        when(confirmationService.assessCurrent(any(), any()))
-                .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(new AnalyzerSiteBindingConfirmation()));
+        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.TestOption("501", "Numeric test", "NUM", List.of()),
+                        new AnalyzerMappingCatalogService.TestOption("601", "Qualitative test", "QUAL", List.of())));
+        when(mappingCatalogService.getActiveResultOptions("601"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("701", "9001", "Indeterminate"),
+                        new AnalyzerMappingCatalogService.ResultOption("702", "9002", "Positive")));
         analyzer = analyzer("site.mock-hematology", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
@@ -114,7 +120,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
     @Test
     public void incomingResultIsHeldUntilItsSelectedMappingIsConfirmed() throws IOException {
-        when(confirmationService.assessCurrent(any(), any())).thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
@@ -156,8 +162,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
 
         arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
-        when(confirmationService.assessCurrent(any(), any()))
-                .thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
 

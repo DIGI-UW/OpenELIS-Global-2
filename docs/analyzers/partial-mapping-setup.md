@@ -14,6 +14,20 @@ vendor-specific synonyms or positive/negative equivalences are guessed. Existing
 saved choices are never overwritten when another analyzer is created or setup is
 reopened.
 
+## A catalog change affects only the relevant results
+
+For a previously confirmed configuration, an inactive test or answer choice
+holds only observations that use that mapping. Other valid observations continue
+to ordinary review. The original value and source payload remain available for
+correction and retry. Restoring the catalog entry or applying a corrected,
+confirmed mapping recovers the saved observation in place.
+
+The mapping editor may still show the overall configuration as needing
+attention; that status does not make every incoming observation invalid. The
+selected profile, mapping revision, recorded review and control-recognition
+configuration must still match. A newly saved but unconfirmed replacement does
+not inherit a previous revision's confirmation.
+
 ## Correct and recover held results
 
 1. Open **Analyzer Results → Import issues** and follow the mapping link for an
