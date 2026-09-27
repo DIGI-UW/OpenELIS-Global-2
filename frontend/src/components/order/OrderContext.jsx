@@ -208,7 +208,7 @@ export const getInitialOrderData = (workflowType = "clinical") => {
       ...defaults.sampleOrderItems,
       requestDate: "",
       receivedDateForDisplay: "",
-      receivedTime: getCurrentTime(),
+      receivedTime: "",
       paymentOptionSelection: "",
       environmentalFields: {
         ...defaults.sampleOrderItems?.environmentalFields,
@@ -1254,7 +1254,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             ...prev.sampleOrderItems,
             requestDate: response.currentDate,
             receivedDateForDisplay: response.currentDate,
-            receivedTime: getCurrentTime(),
+            receivedTime:
+              response.sampleOrderItems?.receivedTime || getCurrentTime(),
             paymentOptions: response.sampleOrderItems?.paymentOptions || [],
             paymentOptionSelection: "",
             referringSiteList:
@@ -1290,7 +1291,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             requestDate: response.currentDate,
             receivedDateForDisplay: response.currentDate,
             receivedTime:
-              prev.sampleOrderItems?.receivedTime || getCurrentTime(),
+              prev.sampleOrderItems?.receivedTime ||
+              response.sampleOrderItems?.receivedTime ||
+              getCurrentTime(),
             // Use payment options from API if available
             paymentOptions: response.sampleOrderItems?.paymentOptions || [],
             // Keep paymentOptionSelection empty (not "free")
