@@ -1,13 +1,57 @@
 # OGC-1054 Analyzer Feature Roadmap
 
-**Updated:** 2026-09-07
+**Updated:** 2026-09-27
 
 **Product and ownership contract:** [feature specification](../OGC-1054-analyzer-qc-config/spec.md)
 
 **Plain-language review:** [feature map](../OGC-1054-analyzer-qc-config/feature-map.md)
 
-This is the only OGC-1054 delivery-state document. It is deliberately short
-enough to review before each implementation slice.
+## Current remediation direction — 27 September 2026
+
+The initial remediation phase is **R0: restore trustworthy analyzer testing in
+existing [PR #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332)**.
+The [implementation plan](analyzer-test-remediation-plan.md) records the approved
+setup, cleanup scope, checkpoints and evidence requirements. #4332 owns the full
+analyzer test remediation, including its existing backend foundation gaps; it
+is no longer only a candidate for salvaging a few tests.
+
+The supported core installation must work using Bridge-shipped profiles and
+normal OE2 catalog/default initialization. Test setup creates synthetic clinical
+prerequisites through production APIs. It must not choose the first same-LOINC
+test, repair mappings, exclude unresolved entries, silently confirm mappings or
+insert clinical results through SQL. The test asserts the supplied defaults and
+drives the actual setup, transport, review and recovery workflow.
+
+| Remediation phase                | Owner and outcome                                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R0 — Initial test remediation    | #4332 reconciles real-service and isolation work, replaces hidden setup decisions with API prerequisites, strengthens independent clinical assertions and removes superseded analyzer test paths. |
+| R1 — Immediate recovery          | #4448 addresses retained observations, specimen recovery, mapping retry and truthful delivery errors, qualified with the repaired tests.                                                          |
+| R2 — Mapping isolation           | #4449 checks affected observations without holding unrelated usable results.                                                                                                                      |
+| R3 — Simple setup and correction | Normal setup and visible correction work without making users manage internal revisions.                                                                                                          |
+| R4 — Durable delivery            | Existing receipt/retry work proves retention, outage recovery and no duplicate clinical outcomes.                                                                                                 |
+| R5 — Shipped defaults            | Bridge profiles and the OE2 catalog/default resolver supply compatible reusable defaults; fixture scripts cannot compensate for gaps.                                                             |
+| R6 — Remaining PR cleanup        | Preserve unique useful work and resolve overlapping or superseded PRs with evidence. #4332 is already assigned to R0.                                                                             |
+| R7 — Core qualification          | Run full ASTM, FILE and HL7 setup-to-result, mapping recovery, outage/replay and populated-upgrade scenarios. Present videos from those same tests with exact candidate evidence.                 |
+| R8 — Madagascar configuration    | After core qualification, update distro pins and check only its configuration differences using a limited subset of the qualified workflows.                                                      |
+
+Start R0 by publishing tests that expose the current failures. R1–R5 product
+fixes can proceed against that evidence; test implementation does not require
+concealing product failures to obtain a passing baseline. #4332 merge readiness
+requires passing applicable checks on its intended dependencies. Required
+workflow failures stay visible until fixed, and full core acceptance requires
+the actual candidate to pass with reviewed evidence presented to the user.
+
+API prerequisite creation and supplemental persisted-result readback are
+allowed; UI assertions still prove the interactions claimed by each story.
+Both CI and recordings use the same scenarios and assertions. Existing recording
+support is retained; extra pacing is justified only by reviewing actual evidence.
+
+This amendment supersedes conflicting execution/status instructions below.
+The earlier train, PR state and acceptance records remain historical context;
+they are not current merge, deployment or acceptance claims. The remediation
+phase labels above are distinct from the original roadmap's R0/R1/R2 labels.
+
+## Historical delivery roadmap — 7 September 2026
 
 ## Sources And Boundaries
 
