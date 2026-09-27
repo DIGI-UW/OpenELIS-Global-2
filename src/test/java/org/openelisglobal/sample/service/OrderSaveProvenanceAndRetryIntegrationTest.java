@@ -17,15 +17,20 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
+import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.requester.service.SampleRequesterService;
+import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -71,6 +76,10 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     private TestService testService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private OrganizationService organizationService;
+    @Autowired
+    private SampleRequesterService sampleRequesterService;
 
     private String userId;
     private Patient patient;
@@ -163,6 +172,20 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     }
 
     @Test
+    public void savingTheOrderAgainKeepsOneRowForItsSiteAndAChangedSiteReplacesIt() {
+        Sample sample = newSample();
+        Organization firstSite = organization("Kila Health Centre");
+        Organization secondSite = organization("Moyo District Hospital");
+
+        persistWithSite(sample, firstSite);
+        persistWithSite(sample, firstSite);
+        assertEquals(List.of(Long.valueOf(firstSite.getId())), organizationRequesterIds(sample));
+
+        persistWithSite(sample, secondSite);
+        assertEquals(List.of(Long.valueOf(secondSite.getId())), organizationRequesterIds(sample));
+    }
+
+    @Test
     public void aSampleTypeNamedLongerThanFortyCharactersCanBeOrdered() {
         String longName = "Nasopharyngeal Swab from Disease-Bearing Animal";
         Localization localization = localizationService.get(sampleType.getLocalization().getId());
@@ -180,6 +203,31 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         assertEquals(1, analyses.size());
         assertNotNull(analyses.getFirst().getId());
         assertEquals(longName, analyses.getFirst().getSampleTypeName());
+    }
+
+    private Organization organization(String name) {
+        Organization organization = new Organization();
+        organization.setOrganizationName(name + " " + UUID.randomUUID().toString().substring(0, 6));
+        organization.setIsActive("Y");
+        organization.setMlsSentinelLabFlag("N");
+        organization.setSysUserId(userId);
+        organization.setId(organizationService.insert(organization));
+        return organization;
+    }
+
+    private List<Long> organizationRequesterIds(Sample sample) {
+        long organizationType = TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID;
+        return sampleRequesterService.getRequestersForSampleId(sample.getId()).stream()
+                .filter(requester -> requester.getRequesterTypeId() == organizationType)
+                .map(SampleRequester::getRequesterId).toList();
+    }
+
+    private void persistWithSite(Sample order, Organization site) {
+        SampleRequester siteRequester = new SampleRequester();
+        siteRequester.setRequesterId(site.getId());
+        siteRequester.setRequesterTypeId(TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);
+        siteRequester.setSysUserId(userId);
+        persist(order, "<samples></samples>", List.of(), siteRequester);
     }
 
     private org.openelisglobal.test.valueholder.Test catalogTest() {
@@ -253,6 +301,11 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
      * id on every request, so a repeated save does not carry a stale version.
      */
     private void persist(Sample order, String sampleXml, List<SampleTypeRequestDTO> requestedSampleTypes) {
+        persist(order, sampleXml, requestedSampleTypes, null);
+    }
+
+    private void persist(Sample order, String sampleXml, List<SampleTypeRequestDTO> requestedSampleTypes,
+            SampleRequester requesterSite) {
         Sample sample = order.getId() == null ? order : sampleService.get(order.getId());
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         form.setRequestedSampleTypes(requestedSampleTypes);
@@ -261,6 +314,7 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         updateData.setSample(sample);
         updateData.setSampleAddService(sampleAddService);
         updateData.setSampleItemsTests(sampleAddService.createSampleTestCollection());
+        updateData.setRequesterSite(requesterSite);
 
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setPatientPK(patient.getId());

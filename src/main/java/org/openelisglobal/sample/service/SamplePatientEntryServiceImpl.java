@@ -994,6 +994,30 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
+    /**
+     * The site and department rows already linking this order to organizations. A
+     * later step saves the same site again, and inserting it every time left one
+     * duplicate row per save.
+     */
+    private List<SampleRequester> organizationRequestersOf(SamplePatientUpdateData updateData) {
+        if (updateData.getSample() == null || updateData.getSample().getId() == null) {
+            return new ArrayList<>();
+        }
+        long organizationTypeId = TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID;
+        List<SampleRequester> rows = new ArrayList<>();
+        for (SampleRequester requester : sampleRequesterService
+                .getRequestersForSampleId(updateData.getSample().getId())) {
+            if (requester.getRequesterTypeId() == organizationTypeId) {
+                rows.add(requester);
+            }
+        }
+        return rows;
+    }
+
+    private boolean isLinked(List<SampleRequester> requesters, long organizationId) {
+        return requesters.stream().anyMatch(requester -> requester.getRequesterId() == organizationId);
+    }
+
     void persistRequesterData(SamplePatientUpdateData updateData) {
         if (updateData.getProviderPerson() != null && !org.apache.commons.validator.GenericValidator
                 .isBlankOrNull(updateData.getProviderPerson().getId())) {
@@ -1022,12 +1046,27 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        List<SampleRequester> existingOrganizationRequesters = organizationRequestersOf(updateData);
         if (updateData.getRequesterSite() != null) {
             updateData.getRequesterSite().setSampleId(Long.parseLong(updateData.getSample().getId()));
             if (updateData.getNewOrganization() != null) {
                 updateData.getRequesterSite().setRequesterId(updateData.getNewOrganization().getId());
             }
-            sampleRequesterService.insert(updateData.getRequesterSite());
+            Set<Long> linkedOrganizations = new HashSet<>();
+            linkedOrganizations.add(updateData.getRequesterSite().getRequesterId());
+            if (updateData.getRequesterSiteDepartment() != null) {
+                linkedOrganizations.add(updateData.getRequesterSiteDepartment().getRequesterId());
+            }
+            for (Iterator<SampleRequester> stale = existingOrganizationRequesters.iterator(); stale.hasNext();) {
+                SampleRequester existing = stale.next();
+                if (!linkedOrganizations.contains(existing.getRequesterId())) {
+                    sampleRequesterService.delete(existing);
+                    stale.remove();
+                }
+            }
+            if (!isLinked(existingOrganizationRequesters, updateData.getRequesterSite().getRequesterId())) {
+                sampleRequesterService.insert(updateData.getRequesterSite());
+            }
         }
 
         if (updateData.getRequesterSiteDepartment() != null) {
@@ -1048,7 +1087,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             //
             // updateData.getRequesterSite().setRequesterId(updateData.getNewOrganizationDepartment().getId());
             // }
-            sampleRequesterService.insert(updateData.getRequesterSiteDepartment());
+            if (!isLinked(existingOrganizationRequesters, updateData.getRequesterSiteDepartment().getRequesterId())) {
+                sampleRequesterService.insert(updateData.getRequesterSiteDepartment());
+            }
         }
 
         // Standalone Requestor contact (Environmental/Vector) — independent
