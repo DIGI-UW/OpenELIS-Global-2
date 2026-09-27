@@ -107,6 +107,52 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await expect(page.locator(".selected-entity-card")).toHaveCount(0);
   });
 
+  test("the program picker lists every program of the domain and filters as you type", async ({
+    page,
+  }) => {
+    const programs: Array<{ value: string }> = await (
+      await page.request.get(`${API}/rest/user-programs?domain=CLINICAL`)
+    ).json();
+    test.skip(programs.length < 2, "needs at least two clinical programs");
+    await openEnterOrder(page);
+    const picker = page.locator("#program");
+    const options = page
+      .locator(".program-section")
+      .locator(".cds--list-box__menu-item");
+
+    await picker.evaluate((input) => input.scrollIntoView({ block: "center" }));
+    await picker.click();
+    await expect(options).toHaveCount(programs.length);
+    const menu = await page
+      .locator(".program-section .cds--list-box__menu")
+      .evaluate((list) => {
+        const box = list.getBoundingClientRect();
+        const bottomEdge = document.elementFromPoint(
+          box.left + 10,
+          box.bottom - 4,
+        );
+        return {
+          wholeMenuShowing: list.contains(bottomEdge),
+          scrollsWhenLonger:
+            list.scrollHeight <= list.clientHeight ||
+            ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
+        };
+      });
+    expect(menu).toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
+    const last = programs[programs.length - 1].value;
+    await options.filter({ hasText: last }).click();
+    await expect(picker).toHaveValue(last);
+
+    const typed = last.slice(0, 4).toUpperCase();
+    const matching = programs.filter((program) =>
+      program.value.toUpperCase().includes(typed),
+    );
+    await picker.fill(typed);
+    await expect(options).toHaveCount(matching.length);
+    await picker.fill("zzzz-no-program");
+    await expect(options).toHaveCount(0);
+  });
+
   test("a test ordered on its own is collected, fulfilled and reloaded without its panel", async ({
     page,
   }) => {

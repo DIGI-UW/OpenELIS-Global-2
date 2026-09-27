@@ -13,6 +13,7 @@ import {
   Column,
 } from "@carbon/react";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import { filterByTypedLabel } from "../../comboFilter";
 
 const EMPTY_VALUES = {
   referredInstituteId: "",
@@ -189,6 +190,7 @@ const OrderReferOutForm = ({
               })}
               items={referralOrganizations}
               itemToString={(item) => (item ? item.value : "")}
+              shouldFilterItem={filterByTypedLabel(selectedOrg?.value)}
               selectedItem={selectedOrg}
               onChange={({ selectedItem }) =>
                 setField(
