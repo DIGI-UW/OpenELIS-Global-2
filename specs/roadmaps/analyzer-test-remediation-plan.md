@@ -207,15 +207,15 @@ Two test gaps remain explicit. `AnalyzerUpgradeIntegrationTest` inserts legacy
 analyzer rows directly into the current schema and replaces the Bridge client;
 it checks migration-service behavior but cannot serve as the populated-upgrade
 proof in C3. Keep that focused service check until a previous-version API/UI
-upgrade scenario replaces its broader claim. The current FluoroCycler story
-uses sample IDs embedded in a captured XLSX file and is therefore limited to a
-fresh stack or a controlled file fixture. After R5 fixes the shipped VIH-1
-binding, make its file and order prerequisites repeatable without selecting or
-repairing clinical mappings in the harness. The captured file contains 1250 and
-450 for its two sample IDs; the FILE story now requires those exact clinical
-quantities (allowing trailing decimal zeros) instead of accepting any number.
-The focused run still stops at the unresolved VIH-1 binding, so the stronger
-downstream assertion is not yet end-to-end validated.
+upgrade scenario replaces its broader claim. The FluoroCycler story originally
+used sample IDs embedded in a captured XLSX file, limiting it to a fresh stack.
+The mock now accepts freshly generated OE2 accessions and replaces only those
+two IDs when it writes the captured workbook into Bridge's watched directory.
+Its 1250 and 450 measured values stay unchanged, and the FILE story requires
+those exact clinical quantities (allowing trailing decimal zeros). Mock FILE
+tests and the Bridge cross-process suite passed. The OE2 story still stops at
+the unresolved VIH-1 binding, so its new repeatability and clinical assertions
+are not yet end-to-end validated.
 
 For C2, `AnalyzerUpgradeIntegrationTest` and
 `AnalyzerEventPersistenceServiceIntegrationTest` ran in one Maven invocation:

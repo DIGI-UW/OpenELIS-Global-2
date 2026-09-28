@@ -90,11 +90,12 @@ export async function sendGeneXpertAstm(
 export async function writeFluoroCyclerFile(
   request: APIRequestContext,
   targetDirectory: string,
+  sampleIds: string[],
 ): Promise<Array<{ sampleId: string; result: string }>> {
   const response = await request.post(
     `${mockUrl}/simulate/file/hain_fluorocycler`,
     {
-      data: { target_dir: targetDirectory },
+      data: { target_dir: targetDirectory, sample_ids: sampleIds },
     },
   );
   expect(

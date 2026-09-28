@@ -15,10 +15,7 @@ import {
 
 const API = "/api/OpenELIS-Global/rest";
 const FILE_DIRECTORY = "/data/analyzer-imports/fluorocycler-xt/incoming";
-const FILE_CASES = [
-  { accession: "DEV01263000000000001", expectedValue: "1250" },
-  { accession: "DEV01263000000000002", expectedValue: "450" },
-];
+const FILE_VALUES = ["1250", "450"] as const;
 
 type Analyzer = {
   id: string;
@@ -269,10 +266,9 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       "fluorocycler-xt",
     );
     const orders = [];
-    for (const { accession } of FILE_CASES) {
+    for (let index = 0; index < FILE_VALUES.length; index++) {
       orders.push(
         await createAnalyzerClinicalOrder(page, {
-          accession,
           profileId: analyzer.profileId,
           profileRevision: analyzer.profileRevision,
           sourceCode: "VIH-1",
@@ -287,11 +283,17 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     await activateSavedConnection(page, analyzer, FILE_DIRECTORY);
     await capture(page, testInfo, "file-watch-directory-configured");
 
-    const emitted = await writeFluoroCyclerFile(page.request, FILE_DIRECTORY);
-    for (const { accession, expectedValue } of FILE_CASES) {
-      expect(
-        emitted.find((result) => result.sampleId === accession),
-      ).toMatchObject({ sampleId: accession, result: expectedValue });
+    const emitted = await writeFluoroCyclerFile(
+      page.request,
+      FILE_DIRECTORY,
+      orders.map((order) => order.accession),
+    );
+    expect(emitted).toHaveLength(orders.length);
+    for (const [index, order] of orders.entries()) {
+      expect(emitted[index]).toMatchObject({
+        sampleId: order.accession,
+        result: FILE_VALUES[index],
+      });
     }
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
       waitUntil: "domcontentloaded",
@@ -304,11 +306,8 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     }
     await capture(page, testInfo, "file-received-results");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    for (const order of orders) {
-      const expectedValue = FILE_CASES.find(
-        (entry) => entry.accession === order.accession,
-      )?.expectedValue;
-      expect(expectedValue).toBeDefined();
+    for (const [index, order] of orders.entries()) {
+      const expectedValue = FILE_VALUES[index];
       await expectClinicalReadback(
         page,
         order.accession,
