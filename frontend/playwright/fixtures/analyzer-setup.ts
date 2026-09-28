@@ -129,7 +129,7 @@ export class AnalyzerSetupPage {
 
   async fillImportDirectory(path: string) {
     await this.page
-      .getByRole("textbox", { name: "Analyzer file directory" })
+      .getByRole("textbox", { name: "Directory", exact: true })
       .fill(path);
   }
 
