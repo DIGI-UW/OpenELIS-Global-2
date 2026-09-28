@@ -195,7 +195,7 @@ const PrepWorkbench = ({
             <div style={hintStyle}>
               {t(
                 "eqa.prep.needExplained",
-                "{samples, plural, one {# sample} other {# samples}} x {participants, plural, one {# participant} other {# participants}} + {reserved} held in reserve = {needed, plural, one {# aliquot} other {# aliquots}} needed; {shipped, plural, one {# aliquot} other {# aliquots}} dispatched so far.",
+                "Aliquots needed: {samples, plural, one {# sample} other {# samples}} x {participants, plural, one {# participant} other {# participants}} + {reserved} held in reserve = {needed, plural, one {# aliquot} other {# aliquots}}; {shipped, plural, one {# aliquot} other {# aliquots}} dispatched so far.",
                 {
                   samples: panel.sampleCount,
                   participants: prep.participantCount,
