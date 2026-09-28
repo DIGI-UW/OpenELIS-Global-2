@@ -37,7 +37,7 @@ const SearchForm = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
 
-  const validationResults = (data) => {
+  const validationResults = (data, announceEmpty = true) => {
     if (data) {
       setSearchResults(data);
       setIsLoading(false);
@@ -60,12 +60,14 @@ const SearchForm = (props) => {
           searched: true,
         }));
 
-        addNotification({
-          kind: NotificationKinds.warning,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "validation.search.noresult" }),
-        });
-        setNotificationVisible(true);
+        if (announceEmpty) {
+          addNotification({
+            kind: NotificationKinds.warning,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: "validation.search.noresult" }),
+          });
+          setNotificationVisible(true);
+        }
       }
     }
   };
@@ -153,9 +155,11 @@ const SearchForm = (props) => {
     getFromOpenElisServer(url, (data) => {
       const totalPages = Number(data?.paging?.totalPages) || 1;
       if (pageToReopen > 1 && pageToReopen <= totalPages) {
-        getFromOpenElisServer(url + "&page=" + pageToReopen, validationResults);
+        getFromOpenElisServer(url + "&page=" + pageToReopen, (pageData) =>
+          validationResults(pageData, false),
+        );
       } else {
-        validationResults(data);
+        validationResults(data, false);
       }
     });
   };
@@ -305,7 +309,7 @@ const SearchForm = (props) => {
                       <Field name="date">
                         {({ field }) => (
                           <CustomDatePicker
-                            id={field.id}
+                            id="validationTestDate"
                             labelText={intl.formatMessage({
                               id: "search.label.testdate",
                             })}

@@ -223,6 +223,18 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void bulkRelease_theReleasedRowsAreNotListedAsAutoValidated() throws Exception {
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.released[0]").value(CLEAR_ID));
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get(CLEAR_ID).getStatusId());
+
+        mockMvc.perform(
+                get("/rest/AccessionValidation/auto-validated").param("accessionNumber", ACCESSION).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     public void bulkRelease_withOnlyNonClearRowsRequested_releasesNothing() throws Exception {
         mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(ABNORMAL_ID, "", ""))))

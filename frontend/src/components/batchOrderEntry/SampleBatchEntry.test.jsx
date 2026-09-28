@@ -81,4 +81,17 @@ describe("SampleBatchEntry rollout", () => {
 
     expect(screen.getByText("Label quantities")).toBeInTheDocument();
   });
+
+  it("does not report a half-filled form as a console error while it is being filled in", async () => {
+    const errors = vi.spyOn(console, "error");
+    renderSampleBatchEntry();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(
+      errors.mock.calls.some(([message]) =>
+        String(message).includes("Validation Errors"),
+      ),
+    ).toBe(false);
+    errors.mockRestore();
+  });
 });
