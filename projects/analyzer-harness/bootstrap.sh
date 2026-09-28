@@ -64,24 +64,11 @@ mkdir -p "$HARNESS_VOLUME/menu"
 mkdir -p "$HARNESS_VOLUME/logs/oeLogs"
 mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
-mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy authoritative harness startup catalog into volume ---
-# These CSVs are loaded by ConfigurationInitializationService on OE startup.
-# Do not introduce a second source tree for harness test metadata.
-CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
-if [ -d "$CONFIG_TEMPLATES" ]; then
-  cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
-  echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
-fi
-
-# Clear configuration checksums so CSVs are reloaded on next OE startup.
-# Always clear when DB was reset (checksums are on filesystem but data is in DB —
-# when DB is dropped, checksums become stale and OE skips loading CSVs).
-# Also clear when FORCE_RELOAD_CONFIG is set explicitly.
-rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
-echo -e "  ${GREEN}✓ Cleared configuration checksums (CSVs will reload on next startup)${NC}"
+# Clinical defaults are packaged in the OE webapp and loaded by its normal
+# ConfigurationInitializationService. The harness must not replace that catalog.
+# Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {

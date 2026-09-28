@@ -20,11 +20,12 @@ running containers.
 ## Server configuration
 
 The job builds `deploy-bundle.tgz` (both compose files, `volume/`, the analyzer
-harness catalog and seed scripts, and the Bridge profiles at the submodule pin).
-On the VM, `deploy-published-testing.py` unpacks it into
-`<site>/releases/<sha>/` and runs Compose as project `openelis-testing`, so
-named volumes persist across releases. The site directory (`TESTING_SITE_PATH`,
-default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
+seed script and the Bridge profiles at the submodule pin). Clinical defaults are
+packaged in the application image. On the VM, `deploy-published-testing.py`
+unpacks it into `<site>/releases/<sha>/` and runs Compose as project
+`openelis-testing`, so named volumes persist across releases. The site directory
+(`TESTING_SITE_PATH`, default `/home/ubuntu/openelis-testing`) holds what
+belongs to the host:
 
 - `.env` (required): passed as the Compose env file.
 - `docker-compose.site.yml` (optional): applied after the release's files, for
@@ -32,9 +33,10 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
   resolves its relative paths against the release, so use absolute paths.
 - `lucene/`: the search index, linked into every release.
 - `configuration/backend/`: writable catalog files, linked into every release.
-  The harness catalog is copied here only when the directory does not exist;
-  subsequent deploys preserve uploaded and edited files. The webapp entrypoint
-  grants its Tomcat group write access.
+  New sites leave this directory empty and load the application image’s bundled
+  defaults. Subsequent deploys preserve uploaded and edited files; existing
+  overrides are not removed automatically. The webapp entrypoint grants its
+  Tomcat group write access.
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default

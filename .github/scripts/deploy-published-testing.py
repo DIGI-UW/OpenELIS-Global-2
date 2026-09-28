@@ -39,7 +39,6 @@ BUNDLE_FILES = (
     "volume/properties/common.properties",
     "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
-    "projects/analyzer-harness/config-templates/tests/harness-tests.csv",
 )
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
@@ -121,11 +120,9 @@ def unpack_release(bundle, site_dir, sha):
         configuration = site_dir / "configuration"
         configuration.mkdir(exist_ok=True)
         catalog = configuration / "backend"
-        if not catalog.exists():
-            with tempfile.TemporaryDirectory(prefix="catalog-", dir=configuration) as catalog_staging:
-                seeded = pathlib.Path(catalog_staging) / "backend"
-                shutil.copytree(staging / "projects/analyzer-harness/config-templates", seeded)
-                seeded.rename(catalog)
+        # A new site uses the defaults packaged in its OE image. Existing
+        # uploaded catalogs remain site-owned and survive release changes.
+        catalog.mkdir(exist_ok=True)
         (staging / "configuration").symlink_to(configuration, target_is_directory=True)
         staging.rename(release)
         staging.mkdir()

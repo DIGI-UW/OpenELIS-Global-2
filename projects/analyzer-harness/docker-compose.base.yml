@@ -63,6 +63,7 @@ networks:
     driver: bridge
 
 volumes:
+  configuration-data:
   db-data:
   key_trust-store-volume:
   certs-vol:

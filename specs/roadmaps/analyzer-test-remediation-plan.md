@@ -129,10 +129,34 @@ because it is listed here.
   `LegacyTestVariantFinderTest`: 22 passed,
   no failures or skips. This is loader coverage, not end-to-end acceptance.
 - Still open: reconcile previously created duplicate records without erasing
-  history; align harness packaging with production defaults (mounted domain
-  files replace classpath defaults); resolve HIV defaults using evidenced
+  history; resolve HIV defaults using evidenced
   specimen context; complete answer translation and the full workflow tests.
   No live server recovery or video qualification is claimed by this checkpoint.
+
+### D2 production-catalog and runtime checkpoint — 27 September 2026
+
+- Removed the separate harness catalog and its CI/deployment mount. Reusable
+  molecular tests, specimen types, section and existing categorical definitions
+  now ship in the ordinary OE2 classpath configuration. Other harness-only
+  hematology/chemistry definitions no longer override the core catalog.
+- New testing deployments start with an empty upload directory and use packaged
+  defaults. Existing uploaded catalogs survive release changes. Local uploads
+  use a worktree-scoped persistent volume and the supported reset command.
+- Fixed the local launcher to build the current backend runtime as well as the
+  WAR. Previously a fresh WAR could run with an old image's startup script.
+  The running entrypoint now matches source and can write configuration state.
+- Validation: 22 deployment tests and 30 launcher tests passed; clean core
+  startup succeeded. The unchanged stock-default probe passed MTB and still
+  failed RIF answer binding, HIV-VL/VIH-1 target binding and COVID answer binding.
+  COVID now passes the unique-target assertion before failing on its answers.
+- The existing GeneXpert MTB workflow passed against this core catalog: native
+  ASTM traffic, UI acceptance and independent patient/test/value readback.
+  This is one outcome, not full GeneXpert qualification. Final specimen/unit
+  readback, reviewed recordings and the other protocol/recovery/upgrade stories
+  remain acceptance work. No live server or Madagascar readiness is claimed.
+- Next: finish generic HIV specimen-aware default resolution with a linked
+  Bridge contract/profile change, then evidence-backed RIF/COVID translations.
+  Do not restore the harness catalog or repair mappings in test setup to pass.
 
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence

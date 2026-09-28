@@ -214,6 +214,20 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue(lucene.is_symlink())
         self.assertEqual(self.root / "lucene", lucene.resolve())
 
+    def test_new_site_uses_bundled_defaults_and_uploaded_catalog_survives_release_change(self):
+        first = deployment.unpack_release(self.bundle, self.root, self.sha)
+        catalog = self.root / "configuration/backend"
+        self.assertEqual([], list(catalog.iterdir()))
+        self.assertEqual(catalog, (first / "configuration/backend").resolve())
+        (catalog / "tests").mkdir()
+        uploaded = catalog / "tests/site-tests.csv"
+        uploaded.write_text("site-owned catalog\n")
+
+        second = deployment.unpack_release(self.bundle, self.root, "c" * 40)
+
+        self.assertEqual(catalog, (second / "configuration/backend").resolve())
+        self.assertEqual("site-owned catalog\n", uploaded.read_text())
+
     def test_site_overlay_is_optional(self):
         self.ready_health()
         self.deploy()

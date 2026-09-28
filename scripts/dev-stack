@@ -369,7 +369,7 @@ def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["astm-simulator", "openelis-analyzer-bridge"]
+    services = ["oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
     if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
         services.insert(0, "frontend.openelis.org")
     run(
