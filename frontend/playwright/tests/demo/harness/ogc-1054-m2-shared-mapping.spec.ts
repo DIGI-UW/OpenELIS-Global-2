@@ -222,19 +222,19 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       page.getByRole("button", { name: /^RIF.*Needs mapping$/ }),
     ).toHaveAttribute("aria-expanded", "true");
 
-    const resistant = rifRow.getByRole("combobox", {
+    const detected = rifRow.getByRole("combobox", {
       name: "OpenELIS result for DETECTED",
     });
-    await expect(resistant).toBeVisible();
-    await resistant.click();
-    await page.getByRole("option", { name: "Resistant", exact: true }).click();
+    await expect(detected).toBeVisible();
+    await detected.click();
+    await page.getByRole("option", { name: "DETECTED", exact: true }).click();
 
-    const susceptible = rifRow.getByRole("combobox", {
+    const notDetected = rifRow.getByRole("combobox", {
       name: "OpenELIS result for NOT DETECTED",
     });
-    await susceptible.click();
+    await notDetected.click();
     await page
-      .getByRole("option", { name: "Susceptible", exact: true })
+      .getByRole("option", { name: "NOT DETECTED", exact: true })
       .click();
     const indeterminateRow = rifRow
       .locator(".analyzer-type-mapping__result-row")
@@ -255,12 +255,12 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await page.getByRole("button", { name: /^RIF.*Mapped$/ }).click();
     await expect(
       page.getByRole("combobox", { name: "OpenELIS result for DETECTED" }),
-    ).toHaveAttribute("title", "Resistant");
+    ).toHaveAttribute("title", "DETECTED");
     await expect(
       page.getByRole("combobox", {
         name: "OpenELIS result for NOT DETECTED",
       }),
-    ).toHaveAttribute("title", "Susceptible");
+    ).toHaveAttribute("title", "NOT DETECTED");
 
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
