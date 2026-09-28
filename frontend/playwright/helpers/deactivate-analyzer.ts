@@ -14,6 +14,9 @@ export async function deactivateAnalyzerByName(
 
   await goToAnalyzerDashboard(page);
   await page.getByTestId("analyzer-search-input").fill(analyzerName);
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("search"))
+    .toBe(analyzerName);
   const row = page
     .locator("tbody tr", {
       hasText: new RegExp(escapeRegExp(analyzerName), "i"),

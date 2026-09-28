@@ -33,7 +33,7 @@ vi.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
@@ -402,6 +402,45 @@ describe("AnalyzersList", () => {
     expect(params.get("lifecycleAnalyzerId")).toBeNull();
     expect(params.get("search")).toBe("gene");
     expect(params.get("status")).toBe("ACTIVE");
+  });
+
+  test("keeps the deactivation dialog open when a pending search updates the URL", () => {
+    const analyzer = createMockAnalyzer({
+      id: "42",
+      name: "GeneXpert Lab 1",
+      status: "ACTIVE",
+    });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+
+    vi.useFakeTimers();
+    try {
+      renderWithIntl(<AnalyzersList />);
+      fireEvent.change(screen.getByTestId("analyzer-search-input"), {
+        target: { value: "GeneXpert" },
+      });
+      fireEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+      expect(new URLSearchParams(window.location.search).get("search")).toBe(
+        "GeneXpert",
+      );
+      expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+        "deactivate",
+      );
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("keeps lifecycle evidence visible while a request is in flight", async () => {
