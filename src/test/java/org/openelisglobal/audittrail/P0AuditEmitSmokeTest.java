@@ -31,6 +31,7 @@ public class P0AuditEmitSmokeTest extends AuditTrailIntegrationTestSupport {
 
     @Before
     public void setUp() throws Exception {
+        executeDataSetWithStateManagement("testdata/nc-event.xml");
         ncEventRefTableId = requiredReferenceTable("nc_event");
     }
 
