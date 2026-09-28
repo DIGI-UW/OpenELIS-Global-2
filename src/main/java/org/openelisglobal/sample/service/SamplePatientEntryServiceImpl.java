@@ -324,6 +324,14 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             return;
         }
 
+        for (String clearedTypeId : updateData.getClearedObservationTypeIds()) {
+            ObservationHistory cleared = observationHistoryService.getObservationHistoriesBySampleIdAndType(sampleId,
+                    clearedTypeId);
+            if (cleared != null) {
+                observationHistoryService.delete(cleared.getId(), updateData.getCurrentUserId());
+            }
+        }
+
         if (updateData.getObservations() == null || updateData.getObservations().isEmpty()) {
             return;
         }
