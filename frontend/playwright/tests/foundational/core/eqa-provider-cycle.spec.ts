@@ -315,9 +315,10 @@ test.describe("EQA provider cycle lifecycle", () => {
         .trim()
         .split("\n");
       // analyte_name is the column a participant on another instance matches
-      // these scores on when it imports them.
+      // these scores on when it imports them; sample_code tells two samples of
+      // one test apart.
       expect(csv[0]).toBe(
-        "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on",
+        "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on,sample_code",
       );
       // The header and this participant's one planted result, scored
       // unacceptable against the sealed range.
