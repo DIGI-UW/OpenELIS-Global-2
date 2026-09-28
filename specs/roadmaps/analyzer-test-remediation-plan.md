@@ -1,13 +1,14 @@
-# R0 — Restore trustworthy analyzer testing in PR #4332
+# R0 — Repair analyzer defaults and prove the workflows in PR #4332
 
 Decision recorded: 27 September 2026. Owner: [OE2 PR #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332).
-Status: implementation in #4332; the complete workflow and video acceptance remain open.
+Status: research-informed continuation approved; #4332 owns bounded OE2 default fixes as well as faithful tests. Product implementation and complete workflow/video acceptance remain open.
 
 ## Outcome and ordering
 
 Make #4332 the initial test-remediation phase for the core OE2 + Bridge roadmap.
 It must replace misleading setup and assertions, reconcile the useful existing tests, and provide one reproducible way to prove the actual analyzer workflow.
 R0 establishes the tests and evidence surface used by R1–R5 product work and R7 core qualification.
+The September 27 research update also assigns the bounded OE2 catalog/default-resolution fixes to #4332; exposing those known failures is a checkpoint, not completion. Bridge profile/runtime changes retain a linked Bridge owner and must be consumed through the tested dependency.
 Madagascar remains R8: a later, limited check of distro configuration using already-qualified core workflows.
 
 The standard supported setup must work with the profiles and catalog we supply.
@@ -28,14 +29,131 @@ Local customization and unresolved-result recovery remain separate supported wor
 
 ## Why the current setup needs replacement
 
-The audited harness chooses the first same-LOINC test, excludes unmatched mappings, confirms the configuration and activates connections.
-The analyzer SQL fixture independently selects the first same-LOINC test when creating orders.
+The earlier audited harness chose the first same-LOINC test, excluded unmatched mappings, confirmed the configuration and activated connections.
+The removed analyzer SQL fixture independently selected the first same-LOINC test when creating orders.
 Those two shortcuts can agree while the default product setup remains broken or the specimen association is wrong.
-Some UI tests start after these decisions, and clinical readback derives an expected specimen from the displayed test label.
+Some earlier UI tests started after these decisions, and clinical readback derived an expected specimen from the displayed test label.
 Prepared-state tests can prove a narrow recovery action; they cannot establish clean installation or independent patient/order/specimen correctness.
 
 These findings come from the September 27 local source audit, not a new live deployment qualification.
 The September 26 PR ownership ledger is historical evidence; refresh branches and file comparisons before extracting work.
+
+## Research-driven continuation — approved 27 September 2026
+
+This section supersedes the earlier test-only disposition of known default failures.
+The implementation baseline audited was OE2 `0d52ac74e4`, Bridge `b4a9f2cbff`
+and mock `6df789111d`. #4332 remains open. No default fix is delivered merely
+because it is listed here.
+
+### Scope and ownership
+
+- **OE2 #4332:** retain the test repair and implement the smallest generic
+  catalog/default-resolution and setup corrections exposed by it. Production
+  initialization must install the same reusable clinical defaults being tested.
+- **Linked Bridge work:** portable profile evidence, new immutable revisions,
+  any necessary additive profile-contract/parser correction, shared listener
+  behavior and profile-owned connection defaults. Do not put Bridge authority
+  or an instrument-specific conversion in OE2 to avoid that dependency.
+- **Mock #49:** finish review/release of fresh-accession substitution in the XLSX
+  fixture; update the consumed pin only after the release exists. This fixes
+  repeatability, not result meaning.
+- **Existing OE2 #4448/#4449 and delivery PRs:** review their current deltas and
+  integrate the supported recovery/isolation behavior. Do not reimplement their
+  services inside #4332. Record merge/stack order before consuming a dependency.
+- **Madagascar:** later packaging and limited smoke testing, using the qualified
+  core profiles and clinical defaults; no distro-only workaround for these gaps.
+
+### Findings to fix, not waive
+
+| Finding and origin                                                                                                                                                  | Bounded correction                                                                                                                                                                                                                                                                                                                                   | Pass condition                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RIF: profile values `DETECTED` / `NOT DETECTED` differ from OE2 `Resistant` / `Susceptible`; the current resolver matches answer labels.                            | Establish the exact molecular assay meaning, then provide an explicit assay-scoped translation in profile data and generic local resolution. If the local target represents the wrong concept, correct the target rather than invent an equivalence.                                                                                                 | Every supported RIF outcome resolves to the intended clinical meaning from ordinary initialization; raw values survive. No global detected-to-resistant rule.                                                                                        |
+| COVID: base `COVIDPCR(Respiratory Swab)` and configuration `COVID-19 PCR` can create duplicate intended targets; answer labels differ too.                          | Fix the ordinary configuration loader's identity/upsert behavior using a stable clinical identity and specimen. Reconcile populated installations without deleting history or overriding intentional local configuration. Align validated answers separately.                                                                                        | A fresh install and repeated configuration load produce one intended target for that specimen. A populated upgrade retains referenced IDs/history. Supported outcomes resolve without choosing an arbitrary same-LOINC record.                       |
+| HIV-VL / VIH-1: LOINC `20447-9` matches Serum, Plasma and DBS local tests. Numeric result definitions already exist for Serum and Plasma.                           | Use evidence-backed assay/specimen context through the existing profile and generic resolver path. Reuse the appropriate numeric definition. Keep the order's actual specimen; do not apply a universal Plasma fallback or collapse every specimen-specific test.                                                                                    | Supported assay defaults resolve uniquely before a UI mapping edit. Accepted numeric value, unit, test and actual ordered specimen agree; incompatible/unknown context remains visibly unresolved.                                                   |
+| FluoroCycler: adapted XLSX has no test-code column; the single-test profile supplies `VIH-1`. Blank concentration falls back to `Valid`, under that same code.      | Identify the supported export and assay version, including unit, status and control semantics. Reconcile the curated profile and independent raw examples. Keep patient measurement, interpretation/status and control roles distinct using profile-driven behavior.                                                                                 | Watched-directory import saves the expected numeric clinical results. Every additional row has its evidenced role or an explicit retained exception; none is silently dropped, fabricated as a concentration or treated as a control merely to pass. |
+| Connection setup: listeners are shared, but current GeneXpert profile requires a saved port and supplies no default.                                                | Put supported defaults in profile data; use the generic resolver for effective values and shared listeners. Explicit overrides win. If a generic fallback is needed, declare it in the single versioned contract. Missing manual input must not impose a new activation gate; an unusable destination must give an actionable connection diagnostic. | Default incoming setup works without a unique port per instrument or a manually entered port when the profile/default contract supplies it. Connection tests explain endpoint/port failures. No duplicated frontend/server constants.                |
+| Core HL7: the audited bundled catalog has no active core HL7 profile.                                                                                               | Upstream an evidence-backed reusable HL7 profile into Bridge; retain one contract and consume its release in core tests.                                                                                                                                                                                                                             | Normal core setup and native HL7 produce a correctly accepted clinical result with no Madagascar profile mount.                                                                                                                                      |
+| Recovery: Casey's September 15 guide records correction/confirmation leaving already-held rows inert; whole-mapping state can affect otherwise usable observations. | Reuse and review existing recovery/mapping-isolation changes; make the named analyzer's correction-and-retry action operate on retained observations.                                                                                                                                                                                                | Correct in UI, retry the original result, accept once, repeat without duplicates; unrelated valid results remain usable. No resend or direct database edit required.                                                                                 |
+
+### Execution order and checkpoints
+
+1. **D1 — Resume from a known candidate.** Refresh current `develop`, #4332,
+   Bridge/mock pins and recovery PR deltas; preserve unrelated work. Reproduce
+   the four known default failures on ordinary initialization. Keep the existing
+   passing MTB-RIF path as the baseline. Do not repeat the broad audit instead
+   of fixing the reproduced failures.
+2. **D2 — Correct clinical identity and selection in #4332.** Start with COVID
+   duplicate creation, then HIV assay/specimen selection. Make the smallest
+   changes to existing loader/resolver services and production configuration.
+   Verify fresh load, repeat load and preservation of existing clinical records.
+   A harness-only CSV repair does not satisfy this checkpoint.
+3. **D3 — Align meanings and profile evidence.** Complete RIF/COVID answer
+   translations and FluoroCycler row/unit interpretation using the documents and
+   raw examples below. Do not expand this into a whole-catalog redesign. If the
+   existing contract cannot express the needed data, define one minimal additive
+   change with a Bridge companion and OE2 consumer; use no second contract or
+   hard-coded profile/assay branch. Run unabridged GeneXpert ASTM and FluoroCycler
+   compatibility checks across OE setup, Bridge and mock before changing pins.
+4. **D4 — Complete the core connection/profile dependencies.** Finish
+   profile-owned port defaults, core HL7 and mock #49 release integration. Reuse
+   shared listeners. Verify directory configuration, watching and archive/error
+   behavior in Bridge. Do not introduce an OE2 FILE poller.
+5. **D5 — Close the recovery loop using existing work.** Review/integrate
+   #4448/#4449 and required delivery changes in a recorded order. Test a known
+   and unknown observation together, correct the unknown through the UI,
+   recover the original and verify one clinical result. Also exercise permitted
+   specimen correction and actual delivery outage/restart. Retain unresolved
+   data; do not add blanket mapping/QC activation restrictions.
+6. **D6 — Finish C0–C5 and present the candidate.** Run core ASTM, FILE and HL7
+   setup-to-acceptance, recovery, outage/replay and populated-upgrade stories on
+   the same recorded dependency set. Use previous-version API/UI setup for the
+   upgrade; a mocked migration service test is insufficient. Review and present
+   videos from those same tests, alongside independent clinical readback. Then
+   prepare qualified core releases; only afterward update Madagascar pins and
+   run its limited packaging check.
+
+Each checkpoint must name the changed files/PRs, the actual run and outcome,
+remaining failures and the next concrete action. A blocked instrument-evidence
+question applies to that scenario, not to unrelated COVID/HIV work. A failing
+checkpoint may be pushed for review; no skip, waiver, excluded result or
+fabricated confirmation converts it into a pass.
+
+### Research and interpretation rules
+
+- [Casey's setup guide](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1648361491)
+  (v4, September 22) and [mapping/recovery guide](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1648590851)
+  (v4, September 15) are draft observations on OE2 3.2.2.0, not current release
+  qualification. Reproduce the documented held-row and count discrepancies;
+  update instructions only from passing current workflows. The setup guide did
+  not observe ASTM/HL7 connection details.
+- [Casey's integration tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
+  distinguishes vendor documentation from actual instrument captures. Its
+  standardized FluoroCycler template is a different input shape from our
+  no-test-code workbook; retain/correct supported formats according to evidence.
+- GeneXpert host/result codes are site-configurable. Mock traffic generated from
+  the same profile proves consistency but is not independent instrument evidence.
+  Keep captured examples distinct from synthetic fixtures and document any
+  synthetic accession/header adaptation.
+- Manufacturer instructions distinguish numeric values, range qualifiers,
+  detection, invalid/error/no-result and control outcomes. Do not conflate them
+  because labels happen to match. Confirm the actual FluoroCycler assay version
+  before choosing copies/mL versus IU/mL; do not invent a conversion.
+- A matching LOINC alone does not choose a local specimen-specific test or an
+  answer. Avoid first-match selection and runtime analyzer-specific constants.
+- Detailed source links, manufacturer references and remaining evidence limits:
+  [published mapping audit](https://madagascar-analyzer-recovery.pmanko.chatgpt.site/analyzer-pr-4332-evidence/).
+
+### Definition of done for the resumed work
+
+A clean core installation uses the supplied profiles and clinical defaults to
+complete the supported workflows without rebuilding mappings. The normal
+customization path still handles real local differences. Unknown observations
+remain stored and recoverable while independent valid observations continue.
+Required C0–C5/D1–D6 scenarios pass on the actual candidate; no legacy fixture
+shortcut survives; reviewed videos and result assertions are presented.
+Product implementation, exact-head CI, deployment, publication and user
+acceptance remain separately reported states. Updating this plan completes none
+of those implementation checks.
 
 ## The replacement setup
 
@@ -114,7 +232,7 @@ Preserve unrelated storage/reporting suites; this work does not authorize a repo
 ## C4 — Run the actual candidate and assign product failures
 
 Run applicable checks and workflow scenarios against the intended OE2/Bridge/mock dependencies, recording exact source, image and profile versions.
-Record product failures with reproducible scenarios and an R1–R5 owner; distinguish them from test defects and environment failures.
+Record product failures with reproducible scenarios and an R1–R5 owner; distinguish them from test defects and environment failures. Implement the known bounded OE2 default fixes in #4332 and link the Bridge dependencies; do not park those failures indefinitely as external follow-up.
 Do not skip assertions, rewrite expectations to match a failure, inject missing mappings, or exclude raw results to obtain a pass.
 
 Acceptance: #4332 merge readiness requires the applicable checks on its intended dependencies to pass, with no manufactured green result.
@@ -134,15 +252,15 @@ Documentation and PR descriptions must distinguish test implementation, product 
 
 ## Relationship to product fixes and completion
 
-#4332 owns the trustworthy test setup, retained backend coverage, replacement scenarios, obsolete-path removal and evidence tooling.
-R1–R5 retain ownership of recovery, per-result mapping validity, usable setup, durable delivery and shipped profile/default fixes.
+#4332 owns the trustworthy test setup, retained backend coverage, replacement scenarios, obsolete-path removal and evidence tooling, plus the bounded OE2 catalog/default-resolution fixes in D2–D3.
+R1–R5 remain the capability workstreams; the known OE2 portion of R5 is implemented in #4332, with linked Bridge/profile dependencies. Existing recovery and delivery PRs retain their services and review ownership. This avoids duplicate implementations while making #4332 accountable for the working candidate.
 
 C0–C3 work may be published while genuine product failures remain; this avoids waiting for a fixed product before writing the test that exposes it.
 #4332 is not fully remediated while fixture shortcuts, weak assertions or competing legacy analyzer paths remain.
 Required scenarios keep their failing/pending status until the compatible product candidate passes; R7 cannot claim complete workflow acceptance before that point.
 Coordinate merge order or a temporary test-candidate branch with the actual product dependencies rather than disabling required coverage to obtain green CI.
 
-## Implementation checkpoint — 27 September 2026
+## Historical implementation checkpoint — before the research-driven continuation
 
 The #4332 branch was brought forward to `develop` `899f59248e` (merge commit
 `e1c52b5640`). Its checked-in Bridge and mock pins are `b4a9f2cbff` and
@@ -151,16 +269,16 @@ Playwright work was pushed as `e12926c0a3`. The following observations use the
 isolated `scripts/dev-stack`; they are **not** exact-head CI, deployment or release
 qualification.
 
-| Check | Observed result | Next owner |
-| --- | --- | --- |
-| Clinical prerequisite | A patient, Sputum order and Xpert MTB/RIF test created and read back through OE2 APIs; API-order test passed. | #4332 |
-| GeneXpert ASTM | Shipped MTB-RIF default, mapping review, UI activation, native mock ASTM, Bridge delivery, UI acceptance and resolved dictionary-value clinical readback passed. The integrated local rerun created the same analyzer through the UI, saved its own listener port, sent traffic to that connection, and displayed the accepted result on OE2's Results page. | #4332, then exact-head CI/video |
-| Delivery issue | Native ASTM from an unregistered mock source was retained in Bridge's dead-message queue, surfaced in OE2 and dismissed through the UI; test passed. Bridge records source identity before accession parsing. | #4332 |
-| Shared mapping and guided setup | Three shared-mapping tests and the guided UI setup test passed after removing assumptions created by the old seed traffic script. | #4332 |
-| Stock default bindings | MTB-RIF passed. GeneXpert RIF's `DETECTED` result choice, GeneXpert HIV-VL's test and FluoroCycler VIH-1's test were `UNRESOLVED`. For COVID19, OE2 presents two active COVID-19 PCR tests for Respiratory Swab with LOINC `94500-6`; both carry its own `DUPLICATE_LOINC_SAME_SPECIMEN` error, so the independent clinical target is ambiguous. The FluoroCycler FILE story correctly stops at its missing binding. | R5 core profile/catalog defaults; keep #4332 tests red |
-| HL7 | No active core HL7 profile is present in the Bridge's checked-in catalog; a full native HL7 story cannot yet use a shipped core type. | R5, then #4332 test |
-| Replay and populated upgrade | Full service-restart replay and supported-version populated upgrade scenarios have not run. | #4332 plus R1–R5 dependencies |
-| CI and video | GitHub checks started on `5e2a1f7c52`; shared build, static, and backend test jobs were still pending at this checkpoint. A focused two-story video run on that head passed and was reviewed, including the saved Results page. The newer same-analyzer UI-to-traffic test passed locally and needs its own exact-head recording and CI. | #4332 C4–C5 |
+| Check                           | Observed result                                                                                                                                                                                                                                                                                                                                                                                                      | Next owner                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Clinical prerequisite           | A patient, Sputum order and Xpert MTB/RIF test created and read back through OE2 APIs; API-order test passed.                                                                                                                                                                                                                                                                                                        | #4332                                                  |
+| GeneXpert ASTM                  | Shipped MTB-RIF default, mapping review, UI activation, native mock ASTM, Bridge delivery, UI acceptance and resolved dictionary-value clinical readback passed. The integrated local rerun created the same analyzer through the UI, saved its own listener port, sent traffic to that connection, and displayed the accepted result on OE2's Results page.                                                         | #4332, then exact-head CI/video                        |
+| Delivery issue                  | Native ASTM from an unregistered mock source was retained in Bridge's dead-message queue, surfaced in OE2 and dismissed through the UI; test passed. Bridge records source identity before accession parsing.                                                                                                                                                                                                        | #4332                                                  |
+| Shared mapping and guided setup | Three shared-mapping tests and the guided UI setup test passed after removing assumptions created by the old seed traffic script.                                                                                                                                                                                                                                                                                    | #4332                                                  |
+| Stock default bindings          | MTB-RIF passed. GeneXpert RIF's `DETECTED` result choice, GeneXpert HIV-VL's test and FluoroCycler VIH-1's test were `UNRESOLVED`. For COVID19, OE2 presents two active COVID-19 PCR tests for Respiratory Swab with LOINC `94500-6`; both carry its own `DUPLICATE_LOINC_SAME_SPECIMEN` error, so the independent clinical target is ambiguous. The FluoroCycler FILE story correctly stops at its missing binding. | R5 core profile/catalog defaults; keep #4332 tests red |
+| HL7                             | No active core HL7 profile is present in the Bridge's checked-in catalog; a full native HL7 story cannot yet use a shipped core type.                                                                                                                                                                                                                                                                                | R5, then #4332 test                                    |
+| Replay and populated upgrade    | Full service-restart replay and supported-version populated upgrade scenarios have not run.                                                                                                                                                                                                                                                                                                                          | #4332 plus R1–R5 dependencies                          |
+| CI and video                    | GitHub checks started on `5e2a1f7c52`; shared build, static, and backend test jobs were still pending at this checkpoint. A focused two-story video run on that head passed and was reviewed, including the saved Results page. The newer same-analyzer UI-to-traffic test passed locally and needs its own exact-head recording and CI.                                                                             | #4332 C4–C5                                            |
 
 The same-analyzer video subsequently passed on `e4393ba630` and shows the
 clinical Results page. Its setup screen still displays a pre-save “port
@@ -185,8 +303,10 @@ intended clinical test (LOINC `46244-0`), but the profile sends `DETECTED` and
 VIH-1 both request LOINC `20447-9`; OE2 has active Serum, Plasma and DBS HIV
 Viral Load tests, and the generic profile-level resolver cannot pick one from
 LOINC alone. The existing CSV loader deliberately updates those legacy
-specimen-specific records in place. GeneXpert also declares HIV-VL quantitative,
-but the harness catalog has no numeric result row for that test. FluoroCycler's
+specimen-specific records in place. GeneXpert also declares HIV-VL quantitative. The harness CSV has no numeric
+row, but base migrations already provide active numeric definitions for Serum
+and Plasma; the CSV omission is not evidence that numeric definitions are
+missing. The unresolved selection is the demonstrated blocker. FluoroCycler's
 profile hint says `HIV-1 Viral Load`, which does not name those OE2 records.
 COVID19 requests LOINC `94500-6`; the base migration supplies a Respiratory Swab
 test and the harness catalog creates a second active one with the same LOINC and
@@ -238,7 +358,7 @@ instrument input and independent clinical readback. The video project registers
 those same scenario files; no demo guard exception or alternate evidence test
 was added.
 
-### #4336 ownership reconciliation
+### Historical #4336 ownership reconciliation
 
 Compared `origin/fix/ogc-1220-mapping-lifecycle` at `d4316d67e1` against
 `develop` `899f59248e` and #4332. The shared transaction fixture tests are
@@ -246,27 +366,27 @@ already on #4332's merged baseline. The following analyzer tests remain
 product-coupled on #4336; #4332 must not copy them without their corresponding
 mapping, query and security behavior:
 
-| Test file under `src/test/java/org/openelisglobal/` | Disposition |
-| --- | --- |
-| `analyzer/AnalyzerServiceTest.java` | #4336 product-coupled update |
-| `analyzer/AnalyzerTestProfileCatalog.java` | #4336 fixture for its mapping behavior |
-| `analyzer/HibernateMappingValidationTest.java` | #4336 entity behavior |
-| `analyzer/controller/AnalyzerMappingMutationSecurityIntegrationTest.java` | Unique authorization assertions retained on #4336 |
-| `analyzer/controller/AnalyzerTestCleanup.java` | Removal retained on #4336; review with its callers |
-| `analyzer/dao/AnalyzerProfileBindingDAOImplTest.java` | #4336 persistence behavior |
-| `analyzer/integration/QCResultServiceIntegrationTest.java` | #4336 compatibility update |
-| `analyzer/service/AnalyzerInstanceLocalStateServiceTest.java` | #4336 lifecycle behavior |
-| `analyzer/service/AnalyzerMappingLifecycleIntegrationTest.java` | Unique lifecycle and audit assertions retained on #4336 |
-| `analyzer/service/AnalyzerSiteBindingConfirmationServiceTest.java` | #4336 confirmation behavior |
-| `analyzer/service/AnalyzerSiteBindingPersistenceIntegrationTest.java` | #4336 persistence behavior |
-| `analyzer/service/AnalyzerTypeMappingServiceTest.java` | #4336 mapping behavior |
-| `analyzerimport/action/AnalyzerFhirImportControllerTest.java` | #4336 import behavior |
-| `analyzerimport/service/AnalyzerNormalizedResultImportIntegrationTest.java` | #4336 import behavior |
-| `analyzerimport/service/AnalyzerNormalizedResultImportServiceTest.java` | #4336 import behavior |
-| `analyzerresults/AnalyzerResultsServiceTest.java` | #4336 review/query behavior |
-| `analyzerresults/dao/AnalyzerHeldMappingResultsQueryTest.java` | Unique held-result query assertions retained on #4336 |
-| `analyzerresults/service/AnalyzerResultsAcceptHoldIntegrationTest.java` | #4336 recovery behavior |
-| `analyzerresults/service/AnalyzerResultsAcceptServiceResultMappingTest.java` | #4336 acceptance behavior |
+| Test file under `src/test/java/org/openelisglobal/`                          | Disposition                                             |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `analyzer/AnalyzerServiceTest.java`                                          | #4336 product-coupled update                            |
+| `analyzer/AnalyzerTestProfileCatalog.java`                                   | #4336 fixture for its mapping behavior                  |
+| `analyzer/HibernateMappingValidationTest.java`                               | #4336 entity behavior                                   |
+| `analyzer/controller/AnalyzerMappingMutationSecurityIntegrationTest.java`    | Unique authorization assertions retained on #4336       |
+| `analyzer/controller/AnalyzerTestCleanup.java`                               | Removal retained on #4336; review with its callers      |
+| `analyzer/dao/AnalyzerProfileBindingDAOImplTest.java`                        | #4336 persistence behavior                              |
+| `analyzer/integration/QCResultServiceIntegrationTest.java`                   | #4336 compatibility update                              |
+| `analyzer/service/AnalyzerInstanceLocalStateServiceTest.java`                | #4336 lifecycle behavior                                |
+| `analyzer/service/AnalyzerMappingLifecycleIntegrationTest.java`              | Unique lifecycle and audit assertions retained on #4336 |
+| `analyzer/service/AnalyzerSiteBindingConfirmationServiceTest.java`           | #4336 confirmation behavior                             |
+| `analyzer/service/AnalyzerSiteBindingPersistenceIntegrationTest.java`        | #4336 persistence behavior                              |
+| `analyzer/service/AnalyzerTypeMappingServiceTest.java`                       | #4336 mapping behavior                                  |
+| `analyzerimport/action/AnalyzerFhirImportControllerTest.java`                | #4336 import behavior                                   |
+| `analyzerimport/service/AnalyzerNormalizedResultImportIntegrationTest.java`  | #4336 import behavior                                   |
+| `analyzerimport/service/AnalyzerNormalizedResultImportServiceTest.java`      | #4336 import behavior                                   |
+| `analyzerresults/AnalyzerResultsServiceTest.java`                            | #4336 review/query behavior                             |
+| `analyzerresults/dao/AnalyzerHeldMappingResultsQueryTest.java`               | Unique held-result query assertions retained on #4336   |
+| `analyzerresults/service/AnalyzerResultsAcceptHoldIntegrationTest.java`      | #4336 recovery behavior                                 |
+| `analyzerresults/service/AnalyzerResultsAcceptServiceResultMappingTest.java` | #4336 acceptance behavior                               |
 
 This is a source ownership decision, not a claim that #4336 is merge-ready. Its
 current code, CI and compatibility with #4332 need a separate exact-head review.
