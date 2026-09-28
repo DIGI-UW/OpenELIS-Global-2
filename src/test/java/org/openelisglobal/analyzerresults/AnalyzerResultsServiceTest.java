@@ -379,7 +379,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.history h"
                 + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
                 + " WHERE LOWER(r.name) = 'analyzer_results' AND h.reference_id = ? AND h.activity = ? AND h.sys_user_id = ?",
-                Integer.class, resultId, activity, Integer.valueOf(TEST_SYS_USER_ID));
+                Integer.class, new java.math.BigDecimal(resultId), activity, Integer.valueOf(TEST_SYS_USER_ID));
     }
 
 }

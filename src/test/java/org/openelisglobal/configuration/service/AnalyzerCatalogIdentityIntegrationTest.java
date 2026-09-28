@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Test;
+import org.openelisglobal.AppTestConfig;
+import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
@@ -22,12 +25,35 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Exercises normal configuration loading against the catalog installed by
- * Liquibase.
+ * Liquibase, in a database isolated from legacy suites that replace catalog
+ * rows.
  */
+@ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
+        AnalyzerCatalogIdentityIntegrationTest.TestConfig.class })
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @Configuration
+    public static class TestConfig extends BaseTestConfig {
+        private final PostgreSQLContainer<?> database = new PostgreSQLContainer<>("postgres:14.4");
+
+        @Override
+        protected PostgreSQLContainer<?> databaseContainer() {
+            return database;
+        }
+
+        @PreDestroy
+        public void stopDatabase() {
+            database.stop();
+        }
+    }
 
     @Autowired
     @Qualifier("testConfigurationHandler")
@@ -77,7 +103,8 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
             }
             assertEquals(0, testHandler.getLastSummary().getCreated());
             assertEquals(1, testHandler.getLastSummary().getUpdated());
-            assertEquals(0, testHandler.getLastSummary().getSkipped());
+            assertEquals(testHandler.getLastSummary().getRows().toString(), 0,
+                    testHandler.getLastSummary().getSkipped());
             assertEquals(ids, catalogIds());
             assertEquals(original.getId(), tests.getTestByDescription("COVIDPCR(Respiratory Swab)").getId());
             assertEquals(specimenIds, specimenIds(original.getId()));
@@ -103,7 +130,8 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         try {
             testHandler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
                     "specimen-specific-update.csv");
-            assertEquals(0, testHandler.getLastSummary().getSkipped());
+            assertEquals(testHandler.getLastSummary().getRows().toString(), 0,
+                    testHandler.getLastSummary().getSkipped());
             assertEquals(1, testHandler.getLastSummary().getUpdated());
             assertEquals(ids, catalogIds());
             assertEquals(requested, tests.get(sputum.getId()).getIsReportable());
@@ -135,7 +163,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         try (InputStream csv = getClass().getResourceAsStream("/configuration/tests/molecular-tests.csv")) {
             testHandler.processConfiguration(csv, "molecular-tests.csv");
         }
-        assertEquals(0, testHandler.getLastSummary().getSkipped());
+        assertEquals(testHandler.getLastSummary().getRows().toString(), 0, testHandler.getLastSummary().getSkipped());
         var profile = new ObjectMapper().readTree(
                 """
                         {"profileMeta":{"id":"fixture.specimen","displayName":"Specimen default"},

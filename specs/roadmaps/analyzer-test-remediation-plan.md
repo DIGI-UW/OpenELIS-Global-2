@@ -53,6 +53,29 @@ browser Save diagnostic and presentation polish are not additional merge gates
 without a demonstrated workflow failure. Follow-up status must remain explicit;
 merging #4332 will not mean the full remediation or release is qualified.
 
+### CI corrections — 28 September 2026
+
+The `989a9c9dc5` run passed the core browser suites and 22 of 23 analyzer-harness
+outcomes, including all four retained native GeneXpert scenarios. The one harness
+failure expected superseded RIF answer labels; the frontend unit failure came from
+slow per-character input in the profile-editor test. Both focused fixes pass locally.
+
+Backend validation exposed stale mock assumptions, invalid fixture actors/types,
+and numeric bindings used for UUID audit keys. Tests now exercise the real services
+and persisted history. Catalog identity checks use a separately initialized database
+because unrelated legacy suites replace the shared catalog. This exposed static
+TestService collaborators retaining the first database; they now resolve from the
+current application context, following the existing ResultService pattern.
+
+The corrected backend batch passed 148 tests across 12 classes, with no failures or
+skips. This is focused local evidence, not a green full-suite claim. The local Bridge
+checkout remains the candidate; the committed dependency pin remains unchanged.
+The separately approved one-line branding transaction correction passed all 18
+existing branding controller tests. The completed old-head backend run had 60
+failures/errors across 12 classes; every affected class passes in focused local
+validation. New-head GitHub checks and a broader local backend run remain pending;
+no checks or assertions are bypassed.
+
 ## Outcome and ordering
 
 Make #4332 the initial test-remediation phase for the core OE2 + Bridge roadmap.

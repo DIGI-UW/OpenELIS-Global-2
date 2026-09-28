@@ -48,14 +48,15 @@ public class BaseTestConfig {
     @Profile("test")
     public DataSource testDataSource() throws IOException {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        startPostgreSql();
+        PostgreSQLContainer<?> container = databaseContainer();
+        startPostgreSql(container);
         dataSource.setDriverClassName("org.postgresql.Driver");
-        dataSource.setUrl(postgreSqlContainer.getJdbcUrl());
-        dataSource.setUsername(postgreSqlContainer.getUsername());
-        dataSource.setPassword(postgreSqlContainer.getPassword());
-        System.setProperty("db.url", postgreSqlContainer.getJdbcUrl());
-        System.setProperty("db.user", postgreSqlContainer.getUsername());
-        System.setProperty("db.pass", postgreSqlContainer.getPassword());
+        dataSource.setUrl(container.getJdbcUrl());
+        dataSource.setUsername(container.getUsername());
+        dataSource.setPassword(container.getPassword());
+        System.setProperty("db.url", container.getJdbcUrl());
+        System.setProperty("db.user", container.getUsername());
+        System.setProperty("db.pass", container.getPassword());
         return dataSource;
     }
 
@@ -78,16 +79,20 @@ public class BaseTestConfig {
         return new JpaTransactionManager(entityManagerFactory);
     }
 
-    private void startPostgreSql() {
-        if (postgreSqlContainer != null && postgreSqlContainer.isRunning()) {
+    protected PostgreSQLContainer<?> databaseContainer() {
+        return postgreSqlContainer;
+    }
+
+    private void startPostgreSql(PostgreSQLContainer<?> container) {
+        if (container != null && container.isRunning()) {
             return;
         }
-        postgreSqlContainer.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
+        container.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                 "/docker-entrypoint-initdb.d");
-        postgreSqlContainer.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");
-        postgreSqlContainer.withDatabaseName(DB_NAME);
-        postgreSqlContainer.withUsername(USER);
-        postgreSqlContainer.withPassword(PASSWORD);
-        postgreSqlContainer.start();
+        container.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");
+        container.withDatabaseName(DB_NAME);
+        container.withUsername(USER);
+        container.withPassword(PASSWORD);
+        container.start();
     }
 }

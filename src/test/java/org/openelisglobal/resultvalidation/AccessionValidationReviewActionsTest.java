@@ -206,7 +206,7 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         Integer audits = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.history WHERE reference_id = ?"
                         + " AND convert_from(changes, 'UTF8') LIKE 'STALE_PAGE_CONFLICT_VALIDATION%'",
-                Integer.class, ANALYSIS_ID);
+                Integer.class, new java.math.BigDecimal(ANALYSIS_ID));
         assertEquals("the conflict is written to the audit trail", Integer.valueOf(1), audits);
     }
 

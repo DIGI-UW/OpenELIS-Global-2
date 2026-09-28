@@ -187,7 +187,7 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
                 referenceTablesService.getReferenceTableByName("qc_control_lot").getId());
         assertEquals("The UUID control lot must have a persisted update audit", 1, entries.size());
         var entry = entries.get(0);
-        assertEquals(controlLotId, entry.getReferenceId());
+        assertEquals(controlLotId, entry.getReferenceKey());
         assertEquals(TEST_SYS_USER_ID, entry.getSysUserId());
         assertEquals("U", entry.getActivity());
         assertNotNull(entry.getTimestamp());

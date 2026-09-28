@@ -169,9 +169,15 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends AuditTrailIntegr
      */
     @Test
     public void multiplePatientIdentityUpdates_eachEmitsItsOwnHistoryRow() {
-        // Need 3 distinct PatientIdentityTypes to seed 3 identity rows.
-        List<PatientIdentityType> identityTypes = patientIdentityTypeService.getAll();
-        assertTrue("Seed data must provide at least 3 PatientIdentityType rows", identityTypes.size() >= 3);
+        List<PatientIdentityType> identityTypes = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            PatientIdentityType type = new PatientIdentityType();
+            type.setIdentityType("Audit identity " + i);
+            type.setDescription("Identity owned by this test " + i);
+            type.setSysUserId(TEST_SYS_USER_ID);
+            patientIdentityTypeService.insert(type);
+            identityTypes.add(type);
+        }
 
         Person person = new Person();
         person.setFirstName("MultiIdent");
