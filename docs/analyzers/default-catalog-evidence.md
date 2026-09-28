@@ -64,3 +64,42 @@ Focused tests cover unique/ambiguous/exact matching, retained raw values, the
 original respiratory clinical IDs and answers, and editor persistence. This
 checkpoint does not establish native-traffic qualification or authorize a new
 release pin; the candidate must still pass the complete protocol workflows.
+
+## Mixed-component result display checkpoint
+
+The candidate native COVID run exposed a separate display failure after correct
+mapping and delivery. The existing COVID clinical test contains categorical
+answers and numeric Ct components. `AnalyzerResultsController` looked up every
+active result definition as a dictionary entry, including numeric definitions
+with no dictionary value. The resulting exception returned an empty worklist.
+
+The display lookup now uses the existing component option service when a
+component is known and resolves only dictionary-valued definitions. No catalog
+or mapping repair is performed. After rebuilding, both original pending COVID
+observations were visible with their original raw values and correct answer
+choices, without resending or editing them.
+
+Validation on the local candidate: the three existing controller tests and
+three real-catalog tests passed. A recorded native run passed authentication,
+MTB NOT DETECTED, COVID POSITIVE and COVID NEGATIVE. Its clinical readback asserts
+one ordered analysis, one persisted observation in the catalog's primary
+component, the exact answer and empty unreported components. Extra empty Ct
+fields are not duplicate saved results. These scenarios use candidate Bridge
+#69 revision 7; they do not qualify all profile rows or authorize a release pin.
+
+The browser still reports an aborted empty HTTP 200 response for some Save
+requests. Saved-result assertions pass. The exact browser cancellation cause
+remains unverified; this diagnostic alone does not establish a failed save.
+
+Additional follow-ups retained from the same runtime inspection:
+
+- The COVID primary component metadata declares numeric type even though its
+  answer definitions are categorical. Review the normal component/catalog
+  initialization separately; do not rewrite existing results to repair display.
+- In the local harness, connection/profile data uses the image's persistent
+  `/data/openelis-analyzer-bridge` volume, but the delivery outbox and FILE state
+  default to `/tmp/openelis-analyzer-bridge`. Configure persistent database paths
+  before claiming container-replacement/replay acceptance. A simple process
+  restart is not sufficient evidence for that requirement.
+- Two-instrument attribution, HIV numeric traffic, complete FILE/HL7 workflows,
+  recovery, populated upgrades and full profile compatibility remain open.
