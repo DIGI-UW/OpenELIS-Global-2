@@ -111,7 +111,7 @@ it.each(preservationCases)(
     const authored = clone(original);
     delete authored.catalog;
     const { onStateChange } = mount(authored);
-    changeText(screen.getByRole("textbox", { name: label }), value);
+    changeText(screen.getByLabelText(label), value);
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ dirty: true, publishable: false }),
     );
@@ -137,7 +137,7 @@ it.each(preservationCases)(
     delete saved.catalog;
     saved[path[0]][path[1]] = value;
     mount(saved);
-    expect(screen.getByRole("textbox", { name: label })).toHaveValue(value);
+    expect(screen.getByLabelText(label)).toHaveValue(value);
   },
 );
 
