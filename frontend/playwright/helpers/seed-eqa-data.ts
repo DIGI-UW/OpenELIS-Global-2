@@ -254,6 +254,20 @@ export function seedParticipantCycle(runTag: string): ParticipantCycleSeed {
       "cycle id",
     );
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
+
+    // Every cycle the application creates with a deadline carries round 1,
+    // and the scheduler's sweep files a laboratory's results under that
+    // round; a cycle without one is skipped by it and never readies itself.
+    const roundId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_round (id, fhir_uuid, cycle_id, round_number, distribution_date,` +
+          ` submission_deadline, sys_user_id, last_updated)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_round_seq'), gen_random_uuid(), ${cycleId}, 1, now(),` +
+          ` now() + interval '7 days', '1', now()) RETURNING id`,
+      ),
+      "round id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_round WHERE id = ${roundId}`);
   } catch (error) {
     seeded.drain();
     throw error;
@@ -376,52 +390,39 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
   };
 }
 
-/** Reported results planted per organization, so a spec can assert the score
- * cell ("{unacceptable} unacceptable of {RESULTS_PER_ORGANIZATION}"). */
-export const RESULTS_PER_ORGANIZATION = 3;
-
 /**
- * Plant the score container: one eqa_distribution on the cycle plus reported
- * eqa_result rows, three tests per organization. scoreCycle refuses below
- * MIN_PARTICIPANTS_FOR_STATS (5) reported rows, so five organizations give a
- * comfortable fifteen.
+ * Plant the score container: one eqa_distribution on the cycle plus one
+ * reported eqa_result row per organization for each of the tests given.
  *
- * The first organization's first result is planted far from the pack, which
- * makes it UNACCEPTABLE and every other row ACCEPTABLE. The arithmetic is
- * worth stating, because a smaller seed cannot reach the verdict at all:
- * statistics pool every result in the distribution (not per test), so with n
- * rows of which n-1 are identical the odd one out scores exactly
- * (n-1)/sqrt(n) whatever its magnitude — 3.61 at n=15, over the
- * unacceptable threshold of 3.0, where five rows would cap at 1.79 and never
- * leave ACCEPTABLE. One unacceptable participant is what makes scoring
- * enqueue a follow-up, which is the behaviour under test.
+ * The tests must be the ones the cycle's panel carries. Scoring judges a
+ * result against the acceptance range its panel sample sealed, found by the
+ * analyte the result's test resolves to; a result on any other test only
+ * ever meets the peer statistic, and with the sample SD taken over five
+ * reports the largest z anyone can reach is 1.79, never UNACCEPTABLE. So a
+ * spec reads the test it chose in the wizard back and passes it here.
+ *
+ * The first organization's first result is planted outside the sealed
+ * range, which makes it UNACCEPTABLE and every other row ACCEPTABLE. One
+ * unacceptable participant is what makes scoring enqueue a follow-up, which
+ * is the behaviour under test. scoreCycle also refuses below
+ * MIN_PARTICIPANTS_FOR_STATS (5) reported rows, so five organizations are
+ * the floor.
  *
  * Rows are swept by the scheme-scoped restore().
  */
 export function seedReportedResults(
   cycleId: string,
   organizationIds: string[],
+  testIds: string[],
 ): void {
   asInt(cycleId, "cycle id");
+  if (testIds.length === 0) {
+    throw new Error("seedReportedResults needs at least one panel test");
+  }
   const schemeId = asInt(
     psql(`SELECT scheme_id FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`),
     "scheme id",
   );
-  // eqa_result.test_id references test(id) — the panel's own rows key on
-  // analyte, not test — so borrow existing tests the way
-  // seed-qc-sigma-data.ts does. Which tests they are does not matter: the
-  // rows only have to satisfy the FK and the (distribution, org, test) key.
-  const testIds = psql(
-    `SELECT string_agg(id::text, ',') FROM (SELECT id FROM ${SCHEMA}.test ORDER BY id` +
-      ` LIMIT ${RESULTS_PER_ORGANIZATION}) t`,
-  )
-    .split(",")
-    .map((id) => asInt(id, "test id"));
-  if (testIds.length < RESULTS_PER_ORGANIZATION) {
-    throw new Error(
-      `Need ${RESULTS_PER_ORGANIZATION} tests in the catalog, found ${testIds.length}`,
-    );
-  }
 
   const distributionId = asInt(
     psql(
@@ -439,7 +440,8 @@ export function seedReportedResults(
         `INSERT INTO ${SCHEMA}.eqa_result (id, fhir_uuid, eqa_distribution_id, participant_organization_id,` +
           ` test_id, result_value, target_value, submission_method, submission_date, sys_user_id)` +
           ` VALUES (nextval('${SCHEMA}.eqa_result_seq'), gen_random_uuid(), ${distributionId},` +
-          ` ${asInt(orgId, "result org")}, ${testId}, ${outlier ? 200 : 100}, 100, 'MANUAL', now(), '1')`,
+          ` ${asInt(orgId, "result org")}, ${asInt(testId, "panel test")}, ${outlier ? 200 : 100}, 100,` +
+          ` 'MANUAL', now(), '1')`,
       );
     });
   });

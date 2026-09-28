@@ -10,8 +10,8 @@ import {
   seedReportedResults,
   ProviderSchemeSeed,
   PROVIDER_PARTICIPANT_COUNT,
-  RESULTS_PER_ORGANIZATION,
 } from "../../../helpers/seed-eqa-data";
+import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
 
 /**
  * EQA provider cycle lifecycle (OGC-613).
@@ -23,8 +23,10 @@ import {
  * cycle open submissions BY ITSELF (AUTO / all-shipments-delivered) — the
  * complementary edge to eqa-open-submissions.spec.ts, which covers the
  * manual override on a partial roster. Scoring then walks the banner to
- * Scored (the >=5 reported results it requires are planted in the score
- * container; the statistics themselves are integration-tested).
+ * Scored: one reported result per participant is planted in the score
+ * container on the panel's own test, the first of them outside the sealed
+ * acceptance range, so exactly one laboratory scores unacceptable (the
+ * statistics themselves are integration-tested).
  *
  * Banner sequence asserted: Prep in progress → Ready to ship → Shipped →
  * Submissions open → Scored.
@@ -53,6 +55,9 @@ test.describe("EQA provider cycle lifecycle", () => {
     // participants, two downloads and a dozen writes.
     test.setTimeout(600_000);
     let cycleId = "";
+    /** The test the panel sample answers; planted results must be on it for
+     * the sealed target to judge them. */
+    let panelTestId = "";
     const banner = (state: string) =>
       expect(page.getByText(state, { exact: true }).first()).toBeVisible({
         timeout: UI_TIMEOUT,
@@ -91,9 +96,14 @@ test.describe("EQA provider cycle lifecycle", () => {
       // names, not "planned start/end".
       await expect(page.getByText("Distribution date")).toBeVisible();
       await expect(page.getByText("Submission deadline")).toBeVisible();
-      await page.locator("#cycle-planned-start").fill("01/10/2026");
-      await page.locator("#cycle-planned-end").fill("15/10/2026");
-      await page.keyboard.press("Escape");
+      // Both inputs take no keystrokes, so the range is chosen on the
+      // calendar: distribution on the 1st of next month and the deadline on
+      // its 15th, which keeps the cycle ahead of today whenever the spec runs.
+      await page.locator("#cycle-planned-start").click();
+      await pickCalendarDay(page, 1, 1);
+      await pickCalendarDay(page, 15);
+      await expect(page.locator("#cycle-planned-start")).not.toHaveValue("");
+      await expect(page.locator("#cycle-planned-end")).not.toHaveValue("");
       await page.getByRole("button", { name: "Next", exact: true }).click();
     });
 
@@ -101,6 +111,8 @@ test.describe("EQA provider cycle lifecycle", () => {
       await page.locator("#panel-name").fill(`E2E ${RUN} panel`);
       await page.locator("#sample-code-0").fill(`S-${RUN}-1`);
       await page.locator("select#sample-test-0").selectOption({ index: 1 });
+      panelTestId = await page.locator("select#sample-test-0").inputValue();
+      expect(panelTestId).not.toBe("");
       await page.locator("#sample-target-0").fill("100");
       await page.locator("#sample-unit-0").fill("mg");
       await page.locator("#sample-low-0").fill("90");
@@ -258,7 +270,7 @@ test.describe("EQA provider cycle lifecycle", () => {
     });
 
     await test.step("scoring walks the banner to Scored", async () => {
-      seedReportedResults(cycleId, seed.organizationIds);
+      seedReportedResults(cycleId, seed.organizationIds, [panelTestId]);
       await page.reload({ timeout: NAV_TIMEOUT });
       await expect(page.getByRole("tab", { name: "Prep" })).toBeVisible({
         timeout: LONG_TIMEOUT,
@@ -271,18 +283,16 @@ test.describe("EQA provider cycle lifecycle", () => {
         ),
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await banner("Scored");
-      // The planted outlier belongs to the first participant, so exactly one
-      // of its three results is unacceptable and every other lab is clean.
+      // The planted outlier belongs to the first participant, so its one
+      // result is unacceptable and every other lab is clean.
       const outlierRow = page.locator("tr", {
         hasText: seed.organizationNames[0],
       });
-      await expect(
-        outlierRow.getByText(`1 unacceptable of ${RESULTS_PER_ORGANIZATION}`),
-      ).toBeVisible();
+      await expect(outlierRow.getByText("1 unacceptable of 1")).toBeVisible();
       await expect(
         page
           .locator("tr", { hasText: seed.organizationNames[1] })
-          .getByText(`0 unacceptable of ${RESULTS_PER_ORGANIZATION}`),
+          .getByText("0 unacceptable of 1"),
       ).toBeVisible();
     });
 
@@ -304,18 +314,15 @@ test.describe("EQA provider cycle lifecycle", () => {
       const csv = readFileSync(await file.path(), "utf8")
         .trim()
         .split("\n");
+      // analyte_name is the column a participant on another instance matches
+      // these scores on when it imports them.
       expect(csv[0]).toBe(
-        "test,result_value,target_value,z_score,performance_status,scored_on",
+        "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on",
       );
-      expect(csv).toHaveLength(RESULTS_PER_ORGANIZATION + 1);
-      // This participant's planted outlier, scored unacceptable, and its two
-      // clean results.
-      expect(csv.filter((line) => line.includes("UNACCEPTABLE"))).toHaveLength(
-        1,
-      );
-      expect(csv.filter((line) => line.includes("ACCEPTABLE"))).toHaveLength(
-        RESULTS_PER_ORGANIZATION,
-      );
+      // The header and this participant's one planted result, scored
+      // unacceptable against the sealed range.
+      expect(csv).toHaveLength(2);
+      expect(csv[1]).toContain("UNACCEPTABLE");
 
       // The return must succeed. The FHIR endpoint answers HTTP 200 even
       // when the store refuses the bundle — the page reads the body's
@@ -323,7 +330,11 @@ test.describe("EQA provider cycle lifecycle", () => {
       // egress path permanently green.
       await outlierRow.getByRole("button", { name: "Send scores" }).click();
       await expect(
-        page.getByText("Scores returned over FHIR.").first(),
+        page
+          .getByText(
+            "Scores placed in the FHIR store for the participant to collect.",
+          )
+          .first(),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
 

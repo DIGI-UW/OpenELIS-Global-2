@@ -1,9 +1,10 @@
 import { test, expect } from "../../../helpers/test-base";
 import { UI_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
 import { removeSelfEnrollments } from "../../../helpers/seed-eqa-data";
+import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
 
 /**
- * EQA self-enrollment: create, edit and deactivate through the UI (OGC-613).
+ * EQA self-enrollment: create, edit and suspend through the UI (OGC-613).
  *
  * This is the page a lab uses to say which schemes it takes part in, and
  * every other participant surface reads what it writes — the other specs
@@ -11,9 +12,10 @@ import { removeSelfEnrollments } from "../../../helpers/seed-eqa-data";
  * No seeding here: the spec creates its own enrollment and removes it by
  * driving the page, so what it asserts is the real write path.
  *
- * There is deliberately nothing to assert about deletion. The overflow menu
- * offers Deactivate, not Delete, and the soft-delete endpoint has no caller
- * in the UI at all.
+ * There is deliberately nothing to assert about deletion. An enrolment moves
+ * between Active, Suspended and Withdrawn through the overflow menu, each
+ * move recorded with a reason and an effective date; nothing on the page
+ * deletes a row, and the soft-delete endpoint has no caller in the UI at all.
  */
 
 const RUN = Date.now().toString(36);
@@ -28,26 +30,26 @@ test.use({ storageState: "playwright/.auth/participant.json" });
 
 test.describe("EQA self-enrollment", () => {
   test.afterAll(() => {
-    // The page can deactivate a row but never delete one, so the only way to
+    // The page can suspend a row but never delete one, so the only way to
     // leave the database as we found it is to remove it directly.
     removeSelfEnrollments(`E2E ${RUN}`);
   });
 
-  test("an enrollment is created, edited and deactivated", async ({ page }) => {
+  test("an enrollment is created, edited and suspended", async ({ page }) => {
     test.setTimeout(180_000);
     const row = () => page.locator("tr", { hasText: PROGRAM });
 
-    await test.step("the enrollment form saves a new programme", async () => {
+    await test.step("the enrollment form saves a new scheme", async () => {
       await page.goto("/qa/eqa/my-programs", { timeout: NAV_TIMEOUT });
       await expect(
         page.getByRole("heading", { name: "My EQA Schemes" }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
-      await page.getByRole("button", { name: "Enroll in Program" }).click();
+      await page.getByRole("button", { name: "Enroll in Scheme" }).click();
       await expect(
-        page.getByRole("heading", { name: "New EQA Program Enrollment" }),
+        page.getByRole("heading", { name: "New EQA Scheme Enrollment" }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
 
-      // Programme name and provider are the only required fields, and Save
+      // Scheme name and provider are the only required fields, and Save
       // stays disabled until both carry text.
       const save = page.getByRole("button", { name: "Save Enrollment" });
       await expect(save).toBeDisabled();
@@ -79,14 +81,39 @@ test.describe("EQA self-enrollment", () => {
       await expect(page.locator("tbody tr", { hasText: RUN })).toHaveCount(1);
     });
 
-    await test.step("deactivating flips the status tag", async () => {
+    await test.step("suspending records a reason and a date, then flips the tag", async () => {
       const renamedRow = page.locator("tr", { hasText: RENAMED });
       await renamedRow.getByRole("button", { name: "Options" }).click();
-      // No confirmation step — the toggle fires on click.
-      await page.getByRole("menuitem", { name: "Deactivate" }).click();
-      await expect(renamedRow.getByText("Inactive")).toBeVisible({
+      await page.getByRole("menuitem", { name: "Suspend" }).click();
+
+      // The move is confirmed in a modal, and it cannot be confirmed until
+      // both the reason and the date it takes effect from are filled: a
+      // status change with neither would be half a record.
+      const modal = page.getByRole("dialog");
+      await expect(modal.getByRole("heading", { name: "Suspend" })).toBeVisible(
+        { timeout: UI_TIMEOUT },
+      );
+      const confirm = modal.getByRole("button", { name: "Suspend" });
+      await expect(confirm).toBeDisabled();
+      await page
+        .locator("#enrollment-status-reason")
+        .fill(`E2E ${RUN}: instrument down for service`);
+      await expect(confirm).toBeDisabled();
+      // The date input takes no keystrokes; the calendar is the only way in.
+      await page.locator("#enrollment-status-effective-date").click();
+      await pickCalendarDay(page, new Date().getDate());
+      await expect(
+        page.locator("#enrollment-status-effective-date"),
+      ).not.toHaveValue("");
+      await expect(confirm).toBeEnabled();
+      await confirm.click();
+
+      await expect(renamedRow.getByText("Suspended")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
+      // Still exactly one row for this run: a status change edits the
+      // enrolment in place rather than writing a second one.
+      await expect(page.locator("tbody tr", { hasText: RUN })).toHaveCount(1);
     });
   });
 });

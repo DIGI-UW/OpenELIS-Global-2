@@ -1,4 +1,3 @@
-import { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import {
   SHORT_TIMEOUT,
@@ -22,59 +21,25 @@ import { enterResults, validateResults } from "../../../helpers/seed-tat-data";
  *   panel receipt — flips the cycle to Panel received in the same
  *   transaction) → results entered + validated (REST, mirroring the UI save;
  *   the result-entry UI itself is covered by other foundational specs) →
- *   live progress 1 / 1 → walk to READY_TO_SUBMIT through the real
- *   transition endpoint → "Review & submit" in the UI → Submitted.
+ *   live progress 1 / 1 → the scheduler's sweep readies the cycle →
+ *   "Review & submit" in the UI → Submitted.
  *
- * Why the two REST transitions: the PANEL_RECEIVED → TESTING →
- * READY_TO_SUBMIT sweep runs on a 5-minute scheduler
- * (EQADeadlineAlertScheduler), which no spec can wait for. The sweep itself
- * is integration-tested; what only a browser can prove is that My Cycles
- * renders each state and that Review & submit works — so the spec drives
- * exactly those.
+ * The PANEL_RECEIVED → TESTING → READY_TO_SUBMIT walk is the scheduler's
+ * sweep (EQADeadlineAlertScheduler), which also bridges each validated
+ * analysis into the cycle's own result rows — the rows Review & submit
+ * sends. A stand-in transition would leave nothing to send, so the spec
+ * waits for the real sweep; the E2E stack runs it every ten seconds rather
+ * than the production five minutes.
  */
 
 const RUN = Date.now().toString(36);
-const API = "/api/OpenELIS-Global";
+/** Two sweeps plus the reloads between them, at the E2E stack's cadence. */
+const SWEEP_TIMEOUT = 2 * LONG_TIMEOUT;
 
 let seed: ParticipantCycleSeed;
 /** The order the laboratory creates, validated and reviewed later by someone
  * who holds the privileges for it. */
 let accession = "";
-
-/** PARTICIPANT-machine transition through the real endpoint — the same call
- * cyclesApi.js makes, minus the button the scheduler normally stands in for. */
-async function transition(
-  page: Page,
-  cycleId: string,
-  newState: string,
-  reason: string,
-): Promise<void> {
-  const res = await page.evaluate(
-    async ({ url, body }) => {
-      const csrf = localStorage.getItem("CSRF") || "";
-      const r = await fetch(url, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-CSRF-Token": csrf,
-        },
-        body: JSON.stringify(body),
-      });
-      return { status: r.status, text: await r.text().catch(() => "") };
-    },
-    {
-      url: `${API}/rest/eqa/cycles/${cycleId}/transition`,
-      body: { newState, stateMachine: "PARTICIPANT", reason },
-    },
-  );
-  if (res.status < 200 || res.status >= 300) {
-    throw new Error(
-      `transition(${newState}) failed: HTTP ${res.status}: ${res.text.substring(0, 300)}`,
-    );
-  }
-}
 
 // Serial, and split by who is signed in. The second test reviews the results
 // the first one produced, so they are one journey deliberately expressed as
@@ -133,15 +98,7 @@ test.describe.serial("EQA participant lane", () => {
           timeout: UI_TIMEOUT,
         });
         // The deep link arms the EQA box and loads the placeholder patient,
-        // so the patient step needs no input. It does not preselect the
-        // programme or the cycle, and the requirement says it should: the
-        // receipt fields only appear once both are chosen, so today a user
-        // arriving from "Receive panel" still has to pick them by hand. That
-        // is reported with this branch rather than worked around here, and it
-        // is not the one-line fix it looks like — the cycle id could be
-        // passed, but the programme select is keyed on this laboratory's own
-        // free-text enrollments, which carry no link back to a scheme, so
-        // there is nothing to preselect it from.
+        // so the patient step needs no input.
         await expect(page.locator("#eqa-sample-checkbox")).toBeChecked({
           timeout: UI_TIMEOUT,
         });
@@ -150,15 +107,19 @@ test.describe.serial("EQA participant lane", () => {
         await expect(
           page.getByRole("heading", { name: "EQA Sample Information" }),
         ).toBeVisible({ timeout: UI_TIMEOUT });
-        await expect(page.locator("select#eqa-program")).toHaveValue("");
-        await page
-          .locator("select#eqa-program")
-          .selectOption({ label: seed.programName });
-        await page
-          .locator("select#eqa-cycle")
-          .selectOption({ label: seed.cycleName });
+        // The link names the cycle, and the form preselects it together with
+        // the enrollment whose scheme name matches, so a user arriving from
+        // "Receive panel" fills in only the receipt itself. The ids are
+        // asserted, not just that the selects are non-empty: any other
+        // cycle or enrollment landing here would pass a weaker check.
+        await expect(page.locator("select#eqa-cycle")).toHaveValue(
+          seed.cycleId,
+        );
+        await expect(page.locator("select#eqa-program")).toHaveValue(
+          seed.enrollmentId,
+        );
         await page.locator("#eqa-provider-sample-id").fill(`PS-${RUN}`);
-        // Choosing programme + cycle reveals the Panel Receipt block.
+        // Both being chosen is what reveals the Panel Receipt block.
         await expect(
           page.getByRole("heading", { name: "Panel Receipt" }),
         ).toBeVisible();
@@ -258,23 +219,20 @@ test.describe.serial("EQA participant lane", () => {
         ).toBeVisible();
       });
 
-      await test.step("Review & submit moves the cycle to Submitted", async () => {
-        await transition(
-          page,
-          seed.cycleId,
-          "TESTING",
-          `E2E ${RUN}: testing started (stands in for the 5-minute sweep)`,
-        );
-        await transition(
-          page,
-          seed.cycleId,
-          "READY_TO_SUBMIT",
-          `E2E ${RUN}: all results validated (stands in for the 5-minute sweep)`,
-        );
-        await page.goto("/qa/eqa/my-cycles", { timeout: NAV_TIMEOUT });
-        await expect(row()).toBeVisible({ timeout: UI_TIMEOUT });
-        await expect(row().getByText("Ready to submit")).toBeVisible();
+      await test.step("the sweep bridges the validated result and readies the cycle", async () => {
+        // Nothing else creates the rows Review & submit sends, so this is the
+        // real scheduler at the E2E stack's ten-second cadence
+        // (ORG_OPENELISGLOBAL_EQA_ALERT_POLL_FREQUENCY in
+        // build.docker-compose.yml). The page reads the status on load only.
+        await expect(async () => {
+          await page.reload({ timeout: NAV_TIMEOUT });
+          await expect(row().getByText("Ready to submit")).toBeVisible({
+            timeout: SHORT_TIMEOUT,
+          });
+        }).toPass({ timeout: SWEEP_TIMEOUT, intervals: [SHORT_TIMEOUT] });
+      });
 
+      await test.step("Review & submit moves the cycle to Submitted", async () => {
         await row().click();
         const expanded = page.getByTestId(`cycle-expanded-${seed.cycleId}`);
         await expect(
