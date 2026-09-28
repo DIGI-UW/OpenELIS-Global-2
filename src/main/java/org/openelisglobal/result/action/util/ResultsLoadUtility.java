@@ -53,6 +53,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.eqa.service.EQAParticipantResultService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -168,6 +169,8 @@ public class ResultsLoadUtility {
     private TestResultService testResultService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAParticipantResultService eqaParticipantResultService;
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
@@ -1183,6 +1186,9 @@ public class ResultsLoadUtility {
                 sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
                     testItem.setEqaPerAnalyst(true);
                     testItem.setEqaSchemeId(String.valueOf(schemeId));
+                    // Preselect who the sample was sealed for; the bench can change it.
+                    eqaParticipantResultService.findAssignedAnalystId(Long.valueOf(analysis.getId()))
+                            .ifPresent(analystId -> testItem.setEqaAnalystId(String.valueOf(analystId)));
                 });
             }
         } catch (RuntimeException e) {

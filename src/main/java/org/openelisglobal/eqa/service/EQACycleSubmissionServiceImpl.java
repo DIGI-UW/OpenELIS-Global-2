@@ -257,7 +257,13 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             String value, Long analystId, String sysUserId) {
         List<EQAParticipantResult> existing = participantResultDAO
                 .getAllMatching(Map.of("round.id", roundId, "labEnrollmentId", enrollmentId, "analyteId", analyteId));
-        EQAParticipantResult row = existing.isEmpty() ? null : existing.get(0);
+        // An in-house panel holds several samples of one analyte, one per analyst, so
+        // this key can name several rows and the analysis says which one is being
+        // entered. Only when the key names a single row (an external scheme's one
+        // result per analyte, or a draft entered by hand) is that row the answer.
+        Long analysisId = Long.valueOf(analysis.getId());
+        EQAParticipantResult row = existing.stream().filter(result -> analysisId.equals(result.getAnalysisId()))
+                .findFirst().orElse(existing.size() == 1 ? existing.get(0) : null);
 
         if (row == null) {
             row = new EQAParticipantResult();
@@ -267,7 +273,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             row.setRound(roundRef);
             row.setLabEnrollmentId(enrollmentId);
             row.setAnalyteId(analyteId);
-            row.setAnalysisId(Long.valueOf(analysis.getId()));
+            row.setAnalysisId(analysisId);
             row.setResultValue(GenericValidator.isBlankOrNull(value) ? null : value.trim());
         } else if (row.getSubmissionStatus() != EQASubmissionStatus.DRAFT) {
             // Refusing is the point, but say so: whoever picked the analyst gets no

@@ -3,6 +3,7 @@ package org.openelisglobal.eqa.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
@@ -15,6 +16,15 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
      * Anything past DRAFT is immutable through this path.
      */
     EQAParticipantResult saveDraft(EQAParticipantResult result);
+
+    /**
+     * The analyst assigned to the participant result for this analysis, so result
+     * entry can preselect who the panel was sealed for.
+     *
+     * @return empty when the analysis has no participant result or nobody is
+     *         assigned to it
+     */
+    Optional<Long> findAssignedAnalystId(Long analysisId);
 
     /**
      * DRAFT → VALIDATED_PARTIAL → SUBMITTED; SUBMITTED stamps {@code submittedAt}.
