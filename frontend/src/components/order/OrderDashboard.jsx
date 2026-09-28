@@ -419,6 +419,7 @@ const OrderDashboardContent = () => {
           value={getStepProgressValue(order)}
           size="small"
           status={order.status === "rejected" ? "error" : "active"}
+          label={intl.formatMessage({ id: "order.progress" })}
           hideLabel
         />
         <span className="progress-label">
