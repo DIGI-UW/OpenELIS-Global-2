@@ -31,6 +31,7 @@ import { LineChart, SimpleBarChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { ConfigurationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
 
@@ -60,6 +61,7 @@ function monthsAgoStr(n) {
 export default function EnvironmentalDashboard() {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
 
   const excHeaders = [
     {
@@ -230,10 +232,12 @@ export default function EnvironmentalDashboard() {
 
   const comparisonData = React.useMemo(() => {
     if (!Array.isArray(comparison)) return [];
-    return comparison.map((s) => ({
-      group: s.siteName,
-      value: s.complianceRate,
-    }));
+    return comparison
+      .filter((s) => s.complianceRate != null)
+      .map((s) => ({
+        group: s.siteName,
+        value: s.complianceRate,
+      }));
   }, [comparison]);
 
   const trendOptions = {
@@ -284,11 +288,7 @@ export default function EnvironmentalDashboard() {
   const handleExport = async () => {
     setExportLoading(true);
     try {
-      const labName = await new Promise((resolve) =>
-        getFromOpenElisServer("/rest/site-information?name=siteName", (r) =>
-          resolve((r && r.value) || "OpenELIS Lab"),
-        ),
-      );
+      const labName = configurationProperties?.BANNER_TEXT || "OpenELIS Lab";
       const preparedBy = (
         (userSessionDetails && userSessionDetails.firstName
           ? userSessionDetails.firstName

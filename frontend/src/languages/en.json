@@ -1515,6 +1515,7 @@
   "compliance.dashboard.filter.dateRangeEnd": "End date",
   "compliance.dashboard.filter.drilldownSite": "Drill down by site",
   "compliance.dashboard.filter.sites": "Sampling Sites",
+  "compliance.dashboard.filter.sites.placeholder": "All sites",
   "compliance.dashboard.filter.standard": "Compliance Standard",
   "compliance.dashboard.kpi.complianceRate": "Compliance Rate",
   "compliance.dashboard.kpi.exceedances": "Total Exceedances",
