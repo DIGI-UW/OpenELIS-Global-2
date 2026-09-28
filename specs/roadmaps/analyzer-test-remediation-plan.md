@@ -175,7 +175,25 @@ entry to OE2, but the intake page had read its worklist about three seconds
 before delivery and does not poll for new rows. The test now waits for that
 accession in OE2's ordinary worklist API before navigating to the visible
 review screen; the focused local rerun passed. This readiness wait does not
-create, map, exclude or accept a result. The full CI rerun remains pending.
+create, map, exclude or accept a result. On the `b3e307bc1a` CI executor,
+GeneXpert passed and harness shard 2 failed only on the four stock-default
+cases plus the FluoroCycler story that depends on its missing default.
+
+The stock-default failures have distinct catalog causes. RIF binds to the
+intended clinical test (LOINC `46244-0`), but the profile sends `DETECTED` and
+`NOT DETECTED` while that test offers `Resistant` and `Susceptible`. HIV-VL and
+VIH-1 both request LOINC `20447-9`; OE2 has active Serum, Plasma and DBS HIV
+Viral Load tests, and the generic profile-level resolver cannot pick one from
+LOINC alone. The existing CSV loader deliberately updates those legacy
+specimen-specific records in place. GeneXpert also declares HIV-VL quantitative,
+but the harness catalog has no numeric result row for that test. FluoroCycler's
+profile hint says `HIV-1 Viral Load`, which does not name those OE2 records.
+COVID19 requests LOINC `94500-6`; the base migration supplies a Respiratory Swab
+test and the harness catalog creates a second active one with the same LOINC and
+specimen. Its existing OE2 answer labels also differ from the profile's
+`POSITIVE`/`NEGATIVE` values. Reconcile the clinical test identities and answer
+options with the Bridge profile hints/values, preserving existing record IDs
+where applicable, then rerun the stock defaults and native traffic tests.
 
 An exploratory browser-network assertion found a separate uncertainty during
 result acceptance: Playwright reported `net::ERR_ABORTED` for the POST to
