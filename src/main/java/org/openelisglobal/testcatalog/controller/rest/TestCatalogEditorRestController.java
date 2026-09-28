@@ -335,6 +335,14 @@ public class TestCatalogEditorRestController {
     public static class LabUnitOption {
         public String id;
         public String name;
+        /**
+         * OGC-189 (M2): whether the lab unit is active. This is a <em>chooser</em>, so
+         * the client offers only active units as new choices — but the full list is
+         * still returned so a test already assigned to a deactivated unit can keep
+         * showing its current value instead of rendering blank and silently writing
+         * that blank back on save (the OGC-1191 data-loss class).
+         */
+        public boolean isActive;
     }
 
     @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -347,6 +355,7 @@ public class TestCatalogEditorRestController {
             LabUnitOption option = new LabUnitOption();
             option.id = section.getId();
             option.name = section.getLocalizedName();
+            option.isActive = "Y".equals(section.getIsActive());
             options.add(option);
         }
         options.sort((a, b) -> {
