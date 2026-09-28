@@ -3,6 +3,39 @@
 Decision recorded: 27 September 2026. Owner: [OE2 PR #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332).
 Status: research-informed continuation approved; #4332 owns bounded OE2 default fixes as well as faithful tests. Product implementation and complete workflow/video acceptance remain open.
 
+## Current PR boundary — readiness decision, 27 September 2026
+
+The user explicitly asked to finish #4332 soon and permits follow-ups. This
+boundary supersedes earlier wording that makes every C0–C5/D1–D6 item a gate for
+this one PR. The broader core analyzer remediation remains active.
+
+**Finish in #4332:** the implemented fixture removal, production catalog/default
+corrections, generic resolver/editor support, mixed-component result display fix,
+and existing workflow evidence. Finish the already-started persistent harness
+storage correction. Review this bounded diff, resolve failures attributable to it,
+and require the repository's ordinary checks before merging. Do not add more
+scenarios or new product features to this PR merely to close the whole roadmap.
+
+**Follow-ups, in order:**
+
+1. Qualify and consume the linked Bridge profile/contract candidate, including
+   complete GeneXpert/FluoroCycler compatibility. Retain the locally passing
+   shared-listener, two-instrument, COVID and numeric HIV tests with that candidate.
+   Do not claim those candidate outcomes for the currently published Bridge pin.
+2. Complete reusable core FILE/HL7 defaults and the unresolved FILE assay/unit/status
+   interpretation, with native setup-to-acceptance evidence.
+3. Complete mapping correction and retry of original observations, outage/replay
+   without duplicates, and populated-upgrade/catalog reconciliation coverage.
+   Repair mock network reattachment after Bridge replacement: its cached network
+   currently survives while the replacement container loses that attachment.
+4. Review and present the remaining recordings from the same automated workflows;
+   finish core release qualification before limited Madagascar packaging checks.
+
+Existing passing coverage is rerun only for relevant changes. The unexplained
+browser Save diagnostic and presentation polish are not additional merge gates
+without a demonstrated workflow failure. Follow-up status must remain explicit;
+merging #4332 will not mean the full remediation or release is qualified.
+
 ## Outcome and ordering
 
 Make #4332 the initial test-remediation phase for the core OE2 + Bridge roadmap.
@@ -540,3 +573,18 @@ current code, CI and compatibility with #4332 need a separate exact-head review.
 - Next: configure persistent delivery/FILE state and test container replacement
   with replay. Continue full FILE/profile compatibility, core HL7, original-result
   correction/retry and populated upgrades; this checkpoint does not close them.
+
+
+### Persistent storage checkpoint — PR scope freeze
+
+- Shared CI/local configuration now mounts a named Bridge volume and places the
+  delivery outbox and FILE state there instead of temporary container storage.
+- Preserved the running synthetic harness data, then replaced Bridge again
+  without another copy. All 26 connection references remained readable and all
+  15 delivered queue records remained present; startup logs confirm both SQLite
+  stores opened under the persistent path. The FILE store was empty, so this
+  does not prove processed-file deduplication or queued retry after an outage.
+- The 30 existing launcher tests passed. Bridge replacement detached the mock's
+  dynamic network; restoring that attachment is an explicit operator step in this
+  checkpoint, not claimed automatic recovery. Automatic reconnection and full
+  outage replay remain follow-ups. No new fault-testing framework is included.
