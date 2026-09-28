@@ -47,6 +47,7 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
@@ -68,6 +69,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private EffectiveTestStatusService effectiveTestStatusService;
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -557,8 +560,16 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
 
             if (analysis == null) {
-                analysis = new Analysis();
                 Test test = testService.get(resultItem.getTestId());
+                // OGC-189 (M4): gate creation only — an analysis that already
+                // exists (the loop above) still accepts its result per D3.
+                if (!effectiveTestStatusService.isEffectivelyActive(test)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistResults",
+                            "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
+                                    + " because its lab unit is inactive (OGC-189).");
+                    continue;
+                }
+                analysis = new Analysis();
                 analysis.setTest(test);
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                 if (typeOfSamples == null) {
@@ -692,8 +703,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             Analysis analysis = getExistingAnalysis(resultItem);
 
             if (analysis == null) {
-                analysis = new Analysis();
                 Test test = testService.get(resultItem.getTestId());
+                // OGC-189 (M4): no NEW analysis for a test whose lab unit is
+                // switched off. Decision D3 draws the line here — this branch
+                // creates work that did not exist, so it is gated; the else
+                // branch below completes an analysis that already exists, which
+                // must keep flowing so an in-flight specimen is never stranded.
+                if (!effectiveTestStatusService.isEffectivelyActive(test)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistAnalyzerResults",
+                            "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
+                                    + " because its lab unit is inactive (OGC-189).");
+                    continue;
+                }
+                analysis = new Analysis();
                 populateAnalysis(resultItem, analysis, test);
             } else {
                 String statusId = statusService

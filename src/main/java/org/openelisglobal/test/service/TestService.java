@@ -33,6 +33,9 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     List<Test> getTestsByTestSectionIds(List<String> ids);
 
+    /** OGC-189: unfiltered by active status, for viewer paths. See TestDAO. */
+    List<Test> getAllTestsByTestSectionIds(List<String> ids);
+
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);
 
     Integer getTotalSearchedTestCount(String searchString);

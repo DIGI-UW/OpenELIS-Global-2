@@ -836,6 +836,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Test> getAllTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException {
+        try {
+            // Deliberately no isActive filter — see getAllTestsByTestSectionIds
+            // on TestDAO. Viewer paths must see a deactivated test's in-flight
+            // work so it can still be completed.
+            String sql = "from Test t where t.testSection.id IN (:ids)";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            query.setParameterList("ids", ids);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getAllTestsByTestSectionIds");
+        }
+        return null;
+    }
+
+    @Override
     public List<Test> getTbTestByMethod(String method) throws LIMSRuntimeException {
         List<Integer> methodIds = Arrays.asList(method.split(",")).stream().map(e -> Integer.parseInt(e))
                 .collect(Collectors.toList());

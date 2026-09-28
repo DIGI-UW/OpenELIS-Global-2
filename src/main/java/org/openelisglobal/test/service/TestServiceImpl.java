@@ -973,6 +973,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Test> getAllTestsByTestSectionIds(List<String> ids) {
+        return getBaseObjectDAO().getAllTestsByTestSectionIds(ids);
+    }
+
+    @Override
     public List<Test> getTbTestByMethod(String method) {
         return getBaseObjectDAO().getTbTestByMethod(method);
     }

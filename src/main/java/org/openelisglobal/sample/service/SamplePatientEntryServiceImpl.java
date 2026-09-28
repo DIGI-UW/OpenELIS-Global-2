@@ -90,6 +90,7 @@ import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -135,6 +136,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private AnalysisService analysisService;
     @Autowired
     private TestService testService;
+    @Autowired
+    private EffectiveTestStatusService effectiveTestStatusService;
     @Autowired
     private SampleTypeRequestService sampleTypeRequestService;
     @Autowired
@@ -611,6 +614,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                         test.getId());
                 if (existingAnalysis != null) {
                     sampleTestCollection.analysises.add(existingAnalysis);
+                    continue;
+                }
+
+                // OGC-189 (M4): a deactivated lab unit takes no new work. The
+                // manual picker already filters these out, so reaching here
+                // means a stale form, a saved draft, or an API caller — the
+                // server is the authority (D1), not the UI. Existing analyses
+                // are handled above and never blocked (D3).
+                if (!effectiveTestStatusService.isEffectivelyActive(test)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistAnalyses",
+                            "Order skipped: no analysis created for test id " + test.getId()
+                                    + " because its lab unit is inactive (OGC-189).");
                     continue;
                 }
 
