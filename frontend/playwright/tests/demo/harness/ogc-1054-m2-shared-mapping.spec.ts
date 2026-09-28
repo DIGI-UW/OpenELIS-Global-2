@@ -1,11 +1,7 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const PROFILE_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const FILTERED_CATALOG = "/analyzers/types?q=gene&source=SHIPPED";
@@ -17,7 +13,6 @@ function escapeRegExp(value: string) {
 async function openSharedMappingEditor(page: Page): Promise<string> {
   await page.goto(FILTERED_CATALOG, {
     waitUntil: "domcontentloaded",
-    timeout: NAV_TIMEOUT,
   });
   await expect(
     page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -27,9 +22,7 @@ async function openSharedMappingEditor(page: Page): Promise<string> {
     name: new RegExp(escapeRegExp(PROFILE_NAME), "i"),
   });
   await expect(profileRow).toBeVisible();
-  await expect(profileRow).toContainText(/revision [1-9]\d*/, {
-    timeout: LONG_TIMEOUT,
-  });
+  await expect(profileRow).toContainText(/revision [1-9]\d*/);
   const revision = (await profileRow.innerText()).match(
     /\brevision ([1-9]\d*)\b/i,
   )?.[1];
@@ -113,7 +106,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     });
 
     const mappingUrl = page.url();
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(mappingUrl);
     await expect(sourceRows).toHaveCount(4);
 
@@ -173,7 +166,6 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
 
     await page.goto("/analyzers/types", {
       waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT,
     });
     await expect(
       page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -248,7 +240,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await save.click();
     await expect(page.getByText("Mappings saved")).toBeVisible();
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
       page.getByRole("button", { name: /^MTB-RIF.*Do not receive$/ }),
     ).toBeVisible();
@@ -288,7 +280,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       contentType: "image/png",
     });
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByText("Current confirmation")).toBeVisible();
   });
 });

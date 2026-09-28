@@ -34,6 +34,14 @@ The script performs:
   Playwright)
 - deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
 
+## Workflow wait policy
+
+Analyzer browser tests wait for observable UI, API, and persisted-result states.
+Assertions use the existing whole-test deadline, configured through the harness
+Playwright projects, rather than separate step deadlines. Do not add sleeps or
+increase a test's deadline to repair failures. Diagnose the missing state using
+traces and service logs. Video-only pacing is presentation, never readiness.
+
 ## Startup Catalog
 
 The harness mounts its molecular test and result-choice CSVs from

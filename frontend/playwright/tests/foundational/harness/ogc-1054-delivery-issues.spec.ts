@@ -1,6 +1,5 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
-import { LONG_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
 
 const API = "/api/OpenELIS-Global/rest";
 
@@ -51,31 +50,28 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       let issueId = "";
       let failureReason = "";
       await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(
-              `${API}/analyzer/delivery-issues`,
-            );
-            if (!response.ok()) return null;
-            const data = (await response.json()) as {
-              data: {
-                rows: Array<{
-                  id: string;
-                  sourceId: string;
-                  failureReason: string;
-                }>;
-              };
+        .poll(async () => {
+          const response = await page.request.get(
+            `${API}/analyzer/delivery-issues`,
+          );
+          if (!response.ok()) return null;
+          const data = (await response.json()) as {
+            data: {
+              rows: Array<{
+                id: string;
+                sourceId: string;
+                failureReason: string;
+              }>;
             };
-            // Source attribution fails before Bridge can parse an accession into the outbox summary.
-            const issue = data.data.rows.find(
-              (row) => row.sourceId === network.ip,
-            );
-            issueId = issue?.id || "";
-            failureReason = issue?.failureReason || "";
-            return issue?.id || null;
-          },
-          { timeout: LONG_TIMEOUT },
-        )
+          };
+          // Source attribution fails before Bridge can parse an accession into the outbox summary.
+          const issue = data.data.rows.find(
+            (row) => row.sourceId === network.ip,
+          );
+          issueId = issue?.id || "";
+          failureReason = issue?.failureReason || "";
+          return issue?.id || null;
+        })
         .not.toBeNull();
       expect(failureReason, `Delivery issue ${issueId}`).toBe(
         "UNREGISTERED_SOURCE",
@@ -83,29 +79,24 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
 
       await page.goto("/analyzers", {
         waitUntil: "domcontentloaded",
-        timeout: NAV_TIMEOUT,
       });
       const banner = page.getByTestId("delivery-issues-attention");
-      await expect(banner).toContainText("not delivered", {
-        timeout: LONG_TIMEOUT,
-      });
+      await expect(banner).toContainText("not delivered");
       await capture(page, testInfo, "01-analyzers-undelivered-banner");
 
       await banner
         .getByRole("button", { name: "Review undelivered results" })
         .click();
-      await expect(page).toHaveURL(/\/AnalyzerResults\?view=import-issues/, {
-        timeout: LONG_TIMEOUT,
-      });
+      await expect(page).toHaveURL(/\/AnalyzerResults\?view=import-issues/);
 
       const section = page.getByTestId("analyzer-delivery-issues");
       await expect(
         section.getByRole("heading", { name: "Undelivered analyzer results" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      ).toBeVisible();
       const unrecognizedRow = section.getByRole("row", {
         name: new RegExp(network.ip.replace(/\./g, "\\.")),
       });
-      await expect(unrecognizedRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(unrecognizedRow).toBeVisible();
       await expect(unrecognizedRow).toContainText("Unrecognized sender");
       await expect(unrecognizedRow).toContainText(
         "The sender matches no saved analyzer connection. Set up the analyzer, then retry.",
@@ -115,7 +106,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
 
       await unrecognizedRow.getByRole("button", { name: "Dismiss" }).click();
 
-      await expect(unrecognizedRow).not.toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(unrecognizedRow).not.toBeVisible();
       await capture(page, testInfo, "03-undelivered-result-dismissed");
     } finally {
       const removed = await page.request.delete(

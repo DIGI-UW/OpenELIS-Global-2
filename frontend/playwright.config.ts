@@ -213,6 +213,8 @@ export default defineConfig({
     // Analyzer-stack verification (CI: reusable harness workflow only).
     {
       name: "harness-foundational",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_FOUNDATIONAL_TESTS,
       use: {
         ...devices["Desktop Chrome"],
@@ -222,6 +224,8 @@ export default defineConfig({
     },
     {
       name: "harness-demo",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
@@ -231,6 +235,8 @@ export default defineConfig({
     },
     {
       name: "harness-demo-video",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_VIDEO_TESTS,
       use: {
         ...devices["Desktop Chrome"],

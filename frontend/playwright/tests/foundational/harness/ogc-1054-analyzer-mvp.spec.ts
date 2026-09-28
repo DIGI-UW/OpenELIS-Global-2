@@ -8,11 +8,7 @@ import {
   sendGeneXpertAstm,
   writeFluoroCyclerFile,
 } from "../../../helpers/analyzer-native-traffic";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 
@@ -63,7 +59,7 @@ async function confirmShippedMapping(
   };
   await page.goto(
     `/analyzers/types/${analyzer.profileId}/mapping?revision=${analyzer.profileRevision}`,
-    { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+    { waitUntil: "domcontentloaded" },
   );
   await expect(
     page.getByRole("button", { name: "Update shared mappings" }),
@@ -72,17 +68,13 @@ async function confirmShippedMapping(
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
     });
-    await expect(confirm).toBeEnabled({ timeout: LONG_TIMEOUT });
+    await expect(confirm).toBeEnabled();
     await confirm.click();
     await expect(
       page.getByText("Mappings and control recognition confirmed"),
-    ).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeVisible();
   } else {
-    await expect(page.getByText("Current confirmation")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(page.getByText("Current confirmation")).toBeVisible();
   }
 }
 
@@ -150,7 +142,7 @@ async function expectClinicalReadback(
     if (typeof expectedResult === "string")
       expect(savedValue).toBe(expectedResult);
     else expect(savedValue).toMatch(expectedResult);
-  }).toPass({ timeout: LONG_TIMEOUT });
+  }).toPass();
 
   const response = await page.request.get(
     `${API}/order/search?labNumber=${encodeURIComponent(accession)}`,
@@ -259,15 +251,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         await capture(page, testInfo, "gene-shipped-mapping-confirmed");
         await page.goto(verifyUrl, {
           waitUntil: "domcontentloaded",
-          timeout: NAV_TIMEOUT,
         });
         await setup.continueToConnect();
         await setup.fillSenderId(senderId);
         await page.getByRole("button", { name: "Finish and activate" }).click();
         const analyzerRow = page.getByTestId(`analyzer-row-${analyzer.id}`);
-        await expect(analyzerRow).toContainText("Active", {
-          timeout: LONG_TIMEOUT,
-        });
+        await expect(analyzerRow).toContainText("Active");
         await capture(page, testInfo, "gene-connection-active");
 
         await sendGeneXpertAstm(
@@ -279,25 +268,21 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           senderId,
         );
         await expect
-          .poll(
-            async () => {
-              const response = await page.request.get(
-                `${API}/AnalyzerResults?id=${analyzer.id}`,
-              );
-              if (!response.ok()) return false;
-              const worklist = (await response.json()) as {
-                resultList?: Array<{ accessionNumber?: string }>;
-              };
-              return (worklist.resultList ?? []).some(
-                (result) => result.accessionNumber === order.accession,
-              );
-            },
-            { timeout: LONG_TIMEOUT },
-          )
+          .poll(async () => {
+            const response = await page.request.get(
+              `${API}/AnalyzerResults?id=${analyzer.id}`,
+            );
+            if (!response.ok()) return false;
+            const worklist = (await response.json()) as {
+              resultList?: Array<{ accessionNumber?: string }>;
+            };
+            return (worklist.resultList ?? []).some(
+              (result) => result.accessionNumber === order.accession,
+            );
+          })
           .toBe(true);
         await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
           waitUntil: "domcontentloaded",
-          timeout: NAV_TIMEOUT,
         });
         const row = page.getByRole("row", {
           name: new RegExp(order.accession),
@@ -321,14 +306,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
             units: scenario.unit,
           });
         } else {
-          await expect(row).toContainText(scenario.result, {
-            timeout: LONG_TIMEOUT,
-          });
+          await expect(row).toContainText(scenario.result);
         }
         await capture(page, testInfo, "gene-received-result");
         await row.locator('label[for$=".isAccepted"]').click();
         await page.getByRole("button", { name: "Save", exact: true }).click();
-        await expect(row).not.toBeVisible({ timeout: LONG_TIMEOUT });
+        await expect(row).not.toBeVisible();
         await expectClinicalReadback(
           page,
           order,
@@ -337,7 +320,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         );
         await page.goto(
           `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
-          { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+          { waitUntil: "domcontentloaded" },
         );
         const clinicalRow = page
           .getByRole("row", {
@@ -345,9 +328,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           })
           .filter({ hasText: scenario.result });
         await expect(clinicalRow).toHaveCount(1);
-        await expect(clinicalRow).toContainText(scenario.testName, {
-          timeout: LONG_TIMEOUT,
-        });
+        await expect(clinicalRow).toContainText(scenario.testName);
         await expect(clinicalRow).toContainText(scenario.result);
         await capture(page, testInfo, "gene-clinical-result-saved");
       } finally {
@@ -397,7 +378,6 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           await confirmShippedMapping(page, analyzer);
           await page.goto(verifyUrl, {
             waitUntil: "domcontentloaded",
-            timeout: NAV_TIMEOUT,
           });
           await setup.continueToConnect();
           await setup.fillSenderId(senderId);
@@ -406,7 +386,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
             .click();
           await expect(
             page.getByTestId(`analyzer-row-${analyzer.id}`),
-          ).toContainText("Active", { timeout: LONG_TIMEOUT });
+          ).toContainText("Active");
           instruments.push({ analyzer, senderId, value, order });
         });
       }
@@ -437,26 +417,22 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       // would not distinguish correct routing from a message still in transit.
       for (const { analyzer, order } of instruments) {
         await expect
-          .poll(
-            async () => {
-              const response = await page.request.get(
-                `${API}/AnalyzerResults?id=${analyzer.id}`,
-              );
-              const payload = await response.json();
-              return (payload.resultList ?? []).filter(
-                (result: { accessionNumber: string }) =>
-                  result.accessionNumber === order.accession,
-              ).length;
-            },
-            { timeout: LONG_TIMEOUT },
-          )
+          .poll(async () => {
+            const response = await page.request.get(
+              `${API}/AnalyzerResults?id=${analyzer.id}`,
+            );
+            const payload = await response.json();
+            return (payload.resultList ?? []).filter(
+              (result: { accessionNumber: string }) =>
+                result.accessionNumber === order.accession,
+            ).length;
+          })
           .toBe(1);
       }
       for (const { analyzer, value, order } of instruments) {
         await test.step(`Accept ${value} from ${analyzer.name} on its own order`, async () => {
           await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
             waitUntil: "domcontentloaded",
-            timeout: NAV_TIMEOUT,
           });
           const ownRow = page.getByRole("row", {
             name: new RegExp(order.accession),
@@ -479,13 +455,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           );
           await ownRow.locator('label[for$=".isAccepted"]').click();
           await page.getByRole("button", { name: "Save", exact: true }).click();
-          await expect(ownRow).not.toBeVisible({ timeout: LONG_TIMEOUT });
+          await expect(ownRow).not.toBeVisible();
           await expectClinicalReadback(page, order, value);
           await page.goto(
             `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
             {
               waitUntil: "domcontentloaded",
-              timeout: NAV_TIMEOUT,
             },
           );
           const savedRow = page.getByRole("row", {
@@ -524,7 +499,9 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       "fluorocycler-xt",
     );
     try {
-      const orders = [];
+      const orders: Array<
+        Awaited<ReturnType<typeof createAnalyzerClinicalOrder>>
+      > = [];
       for (const _value of values) {
         orders.push(
           await createAnalyzerClinicalOrder(page, {
@@ -541,14 +518,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       await capture(page, testInfo, "file-shipped-mapping-confirmed");
       await page.goto(verifyUrl, {
         waitUntil: "domcontentloaded",
-        timeout: NAV_TIMEOUT,
       });
       await setup.continueToConnect();
       await setup.fillImportDirectory(directory);
       await page.getByRole("button", { name: "Finish and activate" }).click();
       await expect(
         page.getByTestId(`analyzer-row-${analyzer.id}`),
-      ).toContainText("Active", { timeout: LONG_TIMEOUT });
+      ).toContainText("Active");
       await capture(page, testInfo, "file-watch-directory-configured");
       const emitted = await writeFluoroCyclerFile(
         page.request,
@@ -563,26 +539,22 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         });
       }
       await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(
-              `${API}/AnalyzerResults?id=${analyzer.id}`,
-            );
-            if (!response.ok()) return false;
-            const data = await response.json();
-            return orders.every((order) =>
-              data.resultList?.some(
-                (row: { accessionNumber: string }) =>
-                  row.accessionNumber === order.accession,
-              ),
-            );
-          },
-          { timeout: LONG_TIMEOUT },
-        )
+        .poll(async () => {
+          const response = await page.request.get(
+            `${API}/AnalyzerResults?id=${analyzer.id}`,
+          );
+          if (!response.ok()) return false;
+          const data = await response.json();
+          return orders.every((order) =>
+            data.resultList?.some(
+              (row: { accessionNumber: string }) =>
+                row.accessionNumber === order.accession,
+            ),
+          );
+        })
         .toBe(true);
       await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
         waitUntil: "domcontentloaded",
-        timeout: NAV_TIMEOUT,
       });
       for (const [index, order] of orders.entries()) {
         const row = page.getByRole("row", {
@@ -604,7 +576,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         );
         await page.goto(
           `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
-          { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+          { waitUntil: "domcontentloaded" },
         );
         const row = page.getByRole("row", {
           name: new RegExp(order.accession),

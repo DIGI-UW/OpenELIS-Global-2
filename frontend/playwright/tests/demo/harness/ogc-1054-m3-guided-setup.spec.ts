@@ -3,11 +3,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -88,16 +84,14 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
     });
-    await expect(confirm).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(confirm).toBeEnabled({ timeout: LONG_TIMEOUT });
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toBeEnabled();
     await confirm.click();
     await expect(
       page.getByText("Mappings and control recognition confirmed"),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    ).toBeVisible();
     await page.goBack({ waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Current", { exact: true })).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(page.getByText("Current", { exact: true })).toBeVisible();
     await expect(page.getByText("Current confirmation")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Continue to Connect" }),
@@ -105,13 +99,11 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const verifyUrl = page.url();
     await capture(page, testInfo, "m3-verify");
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(verifyUrl);
     await expect(
       page.getByRole("button", { name: "Continue to Connect" }),
-    ).toBeEnabled({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeEnabled();
     await setup.continueToConnect();
     await expect(
       page.getByRole("button", { name: "Edit Verify" }),
@@ -122,12 +114,12 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
 
     await setup.fillSenderId(senderId);
     await page.getByRole("button", { name: "Save and finish later" }).click();
-    await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(setup.surface).not.toBeVisible();
 
     let analyzerRow = page.getByRole("row", {
       name: new RegExp(escapeRegExp(analyzerName), "i"),
     });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await list.search(analyzerName);
     await expect(page.getByTestId("stat-total")).toContainText("1");
     await expect(page.getByTestId("stat-setup")).toContainText("1");
@@ -144,18 +136,16 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
         exact: true,
       }),
     ).toHaveValue(senderId);
-    await expect(page.getByText("Analyzer is ready to activate")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(page.getByText("Analyzer is ready to activate")).toBeVisible();
     await capture(page, testInfo, "m3-ready-to-activate");
 
     await page.getByRole("button", { name: "Finish and activate" }).click();
-    await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(setup.surface).not.toBeVisible();
 
     analyzerRow = page.getByRole("row", {
       name: new RegExp(escapeRegExp(analyzerName), "i"),
     });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await expect(analyzerRow).toContainText("Active");
     await expect(analyzerRow).toContainText(profileName);
     await expect(analyzerRow).not.toContainText(/\b\d+ units?\b/);
@@ -186,7 +176,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       .scrollIntoViewIfNeeded();
     await capture(page, testInfo, "m3-connection-evidence");
     await setup.close();
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
 
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Quality Control" }).click();
@@ -196,9 +186,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await expect(
       page.getByRole("heading", { level: 1, name: analyzerName }),
-    ).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeVisible();
     const qcBreadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
     const analyzerReturnLink = qcBreadcrumb.getByRole("link", {
       name: "Analyzers",
@@ -215,7 +203,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("search") === analyzerName,
     );
     await list.expectLoaded();
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Deactivate" }).click();
     await expect(page).toHaveURL(/lifecycle=deactivate/);
@@ -223,16 +211,12 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       page.getByRole("heading", { name: "Deactivate analyzer" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Deactivate analyzer" }).click();
-    await expect(analyzerRow).toContainText("Inactive", {
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(analyzerRow).toContainText("Inactive");
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(analyzerRow).toContainText(profileName, {
-      timeout: LONG_TIMEOUT,
-    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(analyzerRow).toBeVisible();
+    await expect(analyzerRow).toContainText(profileName);
     await expect(page.getByTestId("content-wrapper")).toHaveCSS(
       "margin-left",
       "0px",
