@@ -181,8 +181,10 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
         trend.setTotalOrders(dto.getTotalOrders() - prior.getTotalOrders());
         trend.setTotalExceedances(dto.getTotalExceedances() - prior.getTotalExceedances());
         trend.setSitesMonitored(dto.getSitesMonitored() - prior.getSitesMonitored());
-        trend.setComplianceRate(BigDecimal.valueOf(dto.getComplianceRate() - prior.getComplianceRate())
-                .setScale(1, RoundingMode.HALF_UP).doubleValue());
+        if (dto.getComplianceRate() != null && prior.getComplianceRate() != null) {
+            trend.setComplianceRate(BigDecimal.valueOf(dto.getComplianceRate() - prior.getComplianceRate())
+                    .setScale(1, RoundingMode.HALF_UP).doubleValue());
+        }
         dto.setTrend(trend);
         return dto;
     }
@@ -214,7 +216,7 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
         dto.setTotalOrders(orders[0] == null ? 0 : ((Number) orders[0]).intValue());
         dto.setTotalExceedances(row[2] == null ? 0 : ((Number) row[2]).intValue());
         dto.setSitesMonitored(orders[1] == null ? 0 : ((Number) orders[1]).intValue());
-        dto.setComplianceRate(evaluated == 0 ? 0.0
+        dto.setComplianceRate(evaluated == 0 ? null
                 : BigDecimal.valueOf(passing * 100.0 / evaluated).setScale(1, RoundingMode.HALF_UP).doubleValue());
         return dto;
     }

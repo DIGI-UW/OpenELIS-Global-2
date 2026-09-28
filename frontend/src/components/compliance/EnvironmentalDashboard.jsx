@@ -32,7 +32,7 @@ import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
 
 const KPI_KEYS = [
@@ -359,12 +359,7 @@ export default function EnvironmentalDashboard() {
             dateFormat="Y-m-d"
             value={startDate}
             onChange={([s]) => {
-              if (s)
-                setStartDate(
-                  typeof s.toISOString === "function"
-                    ? s.toISOString().slice(0, 10)
-                    : s,
-                );
+              if (s) setStartDate(toLocalIsoDate(s));
             }}
           >
             <DatePickerInput
@@ -383,12 +378,7 @@ export default function EnvironmentalDashboard() {
             dateFormat="Y-m-d"
             value={endDate}
             onChange={([e]) => {
-              if (e)
-                setEndDate(
-                  typeof e.toISOString === "function"
-                    ? e.toISOString().slice(0, 10)
-                    : e,
-                );
+              if (e) setEndDate(toLocalIsoDate(e));
             }}
           >
             <DatePickerInput
@@ -481,9 +471,11 @@ export default function EnvironmentalDashboard() {
                 ) : (
                   <>
                     <p style={{ fontSize: "2rem", fontWeight: 600 }}>
-                      {summary ? summary[kpi.key] + (kpi.suffix || "") : "—"}
+                      {summary && summary[kpi.key] != null
+                        ? summary[kpi.key] + (kpi.suffix || "")
+                        : "—"}
                     </p>
-                    {summary && summary.trend && (
+                    {summary && summary.trend?.[kpi.key] != null && (
                       <p
                         style={{
                           fontSize: "0.75rem",

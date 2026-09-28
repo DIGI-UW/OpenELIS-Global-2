@@ -95,6 +95,23 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
     }
 
     @Test
+    public void aFilterWithNoJudgedResultHasNoSummaryComplianceRate() {
+        DashboardSummaryDTO summary = dashboardService.getSummary(List.of("9103"), null, JUNE_START, JUNE_END);
+
+        assertNull(summary.getComplianceRate());
+        assertNull(summary.getTrend().getComplianceRate());
+        assertEquals(1, summary.getTotalOrders());
+    }
+
+    @Test
+    public void theRateTrendIsEmptyWhenThePriorPeriodHasNoJudgedResult() {
+        DashboardSummaryDTO summary = dashboardService.getSummary(null, null, JUNE_START, JUNE_END);
+
+        assertEquals(80.0, summary.getComplianceRate(), 0.0001);
+        assertNull(summary.getTrend().getComplianceRate());
+    }
+
+    @Test
     public void theTrendHasNoPointForASiteWithNoJudgedResult() {
         assertTrue(dashboardService.getTrend(null, null, JUNE_START, JUNE_END).getSeries().stream()
                 .noneMatch(series -> "9103".equals(series.getSiteId())));
