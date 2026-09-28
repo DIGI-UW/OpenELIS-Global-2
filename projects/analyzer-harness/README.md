@@ -95,8 +95,9 @@ For exact CI parity, prefer:
 ./projects/analyzer-harness/ci-parity-test.sh
 ```
 
-`reset-env.sh` is retained only for legacy CI investigation. It is not a
-development startup interface and must not be used to seed feature data.
+The old reset wrapper was removed. Use `scripts/dev-stack down --volumes --yes`
+for an explicit local data reset, then `scripts/dev-stack up`. Use
+`ci-parity-test.sh` to reproduce CI; it is a separate validation command.
 
 ## Let's Encrypt (analyzers.openelis-global.org)
 

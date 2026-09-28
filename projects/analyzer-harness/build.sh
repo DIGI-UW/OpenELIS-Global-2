@@ -113,5 +113,5 @@ fi
 echo "========================================"
 echo "  Build complete"
 echo "========================================"
-echo "  Start harness: ./reset-env.sh [--full-reset]"
+echo "  Start harness: scripts/dev-stack up (from repository root)"
 echo ""

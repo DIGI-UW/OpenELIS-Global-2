@@ -9,7 +9,7 @@ import { Page } from "@playwright/test";
  * (SearchResultForm.js:1918-1933) — same endpoint, same payload shape.
  *
  * Prerequisite: fixture samples already exist (loaded by
- * `load-test-fixtures.sh` via `reset-env.sh --full-reset`). Callers
+ * `load-test-fixtures.sh` in the core E2E setup). Callers
  * pass accessions that already have an analysis in a status that shows
  * up in /rest/LogbookResults (e.g. NotStarted).
  *

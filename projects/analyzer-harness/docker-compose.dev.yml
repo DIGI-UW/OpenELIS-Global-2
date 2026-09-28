@@ -15,9 +15,8 @@ services:
 
   oe.openelis.org:
     image: itechuw/openelis-global-2-dev:develop
-    # Local build: `docker compose build oe.openelis.org` (or `reset-env.sh --build`)
-    # rebuilds this image from the branch's Dockerfile.dev so local source drives the
-    # webapp, overriding the pulled :develop image tag.
+    # scripts/dev-stack builds this image from the branch's Dockerfile.dev so local
+    # source drives the webapp, overriding the pulled :develop image tag.
     build:
       context: ../..
       dockerfile: Dockerfile.dev
