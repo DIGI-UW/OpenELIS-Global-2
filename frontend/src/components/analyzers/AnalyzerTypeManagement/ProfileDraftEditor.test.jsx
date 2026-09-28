@@ -514,11 +514,20 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   await userEvent.click(namedValues.getByRole("button", { name: "Add value" }));
   const inputs = namedValues.getAllByRole("textbox");
   await userEvent.type(inputs[inputs.length - 1], "SITE REVIEW REQUIRED");
+  await userEvent.type(
+    row.getByRole("textbox", {
+      name: "Suggested clinical answer for SITE REVIEW REQUIRED",
+    }),
+    "Clinical review required",
+  );
   await save();
   const expected = clone(authored);
   expected.default_test_mappings[0].test_name_hint = "Site tuberculosis assay";
   expected.default_test_mappings[0].specimen_type_hint = "Sputum";
   expected.default_test_mappings[0].values.push("SITE REVIEW REQUIRED");
+  expected.default_test_mappings[0].result_value_hints = {
+    "SITE REVIEW REQUIRED": "Clinical review required",
+  };
   expect(updateAnalyzerTypeDraft).toHaveBeenCalledWith(
     "draft-file",
     expected,

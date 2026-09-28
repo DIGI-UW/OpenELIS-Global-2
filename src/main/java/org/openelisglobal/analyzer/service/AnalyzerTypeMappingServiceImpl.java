@@ -122,12 +122,12 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
             if (row.getRawTestCode() != null && !row.getRawTestCode().isBlank()) {
                 definitions.putIfAbsent(row.getRawTestCode(),
                         new BridgeAnalyzerProfile.TestDefinition(row.getRawTestCode(), List.of(), null, null,
-                                row.getUnits(), row.getResultType(), List.of(), null, null));
+                                row.getUnits(), row.getResultType(), List.of(), null, null, Map.of()));
             }
         }
         currentTests.keySet()
                 .forEach(source -> definitions.putIfAbsent(source, new BridgeAnalyzerProfile.TestDefinition(source,
-                        List.of(), null, null, null, null, List.of(), null, null)));
+                        List.of(), null, null, null, null, List.of(), null, null, Map.of())));
         List<AnalyzerTypeMappingView.TestRow> rows = definitions.values().stream()
                 .map(definition -> composeTestRow(definition, currentTests.get(definition.analyzerCode()),
                         currentResults, observedHeldValues, activeTests, activeTestsById))

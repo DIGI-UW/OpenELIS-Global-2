@@ -87,6 +87,31 @@ public class AnalyzerMappingDefaultsTest {
         assertNull(defaults.resolve(BridgeAnalyzerProfile.from(document)).tests().get(0).testId());
     }
 
+    @Test
+    public void resolvesOnlyExplicitValueHintsAndRetainsTheReportedValue() throws Exception {
+        var document = profile("qualitative", "POSITIVE", "NEGATIVE", "ERROR").document();
+        var mapping = (com.fasterxml.jackson.databind.node.ObjectNode) document.path("default_test_mappings").get(0);
+        mapping.putObject("result_value_hints").put("POSITIVE", "Target RNA detected").put("NEGATIVE",
+                "Target RNA not detected");
+        when(catalog.getActiveResultOptions("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Target RNA detected"),
+                        new AnalyzerMappingCatalogService.ResultOption("22", "992", "Target RNA not detected"),
+                        new AnalyzerMappingCatalogService.ResultOption("23", "993", "Invalid")));
+        var draft = defaults.resolve(BridgeAnalyzerProfile.from(document));
+        assertEquals("21", draft.results().get(0).testResultId());
+        assertEquals("POSITIVE", draft.results().get(0).rawValue());
+        assertEquals("22", draft.results().get(1).testResultId());
+        assertNull(draft.results().get(2).testResultId());
+        when(catalog.getActiveResultOptions("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Target RNA detected"),
+                        new AnalyzerMappingCatalogService.ResultOption("24", "994", "TARGET RNA DETECTED")));
+        assertNull(defaults.resolve(BridgeAnalyzerProfile.from(document)).results().get(0).testResultId());
+        when(catalog.getActiveResultOptions("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Target RNA detected"),
+                        new AnalyzerMappingCatalogService.ResultOption("25", "995", "Positive")));
+        assertEquals("25", defaults.resolve(BridgeAnalyzerProfile.from(document)).results().get(0).testResultId());
+    }
+
     private AnalyzerMappingCatalogService.TestOption test(String id, String loinc) {
         return new AnalyzerMappingCatalogService.TestOption(id, "Local test " + id, null, List.of(loinc));
     }

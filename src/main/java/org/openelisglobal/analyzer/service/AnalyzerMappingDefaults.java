@@ -56,6 +56,10 @@ public class AnalyzerMappingDefaults {
                     selected == null ? null : selected.id()));
             for (String raw : definition.resultValues()) {
                 var answers = options.stream().filter(option -> same(raw, option.label())).toList();
+                if (answers.isEmpty()) {
+                    String hint = definition.resultValueHints().get(raw);
+                    answers = options.stream().filter(option -> same(hint, option.label())).toList();
+                }
                 var answer = answers.size() == 1 ? answers.get(0) : null;
                 results.add(new AnalyzerSiteBindingResultDraft(definition.analyzerCode(), raw,
                         answer == null ? AnalyzerSiteBindingMappingState.UNRESOLVED

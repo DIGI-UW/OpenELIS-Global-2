@@ -212,6 +212,28 @@ because it is listed here.
 See [default catalog evidence](../../docs/analyzers/default-catalog-evidence.md)
 for sources and the fresh-install versus existing-site boundary.
 
+### D3 COVID default checkpoint — 27 September 2026
+
+- Added optional per-value clinical label hints to the shared Bridge contract
+  and generic OE2 consumer/editor. Exact raw-label matches remain preferred;
+  explicit hints are used only when there is no exact match. Raw values and
+  original clinical answers remain intact; no duplicated Positive/Negative
+  choices or analyzer-specific application branch was introduced.
+- The migrated-catalog test exposed several COVID specimen-specific targets.
+  Candidate GeneXpert revision 7 therefore includes `Respiratory Swab` context
+  as well as POSITIVE/NEGATIVE answer hints. Fresh-load identity correction
+  alone did not address this ambiguity. The unpublished candidate remains in
+  Bridge #69; shipped revisions 1–6 are unchanged.
+- Validation: 11 focused OE2 profile/resolver/real-catalog tests, 20 existing
+  profile-editor tests, and 29 Bridge contract/catalog tests passed. The two
+  COVID error/inconclusive values remain unresolved rather than receiving a
+  fabricated clinical equivalence.
+- Next: qualify native positive/negative traffic against the candidate in the
+  isolated core stack, then complete full vocabulary, FILE, connection-default,
+  recovery and populated-upgrade acceptance. A candidate test pin is not an
+  accepted release pin. Do not count this focused coverage as complete mapping
+  or release qualification.
+
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence
 question applies to that scenario, not to unrelated COVID/HIV work. A failing
