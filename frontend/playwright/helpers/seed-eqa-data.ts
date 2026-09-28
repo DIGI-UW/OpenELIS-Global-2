@@ -1056,14 +1056,14 @@ export interface InHouseSchemeSeed {
  * The panel is created through the application's own endpoint rather than
  * planted here, because a panel's target values are encrypted by an attribute
  * converter on the way in. A value written straight to the column cannot be
- * decrypted on read: the panels endpoint answers 500 and the page, which
- * guards only against a null reply, hands the error body to its tile
- * arithmetic and dies. Seeding the target also could not test the one thing
- * worth testing — that a sealed target is withheld from a caller without the
- * unblind privilege.
+ * decrypted on read, so the panels endpoint answers 500. Seeding the target
+ * also could not test the one thing worth testing — that a sealed target is
+ * withheld from a caller without the unblind privilege.
  *
  * The scheme must be IN_HOUSE: the panels page filters its picker on that
- * type, so a panel under any other scheme is unreachable there.
+ * type, so a panel under any other scheme is unreachable there. The cycle
+ * starts at PLANNED because an in-house cycle only moves PLANNED → SCORED →
+ * CLOSED; unblinding a panel under a cycle in any other state is refused.
  */
 export function seedInHouseScheme(runTag: string): InHouseSchemeSeed {
   asSafeString(runTag, "runTag");
@@ -1084,7 +1084,7 @@ export function seedInHouseScheme(runTag: string): InHouseSchemeSeed {
     );
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_program WHERE id = ${schemeId}`);
 
-    cycleId = insertCycle(schemeId, `E2E ${runTag} in-house cycle`, "SHIPPED");
+    cycleId = insertCycle(schemeId, `E2E ${runTag} in-house cycle`, "PLANNED");
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
   } catch (error) {
     seeded.drain();
@@ -1100,6 +1100,7 @@ export function seedInHouseScheme(runTag: string): InHouseSchemeSeed {
         `DELETE FROM ${SCHEMA}.eqa_panel_sample WHERE panel_id IN` +
           ` (SELECT id FROM ${SCHEMA}.eqa_panel WHERE scheme_id = ${schemeId})`,
         `DELETE FROM ${SCHEMA}.eqa_panel WHERE scheme_id = ${schemeId}`,
+        `DELETE FROM ${SCHEMA}.eqa_cycle_state_transition WHERE cycle_id = ${cycleId}`,
       ]);
       reportCleanupFailures([...failures, ...seeded.drain()]);
     },
