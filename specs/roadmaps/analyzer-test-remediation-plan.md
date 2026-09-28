@@ -112,6 +112,28 @@ because it is listed here.
    prepare qualified core releases; only afterward update Madagascar pins and
    run its limited packaging check.
 
+### D2 implementation checkpoint — 27 September 2026
+
+- Implemented specimen-aware selection when a catalog CSV supplies a local code
+  shared by existing tests. Unique codes retain the existing update behavior;
+  a shared code no longer selects the first database row.
+- Supplied the COVID row in production configuration using the original
+  `COVIDPCR(Respiratory Swab)` identity and removed the duplicate-creating
+  `COVID-19 PCR` row from the harness configuration.
+- Added real-database coverage using the migrated catalog and normal loader,
+  without SQL fixtures or analyzer mapping setup. Fresh/repeated loading retains
+  original IDs, result definitions and specimen links; an update to Sputum
+  leaves Respiratory Swab intact.
+- Validation: `AnalyzerCatalogIdentityIntegrationTest`,
+  `CatalogCsvLoaderIntegrationTest`, `TestConfigurationHandlerTest` and
+  `LegacyTestVariantFinderTest`: 22 passed,
+  no failures or skips. This is loader coverage, not end-to-end acceptance.
+- Still open: reconcile previously created duplicate records without erasing
+  history; align harness packaging with production defaults (mounted domain
+  files replace classpath defaults); resolve HIV defaults using evidenced
+  specimen context; complete answer translation and the full workflow tests.
+  No live server recovery or video qualification is claimed by this checkpoint.
+
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence
 question applies to that scenario, not to unrelated COVID/HIV work. A failing
