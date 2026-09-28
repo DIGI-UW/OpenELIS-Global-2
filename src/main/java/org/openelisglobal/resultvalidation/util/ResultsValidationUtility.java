@@ -1123,9 +1123,12 @@ public class ResultsValidationUtility {
 
     /**
      * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
-     * without a validator: Finalized, yet with no validator e-signature on record.
-     * Served read-only behind the queue's "Include auto-validated" toggle; never
-     * part of the queue itself, never releasable.
+     * without a validator: Finalized, with no release date and no validator
+     * e-signature on record. Every validator release (row, bulk "Release all
+     * clear", legacy validation pages) stamps {@code released_date}, and the bulk
+     * release signs once for the whole set, so a missing signature alone does not
+     * mean no validator (OGC-1361). Served read-only behind the queue's "Include
+     * auto-validated" toggle; never part of the queue itself, never releasable.
      */
     public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
         String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
@@ -1135,6 +1138,9 @@ public class ResultsValidationUtility {
                 .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
         List<Analysis> autoValidated = new ArrayList<>();
         for (Analysis analysis : excludeQcAnalyses(finalized)) {
+            if (analysis.getReleasedDate() != null) {
+                continue;
+            }
             boolean signedByValidator;
             try {
                 signedByValidator = !signatures

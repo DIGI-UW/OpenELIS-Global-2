@@ -1123,7 +1123,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     /**
      * OGC-1030 (FR-A4) — the accession's auto-validated results: released at result
-     * entry with no validator signature. Read-only, never part of the queue.
+     * entry, never by a validator. Read-only, never part of the queue.
      */
     @GetMapping(value = "AccessionValidation/auto-validated", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
