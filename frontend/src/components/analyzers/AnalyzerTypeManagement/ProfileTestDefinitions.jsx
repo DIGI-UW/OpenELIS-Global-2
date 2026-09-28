@@ -32,6 +32,7 @@ const ProfileTestDefinitions = ({ rows, onChange }) => {
           {[
             ["test_code", "testCode"],
             ["test_name_hint", "testName"],
+            ["specimen_type_hint", "specimenType"],
             ["loinc", "loinc"],
             ["unit", "testUnit"],
           ].map(([key, label]) => (

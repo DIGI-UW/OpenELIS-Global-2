@@ -80,7 +80,7 @@ public final class BridgeAnalyzerProfile {
                             nullableText(coding, "display"));
             tests.add(new TestDefinition(analyzerCode, aliases, nullableText(mapping, "test_name_hint"),
                     requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
-                    values, normalizedCoding));
+                    values, normalizedCoding, nullableText(mapping, "specimen_type_hint")));
         }
 
         JsonNode lineage = catalog.path("lineage");
@@ -190,7 +190,8 @@ public final class BridgeAnalyzerProfile {
     }
 
     public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
-            String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding) {
+            String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
+            String specimenTypeHint) {
         public TestDefinition {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);

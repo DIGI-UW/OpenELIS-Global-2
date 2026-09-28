@@ -10666,6 +10666,7 @@
   "analyzerType.editor.testNumber": "Analyzer test {number}",
   "analyzerType.editor.testCode": "Analyzer test code",
   "analyzerType.editor.testName": "Suggested test name",
+  "analyzerType.editor.specimenType": "Suggested specimen type",
   "analyzerType.editor.loinc": "LOINC code",
   "analyzerType.editor.testUnit": "Reported units",
   "analyzerType.editor.resultType": "Reported value type",

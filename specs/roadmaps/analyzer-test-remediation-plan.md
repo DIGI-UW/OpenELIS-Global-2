@@ -158,6 +158,29 @@ because it is listed here.
   Bridge contract/profile change, then evidence-backed RIF/COVID translations.
   Do not restore the harness catalog or repair mappings in test setup to pass.
 
+### D2 specimen-context implementation checkpoint — 27 September 2026
+
+- Implemented optional profile `specimen_type_hint` consumption in the generic
+  OE2 default resolver. Catalog choices carry actual active specimen associations;
+  no instrument name, code, local test ID or universal Plasma fallback is coded
+  into the resolver. Without a hint, existing behavior is unchanged. Ambiguous
+  or absent matches remain unresolved for normal mapping review.
+- The existing profile editor can author the optional hint. The companion
+  [Bridge draft #69](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/69)
+  adds the field to the shared contract and supplies Plasma in immutable
+  GeneXpert revision 6, with the manufacturer's assay reference. Earlier profile
+  revisions remain unchanged.
+- Validation: 13 focused OE2 tests passed, including the normal molecular
+  configuration loader and real migrated catalog. Selection returns the original
+  Plasma test ID and preserves Serum/Plasma associations and numeric definitions.
+  All 20 existing profile-editor tests passed. Bridge's 28 contract/catalog tests
+  passed, including full ASTM/FILE schema fixtures and retained fingerprints.
+- Dependency pins are unchanged. This proves the resolver and authoring behavior,
+  not new-revision deployment or full instrument compatibility. Qualify complete
+  GeneXpert/FluoroCycler setup, runtime and mock traffic before accepting a new
+  Bridge pin. FluoroCycler specimen/unit interpretation, RIF/COVID answers,
+  connection defaults, recovery, upgrades and reviewed videos remain open.
+
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence
 question applies to that scenario, not to unrelated COVID/HIV work. A failing

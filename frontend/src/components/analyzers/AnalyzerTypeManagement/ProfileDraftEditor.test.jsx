@@ -504,6 +504,10 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   const row = within(screen.getByRole("group", { name: "Analyzer test 1" }));
   const name = row.getByRole("textbox", { name: "Suggested test name" });
   await userEvent.type(name, "Site tuberculosis assay");
+  await userEvent.type(
+    row.getByRole("textbox", { name: "Suggested specimen type" }),
+    "Sputum",
+  );
   const namedValues = within(
     row.getByRole("group", { name: "Result values reported by this test" }),
   );
@@ -513,6 +517,7 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   await save();
   const expected = clone(authored);
   expected.default_test_mappings[0].test_name_hint = "Site tuberculosis assay";
+  expected.default_test_mappings[0].specimen_type_hint = "Sputum";
   expected.default_test_mappings[0].values.push("SITE REVIEW REQUIRED");
   expect(updateAnalyzerTypeDraft).toHaveBeenCalledWith(
     "draft-file",

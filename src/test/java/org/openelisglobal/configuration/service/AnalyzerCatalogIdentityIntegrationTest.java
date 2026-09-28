@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +13,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
@@ -27,6 +30,13 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
     @Autowired
     @Qualifier("testConfigurationHandler")
     private DomainConfigurationHandler testHandler;
+
+    @Autowired
+    @Qualifier("testSectionConfigurationHandler")
+    private DomainConfigurationHandler sectionHandler;
+
+    @Autowired
+    private AnalyzerMappingDefaults defaults;
 
     @Autowired
     private TestService tests;
@@ -94,6 +104,38 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
             restored.setSysUserId(TEST_SYS_USER_ID);
             tests.update(restored);
         }
+    }
+
+    @Test
+    public void bundledHivDefaultsResolveToTheExistingPlasmaTestUsingRealSpecimenLinks() throws Exception {
+        var plasma = tests.getTestByDescription("HIVVIRALLOAD(Plasma)");
+        var serum = tests.getTestByDescription("HIVVIRALLOAD(Serum)");
+        assertNotNull(plasma);
+        assertNotNull(serum);
+        String plasmaId = plasma.getId();
+        String serumId = serum.getId();
+        var plasmaSpecimens = specimenIds(plasmaId);
+        var serumSpecimens = specimenIds(serumId);
+        try (InputStream csv = getClass().getResourceAsStream("/configuration/test-sections/molecular-sections.csv")) {
+            sectionHandler.processConfiguration(csv, "molecular-sections.csv");
+        }
+        try (InputStream csv = getClass().getResourceAsStream("/configuration/tests/molecular-tests.csv")) {
+            testHandler.processConfiguration(csv, "molecular-tests.csv");
+        }
+        assertEquals(0, testHandler.getLastSummary().getSkipped());
+        var profile = new ObjectMapper().readTree(
+                """
+                        {"profileMeta":{"id":"fixture.specimen","displayName":"Specimen default"},
+                        "protocol":{"name":"ASTM"},
+                        "catalog":{"revision":1,"revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source":"SITE","status":"ACTIVE"},
+                        "default_test_mappings":[{"test_code":"RAW-VL","loinc":"20447-9","result_type":"quantitative","specimen_type_hint":"Plasma"}]}
+                        """);
+        assertEquals(plasmaId, defaults.resolve(BridgeAnalyzerProfile.from(profile)).tests().get(0).testId());
+        assertEquals(plasmaSpecimens, specimenIds(plasmaId));
+        assertEquals(serumSpecimens, specimenIds(serumId));
+        assertEquals("20447-9", tests.get(serumId).getLoinc());
+        assertTrue(results.getActiveTestResultsByTest(plasmaId).stream()
+                .anyMatch(result -> "N".equals(result.getTestResultType())));
     }
 
     private Map<String, String> catalogIds() {

@@ -70,6 +70,23 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals("1", defaults.resolve(profile("quantitative")).tests().get(0).testId());
     }
 
+    @Test
+    public void specimenHintSelectsTheCompatibleTestWithoutChangingUnhintedProfiles() throws Exception {
+        when(catalog.searchActiveTests(null)).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.TestOption("1", "Viral load", "VL", List.of("11111-1"), List.of("Serum")),
+                new AnalyzerMappingCatalogService.TestOption("2", "Viral load", "VL", List.of("11111-1"), List.of("Plasma"))));
+        TestResult number = new TestResult();
+        number.setTestResultType("N");
+        when(testResults.getActiveTestResultsByTest("2")).thenReturn(List.of(number));
+        var document = profile("quantitative").document();
+        var mapping = (com.fasterxml.jackson.databind.node.ObjectNode) document.path("default_test_mappings").get(0);
+        assertNull(defaults.resolve(BridgeAnalyzerProfile.from(document)).tests().get(0).testId());
+        mapping.put("specimen_type_hint", " plasma ");
+        assertEquals("2", defaults.resolve(BridgeAnalyzerProfile.from(document)).tests().get(0).testId());
+        mapping.put("specimen_type_hint", "Saliva");
+        assertNull(defaults.resolve(BridgeAnalyzerProfile.from(document)).tests().get(0).testId());
+    }
+
     private AnalyzerMappingCatalogService.TestOption test(String id, String loinc) {
         return new AnalyzerMappingCatalogService.TestOption(id, "Local test " + id, null, List.of(loinc));
     }
