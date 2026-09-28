@@ -199,6 +199,12 @@ quantities (allowing trailing decimal zeros) instead of accepting any number.
 The focused run still stops at the unresolved VIH-1 binding, so the stronger
 downstream assertion is not yet end-to-end validated.
 
+For C2, `AnalyzerUpgradeIntegrationTest` and
+`AnalyzerEventPersistenceServiceIntegrationTest` ran in one Maven invocation:
+three tests passed with no failures or skips. This checks those two real
+persistence/service cases together; it does not establish independence of the
+entire analyzer service suite or replace the C3 upgrade and outage scenarios.
+
 The analyzer SQL fixture and its mapping-repair/native-traffic script were
 removed. The surviving seed script creates missing profile-pinned Bridge
 connections through OE2 APIs for CI/local setup; it does not confirm mappings or
