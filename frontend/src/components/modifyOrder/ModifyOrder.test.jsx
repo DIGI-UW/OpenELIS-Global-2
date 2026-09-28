@@ -54,7 +54,7 @@ vi.mock("../addOrder/Index", () => ({
   sampleObject: { tests: [], sampleXML: {} },
 }));
 
-import ModifyOrder from "./ModifyOrder";
+import ModifyOrder, { nonClinicalEditPath } from "./ModifyOrder";
 
 /** The order payload the SampleEdit GET returns, with a real referring site. */
 const orderPayload = () => ({
@@ -72,6 +72,9 @@ const orderPayload = () => ({
 const mountAndCaptureLoad = () => {
   let loadCb;
   utilsMock.getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (typeof url === "string" && url.includes("/rest/order/search")) {
+      cb({ labNumber: "DEV01260000000000519", sampleOrderItems: {} });
+    }
     if (typeof url === "string" && url.includes("/rest/SampleEdit")) {
       loadCb = cb;
     }
@@ -184,5 +187,148 @@ describe("ModifyOrder — successful reassignment switches to the new Lab Number
       "accessionNumber=NEW01260000000000009",
     );
     expect(window.location.search).not.toContain("OLD01260000000000001");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1192 — environmental and vector orders have no patient. Modify Order
+// opened them in the clinical wizard as "No Patient Information Available";
+// they are sent to their own workflow's Enter Order page instead.
+// ---------------------------------------------------------------------------
+describe("nonClinicalEditPath (OGC-1192)", () => {
+  const order = (workflowType) => ({
+    labNumber: "DEV01260000000000254",
+    sampleOrderItems: { environmentalFields: { workflowType } },
+  });
+
+  test("an environmental order is edited on the environmental Enter Order page", () => {
+    expect(nonClinicalEditPath(order("environmental"))).toBe(
+      "/order/environmental/enter?labNumber=DEV01260000000000254",
+    );
+  });
+
+  test("a vector order is edited on the vector Enter Order page", () => {
+    expect(nonClinicalEditPath(order("vector"))).toBe(
+      "/order/vector/enter?labNumber=DEV01260000000000254",
+    );
+  });
+
+  test("a clinical, legacy or missing order stays on Modify Order", () => {
+    expect(nonClinicalEditPath(order("clinical"))).toBeNull();
+    expect(nonClinicalEditPath(order(undefined))).toBeNull();
+    expect(nonClinicalEditPath(undefined)).toBeNull();
+  });
+});
+
+describe("ModifyOrder — non-clinical orders leave the clinical wizard (OGC-1192)", () => {
+  const originalLocation = window.location;
+  let replace;
+
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    replace = vi.fn();
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      search: "?accessionNumber=DEV01260000000000254",
+      replace,
+    };
+  });
+
+  afterEach(() => {
+    window.location = originalLocation;
+  });
+
+  const requestedUrls = () =>
+    utilsMock.getFromOpenElisServer.mock.calls.map(([url]) => url);
+
+  test("an environmental order redirects and never loads the clinical edit form", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/rest/order/search")) {
+        cb({
+          labNumber: "DEV01260000000000254",
+          sampleOrderItems: {
+            environmentalFields: { workflowType: "environmental" },
+          },
+        });
+      }
+    });
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ModifyOrder />
+      </IntlProvider>,
+    );
+
+    expect(replace).toHaveBeenCalledWith(
+      "/order/environmental/enter?labNumber=DEV01260000000000254",
+    );
+    expect(requestedUrls().some((u) => u.includes("/rest/SampleEdit"))).toBe(
+      false,
+    );
+  });
+
+  test("a clinical order stays and loads the edit form", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/rest/order/search")) {
+        cb({ labNumber: "DEV01260000000000254", sampleOrderItems: {} });
+      }
+    });
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ModifyOrder />
+      </IntlProvider>,
+    );
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(requestedUrls().some((u) => u.includes("/rest/SampleEdit"))).toBe(
+      true,
+    );
+  });
+
+  test("an order the search cannot return still loads the edit form", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/rest/order/search")) {
+        cb(undefined);
+      }
+    });
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ModifyOrder />
+      </IntlProvider>,
+    );
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(requestedUrls().some((u) => u.includes("/rest/SampleEdit"))).toBe(
+      true,
+    );
+  });
+});
+
+describe("ModifyOrder — a lab number with no order (OGC-1192 walk)", () => {
+  beforeEach(() => utilsMock.getFromOpenElisServer.mockReset());
+
+  test("says no sample was found instead of opening an empty wizard", () => {
+    const getLoad = mountAndCaptureLoad();
+    act(() => {
+      getLoad()({
+        noSampleFound: true,
+        accessionNumber: "DEV01260000000009999",
+      });
+    });
+
+    expect(
+      screen.getByText("No sample found for the provided accession number."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull();
+  });
+
+  test("a failed load leaves the page standing", () => {
+    const getLoad = mountAndCaptureLoad();
+
+    expect(() => act(() => getLoad()(undefined))).not.toThrow();
+    expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument();
   });
 });

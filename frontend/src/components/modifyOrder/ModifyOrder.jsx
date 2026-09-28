@@ -25,6 +25,24 @@ import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
+/**
+ * The edit page of the workflow an order was entered in, when that is not the
+ * clinical one. Environmental and vector orders have no patient, so the
+ * clinical wizard can only show them as "No Patient Information Available";
+ * they are edited on their own workflow's Enter Order page instead.
+ */
+export const nonClinicalEditPath = (order) => {
+  const workflowType =
+    order?.sampleOrderItems?.environmentalFields?.workflowType;
+  if (
+    !order?.labNumber ||
+    (workflowType !== "environmental" && workflowType !== "vector")
+  ) {
+    return null;
+  }
+  return `/order/${workflowType}/enter?labNumber=${encodeURIComponent(order.labNumber)}`;
+};
+
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sample.label.search.Order", link: "/SampleEdit" },
@@ -48,6 +66,7 @@ const ModifyOrder = () => {
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [patientId, setPatientId] = useState("");
+  const [orderNotFound, setOrderNotFound] = useState(false);
   const [patientHeaderInfo, setPatientHeaderInfo] = useState({
     patientName: "",
     gender: "",
@@ -74,27 +93,46 @@ const ModifyOrder = () => {
     accessionNumber = accessionNumber ? accessionNumber : "";
     patientIdParam = patientIdParam ? patientIdParam : "";
 
-    // If searching by accession number and no patientId, fetch patient from accession number
+    const loadForModify = () => {
+      // If searching by accession number and no patientId, fetch patient from accession number
+      if (!patientIdParam && accessionNumber) {
+        getFromOpenElisServer(
+          "/rest/patientByLabNumer?accessionNumber=" + accessionNumber,
+          (response) => {
+            if (componentMounted.current && response && response.id) {
+              setPatientId(response.id);
+            }
+          },
+        );
+      } else {
+        setPatientId(patientIdParam);
+      }
+
+      getFromOpenElisServer(
+        "/rest/SampleEdit?patientId=" +
+          patientIdParam +
+          "&accessionNumber=" +
+          accessionNumber,
+        loadOrderValues,
+      );
+    };
+
     if (!patientIdParam && accessionNumber) {
       getFromOpenElisServer(
-        "/rest/patientByLabNumer?accessionNumber=" + accessionNumber,
-        (response) => {
-          if (componentMounted.current && response && response.id) {
-            setPatientId(response.id);
+        "/rest/order/search?labNumber=" + encodeURIComponent(accessionNumber),
+        (order) => {
+          if (!componentMounted.current) return;
+          const editPath = nonClinicalEditPath(order);
+          if (editPath) {
+            window.location.replace(editPath);
+            return;
           }
+          loadForModify();
         },
       );
     } else {
-      setPatientId(patientIdParam);
+      loadForModify();
     }
-
-    getFromOpenElisServer(
-      "/rest/SampleEdit?patientId=" +
-        patientIdParam +
-        "&accessionNumber=" +
-        accessionNumber,
-      loadOrderValues,
-    );
     return () => {
       componentMounted.current = false;
     };
@@ -116,7 +154,11 @@ const ModifyOrder = () => {
 
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
-      if (data.sampleOrderItems) {
+      if (data?.noSampleFound) {
+        setOrderNotFound(true);
+        return;
+      }
+      if (data?.sampleOrderItems) {
         // OGC-1191 — Do not blank the loaded referring-site name. It carried
         // over from the Vite migration and left a required field empty in form
         // state while the AutoComplete still displayed it from referringSiteId,
@@ -327,26 +369,35 @@ const ModifyOrder = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <br />
 
-      <PatientHeader
-        id={patientId}
-        patientName={patientHeaderInfo.patientName}
-        gender={patientHeaderInfo.gender}
-        dob={patientHeaderInfo.dob}
-        nationalId={patientHeaderInfo.nationalId}
-        patientId={patientHeaderInfo.patientId}
-        subjectNumber={patientHeaderInfo.subjectNumber}
-        accesionNumber={patientHeaderInfo.accessionNumber}
-        className="patient-header2"
-        isOrderPage={true}
-      >
-        {" "}
-      </PatientHeader>
+      {orderNotFound ? (
+        <InlineNotification
+          kind="error"
+          hideCloseButton
+          lowContrast
+          title={intl.formatMessage({ id: "sample.search.nosample" })}
+        />
+      ) : (
+        <PatientHeader
+          id={patientId}
+          patientName={patientHeaderInfo.patientName}
+          gender={patientHeaderInfo.gender}
+          dob={patientHeaderInfo.dob}
+          nationalId={patientHeaderInfo.nationalId}
+          patientId={patientHeaderInfo.patientId}
+          subjectNumber={patientHeaderInfo.subjectNumber}
+          accesionNumber={patientHeaderInfo.accessionNumber}
+          className="patient-header2"
+          isOrderPage={true}
+        >
+          {" "}
+        </PatientHeader>
+      )}
       <Grid>
         <Column lg={16} md={8} sm={4}>
           <Stack gap={10}>
             <div className="pageContent">
               {notificationVisible === true ? <AlertDialog /> : ""}
-              {orderFormValues?.sampleOrderItems && (
+              {!orderNotFound && orderFormValues?.sampleOrderItems && (
                 <div className="orderWorkFlowDiv">
                   <h2>
                     <FormattedMessage id="order.test.request.heading" />
