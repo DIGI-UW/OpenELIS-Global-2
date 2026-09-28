@@ -209,13 +209,14 @@ it checks migration-service behavior but cannot serve as the populated-upgrade
 proof in C3. Keep that focused service check until a previous-version API/UI
 upgrade scenario replaces its broader claim. The FluoroCycler story originally
 used sample IDs embedded in a captured XLSX file, limiting it to a fresh stack.
-The mock now accepts freshly generated OE2 accessions and replaces only those
+Mock PR #49 accepts freshly generated OE2 accessions and replaces only those
 two IDs when it writes the captured workbook into Bridge's watched directory.
 Its 1250 and 450 measured values stay unchanged, and the FILE story requires
 those exact clinical quantities (allowing trailing decimal zeros). Mock FILE
-tests and the Bridge cross-process suite passed. The OE2 story still stops at
-the unresolved VIH-1 binding, so its new repeatability and clinical assertions
-are not yet end-to-end validated.
+tests and the Bridge cross-process suite passed against PR #49. The OE2 overlay
+still pins the released mock 0.1.1; the new mock must be released before OE2 can
+pin it. The OE2 story stops at the unresolved VIH-1 binding, so its repeatability
+and clinical assertions are not yet end-to-end validated.
 
 For C2, `AnalyzerUpgradeIntegrationTest` and
 `AnalyzerEventPersistenceServiceIntegrationTest` ran in one Maven invocation:
