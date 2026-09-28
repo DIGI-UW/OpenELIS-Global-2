@@ -106,9 +106,12 @@ public class EQAFhirExchangeServiceImpl implements EQAFhirExchangeService {
             return false;
         }
         Long organizationId = Long.valueOf(box.getDestinationFacility().getId());
+        // Keyed by the panel sample code where the participant sent one, so two
+        // samples of one analyte are two values; by analyte name otherwise.
         Map<String, String> byAnalyteName = new LinkedHashMap<>();
         for (Observation observation : observations) {
-            String name = analyteNameOf(observation);
+            String sampleCode = sampleCodeOf(observation);
+            String name = sampleCode != null ? sampleCode : analyteNameOf(observation);
             String value = reportedValueOf(observation);
             if (name != null && value != null) {
                 byAnalyteName.put(name, value);
@@ -213,9 +216,17 @@ public class EQAFhirExchangeServiceImpl implements EQAFhirExchangeService {
         Map<String, String> onFile = new LinkedHashMap<>();
         for (Object row : (List<?>) grid.get("tests")) {
             Map<?, ?> test = (Map<?, ?>) row;
-            if (test.get("analyteName") != null && test.get("reported") != null) {
-                onFile.put(String.valueOf(test.get("analyteName")).trim().toLowerCase(),
-                        normalise(String.valueOf(test.get("reported"))));
+            if (test.get("reported") == null) {
+                continue;
+            }
+            String reported = normalise(String.valueOf(test.get("reported")));
+            if (test.get("sampleCode") != null) {
+                onFile.put(String.valueOf(test.get("sampleCode")).trim().toLowerCase(), reported);
+            }
+            if (test.get("analyteName") != null) {
+                // Two samples of one analyte leave the name meaning neither of them.
+                onFile.merge(String.valueOf(test.get("analyteName")).trim().toLowerCase(), reported,
+                        (kept, other) -> "");
             }
         }
         for (Map.Entry<String, String> entry : byAnalyteName.entrySet()) {
@@ -233,6 +244,16 @@ public class EQAFhirExchangeServiceImpl implements EQAFhirExchangeService {
         } catch (NumberFormatException e) {
             return value.trim().toLowerCase();
         }
+    }
+
+    private String sampleCodeOf(Observation observation) {
+        String system = fhirConfig.getOeFhirSystem() + EQAFhirSubmissionService.SAMPLE_CODE_SUFFIX;
+        for (Identifier identifier : observation.getIdentifier()) {
+            if (system.equals(identifier.getSystem()) && identifier.hasValue()) {
+                return identifier.getValue();
+            }
+        }
+        return null;
     }
 
     private static String analyteNameOf(Observation observation) {

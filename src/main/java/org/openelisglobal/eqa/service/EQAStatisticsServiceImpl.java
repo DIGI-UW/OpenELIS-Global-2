@@ -31,24 +31,28 @@ public class EQAStatisticsServiceImpl implements EQAStatisticsService {
     /**
      * Peer statistics are per test: a cycle's panel carries several analytes, and
      * pooling a viral load with a CD4 count would score every participant against a
-     * mean that describes nothing. A test with fewer numeric results than the floor
-     * keeps its Z and verdict blank; qualitative results (result_text) are judged
-     * elsewhere, against the panel target.
+     * mean that describes nothing. Where a result answers a panel sample, the peers
+     * are the results for that sample: a low and a high level of one test are two
+     * populations. A group with fewer numeric results than the floor keeps its Z
+     * and verdict blank; qualitative results (result_text) are judged elsewhere,
+     * against the panel target.
      */
     @Override
     public void calculateAndUpdateStatistics(Long distributionId) {
-        Map<Long, List<EQAResult>> byTest = new LinkedHashMap<>();
+        Map<String, List<EQAResult>> byTest = new LinkedHashMap<>();
         for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
             if (result.getResultValue() != null) {
-                byTest.computeIfAbsent(result.getTestId(), key -> new ArrayList<>()).add(result);
+                String key = result.getPanelSampleId() != null ? "panel sample " + result.getPanelSampleId()
+                        : "test " + result.getTestId();
+                byTest.computeIfAbsent(key, k -> new ArrayList<>()).add(result);
             }
         }
 
-        for (Map.Entry<Long, List<EQAResult>> group : byTest.entrySet()) {
+        for (Map.Entry<String, List<EQAResult>> group : byTest.entrySet()) {
             List<BigDecimal> values = group.getValue().stream().map(EQAResult::getResultValue)
                     .collect(Collectors.toList());
             if (values.size() < MIN_PARTICIPANTS_FOR_STATS) {
-                logger.info("Distribution {} test {} has only {} numeric results, minimum {} required for statistics",
+                logger.info("Distribution {} {} has only {} numeric results, minimum {} required for statistics",
                         distributionId, group.getKey(), values.size(), MIN_PARTICIPANTS_FOR_STATS);
                 continue;
             }

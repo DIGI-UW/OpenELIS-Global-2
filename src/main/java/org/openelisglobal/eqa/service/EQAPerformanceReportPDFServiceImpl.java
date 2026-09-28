@@ -237,7 +237,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         // A numeric target is copied onto the result when it is scored; a
         // qualitative one is numeric-typed there and so lives only on the panel
         // sample that sealed it.
-        Map<Long, String> sealedTargets = providerScoringService.sealedTargetsByTest(cycle.getId());
+        Map<Long, String> sealedTargets = providerScoringService.sealedTargetsByResult(cycle.getId());
         List<Row> rows = new ArrayList<>();
         for (EQAResult result : providerScoringService.reportedResultsFor(cycle.getId(), organizationId)) {
             Test test = testOf(result.getTestId());
@@ -257,12 +257,12 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
      * A numeric target is copied onto the result when it is scored, so that is the
      * value it was actually judged against. The sealed target is consulted only for
      * a qualitative answer, whose target is a word that {@code target_value} —
-     * numeric — cannot hold: falling back for a number as well would guess, since a
-     * panel may seal two samples against one analyte.
+     * numeric — cannot hold. The sealed targets are keyed by result, so each of two
+     * samples of one analyte shows its own.
      */
     private static String targetOf(EQAResult result, Map<Long, String> sealedTargets) {
         if (result.getResultText() != null) {
-            return sealedTargets.get(result.getTestId());
+            return sealedTargets.get(result.getId());
         }
         return number(result.getTargetValue());
     }

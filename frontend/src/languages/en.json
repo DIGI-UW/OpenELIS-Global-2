@@ -11832,5 +11832,6 @@
   "analyzerType.editor.specimenPosition": "HL7 specimen position relative to results",
   "analyzerType.editor.dataFlow": "Default direction of data transfer",
   "analyzerType.editor.outboundPortMode": "Default outbound port selection",
-  "analyzerType.editor.clientProfilePort": "Client connection port stored in this profile (optional)"
+  "analyzerType.editor.clientProfilePort": "Client connection port stored in this profile (optional)",
+  "eqa.intake.sample": "Sample {code}"
 }
