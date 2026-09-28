@@ -182,6 +182,7 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
               orderData?.sampleOrderItems?.requestDate || "",
               dateLocale,
             )}
+            updateStateValue
             onChange={handleDateChange("requestDate")}
             disabled={isReadOnly}
           />
@@ -198,6 +199,7 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
               orderData?.sampleOrderItems?.nextVisitDate || "",
               dateLocale,
             )}
+            updateStateValue
             onChange={handleDateChange("nextVisitDate")}
             disabled={isReadOnly}
           />
