@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Reference data for SamplePatientEntryRestControllerIntegrationTest.
+    Deliberately narrow: it declares ONLY the rows the /rest/SamplePatientEntry
+    contract needs, because executeDataSetWithStateManagement TRUNCATEs every
+    table a dataset names. In particular it does NOT declare status_of_sample
+    — the order-save path resolves SampleStatus.Entered / AnalysisStatus.NotStarted
+    through the Liquibase-seeded status rows, and replacing that seed with a
+    fixture's handful of rows breaks the save here and in every later test class
+    in the same Surefire fork. Volatile order rows (sample, sample_item, analysis,
+    sample_human, ...) are intentionally absent: each test creates them through
+    the controller and the test class truncates `sample` (CASCADE) between tests. -->
+<dataset>
+    <!-- The acting user. sys_user_id=1 is the audit user every save FKs to,
+        and the two roles below are the ones Order Entry resolves by NAME: "Reception"
+        scopes the orderable sample types, "Global Administrator" short-circuits
+        the lab-unit filter so that scoping is deterministic here. -->
+    <system_user id="1" external_id="TEST_ADMIN"
+        login_name="admin" last_name="Doe" first_name="John" initials="JD"
+        is_active="Y" is_employee="Y" lastupdated="2024-01-01 00:00:00" />
+
+    <system_role id="1" name="Global Administrator"
+        description="Global Administrator role" is_grouping_role="false"
+        grouping_parent="1" display_key="globalAdminKey" active="true"
+        editable="true" />
+    <system_role id="2" name="Reception"
+        description="Reception role" is_grouping_role="false"
+        grouping_parent="1" display_key="receptionKey" active="true"
+        editable="true" />
+
+    <system_user_role system_user_id="1" role_id="1" />
+    <system_user_role system_user_id="1" role_id="2" />
+
+    <!-- Localized display names for the reference rows below -->
+    <localization id="1" description="test section name" />
+    <localization id="2" description="test name" />
+    <localization id="3" description="sample type name" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Immunology" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="HIV Test" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="Serum" />
+
+    <unit_of_measure id="1" name="mL"
+        description="Millilitres" />
+
+    <!-- PatientManagementUpdate is @Scope("prototype"), so its @PostConstruct
+        re-resolves these three part names against whatever is in address_part at
+        the moment the save runs, and then writes a person_address row for commune
+        and village unconditionally. Other fixtures (testdata/address-part.xml) replace
+        this table with differently-named parts, which leaves those ids null and
+        fails the save on address_part_id's not-null constraint — but only when this
+        class runs after one of them. Declaring the rows here makes the table deterministic
+        for these tests regardless of execution order. -->
+    <address_part id="9101" part_name="department"
+        display_order="1" display_key="address.department" />
+    <address_part id="9102" part_name="commune"
+        display_order="2" display_key="address.commune" />
+    <address_part id="9103" part_name="village"
+        display_order="3" display_key="address.village" />
+
+    <!-- The single sample type every order in this test collects -->
+    <type_of_sample id="1" name_localization_id="3"
+        description="Serum" is_active="true" domain="H"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <test_section id="1" name="Immunology"
+        description="Immunology Section" name_localization_id="1"
+        lastupdated="2024-01-01 00:00:00" is_active="Y" sort_order="1"
+        domain="CLINICAL" />
+
+    <test id="1" guid="550e8400-e29b-41d4-a716-446655440000"
+        name="HIV Test" description="HIV Test" is_reportable="Y"
+        loinc="12345-6" lastupdated="2024-01-01 00:00:00" is_active="Y"
+        local_code="HIV-1" sort_order="1" test_section_id="1" orderable="true"
+        notify_results="true" name_localization_id="2" />
+
+    <!-- Which sample type the ordered test may be collected into -->
+    <sampletype_test id="1" sample_type_id="1" test_id="1"
+        display_order="1" />
+
+    <!-- Referring organization used by the requester scenarios -->
+    <organization id="1" name="Test Org" short_name="TO"
+        lastupdated="2024-01-01 00:00:00" is_active="Y" />
+
+    <!-- Ids here start at 9000 on purpose. person_seq / patient_seq are reset
+        by the fixture load's TRUNCATE ... RESTART IDENTITY, so every patient these
+        tests register through the endpoint is numbered from 1 upwards; low fixture
+        ids would eventually collide with one and fail on the primary key. -->
+
+    <!-- An already-registered patient, for the "reuse existing patient" order -->
+    <person id="9004" last_name="Doe" first_name="John"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <patient id="9001" person_id="9004"
+        lastupdated="2024-01-01 00:00:00" national_id="NID0001"
+        external_id="PAT001" fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- A referring provider. initProvider dereferences the Provider row that
+        backs providerPersonId without a null check, so a person alone is not enough
+        to exercise the "existing provider" path. -->
+    <person id="9005" last_name="Who" first_name="Doctor"
+        work_phone="555-0101" fax="555-0100" email="doc@example.com"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <provider id="9001" person_id="9005" npi="1234567890"
+        external_id="PROV001" provider_type="D" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002"
+        lastupdated="2024-01-01 00:00:00" />
+</dataset>

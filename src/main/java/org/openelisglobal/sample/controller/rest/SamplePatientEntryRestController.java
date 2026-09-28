@@ -267,7 +267,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * — so existing consumers (OrderContext.js, any integration that reads form
      * fields) keep working unchanged. Only the status code is new.
      */
-    @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<?> samplePatientEntrySave(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody SamplePatientEntryForm form,
