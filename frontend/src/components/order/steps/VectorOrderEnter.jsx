@@ -16,7 +16,12 @@ import SaveFailureNotice from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
-import { describeUnmetRequirements } from "../saveRequirements";
+import {
+  describeUnmetRequirements,
+  hasRequesterOrRequestor,
+} from "../saveRequirements";
+import SaveRequirementsNotice from "../SaveRequirementsNotice";
+import { fetchServerNow } from "../serverClock";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -127,6 +132,10 @@ const VectorOrderEnter = () => {
       met: hasCollectionSite,
       labelId: "order.save.requirement.collectionSite",
     },
+    {
+      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
+      labelId: "order.save.requirement.requesterOrRequestor",
+    },
     { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
@@ -143,7 +152,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -164,7 +173,7 @@ const VectorOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       markStepComplete("enter");
       history.push(
         labNumber
@@ -192,7 +201,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry();
+      await saveOrderEntry(await fetchServerNow());
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -216,6 +225,7 @@ const VectorOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -378,6 +388,7 @@ const VectorOrderEnter = () => {
           labNumber={localLabNumber}
           isReadOnly={isReadOnly && !isEditMode}
         />
+        <SaveRequirementsNotice requirements={saveRequirements} />
       </Stack>
     </OrderWorkflowLayout>
   );

@@ -1386,6 +1386,10 @@ const SampleResultsSection = ({ testId }) => {
           })}
           items={otherTests}
           itemToString={(t) => (t ? t.value : "")}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
           selectedItem={copySource}
           onChange={({ selectedItem }) =>
             setCopyFromId(selectedItem ? selectedItem.id : "")

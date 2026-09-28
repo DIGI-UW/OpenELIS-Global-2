@@ -281,7 +281,7 @@ const OrderQA = () => {
             </h3>
             <p>
               <FormattedMessage
-                id="order.submit.labNumber"
+                id="order.submit.success.labNumber"
                 defaultMessage="Lab Number: {labNumber}"
                 values={{ labNumber: displayLabNumber || "---" }}
               />

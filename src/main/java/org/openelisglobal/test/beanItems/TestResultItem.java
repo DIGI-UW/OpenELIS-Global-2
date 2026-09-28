@@ -17,6 +17,7 @@ package org.openelisglobal.test.beanItems;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
@@ -29,6 +30,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.YesNoBooleanDeserializer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
@@ -705,6 +707,7 @@ public class TestResultItem implements ResultItem, Serializable {
         return reportable ? IActionConstants.YES : IActionConstants.NO;
     }
 
+    @JsonDeserialize(using = YesNoBooleanDeserializer.class)
     public void setReportable(boolean reportable) {
         this.reportable = reportable;
     }

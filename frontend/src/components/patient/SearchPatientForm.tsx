@@ -59,6 +59,8 @@ interface SearchPatientFormProps {
   idPrefix?: string;
   /** Patients (by patientID) left out of the results, e.g. one already chosen elsewhere on the page. */
   excludePatientIds?: string[];
+  /** False when the host page already renders the notification toasts. */
+  renderNotifications?: boolean;
   [key: string]: unknown;
 }
 
@@ -355,7 +357,11 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   }, []);
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true && props.renderNotifications !== false ? (
+        <AlertDialog />
+      ) : (
+        ""
+      )}
       {loading && <Loading />}
       <Formik
         key={formInstance}

@@ -356,6 +356,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                         LogEvent.logError(ex);
                     }
                 });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
             }
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof StaleObjectStateException) {

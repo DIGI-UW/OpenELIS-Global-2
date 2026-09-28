@@ -27,6 +27,14 @@ const password = process.env.TEST_PASS || "adminADMIN!";
  * No direct database access. All interactions through UI or REST API.
  */
 
+// Restore the site setting even when a step fails, so later specs in the run
+// do not meet signing dialogs they never asked for.
+test.afterEach(async ({ page }) => {
+  const siteInfo = new SiteInformationPage(page);
+  await siteInfo.goto();
+  await siteInfo.setBooleanSetting("electronicSignatureEnabled", false);
+});
+
 test("E-Signature — full result entry and validation flow", async ({
   page,
 }) => {
@@ -246,13 +254,5 @@ test("E-Signature — full result entry and validation flow", async ({
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
     await queueReread;
     await expect(page).toHaveURL(/\/validation/);
-  });
-
-  // ── Cleanup: Restore original e-sig setting ───────────────────
-
-  await test.step("Disable e-signatures (cleanup)", async () => {
-    const siteInfo = new SiteInformationPage(page);
-    await siteInfo.goto();
-    await siteInfo.setBooleanSetting("electronicSignatureEnabled", false);
   });
 });

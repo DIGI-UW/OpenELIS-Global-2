@@ -9,6 +9,34 @@ on:
   workflow_dispatch:
 
 jobs:
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Check formatting
+        run: mvn spotless:check
+
+  deployment-contract:
+    uses: ./.github/workflows/deployment-checks.yml
+    permissions:
+      contents: read
+
   # Gate the expensive Maven build behind a path filter. On pull_request,
   # skip backend-verify entirely when no backend-relevant files changed.
   # On push to develop, release, and workflow_dispatch the filter step is skipped
@@ -71,12 +99,6 @@ jobs:
         with:
           repository: ${{github.repository}}
           submodules: recursive
-
-      - name: check formatting
-        run: mvn spotless:check
-
-      - name: Test publication checkpoint gate
-        run: node --test .github/scripts/publish-checkpoints.test.cjs
 
       - name: Initialize and build submodules
         run: |
@@ -152,20 +174,28 @@ jobs:
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
-    needs: [changes, backend-verify]
+    needs: [changes, formatting, deployment-contract, backend-verify]
     runs-on: ubuntu-latest
     steps:
       - name: Check backend result
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
+          FORMATTING_RESULT: ${{ needs.formatting.result }}
+          CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
+          BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
             echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          if [[ "$BACKEND_RESULT" != "success" && "$BACKEND_RESULT" != "skipped" ]]; then
+          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" ]]; then
+            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT"
+            exit 1
+          fi
+          if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then
+            echo "Backend checkpoint passed (formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, verify=$BACKEND_RESULT)."
+          else
             echo "Backend verification failed: $BACKEND_RESULT"
             exit 1
           fi
-          echo "Backend checkpoint passed (changes=$CHANGES_RESULT, verify=$BACKEND_RESULT)."

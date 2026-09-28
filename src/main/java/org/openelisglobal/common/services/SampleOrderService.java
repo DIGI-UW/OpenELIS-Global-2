@@ -332,7 +332,7 @@ public class SampleOrderService {
         List<ObservationHistory> observations = new ArrayList<>();
         SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
         Patient patient = sampleHumanService.getPatientForSample(artifacts.getSample());
-        String patientId = patient.getId();
+        String patientId = patient == null ? null : patient.getId();
 
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.REFERRERS_PATIENT_ID,
                 sampleOrder.getReferringPatientNumber(), ValueType.LITERAL);
@@ -434,7 +434,9 @@ public class SampleOrderService {
         }
 
         orgRequester = new SampleRequester();
-        orgRequester.setRequesterId(Long.parseLong(sampleOrder.getReferringSiteId())); // may be overridden latter
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())) {
+            orgRequester.setRequesterId(Long.parseLong(sampleOrder.getReferringSiteId()));
+        }
         orgRequester.setSampleId(Long.parseLong(sampleOrder.getSampleId()));
         orgRequester.setRequesterTypeId(RequesterService.Requester.ORGANIZATION.getId());
         orgRequester.setSysUserId(currentUserId);

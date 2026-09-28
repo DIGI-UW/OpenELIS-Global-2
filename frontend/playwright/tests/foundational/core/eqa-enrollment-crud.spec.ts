@@ -40,7 +40,7 @@ test.describe("EQA self-enrollment", () => {
     await test.step("the enrollment form saves a new programme", async () => {
       await page.goto("/qa/eqa/my-programs", { timeout: NAV_TIMEOUT });
       await expect(
-        page.getByRole("heading", { name: "My EQA Programs" }),
+        page.getByRole("heading", { name: "My EQA Schemes" }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await page.getByRole("button", { name: "Enroll in Program" }).click();
       await expect(

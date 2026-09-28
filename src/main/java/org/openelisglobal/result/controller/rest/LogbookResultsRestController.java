@@ -571,6 +571,13 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                         LogEvent.logError(ex);
                     }
                 });
+                actionDataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
             }
         } catch (LIMSRuntimeException e) {
             String errorMsg;

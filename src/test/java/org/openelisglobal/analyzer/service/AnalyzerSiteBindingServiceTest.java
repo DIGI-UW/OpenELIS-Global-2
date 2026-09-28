@@ -61,7 +61,8 @@ public class AnalyzerSiteBindingServiceTest {
     @Before
     public void setUp() {
         service = new AnalyzerSiteBindingServiceImpl(bindingDAO, revisionDAO, testDAO, resultDAO, auditTrailService,
-                testService, testResultService);
+                testService, testResultService, new AnalyzerMappingDefaults(
+                        org.mockito.Mockito.mock(AnalyzerMappingCatalogService.class), testResultService));
         when(bindingDAO.insert(any(AnalyzerSiteBinding.class))).thenAnswer(invocation -> {
             AnalyzerSiteBinding binding = invocation.getArgument(0);
             binding.setId("51");

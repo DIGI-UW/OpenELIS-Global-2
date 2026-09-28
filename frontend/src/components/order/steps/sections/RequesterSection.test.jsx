@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -1185,6 +1185,62 @@ describe("RequesterSection", () => {
       });
 
       expect(screen.getByText("Optimus Prime")).toBeInTheDocument();
+    });
+  });
+
+  describe("selecting a site or provider (OGC-1266)", () => {
+    beforeEach(() => {
+      getFromOpenElisServerMock.mockReset();
+      getFromOpenElisServerMock.mockImplementation((url, cb) => {
+        if (url.startsWith("/rest/organization/search")) {
+          cb({
+            organizations: [
+              { id: "3", organizationName: "REPRO Clinic", shortName: "RC" },
+            ],
+          });
+        } else if (url.startsWith("/rest/provider/search")) {
+          cb({
+            providers: [
+              {
+                id: "13",
+                personId: "44",
+                name: "Doctor, Mary",
+                firstName: "Mary",
+                lastName: "Doctor",
+                phone: "",
+              },
+            ],
+          });
+        } else {
+          cb([]);
+        }
+      });
+    });
+
+    it("shows the chosen site's full name in Site Name, not the typed text", async () => {
+      renderControlledRequester({ sampleOrderItems: {} });
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText(/Site Name/), "REP");
+      const row = await screen.findByRole("row", { name: /REPRO Clinic/ });
+      await user.click(within(row).getByRole("button", { name: "Select" }));
+
+      expect(screen.getByLabelText(/Site Name/)).toHaveValue("REPRO Clinic");
+      expect(screen.getByLabelText(/Site Name/)).toBeDisabled();
+    });
+
+    it("shows the chosen provider's name in Provider Name, not the typed text", async () => {
+      renderControlledRequester({ sampleOrderItems: {} });
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText(/Provider Name/), "Mar");
+      const row = await screen.findByRole("row", { name: /Doctor, Mary/ });
+      await user.click(within(row).getByRole("button", { name: "Select" }));
+
+      expect(screen.getByLabelText(/Provider Name/)).toHaveValue(
+        "Doctor, Mary",
+      );
+      expect(screen.getByLabelText(/Provider Name/)).toBeDisabled();
     });
   });
 });

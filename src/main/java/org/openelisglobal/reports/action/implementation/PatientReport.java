@@ -640,12 +640,12 @@ public abstract class PatientReport extends Report {
                 boolean perComponent = setAppropriateResults(resultList, data);
                 Result result = resultList.get(0);
                 setCorrectedStatus(result, data);
+                data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
                 if (!perComponent) {
                     setNormalRange(data, test, result);
+                    data.setResult(getAugmentedResult(data, result));
+                    data.setAlerts(getResultFlag(result, null, data));
                 }
-                data.setResult(getAugmentedResult(data, result));
-                data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
-                data.setAlerts(getResultFlag(result, null, data));
             }
         }
 
@@ -962,6 +962,7 @@ public abstract class PatientReport extends Report {
         StringBuilder results = new StringBuilder();
         StringBuilder uoms = new StringBuilder();
         StringBuilder ranges = new StringBuilder();
+        List<String> alerts = new ArrayList<>();
         for (TestResultComponent component : components) {
             // OGC-1127: a component flagged not to print is omitted from the report.
             // The primary is always kept so the test never renders with no result.
@@ -985,14 +986,20 @@ public abstract class PatientReport extends Report {
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 continue;
             }
-            results.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+            Result first = componentResults.get(0);
+            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
+                    component.getId());
+            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(), first.getValue(true));
+            alerts.add(letter);
+            results.append(component.getLabel()).append(": ").append(componentValue);
+            if (!letter.isEmpty()) {
+                results.append(" <b>").append(letter).append("</b>");
+            }
+            results.append("\n");
 
             String componentUom = componentUomName(component, unitOfMeasureService);
             uoms.append(GenericValidator.isBlankOrNull(componentUom) ? testUom : componentUom).append("\n");
 
-            Result first = componentResults.get(0);
-            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
-                    component.getId());
             String significantDigits = first.getTestResult() == null ? "0"
                     : first.getTestResult().getSignificantDigits();
             String range = limit == null ? ""
@@ -1008,6 +1015,10 @@ public abstract class PatientReport extends Report {
         data.setUom(uoms.toString());
         data.setTestRefRange(ranges.toString());
         data.setHasRangeAndUOM(ranges.length() > 0 || uoms.length() > 0);
+        if (alerts.stream().anyMatch(letter -> !letter.isEmpty())) {
+            data.setAbnormalResult(Boolean.TRUE);
+            data.setAlerts(" <b>" + ResultAlertFlags.ABNORMAL + "</b>");
+        }
     }
 
     private static void trimTrailingNewline(StringBuilder builder) {

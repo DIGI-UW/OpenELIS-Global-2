@@ -1035,3 +1035,36 @@ describe("SampleResultsSection", () => {
     expect(document.getElementById("comp-label-2")).not.toBeNull();
   });
 });
+
+describe("SampleResultsSection copy picker filter (OGC-1238)", () => {
+  it("narrows the source tests to those matching what was typed", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list") {
+        cb([
+          { id: "7", value: "This Test" },
+          { id: "99", value: "Other Test" },
+          { id: "11", value: "QA Sibling (Serum)" },
+          { id: "12", value: "Glucose (Plasma)" },
+        ]);
+      } else if (url === "/rest/uom") {
+        cb([]);
+      } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+        cb([]);
+      } else {
+        cb(clone(SAMPLE_RESULTS));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.change(container.querySelector("#copy-from-test"), {
+      target: { value: "qa sib" },
+    });
+
+    await screen.findByText("QA Sibling (Serum)");
+    const options = Array.from(
+      container.querySelectorAll(".cds--list-box__menu-item"),
+    ).map((o) => o.textContent);
+    expect(options).toEqual(["QA Sibling (Serum)"]);
+  });
+});

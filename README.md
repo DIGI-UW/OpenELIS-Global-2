@@ -71,6 +71,9 @@ We welcome community contributions to help improve OpenELIS Global!
 Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
+Supported versions, branches, and the versioning policy are described in
+[RELEASES.md](RELEASES.md).
+
 see full
 [installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
