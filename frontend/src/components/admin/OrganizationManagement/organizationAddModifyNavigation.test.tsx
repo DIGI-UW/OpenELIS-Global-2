@@ -120,3 +120,50 @@ describe("OrganizationAddModify navigation", () => {
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
   });
 });
+
+describe("OrganizationAddModify fields", () => {
+  beforeEach(() => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url.startsWith("/rest/Organization?ID=")) {
+          return callback({
+            id: "5",
+            organizationName: "Org A",
+            cliaNum: "05D1234567",
+            orgTypes: [],
+            selectedTypes: [],
+          });
+        }
+        return callback([]);
+      },
+    );
+  });
+
+  it("names every text field for assistive technology, the CLIA number included", () => {
+    const errors = vi.spyOn(console, "error");
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+
+    expect(
+      screen.getByLabelText(messages["organization.organizationName"]),
+    ).toHaveValue("Org A");
+    expect(
+      screen.getByLabelText(messages["organization.clia.number"]),
+    ).toHaveValue("05D1234567");
+    for (const key of [
+      "organization.short.CI",
+      "organization.isActive",
+      "organization.internetaddress",
+      "organization.streetAddress",
+      "organization.city",
+    ]) {
+      expect(screen.getByLabelText(messages[key])).toBeInTheDocument();
+    }
+    expect(
+      errors.mock.calls.some(([message]) =>
+        String(message).includes("`labelText` is marked as required"),
+      ),
+    ).toBe(false);
+    errors.mockRestore();
+  });
+});

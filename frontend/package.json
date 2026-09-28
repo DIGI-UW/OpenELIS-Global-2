@@ -68,6 +68,9 @@
     "pw:test:harness": "playwright test --project=harness-demo --workers=1",
     "pw:test:core-foundational": "playwright test --project=core-app",
     "pw:test:harness-mvp": "cd .. && ./projects/analyzer-harness/ci-parity-test.sh --project harness-demo --test-file playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts",
+    "pw:test:microbiology-accessibility": "playwright test --project=core-accessibility --project=core-accessibility-mobile",
+    "pw:test:microbiology-performance": "playwright test --project=core-performance",
+    "pw:test:harness-foundational": "playwright test --project=harness-foundational --workers=1",
     "pw:test:harness-manual-only": "playwright test --project=harness-manual-only --workers=1",
     "pw:test:core-demo": "playwright test --project=core-demo",
     "pw:test:harness-demo": "playwright test --project=harness-demo --workers=1",
@@ -81,6 +84,7 @@
     "pw:test:video": "npm run pw:test:harness-demo-video"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^8.20.1",

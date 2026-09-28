@@ -110,7 +110,7 @@ const ModifyOrder = () => {
       })
       .catch((errors) => {
         setErrors(errors);
-        console.error("Validation Errors:", errors.errors);
+        console.debug("Validation Errors:", errors.errors);
       });
   }, [changed, orderFormValues]);
 

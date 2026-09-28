@@ -59,6 +59,20 @@ public class MessageUtil {
         return getMessage(key, new String[] { arg }, key, LocaleContextHolder.getLocale());
     }
 
+    /**
+     * @param key - message key
+     * @return - message for key in current locale, or {@code null} when the key is
+     *         blank or has no message (the message source answers a missing key
+     *         with the key itself)
+     */
+    public static String getMessageIfPresent(String key) {
+        if (GenericValidator.isBlankOrNull(key)) {
+            return null;
+        }
+        String message = getMessage(key);
+        return GenericValidator.isBlankOrNull(message) || key.equals(message) ? null : message;
+    }
+
     public static String getMessageOrDefault(String key, Object[] args, String defaultMsg) {
         return getMessage(key, args, defaultMsg, LocaleContextHolder.getLocale());
     }

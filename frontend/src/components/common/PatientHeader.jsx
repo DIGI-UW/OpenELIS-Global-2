@@ -3,6 +3,21 @@ import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
+/**
+ * The patient band every screen puts above a sample or a case.
+ *
+ * statusTag and assignedStaff exist because the anatomic-pathology case views
+ * (pathology, immunohistochemistry and cytology) were each drawing their own
+ * header band to show the case's state and who is working on it. Both are
+ * optional and inert when absent, so the screens that only need the patient
+ * render exactly what they rendered before. The band stays display-only:
+ * reassignment happens on the module dashboard, not here, and statusTag is a
+ * rendered node rather than a description of a badge, because the band owns no
+ * badge vocabulary of its own. Because it is a node rather than a descriptor,
+ * statusTag can technically be given interactive content; callers are expected
+ * to pass a non-interactive status element only, since this band is specified
+ * as display-only.
+ */
 const PatientHeader = (props) => {
   const {
     id,
@@ -21,6 +36,8 @@ const PatientHeader = (props) => {
     department = null,
     requester = null,
     isOrderPage = false,
+    statusTag = null,
+    assignedStaff = [],
     className = "patient-header",
   } = props;
   const intl = useIntl();
@@ -28,6 +45,10 @@ const PatientHeader = (props) => {
   const tagStyle = {
     fontSize: "0.8rem",
   };
+  // A nullable list on a server DTO arrives here as an explicit null, which a
+  // destructuring default does not cover, so normalise once.
+  const staff = Array.isArray(assignedStaff) ? assignedStaff : [];
+  const hasCaseState = Boolean(statusTag) || staff.length > 0;
   return (
     <Grid fullWidth={true}>
       <Column lg={16} md={8} sm={4}>
@@ -47,7 +68,7 @@ const PatientHeader = (props) => {
                       gender={gender}
                     />
                   </Column>
-                  <Column lg={15} md={5} sm={3}>
+                  <Column lg={hasCaseState ? 11 : 15} md={5} sm={3}>
                     <div>
                       <span className="patient-name">
                         {patientName ? patientName : lastName + " " + firstName}
@@ -126,6 +147,37 @@ const PatientHeader = (props) => {
                       )}
                     </div>
                   </Column>
+                  {hasCaseState && (
+                    <Column lg={4} md={8} sm={4}>
+                      {statusTag}
+                      {staff.map(
+                        (entry, index) =>
+                          // A malformed entry is dropped rather than rendered:
+                          // this band sits above a patient's identity on every
+                          // screen that shows it, and a missing roleKey would
+                          // otherwise reach formatMessage as an undefined id
+                          // and print the literal string "undefined" here.
+                          entry.name &&
+                          entry.roleKey && (
+                            <div
+                              key={`${entry.roleKey}-${index}`}
+                              className="cds--type-helper-text-01"
+                              data-testid="case-assigned-staff"
+                            >
+                              {intl.formatMessage(
+                                { id: "caseView.label.assignedStaff" },
+                                {
+                                  role: intl.formatMessage({
+                                    id: entry.roleKey,
+                                  }),
+                                  name: entry.name,
+                                },
+                              )}
+                            </div>
+                          ),
+                      )}
+                    </Column>
+                  )}
                 </Grid>
               </div>
             ) : (

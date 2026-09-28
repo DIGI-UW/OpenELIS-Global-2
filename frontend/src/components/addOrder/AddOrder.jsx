@@ -41,6 +41,8 @@ import OrderResultReporting from "./OrderResultReporting";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
+import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
+import { isMicrobiologyOrder } from "../order/orderDataUtils";
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -863,6 +865,12 @@ const AddOrder = (props) => {
   return (
     <>
       <Stack gap={10}>
+        <MicrobiologyOrderEntrySection
+          samples={samples}
+          orderFormValues={orderFormValues}
+          setOrderFormValues={setOrderFormValues}
+          enabled={isMicrobiologyOrder(orderFormValues, samples)}
+        />
         <div className="orderLegendBody">
           <Grid>
             <Column lg={16} md={8} sm={4}>
@@ -876,7 +884,9 @@ const AddOrder = (props) => {
                   type="hidden"
                   name="externalOrderNumber"
                   id="externalOrderNumber"
-                  value={orderFormValues.sampleOrderItems.externalOrderNumber}
+                  value={
+                    orderFormValues.sampleOrderItems.externalOrderNumber ?? ""
+                  }
                 />
               </Column>
             )}
@@ -997,7 +1007,7 @@ const AddOrder = (props) => {
                     placeholder={intl.formatMessage({
                       id: "input.placeholder.labNo",
                     })}
-                    value={orderFormValues.sampleOrderItems.labNo}
+                    value={orderFormValues.sampleOrderItems.labNo ?? ""}
                     //onMouseLeave={handleLabNoValidation}
                     onClick={() => handleChange("sampleOrderItems.labNo")}
                     onChange={handleLabNo}
@@ -1106,7 +1116,7 @@ const AddOrder = (props) => {
                 labelText={intl.formatMessage({
                   id: "sample.entry.nextVisit.date",
                 })}
-                value={orderFormValues.sampleOrderItems.nextVisitDate}
+                value={orderFormValues.sampleOrderItems.nextVisitDate ?? ""}
                 autofillDate={false}
                 disallowPastDate={true}
                 onChange={(date) =>
@@ -1155,7 +1165,8 @@ const AddOrder = (props) => {
                 onChange={handleRequesterDept}
                 required
                 value={
-                  orderFormValues.sampleOrderItems.referringSiteDepartmentId
+                  orderFormValues.sampleOrderItems.referringSiteDepartmentId ??
+                  ""
                 }
               >
                 <SelectItem value="" text="" />
@@ -1208,7 +1219,8 @@ const AddOrder = (props) => {
                 })}
                 onChange={handleProvisionalClinicalDiagnosisChange}
                 value={
-                  orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis
+                  orderFormValues.sampleOrderItems
+                    .provisionalClinicalDiagnosis ?? ""
                 }
                 labelText={intl.formatMessage({
                   id: "order.requester.provisionalDiagnosis.label",
@@ -1246,7 +1258,7 @@ const AddOrder = (props) => {
                 onClick={() =>
                   handleChange("sampleOrderItems.providerFirstName")
                 }
-                value={orderFormValues.sampleOrderItems.providerFirstName}
+                value={orderFormValues.sampleOrderItems.providerFirstName ?? ""}
                 invalid={
                   changed["sampleOrderItems.providerFirstName"] &&
                   error("sampleOrderItems.providerFirstName")
@@ -1276,7 +1288,7 @@ const AddOrder = (props) => {
                   configurationProperties.restrictFreeTextProviderEntry ===
                   "true"
                 }
-                value={orderFormValues.sampleOrderItems.providerLastName}
+                value={orderFormValues.sampleOrderItems.providerLastName ?? ""}
                 onClick={() =>
                   handleChange("sampleOrderItems.providerLastName")
                 }
@@ -1306,7 +1318,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterWorkPhone}
-                value={orderFormValues.sampleOrderItems.providerWorkPhone}
+                value={orderFormValues.sampleOrderItems.providerWorkPhone ?? ""}
                 onMouseLeave={handlePhoneNoValidation}
                 labelText={intl.formatMessage({
                   id: "order.requester.phone.label",
@@ -1329,7 +1341,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterFax}
-                value={orderFormValues.sampleOrderItems.providerFax}
+                value={orderFormValues.sampleOrderItems.providerFax ?? ""}
                 id="providerFaxId"
               />
             </Column>
@@ -1351,7 +1363,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterEmail}
-                value={orderFormValues.sampleOrderItems.providerEmail}
+                value={orderFormValues.sampleOrderItems.providerEmail ?? ""}
                 id="providerEmailId"
                 invalid={error("sampleOrderItems.providerEmail") ? true : false}
                 invalidText={intl.formatMessage({
@@ -1364,7 +1376,9 @@ const AddOrder = (props) => {
               <Select
                 id="paymentOptionSelectionId"
                 name="paymentOptionSelections"
-                value={orderFormValues.sampleOrderItems.paymentOptionSelection}
+                value={
+                  orderFormValues.sampleOrderItems.paymentOptionSelection ?? ""
+                }
                 labelText={intl.formatMessage({
                   id: "order.payment.status.label",
                 })}
@@ -1392,7 +1406,7 @@ const AddOrder = (props) => {
               <Select
                 id="testLocationCodeId"
                 name="testLocationCode"
-                value={orderFormValues.sampleOrderItems.testLocationCode}
+                value={orderFormValues.sampleOrderItems.testLocationCode ?? ""}
                 labelText={
                   <FormattedMessage id="order.sampling.performed.label" />
                 }
@@ -1416,7 +1430,7 @@ const AddOrder = (props) => {
                 name="testLocationCodeOther"
                 labelText={intl.formatMessage({ id: "order.if.other.label" })}
                 onChange={handleOtherLocationCode}
-                value={orderFormValues.sampleOrderItems.otherLocationCode}
+                value={orderFormValues.sampleOrderItems.otherLocationCode ?? ""}
                 disabled={!otherSamplingVisible}
                 id="testLocationCodeOtherId"
               />
@@ -1467,7 +1481,8 @@ const AddOrder = (props) => {
                       id: "placeholder.informedConsent.formReference",
                     })}
                     value={
-                      orderFormValues.sampleOrderItems.consentFormReference
+                      orderFormValues.sampleOrderItems.consentFormReference ??
+                      ""
                     }
                     onChange={handleConsentReferenceChange}
                     id="consentFormReferenceId"
@@ -1493,7 +1508,9 @@ const AddOrder = (props) => {
                       id: "placeholder.informedConsent.recordedBy",
                     })}
                     maxLength={255}
-                    value={orderFormValues.sampleOrderItems.consentRecordedBy}
+                    value={
+                      orderFormValues.sampleOrderItems.consentRecordedBy ?? ""
+                    }
                     onChange={handleConsentRecordedByChange}
                     id="consentRecordedById"
                   />
@@ -1514,7 +1531,9 @@ const AddOrder = (props) => {
                       id: "label.informedConsent.recordedAt",
                     })}
                     autofillDate={false}
-                    value={orderFormValues.sampleOrderItems.consentRecordedAt}
+                    value={
+                      orderFormValues.sampleOrderItems.consentRecordedAt ?? ""
+                    }
                     disallowFutureDate={true}
                     onChange={(date) =>
                       handleDatePickerChange("consentRecordedAt", date)

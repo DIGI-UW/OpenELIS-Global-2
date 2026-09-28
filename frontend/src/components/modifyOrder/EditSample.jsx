@@ -253,22 +253,18 @@ const EditSample = (props) => {
         </TableCell>
       );
     } else if (cell.info.header === "removeSample") {
-      return (
-        <>
-          {accession !== "" ? (
-            <TableCell key={cell.id}>
-              <Checkbox
-                id={cell.id + cell.info.header}
-                labelText=""
-                name="removeSample"
-                checked={cell.value}
-                onChange={(e) => handleChecked(e, row.id)}
-              ></Checkbox>
-            </TableCell>
-          ) : (
-            <TableCell key={cell.id}></TableCell>
-          )}
-        </>
+      return accession !== "" ? (
+        <TableCell key={cell.id}>
+          <Checkbox
+            id={cell.id + cell.info.header}
+            labelText=""
+            name="removeSample"
+            checked={cell.value}
+            onChange={(e) => handleChecked(e, row.id)}
+          ></Checkbox>
+        </TableCell>
+      ) : (
+        <TableCell key={cell.id}></TableCell>
       );
     } else if (cell.info.header === "testName") {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;

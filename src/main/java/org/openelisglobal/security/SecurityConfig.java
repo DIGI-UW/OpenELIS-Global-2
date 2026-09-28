@@ -22,8 +22,10 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.security.KeystoreUtil.KeyCertPair;
 import org.openelisglobal.security.login.BasicAuthFilter;
 import org.openelisglobal.security.login.CustomAuthenticationFailureHandler;
@@ -101,7 +103,9 @@ public class SecurityConfig {
     // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
     // /rest/analyzer/analyzers)
     // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
-    // With @Order(1) on httpBasicServletFilterChain, Basic auth is processed first.
+    // Analyzer event ingestion has the highest-priority Basic-auth chain. Other
+    // Bridge endpoints continue through the general Basic-auth chain immediately
+    // after it.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
             "/rest/site-branding/**", "/rest/supportedlocales/active" };
@@ -115,6 +119,7 @@ public class SecurityConfig {
     // "/pluginServlet/**",
     // "/importAnalyzer", "/fhir/**" };
     public static final String[] REST_CONTROLLERS = { "/Provider/**", "/rest/**" };
+    static final String[] ANALYZER_INGRESS_PATHS = { "/rest/analyzer/events/ast", "/rest/analyzer/events/culture" };
     // public static final String[] CLIENT_CERTIFICATE_PAGES = {};
 
     private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
@@ -140,6 +145,22 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
+    public SecurityFilterChain analyzerIngressSecurityFilterChain(HttpSecurity http) throws Exception {
+        configureAnalyzerIngress(http);
+        http.headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    static void configureAnalyzerIngress(HttpSecurity http) throws Exception {
+        http.securityMatcher(ANALYZER_INGRESS_PATHS)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ANALYSER_IMPORT"))
+                .httpBasic(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
+                .requestCache(requestCache -> requestCache.disable());
+    }
+
+    @Bean
+    @Order(2)
     @ConditionalOnProperty(property = "org.itech.login.basic", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain httpBasicServletFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -167,7 +188,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
         filter.setEncoding("UTF-8");
@@ -274,7 +295,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     @ConditionalOnProperty(property = "org.itech.login.saml", havingValue = "true")
     public SecurityFilterChain samlSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
@@ -293,7 +314,17 @@ public class SecurityConfig {
             Saml2Authentication authentication = delegate.convert(responseToken);
             Assertion assertion = responseToken.getResponse().getAssertions().get(0);
             AuthenticatedPrincipal principal = (AuthenticatedPrincipal) authentication.getPrincipal();
-            Collection<GrantedAuthority> authorities = new KeycloakAuthoritiesExtractor().convert(assertion);
+            Set<String> samlRoleNames = new LinkedHashSet<>();
+            Collection<GrantedAuthority> authorities = new KeycloakAuthoritiesExtractor().convert(assertion,
+                    samlRoleNames);
+            // qa.* permission authorities derive from the same DB grants as form
+            // login (CustomUserDetailsService) so hasAuthority('qa.view.x') gates
+            // admit SSO users too. Bean fetched lazily — this converter only runs
+            // per SAML login, after the data layer is up.
+            for (String permission : SpringContext.getBean(RoleModuleService.class)
+                    .getPermittedModuleNames(samlRoleNames, Constants.QA_PERMISSION_PREFIX)) {
+                authorities.add(new SimpleGrantedAuthority(permission));
+            }
 
             return new Saml2Authentication(principal, authentication.getSaml2Response(), authorities);
         });
@@ -341,7 +372,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(4)
+    @Order(5)
     @ConditionalOnProperty(property = "org.itech.login.oauth", havingValue = "true")
     public SecurityFilterChain openidSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
@@ -389,7 +420,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(5)
+    @Order(6)
     @ConditionalOnProperty(property = "org.itech.login.certificate", havingValue = "true")
     public SecurityFilterChain clientCertificateSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
@@ -572,8 +603,11 @@ public class SecurityConfig {
          * login produces (CustomUserDetailsService.addAuthoritiesForRole). This makes
          * method-level checks like @PreAuthorize("hasRole('ADMIN')") work for SSO
          * users.
+         *
+         * The bare role names are also collected into roleNamesOut so the caller can
+         * derive qa.* permission authorities from the same DB grants as form login.
          */
-        public Collection<GrantedAuthority> convert(Assertion assertion) {
+        public Collection<GrantedAuthority> convert(Assertion assertion, Set<String> roleNamesOut) {
             Set<String> authorityNames = new LinkedHashSet<>();
             for (AttributeStatement statement : assertion.getAttributeStatements()) {
                 for (Attribute attr : statement.getAttributes()) {
@@ -590,6 +624,9 @@ public class SecurityConfig {
                         int dash = stripped.indexOf('-');
                         String roleName = (dash >= 0) ? stripped.substring(0, dash).trim() : stripped;
                         CustomUserDetailsService.addAuthoritiesForRole(roleName, authorityNames);
+                        if (!roleName.isEmpty()) {
+                            roleNamesOut.add(roleName);
+                        }
                     }
                 }
             }

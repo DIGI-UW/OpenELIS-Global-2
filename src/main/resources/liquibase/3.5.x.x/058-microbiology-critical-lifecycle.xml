@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-micro-critical-lifecycle" author="OGC">
+    <addColumn tableName="micro_critical_communication" schemaName="clinlims">
+      <column name="target_type" type="varchar(40)" defaultValue="CASE"/>
+      <column name="target_id" type="varchar(64)"/>
+      <column name="recipient_contact" type="text"/>
+      <column name="communication_method" type="varchar(40)" defaultValue="PHONE"/>
+      <column name="closed_at" type="timestamp"/>
+      <column name="closed_by" type="varchar(20)"/>
+      <column name="resolution_note" type="text"/>
+      <column name="alert_id" type="bigint"/>
+    </addColumn>
+
+    <update tableName="micro_critical_communication" schemaName="clinlims">
+      <column name="target_id" valueComputed="case_id"/>
+      <where>target_id IS NULL</where>
+    </update>
+
+    <addNotNullConstraint tableName="micro_critical_communication" schemaName="clinlims"
+      columnName="target_type" columnDataType="varchar(40)"/>
+    <addNotNullConstraint tableName="micro_critical_communication" schemaName="clinlims"
+      columnName="target_id" columnDataType="varchar(64)"/>
+    <addNotNullConstraint tableName="micro_critical_communication" schemaName="clinlims"
+      columnName="communication_method" columnDataType="varchar(40)"/>
+
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_critical_communication"
+      baseColumnNames="alert_id" constraintName="fk_micro_critical_comm_alert"
+      referencedTableSchemaName="clinlims" referencedTableName="alert" referencedColumnNames="id"/>
+
+    <createIndex schemaName="clinlims" tableName="micro_critical_communication"
+      indexName="idx_micro_critical_comm_target">
+      <column name="target_type"/>
+      <column name="target_id"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_critical_communication"
+      indexName="idx_micro_critical_comm_alert">
+      <column name="alert_id"/>
+    </createIndex>
+
+    <sql splitStatements="false">
+      ALTER TABLE clinlims.micro_critical_communication
+      ADD CONSTRAINT micro_critical_comm_status_chk
+      CHECK (acknowledgement_status IN ('OPEN', 'ACKNOWLEDGED', 'CLOSED', 'CORRECTED'));
+    </sql>
+
+    <rollback>
+      <sql splitStatements="false">
+        ALTER TABLE clinlims.micro_critical_communication
+        DROP CONSTRAINT IF EXISTS micro_critical_comm_status_chk;
+      </sql>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_critical_communication"
+        constraintName="fk_micro_critical_comm_alert"/>
+      <dropIndex schemaName="clinlims" tableName="micro_critical_communication"
+        indexName="idx_micro_critical_comm_target"/>
+      <dropIndex schemaName="clinlims" tableName="micro_critical_communication"
+        indexName="idx_micro_critical_comm_alert"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="alert_id"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="resolution_note"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="closed_by"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="closed_at"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="communication_method"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="recipient_contact"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="target_id"/>
+      <dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="target_type"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

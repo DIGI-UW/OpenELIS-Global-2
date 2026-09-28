@@ -623,9 +623,9 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void testReagentLinks_returnsCatalogLinksWithItemNames() throws Exception {
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, item_type, units, is_active,"
-                + " last_updated) VALUES (9501, '11111111-1111-1111-1111-111111119501'::uuid, 'Glucose HK Gen.3',"
-                + " 'REAGENT', 'mL', 'Y', NOW())");
+        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units,"
+                + " is_active, last_updated) VALUES (9501, '11111111-1111-1111-1111-111111119501'::uuid,"
+                + " 'GLUCOSE_HK_GEN_3', 'Glucose HK Gen.3', 'REAGENT', 'mL', 'Y', NOW())");
         jdbc.update("INSERT INTO clinlims.test_reagent_link (id, test_id, reagent_id, usage_type, quantity_per_test,"
                 + " quantity_unit, lastupdated) VALUES ('trl-9501', 1, 9501, 'PRIMARY', 1.5, 'mL', NOW())");
 

@@ -463,6 +463,11 @@ public class ShippingBoxRestController extends BaseRestController {
             String userIdString = getSysUserId(request);
             if (userIdString != null) {
                 box.setSystemUserId(Integer.parseInt(userIdString));
+                // Whoever is packing the box, unless the caller named someone else. The
+                // form never carries this, so the box page showed no author at all.
+                if (box.getCreatedBy() == null) {
+                    box.setCreatedBy(systemUserService.getUserById(userIdString));
+                }
             }
 
             ShippingBox createdBox = shippingBoxService.createBox(box);
@@ -758,12 +763,16 @@ public class ShippingBoxRestController extends BaseRestController {
         form.setCapacity(box.getCapacity());
         form.setActualSampleCount(box.getActualSampleCount());
         form.setNotes(box.getNotes());
+        form.setImportedContents(box.getImportedContents());
         form.setCreatedDate(box.getCreatedDate());
         form.setSentDate(box.getSentDate());
         form.setReceivedDate(box.getReceivedDate());
         form.setReconciledDate(box.getReconciledDate());
         form.setArchived(box.getArchived());
         form.setArchivedDate(box.getArchivedDate());
+        // An EQA box is packed by the provider workbench and must not be offered as a
+        // destination for patient samples, which the client can only know from here.
+        form.setEqaCycleId(box.getEqaCycleId());
         form.setInbound(box.getInbound());
         form.setOriginFacilityName(box.getOriginFacilityName());
 

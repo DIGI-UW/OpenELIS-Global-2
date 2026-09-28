@@ -73,13 +73,20 @@ export const useOrderContext = (accessionNumber?: string): OrderContext => {
   useEffect(() => {
     if (!accessionNumber) {
       setState({ loaded: true });
-      return;
+      return undefined;
     }
+    let active = true;
     getFromOpenElisServer(
       `/rest/order/search?labNumber=${accessionNumber}`,
-      (body: { sampleOrderItems?: SampleOrderItems }) =>
-        setState({ sampleOrderItems: body?.sampleOrderItems, loaded: true }),
+      (body: { sampleOrderItems?: SampleOrderItems }) => {
+        if (active) {
+          setState({ sampleOrderItems: body?.sampleOrderItems, loaded: true });
+        }
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [accessionNumber]);
   return state;
 };
@@ -366,10 +373,10 @@ export const StorageSection: React.FC<
       {pickerOpen && (
         <LocationPickerModal
           isOpen={pickerOpen}
-          sample={{
-            id: sampleItemId,
-            sampleAccessionNumber: accessionNumber || "",
-            sampleType: sampleType || "",
+          occupantType="SAMPLE_ITEM"
+          occupant={{
+            label: accessionNumber || "",
+            type: sampleType || "",
             status: "Active",
           }}
           currentLocation={

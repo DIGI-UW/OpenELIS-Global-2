@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { Heading, Loading, Grid, Column, Section, Toggle } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -64,13 +65,13 @@ function TestAdd() {
 
   const handelTestAddPostCallback = (res) => {
     setIsLoading(false);
-    if (res) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });

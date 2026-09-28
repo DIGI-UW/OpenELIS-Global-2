@@ -1,7 +1,8 @@
 import { waitFor } from "@testing-library/dom";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import App from "./App";
+import App, { ANALYZER_RESULTS_ROLES } from "./App";
+import { Roles } from "./components/utils/Utils";
 
 test("renders App component without errors", () => {
   // Just verify the App component renders without throwing errors
@@ -48,4 +49,11 @@ test("does not write session credentials to the browser console", async () => {
   fetchSpy.mockRestore();
   debugSpy.mockRestore();
   window.history.pushState({}, "", "/");
+});
+
+test("allows analyzer operators and global administrators into Analyzer Results", () => {
+  expect(ANALYZER_RESULTS_ROLES).toEqual([
+    Roles.GLOBAL_ADMIN,
+    Roles.ANALYSER_IMPORT,
+  ]);
 });

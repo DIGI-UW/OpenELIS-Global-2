@@ -8,10 +8,12 @@
 set -euo pipefail
 
 SETUP_ONLY=false
+ACTIVATE_ONLY=false
 case "${1:-}" in
   "") ;;
   --setup-only) SETUP_ONLY=true ;;
-  *) echo "Usage: $0 [--setup-only]" >&2; exit 2 ;;
+  --activate) ACTIVATE_ONLY=true; shift ;;
+  *) echo "Usage: $0 [--setup-only|--activate [new-analyzer-name initialize-or-preserve]...]" >&2; exit 2 ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -163,7 +165,15 @@ PY
   while IFS= read -r test_id; do
     fetch_json "$OE_API/analyzer-types/mapping-catalog/tests/$test_id/result-options" \
       "$TMP_DIR/result-options-$test_id.json" "OpenELIS result options for test $test_id"
-  done < <(jq -r 'to_entries[].value // empty' "$selection_file" | sort -u)
+  done < <(python3 - "$selection_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    for test_id in sorted({str(value) for value in json.load(handle).values() if value is not None}):
+        print(test_id)
+PY
+)
 
   mapping_action="$(python3 - "$mapping_file" "$selection_file" "$TMP_DIR" "$update_file" \
     "$held_test_code" "$held_result_value" <<'PY'
@@ -533,6 +543,84 @@ PY
   return 1
 }
 
+# The Bridge dead-letters a message whose sender matches no saved connection.
+# This one is posted from the machine running the seed, whose address no
+# connection claims; the order ID is unique per run because the Bridge
+# de-duplicates receipts by content.
+push_unrecognized_sender_traffic() {
+  local order_id="UNREG-$(date +%s)"
+  local message_file="$TMP_DIR/unrecognized-sender.astm"
+  local outbox_file="$TMP_DIR/unrecognized-sender-outbox.json"
+  local status
+
+  printf 'H|\\^&|||GeneXpert^6.4||||||LIS2-A2\rP|1\rO|1|%s||^^^MTB-RIF|R\rR|1|^^^MTB-RIF^MTB|MTB NOT DETECTED|||N||F\rL|1|N\r' \
+    "$order_id" > "$message_file"
+  curl -sk --connect-timeout 5 --max-time 30 -o /dev/null \
+    -u "$BRIDGE_USER:$BRIDGE_PASS" -H "Content-Type: application/x-astm" \
+    --data-binary "@$message_file" "$BRIDGE_ADMIN_URL/input" || true
+
+  for _ in $(seq 1 20); do
+    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$outbox_file" -w "%{http_code}" \
+      -u "$BRIDGE_USER:$BRIDGE_PASS" "$BRIDGE_ADMIN_URL/admin/outbox?state=DMQ&limit=200" || true)"
+    if [ "$status" = "200" ] && python3 - "$outbox_file" <<'PY'
+import json
+import sys
+
+rows = json.load(open(sys.argv[1], encoding="utf-8")).get("rows", [])
+held = [row for row in rows if row.get("failureReason") == "UNREGISTERED_SOURCE" and not row.get("dismissedAt")]
+raise SystemExit(0 if held else 1)
+PY
+    then
+      echo "  The Bridge is holding the message from the unrecognized sender"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: The Bridge did not dead-letter the unrecognized sender's message (outbox HTTP $status)" >&2
+  sed 's/^/  /' "$outbox_file" >&2 2>/dev/null || true
+  return 1
+}
+
+# Only the connections created by seed-analyzers in this invocation are eligible.
+# Existing connections never enter this path, even when deliberately inactive.
+if [ "$ACTIVATE_ONLY" = true ]; then
+  while [ "$#" -gt 0 ]; do
+    if [ "$#" -lt 2 ]; then
+      echo "ERROR: --activate expects name/mapping-mode pairs" >&2
+      exit 2
+    fi
+    name="$1"
+    mapping_mode="$2"
+    shift 2
+    case "$name" in
+      "$GENEXPERT_NAME") profile_id="$GENEXPERT_PROFILE" ;;
+      "$FLUOROCYCLER_NAME") profile_id="$FLUOROCYCLER_PROFILE" ;;
+      *) echo "ERROR: Unknown priority analyzer: $name" >&2; exit 2 ;;
+    esac
+    if [ "$(analyzer_field "$name" status)" = "ACTIVE" ]; then
+      echo "  Already active: $name"
+      continue
+    fi
+    analyzer_id="$(analyzer_field "$name" id)"
+    revision="$(analyzer_field "$name" profileRevision)"
+    case "$mapping_mode" in
+      initialize) prepare_profile_mapping "$profile_id" "$revision" ;;
+      preserve)
+        mapping_file="$TMP_DIR/current-$profile_id-mapping.json"
+        fetch_json "$OE_API/analyzer-types/$profile_id/mapping?revision=$revision" "$mapping_file" "$profile_id mapping"
+        if [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("confirmation", {}).get("state", "UNCONFIRMED"))' "$mapping_file")" != "CURRENT" ]; then
+          echo "  Preserved existing unconfirmed mapping; activate $name in OpenELIS when ready."
+          continue
+        fi
+        ;;
+      *) echo "ERROR: Unknown mapping mode: $mapping_mode" >&2; exit 2 ;;
+    esac
+    adopt_mapping_and_activate "$analyzer_id" "$profile_id"
+  done
+  echo "Done. Existing mappings and connections preserved; no traffic was sent."
+  exit 0
+fi
+
 echo "Preparing current site mappings and active priority connections..."
 GENEXPERT_ID="$(analyzer_field "$GENEXPERT_NAME" id)"
 GENEXPERT_REVISION="$(analyzer_field "$GENEXPERT_NAME" profileRevision)"
@@ -560,5 +648,8 @@ reset_bridge_file_state "$FLUOROCYCLER_ID"
 echo "Sending real priority analyzer traffic through Bridge..."
 push_story_traffic
 wait_for_story_state "$GENEXPERT_ID" "$FLUOROCYCLER_ID"
+
+echo "Sending one message from a sender no analyzer connection claims..."
+push_unrecognized_sender_traffic
 
 echo "Done. The OGC-1054 MVP result-review story is ready in the visible UI."

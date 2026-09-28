@@ -33,14 +33,21 @@ export function isStaleResponse(response) {
   return Boolean(response && response.error === "stale");
 }
 
+const RESULT_FLAGS = ["NORMAL", "ABNORMAL", "CRITICAL", "INVALID"];
+
 /**
- * The flag the summary styles the value with. Critical wins (authored critical
+ * The flag the summary styles the value with. The server's own resultFlag wins
+ * when the row carries one (the same four-tier flag Results Entry shows, so the
+ * two screens agree, OGC-1121). Otherwise critical wins (authored critical
  * bound crossed, computed server-side); abnormal/normal only when the row has a
  * reference range — an unranged row shows no flag rather than a false "Normal".
  */
 export function flagFor(row, signals) {
   if (!row) {
     return undefined;
+  }
+  if (RESULT_FLAGS.includes(row.resultFlag)) {
+    return row.resultFlag;
   }
   const derived = signals || triageRows([row])[0].signals;
   if (row.critical) {

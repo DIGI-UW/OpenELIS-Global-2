@@ -17,6 +17,8 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
 
     Referral getReferralByAnalysisId(String analysisId);
 
+    boolean hasOpenReferral(String analysisId);
+
     List<Referral> getReferralsBySampleId(String id);
 
     List<Referral> getReferralsByBoxId(Integer boxId);

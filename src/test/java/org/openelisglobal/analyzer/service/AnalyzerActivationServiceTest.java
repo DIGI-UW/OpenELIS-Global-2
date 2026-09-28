@@ -91,6 +91,7 @@ public class AnalyzerActivationServiceTest {
         retained = new AnalyzerActivationRecord();
         retained.setVerificationConfirmation(confirmation);
 
+        when(analyzerService.findByIdForUpdate(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
@@ -123,6 +124,7 @@ public class AnalyzerActivationServiceTest {
         assertEquals(retained, analyzer.getLatestActivationRecord());
         assertEquals(ACTIVATED_AT, analyzer.getLastActivatedDate().toInstant());
         InOrder order = inOrder(bridgeClient, activationRecordService, analyzerService);
+        order.verify(analyzerService).findByIdForUpdate(ANALYZER_ID);
         order.verify(bridgeClient).getConnection(CONNECTION_ID);
         order.verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
         order.verify(activationRecordService).retain(analyzer, snapshot.revision(), confirmation,
@@ -140,6 +142,7 @@ public class AnalyzerActivationServiceTest {
         verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
         verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
         verify(analyzerService, never()).update(any(Analyzer.class));
+        verify(analyzerService, never()).findByIdForUpdate(any());
         assertUnchanged();
     }
 

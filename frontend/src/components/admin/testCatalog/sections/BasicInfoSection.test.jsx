@@ -86,6 +86,7 @@ beforeEach(() => {
         domain: "CLINICAL",
         // OGC-1145: an active test must carry ≥1 sample type or Save disables
         sampleTypeIds: ["2"],
+        cultureWorkflowType: "",
         antimicrobialResistance: false,
         active: true,
         orderable: true,
@@ -150,6 +151,23 @@ describe("BasicInfoSection domain-switch modal", () => {
     ).toBe(true);
   });
 
+  it("persists the culture workflow selection", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("Culture workflow"), {
+      target: { value: "BACTERIOLOGY" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toMatchObject({ cultureWorkflowType: "BACTERIOLOGY" });
+  });
+
   it("persists the Active toggle (boolean → Y/N)", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
@@ -203,6 +221,7 @@ describe("BasicInfoSection domain-switch modal", () => {
           code: "GLU",
           description: "",
           domain: "CLINICAL",
+          cultureWorkflowType: "",
           antimicrobialResistance: false,
           active: false,
           orderable: true,
@@ -263,6 +282,67 @@ describe("BasicInfoSection domain-switch modal", () => {
       ).not.toBeInTheDocument(),
     );
     expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
+  });
+
+  // OGC-1119 FR-18 — activation re-surfaces the LOINC guardrails: a shared
+  // LOINC is named beside the toggle once the test is Active, without blocking.
+  it("shows the LOINC warnings the activation response carries", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([{ id: "CLINICAL", labelKey: "label.domain.CLINICAL" }]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([{ id: "7", name: "Chemistry" }]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else if (url.endsWith("/completeness")) {
+        cb({ complete: true, missing: [], messages: [] });
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          sampleTypeIds: ["2"],
+          cultureWorkflowType: "",
+          antimicrobialResistance: false,
+          active: false,
+          orderable: false,
+        });
+      }
+    });
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({
+        testId: "42",
+        active: true,
+        orderable: true,
+        male: { sex: "M", status: "COMPLETE", gaps: [], overlaps: [] },
+        female: { sex: "F", status: "COMPLETE", gaps: [], overlaps: [] },
+        loincIntegrity: {
+          loinc: "4548-4",
+          active: true,
+          noLoinc: false,
+          duplicates: [{ testId: "43", name: "Glucose(Plasma)" }],
+        },
+      }),
+    );
+
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(
+      screen.queryByTestId("activation-duplicate-loinc-warning"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+
+    const warning = await screen.findByTestId(
+      "activation-duplicate-loinc-warning",
+    );
+    expect(warning).toHaveTextContent("4548-4");
+    expect(warning).toHaveTextContent("Glucose(Plasma)");
+    expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
+    expect(
+      screen.queryByTestId("activation-no-loinc-warning"),
+    ).not.toBeInTheDocument();
   });
 
   it("edits the lab unit and sample types on modify and persists them", async () => {

@@ -26,7 +26,7 @@ import {
   publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
-import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
+import ProfileDraftEditor from "./ProfileDraftEditor";
 import AffectedAnalyzerList from "./AffectedAnalyzerList";
 
 const nextDuplicateName = (displayName, types) => {
@@ -72,11 +72,13 @@ const CreateProfileModal = ({
   draftId,
   onClose,
   onError,
+  onSuccess,
   onDraftCreated,
 }) => {
   const intl = useIntl();
   const [displayName, setDisplayName] = useState("");
   const [draft, setDraft] = useState(null);
+  const [editorState, setEditorState] = useState({ publishable: false });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -130,12 +132,27 @@ const CreateProfileModal = ({
     return (
       <Modal
         open
-        passiveModal
+        primaryButtonText={intl.formatMessage({
+          id: "analyzerType.button.publish",
+        })}
+        primaryButtonDisabled={!editorState.publishable || submitting}
+        onRequestSubmit={() => {
+          if (!editorState.publishable || submitting) return;
+          setSubmitting(true);
+          publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
+            setSubmitting(false);
+            if (hasError(response)) {
+              onError(response?.error);
+              return;
+            }
+            onSuccess("create");
+          });
+        }}
         modalHeading={intl.formatMessage({
           id: "analyzerType.button.create",
         })}
         onRequestClose={onClose}
-        size="sm"
+        size="lg"
       >
         <InlineNotification
           kind="success"
@@ -147,6 +164,11 @@ const CreateProfileModal = ({
           subtitle={intl.formatMessage({
             id: "analyzerType.draft.created.subtitle",
           })}
+        />
+        <ProfileDraftEditor
+          key={activeDraft.draftId}
+          draft={activeDraft}
+          onStateChange={setEditorState}
         />
       </Modal>
     );
@@ -376,9 +398,9 @@ const DuplicateProfileModal = ({
                 { name: normalizedName },
               )}
             />
-            <ControlRecognitionDraftEditor
+            <ProfileDraftEditor
               key={activeDraft.draftId}
-              draftId={activeDraft.draftId}
+              draft={activeDraft}
               onStateChange={setRecognitionState}
             />
           </>
@@ -559,9 +581,9 @@ const UpdateSharedProfileModal = ({
               id: "analyzerType.draft.update.subtitle",
             })}
           />
-          <ControlRecognitionDraftEditor
+          <ProfileDraftEditor
             key={activeDraft.draftId}
-            draftId={activeDraft.draftId}
+            draft={activeDraft}
             onStateChange={setRecognitionState}
           />
         </div>
@@ -795,6 +817,7 @@ const AnalyzerTypeLifecycleModals = ({
     return (
       <CreateProfileModal
         types={types}
+        onSuccess={onSuccess}
         draftId={draftId}
         onClose={onClose}
         onError={onError}

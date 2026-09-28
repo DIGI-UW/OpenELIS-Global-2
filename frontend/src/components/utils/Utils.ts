@@ -1,4 +1,5 @@
 import config from "../../config.json";
+import { format } from "date-fns";
 import type { IntlShape } from "react-intl";
 
 // This utility is the compatibility boundary for hundreds of legacy JavaScript
@@ -26,6 +27,7 @@ export interface ApiMessagePayload {
 
 interface UserSessionDetails {
   roles?: string[];
+  permissions?: string[];
 }
 
 const csrfToken = (): string => localStorage.getItem("CSRF") as string;
@@ -97,6 +99,71 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+const DATE_FMT = "yyyy-MM-dd";
+
+/**
+ * Format a Date as a local `yyyy-MM-dd` string. Unlike `Date.toISOString()`,
+ * this reads the browser's LOCAL date components, so a date-only value picked in
+ * a UTC+ timezone is not rolled back a day when sent to the server. Non-Date
+ * input is returned as-is (or "" for null/undefined).
+ */
+export const toLocalIsoDate = (d: Date | string | null | undefined): string =>
+  !(d instanceof Date)
+    ? d || ""
+    : isNaN(d.getTime())
+      ? ""
+      : format(d, DATE_FMT);
+
+/**
+ * Turn a date string as CustomDatePicker renders it (`MM/dd/yyyy`, or
+ * `dd/MM/yyyy` under the French locale) back into the `yyyy-MM-dd` the server
+ * reads. Returns "" for anything that is not a three-part date.
+ */
+export const displayDateToIso = (
+  displayed: string | null | undefined,
+  dateLocale?: string,
+): string => {
+  const parts = (displayed || "").split("/");
+  if (parts.length !== 3) return "";
+  const [month, day] =
+    dateLocale === "fr-FR" ? [parts[1], parts[0]] : [parts[0], parts[1]];
+  return `${parts[2]}-${month}-${day}`;
+};
+
+/**
+ * Format a timestamp (epoch millis / ISO string / Date) as local
+ * `yyyy-MM-dd HH:mm`, or "—" when absent. Companion to toLocalIsoDate for
+ * date-time display columns. (Distinct from the legacy `formatTimestamp`
+ * below, which takes Unix SECONDS and renders a UTC AM/PM string.)
+ */
+export const toLocalIsoDateTime = (
+  value: Date | string | number | null | undefined,
+): string => {
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
+};
+
+/**
+ * Render a date-of-record (deadline, due date) as `dd/MM/yyyy`. Such values are
+ * stored as an end-of-day timestamp, so reading LOCAL components rolls them to
+ * the next day for any browser east of the server; the UTC components give the
+ * calendar date that was actually entered. Returns "" for absent values.
+ */
+export const formatDateOnly = (
+  value: Date | string | number | null | undefined,
+): string => {
+  if (!value) {
+    return "";
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${d.getUTCFullYear()}`;
+};
+
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
   endPoint: string,
   callback: (response: T | undefined) => void,
@@ -120,6 +187,14 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       // if (response.url.includes("LoginPage")) {
       //     throw "No Login Session";
       // }
+      // An error response carries a JSON body too. Handing that body to the
+      // caller as if it were data turns a 500 into a render-time crash, so a
+      // failed request reports nothing instead.
+      if (!response.ok) {
+        console.error(`GET ${endPoint} failed: HTTP ${response.status}`);
+        callback(undefined);
+        return;
+      }
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json().then((jsonResp) => {
@@ -204,27 +279,29 @@ export const postToOpenElisServer = <TExtra = unknown>(
     });
 };
 
-export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+/**
+ * The one body shared by every *FullResponse helper. The callback gets the raw
+ * Response, so a 4xx body — a state-machine refusal, a validation message — can
+ * be read and shown instead of being flattened into "it failed".
+ */
+const sendForFullResponse = <TExtra = unknown>(
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   endPoint: string,
-  payLoad: RequestPayload,
+  payLoad: RequestPayload | undefined,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
-        "Accept-Language": getAcceptLanguageHeader(),
-      },
-      body: payLoad as BodyInit,
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
-  )
+    ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
+  })
     .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
@@ -232,6 +309,14 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
       callback(undefined, extraParams);
     });
 };
+
+export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("POST", endPoint, payLoad, callback, extraParams);
 
 export const postToOpenElisServerFormData = <TExtra = unknown>(
   endPoint: string,
@@ -260,6 +345,59 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     .catch((error) => {
       console.error(error);
       callback(0, extraParams);
+    });
+};
+
+/**
+ * Posts a multipart form and hands back the parsed JSON body, for endpoints
+ * that answer an upload with a result rather than a bare status (the catalog
+ * import's preview and apply). A non-2xx answer still resolves, carrying the
+ * status, so callers can show the server's own message.
+ */
+export const postToOpenElisServerFormDataJsonResponse = <
+  T = LegacyApiResponse,
+  TExtra = unknown,
+>(
+  endPoint: string,
+  formData: FormData,
+  callback: (response: T | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: formData,
+  })
+    .then(handleSessionError)
+    .then((response) =>
+      response
+        .text()
+        .then((raw) => (raw ? JSON.parse(raw) : {}))
+        .then((parsed) =>
+          response.ok
+            ? parsed
+            : {
+                ...parsed,
+                status: response.status,
+                statusCode: response.status,
+              },
+        )
+        .catch(() => ({
+          error: `Request failed (HTTP ${response.status})`,
+          status: response.status,
+          statusCode: response.status,
+        })),
+    )
+    .then((body) => {
+      callback(body as T, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -523,25 +661,19 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   payLoad: RequestPayload,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    //includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-    body: payLoad as BodyInit,
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void => sendForFullResponse("PUT", endPoint, payLoad, callback, extraParams);
+
+/**
+ * PATCH counterpart. The JSON-only PATCH variant discards the body on !ok, which
+ * is exactly what a state-machine refusal must not do.
+ */
+export const patchToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("PATCH", endPoint, payLoad, callback, extraParams);
 
 export const deleteFromOpenElisServer = (
   endPoint: string,
@@ -572,24 +704,8 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
   endPoint: string,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void =>
+  sendForFullResponse("DELETE", endPoint, undefined, callback, extraParams);
 
 export const hasRole = (
   userSessionDetails: UserSessionDetails | null | undefined,
@@ -600,6 +716,25 @@ export const hasRole = (
   }
   return userSessionDetails.roles.includes(role);
 };
+
+/** True when the session carries the named permission. */
+export const hasPermission = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string | null | undefined,
+): boolean =>
+  !!permission && !!userSessionDetails?.permissions?.includes(permission);
+
+/**
+ * The gate feature entry points use: the named permission, or the global
+ * administrator role, which is allowed everything. Server-side @PreAuthorize is
+ * still the real check — this only decides whether to show the entry point.
+ */
+export const hasPermissionOrGlobalAdmin = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string,
+): boolean =>
+  hasPermission(userSessionDetails, permission) ||
+  hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
@@ -705,9 +840,14 @@ export const convertAlphaNumLabNumForDisplay = (
       labNumberForDisplay +
       labNumberParts[0].slice(labNumberParts[0].length - 3);
   }
-  //re-add dash
+  // Re-add every remaining part, not just the first: keeping only one dropped
+  // the tail of anything with a second dash in it (an EQA blind code such as
+  // IH-2-04 rendered as IH-2, the same for every row on the page).
   if (isAnalysisLabNumber) {
-    labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
+    labNumberForDisplay = [
+      labNumberForDisplay,
+      ...labNumberParts.slice(1),
+    ].join("-");
   }
   return labNumberForDisplay.toUpperCase();
 };
@@ -803,6 +943,18 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
 } as const;
+
+/**
+ * True when the session holds a qa.* permission, with Global Administrator as
+ * the standing fallback. The real gate is @PreAuthorize on the endpoint; this
+ * only hides controls from callers who would get a 403 anyway.
+ */
+export const hasQaPermission = (
+  userSessionDetails: { permissions?: string[]; roles?: string[] } | undefined,
+  permission: string,
+): boolean =>
+  !!userSessionDetails?.permissions?.includes(permission) ||
+  !!userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN);
 
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {

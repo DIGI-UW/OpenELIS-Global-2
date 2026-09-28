@@ -6,6 +6,28 @@
 
 set -euo pipefail
 
+# --no-mock-network: the mock sends to each connection's own Bridge listener
+#   port, so a stack without the Docker socket skips per-analyzer networks.
+# --activate: initialize mappings and activate newly created priority connections,
+#   preserving existing shared mappings and connection activation choices.
+ENSURE_CONNECTIONS=false
+MOCK_NETWORK=true
+ACTIVATE=false
+ACTIVATION_ARGS=()
+HAS_NEW_PRIORITY=false
+for arg in "$@"; do
+  case "$arg" in
+    --ensure-connections) ENSURE_CONNECTIONS=true ;;
+    --no-mock-network) MOCK_NETWORK=false ;;
+    --activate) ACTIVATE=true ;;
+    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--activate]" >&2; exit 2 ;;
+  esac
+done
+if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
+  echo "--activate requires --ensure-connections; the full seed already activates" >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -24,6 +46,11 @@ LAB_UNITS_API="$BASE_URL/api/OpenELIS-Global/rest/test-catalog/lab-units"
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
 
+CURL_TLS_FLAG=--no-insecure
+if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
+  CURL_TLS_FLAG=--insecure
+fi
+
 GENEXPERT_PROFILE_ID="genexpert-astm"
 FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
 QUANTSTUDIO_PROFILE_ID="quantstudio"
@@ -41,7 +68,7 @@ fetch_json() {
   local attempt
   local status
   for attempt in 1 2 3 4 5; do
-    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url" || true)"
+    status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url" || true)"
     if [ "$status" = "200" ]; then
       return 0
     fi
@@ -141,6 +168,10 @@ PY
 
   local analyzer_id
   analyzer_id="$(find_analyzer_id "$name")"
+  if [ "$ENSURE_CONNECTIONS" = true ] && [ -n "$analyzer_id" ]; then
+    echo "  Preserved existing connection: $name"
+    return 0
+  fi
   local method="POST"
   local url="$ANALYZER_API"
   local expected_status="201"
@@ -154,14 +185,24 @@ PY
     action_label="Updated"
   fi
 
+  local mapping_mode="preserve"
+  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
+    fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id site mapping"
+    mapping_mode="$(python3 -c 'import json,sys; print("preserve" if json.load(open(sys.argv[1])).get("siteBindingId") else "initialize")' "$RESPONSE_FILE")"
+  fi
+
   local status
-  status="$(curl -sk --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
+  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
   if [ "$status" != "$expected_status" ]; then
     echo "ERROR: Failed to $action $name (HTTP $status)" >&2
     sed 's/^/  /' "$RESPONSE_FILE" >&2
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
+  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
+    ACTIVATION_ARGS+=("$name" "$mapping_mode")
+    HAS_NEW_PRIORITY=true
+  fi
 }
 
 lookup_mock_network_ip() {
@@ -258,21 +299,38 @@ fetch_json "$LAB_UNITS_API" "$LAB_UNITS_FILE" "Active lab units"
 LAB_UNIT_ID="$(resolve_lab_unit_id)"
 echo "  lab unit $LAB_UNIT_ID"
 
-curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
+if [ "$MOCK_NETWORK" = true ]; then
+  if [ "$ENSURE_CONNECTIONS" = false ]; then
+    curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
+  fi
 
-echo "Creating GeneXpert mock transport..."
-GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
-if [ -z "$GENEXPERT_IP" ]; then
-  echo "ERROR: GeneXpert mock transport returned no IP address" >&2
-  exit 1
+  echo "Creating GeneXpert mock transport..."
+  GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
+  if [ -z "$GENEXPERT_IP" ]; then
+    echo "ERROR: GeneXpert mock transport returned no IP address" >&2
+    exit 1
+  fi
+  echo "  genexpert -> $GENEXPERT_IP:9600"
 fi
-echo "  genexpert -> $GENEXPERT_IP:9600"
 
 echo "Creating profile-pinned analyzer instances..."
 reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" '{"port":9600}'
 reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
+
+if [ "$ACTIVATE" = true ] && [ "$HAS_NEW_PRIORITY" = true ]; then
+  echo "Initializing newly created priority connections..."
+  BASE_URL="$BASE_URL" \
+  TEST_USER="$TEST_USER" \
+  TEST_PASS="$TEST_PASS" \
+    bash "$SCRIPT_DIR/seed-mvp-traffic.sh" --activate "${ACTIVATION_ARGS[@]}"
+fi
+
+if [ "$ENSURE_CONNECTIONS" = true ]; then
+  echo "Done. Missing harness connections created; existing configuration and review data preserved."
+  exit 0
+fi
 
 verify_profile_pins
 echo "Preparing analyzer mappings and result traffic for visible stories..."

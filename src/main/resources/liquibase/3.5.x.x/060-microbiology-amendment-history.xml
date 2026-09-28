@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-amendment-history" author="OGC">
+        <sql>
+            ALTER TABLE clinlims.micro_case
+            DROP CONSTRAINT micro_case_final_release_state_chk;
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_final_release_state_chk
+            CHECK (final_release_state IN (
+                'NOT_READY', 'PRELIMINARY_RELEASED', 'FINAL_RELEASED', 'AMENDMENT_IN_PROGRESS'));
+        </sql>
+
+        <createTable schemaName="clinlims" tableName="micro_case_amendment">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_case_amendment"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sequence_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opened_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opened_by" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closed_at" type="TIMESTAMP"/>
+            <column name="closed_by" type="VARCHAR(20)"/>
+            <column name="closing_reason" type="TEXT"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_case_amendment_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_case_amendment" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"/>
+        <addUniqueConstraint constraintName="uq_micro_case_amendment_sequence"
+            schemaName="clinlims" tableName="micro_case_amendment" columnNames="case_id, sequence_number"/>
+        <createIndex schemaName="clinlims" tableName="micro_case_amendment"
+            indexName="idx_micro_case_amendment_case">
+            <column name="case_id"/>
+            <column name="sequence_number"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_case_amendment
+            ADD CONSTRAINT micro_case_amendment_status_chk
+            CHECK (status IN ('OPEN', 'RELEASED', 'CANCELLED'));
+            CREATE UNIQUE INDEX uq_micro_case_amendment_open
+            ON clinlims.micro_case_amendment (case_id)
+            WHERE status = 'OPEN';
+        </sql>
+
+        <addColumn schemaName="clinlims" tableName="micro_ast_run">
+            <column name="amendment_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_micro_ast_run_amendment"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run" baseColumnNames="amendment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_amendment" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_run" indexName="idx_micro_ast_run_amendment">
+            <column name="amendment_id"/>
+        </createIndex>
+
+        <createTable schemaName="clinlims" tableName="micro_report_version">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_report_version"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amendment_id" type="VARCHAR(36)"/>
+            <column name="version_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="release_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="released_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="released_by" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="corrects_version_id" type="VARCHAR(36)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_report_version_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_report_version_amendment"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version" baseColumnNames="amendment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_amendment" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_report_version_corrects"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version" baseColumnNames="corrects_version_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_report_version" referencedColumnNames="id"/>
+        <addUniqueConstraint constraintName="uq_micro_report_version_sequence"
+            schemaName="clinlims" tableName="micro_report_version" columnNames="case_id, version_number"/>
+        <addUniqueConstraint constraintName="uq_micro_report_version_amendment"
+            schemaName="clinlims" tableName="micro_report_version" columnNames="amendment_id"/>
+        <createIndex schemaName="clinlims" tableName="micro_report_version"
+            indexName="idx_micro_report_version_case">
+            <column name="case_id"/>
+            <column name="version_number"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_report_version
+            ADD CONSTRAINT micro_report_version_type_chk
+            CHECK (release_type IN ('FINAL', 'AMENDED'));
+        </sql>
+
+        <createTable schemaName="clinlims" tableName="micro_report_version_source">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_report_version_source"/>
+            </column>
+            <column name="report_version_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analysis_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_id" type="numeric(10)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_report_source_version"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version_source"
+            baseColumnNames="report_version_id" referencedTableSchemaName="clinlims"
+            referencedTableName="micro_report_version" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_report_source_analysis"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version_source"
+            baseColumnNames="analysis_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analysis" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_report_source_result"
+            baseTableSchemaName="clinlims" baseTableName="micro_report_version_source"
+            baseColumnNames="result_id" referencedTableSchemaName="clinlims"
+            referencedTableName="result" referencedColumnNames="id"/>
+        <addUniqueConstraint constraintName="uq_micro_report_source_analysis"
+            schemaName="clinlims" tableName="micro_report_version_source"
+            columnNames="report_version_id, analysis_id"/>
+        <createIndex schemaName="clinlims" tableName="micro_report_version_source"
+            indexName="idx_micro_report_source_version">
+            <column name="report_version_id"/>
+        </createIndex>
+
+        <createTable schemaName="clinlims" tableName="micro_isolate_identification_event">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_micro_isolate_identification_event"/>
+            </column>
+            <column name="isolate_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amendment_id" type="VARCHAR(36)"/>
+            <column name="event_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="previous_organism_id" type="VARCHAR(36)"/>
+            <column name="previous_organism_text" type="TEXT"/>
+            <column name="previous_significance" type="VARCHAR(40)"/>
+            <column name="previous_identification_status" type="VARCHAR(40)"/>
+            <column name="new_organism_id" type="VARCHAR(36)"/>
+            <column name="new_organism_text" type="TEXT"/>
+            <column name="new_significance" type="VARCHAR(40)"/>
+            <column name="new_identification_status" type="VARCHAR(40)"/>
+            <column name="reason" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_micro_identification_event_isolate"
+            baseTableSchemaName="clinlims" baseTableName="micro_isolate_identification_event"
+            baseColumnNames="isolate_id" referencedTableSchemaName="clinlims"
+            referencedTableName="micro_isolate" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_identification_event_amendment"
+            baseTableSchemaName="clinlims" baseTableName="micro_isolate_identification_event"
+            baseColumnNames="amendment_id" referencedTableSchemaName="clinlims"
+            referencedTableName="micro_case_amendment" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_isolate_identification_event"
+            indexName="idx_micro_identification_event_isolate">
+            <column name="isolate_id"/>
+            <column name="changed_at"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_isolate_identification_event
+            ADD CONSTRAINT micro_identification_event_type_chk
+            CHECK (event_type IN ('IDENTIFIED', 'REIDENTIFIED', 'AMENDMENT_REVERTED'));
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_isolate_identification_event"/>
+            <dropTable schemaName="clinlims" tableName="micro_report_version_source"/>
+            <dropTable schemaName="clinlims" tableName="micro_report_version"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_run"
+                constraintName="fk_micro_ast_run_amendment"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="amendment_id"/>
+            <dropTable schemaName="clinlims" tableName="micro_case_amendment"/>
+            <sql>
+                ALTER TABLE clinlims.micro_case
+                DROP CONSTRAINT micro_case_final_release_state_chk;
+                ALTER TABLE clinlims.micro_case
+                ADD CONSTRAINT micro_case_final_release_state_chk
+                CHECK (final_release_state IN ('NOT_READY', 'PRELIMINARY_RELEASED', 'FINAL_RELEASED'));
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

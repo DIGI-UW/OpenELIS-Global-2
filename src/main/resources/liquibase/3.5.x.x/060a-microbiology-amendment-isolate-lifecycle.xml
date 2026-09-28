@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-amendment-isolate-lifecycle" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_isolate">
+            <column name="amendment_id" type="VARCHAR(36)"/>
+            <column name="cancelled_at" type="TIMESTAMP"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_micro_isolate_amendment"
+            baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="amendment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_amendment"
+            referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_isolate"
+            indexName="idx_micro_isolate_amendment">
+            <column name="amendment_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_amendment"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate"
+                constraintName="fk_micro_isolate_amendment"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="cancelled_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="amendment_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

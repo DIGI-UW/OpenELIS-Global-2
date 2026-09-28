@@ -12,10 +12,10 @@ import {
   Switch,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
 import {
@@ -30,6 +30,7 @@ import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import { isMicrobiologyOrderReady } from "../orderDataUtils";
 import "../order-workflow.scss";
 
 /**
@@ -58,6 +59,8 @@ const OrderEnter = () => {
     setSamples,
     labNumber,
     saveOrderEntry, // Step 1 uses saveOrderEntry (creates sample_type_requests, not sample_items)
+    isSubmitting,
+    fieldErrors,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -219,11 +222,24 @@ const OrderEnter = () => {
           );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+  const microbiologyOrderReady = isMicrobiologyOrderReady(orderData, samples);
 
   // canProceed gates the Save / Save & Next buttons in the layout
   const canProceed =
     canSave &&
+    microbiologyOrderReady &&
     Object.values(phoneValidation).every((item) => item.status !== false);
+
+  const notifyIncompleteMicrobiologyOrder = () => {
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "microbiology.orderEntry.incomplete",
+      }),
+    });
+    setNotificationVisible(true);
+  };
 
   // Save handler - uses saveOrderEntry which creates sample_type_requests (not sample_items)
   const handleSave = async () => {
@@ -240,8 +256,12 @@ const OrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(false); // silent=false
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -261,8 +281,12 @@ const OrderEnter = () => {
   // Save and navigate to next step
   const handleSaveAndNext = async () => {
     if (!canSave) return; // canProceed gate on the button already covers this, but be safe
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(false); // silent=false
+      await saveOrderEntry();
       markStepComplete("enter");
       const isVector =
         orderData?.sampleOrderItems?.environmentalFields?.workflowType ===
@@ -293,8 +317,12 @@ const OrderEnter = () => {
       setNotificationVisible(true);
       return;
     }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
-      await saveOrderEntry(true); // silent=true
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -330,7 +358,7 @@ const OrderEnter = () => {
           kind="tertiary"
           onClick={handleSaveAsDraft}
           size="md"
-          disabled={!canSave}
+          disabled={isSubmitting || !canSave}
         >
           <FormattedMessage
             id="button.save.draft"
@@ -340,6 +368,7 @@ const OrderEnter = () => {
       }
     >
       {notificationVisible && <AlertDialog />}
+      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
         {/* Section 1: Lab Number */}
@@ -367,14 +396,18 @@ const OrderEnter = () => {
                   }
                   value={localLabNumber}
                   onChange={handleLabNumberChange}
+                  invalid={Boolean(fieldErrors?.["sampleOrderItems.labNo"])}
+                  invalidText={fieldErrors?.["sampleOrderItems.labNo"]}
                   placeholder={intl.formatMessage({
                     id: "order.labNumber.placeholder",
                     defaultMessage: "Enter or generate lab number",
                   })}
                   disabled={isReadOnly && !isEditMode}
                 />
-                <Link
+                <Button
                   className="generate-link"
+                  kind="ghost"
+                  size="sm"
                   onClick={handleGenerateLabNumber}
                   disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
                 >
@@ -389,7 +422,7 @@ const OrderEnter = () => {
                       defaultMessage="Generate"
                     />
                   )}
-                </Link>
+                </Button>
               </div>
               <p className="helper-text">
                 <FormattedMessage
@@ -549,6 +582,7 @@ const OrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
+          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
         />
 

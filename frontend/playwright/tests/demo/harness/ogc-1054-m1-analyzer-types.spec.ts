@@ -2,6 +2,7 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -141,14 +142,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       page.getByRole("searchbox", { name: "Search analyzer types" }),
     ).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth,
-      ),
+    await expectNoPageHorizontalOverflow(
+      page,
       "Analyzer Types should not overflow the mobile page horizontally",
-    ).toBe(true);
+    );
 
     const rowAction = page.getByRole("button", {
       name: `Actions for ${SOURCE_PROFILE}`,

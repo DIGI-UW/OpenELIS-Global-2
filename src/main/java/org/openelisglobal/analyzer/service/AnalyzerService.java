@@ -32,5 +32,9 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
     Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
+    Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId);
+
+    Optional<Analyzer> findByIdForUpdate(String id);
+
     List<AnalyzerTestCapability> getCapabilitiesForTest(String testId);
 }

@@ -108,7 +108,8 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
         // filter used to consider only the test's own active flag, so a
         // deactivated lab unit kept taking orders (QA LU-W-11/LU-W-12) — the
         // unit's status did not participate in orderability at all.
-        return testList.stream().filter(test -> testUnitIds.contains(test.getTestSection().getId()))
+        return testList.stream()
+                .filter(test -> test.getTestSection() == null || testUnitIds.contains(test.getTestSection().getId()))
                 .filter(effectiveTestStatusService::isEffectivelyActive).collect(Collectors.toList());
     }
 
@@ -390,6 +391,73 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
 
     private boolean duplicateTypeOfSampleExists(TypeOfSample typeOfSample) {
         return baseObjectDAO.duplicateTypeOfSampleExists(typeOfSample);
+    }
+
+    private static final int LOCAL_ABBREVIATION_MAX_LENGTH = 10;
+
+    private static String normalized(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String conflictingField(TypeOfSample candidate) {
+        String domain = normalized(candidate.getDomain());
+        String name = normalized(candidate.getDescription());
+        String abbreviation = normalized(candidate.getLocalAbbreviation());
+        boolean abbreviationTaken = false;
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (candidate.getId() != null && candidate.getId().equals(other.getId())
+                    || !domain.equals(normalized(other.getDomain()))) {
+                continue;
+            }
+            if (!name.isEmpty() && name.equals(normalized(other.getDescription()))) {
+                return "name";
+            }
+            if (!abbreviation.isEmpty() && abbreviation.equals(normalized(other.getLocalAbbreviation()))) {
+                abbreviationTaken = true;
+            }
+        }
+        return abbreviationTaken ? "abbreviation" : null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean nameInUse(String name) {
+        String wanted = normalized(name);
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (!wanted.isEmpty() && wanted.equals(normalized(other.getDescription()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String uniqueLocalAbbreviation(String name, String domain) {
+        String base = name == null ? "" : name.trim();
+        java.util.Set<String> taken = new java.util.HashSet<>();
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (normalized(domain).equals(normalized(other.getDomain()))) {
+                taken.add(normalized(other.getLocalAbbreviation()));
+            }
+        }
+        String first = base.length() > LOCAL_ABBREVIATION_MAX_LENGTH ? base.substring(0, LOCAL_ABBREVIATION_MAX_LENGTH)
+                : base;
+        if (!taken.contains(normalized(first))) {
+            return first;
+        }
+        for (int n = 2; n < 100000; n++) {
+            String suffix = String.valueOf(n);
+            String stem = base.substring(0, Math.min(base.length(), LOCAL_ABBREVIATION_MAX_LENGTH - suffix.length()))
+                    .trim();
+            String candidate = stem + suffix;
+            if (!taken.contains(normalized(candidate))) {
+                return candidate;
+            }
+        }
+        throw new LIMSRuntimeException("No free local abbreviation for sample type " + base);
     }
 
     @Override

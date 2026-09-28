@@ -251,6 +251,32 @@ public class WestgardRuleConfigServiceIntegrationTest extends BaseWebContextSens
     }
 
     @Test
+    public void testGetUnconfiguredMappings_ignoresBenchLots() {
+        // A bench lot has no analyzer (OGC-1147) and Westgard config is
+        // per-instrument, so it must not surface as an unconfigured mapping — and
+        // its NULL instrument must not poison the read-only transaction (the
+        // analyzer-name lookup used to throw inside it, and the whole call died
+        // with UnexpectedRollbackException as soon as one bench lot existed).
+        String benchLotId = UUID.randomUUID().toString();
+        jdbcTemplate.update(
+                "INSERT INTO qc_control_lot (id, test_id, instrument_id, product_name, lot_number, manufacturer,"
+                        + " control_level, status, calculation_method, manufacturer_mean, manufacturer_std_dev,"
+                        + " sys_user_id) VALUES (?, ?, NULL, 'Bench Control', ?, 'TestMfg', 'NORMAL', 'ACTIVE',"
+                        + " 'MANUFACTURER_FIXED', 100, 5, 1)",
+                benchLotId, Long.parseLong(TEST_ID_A), "BENCH-" + benchLotId.substring(0, 8));
+        insertControlLot(TEST_ID_B, INSTRUMENT_ID_B, "ACTIVE");
+
+        List<UnconfiguredMapping> mappings = ruleConfigService.getUnconfiguredMappings();
+
+        assertTrue("No mapping may carry a null instrument",
+                mappings.stream().noneMatch(m -> m.getInstrumentId() == null));
+        assertFalse("The bench lot's test must not appear as an unconfigured analyzer pair",
+                mappings.stream().anyMatch(m -> m.getTestId().equals(TEST_ID_A) && m.getInstrumentId() == null));
+        assertTrue("The analyzer lot still appears", mappings.stream()
+                .anyMatch(m -> m.getTestId().equals(TEST_ID_B) && m.getInstrumentId().equals(INSTRUMENT_ID_B)));
+    }
+
+    @Test
     public void testGetUnconfiguredMappings_excludesPairsWithRuleConfig() {
         // Arrange — control lot AND rule config exist for pair A
         insertControlLot(TEST_ID_A, INSTRUMENT_ID_A, "ACTIVE");

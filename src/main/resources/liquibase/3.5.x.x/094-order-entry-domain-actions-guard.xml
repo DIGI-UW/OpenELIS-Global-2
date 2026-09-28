@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!--
+    093 re-parents the three order-entry actions only when all three are still
+    nested under the retired parent, so a database holding just one or two of
+    them would keep a mixed tree. These statements finish the move for whichever
+    remain and are no-ops once it is complete, so they need no precondition.
+    -->
+    <changeSet id="OGC-782-order-entry-domain-actions-guard" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="menu"/>
+        </preConditions>
+
+        <sql>
+            UPDATE clinlims.menu SET parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')
+            WHERE element_id IN ('menu_clinical_workflow', 'menu_environmental_workflow', 'menu_vector_workflow')
+              AND parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order');
+
+            UPDATE clinlims.menu SET is_active = false
+            WHERE element_id = 'menu_add_order' AND is_active = true;
+        </sql>
+
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

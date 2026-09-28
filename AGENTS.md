@@ -1,5 +1,62 @@
 # AGENTS.md - README for AI Coding Agents
 
+## Start here — do these three things before any other work
+
+These are not optional and not "if needed". Skipping them is the single most
+common way an agent wastes a session in this repository.
+
+### 1. Install the agent command assets
+
+```bash
+python3 scripts/install-agent-skills.py -y claude
+```
+
+This installs `/fix-ci`, `/download-ci-logs`, `/address-pr-comments`,
+`/careful-rebase` and ~22 others, plus the packaged skills.
+
+**`.claude/` is gitignored.** It is created by this script, not by `git clone`
+and not by `git pull`. A second clone or worktree of this repository therefore
+has **no commands at all** until you run the installer there — and nothing warns
+you, the commands are simply absent. Run it once per checkout, including every
+worktree.
+
+### 2. Never judge CI from a run's conclusion
+
+Use `gh pr checks <PR>`. It matches the GitHub UI and exits non-zero unless
+everything passes.
+
+```bash
+gh pr checks 1234                      # the whole picture
+gh pr checks 1234 | grep -E "fail"     # just the failures
+```
+
+Three checks are required — `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
+them exist, so **confirm all three are present and none are `pending`** before
+calling a PR green.
+
+Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
+a `workflow_run` follow-up stage, so the underlying run's own conclusion does
+not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
+failure for this pipeline. Do not hand-parse `--json statusCheckRollup` either:
+it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes (`.state`),
+and an in-flight check reports an empty conclusion rather than null, so naive
+`jq` reports passing checks as queued and single checks as "all green".
+
+`/fix-ci` automates the whole diagnose-fix-push-recheck loop.
+`specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
+semantics.
+
+### 3. Work in the worktree that owns the branch
+
+```bash
+git worktree list
+```
+
+This project keeps several worktrees. When asked to work on a branch or PR, find
+its worktree first and make every edit there — never in the primary directory.
+Note that each worktree needs its own installer run, per step 1.
+
 ## FILE Ownership Model (014 Remediation)
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
@@ -126,7 +183,9 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (main development), `main` (production releases)
+- Branch strategy: `develop` (integration and default branch; development PRs
+  target it), `main` (the latest release; changes only through a reviewed
+  release PR). See [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
@@ -623,6 +682,31 @@ exists in one of them.
 
 ## Development Workflow
 
+### Authoritative Development Stack
+
+Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
+supported interactive development launcher and starts the complete core
+OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+ports, and volumes.
+
+```bash
+scripts/dev-stack up
+scripts/dev-stack status
+eval "$(scripts/dev-stack env)"  # before Playwright
+scripts/dev-stack down
+```
+
+Never invoke the development Compose files directly or invent per-task Compose
+commands. Never use SQL fixture loaders for feature setup; use property-gated
+application scenario services. `scripts/dev-stack down --volumes --yes` is the
+only supported destructive reset. CI-parity and release tooling are separate
+interfaces and are not replacements for this development path.
+
+Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
+servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+`LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
+existing Let's Encrypt flow.
+
 ### Initial Setup
 
 ```bash
@@ -646,8 +730,8 @@ cd ..
 # Build OpenELIS WAR
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+# Start the complete isolated development stack
+scripts/dev-stack up
 ```
 
 **Access Points:**
@@ -788,8 +872,7 @@ mvn spotless:apply
 mvn spotless:check
 
 # Hot reload (after code changes)
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 ```
 
 **Frontend:**
@@ -820,16 +903,16 @@ npm run cy:run
 
 ```bash
 # Start development environment
-docker compose -f dev.docker-compose.yml up -d
+scripts/dev-stack up
 
 # Stop all containers
-docker compose -f dev.docker-compose.yml down
+scripts/dev-stack down
 
-# Rebuild specific container (after code changes)
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Explicitly reset this worktree's data
+scripts/dev-stack down --volumes --yes
 
 # View logs
-docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 ```
 
 ### Branch Strategy
@@ -838,8 +921,14 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Main development branch (ALL PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release PR
+  from a `release/<X.Y>.x` branch, merged with a merge commit; each release is
+  tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`, cherry-picked by the release manager.
+
+See [RELEASES.md](RELEASES.md) for supported lines and versioning.
 
 **Feature Development (Principle IX):**
 
@@ -1704,6 +1793,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides
@@ -1861,8 +1969,9 @@ npm run pw:test:ui
 
 **Prerequisites:**
 
-1. App running at `https://localhost` (or set `BASE_URL`)
+1. App running through `scripts/dev-stack up`
 2. Auth env vars: `TEST_USER` and `TEST_PASS`
+3. Run `eval "$(scripts/dev-stack env)"` from the repo root
 
 **Core-app tests (build stack):**
 
@@ -2198,7 +2307,10 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop` (unless hotfix to `main`)
+   - Development PRs target `develop`, including hotfixes. Fixes for a released
+     line are cherry-picked onto its `release/<X.Y>.x` branch after they merge.
+     Release PRs from a release branch target `main` (see
+     [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
 
@@ -2264,15 +2376,14 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
-  tests (PR + push)
-- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
-  harness) with required Playwright gate (PR)
-- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
-  required frontend gate (PR)
-- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
-  deprecated Cypress gate (PR)
-- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
-  releases only)
+  tests; reports the required `01 Checkpoint - Backend` check
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks; reports
+  the required `02 Checkpoint - Frontend` check
+- `e2e-playwright.yml` (`03 - E2E`) — builds the E2E images; `e2e-tests.yml`
+  then runs Playwright (core + analyzer harness) and the deprecated Cypress
+  suite and reports the required `03 Checkpoint - E2E` check
+- `publish-images.yml` (`Publish Images`) — after `03 - E2E` passes, publishes
+  the tested images to Docker Hub (push to `develop`, and releases)
 
 ### Code Review Standards
 
@@ -2365,8 +2476,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 mvn spotless:apply && cd frontend && npm run format && cd ..
 
 # Hot reload backend
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
@@ -2404,6 +2514,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

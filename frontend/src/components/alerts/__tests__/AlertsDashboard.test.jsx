@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -53,8 +53,16 @@ const mockDashboard = {
       message: "Sample expiring soon",
       startTime: "2026-01-15T11:00:00Z",
     },
+    {
+      id: 3,
+      alertType: "EQA_SUBMISSION_FAILED",
+      severity: "CRITICAL",
+      status: "OPEN",
+      message: "Automatic EQA submission failed 5 times",
+      startTime: "2026-01-15T12:00:00Z",
+    },
   ],
-  totalCount: 2,
+  totalCount: 3,
   page: 0,
   pageSize: 25,
 };
@@ -110,6 +118,18 @@ describe("AlertsDashboard", () => {
     expect(screen.getByText("Sample expiring soon")).toBeTruthy();
   });
 
+  // Every alert type the enum can produce needs a label, or the Type column
+  // prints the raw enum beside rows that read as English.
+  test("every alert type reads as a label, not as its enum", () => {
+    renderWithIntl(<AlertsDashboard />);
+
+    // The filter's own options carry the same labels, so read the table.
+    const table = document.querySelector("table");
+    expect(within(table).getByText("EQA Deadline")).toBeTruthy();
+    expect(within(table).getByText("EQA Submission Failed")).toBeTruthy();
+    expect(within(table).queryByText("EQA_SUBMISSION_FAILED")).toBeNull();
+  });
+
   test("renders filter controls", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(screen.getByText("Alert Type")).toBeTruthy();
@@ -133,5 +153,38 @@ describe("AlertsDashboard", () => {
   test("fetches data on mount", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(getFromOpenElisServer).toHaveBeenCalled();
+  });
+
+  test("offers the microbiology critical alert type filter", () => {
+    renderWithIntl(<AlertsDashboard />);
+    expect(screen.getByText("Microbiology Critical")).toBeTruthy();
+  });
+
+  test("renders a microbiology critical alert row", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [
+            {
+              id: 3,
+              alertType: "MICROBIOLOGY_CRITICAL",
+              severity: "CRITICAL",
+              status: "OPEN",
+              message: "Positive blood culture called",
+              startTime: "2026-01-15T12:00:00Z",
+            },
+          ],
+          totalCount: 1,
+          page: 0,
+          pageSize: 25,
+        });
+      }
+    });
+
+    renderWithIntl(<AlertsDashboard />);
+
+    expect(screen.getByText("Positive blood culture called")).toBeTruthy();
   });
 });

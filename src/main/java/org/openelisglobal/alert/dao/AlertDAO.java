@@ -26,6 +26,18 @@ public interface AlertDAO extends BaseDAO<Alert, Long> {
     List<Alert> getAlertsByEntity(String entityType, Long entityId);
 
     /**
+     * Get all alerts for a string-keyed entity (e.g. a microbiology critical
+     * communication UUID). Counterpart to {@link #getAlertsByEntity(String, Long)}
+     * for entities that are not keyed by a database sequence.
+     *
+     * @param entityType Entity class name (e.g.,
+     *                   "MicrobiologyCriticalCommunication")
+     * @param entityRef  Entity reference (e.g. a UUID string)
+     * @return List of alerts for the entity (empty list if none found)
+     */
+    List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
+
+    /**
      * Get all alerts of a specific type.
      *
      * <p>

@@ -1002,7 +1002,12 @@ function LabUnitManagement({ intl }) {
                       { current: current, total: total },
                     )
                   }
-                  pageText={intl.formatMessage({ id: "pagination.page" })}
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
                   size="md"
                 />
               </div>

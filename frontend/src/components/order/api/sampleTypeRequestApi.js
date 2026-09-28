@@ -7,7 +7,6 @@
 
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 
@@ -59,58 +58,19 @@ export const getPendingRequests = (sampleId) => {
 };
 
 /**
- * Create a new sample type request (Step 1: Enter Order).
- * @param {Object} request - The request data
- * @param {string} request.sampleId - The sample ID
- * @param {string} request.typeOfSampleId - The type of sample ID
- * @param {number} [request.sortOrder] - Sort order (default 0)
- * @param {number} [request.requestedQuantity] - Quantity (default 1)
- * @param {string} [request.unitOfMeasureId] - Unit of measure ID
- * @param {string} [request.requestedTests] - Comma-separated test IDs
- * @param {string} [request.requestedPanels] - Comma-separated panel IDs
- * @returns {Promise<Object>} - Created SampleTypeRequestDTO
+ * Shape the entered specimens for the order save. They travel with the order
+ * so the two are persisted together.
  */
-export const createRequest = (request) => {
-  return new Promise((resolve, reject) => {
-    postToOpenElisServer(BASE_URL, JSON.stringify(request), (status, body) => {
-      if (status === 200 || status === 201) {
-        try {
-          const data = typeof body === "string" ? JSON.parse(body) : body;
-          resolve(data);
-        } catch (e) {
-          resolve(body);
-        }
-      } else {
-        reject(new Error(body || "Failed to create sample type request"));
-      }
-    });
-  });
-};
-
-/**
- * Create multiple sample type requests at once.
- * @param {string} sampleId - The sample ID
- * @param {Array} sampleTypes - Array of sample type selections
- * @returns {Promise<Array>} - Array of created SampleTypeRequestDTO objects
- */
-export const createRequestsForSamples = async (sampleId, sampleTypes) => {
-  const results = [];
-  for (let i = 0; i < sampleTypes.length; i++) {
-    const sample = sampleTypes[i];
-    const request = {
-      sampleId: sampleId,
+export const toRequestedSampleTypes = (samples = []) =>
+  samples
+    .filter((sample) => sample && sample.sampleTypeId)
+    .map((sample) => ({
       typeOfSampleId: sample.sampleTypeId,
-      sortOrder: i,
       requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
       requestedPanels: sample.panels?.map((p) => p.id || p).join(",") || "",
-    };
-    const created = await createRequest(request);
-    results.push(created);
-  }
-  return results;
-};
+    }));
 
 /**
  * Fulfill a request by linking it to a collected sample_item (Step 2: Collect Sample).
@@ -191,10 +151,17 @@ export const convertRequestsToSamples = (pendingRequests) => {
         request.requestedPanels,
         request.requestedPanelNames,
       ),
-      // Tests need to be objects with id and name properties for the UI
-      tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
+      // Prefer the complete server projection so reloaded selections retain
+      // workflow and linked Method metadata. Keep the legacy shape as fallback.
+      tests:
+        request.requestedTestDetails?.length > 0
+          ? request.requestedTestDetails
+          : zipIdsAndNames(request.requestedTests, request.requestedTestNames),
       referralItems: [],
-      quantity: "",
+      quantity:
+        request.requestedQuantity == null
+          ? ""
+          : String(request.requestedQuantity),
       quantityUnit: request.unitOfMeasureId || "",
       collectionConditions: "",
       collectionDate: "",
@@ -210,4 +177,36 @@ export const convertRequestsToSamples = (pendingRequests) => {
       // Status from request
       status: request.status,
     }));
+};
+
+/**
+ * A partially collected order loads its collected specimens as sample_items and
+ * leaves the rest as pending sample_type_requests. Rebuilding the entry state
+ * from either source alone drops the other, so a resave of the Enter step would
+ * cancel the omitted pending specimens. This keeps both.
+ * @param {Array} responseSamples - samples from the order response
+ * @param {Array} requests - SampleTypeRequestDTO rows for the sample
+ * @param {Array|null} fallback - value to use when neither source has rows
+ * @returns {Array|null} - merged UI samples
+ */
+export const mergeCollectedAndPendingSamples = (
+  responseSamples,
+  requests,
+  fallback,
+) => {
+  const collected = (responseSamples || []).filter(
+    (sample) => sample && sample.sampleItemId,
+  );
+  const pending = convertRequestsToSamples(
+    (requests || []).filter(
+      (request) => request && request.status === "REQUESTED",
+    ),
+  );
+  const merged = [...collected, ...pending];
+  if (merged.length > 0) {
+    return merged;
+  }
+  return responseSamples && responseSamples.length > 0
+    ? responseSamples
+    : fallback;
 };

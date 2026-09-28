@@ -55,6 +55,7 @@ test.describe("QC Dashboard smoke", () => {
   });
 
   test("control lots page loads", async ({ page }) => {
+    // The legacy analyzers route redirects to the QA menu home of the page.
     await page.goto("/analyzers/qc/control-lots", {
       waitUntil: "domcontentloaded",
     });
@@ -63,6 +64,6 @@ test.describe("QC Dashboard smoke", () => {
     // Asserting on `main` is selector-stable across the Control Lots page
     // without hard-coding a component-specific testid.
     await expect(page.locator("main")).toBeVisible();
-    await expect(page).toHaveURL(/\/analyzers\/qc\/control-lots$/);
+    await expect(page).toHaveURL(/\/qa\/qc\/control-lots$/);
   });
 });

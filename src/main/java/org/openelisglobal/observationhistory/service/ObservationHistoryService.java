@@ -49,4 +49,10 @@ public interface ObservationHistoryService extends BaseObjectService<Observation
      * config CSVs) must call this to avoid stale lookups.
      */
     void refreshTypeIdCache();
+
+    /**
+     * Every observation of one type, whatever its value; empty when the type is
+     * unknown.
+     */
+    List<ObservationHistory> getObservationHistoriesByType(ObservationType type);
 }

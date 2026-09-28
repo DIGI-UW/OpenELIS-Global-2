@@ -58,6 +58,34 @@ public class EQAProgramEnrollmentDAOImpl extends BaseDAOImpl<EQAProgramEnrollmen
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> findProviderSchemeRows() {
+        try {
+            String hql = "SELECT p.id, p.name, p.provider, p.schemeType, COUNT(e.id), ts.testSectionName"
+                    + " FROM EQAProgramEnrollment e JOIN e.eqaProgram p LEFT JOIN p.testSection ts"
+                    + " WHERE e.status = 'Active' AND p.isActive = true"
+                    + " GROUP BY p.id, p.name, p.provider, p.schemeType, ts.testSectionName ORDER BY p.name";
+            return entityManager.unwrap(Session.class).createQuery(hql, Object[].class).list();
+        } catch (Exception e) {
+            logger.error("Error retrieving provider scheme rows", e);
+            throw new LIMSRuntimeException("Error retrieving provider scheme rows", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countDistinctActiveParticipantOrgs() {
+        try {
+            String hql = "SELECT COUNT(DISTINCT e.organizationId) FROM EQAProgramEnrollment e"
+                    + " JOIN e.eqaProgram p WHERE e.status = 'Active' AND p.isActive = true";
+            return entityManager.unwrap(Session.class).createQuery(hql, Long.class).uniqueResult();
+        } catch (Exception e) {
+            logger.error("Error counting distinct active participant organizations", e);
+            throw new LIMSRuntimeException("Error counting distinct active participant organizations", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsActiveEnrollment(Long programId, Long organizationId) {
         try {
             String hql = "SELECT COUNT(e) FROM EQAProgramEnrollment e" + " WHERE e.eqaProgram.id = :programId"

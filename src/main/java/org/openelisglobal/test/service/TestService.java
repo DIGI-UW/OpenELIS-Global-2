@@ -1,10 +1,12 @@
 package org.openelisglobal.test.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
@@ -55,6 +57,10 @@ public interface TestService extends BaseObjectService<Test, String> {
     Test getTestByDescription(String description);
 
     Test getTestByNormalizedDescription(String description);
+
+    Test getTestByLocalCode(String localCode);
+
+    List<Test> getTestsByNormalizedDescriptionPrefix(String plainName);
 
     List<Test> getTestsByLoincCode(String loincCode);
 
@@ -153,6 +159,26 @@ public interface TestService extends BaseObjectService<Test, String> {
     Optional<TestQcThreshold> getQcThreshold(String testId);
 
     /**
+     * The tests carrying these ids, in one query. For views that decorate many rows
+     * with a test name and would otherwise look one up per row.
+     */
+    List<Test> getTestsByIds(Collection<String> testIds);
+
+    /**
+     * The chosen label of a test, or {@code fallback} when the id is null, no test
+     * carries it, the label is blank, or the lookup fails. For the many listings
+     * that decorate a row with a test name: a name is context there, never a reason
+     * to fail the listing.
+     *
+     * <p>
+     * The caller picks the field because the listings genuinely differ. A localized
+     * name reads best on screen but falls back to a placeholder when a test has no
+     * localization row, so a listing that must never show one asks for the plain
+     * name or the description instead.
+     */
+    String getLabelOrDefault(String testId, Function<Test, String> label, String fallback);
+
+    /**
      * Resolves the {@code localization} ids backing a test's localizable name
      * fields, so the editor can read/write per-locale values through the existing
      * {@code /rest/localizations/{id}} endpoints (no per-test translation store).
@@ -160,4 +186,10 @@ public interface TestService extends BaseObjectService<Test, String> {
      * test has no localization link for it.
      */
     Map<String, String> getNameLocalizationIds(String testId);
+
+    /**
+     * True when the localization is some test's name or reporting name, so a change
+     * to its translations must refresh the cached test-name lists.
+     */
+    boolean isNameLocalization(String localizationId);
 }

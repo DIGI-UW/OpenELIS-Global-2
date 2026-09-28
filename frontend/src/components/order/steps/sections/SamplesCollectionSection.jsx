@@ -23,6 +23,7 @@ const SamplesCollectionSection = ({
   unitOfMeasures,
   updateSampleCollectionDetails,
   isReadOnly,
+  admissionDate,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -45,17 +46,20 @@ const SamplesCollectionSection = ({
 
   // Current server time for "Received at Lab" - always shows current time when page opens
   // Initialize with client time as fallback, then update with server time
-  const [serverReceivedDate, setServerReceivedDate] = useState(getClientDate());
-  const [serverReceivedTime, setServerReceivedTime] = useState(getClientTime());
+  // The laboratory's "now", from the server. Empty until it answers, so the
+  // cards default collection and receipt from the same clock; the browser's
+  // clock is only the fallback when the server cannot be reached.
+  const [serverReceivedDate, setServerReceivedDate] = useState("");
+  const [serverReceivedTime, setServerReceivedTime] = useState("");
 
   // Fetch current server time on mount - this is "now" for receiving samples
   useEffect(() => {
     componentMounted.current = true;
 
     getFromOpenElisServer("/rest/server-time", (response) => {
-      if (componentMounted.current && response) {
-        setServerReceivedDate(response.date || getClientDate());
-        setServerReceivedTime(response.time || getClientTime());
+      if (componentMounted.current) {
+        setServerReceivedDate(response?.date || getClientDate());
+        setServerReceivedTime(response?.time || getClientTime());
       }
     });
 
@@ -71,7 +75,6 @@ const SamplesCollectionSection = ({
 
   // Handle sample removal
   const handleSampleRemove = (sampleIndex) => {
-    if (samples.length <= 1) return; // Keep at least one sample
     const updated = samples.filter((_, i) => i !== sampleIndex);
     // Re-index remaining samples
     const reindexed = updated.map((s, i) => ({ ...s, index: i }));
@@ -79,7 +82,7 @@ const SamplesCollectionSection = ({
   };
 
   // Handle print labels for a specific sample
-  const handlePrintLabels = (sampleIndex) => {
+  const handlePrintLabels = (_sampleIndex) => {
     // TODO: Implement label printing
   };
 
@@ -126,7 +129,8 @@ const SamplesCollectionSection = ({
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
                 isReadOnly={isReadOnly}
-                canRemove={samples.length > 1}
+                canRemove={!isReadOnly}
+                admissionDate={admissionDate}
               />
 
               {/* Nested QC sample summaries — inherit collection details from parent */}

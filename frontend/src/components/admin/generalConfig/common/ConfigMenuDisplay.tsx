@@ -28,7 +28,6 @@ import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
 
 interface ConfigMenuDisplayProps {
   id: string;
-  label: string;
   menuType: string;
 }
 
@@ -95,7 +94,7 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-    { label: `${props.label}`, link: `/MasterListsPage/${props.menuType}` },
+    { label: props.id, link: `/MasterListsPage/${props.menuType}` },
   ];
 
   function handleModify(event: FormEvent<HTMLFormElement>) {

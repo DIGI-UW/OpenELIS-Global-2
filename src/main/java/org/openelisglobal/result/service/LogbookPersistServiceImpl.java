@@ -1,5 +1,6 @@
 package org.openelisglobal.result.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -7,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -14,9 +16,11 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.qaevent.service.TestRejectionNceService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -28,6 +32,7 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
@@ -50,6 +55,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Autowired
     private NoteService noteService;
     @Autowired
+    private TestRejectionNceService testRejectionNceService;
+    @Autowired
     private SampleService sampleService;
     @Autowired
     private ReferralService referralService;
@@ -68,6 +75,19 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             String sysUserId) {
         for (Note note : actionDataSet.getNoteList()) {
             noteService.insert(note);
+            // Every rejection opens its NCE (trigger: TEST_REJECTION). All
+            // rejection paths funnel through this persist, so the hook lives
+            // here, not in each controller. A failed NCE must never block a
+            // tech saving results — log and move on.
+            if (Note.REJECT_REASON.equals(note.getNoteType())) {
+                try {
+                    testRejectionNceService.createForRejection(note);
+                } catch (RuntimeException e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "persistDataSet",
+                            "NCE creation for rejected analysis " + note.getReferenceId() + " failed: "
+                                    + e.getMessage());
+                }
+            }
         }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
@@ -175,17 +195,57 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         for (ResultSet rs : actionDataSet.getModifiedResults()) {
             collectAnalysisId(rs, analysisIds);
         }
+        // A refer-out saved in this same request is a request going out, not a result
+        // coming back from the reference lab. Completing it here would close it the
+        // instant it was raised (OGC-1188).
+        Set<String> referralsRaisedInThisSave = new HashSet<>();
+        for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
+            if (referralSet != null && referralSet.getReferral() != null && referralSet.getReferral().getId() != null) {
+                referralsRaisedInThisSave.add(referralSet.getReferral().getId());
+            }
+        }
         for (String analysisId : analysisIds) {
             try {
                 Referral referral = referralService.getReferralByAnalysisId(analysisId);
-                if (referral != null && referral.getId() != null) {
+                if (referral != null && referral.getId() != null
+                        && !referralsRaisedInThisSave.contains(referral.getId())) {
                     referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
+                    recordReferenceLabReportDate(referral.getId(), reportDateFor(actionDataSet, analysisId), sysUserId);
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "advanceReferralsForManualEntry",
                         "failed to advance referral for analysis " + analysisId);
                 LogEvent.logError(e);
             }
+        }
+    }
+
+    /**
+     * The date the reference laboratory itself reported the result, as typed on the
+     * row being saved. Only the electronic path used to set it, so a manually
+     * entered result left the External Referrals report's report-date column blank.
+     */
+    private String reportDateFor(ResultsUpdateDataSet actionDataSet, String analysisId) {
+        for (TestResultItem item : actionDataSet.getModifiedItems()) {
+            if (analysisId.equals(item.getAnalysisId()) && item.getReferralItem() != null) {
+                return item.getReferralItem().getReferredReportDate();
+            }
+        }
+        return null;
+    }
+
+    private void recordReferenceLabReportDate(String referralId, String reportDate, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(reportDate)) {
+            return;
+        }
+        Timestamp reported = DateUtil.convertStringDateToTruncatedTimestamp(reportDate);
+        if (reported == null) {
+            return;
+        }
+        for (ReferralResult referralResult : referralResultService.getReferralResultsForReferral(referralId)) {
+            referralResult.setReferralReportDate(reported);
+            referralResult.setSysUserId(sysUserId);
+            referralResultService.update(referralResult);
         }
     }
 
@@ -232,9 +292,21 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             // already stale from this request's own result save — an
             // OptimisticLockException that failed the whole save (OGC-1023). The
             // update pass belongs to the referred-out page's edit flow only.
-            referralService.insert(referralSet.getReferral());
+            Referral referral = referralSet.getReferral();
+            referralService.insert(referral);
+            referralSetService.insertInitialDraftHistory(referral.getId(), sysUserId);
+            // The send date the bench entered on the Refer Out row IS the handoff: the
+            // specimen left with it, so dispatch now rather than waiting for a shipment
+            // box that this workflow never creates. Dispatch is what writes the history
+            // row, pushes the FHIR Task the reference lab polls for, and fires the
+            // notification. Without a date the referral stays DRAFT for a box to send
+            // (OGC-1188).
+            if (referral.getSentDate() != null) {
+                referralService.dispatchReferral(referral.getId(), referral.getSentDate(), sysUserId,
+                        "Handed off from Result Entry");
+            }
             ReferralResult referralResult = referralSet.getNextReferralResult();
-            referralResult.setReferralId(referralSet.getReferral().getId());
+            referralResult.setReferralId(referral.getId());
             referralResult.setSysUserId(sysUserId);
             referralResultService.insert(referralResult);
             if (referralSet.getNote() != null) {
@@ -260,6 +332,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 sysUserId);
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
+        actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
         reflexAnalysises.addAll(caclculatedAnalyses);
         return reflexAnalysises;
     }

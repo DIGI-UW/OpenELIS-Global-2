@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    A referral dispatched by sending its shipment box reached REQUESTED with no
+    sent date: the handoff was written to the subcontract row only, while the
+    Reference Lab Results page reads the referral's own sent date for Sent Date,
+    days outstanding and days total. Leaving the send date blank on the form is
+    what puts a referral in a box in the first place, so the referrals that took
+    the intended route were exactly the ones that never aged and never reached
+    the stuck view.
+
+    Dispatch now stamps the referral's sent date wherever the dispatch came
+    from. This moves the rows already dispatched, taking the date from the
+    handoff their subcontract recorded at the time. Referrals still in DRAFT are
+    left alone: nothing has been sent yet, and a sent date is what would wrongly
+    make them look outstanding.
+    -->
+    <changeSet id="referral-sent-date-from-subcontract-handoff" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="referral" columnName="sent_date"/>
+            <columnExists schemaName="clinlims" tableName="referral_subcontract"
+                columnName="handoff_datetime"/>
+        </preConditions>
+        <comment>Give already-dispatched referrals the sent date the dashboard ages them from</comment>
+        <sql>
+            UPDATE clinlims.referral r
+               SET sent_date = s.handoff_datetime
+              FROM clinlims.referral_subcontract s
+             WHERE s.id = r.subcontract_id
+               AND r.sent_date IS NULL
+               AND s.handoff_datetime IS NOT NULL
+               AND r.status &lt;&gt; 'DRAFT';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

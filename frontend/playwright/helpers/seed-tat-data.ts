@@ -283,6 +283,8 @@ export interface SampleConfig {
   providerPersonId?: string;
   /** Referring site (organization) id; defaults to the TAT-seeded site. */
   referringSiteId?: string;
+  /** Overrides for the new patient, e.g. a blank sex or birth date. */
+  patient?: { gender?: string; birthDateForDisplay?: string };
 }
 
 /**
@@ -393,6 +395,7 @@ export async function createSampleOrder(
       birthDateForDisplay: useMDY ? "01/01/1990" : "01/01/1990",
       nationalId: uniqueId,
       subjectNumber: uniqueId,
+      ...config.patient,
     },
     patientSearch: null,
     patientEnhancedSearch: null,

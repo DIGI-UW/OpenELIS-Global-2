@@ -13,7 +13,7 @@ import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
@@ -24,8 +24,10 @@ import {
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
-import EQAOrderForm from "../eqa/EQAOrderForm";
+import EQAOrderForm, { eqaReceiptNoteMissing } from "../eqa/EQAOrderForm";
+import EQAEnrollmentCoverageNotice from "../eqa/EQAEnrollmentCoverageNotice";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
@@ -72,7 +74,9 @@ const Index = () => {
   const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const [orderFormValues, setOrderFormValues] = useState(
+    createSampleOrderFormValues,
+  );
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -993,12 +997,22 @@ const Index = () => {
                     />
                   ))}
                 {currentStep === STEP_ADD_SAMPLE && (
-                  <AddSample
-                    error={elementError}
-                    setSamples={setSamples}
-                    samples={samples}
-                    domain={domain}
-                  />
+                  <>
+                    {orderFormValues?.sampleOrderItems?.isEQASample && (
+                      <EQAEnrollmentCoverageNotice
+                        enrollmentId={
+                          orderFormValues?.sampleOrderItems?.eqaProgramId
+                        }
+                        samples={samples}
+                      />
+                    )}
+                    <AddSample
+                      error={elementError}
+                      setSamples={setSamples}
+                      samples={samples}
+                      domain={domain}
+                    />
+                  </>
                 )}
                 {currentStep === STEP_ADD_ORDER && (
                   <AddOrder
@@ -1023,6 +1037,9 @@ const Index = () => {
                     saveResponse={saveResponse}
                   />
                 )}
+                {isLastStep && !isOnSuccess && (
+                  <OrderEntryMissingFieldsNotice errors={errors} />
+                )}
                 <div className="navigationButtonsLayout">
                   {!isFirstStep && !isOnSuccess && (
                     <Button kind="tertiary" onClick={navigateBackward}>
@@ -1034,6 +1051,10 @@ const Index = () => {
                     <Button
                       kind="primary"
                       className="forwardButton"
+                      disabled={
+                        currentStep === STEP_PROGRAM &&
+                        eqaReceiptNoteMissing(orderFormValues)
+                      }
                       onClick={navigateForward}
                     >
                       <FormattedMessage id="next.action.button" />

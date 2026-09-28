@@ -1,5 +1,6 @@
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
+import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -256,14 +257,14 @@ test.describe("OGC-1054 assembled analyzer MVP", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Analyzers" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth,
-      ),
+    await expect(page.getByTestId("content-wrapper")).toHaveCSS(
+      "margin-left",
+      "0px",
+    );
+    await expectNoPageHorizontalOverflow(
+      page,
       "Analyzer dashboard should not overflow the mobile page horizontally",
-    ).toBe(true);
+    );
     await capture(page, testInfo, "m4-mobile-dashboard");
   });
 });

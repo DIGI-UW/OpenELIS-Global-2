@@ -48,7 +48,6 @@ import {
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
-  putToOpenElisServer,
 } from "../../utils/Utils";
 
 /**
@@ -80,7 +79,9 @@ const OrderLabel = () => {
     setStorageSkipped,
     loadOrder,
     isLoading,
+    setIsSubmitting,
   } = useOrderContext();
+  const labelSaveInFlight = useRef(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -98,14 +99,7 @@ const OrderLabel = () => {
   // null on fresh creation flow before loadOrder has been called)
   const handleStorageSkippedChange = useCallback(
     (checked) => {
-      setStorageSkipped(checked);
-      if (labNumber) {
-        putToOpenElisServer(
-          `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${checked}`,
-          null,
-          Function.prototype,
-        );
-      }
+      setStorageSkipped(checked, labNumber);
     },
     [labNumber, setStorageSkipped],
   );
@@ -131,6 +125,8 @@ const OrderLabel = () => {
     return initial;
   });
   const [printedLabels, setPrintedLabels] = useState(new Set());
+  // Set when a print popup was blocked, so the labels stay reachable by link.
+  const [blockedPrintUrl, setBlockedPrintUrl] = useState("");
 
   // For vector orders, the label table can grow into thousands of rows if a
   // pool has many organisms. Collapse the per-organism rows into one row per
@@ -457,13 +453,26 @@ const OrderLabel = () => {
     setNotificationVisible(true);
   };
 
-  // Returns true on success; false (with an error toast) when the popup is
-  // blocked. Without the null-check, a blocked popup would still raise the
-  // green "sent to print" toast even though no PDF actually opened.
+  // Returns true on success; false when the popup never opened. Some blockers
+  // hand back a stub window rather than null, which the old null-only check
+  // read as success and reported labels as printed that never were.
   const openPrintWindow = (url) => {
-    const printWindow = window.open(url, "_blank");
-    if (!printWindow) {
-      console.warn("OrderLabel: window.open returned null for", url);
+    let printWindow = null;
+    try {
+      printWindow = window.open(url, "_blank");
+    } catch {
+      printWindow = null;
+    }
+    const blocked =
+      !printWindow ||
+      printWindow.closed ||
+      typeof printWindow.closed === "undefined";
+    if (blocked) {
+      console.warn("OrderLabel: print window was blocked for", url);
+      // Falling back to a link the user clicks themselves: a user-initiated
+      // navigation is not subject to the popup blocker, so a blocked user can
+      // still reach their labels instead of being told to change settings.
+      setBlockedPrintUrl(url);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -476,6 +485,7 @@ const OrderLabel = () => {
       setNotificationVisible(true);
       return false;
     }
+    setBlockedPrintUrl("");
     return true;
   };
 
@@ -669,7 +679,22 @@ const OrderLabel = () => {
     }
   };
 
-  const handleSave = async () => {
+  /** One click, one save: a second click while the first runs does nothing. */
+  const guardLabelSave = (save) => async () => {
+    if (labelSaveInFlight.current) {
+      return;
+    }
+    labelSaveInFlight.current = true;
+    setIsSubmitting(true);
+    try {
+      await save();
+    } finally {
+      labelSaveInFlight.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSave = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -692,9 +717,9 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
-  const handleSaveAndNext = async () => {
+  const handleSaveAndNext = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -717,7 +742,7 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
   // Check if all samples have storage assigned
   const allSamplesHaveStorage =
@@ -740,6 +765,33 @@ const OrderLabel = () => {
       onSaveAndNext={handleSaveAndNext}
     >
       {notificationVisible && <AlertDialog />}
+      {blockedPrintUrl && (
+        <div className="label-print-blocked">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "label.print.error.popupBlocked",
+              defaultMessage:
+                "Popup blocked. Please allow popups for this site to print labels.",
+            })}
+          />
+          {/* Carbon notifications reject interactive children, so the link is
+              a sibling. A click the user makes themselves is not blocked. */}
+          <a
+            className="label-print-blocked-link"
+            href={blockedPrintUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <FormattedMessage
+              id="label.print.openDirectly"
+              defaultMessage="Open the labels in a new tab"
+            />
+          </a>
+        </div>
+      )}
 
       {/* Print Labels Section */}
       <Tile className="order-section print-labels-section">

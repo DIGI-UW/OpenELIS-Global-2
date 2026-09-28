@@ -85,11 +85,12 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
 
         int startingRecNo = this.getCurrentStartingRecNo(request);
 
+        String titleCode = request.getParameter("titleCode");
         if (YES.equals(request.getParameter("search"))) {
-            providers = providerService.getPagesOfSearchedProviders(startingRecNo,
-                    request.getParameter("searchString"));
+            providers = providerService.getPagesOfSearchedProviders(startingRecNo, request.getParameter("searchString"),
+                    titleCode);
         } else {
-            providers = providerService.getPagesOfSearchedProviders(startingRecNo, "");
+            providers = providerService.getPagesOfSearchedProviders(startingRecNo, "", titleCode);
         }
 
         request.setAttribute("menuDefinition", "ProviderMenuDefinition");
@@ -97,9 +98,12 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
         // bugzilla 1411 set pagination variables
         // bugzilla 2372 set pagination variables for searched results
         if (YES.equals(request.getParameter("search"))) {
-            request.setAttribute(MENU_TOTAL_RECORDS, String
-                    .valueOf(providerService.getTotalSearchedProviderCount(request.getParameter("searchString"))));
+            request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(
+                    providerService.getTotalSearchedProviderCount(request.getParameter("searchString"), titleCode)));
             request.setAttribute(SEARCHED_STRING, request.getParameter("searchString"));
+        } else if (titleCode != null && !titleCode.isBlank()) {
+            request.setAttribute(MENU_TOTAL_RECORDS,
+                    String.valueOf(providerService.getTotalSearchedProviderCount("", titleCode)));
         } else {
             request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(providerService.getCount()));
         }
@@ -132,9 +136,26 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
         }
         form.setToRecordCount(String.valueOf(endingRecNo));
         form.setFromRecordCount(String.valueOf(startingRecNo));
-        form.setTotalRecordCount(String.valueOf(String.valueOf(providerService.getCount())));
+        form.setTotalRecordCount(String.valueOf(totalRecordCount(request, titleCode)));
 
         return providers;
+    }
+
+    /**
+     * The count the pager reports. It has to follow the same narrowing as the page
+     * itself: a title filter that left the total at "all providers" would page past
+     * the end of its own result (OGC-1223).
+     */
+    private int totalRecordCount(HttpServletRequest request, String titleCode) {
+        boolean searching = YES.equals(request.getParameter("search"));
+        boolean filtering = titleCode != null && !titleCode.isBlank();
+        if (searching) {
+            return providerService.getTotalSearchedProviderCount(request.getParameter("searchString"), titleCode);
+        }
+        if (filtering) {
+            return providerService.getTotalSearchedProviderCount("", titleCode);
+        }
+        return providerService.getCount();
     }
 
     @Override

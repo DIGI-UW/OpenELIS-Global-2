@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-microbiology-whonet-export-selection" author="OGC">
+    <addColumn schemaName="clinlims" tableName="micro_whonet_export_run">
+      <column name="population_selection" type="jsonb" defaultValueComputed="'{}'::jsonb">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+
+    <rollback>
+      <dropColumn schemaName="clinlims" tableName="micro_whonet_export_run" columnName="population_selection"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

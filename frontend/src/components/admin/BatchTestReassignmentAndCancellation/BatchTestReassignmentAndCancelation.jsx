@@ -127,6 +127,9 @@ function BatchTestReassignmentAndCancelation() {
   };
 
   useEffect(() => {
+    if (!sampleTypeToGetId) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeHandle = (res) => {
       if (!res) {
         setIsLoading(true);
@@ -153,12 +156,15 @@ function BatchTestReassignmentAndCancelation() {
     };
 
     getFromOpenElisServer(
-      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${sampleTypeToGetId}`,
+      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${encodeURIComponent(sampleTypeToGetId)}`,
       handleBatchTestReassignmentSampleTypeHandle,
     );
   }, [sampleTypeToGetId]);
 
   useEffect(() => {
+    if (!sampleTypeTestIdToGetIdPending) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeTestHandle = (res) => {
       if (!res) {
         setIsLoading(true);
@@ -168,7 +174,7 @@ function BatchTestReassignmentAndCancelation() {
     };
 
     getFromOpenElisServer(
-      `/rest/getPendingAnalysisForTestProvider?testId=${sampleTypeTestIdToGetIdPending}`,
+      `/rest/getPendingAnalysisForTestProvider?testId=${encodeURIComponent(sampleTypeTestIdToGetIdPending)}`,
       handleBatchTestReassignmentSampleTypeTestHandle,
     );
   }, [sampleTypeTestIdToGetIdPending]);

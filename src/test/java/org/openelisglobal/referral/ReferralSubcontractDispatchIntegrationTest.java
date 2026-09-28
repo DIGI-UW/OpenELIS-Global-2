@@ -1,6 +1,7 @@
 package org.openelisglobal.referral;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -140,6 +141,26 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         // client was never invoked.
         Thread.sleep(300);
         verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
+    }
+
+    /**
+     * The handoff has to reach the referral's own sent date, not only the
+     * subcontract row. That column is what the Reference Lab Results page shows as
+     * Sent Date and what it counts days outstanding from, so a referral dispatched
+     * by a shipment box, which is the whole point of leaving one in DRAFT, would
+     * otherwise never age and never appear as stuck.
+     */
+    @Test
+    public void dispatch_stampsTheSentDateTheDashboardReads() {
+        Referral before = referralService.getReferralById("1");
+        assertNotEquals("precondition: the fixture's sent date is not the handoff", HANDOFF, before.getSentDate());
+
+        referralService.dispatchReferral("1", HANDOFF, ACTOR, null);
+
+        Referral after = referralService.getReferralById("1");
+        assertEquals("the sent date is the handoff", HANDOFF, after.getSentDate());
+        assertEquals("and it agrees with the subcontract", after.getSubcontract().getHandoffDatetime(),
+                after.getSentDate());
     }
 
     @Test

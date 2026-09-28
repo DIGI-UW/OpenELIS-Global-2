@@ -10,6 +10,7 @@ import {
   RadioButton,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -73,22 +74,20 @@ function TestSectionCreate() {
   };
 
   const handlePostTestSectionCreateListCallBack = (res, actions) => {
-    if (res) {
-      if (res) {
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        actions.resetForm();
-        setBothFilled(false);
-        invalidateServerData();
-        setNotificationVisible(true);
-      }
+    if (!requestFailed(res)) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "save.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      actions.resetForm();
+      setBothFilled(false);
+      invalidateServerData();
+      setNotificationVisible(true);
     } else {
       actions.setSubmitting(false);
       addNotification({

@@ -24,14 +24,13 @@ import {
 // Mirrors the Test Catalogue Editor's Terminology UX (Source/Code/Relationship,
 // inline edit, draft-row add). Persists through
 // `GET/PUT /rest/sample-types/{id}/terminology`.
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"];
+const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
   SNOMED: "teal",
   CIEL: "purple",
   OCL: "cyan",
-  WHONET: "magenta",
 };
 
 const emptyDraft = () => ({ source: "", code: "", relationship: "" });
@@ -228,6 +227,7 @@ const TerminologySection = ({ sampleTypeId }) => {
           <TableBody>
             {mappings.map((m, i) => {
               const editing = editingRows.has(i);
+              const sourceEditable = SOURCES.includes(m.source);
               return (
                 <TableRow
                   key={m.id || `new-${i}`}
@@ -305,19 +305,21 @@ const TerminologySection = ({ sampleTypeId }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      hasIconOnly
-                      renderIcon={editing ? Checkmark : Edit}
-                      data-testid={`sampleType-edit-mapping-${i}`}
-                      iconDescription={intl.formatMessage({
-                        id: editing
-                          ? "label.button.close"
-                          : "label.button.edit",
-                      })}
-                      onClick={() => toggleEdit(i)}
-                    />
+                    {sourceEditable && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        hasIconOnly
+                        renderIcon={editing ? Checkmark : Edit}
+                        data-testid={`sampleType-edit-mapping-${i}`}
+                        iconDescription={intl.formatMessage({
+                          id: editing
+                            ? "label.button.close"
+                            : "label.button.edit",
+                        })}
+                        onClick={() => toggleEdit(i)}
+                      />
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"

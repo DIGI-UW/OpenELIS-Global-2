@@ -7,6 +7,7 @@ import "@carbon/charts/styles.css";
 import "./HistoricalTrends.scss";
 import { fetchHistoricalReadings } from "./api";
 import { toDate } from "./shared/timeUtils";
+import { useIntl } from "react-intl";
 
 const TIME_RANGE_OPTIONS = [
   "Last 24 Hours",
@@ -14,6 +15,31 @@ const TIME_RANGE_OPTIONS = [
   "Last 30 Days",
   "All Time",
 ];
+
+// Keyed on a stable identifier, not on the displayed label, so the label can
+// be translated without changing what the chart reads or exports.
+const METRIC_CONFIG = {
+  temperature: {
+    field: "temperatureCelsius",
+    unit: "°C",
+    labelId: "coldStorage.trends.metric.temperature",
+    axisTitleId: "coldStorage.trends.axis.temperature",
+  },
+  humidity: {
+    field: "humidityPercentage",
+    unit: "%",
+    labelId: "coldStorage.trends.metric.humidity",
+    axisTitleId: "coldStorage.trends.axis.humidity",
+  },
+  temperature2: {
+    field: "temperatureCelsius2",
+    unit: "°C",
+    labelId: "coldStorage.trends.metric.temperature2",
+    axisTitleId: "coldStorage.trends.axis.temperature2",
+  },
+};
+
+const METRIC_OPTIONS = Object.keys(METRIC_CONFIG);
 
 const RANGE_TO_DURATION = {
   "Last 24 Hours": 24 * 60 * 60 * 1000,
@@ -50,10 +76,20 @@ export default function HistoricalTrends({
   initialSelectedFreezerId = null,
   onFreezerSelected,
 }) {
+  const intl = useIntl();
+  const metricLabel = useCallback(
+    (metric) => intl.formatMessage({ id: METRIC_CONFIG[metric].labelId }),
+    [intl],
+  );
+  const metricAxisTitle = useCallback(
+    (metric) => intl.formatMessage({ id: METRIC_CONFIG[metric].axisTitleId }),
+    [intl],
+  );
   const [selectedFreezer, setSelectedFreezer] = useState(
     initialSelectedFreezerId || "All Freezers",
   );
   const [timeRange, setTimeRange] = useState("Last 24 Hours");
+  const [selectedMetric, setSelectedMetric] = useState("temperature");
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -81,63 +117,87 @@ export default function HistoricalTrends({
     return map;
   }, [devices]);
 
-  const loadReadings = useCallback(async () => {
-    if (!devices.length) {
-      setChartData([]);
-      return;
-    }
-    const ids =
-      selectedFreezer === "All Freezers"
-        ? devices
-            .map((device) => device.id)
-            .filter(Boolean)
-            .slice(0, MAX_SERIES)
-        : [freezerNameToIdMap[selectedFreezer] || devices[0]?.id].filter(
-            Boolean,
+  // fetchHistoricalReadings (via getFromOpenElisServerV2) does not expose an
+  // AbortController signal, so this can't cancel the in-flight network
+  // request itself. The AbortController is instead used as a "was this call
+  // superseded" guard so a slow older response can't overwrite the chart
+  // with stale data after the freezer/time-range filter has changed again.
+  // The controller is created by the caller (the useEffect below) and
+  // passed in, matching the existing house pattern for load-on-mount
+  // effects in this codebase.
+  const loadReadings = useCallback(
+    (controller) => {
+      if (!devices.length) {
+        setChartData([]);
+        return;
+      }
+      const ids =
+        selectedFreezer === "All Freezers"
+          ? devices
+              .map((device) => device.id)
+              .filter(Boolean)
+              .slice(0, MAX_SERIES)
+          : [freezerNameToIdMap[selectedFreezer] || devices[0]?.id].filter(
+              Boolean,
+            );
+
+      if (!ids.length) {
+        setChartData([]);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      const { start, end } = getRangeBoundaries(timeRange);
+
+      (async () => {
+        try {
+          const responses = await Promise.all(
+            ids.map((id) =>
+              fetchHistoricalReadings(id, start, end).then((data) => ({
+                freezerId: id,
+                readings: data || [],
+              })),
+            ),
           );
+          if (controller.signal.aborted) {
+            return;
+          }
 
-    if (!ids.length) {
-      setChartData([]);
-      return;
-    }
+          const metricField = METRIC_CONFIG[selectedMetric].field;
+          const normalized = responses.flatMap(({ freezerId, readings }) => {
+            const device = devices.find((d) => d.id === freezerId);
+            const freezerName = device?.unitName || `Freezer ${freezerId}`;
+            return readings
+              .filter((reading) => reading[metricField] != null)
+              .map((reading) => ({
+                group: freezerName,
+                key: formatTrendLabel(reading.recordedAt),
+                value: reading[metricField],
+              }));
+          });
 
-    setLoading(true);
-    setError(null);
-    const { start, end } = getRangeBoundaries(timeRange);
-
-    try {
-      const responses = await Promise.all(
-        ids.map((id) =>
-          fetchHistoricalReadings(id, start, end).then((data) => ({
-            freezerId: id,
-            readings: data || [],
-          })),
-        ),
-      );
-
-      const normalized = responses.flatMap(({ freezerId, readings }) => {
-        const device = devices.find((d) => d.id === freezerId);
-        const freezerName = device?.unitName || `Freezer ${freezerId}`;
-        return readings
-          .filter((reading) => reading.temperatureCelsius != null)
-          .map((reading) => ({
-            group: freezerName,
-            key: formatTrendLabel(reading.recordedAt),
-            value: reading.temperatureCelsius,
-          }));
-      });
-
-      setChartData(normalized);
-    } catch (apiError) {
-      setError(apiError.message || "Unable to load historical data.");
-      setChartData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [devices, selectedFreezer, timeRange, freezerNameToIdMap]);
+          setChartData(normalized);
+        } catch (apiError) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          setError(apiError.message || "Unable to load historical data.");
+          setChartData([]);
+        } finally {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
+        }
+      })();
+    },
+    [devices, selectedFreezer, timeRange, selectedMetric, freezerNameToIdMap],
+  );
 
   useEffect(() => {
-    loadReadings();
+    const controller = new AbortController();
+    loadReadings(controller);
+    return () => controller.abort();
   }, [loadReadings]);
 
   useEffect(() => {
@@ -191,7 +251,7 @@ export default function HistoricalTrends({
           scaleType: "labels",
         },
         left: {
-          title: "Temperature (°C)",
+          title: metricAxisTitle(selectedMetric),
           mapsTo: "value",
           scaleType: "linear",
         },
@@ -204,7 +264,7 @@ export default function HistoricalTrends({
         showTotal: false,
       },
     }),
-    [zoomLevel],
+    [zoomLevel, selectedMetric, metricAxisTitle],
   );
 
   const handleZoomIn = useCallback(() => {
@@ -217,7 +277,7 @@ export default function HistoricalTrends({
 
   const handleReset = useCallback(() => {
     setZoomLevel(1);
-    loadReadings();
+    loadReadings(new AbortController());
   }, [loadReadings]);
 
   const handleExportCsv = useCallback(() => {
@@ -226,7 +286,7 @@ export default function HistoricalTrends({
     }
 
     // Create CSV content
-    const headers = ["Freezer", "Timestamp", "Temperature (°C)"];
+    const headers = ["Freezer", "Timestamp", metricAxisTitle(selectedMetric)];
     const rows = chartData.map((item) => [item.group, item.key, item.value]);
 
     const csvContent = [
@@ -240,7 +300,7 @@ export default function HistoricalTrends({
     const url = URL.createObjectURL(blob);
 
     const timestamp = new Date().toISOString().split("T")[0];
-    const filename = `freezer-temperature-data-${timestamp}.csv`;
+    const filename = `freezer-${selectedMetric.toLowerCase()}-data-${timestamp}.csv`;
 
     link.setAttribute("href", url);
     link.setAttribute("download", filename);
@@ -248,7 +308,7 @@ export default function HistoricalTrends({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [chartData]);
+  }, [chartData, selectedMetric, metricAxisTitle]);
 
   return (
     <div className="hist-trends-page">
@@ -282,6 +342,17 @@ export default function HistoricalTrends({
             items={TIME_RANGE_OPTIONS}
             selectedItem={timeRange}
             onChange={({ selectedItem }) => setTimeRange(selectedItem)}
+          />
+        </Column>
+        <Column lg={4} md={4} sm={4}>
+          <Dropdown
+            id="metric-filter"
+            titleText={intl.formatMessage({ id: "coldStorage.trends.metric" })}
+            label={metricLabel(selectedMetric)}
+            items={METRIC_OPTIONS}
+            itemToString={(item) => (item ? metricLabel(item) : "")}
+            selectedItem={selectedMetric}
+            onChange={({ selectedItem }) => setSelectedMetric(selectedItem)}
           />
         </Column>
 
@@ -344,25 +415,46 @@ export default function HistoricalTrends({
       <Grid fullWidth className="hist-kpis">
         <Column lg={4} md={4} sm={4}>
           <div className="hist-kpi-card">
-            <p className="hist-kpi-label">Average Temperature</p>
+            <p className="hist-kpi-label">
+              {intl.formatMessage(
+                { id: "coldStorage.trends.averageMetric" },
+                { metric: metricLabel(selectedMetric) },
+              )}
+            </p>
             <p className="hist-kpi-value">
-              {stats.avg === "-" ? "-" : `${stats.avg}°C`}
+              {stats.avg === "-"
+                ? "-"
+                : `${stats.avg}${METRIC_CONFIG[selectedMetric].unit}`}
             </p>
           </div>
         </Column>
         <Column lg={4} md={4} sm={4}>
           <div className="hist-kpi-card">
-            <p className="hist-kpi-label">Min Temperature</p>
+            <p className="hist-kpi-label">
+              {intl.formatMessage(
+                { id: "coldStorage.trends.minMetric" },
+                { metric: metricLabel(selectedMetric) },
+              )}
+            </p>
             <p className="hist-kpi-value hist-kpi-min">
-              {stats.min === "-" ? "-" : `${stats.min}°C`}
+              {stats.min === "-"
+                ? "-"
+                : `${stats.min}${METRIC_CONFIG[selectedMetric].unit}`}
             </p>
           </div>
         </Column>
         <Column lg={4} md={4} sm={4}>
           <div className="hist-kpi-card">
-            <p className="hist-kpi-label">Max Temperature</p>
+            <p className="hist-kpi-label">
+              {intl.formatMessage(
+                { id: "coldStorage.trends.maxMetric" },
+                { metric: metricLabel(selectedMetric) },
+              )}
+            </p>
             <p className="hist-kpi-value hist-kpi-max">
-              {stats.max === "-" ? "-" : `${stats.max}°C`}
+              {stats.max === "-"
+                ? "-"
+                : `${stats.max}${METRIC_CONFIG[selectedMetric].unit}`}
             </p>
           </div>
         </Column>

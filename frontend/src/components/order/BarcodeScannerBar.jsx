@@ -8,13 +8,12 @@ import { useOrderContext } from "./OrderContext";
  *
  * Features:
  * - Accepts barcode scan or manual lab number entry
- * - Shows inline success (green) or error (red) feedback within 500ms
+ * - Shows inline success (green) or error (red) feedback when lookup completes
  * - Auto-clears feedback after 3 seconds
  * - Loads order in read-only mode when found
  */
 
 const FEEDBACK_DISPLAY_TIME = 3000; // 3 seconds
-const MIN_FEEDBACK_DELAY = 500; // 500ms minimum before showing feedback
 
 const BarcodeScannerBar = ({ onOrderLoaded, className = "" }) => {
   const intl = useIntl();
@@ -22,30 +21,26 @@ const BarcodeScannerBar = ({ onOrderLoaded, className = "" }) => {
 
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', message: string }
-  const feedbackTimerRef = useRef(null);
+  const mountedRef = useRef(true);
 
   // Clear feedback timer on unmount
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      if (feedbackTimerRef.current) {
-        clearTimeout(feedbackTimerRef.current);
-      }
+      mountedRef.current = false;
     };
   }, []);
 
   // Auto-clear feedback after display time
   useEffect(() => {
-    if (feedback) {
-      feedbackTimerRef.current = setTimeout(() => {
-        setFeedback(null);
-      }, FEEDBACK_DISPLAY_TIME);
-
-      return () => {
-        if (feedbackTimerRef.current) {
-          clearTimeout(feedbackTimerRef.current);
-        }
-      };
+    if (!feedback) {
+      return undefined;
     }
+
+    const feedbackTimer = setTimeout(() => {
+      setFeedback(null);
+    }, FEEDBACK_DISPLAY_TIME);
+    return () => clearTimeout(feedbackTimer);
   }, [feedback]);
 
   const handleSearch = useCallback(
@@ -55,17 +50,11 @@ const BarcodeScannerBar = ({ onOrderLoaded, className = "" }) => {
       }
 
       const trimmedBarcode = barcode.trim();
-      const startTime = Date.now();
 
       try {
         const result = await loadOrder(trimmedBarcode, true);
-
-        // Ensure minimum delay before showing feedback (NAV-7: within 500ms)
-        const elapsed = Date.now() - startTime;
-        if (elapsed < MIN_FEEDBACK_DELAY) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, MIN_FEEDBACK_DELAY - elapsed),
-          );
+        if (!mountedRef.current) {
+          return;
         }
 
         setFeedback({
@@ -79,13 +68,9 @@ const BarcodeScannerBar = ({ onOrderLoaded, className = "" }) => {
 
         // Clear input after successful scan
         setInputValue("");
-      } catch (error) {
-        // Ensure minimum delay before showing feedback
-        const elapsed = Date.now() - startTime;
-        if (elapsed < MIN_FEEDBACK_DELAY) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, MIN_FEEDBACK_DELAY - elapsed),
-          );
+      } catch {
+        if (!mountedRef.current) {
+          return;
         }
 
         setFeedback({

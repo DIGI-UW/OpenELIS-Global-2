@@ -202,8 +202,8 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
     // ---- auto-validated view (FR-A4) -----------------------------------------
 
     @Test
-    public void autoValidated_listsFinalizedAnalysesWithoutAValidatorSignatureOnly() throws Exception {
-        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = ?, released_date = NOW() WHERE id = 102",
+    public void autoValidated_listsAnalysesFinalizedAtResultEntry() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = ?, released_date = NULL WHERE id = 102",
                 Integer.valueOf(statusService.getStatusID(AnalysisStatus.Finalized)));
 
         mockMvc.perform(
@@ -211,6 +211,38 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].analysisId").value(OTHER_ID))
                 .andExpect(jsonPath("$[0].autoValidated").value(true)).andExpect(jsonPath("$[0].readOnly").value(true));
+    }
+
+    @Test
+    public void autoValidated_leavesOutAResultAValidatorReleasedWithoutAnESignature() throws Exception {
+        long current = analysisService.get(ANALYSIS_ID).getLastupdated().getTime();
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(rowBody("", "E", ",\"analysisLastupdated\":\"" + current + "\""))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("released"));
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized),
+                analysisService.get(ANALYSIS_ID).getStatusId());
+
+        mockMvc.perform(
+                get("/rest/AccessionValidation/auto-validated").param("accessionNumber", ACCESSION).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    public void autoValidated_leavesOutAResultCarryingAValidatorSignature() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = ?, released_date = NULL WHERE id = 102",
+                Integer.valueOf(statusService.getStatusID(AnalysisStatus.Finalized)));
+        try {
+            jdbcTemplate.update("INSERT INTO clinlims.electronic_signature (id, signer_id, signer_name_printed,"
+                    + " signature_meaning, signed_at, record_type, record_id, session_signing_sequence, auth_method)"
+                    + " VALUES (nextval('clinlims.electronic_signature_seq'), 1, 'John Doe',"
+                    + " 'VALIDATED_AND_RELEASED', NOW(), 'VALIDATION_BATCH', 102, 1, 'LOCAL')");
+
+            mockMvc.perform(get("/rest/AccessionValidation/auto-validated").param("accessionNumber", ACCESSION)
+                    .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        } finally {
+            jdbcTemplate.execute("TRUNCATE TABLE clinlims.electronic_signature");
+        }
     }
 
     @Test

@@ -68,18 +68,12 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             return;
         }
 
-        try {
-            qcResultService.createQCResult(analyzerId, testId, lot.getId(), lot.getControlLevel(), resultValue, unit,
-                    timestamp);
-
-            LogEvent.logInfo(CLASS_NAME, "processQCResult", "QC result created for lot=" + lot.getLotNumber() + " test="
-                    + testId + " instrument=" + analyzerId);
-        } catch (Exception e) {
-            LogEvent.logError(CLASS_NAME, "processQCResult", "Failed to create QC result for lot=" + lot.getLotNumber()
-                    + " test=" + testId + ": " + e.getMessage());
-            // Don't rethrow — the staging AnalyzerResult is still persisted,
-            // and QC processing failure should not block analyzer import.
-        }
+        // Persistence failures must roll back the caller's result staging and delivery
+        // receipt too.
+        qcResultService.createQCResult(analyzerId, testId, lot.getId(), lot.getControlLevel(), resultValue, unit,
+                timestamp);
+        LogEvent.logInfo(CLASS_NAME, "processQCResult",
+                "QC result created for lot=" + lot.getLotNumber() + " test=" + testId + " instrument=" + analyzerId);
     }
 
     /**
