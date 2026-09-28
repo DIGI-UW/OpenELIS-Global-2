@@ -503,8 +503,8 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   mount(authored);
   const row = within(screen.getByRole("group", { name: "Analyzer test 1" }));
   const name = row.getByRole("textbox", { name: "Suggested test name" });
-  await userEvent.type(name, "Site tuberculosis assay");
-  await userEvent.type(
+  changeText(name, "Site tuberculosis assay");
+  changeText(
     row.getByRole("textbox", { name: "Suggested specimen type" }),
     "Sputum",
   );
@@ -513,8 +513,8 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   );
   await userEvent.click(namedValues.getByRole("button", { name: "Add value" }));
   const inputs = namedValues.getAllByRole("textbox");
-  await userEvent.type(inputs[inputs.length - 1], "SITE REVIEW REQUIRED");
-  await userEvent.type(
+  changeText(inputs[inputs.length - 1], "SITE REVIEW REQUIRED");
+  changeText(
     row.getByRole("textbox", {
       name: "Suggested clinical answer for SITE REVIEW REQUIRED",
     }),
