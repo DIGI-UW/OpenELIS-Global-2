@@ -48,7 +48,7 @@ services:
 
   astm-simulator:
     container_name: openelis-astm-simulator
-    image: itechuw/astm-mock-server:0.1.2
+    image: itechuw/astm-mock-server:0.1.3
     platform: linux/amd64
     volumes:
       - analyzer-imports:/data/analyzer-imports
