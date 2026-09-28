@@ -263,7 +263,7 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             MonthDataPointDTO pt = new MonthDataPointDTO();
             pt.setMonth(date);
             pt.setTotalResults((int) total);
-            pt.setLowData(total < LOW_DATA_THRESHOLD);
+            pt.setLowData(evaluated < LOW_DATA_THRESHOLD);
             pt.setComplianceRate(
                     BigDecimal.valueOf(passing * 100.0 / evaluated).setScale(1, RoundingMode.HALF_UP).doubleValue());
             siteMap.get(sid).getDataPoints().add(pt);
@@ -371,17 +371,19 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             q.setParameter("standardId", standardId);
 
         StringBuilder ordersSql = new StringBuilder(
-                "SELECT CAST(vss.id AS text) AS site_id, COUNT(DISTINCT s.id) AS order_cnt ");
+                "SELECT CAST(vss.id AS text) AS site_id, vss.name AS site_name, COUNT(DISTINCT s.id) AS order_cnt ");
         ordersSql.append(ordersFrom()).append(ORDERS_WHERE);
         applyFilters(ordersSql, null, standardId);
-        ordersSql.append("GROUP BY vss.id");
+        ordersSql.append("GROUP BY vss.id, vss.name ORDER BY vss.name");
         Query oq = em.createNativeQuery(ordersSql.toString());
         setParams(oq, null, standardId, start, end);
         Map<String, Integer> ordersBySite = new LinkedHashMap<>();
+        Map<String, String> siteNames = new LinkedHashMap<>();
         @SuppressWarnings("unchecked")
         List<Object[]> orderRows = (List<Object[]>) oq.getResultList();
         for (Object[] r : orderRows) {
-            ordersBySite.put((String) r[0], ((Number) r[1]).intValue());
+            ordersBySite.put((String) r[0], ((Number) r[2]).intValue());
+            siteNames.put((String) r[0], (String) r[1]);
         }
 
         List<SiteComparisonDTO> result = new ArrayList<>();
@@ -401,6 +403,15 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             dto.setColorBand(rate == null ? null
                     : rate >= 90.0 ? SiteComparisonDTO.ColorBand.GREEN
                             : rate >= 70.0 ? SiteComparisonDTO.ColorBand.YELLOW : SiteComparisonDTO.ColorBand.RED);
+            result.add(dto);
+            siteNames.remove(dto.getSiteId());
+        }
+        for (Map.Entry<String, String> site : siteNames.entrySet()) {
+            SiteComparisonDTO dto = new SiteComparisonDTO();
+            dto.setSiteId(site.getKey());
+            dto.setSiteName(site.getValue());
+            dto.setTotalOrders(ordersBySite.get(site.getKey()));
+            dto.setExceedances(0);
             result.add(dto);
         }
         return result;
