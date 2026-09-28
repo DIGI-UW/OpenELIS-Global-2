@@ -29,11 +29,13 @@ export const createPatientValidationSchema = (configurationProperties = {}) => {
       ? Yup.string()
           .required("Patient Birth date Required")
           .test("valid-date", "Invalid date format", isValidDisplayDate)
-      : Yup.string().test(
-          "valid-date",
-          "Invalid date format",
-          (value) => !value || isValidDisplayDate(value),
-        ),
+      : Yup.string()
+          .nullable()
+          .test(
+            "valid-date",
+            "Invalid date format",
+            (value) => !value || isValidDisplayDate(value),
+          ),
     email: Yup.string().email("Patient Email Must Be Valid"),
     patientContact: Yup.object().shape({
       person: Yup.object().shape({
@@ -42,6 +44,6 @@ export const createPatientValidationSchema = (configurationProperties = {}) => {
     }),
     gender: sexRequired
       ? Yup.string().required("Sex is Required")
-      : Yup.string(),
+      : Yup.string().nullable(),
   });
 };

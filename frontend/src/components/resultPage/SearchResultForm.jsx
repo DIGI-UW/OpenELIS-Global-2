@@ -591,7 +591,8 @@ export function SearchResultForm(props) {
     var doRange = "";
     if (window.location.pathname == "/result") {
       displayFormType = new URLSearchParams(window.location.search).get("type");
-      doRange = new URLSearchParams(window.location.search).get("doRange");
+      doRange =
+        new URLSearchParams(window.location.search).get("doRange") || "false";
     } else if (window.location.pathname == "/LogbookResults") {
       displayFormType = "unit";
       doRange = "false";

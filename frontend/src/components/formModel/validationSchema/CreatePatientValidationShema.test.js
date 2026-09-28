@@ -53,4 +53,17 @@ describe("createPatientValidationSchema sex and age settings", () => {
     );
     expect(errors).toContain("birthDateForDisplay");
   });
+
+  test("a patient arriving with no sex or birth date at all passes when both are optional", async () => {
+    const errors = await errorsFor(
+      { PATIENT_SEX_REQUIRED: "false", PATIENT_AGE_REQUIRED: "false" },
+      patient({ gender: null, birthDateForDisplay: null }),
+    );
+    expect(errors).toEqual([]);
+  });
+
+  test("a null sex is still refused when sex is required", async () => {
+    const errors = await errorsFor({}, patient({ gender: null }));
+    expect(errors).toContain("gender");
+  });
 });
