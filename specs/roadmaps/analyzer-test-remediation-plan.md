@@ -234,6 +234,54 @@ for sources and the fresh-install versus existing-site boundary.
   accepted release pin. Do not count this focused coverage as complete mapping
   or release qualification.
 
+### Immediate resume checkpoint — shared-listener qualification
+
+Published OE2 implementation: `99e864a208`; published Bridge pin remains
+`b4a9f2cbff`. Local qualification candidate: OE2 `b41e5a42aa`, Bridge
+`b35d44e287` from draft #69, mock `6df789111d`. These are separate states.
+
+The first native candidate scenario failed during activation with HTTP 422,
+before sending traffic. The test saves a random per-analyzer incoming port and
+leaves prior test connections active without sender identities. The candidate
+Bridge instead resolves a shared listener from deployment configuration. Its
+restoration diagnostics identify indistinguishable active connections. This run
+was stopped; it supplies no passing COVID or new-Bridge workflow evidence.
+
+Resume in this order, without restarting the broad research audit:
+
+1. **Repair faithful connection setup in #4332.** Enter the mock instrument's
+   source identity through the normal setup UI and send that same identity in
+   native traffic. The mock already supports `sender_id`. Read the incoming
+   destination from the stack's shared-listener configuration, not a saved
+   per-analyzer port. Deactivate test connections through the normal workflow;
+   do not patch connection state in SQL or invent clinical mappings.
+   **Acceptance:** two instruments are attributed correctly on one listener;
+   the supported default setup needs no arbitrary incoming port; repeating the
+   workflow does not leave ambiguous active connections. A remaining product
+   or profile validation failure must be fixed at its owner, not bypassed.
+2. **Qualify the implemented mapping defaults.** Rerun MTB/RIF, then COVID
+   positive/negative and supported HIV numeric results with independent clinical
+   readback. Keep raw values and genuine unresolved outcomes. The 11 OE2,
+   20 editor and 29 Bridge focused tests establish component behavior only.
+3. **Finish the FILE evidence and profile corrections.** Establish the supported
+   workbook's concentration, units, status and control meanings; then prove
+   watched-directory import and archive/error behavior. Complete unabridged
+   GeneXpert/FluoroCycler compatibility before adopting draft #69 as a release
+   dependency. No profile row may be silently excluded to make a test pass.
+4. **Complete D4–D6.** Core HL7, original-result correction/retry, outage/replay,
+   populated upgrade and existing-site reconciliation remain required. Reuse
+   existing recovery work after reviewing current PR deltas. Present reviewed
+   videos from the same CI workflows and exact dependency set. Madagascar
+   packaging remains later and cannot substitute for core qualification.
+
+Research affects supplied defaults and acceptance, not only documentation:
+manufacturer evidence establishes clinical meaning and supported specimen;
+actual instrument/export samples establish wire codes and file semantics;
+Casey's guides supply real setup/recovery failure cases to reproduce. A shared
+LOINC alone does not establish a unique specimen-specific target or an answer
+translation. Unknown or incompatible outcomes must remain recoverable rather
+than become a blanket block on unrelated valid results.
+
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence
 question applies to that scenario, not to unrelated COVID/HIV work. A failing
