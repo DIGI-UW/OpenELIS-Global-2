@@ -88,7 +88,13 @@ const InHousePanelsPage = () => {
       setPanels([]);
       return;
     }
-    reload(schemeId);
+    // A late reply for the scheme just left must not replace this one's
+    // panels, or its Unblind now buttons act on another scheme.
+    let current = true;
+    fetchPanelsForScheme(schemeId, (rows) => current && setPanels(rows));
+    return () => {
+      current = false;
+    };
   }, [schemeId]);
 
   const unblind = (panelId) => {
