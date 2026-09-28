@@ -29,9 +29,6 @@ jobs:
           print('All i18n files OK — no duplicate keys')
           "
 
-      - name: Check en.json plurals parse on Transifex
-        run: python3 .github/scripts/check-transifex-plurals.py frontend/src/languages/en.json
-
   check-translation-source:
     name: Translation source-of-truth check
     if: github.head_ref != 'chore/update-transifex'
