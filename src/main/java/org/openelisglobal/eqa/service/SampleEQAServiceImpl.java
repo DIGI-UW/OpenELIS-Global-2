@@ -13,6 +13,7 @@ import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -98,8 +99,16 @@ public class SampleEQAServiceImpl extends BaseObjectServiceImpl<SampleEQA, Long>
     @Override
     @Transactional(readOnly = true)
     public Optional<Long> findPerAnalystSchemeId(Long sampleId) {
+        return schemeOf(sampleId).filter(scheme -> Boolean.TRUE.equals(scheme.getPerAnalyst())).map(EQAProgram::getId);
+    }
+
+    @Override
+    public boolean isInHouse(Long sampleId) {
+        return schemeOf(sampleId).filter(scheme -> scheme.getSchemeType() == EQASchemeType.IN_HOUSE).isPresent();
+    }
+
+    private Optional<EQAProgram> schemeOf(Long sampleId) {
         return findBySampleId(sampleId).filter(sample -> Boolean.TRUE.equals(sample.getIsEqaSample()))
-                .map(SampleEQA::getCycleId).flatMap(cycleId -> eqaCycleDAO.get(cycleId)).map(EQACycle::getScheme)
-                .filter(scheme -> Boolean.TRUE.equals(scheme.getPerAnalyst())).map(EQAProgram::getId);
+                .map(SampleEQA::getCycleId).flatMap(cycleId -> eqaCycleDAO.get(cycleId)).map(EQACycle::getScheme);
     }
 }
