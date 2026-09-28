@@ -211,6 +211,10 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   const intl = useIntl();
   const nationalIdRequired =
     configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const patientSexRequired =
+    configurationProperties.PATIENT_SEX_REQUIRED !== "false";
+  const patientAgeRequired =
+    configurationProperties.PATIENT_AGE_REQUIRED !== "false";
   const aliasEnabled = configIsTrue(
     configurationProperties.PATIENT_ALIAS_ENABLED,
   );
@@ -1129,8 +1133,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           valueSelected={values.gender}
                           legendText={
                             <>
-                              {intl.formatMessage({ id: "patient.gender" })}{" "}
-                              <span className="requiredlabel">*</span>
+                              {intl.formatMessage({ id: "patient.gender" })}
+                              {patientSexRequired && (
+                                <>
+                                  {" "}
+                                  <span className="requiredlabel">*</span>
+                                </>
+                              )}
                             </>
                           }
                           name={field.name}
@@ -1170,7 +1179,9 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.dob",
                               })}
-                              <span className="requiredlabel">*</span>
+                              {patientAgeRequired && (
+                                <span className="requiredlabel">*</span>
+                              )}
                             </>
                           }
                           autofillDate={true}

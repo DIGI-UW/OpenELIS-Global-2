@@ -14,6 +14,7 @@ import {
 } from "@carbon/react";
 import { Copy, Launch, WarningAltFilled } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
+import { displayRange } from "../common/rangeNotApplied";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
@@ -159,6 +160,11 @@ const Validation = (props) => {
         return intl.formatMessage({
           id: "label.validation.emptyState.queueEmpty",
         });
+      case "rangeNotApplied":
+        return intl.formatMessage(
+          { id: "label.validation.emptyState.rangeNotApplied" },
+          { count: reason.count },
+        );
       case "noReference":
         return `${intl.formatMessage(
           { id: "label.validation.emptyState.noReference" },
@@ -214,8 +220,9 @@ const Validation = (props) => {
     {
       id: "normalRange",
       name: intl.formatMessage({ id: "column.name.normalRange" }),
-      selector: (row) => row.normalRange,
+      selector: (row) => displayRange(intl, row),
       sortable: true,
+      wrap: true,
       width: "8rem",
     },
     {

@@ -36,6 +36,7 @@ import {
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { triageRows } from "./validationTriage";
+import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
   NOTE_CONTEXT_VALIDATION,
@@ -284,7 +285,7 @@ const ValidationReviewPanel = ({
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
-            value={row.normalRange || notRecorded}
+            value={displayRange(intl, row) || notRecorded}
             testId="review-normal-range"
           />
           <Field

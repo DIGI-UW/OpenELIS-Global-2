@@ -24,6 +24,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -254,9 +255,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                                             : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
                                                     + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
                                                     .trim());
-            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
+            analysisItem.setPatientInfo(StringUtil.joinNonBlank(", ", itemPatient.getNationalId(),
+                    itemPatient.getGender(), itemPatient.getBirthDateForDisplay()));
         }
 
         // Surface failed QC samples for the batch so the frontend can render the

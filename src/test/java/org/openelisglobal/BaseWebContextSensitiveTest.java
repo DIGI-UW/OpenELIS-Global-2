@@ -271,6 +271,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             truncateTablesInConnection(jdbcConn, dataset.getTableNames());
             DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
             synchronizeFixtureSequences(jdbcConn, dataset.getTableNames());
+            resyncSequencesForTables(jdbcConn, dataset.getTableNames());
             if (participatesInTestTransaction) {
                 ensureAuditSystemUser();
                 ensureReferenceSeedRows();
@@ -326,6 +327,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 + "is_active, is_employee, lastupdated) "
                 + "SELECT nextval('system_user_seq'), 'TEST_ADMIN', 'admin', 'Doe', 'John', 'JD', 'Y', 'Y', now() "
                 + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'admin')");
+        // A fixture user without a version is considered transient by Hibernate.
+        jdbcTemplate.update("UPDATE system_user SET lastupdated = now() WHERE lastupdated IS NULL");
     }
 
     /**
@@ -486,6 +489,31 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
         } finally {
             DataSourceUtils.releaseConnection(conn, dataSource);
+        }
+    }
+
+    /**
+     * Synchronize conventionally named numeric fixture sequences on the fixture's
+     * own connection, including inside a rollback-managed test transaction.
+     */
+    private void resyncSequencesForTables(Connection conn, String[] tableNames) throws SQLException {
+        for (String table : tableNames) {
+            String tableName = table.toLowerCase(java.util.Locale.ROOT);
+            String sequence = tableName + "_seq";
+            try (java.sql.PreparedStatement check = conn.prepareStatement("SELECT 1 FROM pg_class c"
+                    + " JOIN pg_namespace n ON n.oid = c.relnamespace"
+                    + " JOIN information_schema.columns col ON col.table_name = ? AND col.column_name = 'id'"
+                    + "   AND col.table_schema = 'clinlims' AND col.data_type IN ('numeric', 'integer', 'bigint')"
+                    + " WHERE c.relkind = 'S' AND c.relname = ? AND n.nspname = 'clinlims'")) {
+                check.setString(1, tableName);
+                check.setString(2, sequence);
+                try (java.sql.ResultSet rs = check.executeQuery()) {
+                    if (!rs.next()) {
+                        continue;
+                    }
+                }
+            }
+            synchronizeSequence(conn, "clinlims." + sequence, "clinlims." + tableName);
         }
     }
 

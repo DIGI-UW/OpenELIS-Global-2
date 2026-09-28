@@ -491,6 +491,9 @@ public abstract class CSVColumnBuilder {
         public String translateAge(Strategy strategy, String end) throws SQLException, ParseException {
             java.util.Date birthday = resultSet.getDate("birth_date");
             java.util.Date endDate = parseDateTimeForDatabaseSql(end);
+            if (birthday == null || endDate == null) {
+                return "";
+            }
             switch (strategy) {
             case AGE_YEARS:
                 return String.valueOf(DateUtil.getAgeInYears(birthday, endDate));

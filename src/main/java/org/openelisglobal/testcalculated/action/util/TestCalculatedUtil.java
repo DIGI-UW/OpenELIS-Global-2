@@ -22,6 +22,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -182,6 +183,9 @@ public class TestCalculatedUtil {
                         }
                     }
                     Calculation calculation = resultCalculation.getCalculation();
+                    if (!isMissingParams && usesAgeWithoutBirthDate(calculation, resultSet.patient)) {
+                        isMissingParams = true;
+                    }
                     if (!isMissingParams) {
                         StringBuffer function = new StringBuffer();
                         calculation.getOperations().forEach(operation -> {
@@ -504,6 +508,19 @@ public class TestCalculatedUtil {
 
     private boolean operandReads(Operation operation, Result result) {
         return operandReads(ruleResultScope, operation, result);
+    }
+
+    /**
+     * A calculation reading the patient's age cannot run for a patient with no
+     * birth date; it is skipped like one with a missing operand.
+     */
+    static boolean usesAgeWithoutBirthDate(Calculation calculation, Patient patient) {
+        if (patient != null && patient.getBirthDate() != null) {
+            return false;
+        }
+        return calculation.getOperations().stream()
+                .anyMatch(oper -> oper.getType() == Operation.OperationType.PATIENT_ATTRIBUTE
+                        && Operation.PatientAttribute.AGE.toString().equals(oper.getValue()));
     }
 
     private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,

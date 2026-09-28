@@ -652,11 +652,26 @@ public class ResultUtil {
             if (resultLimit != null && resultLimit.isAlwaysValidate()) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
-            if (!clearAtEntry(testResult, analysis, resultLimit)) {
+            if (rangeNotApplied(testResult, analysis) || !clearAtEntry(testResult, analysis, resultLimit)) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * The patient's missing sex or birth date kept a range that depends on it from
+     * applying. Decided here from the stored patient, not from the page's range, so
+     * such a result always waits for a validator.
+     */
+    private static boolean rangeNotApplied(TestResultItem testResult, Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        Patient patient = SpringContext.getBean(SampleService.class).getPatient(analysis.getSampleItem().getSample());
+        String componentId = GenericValidator.isBlankOrNull(testResult.getTestResultComponentId()) ? null
+                : testResult.getTestResultComponentId();
+        return resultLimitService.selectResultLimitForResult(analysis, null, patient, componentId).isRangeNotApplied();
     }
 
     /**

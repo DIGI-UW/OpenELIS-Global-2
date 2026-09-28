@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -382,6 +383,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
+            updateData.setEqaCycleId(sampleOrder.getEqaCycleId());
+            updateData.setEqaReceivedTempC(sampleOrder.getEqaReceivedTempC());
+            updateData.setEqaIntegrityOk(sampleOrder.getEqaIntegrityOk());
+            updateData.setEqaIntegrityNotes(sampleOrder.getEqaIntegrityNotes());
+            updateData.setEqaShippingBoxId(sampleOrder.getEqaShippingBoxId());
         }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
@@ -561,7 +567,26 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     .body(Map.of("error", "Order save did not persist (verification check failed). See server logs."));
         }
 
+        if (!ordersWithoutPatient) {
+            form.setRangeNotAppliedTests(rangeNotAppliedTests(persistedSample));
+        }
+
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * The saved order's tests whose reference range will not be applied because the
+     * patient's sex or birth date is missing, for the non-blocking warning shown
+     * after the save. A failure here is logged and never fails a save that already
+     * succeeded.
+     */
+    private List<String> rangeNotAppliedTests(Sample sample) {
+        try {
+            return samplePatientService.getTestNamesWithRangeNotApplied(sample);
+        } catch (RuntimeException e) {
+            logger.error("Could not list tests without an applicable range for sample {}", sample.getId(), e);
+            return new ArrayList<>();
+        }
     }
 
     /**

@@ -98,6 +98,7 @@ export const OrderContext = createContext({
 
   // Test-to-sample assignments (Step 2: Collect)
   testSampleAssignments: {},
+  rangeNotApplied: { labNumber: null, tests: [] },
 
   // Actions
   loadOrder: () => {},
@@ -239,6 +240,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [rangeNotApplied, setRangeNotApplied] = useState({
+    labNumber: null,
+    tests: [],
+  });
   const [stepProgress, setStepProgress] = useState({
     enter: false,
     collect: false,
@@ -670,6 +675,19 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       ? { ...sampleOrderItems, sampleId: orderId }
       : { ...sampleOrderItems, orderKey: orderKeyRef.current };
 
+  const recordRangeNotApplied = useCallback(async (response, labNo) => {
+    let tests = [];
+    try {
+      const body = await response.clone().json();
+      tests = Array.isArray(body?.rangeNotAppliedTests)
+        ? body.rangeNotAppliedTests
+        : [];
+    } catch (e) {
+      tests = [];
+    }
+    setRangeNotApplied({ labNumber: labNo || null, tests });
+  }, []);
+
   const saveOrder = useCallback(
     async (
       silent = false,
@@ -737,6 +755,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           JSON.stringify(submitData),
           async (response) => {
             if (response && response.ok) {
+              await recordRangeNotApplied(
+                response,
+                orderData?.sampleOrderItems?.labNo,
+              );
               setIsDirty(false);
               setSaveStatus(SaveStatus.SAVED);
               setError(null);
@@ -986,6 +1008,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           JSON.stringify(submitData),
           async (response) => {
             if (response && response.ok) {
+              await recordRangeNotApplied(
+                response,
+                orderData?.sampleOrderItems?.labNo,
+              );
               setFieldErrors({});
               // Reload order to get the created sample ID
               const labNo = orderData?.sampleOrderItems?.labNo;
@@ -1245,6 +1271,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       qa: false,
     });
     setStorageSkippedState(false);
+    setRangeNotApplied({ labNumber: null, tests: [] });
     lastSavedDataRef.current = null;
     orderKeyRef.current = newClientKey();
 
@@ -1397,6 +1424,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     stepProgress,
     storageSkipped,
     testSampleAssignments,
+    rangeNotApplied,
 
     // Actions
     loadOrder,

@@ -12,11 +12,15 @@ import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
  * Each shows one site_information domain: Site Information holds the identity
  * settings (electronic signature), Result Entry Configuration the result ones.
  */
-export type SettingsMenu = "SiteInformationMenu" | "ResultConfigurationMenu";
+export type SettingsMenu =
+  | "SiteInformationMenu"
+  | "ResultConfigurationMenu"
+  | "SampleEntryConfigurationMenu";
 
 const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
   SiteInformationMenu: /site information/i,
   ResultConfigurationMenu: /result entry configuration/i,
+  SampleEntryConfigurationMenu: /order entry configuration/i,
 };
 
 export class SiteInformationPage {
@@ -101,6 +105,8 @@ export class SiteInformationPage {
 const SETTING_MENU: Record<string, SettingsMenu> = {
   resultsEntryUnifiedRoute: "ResultConfigurationMenu",
   electronicSignatureEnabled: "SiteInformationMenu",
+  "Patient sex required": "SampleEntryConfigurationMenu",
+  "Patient age required": "SampleEntryConfigurationMenu",
 };
 
 /** Read a boolean site_information setting off its admin menu. */

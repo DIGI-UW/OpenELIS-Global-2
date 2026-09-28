@@ -572,6 +572,10 @@
   <!-- OGC-704: per-test TEa for Westgard sigma metrics -->
   <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
 
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs
+       (renumbered from 051 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
+
   <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
   <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
 
@@ -586,5 +590,8 @@
 
   <!-- Audit history rows for tables keyed by a UUID string (qc_control_lot). -->
   <include relativeToChangelogFile="true" file="109-history-reference-key.xml"/>
+
+  <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
+  <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
 
 </databaseChangeLog>
