@@ -11,6 +11,7 @@ export async function sendGeneXpertAstm(
   accession: string,
   testCode: string,
   value: string,
+  senderId: string,
 ): Promise<void> {
   const bridgeUrl =
     process.env.ANALYZER_BRIDGE_URL ||
@@ -35,14 +36,42 @@ export async function sendGeneXpertAstm(
     `Bridge connection: ${connectionResponse.status()}`,
   ).toBeTruthy();
   const connection = (await connectionResponse.json()) as {
-    fields: Array<{ key: string; currentValue?: number }>;
+    fields: Array<{ key: string; currentValue?: string | number }>;
+    configRevision: number;
     actualRuntimeState: string;
   };
   expect(connection.actualRuntimeState).toBe("ACTIVE");
-  const port = connection.fields.find(
-    (field) => field.key === "port",
-  )?.currentValue;
-  expect(port, "Saved Bridge listener port").toEqual(expect.any(Number));
+  expect(
+    connection.fields.find((field) => field.key === "senderId")?.currentValue,
+    "The UI-configured sender must match the instrument message",
+  ).toBe(senderId);
+  const probeResponse = await request.post(
+    `${bridgeUrl}/api/connections/${encodeURIComponent(connectionId)}/probe`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${bridgeUser}:${bridgePassword}`).toString("base64")}`,
+      },
+      data: {
+        schemaVersion: "1.0",
+        requestId: `native-${accession}`,
+        connectionId,
+        expectedConfigRevision: connection.configRevision,
+      },
+    },
+  );
+  expect(
+    probeResponse.ok(),
+    `Bridge listener probe: ${probeResponse.status()}`,
+  ).toBeTruthy();
+  const probe = (await probeResponse.json()) as {
+    checks: Array<{ key: string; status: string; details?: { port?: number } }>;
+  };
+  const listener = probe.checks.find((check) => check.key === "listener");
+  expect(listener?.status, "Shared listener ready").toBe("PASSED");
+  const port = listener?.details?.port;
+  expect(port, "Effective shared listener port from Bridge").toEqual(
+    expect.any(Number),
+  );
   const networksResponse = await request.get(`${mockUrl}/analyzers`);
   expect(networksResponse.ok()).toBeTruthy();
   const networks = (await networksResponse.json()) as {
@@ -63,6 +92,7 @@ export async function sendGeneXpertAstm(
     data: {
       destination,
       sample_id: accession,
+      sender_id: senderId,
       results: [{ test_code: testCode, value }],
     },
   });

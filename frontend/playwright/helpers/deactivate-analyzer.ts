@@ -13,12 +13,13 @@ export async function deactivateAnalyzerByName(
   if (page.isClosed()) return;
 
   await goToAnalyzerDashboard(page);
+  await page.getByTestId("analyzer-search-input").fill(analyzerName);
   const row = page
     .locator("tbody tr", {
       hasText: new RegExp(escapeRegExp(analyzerName), "i"),
     })
     .first();
-  if ((await row.count()) === 0) return;
+  await expect(row).toBeVisible();
 
   const status = row.locator('[data-testid^="status-badge-"]');
   if ((await status.textContent())?.trim() === "Inactive") return;

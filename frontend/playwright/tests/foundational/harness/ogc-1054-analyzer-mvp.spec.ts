@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
+import { deactivateAnalyzerByName } from "../../../helpers/deactivate-analyzer";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import {
   sendGeneXpertAstm,
@@ -225,7 +226,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       test.setTimeout(180_000 * TIMEOUT_SCALE);
       const runId = Date.now();
       const analyzerName = `E2E GeneXpert ${runId}`;
-      const listenerPort = String(40_000 + (runId % 20_000));
+      const senderId = `GX-${runId}`;
       const list = new AnalyzerListPage(page);
       const setup = new AnalyzerSetupPage(page);
       await list.goto();
@@ -241,79 +242,86 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         analyzerName,
         "genexpert-astm",
       );
-      const order = await createAnalyzerClinicalOrder(page, {
-        profileId: analyzer.profileId,
-        profileRevision: analyzer.profileRevision,
-        sourceCode: scenario.code,
-        expectedTestName: scenario.testName,
-        expectedLoinc: scenario.loinc,
-        expectedMappedValue: scenario.raw,
-        specimenName: scenario.specimen || "Sputum",
-      });
-      await confirmShippedMapping(page, analyzer);
-      await capture(page, testInfo, "gene-shipped-mapping-confirmed");
-      await page.goto(verifyUrl, {
-        waitUntil: "domcontentloaded",
-        timeout: NAV_TIMEOUT,
-      });
-      await setup.continueToConnect();
-      await setup.fillPort(listenerPort);
-      await page.getByRole("button", { name: "Finish and activate" }).click();
-      const analyzerRow = page.getByTestId(`analyzer-row-${analyzer.id}`);
-      await expect(analyzerRow).toContainText("Active", {
-        timeout: LONG_TIMEOUT,
-      });
-      await capture(page, testInfo, "gene-connection-active");
+      try {
+        const order = await createAnalyzerClinicalOrder(page, {
+          profileId: analyzer.profileId,
+          profileRevision: analyzer.profileRevision,
+          sourceCode: scenario.code,
+          expectedTestName: scenario.testName,
+          expectedLoinc: scenario.loinc,
+          expectedMappedValue: scenario.raw,
+          specimenName: scenario.specimen || "Sputum",
+        });
+        await confirmShippedMapping(page, analyzer);
+        await capture(page, testInfo, "gene-shipped-mapping-confirmed");
+        await page.goto(verifyUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: NAV_TIMEOUT,
+        });
+        await setup.continueToConnect();
+        await setup.fillSenderId(senderId);
+        await page.getByRole("button", { name: "Finish and activate" }).click();
+        const analyzerRow = page.getByTestId(`analyzer-row-${analyzer.id}`);
+        await expect(analyzerRow).toContainText("Active", {
+          timeout: LONG_TIMEOUT,
+        });
+        await capture(page, testInfo, "gene-connection-active");
 
-      await sendGeneXpertAstm(
-        page.request,
-        analyzer.bridgeConnectionId,
-        order.accession,
-        scenario.code,
-        scenario.raw,
-      );
-      await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(
-              `${API}/AnalyzerResults?id=${analyzer.id}`,
-            );
-            if (!response.ok()) return false;
-            const worklist = (await response.json()) as {
-              resultList?: Array<{ accessionNumber?: string }>;
-            };
-            return (worklist.resultList ?? []).some(
-              (result) => result.accessionNumber === order.accession,
-            );
-          },
-          { timeout: LONG_TIMEOUT },
-        )
-        .toBe(true);
-      await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-        waitUntil: "domcontentloaded",
-        timeout: NAV_TIMEOUT,
-      });
-      const row = page.getByRole("row", { name: new RegExp(order.accession) });
-      await expect(row).toContainText(scenario.result, {
-        timeout: LONG_TIMEOUT,
-      });
-      await capture(page, testInfo, "gene-received-result");
-      await row.locator('label[for$=".isAccepted"]').click();
-      await page.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(row).not.toBeVisible({ timeout: LONG_TIMEOUT });
-      await expectClinicalReadback(page, order, scenario.result);
-      await page.goto(
-        `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
-        { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
-      );
-      const clinicalRow = page.getByRole("row", {
-        name: new RegExp(order.accession),
-      });
-      await expect(clinicalRow).toContainText(scenario.testName, {
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(clinicalRow).toContainText(scenario.result);
-      await capture(page, testInfo, "gene-clinical-result-saved");
+        await sendGeneXpertAstm(
+          page.request,
+          analyzer.bridgeConnectionId,
+          order.accession,
+          scenario.code,
+          scenario.raw,
+          senderId,
+        );
+        await expect
+          .poll(
+            async () => {
+              const response = await page.request.get(
+                `${API}/AnalyzerResults?id=${analyzer.id}`,
+              );
+              if (!response.ok()) return false;
+              const worklist = (await response.json()) as {
+                resultList?: Array<{ accessionNumber?: string }>;
+              };
+              return (worklist.resultList ?? []).some(
+                (result) => result.accessionNumber === order.accession,
+              );
+            },
+            { timeout: LONG_TIMEOUT },
+          )
+          .toBe(true);
+        await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+          waitUntil: "domcontentloaded",
+          timeout: NAV_TIMEOUT,
+        });
+        const row = page.getByRole("row", {
+          name: new RegExp(order.accession),
+        });
+        await expect(row).toContainText(scenario.result, {
+          timeout: LONG_TIMEOUT,
+        });
+        await capture(page, testInfo, "gene-received-result");
+        await row.locator('label[for$=".isAccepted"]').click();
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await expect(row).not.toBeVisible({ timeout: LONG_TIMEOUT });
+        await expectClinicalReadback(page, order, scenario.result);
+        await page.goto(
+          `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+          { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+        );
+        const clinicalRow = page.getByRole("row", {
+          name: new RegExp(order.accession),
+        });
+        await expect(clinicalRow).toContainText(scenario.testName, {
+          timeout: LONG_TIMEOUT,
+        });
+        await expect(clinicalRow).toContainText(scenario.result);
+        await capture(page, testInfo, "gene-clinical-result-saved");
+      } finally {
+        await deactivateAnalyzerByName(page, analyzerName);
+      }
     });
   }
 

@@ -110,6 +110,12 @@ export class AnalyzerSetupPage {
       .fill(address);
   }
 
+  async fillSenderId(senderId: string) {
+    await this.page
+      .getByRole("textbox", { name: "Instrument system name", exact: true })
+      .fill(senderId);
+  }
+
   async fillPort(port: string) {
     const input = this.surface.getByRole("spinbutton", { name: /port/i });
     if (await input.isVisible()) {
