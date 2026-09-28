@@ -3,6 +3,7 @@ package org.openelisglobal.eqa;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -91,6 +92,7 @@ public class EQAParticipantResultLifecycleIntegrationTest extends EQASpineTestBa
             resultService.transitionStatus(id, EQASubmissionStatus.SUBMITTED, USER);
             fail("DRAFT cannot jump straight to SUBMITTED");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("from DRAFT to SUBMITTED"));
             assertEquals("DRAFT", statusInDb(id));
         }
     }
@@ -102,11 +104,13 @@ public class EQAParticipantResultLifecycleIntegrationTest extends EQASpineTestBa
             resultService.transitionStatus(id, EQASubmissionStatus.SCORED, USER);
             fail("SCORED must go through recordScore");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("SCORED carries side-effects"));
         }
         try {
             resultService.transitionStatus(id, EQASubmissionStatus.MISSED_DEADLINE, USER);
             fail("MISSED_DEADLINE must go through markMissedDeadline");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("MISSED_DEADLINE carries side-effects"));
         }
         assertEquals("DRAFT", statusInDb(id));
     }
@@ -124,6 +128,8 @@ public class EQAParticipantResultLifecycleIntegrationTest extends EQASpineTestBa
             resultService.saveDraft(edit);
             fail("a VALIDATED_PARTIAL result must not be editable as a draft");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(),
+                    expected.getMessage().contains("Only a DRAFT result can be edited; this one is VALIDATED_PARTIAL"));
             assertEquals("4.7", jdbc.queryForObject(
                     "SELECT result_value FROM clinlims.eqa_participant_result WHERE id = ?", String.class, id));
         }

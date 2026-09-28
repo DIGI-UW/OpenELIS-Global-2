@@ -235,8 +235,9 @@ public class EQAPanelReceiptIntegrationTest extends EQASpineTestBase {
 
         try {
             receiptService.recordReceipt(cycleId, ENROLLMENT, 424242, null, true, null, ADMIN_USER_ID, USER);
+            fail("a receipt naming a shipment that does not exist must be refused");
         } catch (IllegalArgumentException expected) {
-            // The receipt insert that preceded the failure must not survive
+            assertTrue(expected.getMessage(), expected.getMessage().contains("shipment 424242, which does not exist"));
         }
 
         assertEquals("nothing may persist when a side-effect fails", Integer.valueOf(0), jdbc.queryForObject(

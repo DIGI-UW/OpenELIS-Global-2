@@ -72,6 +72,7 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
             panelService.seal(panel.getId(), USER);
             fail("a panel with no samples must not seal");
         } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("Cannot seal a panel with no samples"));
             assertEquals(EQAPanelStatus.PREPARING,
                     eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
         }
@@ -87,6 +88,7 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
             panelService.seal(panel.getId(), USER);
             fail("a blank target must not seal (the converter passes blanks through unencrypted)");
         } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("sample has no target value"));
             assertEquals(EQAPanelStatus.PREPARING,
                     eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
         }
@@ -102,6 +104,8 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
             panelService.seal(panel.getId(), USER);
             fail("an in-house panel without an unblind date must not seal");
         } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(),
+                    expected.getMessage().contains("requires an unblind date before sealing"));
             assertEquals(EQAPanelStatus.PREPARING,
                     eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
         }
@@ -128,6 +132,7 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
             panelService.unblind(panel.getId(), USER);
             fail("PREPARING cannot jump straight to UNBLINDED");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("from PREPARING to UNBLINDED"));
             assertEquals(EQAPanelStatus.PREPARING,
                     eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
         }

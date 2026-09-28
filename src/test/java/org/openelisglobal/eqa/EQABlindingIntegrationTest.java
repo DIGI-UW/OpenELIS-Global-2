@@ -353,6 +353,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                     USER);
             fail("a spec list that skips a panel sample must be refused");
         } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("cover every panel sample exactly once"));
         }
         assertEquals("panel must not have moved", EQAPanelStatus.PREPARING,
                 eqaPanelDAO.get(panel.getId()).orElseThrow(AssertionError::new).getStatus());
@@ -618,7 +619,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         assertRefused(
                 () -> blindingService.sealAndDistribute(tooLong.getId(),
                         List.of(new BlindOrderSpec(longCode, SEEDED_TEST_ID, 1L)), USER),
-                "a blind code wider than an accession number");
+                "a blind code wider than an accession number", "exceeds the");
 
         EQACycle secondCycle = readBack(insertCycle(scheme, 2));
         EQAPanel shortOnAliquots = insertPanel(scheme, p -> {
@@ -629,8 +630,10 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
             p.setHomogeneityQcPassed(true);
         });
         Long sample = insertPanelSample(shortOnAliquots, "IH-01", "IHBLIND-V1", NUMERIC_ANALYTE, "100", "95", "105");
-        assertRefused(() -> blindingService.sealAndDistribute(shortOnAliquots.getId(),
-                List.of(new BlindOrderSpec(sample, SEEDED_TEST_ID, 1L)), USER), "fewer aliquots than samples");
+        assertRefused(
+                () -> blindingService.sealAndDistribute(shortOnAliquots.getId(),
+                        List.of(new BlindOrderSpec(sample, SEEDED_TEST_ID, 1L)), USER),
+                "fewer aliquots than samples", "aliquots produced");
 
         EQACycle thirdCycle = readBack(insertCycle(scheme, 3));
         EQAPanel failedQc = insertPanel(scheme, p -> {
@@ -644,19 +647,23 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         assertRefused(
                 () -> blindingService.sealAndDistribute(failedQc.getId(),
                         List.of(new BlindOrderSpec(qcSample, SEEDED_TEST_ID, 1L)), USER),
-                "failed homogeneity QC with no justification");
+                "failed homogeneity QC with no justification", "Homogeneity QC has not passed");
 
         assertEquals("no orders were created by any refused seal", Integer.valueOf(0),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.sample WHERE accession_number LIKE 'IHBLIND-V%'"
                         + " OR accession_number LIKE 'IHBLIND-THIS%'", Integer.class));
     }
 
-    private void assertRefused(Runnable action, String why) {
+    /**
+     * The refusal must be the one named: a different error at the same site would
+     * otherwise pass.
+     */
+    private void assertRefused(Runnable action, String why, String messageFragment) {
         try {
             action.run();
             fail("expected refusal: " + why);
         } catch (IllegalArgumentException | IllegalStateException expected) {
-            // The service refuses before writing anything
+            assertTrue(expected.getMessage(), expected.getMessage().contains(messageFragment));
         }
     }
 
@@ -764,6 +771,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
             blindingService.unblindAndScore(panel.getId(), USER, EQAUnblindMethod.MANUAL);
             fail("a SCORED panel must refuse a second unblind");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("from SCORED to UNBLINDED"));
         }
         assertEquals("no double-scoring on the re-run", Integer.valueOf(eventsAfterFirstRun),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_analyst_competency_event WHERE cycle_id = ?",
@@ -876,6 +884,8 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
             labelPDFService.generateLabelSheet(panel.getId());
             fail("labels before sealing would leak the panel's existence to the bench");
         } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(),
+                    expected.getMessage().contains("Labels are printable between sealing and unblinding"));
         }
     }
 }
