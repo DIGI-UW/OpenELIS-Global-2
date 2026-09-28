@@ -427,6 +427,54 @@ public class EQAAnalystCompetencyIntegrationTest extends EQASpineTestBase {
         assertNull(dismissal.get("nceId"));
     }
 
+    /**
+     * OGC-1252: the evidence under an analyst must mark exactly as many failures as
+     * the count above it. A sample with two events (a score and the triage or
+     * escalation that answers it) is one failure, so only the event that decides
+     * the sample carries the verdict; the other is shown as folded into it.
+     */
+    @Test
+    public void theEvidenceMarksAsManyFailuresAsTheCountDoes() {
+        Long transcribed = scoredThenTriaged(EQAPerformanceStatus.UNACCEPTABLE,
+                EQACompetencyEventType.DISMISSED_TRANSCRIPTION, ANALYTE);
+        Long escalated = recordOn(EQAPerformanceStatus.UNACCEPTABLE, EQACompetencyEventType.UNACCEPTABLE_SCORE,
+                ANALYTE);
+        escalate(escalated, insertNce("Closed"));
+        Long excused = scoredThenTriaged(EQAPerformanceStatus.UNACCEPTABLE, EQACompetencyEventType.DISMISSED_EQUIPMENT,
+                ANALYTE);
+
+        Map<String, Object> analyst = onlyAnalyst();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> history = (List<Map<String, Object>>) analyst.get("history");
+        assertEquals("three samples, six events", 6, history.size());
+        assertEquals("transcription and escalation each fail once; equipment is excused", 2,
+                analyst.get("failureCount"));
+        assertEquals("the evidence agrees with the count", 2,
+                history.stream().filter(row -> Boolean.TRUE.equals(row.get("failure"))).count());
+
+        assertEquals("the transcription dismissal decides its sample", Boolean.TRUE,
+                event(history, transcribed, "DISMISSED_TRANSCRIPTION").get("failure"));
+        assertEquals("TRIAGE", event(history, transcribed, "UNACCEPTABLE_SCORE").get("foldedInto"));
+        assertEquals(Boolean.FALSE, event(history, transcribed, "UNACCEPTABLE_SCORE").get("failure"));
+
+        assertEquals("with no triage, the score decides", Boolean.TRUE,
+                event(history, escalated, "UNACCEPTABLE_SCORE").get("failure"));
+        assertNull(event(history, escalated, "UNACCEPTABLE_SCORE").get("foldedInto"));
+        assertEquals("SCORE", event(history, escalated, "ESCALATED_TO_NCE").get("foldedInto"));
+
+        assertEquals("the excusing dismissal decides its sample", Boolean.FALSE,
+                event(history, excused, "DISMISSED_EQUIPMENT").get("failure"));
+        assertEquals(Boolean.FALSE, event(history, excused, "DISMISSED_EQUIPMENT").get("counted"));
+        assertEquals("TRIAGE", event(history, excused, "UNACCEPTABLE_SCORE").get("foldedInto"));
+        assertEquals(Boolean.FALSE, event(history, excused, "UNACCEPTABLE_SCORE").get("failure"));
+    }
+
+    private static Map<String, Object> event(List<Map<String, Object>> history, Long participantResultId,
+            String eventType) {
+        return history.stream().filter(row -> participantResultId.equals(row.get("participantResultId"))
+                && eventType.equals(row.get("eventType"))).findFirst().orElseThrow(AssertionError::new);
+    }
+
     @Test
     public void emptyLogRendersAnEmptyPageRatherThanFailing() {
         Map<String, Object> page = competencyService.getCompetencyRollup();

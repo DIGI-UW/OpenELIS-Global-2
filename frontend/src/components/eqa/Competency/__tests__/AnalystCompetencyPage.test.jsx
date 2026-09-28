@@ -128,6 +128,17 @@ const ROLLUP = {
           failure: false,
           nceId: null,
         },
+        {
+          date: "2026-05-11",
+          schemeName: "National CD4 PT",
+          analyteName: "CD4 count",
+          eventType: "UNACCEPTABLE_SCORE",
+          outcome: "unacceptable",
+          counted: false,
+          failure: false,
+          foldedInto: "TRIAGE",
+          nceId: null,
+        },
       ],
     },
     {
@@ -254,6 +265,8 @@ describe("AnalystCompetencyPage", () => {
     expect(history).toHaveTextContent("Dismissed — equipment");
     expect(history).toHaveTextContent("Excused");
     expect(history).toHaveTextContent("Failure");
+    // The score the dismissal answered is shown, but the dismissal decides it.
+    expect(history).toHaveTextContent("Decided by triage");
   });
 
   it("tells the two under-review rules apart on the row itself", async () => {

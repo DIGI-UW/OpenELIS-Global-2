@@ -11839,5 +11839,7 @@
   "analyzerType.editor.dataFlow": "Default direction of data transfer",
   "analyzerType.editor.outboundPortMode": "Default outbound port selection",
   "analyzerType.editor.clientProfilePort": "Client connection port stored in this profile (optional)",
-  "eqa.intake.sample": "Sample {code}"
+  "eqa.intake.sample": "Sample {code}",
+  "eqa.competency.countsFoldedTriage": "Decided by triage",
+  "eqa.competency.countsFoldedScore": "Counted with the score"
 }
