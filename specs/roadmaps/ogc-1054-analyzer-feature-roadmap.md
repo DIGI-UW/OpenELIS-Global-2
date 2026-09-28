@@ -2,6 +2,8 @@
 
 Updated: 28 September 2026. Current work: [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332). The [implementation plan](analyzer-test-remediation-plan.md) is the single source for current status, the ordered work table, dependency/evidence identities and acceptance checks.
 
+Immediate merge sequence: **#4332 → #4448 → #4449**. Refresh each follow-up against the merged predecessor and retain only its unique changes. Broader profile, outage/replay and upgrade qualification does not block these bounded PRs; their focused acceptance and current-head CI still apply.
+
 ## Intended workflow
 
 A laboratory selects a supported Bridge-shipped analyzer type, receives compatible default mappings from ordinary OE2 initialization, enters its site connection details and starts receiving results. Staff review and accept usable observations. An unknown or invalid observation retains its original data and explains what needs correction; unrelated valid observations continue. Correcting the affected mapping can recover the original observation without resending it or creating a duplicate.
@@ -10,9 +12,9 @@ Core OE2 and Bridge provide that reusable workflow. Madagascar qualification fol
 
 ## Current boundary
 
-#4332 delivers the repaired test foundation, API-based clinical prerequisites, bounded catalog/default/display fixes and persistent harness storage. It targets `develop`; obsolete stack grouping is removed. The CI repairs and review corrections are published; current Bridge integration is in progress. Final-commit checks are still required. No merge, deployment or complete analyzer qualification is claimed here.
+#4332 delivers the repaired test foundation, API-based clinical prerequisites, harness-owned catalog CSVs loaded by OE2's normal configuration service, bounded default/display fixes and persistent harness storage. The harness CSVs are not packaged as general OE2 catalog changes. It targets `develop`; obsolete stack grouping is removed. The CI repairs and review corrections are published; current Bridge integration and the selected native workflows pass locally. Final-commit checks are still required. No merge, deployment or complete analyzer qualification is claimed here.
 
-The obsolete Bridge 3.2.1 pin is being replaced with the current companion source based on released 3.2.3. The profile/default and shared-listener integration belongs to #4332. Core FILE compatibility remains unproven and must be resolved for the profile contract; complete HL7 qualification, original-result recovery closure, outage/replay and populated-upgrade proof retain their follow-up owners. Those have explicit owners and acceptance in the implementation plan. Finishing #4332 is the first checkpoint, not completion of this roadmap.
+The source and image pins now match released Bridge 3.2.4 and mock 0.1.2. The profile/default and shared-listener integration belongs to #4332. The numeric FluoroCycler FILE workflow passes through UI directory setup, Bridge watching and native workbook traffic, with independent clinical result readback. Additional FILE assay semantics, complete HL7 qualification, original-result recovery closure, outage/replay and populated-upgrade proof retain their follow-up owners. Those have explicit owners and acceptance in the implementation plan. Finishing #4332 is the first checkpoint, not completion of this roadmap.
 
 ## Ownership and durable decisions
 
@@ -26,7 +28,7 @@ Upgrades preserve original analyzer IDs, clinical records and migration inputs u
 
 ## Work ownership
 
-- **R0 / #4332:** faithful tests, OE2 defaults/display, current Bridge integration and persistent harness storage; require exact-commit CI and matching workflow evidence.
+- **R0 / #4332:** faithful tests, stable harness catalog through the normal loader, OE2 default/display fixes, current Bridge integration and persistent harness storage; require exact-commit CI and matching workflow evidence.
 - **R5 / Bridge #69 and linked core consumers:** qualify reusable profiles, the additive contract, shared-listener setup, FILE/HL7 and default meanings before consuming release pins.
 - **R1 / #4448:** original-result retry, held-sibling retention, specimen correction and truthful delivery errors. Include the original QC-lot recovery and unsaved-work preservation checks carried forward from closed #4256.
 - **R2 / #4449:** invalid mappings affect their observations instead of holding every result for the analyzer.

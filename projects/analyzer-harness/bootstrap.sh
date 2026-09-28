@@ -66,8 +66,8 @@ mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# Clinical defaults are packaged in the OE webapp and loaded by its normal
-# ConfigurationInitializationService. The harness must not replace that catalog.
+# Harness molecular tests and result choices are mounted read-only from
+# config-templates and loaded by OE's normal configuration service.
 # Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---

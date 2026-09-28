@@ -9,6 +9,7 @@ import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
         AnalyzerCatalogIdentityIntegrationTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensitiveTest {
+
+    private static final Path MOLECULAR_TESTS = Path
+            .of("projects/analyzer-harness/config-templates/tests/molecular-tests.csv");
+    private static final Path MOLECULAR_RESULTS = Path
+            .of("projects/analyzer-harness/config-templates/test-results/molecular-test-results.csv");
 
     @Configuration
     public static class TestConfig extends BaseTestConfig {
@@ -87,9 +93,10 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
     private TypeOfSampleTestService specimens;
 
     @Test
-    public void bundledCovidConfigurationReusesExistingIdsAndResultDefinitionsOnRepeatLoad() throws Exception {
+    public void harnessCatalogPreservesExistingCovidReportAndResultDefinitions() throws Exception {
         var original = tests.getTestByDescription("COVIDPCR(Respiratory Swab)");
         assertNotNull("The real database migration must supply the original test", original);
+        assertEquals("SARS-CoV-2 RNA by qRT-PCR", original.getLocalizedReportingName().getEnglish());
         var ids = catalogIds();
         var resultIds = results.getAllMatching("test.id", original.getId()).stream().map(result -> result.getId())
                 .sorted().toList();
@@ -97,16 +104,16 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         var specimenIds = specimenIds(original.getId());
 
         for (int run = 0; run < 2; run++) {
-            try (InputStream csv = getClass().getResourceAsStream("/configuration/tests/analyzer-covid-tests.csv")) {
+            try (InputStream csv = Files.newInputStream(MOLECULAR_TESTS)) {
                 assertNotNull(csv);
-                testHandler.processConfiguration(csv, "analyzer-covid-tests.csv");
+                testHandler.processConfiguration(csv, "molecular-tests.csv");
             }
-            assertEquals(0, testHandler.getLastSummary().getCreated());
-            assertEquals(1, testHandler.getLastSummary().getUpdated());
             assertEquals(testHandler.getLastSummary().getRows().toString(), 0,
                     testHandler.getLastSummary().getSkipped());
             assertEquals(ids, catalogIds());
             assertEquals(original.getId(), tests.getTestByDescription("COVIDPCR(Respiratory Swab)").getId());
+            assertEquals("SARS-CoV-2 RNA by qRT-PCR",
+                    tests.get(original.getId()).getLocalizedReportingName().getEnglish());
             assertEquals(specimenIds, specimenIds(original.getId()));
             assertEquals(resultIds, results.getAllMatching("test.id", original.getId()).stream()
                     .map(result -> result.getId()).sorted().toList());
@@ -148,7 +155,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
-    public void bundledMolecularDefaultsResolveSpecimenAndReportedResistanceOutcomes() throws Exception {
+    public void harnessMolecularCatalogResolvesSpecimenAndReportedResistanceOutcomes() throws Exception {
         var plasma = tests.getTestByDescription("HIVVIRALLOAD(Plasma)");
         var serum = tests.getTestByDescription("HIVVIRALLOAD(Serum)");
         assertNotNull(plasma);
@@ -160,7 +167,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         try (InputStream csv = getClass().getResourceAsStream("/configuration/test-sections/molecular-sections.csv")) {
             sectionHandler.processConfiguration(csv, "molecular-sections.csv");
         }
-        try (InputStream csv = getClass().getResourceAsStream("/configuration/tests/molecular-tests.csv")) {
+        try (InputStream csv = Files.newInputStream(MOLECULAR_TESTS)) {
             testHandler.processConfiguration(csv, "molecular-tests.csv");
         }
         assertEquals(testHandler.getLastSummary().getRows().toString(), 0, testHandler.getLastSummary().getSkipped());
@@ -188,8 +195,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
                         .toFile()));
         Map<String, String> firstOptions = null;
         for (int run = 0; run < 2; run++) {
-            try (InputStream csv = getClass()
-                    .getResourceAsStream("/configuration/test-results/molecular-test-results.csv")) {
+            try (InputStream csv = Files.newInputStream(MOLECULAR_RESULTS)) {
                 resultHandler.processConfiguration(csv, "molecular-test-results.csv");
             }
             var options = mappingCatalog.getActiveResultOptions(rif.getId()).stream()

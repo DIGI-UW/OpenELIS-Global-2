@@ -36,16 +36,16 @@ The script performs:
 
 ## Startup Catalog
 
-Clinical defaults come from the OE webapp's normal startup configuration under
-`src/main/resources/configuration/`, after the ordinary database migrations.
-There is no separate harness catalog and no test-only catalog mount.
+The harness mounts its molecular test and result-choice CSVs from
+`projects/analyzer-harness/config-templates/` and loads them through OE's
+ordinary startup configuration service. The harness files are test data, not
+application-wide clinical defaults.
 
-- CI loads the same bundled defaults as a new installation.
+- CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped
   `configuration-data` volume. A clean-install test resets it with the database
   using `scripts/dev-stack down --volumes --yes`.
-- Existing site-uploaded configuration remains a deliberate local override.
-  Fresh-default tests must start without those overrides.
+- Other OE2 deployments do not mount the harness files.
 
 The registered Playwright tests read the startup catalog and fail visibly when a
 shipped profile cannot resolve its intended clinical test. The seeder does not

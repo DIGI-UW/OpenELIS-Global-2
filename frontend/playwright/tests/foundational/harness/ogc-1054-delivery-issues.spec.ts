@@ -19,6 +19,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       process.env.MOCK_URL ||
       "http://localhost:8085";
     const mockName = `unregistered-${Date.now()}`;
+    const senderId = `UNREGISTERED-${Date.now()}`;
     const accession = `DEV01${String(Date.now()).padStart(15, "0")}`;
     const created = await page.request.post(`${mockUrl}/analyzers`, {
       data: { name: mockName, template: "genexpert_astm", port: 9600 },
@@ -37,6 +38,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
           data: {
             destination: `tcp://${bridgeIp}:12001`,
             sample_id: accession,
+            sender_id: senderId,
             results: [{ test_code: "MTB-RIF", value: "NOT DETECTED" }],
           },
         },
@@ -47,6 +49,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       ).toBeTruthy();
       expect(((await sent.json()) as { pushed: number }).pushed).toBe(1);
       let issueId = "";
+      let failureReason = "";
       await expect
         .poll(
           async () => {
@@ -68,12 +71,15 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
               (row) => row.sourceId === network.ip,
             );
             issueId = issue?.id || "";
-            return issue?.failureReason;
+            failureReason = issue?.failureReason || "";
+            return issue?.id || null;
           },
           { timeout: LONG_TIMEOUT },
         )
-        .toBe("UNREGISTERED_SOURCE");
-      expect(issueId).not.toBe("");
+        .not.toBeNull();
+      expect(failureReason, `Delivery issue ${issueId}`).toBe(
+        "UNREGISTERED_SOURCE",
+      );
 
       await page.goto("/analyzers", {
         waitUntil: "domcontentloaded",
