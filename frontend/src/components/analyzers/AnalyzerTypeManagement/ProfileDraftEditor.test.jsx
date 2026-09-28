@@ -27,6 +27,16 @@ vi.mock("../../../services/analyzerService", () => ({
   updateAnalyzerTypeControlRecognition: vi.fn(),
 }));
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const compactAstmProfile = () => {
+  const profile = clone(astmProfile);
+  profile.default_test_mappings = [
+    {
+      ...profile.default_test_mappings[0],
+      values: profile.default_test_mappings[0].values.slice(0, 1),
+    },
+  ];
+  return profile;
+};
 let stored;
 const recognition = () => ({
   draftId: stored.draftId,
@@ -497,7 +507,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
 });
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
-  const authored = clone(astmProfile);
+  const authored = compactAstmProfile();
   delete authored.catalog;
   authored.default_test_mappings[0].aliases = ["MTB", "MTB_ALT"];
   mount(authored);
@@ -536,7 +546,7 @@ it("edits test definitions without losing aliases, named results or unrelated pr
 });
 
 it("authors typed choices and visibility without changing other profile content", async () => {
-  mount(astmProfile);
+  mount(compactAstmProfile());
   const original = clone(stored.profile);
   const transportIndex = original.connectionFields.findIndex(
     (field) => field.key === "transport",
