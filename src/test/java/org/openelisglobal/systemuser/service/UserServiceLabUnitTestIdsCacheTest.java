@@ -67,8 +67,8 @@ public class UserServiceLabUnitTestIdsCacheTest {
         when(testService.getTestsByTestSectionIds(anyList())).thenReturn(tests("11", "12"));
         doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserViewerTestSections(READER,
                 ROLE_ID);
-        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserViewerTestSections(COLLEAGUE,
-                ROLE_ID);
+        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService)
+                .getUserViewerTestSections(COLLEAGUE, ROLE_ID);
     }
 
     @After
