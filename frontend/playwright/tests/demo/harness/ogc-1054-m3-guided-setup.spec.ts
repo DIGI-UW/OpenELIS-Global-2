@@ -28,7 +28,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
     const runId = Date.now().toString().slice(-8);
     const analyzerName = `M3 GeneXpert ${runId}`;
-    const listenerPort = String(45_000 + (Number(runId) % 1_000));
+    const senderId = `GX-GUIDED-${runId}`;
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
 
@@ -105,7 +105,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
 
-    await setup.fillPort(listenerPort);
+    await setup.fillSenderId(senderId);
     await page.getByRole("button", { name: "Save and finish later" }).click();
     await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
 
@@ -124,8 +124,11 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
     await expect(
-      setup.surface.getByRole("spinbutton", { name: /port/i }),
-    ).toHaveValue(listenerPort);
+      setup.surface.getByRole("textbox", {
+        name: "Instrument system name",
+        exact: true,
+      }),
+    ).toHaveValue(senderId);
     await expect(page.getByText("Analyzer is ready to activate")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });

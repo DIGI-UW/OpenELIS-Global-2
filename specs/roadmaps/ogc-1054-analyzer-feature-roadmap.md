@@ -10,9 +10,9 @@ Core OE2 and Bridge provide that reusable workflow. Madagascar qualification fol
 
 ## Current boundary
 
-#4332 delivers the repaired test foundation, API-based clinical prerequisites, bounded catalog/default/display fixes and persistent harness storage. It targets `develop`; obsolete stack grouping is removed. Its latest published source is `df5335ed9b`. Final-commit checks are still required. No merge, deployment or complete analyzer qualification is claimed here.
+#4332 delivers the repaired test foundation, API-based clinical prerequisites, bounded catalog/default/display fixes and persistent harness storage. It targets `develop`; obsolete stack grouping is removed. The CI repairs and review corrections are published; current Bridge integration is in progress. Final-commit checks are still required. No merge, deployment or complete analyzer qualification is claimed here.
 
-The PR intentionally retains the released Bridge pin. It does not deliver the complete profile candidate, core FILE/HL7 qualification, original-result recovery closure, outage/replay or populated-upgrade proof. Those have explicit owners and acceptance in the implementation plan. Finishing #4332 is the first checkpoint, not completion of this roadmap.
+The obsolete Bridge 3.2.1 pin is being replaced with the current companion source based on released 3.2.3. The profile/default and shared-listener integration belongs to #4332. Core FILE compatibility remains unproven and must be resolved for the profile contract; complete HL7 qualification, original-result recovery closure, outage/replay and populated-upgrade proof retain their follow-up owners. Those have explicit owners and acceptance in the implementation plan. Finishing #4332 is the first checkpoint, not completion of this roadmap.
 
 ## Ownership and durable decisions
 
@@ -26,7 +26,7 @@ Upgrades preserve original analyzer IDs, clinical records and migration inputs u
 
 ## Work ownership
 
-- **R0 / #4332:** faithful tests, bounded OE2 defaults/display and persistent harness storage; require exact-commit CI.
+- **R0 / #4332:** faithful tests, OE2 defaults/display, current Bridge integration and persistent harness storage; require exact-commit CI and matching workflow evidence.
 - **R5 / Bridge #69 and linked core consumers:** qualify reusable profiles, the additive contract, shared-listener setup, FILE/HL7 and default meanings before consuming release pins.
 - **R1 / #4448:** original-result retry, held-sibling retention, specimen correction and truthful delivery errors. Include the original QC-lot recovery and unsaved-work preservation checks carried forward from closed #4256.
 - **R2 / #4449:** invalid mappings affect their observations instead of holding every result for the analyzer.
