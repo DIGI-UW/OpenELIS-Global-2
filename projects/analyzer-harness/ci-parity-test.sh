@@ -494,7 +494,7 @@ chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" ||
 
 (
   cd "$REPO_ROOT"
-  docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build
+  OE_UAT_SCENARIOS_ENABLED=true docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build
 ) 2>&1 | tee -a "$RUN_LOG"
 
 WEBAPP_CONTAINER="$(container_id oe.openelis.org)"
@@ -580,6 +580,8 @@ set +e
   CI=true \
   ANALYZER_HARNESS=true \
   BASE_URL="$BASE_URL" \
+  BRIDGE_ADMIN_URL="$BRIDGE_URL" \
+  MOCK_SIMULATOR_URL="$MOCK_URL" \
   TEST_USER="$TEST_USER_RESOLVED" \
   TEST_PASS="$TEST_PASS_RESOLVED" \
   PLAYWRIGHT_VIDEO="$([[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]] && echo "on" || echo "off")" \
