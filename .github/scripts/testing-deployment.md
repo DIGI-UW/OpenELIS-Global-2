@@ -45,8 +45,11 @@ analyzers
 activates only newly created priority connections whose shipped mapping is
 already confirmed. It never selects, excludes or confirms mapping rows. Existing
 connections retain their configuration and activation state. If the stock
-mapping needs review, complete it in OpenELIS before retrying; deployment does
-not guess whether an inactive connection was intentionally disabled.
+mapping needs review, the first deployment stops after creating the connection.
+Complete mapping confirmation **and activate that connection** in OpenELIS, then
+retry deployment. Confirmation alone does not activate it: `--ensure-connections`
+preserves existing connections, including inactive ones. Deployment does not
+guess whether a connection was intentionally disabled.
 
 The deploy then sends one GeneXpert result through the mock with an accession
 derived from the run ID. The deployment is ready only when that result appears
@@ -94,3 +97,31 @@ The Python tests require PyYAML and use temporary localhost HTTP servers. Docker
 operations are mocked; the tests do not deploy to the testing VM.
 `test_analyzer_overlay.py` needs network access to list the Bridge and mock
 release tags.
+
+### Upgrading a site that used the former harness catalog
+
+Before switching to bundled defaults, inspect `configuration/backend/` on the
+host. A filesystem CSV overrides classpath defaults for its entire domain, so
+leaving old harness exports there can retain obsolete mappings. Older releases
+shipped these files:
+
+- `dictionaries/analyzer-result-options.csv`
+- `sample-types/harness-samples.csv` and `sample-types/molecular-sample-types.csv`
+- `test-results/harness-test-results.csv`
+- `test-sections/harness-sections.csv` and `test-sections/molecular-sections.csv`
+- `tests/harness-tests.csv` and `tests/molecular-tests.csv`
+
+Compare their contents with the prior deployed release before acting. Archive
+only confirmed obsolete harness copies outside `configuration/backend/`; retain
+intentional site edits and other uploaded catalogs. If any CSV remains in a
+domain, that domain still uses filesystem configuration rather than bundled
+defaults. Reload the affected configuration through the supported application
+configuration workflow, or restart the application to run initialization.
+
+Removing a CSV does not delete existing database records or reconcile duplicate
+COVID tests. Inspect the resulting catalog and analyzer bindings; resolve any
+existing duplicates through the supported catalog workflow before claiming
+upgrade success. Do not delete clinical history or repair it with SQL. Run the
+stock-default Playwright checks against the upgraded server, then verify native
+analyzer delivery and clinical result readback. A clean-install pass does not
+prove this populated upgrade.

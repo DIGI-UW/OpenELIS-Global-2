@@ -88,43 +88,41 @@ async function expectClinicalReadback(
   expectedResult: string | RegExp,
 ) {
   const { accession, patientLastName, testId, specimenId } = order;
-  const savedValue = expect.poll(
-    async () => {
-      const response = await page.request.get(
-        `${API}/accession-results?accessionNumber=${encodeURIComponent(accession)}`,
+  await expect(async () => {
+    const response = await page.request.get(
+      `${API}/accession-results?accessionNumber=${encodeURIComponent(accession)}`,
+    );
+    expect(response.ok()).toBeTruthy();
+    const data = (await response.json()) as {
+      lastName: string;
+      testResult: Array<{
+        testId: string;
+        resultValue: string;
+        resultType: string;
+        dictionaryResults?: Array<{ id: string; value: string }>;
+      }>;
+    };
+    expect(data.lastName).toBe(patientLastName);
+    const results = data.testResult.filter(
+      (result) => result.testId === testId,
+    );
+    expect(results, `One clinical test for ${accession}`).toHaveLength(1);
+    const result = results[0];
+    let savedValue = result.resultValue;
+    if (result.resultType === "D") {
+      const choice = result.dictionaryResults?.find(
+        (entry) => entry.id === result.resultValue,
       );
-      if (!response.ok()) return null;
-      const data = (await response.json()) as {
-        lastName: string;
-        testResult: Array<{
-          testId: string;
-          resultValue: string;
-          resultType: string;
-          dictionaryResults?: Array<{ id: string; value: string }>;
-        }>;
-      };
-      expect(data.lastName).toBe(patientLastName);
-      const results = data.testResult.filter(
-        (result) => result.testId === testId,
-      );
-      expect(results, `One clinical test for ${accession}`).toHaveLength(1);
-      const result = results[0];
-      if (result.resultType === "D") {
-        const choice = result.dictionaryResults?.find(
-          (entry) => entry.id === result.resultValue,
-        );
-        expect(
-          choice,
-          `Saved dictionary choice ${result.resultValue}`,
-        ).toBeDefined();
-        return choice?.value;
-      }
-      return result.resultValue;
-    },
-    { timeout: LONG_TIMEOUT },
-  );
-  if (typeof expectedResult === "string") await savedValue.toBe(expectedResult);
-  else await savedValue.toMatch(expectedResult);
+      expect(
+        choice,
+        `Saved dictionary choice ${result.resultValue}`,
+      ).toBeDefined();
+      savedValue = choice!.value;
+    }
+    if (typeof expectedResult === "string")
+      expect(savedValue).toBe(expectedResult);
+    else expect(savedValue).toMatch(expectedResult);
+  }).toPass({ timeout: LONG_TIMEOUT });
 
   const response = await page.request.get(
     `${API}/order/search?labNumber=${encodeURIComponent(accession)}`,

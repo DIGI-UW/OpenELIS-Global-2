@@ -53,7 +53,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
             const response = await page.request.get(
               `${API}/analyzer/delivery-issues`,
             );
-            expect(response.ok()).toBeTruthy();
+            if (!response.ok()) return null;
             const data = (await response.json()) as {
               data: {
                 rows: Array<{

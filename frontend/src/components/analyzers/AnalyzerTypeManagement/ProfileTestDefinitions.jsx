@@ -103,7 +103,10 @@ const ProfileTestDefinitions = ({ rows, onChange }) => {
             />
           )}
           {(row.values || [])
-            .filter((raw) => raw.trim())
+            .filter(
+              (raw, valueIndex, values) =>
+                raw.trim() && values.indexOf(raw) === valueIndex,
+            )
             .map((raw, valueIndex) => (
               <TextInput
                 key={raw}
