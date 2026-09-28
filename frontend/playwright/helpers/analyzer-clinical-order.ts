@@ -123,8 +123,20 @@ export async function createAnalyzerClinicalOrder(
   patientLastName: string;
   testId: string;
   specimenId: string;
+  primaryComponentId: string | null;
 }> {
   const testId = await stockClinicalBinding(page, scenario);
+  const definition = await jsonGet<{
+    components: Array<{ id: string; isPrimary: boolean }>;
+  }>(page, `/test-catalog/tests/${encodeURIComponent(testId)}/sample-results`);
+  const primary = definition.components.filter(
+    (component) => component.isPrimary,
+  );
+  expect(
+    primary,
+    "One primary component when the test defines components",
+  ).toHaveLength(definition.components.length ? 1 : 0);
+  const primaryComponentId = primary[0]?.id ?? null;
   const compatibility = await jsonGet<{
     tests: Array<{
       testId: string;
@@ -234,5 +246,11 @@ export async function createAnalyzerClinicalOrder(
   expect(order.samples).toHaveLength(1);
   expect(order.samples[0].sampleTypeId).toBe(specimenId);
   expect(order.samples[0].tests.map((test) => test.id)).toContain(testId);
-  return { accession: accession!, patientLastName, testId, specimenId };
+  return {
+    accession: accession!,
+    patientLastName,
+    testId,
+    specimenId,
+    primaryComponentId,
+  };
 }

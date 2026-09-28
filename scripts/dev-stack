@@ -407,8 +407,6 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
             "ANALYZER_BRIDGE_URL": f"https://localhost:{published_port(context, 'openelis-analyzer-bridge', 8443, environment)}",
             "ANALYZER_NETWORK_NAMESPACE": context.project,
             "ANALYZER_SUBNET_PREFIX": subnet_prefix,
-            "ANALYZER_GENEXPERT_IP": f"{subnet_prefix}.20.10",
-            "ANALYZER_BRIDGE_DESTINATION": f"tcp://{subnet_prefix}.20.2:12001",
         }
     )
     return endpoints

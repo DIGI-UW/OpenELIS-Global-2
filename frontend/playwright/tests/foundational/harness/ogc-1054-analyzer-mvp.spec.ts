@@ -133,6 +133,9 @@ async function expectClinicalReadback(
           testId: string;
           resultValue: string;
           resultType: string;
+          analysisId: string;
+          testResultComponentId?: string;
+          result?: { id?: string; testResult?: { componentId?: string } };
           dictionaryResults?: Array<{ id: string; value: string }>;
         }>;
       };
@@ -140,8 +143,25 @@ async function expectClinicalReadback(
       const results = data.testResult.filter(
         (result) => result.testId === testId,
       );
-      expect(results, `One clinical test for ${accession}`).toHaveLength(1);
-      const result = results[0];
+      expect(
+        new Set(results.map((result) => result.analysisId)).size,
+        `One ordered analysis for ${accession}`,
+      ).toBe(1);
+      const persisted = results.filter((result) => result.result?.id);
+      expect(persisted, `One saved observation for ${accession}`).toHaveLength(
+        1,
+      );
+      const result = persisted[0];
+      expect(
+        result.result?.testResult?.componentId ?? null,
+        "Saved result belongs to the catalog's primary component",
+      ).toBe(order.primaryComponentId);
+      for (const unreported of results.filter((item) => !item.result?.id)) {
+        expect(
+          unreported.resultValue ?? "",
+          "Unreported components remain empty",
+        ).toBe("");
+      }
       if (result.resultType === "D") {
         const choice = result.dictionaryResults?.find(
           (entry) => entry.id === result.resultValue,
@@ -311,9 +331,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
           { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
         );
-        const clinicalRow = page.getByRole("row", {
-          name: new RegExp(order.accession),
-        });
+        const clinicalRow = page
+          .getByRole("row", {
+            name: new RegExp(order.accession),
+          })
+          .filter({ hasText: scenario.result });
+        await expect(clinicalRow).toHaveCount(1);
         await expect(clinicalRow).toContainText(scenario.testName, {
           timeout: LONG_TIMEOUT,
         });
