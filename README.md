@@ -174,24 +174,22 @@ accessing any of these links, simply follow these steps:
 
 #### To ensure your code passes the same checks as the CI pipeline
 
-**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+**Run the full local PR test package from one committed revision:**
 
 ```bash
-# Run backend CI checks (formatting + build + tests)
 ./scripts/run-ci-checks.sh
-
-# Run frontend CI checks (formatting + unit tests + E2E tests)
-./scripts/run-frontend-ci-checks.sh
-
-# Run both (full CI simulation)
-./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
 ```
 
-**Options:**
-
-- `--skip-submodules`: Skip submodule build (faster, for quick checks)
-- `--skip-tests`: Skip tests (formatting only)
-- `--skip-e2e`: Skip E2E tests (frontend only)
+The runner uses detached checkouts at the current commit and runs backend,
+frontend, the shared plugin build, core Playwright, analyzer Playwright, and all
+three Cypress shards. Each E2E suite gets a fresh isolated database. It reports
+every lane and exits unsuccessfully if any required lane fails or does not run.
+Logs and the source commit are saved in the printed artifact directory. Run
+`./scripts/run-ci-checks.sh --plan` to see the lanes without starting them, or
+use `--artifact-dir PATH` to choose where evidence is saved. The targeted E2E
+scripts remain available for debugging a single lane; their passing result alone
+is not full CI parity. GitHub-only publication, security upload, and checkpoint
+jobs still need their GitHub checks.
 
 **Manual commands** (if you prefer to run steps individually):
 
