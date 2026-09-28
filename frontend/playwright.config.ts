@@ -114,7 +114,14 @@ export default defineConfig({
     // Auth setup — runs once, saves session state
     {
       name: "setup",
-      testMatch: /.*\.setup\.ts/,
+      testMatch: "**/auth.setup.ts",
+    },
+
+    // EQA participant credentials belong only to core projects that use them.
+    {
+      name: "participant-setup",
+      testMatch: "**/participant-auth.setup.ts",
+      dependencies: ["setup"],
     },
 
     // Core foundational verification — runs on CI build stack.
@@ -127,7 +134,7 @@ export default defineConfig({
         contextOptions: { reducedMotion: "reduce" },
         serviceWorkers: "block",
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "participant-setup"],
     },
 
     {
@@ -175,7 +182,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "participant-setup"],
     },
 
     // Core demo video — same core demos with slowMo and video (local only)
@@ -190,7 +197,7 @@ export default defineConfig({
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "participant-setup"],
     },
 
     {

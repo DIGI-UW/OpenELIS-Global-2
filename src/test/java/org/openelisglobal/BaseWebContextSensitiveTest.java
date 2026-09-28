@@ -513,7 +513,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     }
                 }
             }
-            synchronizeSequence(conn, "clinlims." + sequence, "clinlims." + tableName);
+            // Leave an already-ahead sequence alone: setval invalidates cached
+            // allocations even when no fixture ID requires an adjustment.
+            try (Statement check = conn.createStatement();
+                    java.sql.ResultSet rows = check.executeQuery("SELECT COALESCE(MAX(id), 0) >= "
+                            + "(SELECT last_value FROM clinlims." + sequence + ") FROM clinlims." + tableName)) {
+                rows.next();
+                if (rows.getBoolean(1)) {
+                    synchronizeSequence(conn, "clinlims." + sequence, "clinlims." + tableName);
+                }
+            }
         }
     }
 
