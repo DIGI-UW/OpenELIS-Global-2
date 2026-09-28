@@ -42,7 +42,8 @@ BUNDLE_FILES = (
 )
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
-SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:9600"
+SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:12001"
+SMOKE_SENDER_ID = "OE2-TEST-GENEXPERT"
 TEST_USER = "admin"
 TEST_PASS = "adminADMIN!"
 
@@ -168,7 +169,7 @@ def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, au
 
 def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
     pushed = http("POST", mock_url + "/simulate/astm/genexpert_astm",
-                  {"destination": SMOKE_DESTINATION, "sample_id": accession})
+                  {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
     if pushed.get("pushed") != 1:
         raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
     analyzers = http("GET", api_base + "/analyzer/analyzers").get("analyzers", [])

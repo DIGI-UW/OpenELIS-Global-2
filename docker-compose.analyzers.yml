@@ -3,8 +3,8 @@
 #
 # Image tags must match the tools/openelis-analyzer-bridge and
 # tools/analyzer-mock-server submodule pins (checked in deployment-checks.yml).
-# The mock needs no Docker socket: each ASTM connection owns its own Bridge
-# listener port, so the mock only has to send to that port.
+# The mock needs no Docker socket: it sends to the shared ASTM listener,
+# identifying the configured instrument through its message sender ID.
 
 services:
   openelis-analyzer-bridge:
@@ -63,7 +63,13 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3

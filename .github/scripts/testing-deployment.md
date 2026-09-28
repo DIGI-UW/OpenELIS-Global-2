@@ -47,14 +47,17 @@ already confirmed. It never selects, excludes or confirms mapping rows. Existing
 connections retain their configuration and activation state. If the stock
 mapping needs review, the first deployment stops after creating the connection.
 Complete mapping confirmation **and activate that connection** in OpenELIS, then
-retry deployment. Confirmation alone does not activate it: `--ensure-connections`
-preserves existing connections, including inactive ones. Deployment does not
-guess whether a connection was intentionally disabled.
+retry deployment. Confirmation alone does not activate it:
+`--ensure-connections` preserves existing connections, including inactive ones.
+Deployment does not guess whether a connection was intentionally disabled.
 
 The deploy then sends one GeneXpert result through the mock with an accession
 derived from the run ID. The deployment is ready only when that result appears
-in OpenELIS. If testers have disabled the GeneXpert connection or changed its
-listener from port 9600, the check fails and leaves their settings intact;
+in OpenELIS. The smoke message uses the shared ASTM listener at port 12001 and
+the seeded instrument system name `OE2-TEST-GENEXPERT`. When upgrading an
+existing test connection, set that instrument system name in its connection
+screen before retrying deployment. If testers have disabled the connection or
+changed that sender identity, the check fails and leaves their settings intact;
 restore that connection in OpenELIS when it is ready to receive the deployment
 check. The deploy refuses superseded commits and ports 80/443 owned by any other
 Compose project. After success it keeps the current and previous release and
@@ -106,9 +109,11 @@ leaving old harness exports there can retain obsolete mappings. Older releases
 shipped these files:
 
 - `dictionaries/analyzer-result-options.csv`
-- `sample-types/harness-samples.csv` and `sample-types/molecular-sample-types.csv`
+- `sample-types/harness-samples.csv` and
+  `sample-types/molecular-sample-types.csv`
 - `test-results/harness-test-results.csv`
-- `test-sections/harness-sections.csv` and `test-sections/molecular-sections.csv`
+- `test-sections/harness-sections.csv` and
+  `test-sections/molecular-sections.csv`
 - `tests/harness-tests.csv` and `tests/molecular-tests.csv`
 
 Compare their contents with the prior deployed release before acting. Archive

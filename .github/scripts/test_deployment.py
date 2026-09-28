@@ -317,7 +317,7 @@ class AnalyzerDeliveryTest(unittest.TestCase):
             return {"resultList": self.rows}
         raise AssertionError(url)
 
-    def test_pushes_to_the_analyzers_own_listener_and_waits_for_its_rows(self):
+    def test_pushes_to_shared_listener_with_seeded_identity_and_waits_for_its_rows(self):
         polls = []
 
         def arrive_on_second_poll(_seconds):
@@ -328,7 +328,8 @@ class AnalyzerDeliveryTest(unittest.TestCase):
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
         push = self.calls[0]
         self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
-                          {"destination": deployment.SMOKE_DESTINATION, "sample_id": "DEV01900000000000011"}), push)
+                          {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
+                           "sender_id": "OE2-TEST-GENEXPERT"}), push)
         self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
         self.assertEqual(1, len(polls))
 
