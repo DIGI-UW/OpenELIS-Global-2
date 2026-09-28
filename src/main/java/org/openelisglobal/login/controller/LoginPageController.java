@@ -142,7 +142,6 @@ public class LoginPageController extends BaseController {
         boolean authenticated = !userModuleService.isSessionExpired(request);
         UserSession session = new UserSession();
         session.setAuthenticated(authenticated);
-        session.setSessionId(request.getSession().getId());
         if (authenticated) {
             SystemUser user = systemUserService.get(getSysUserId(request));
             setLoginMethod(request, session);
