@@ -125,7 +125,8 @@
                     <Resources cacheMaxSize="102400" />
                     <Resource auth="Container"
                         driverClassName="org.postgresql.Driver" maxTotal="20" maxIdle="10"
-                        maxWaitMillis="-1" name="jdbc/LimsDS" type="javax.sql.DataSource"
+                        maxWaitMillis="30000" removeAbandonedOnBorrow="true"
+                        removeAbandonedTimeout="300" logAbandoned="true" name="jdbc/LimsDS" type="javax.sql.DataSource"
                         url="${datasource.url}" username="${datasource.username}"
                         password="${datasource.password}" />
                 </Context>
