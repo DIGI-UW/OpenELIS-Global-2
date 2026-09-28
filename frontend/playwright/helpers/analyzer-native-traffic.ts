@@ -12,7 +12,7 @@ export async function sendGeneXpertAstm(
   testCode: string,
   value: string,
   senderId: string,
-): Promise<void> {
+): Promise<string> {
   const bridgeUrl =
     process.env.ANALYZER_BRIDGE_URL ||
     process.env.BRIDGE_ADMIN_URL ||
@@ -115,6 +115,7 @@ export async function sendGeneXpertAstm(
     pushed: true,
     error: null,
   });
+  return destination;
 }
 
 export async function writeFluoroCyclerFile(

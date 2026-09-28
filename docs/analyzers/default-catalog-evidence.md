@@ -101,5 +101,33 @@ Additional follow-ups retained from the same runtime inspection:
   state default to `/tmp/openelis-analyzer-bridge`. Configure persistent
   database paths before claiming container-replacement/replay acceptance. A
   simple process restart is not sufficient evidence for that requirement.
-- Two-instrument attribution, HIV numeric traffic, complete FILE/HL7 workflows,
-  recovery, populated upgrades and full profile compatibility remain open.
+- Complete FILE/HL7 workflows, recovery, populated upgrades and full profile
+  compatibility remain open. Two-instrument and HIV checks are recorded below.
+
+## Shared-listener and numeric HIV checkpoint
+
+The native test now keeps two distinct GeneXpert connections active together,
+configures their sender identities through the UI, and sends distinct RIF
+results to the same host and listener port. Both deliveries must appear before
+checking that each analyzer worklist excludes the other instrument's accession.
+Each result is accepted in the UI and independently read back on its own
+patient, order and test. Connections are deactivated through the normal UI
+afterward.
+
+The HIV scenario uses the candidate profile's Plasma default without editing
+mappings. It verifies the received numeric input and `copies/mL`, accepts
+through the UI, then verifies one saved numeric observation with value `1250.00`
+and the clinical catalog's unit label `copies/ml` on the actual Plasma order.
+The first run exposed an incorrect text assertion for an editable input, not a
+mapping failure; the assertion now checks the input's value.
+
+Validation: the final focused recorded run passed both workflows and
+authentication (3 tests). The two-instrument scenario also passed on the
+preceding run, with fresh instruments and accessions on the same populated
+stack. Formatting and project registration were checked. Videos and traces are
+retained locally; full video review and the broader acceptance scenarios remain
+outstanding.
+
+These tests use local candidate Bridge `b35d44e287` and mock `6df789111d`. They
+do not promote the Bridge pin in published #4332 or establish hardware
+qualification, complete assay messages, outage recovery or populated upgrades.

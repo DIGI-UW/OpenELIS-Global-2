@@ -523,3 +523,20 @@ current code, CI and compatibility with #4332 need a separate exact-head review.
 - `frontend/playwright/tests/foundational/core/ogc-1266-order-entry-fix-now.spec.ts` and `frontend/playwright/tests/foundational/core/ogc-557-informed-consent.spec.ts` — existing API mechanics to review.
 - `frontend/playwright.config.ts`, analyzer Playwright specs and `.github/workflows/e2e-playwright-reusable.yml` — registration, evidence and CI setup to reconcile.
 - Analyzer PR ownership ledger — separate historical artifact containing the September 26 #4332/#4336 file comparison; refresh before applying dispositions.
+
+
+### D1/D2 native qualification checkpoint — 27 September 2026
+
+- Candidate shared-listener setup now uses UI-configured sender identities and
+  the actual Bridge listener. A recorded two-instrument test passed twice on the
+  same populated stack with fresh identities and orders, proving separate
+  worklists and independently saved clinical results. Normal UI deactivation
+  prevents ambiguous leftover active connections.
+- Candidate HIV viral-load default selection passed with Plasma, numeric value
+  and received/saved units checked. No mapping repair or catalog fixture was used.
+- The latest combined run passed both workflows plus authentication (3 tests).
+  Recordings exist but full video review is pending; dependency pins in published
+  #4332 remain unchanged until required full profile compatibility passes.
+- Next: configure persistent delivery/FILE state and test container replacement
+  with replay. Continue full FILE/profile compatibility, core HL7, original-result
+  correction/retry and populated upgrades; this checkpoint does not close them.

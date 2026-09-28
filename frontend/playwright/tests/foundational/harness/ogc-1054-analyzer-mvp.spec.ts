@@ -119,6 +119,7 @@ async function expectClinicalReadback(
   page: Page,
   order: Awaited<ReturnType<typeof createAnalyzerClinicalOrder>>,
   expectedResult: string | RegExp,
+  expectedUnits?: string,
 ) {
   const { accession, patientLastName, testId, specimenId } = order;
   const savedValue = expect.poll(
@@ -133,6 +134,7 @@ async function expectClinicalReadback(
           testId: string;
           resultValue: string;
           resultType: string;
+          unitsOfMeasure: string;
           analysisId: string;
           testResultComponentId?: string;
           result?: { id?: string; testResult?: { componentId?: string } };
@@ -152,6 +154,10 @@ async function expectClinicalReadback(
         1,
       );
       const result = persisted[0];
+      if (expectedUnits) {
+        expect(result.resultType).toBe("N");
+        expect(result.unitsOfMeasure).toBe(expectedUnits);
+      }
       expect(
         result.result?.testResult?.componentId ?? null,
         "Saved result belongs to the catalog's primary component",
@@ -224,6 +230,16 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       result: "Indeterminate",
     },
     {
+      code: "HIV-VL",
+      testName: "HIV Viral Load",
+      loinc: "20447-9",
+      raw: "1250",
+      result: "1250",
+      specimen: "Plasma",
+      unit: "copies/mL",
+      clinicalUnit: "copies/ml",
+    },
+    {
       code: "COVID19",
       testName: "COVID-19 PCR",
       loinc: "94500-6",
@@ -269,7 +285,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
           sourceCode: scenario.code,
           expectedTestName: scenario.testName,
           expectedLoinc: scenario.loinc,
-          expectedMappedValue: scenario.raw,
+          expectedMappedValue: scenario.unit ? undefined : scenario.raw,
           specimenName: scenario.specimen || "Sputum",
         });
         await confirmShippedMapping(page, analyzer);
@@ -319,14 +335,39 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         const row = page.getByRole("row", {
           name: new RegExp(order.accession),
         });
-        await expect(row).toContainText(scenario.result, {
-          timeout: LONG_TIMEOUT,
-        });
+        if (scenario.unit) {
+          await expect(row.locator('input[id$=".result"]')).toHaveValue(
+            /^1250(?:\.0+)?$/,
+          );
+          const response = await page.request.get(
+            `${API}/AnalyzerResults?id=${analyzer.id}`,
+          );
+          const intake = await response.json();
+          const received = intake.resultList.filter(
+            (item: { accessionNumber: string }) =>
+              item.accessionNumber === order.accession,
+          );
+          expect(received).toHaveLength(1);
+          expect(received[0]).toMatchObject({
+            testId: order.testId,
+            testResultType: "N",
+            units: scenario.unit,
+          });
+        } else {
+          await expect(row).toContainText(scenario.result, {
+            timeout: LONG_TIMEOUT,
+          });
+        }
         await capture(page, testInfo, "gene-received-result");
         await row.locator('label[for$=".isAccepted"]').click();
         await page.getByRole("button", { name: "Save", exact: true }).click();
         await expect(row).not.toBeVisible({ timeout: LONG_TIMEOUT });
-        await expectClinicalReadback(page, order, scenario.result);
+        await expectClinicalReadback(
+          page,
+          order,
+          scenario.unit ? /^1250(?:\.0+)?$/ : scenario.result,
+          scenario.clinicalUnit,
+        );
         await page.goto(
           `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
           { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
@@ -347,6 +388,153 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       }
     });
   }
+
+  test("Two GeneXpert instruments share one listener without mixing results", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(240_000 * TIMEOUT_SCALE);
+    const runId = Date.now();
+    const instruments: Array<{
+      analyzer: Analyzer;
+      senderId: string;
+      value: string;
+      order: Awaited<ReturnType<typeof createAnalyzerClinicalOrder>>;
+    }> = [];
+    const createdNames: string[] = [];
+    try {
+      for (const [index, value] of ["DETECTED", "NOT DETECTED"].entries()) {
+        await test.step(`Configure instrument ${index + 1} through the UI`, async () => {
+          const name = `E2E Shared GeneXpert ${runId}-${index}`;
+          const senderId = `GX-${runId}-${index}`;
+          const list = new AnalyzerListPage(page);
+          const setup = new AnalyzerSetupPage(page);
+          await list.goto();
+          await list.clickAdd();
+          await setup.expectOpen();
+          await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
+          await setup.fillName(name);
+          await setup.selectLabUnit("Molecular Biology");
+          await setup.continueToVerify();
+          const verifyUrl = page.url();
+          createdNames.push(name);
+          const analyzer = await analyzerByName(page, name, "genexpert-astm");
+          const order = await createAnalyzerClinicalOrder(page, {
+            profileId: analyzer.profileId,
+            profileRevision: analyzer.profileRevision,
+            sourceCode: "RIF",
+            expectedTestName: "Xpert RIF Resistance",
+            expectedLoinc: "46244-0",
+            expectedMappedValue: value,
+            specimenName: "Sputum",
+          });
+          await confirmShippedMapping(page, analyzer);
+          await page.goto(verifyUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: NAV_TIMEOUT,
+          });
+          await setup.continueToConnect();
+          await setup.fillSenderId(senderId);
+          await page
+            .getByRole("button", { name: "Finish and activate" })
+            .click();
+          await expect(
+            page.getByTestId(`analyzer-row-${analyzer.id}`),
+          ).toContainText("Active", { timeout: LONG_TIMEOUT });
+          instruments.push({ analyzer, senderId, value, order });
+        });
+      }
+      expect(
+        new Set(instruments.map(({ analyzer }) => analyzer.bridgeConnectionId))
+          .size,
+      ).toBe(2);
+      const destinations: string[] = [];
+      await test.step("Send distinct results while both connections are active", async () => {
+        for (const { analyzer, senderId, value, order } of instruments) {
+          destinations.push(
+            await sendGeneXpertAstm(
+              page.request,
+              analyzer.bridgeConnectionId,
+              order.accession,
+              "RIF",
+              value,
+              senderId,
+            ),
+          );
+        }
+        expect(
+          new Set(destinations).size,
+          "Both messages used the same host and listener port",
+        ).toBe(1);
+      });
+      // Wait for both deliveries before asserting isolation; an absent result alone
+      // would not distinguish correct routing from a message still in transit.
+      for (const { analyzer, order } of instruments) {
+        await expect
+          .poll(
+            async () => {
+              const response = await page.request.get(
+                `${API}/AnalyzerResults?id=${analyzer.id}`,
+              );
+              const payload = await response.json();
+              return (payload.resultList ?? []).filter(
+                (result: { accessionNumber: string }) =>
+                  result.accessionNumber === order.accession,
+              ).length;
+            },
+            { timeout: LONG_TIMEOUT },
+          )
+          .toBe(1);
+      }
+      for (const { analyzer, value, order } of instruments) {
+        await test.step(`Accept ${value} from ${analyzer.name} on its own order`, async () => {
+          await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+            waitUntil: "domcontentloaded",
+            timeout: NAV_TIMEOUT,
+          });
+          const ownRow = page.getByRole("row", {
+            name: new RegExp(order.accession),
+          });
+          await expect(ownRow).toHaveCount(1);
+          await expect(ownRow).toContainText(value);
+          for (const other of instruments.filter(
+            (item) => item.analyzer.id !== analyzer.id,
+          )) {
+            await expect(
+              page.getByRole("row", {
+                name: new RegExp(other.order.accession),
+              }),
+            ).toHaveCount(0);
+          }
+          await capture(
+            page,
+            testInfo,
+            `shared-listener-${analyzer.id}-received`,
+          );
+          await ownRow.locator('label[for$=".isAccepted"]').click();
+          await page.getByRole("button", { name: "Save", exact: true }).click();
+          await expect(ownRow).not.toBeVisible({ timeout: LONG_TIMEOUT });
+          await expectClinicalReadback(page, order, value);
+          await page.goto(
+            `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+            {
+              waitUntil: "domcontentloaded",
+              timeout: NAV_TIMEOUT,
+            },
+          );
+          const savedRow = page.getByRole("row", {
+            name: new RegExp(order.accession),
+          });
+          await expect(savedRow).toHaveCount(1);
+          await expect(savedRow).toContainText("Xpert RIF Resistance");
+          await expect(savedRow).toContainText(value);
+          await capture(page, testInfo, `shared-listener-${analyzer.id}-saved`);
+        });
+      }
+    } finally {
+      for (const name of createdNames)
+        await deactivateAnalyzerByName(page, name);
+    }
+  });
 
   test("FluoroCycler imports a watched file for the correct clinical orders", async ({
     page,
