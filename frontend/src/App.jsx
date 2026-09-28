@@ -1685,6 +1685,12 @@ export default function App() {
                   )}
                 />
                 <SecureRoute
+                  path={REPORTING_ROUTE_PATHS}
+                  exact
+                  render={() => <ReportingRoute />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
                   path="/TATReport"
                   exact
                   render={() => <TATReport />}
