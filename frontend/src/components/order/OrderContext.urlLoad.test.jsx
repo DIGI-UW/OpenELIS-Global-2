@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConfigurationContext } from "../layout/Layout";
@@ -137,5 +137,58 @@ describe("OrderContext — loading an order from the URL", () => {
     expect(await screen.findByText("DEV-5")).toBeTruthy();
     expect(searchCalls()).toEqual(["/rest/order/search?labNumber=DEV-5"]);
     expect(screen.getByTestId("date")).toHaveTextContent("2026-09-03");
+  });
+});
+
+const DirtyProbe = () => {
+  const { labNumber, isDirty, hydrateOrderData, hydrateSamples, setOrderData } =
+    useOrderContext();
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="dirty">{String(isDirty)}</span>
+      <button
+        onClick={() => {
+          hydrateOrderData((prev) => ({ ...prev, hydrated: true }));
+          hydrateSamples((prev) => prev);
+        }}
+      >
+        hydrate
+      </button>
+      <button onClick={() => setOrderData((prev) => ({ ...prev }))}>
+        edit
+      </button>
+    </div>
+  );
+};
+
+describe("OrderContext — values filled in on load are not edits (OGC-1192)", () => {
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation(answerServer);
+  });
+
+  it("keeps a loaded order clean after hydrating, and dirty after an edit", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/enter?labNumber=DEV-6"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DirtyProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-6")).toBeTruthy();
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("hydrate"));
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("edit"));
+    expect(screen.getByTestId("dirty")).toHaveTextContent("true");
   });
 });

@@ -304,6 +304,20 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   /**
+   * Fill in values derived from what the order already holds (the sampling
+   * site record looked up by its saved id, a default date on a blank sample)
+   * without marking the form dirty, so opening a saved order does not report
+   * unsaved changes or prompt before leaving the page.
+   */
+  const hydrateOrderData = useCallback((newData) => {
+    setOrderDataState(newData);
+  }, []);
+
+  const hydrateSamples = useCallback((newSamples) => {
+    setSamplesState(newSamples);
+  }, []);
+
+  /**
    * Load an existing order by lab number (accession number).
    * Used when user scans a barcode or enters a lab number.
    * Loads in read-only mode by default (user must click Edit to modify).
@@ -1433,6 +1447,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     setCurrentStep,
     setOrderData,
     setSamples,
+    hydrateOrderData,
+    hydrateSamples,
     resetOrder,
     enableEditMode,
     markStepComplete,
