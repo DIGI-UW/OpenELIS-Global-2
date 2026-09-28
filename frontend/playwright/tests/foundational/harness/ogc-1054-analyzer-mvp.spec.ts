@@ -202,6 +202,22 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       raw: "INDETERMINATE",
       result: "Indeterminate",
     },
+    {
+      code: "COVID19",
+      testName: "COVID-19 PCR",
+      loinc: "94500-6",
+      raw: "POSITIVE",
+      result: "SARS-CoV-2 RNA DETECTED",
+      specimen: "Respiratory Swab",
+    },
+    {
+      code: "COVID19",
+      testName: "COVID-19 PCR",
+      loinc: "94500-6",
+      raw: "NEGATIVE",
+      result: "SARS-COV-2 RNA NOT DETECTED",
+      specimen: "Respiratory Swab",
+    },
   ]) {
     test(`GeneXpert sends ${scenario.code} ${scenario.raw} to the correct patient order`, async ({
       page,
@@ -232,7 +248,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         expectedTestName: scenario.testName,
         expectedLoinc: scenario.loinc,
         expectedMappedValue: scenario.raw,
-        specimenName: "Sputum",
+        specimenName: scenario.specimen || "Sputum",
       });
       await confirmShippedMapping(page, analyzer);
       await capture(page, testInfo, "gene-shipped-mapping-confirmed");
