@@ -124,10 +124,10 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 ### Git Worktrees (MANDATORY)
 
 > Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
-> every new one needs `scripts/setup-workspace.sh` run inside it (`git worktree
-> add` does not initialize the 11 submodules, several of which are build
-> inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) § "Git
-> Worktrees".
+> every new one needs `scripts/setup-workspace.sh` run inside it
+> (`git worktree add` does not initialize the 11 submodules, several of which
+> are build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) §
+> "Git Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
