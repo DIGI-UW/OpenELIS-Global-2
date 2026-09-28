@@ -1297,12 +1297,18 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           currentDate: response.currentDate,
           sampleOrderItems: {
             ...prev.sampleOrderItems,
-            requestDate: response.currentDate,
-            receivedDateForDisplay: response.currentDate,
+            requestDate:
+              prev.sampleOrderItems?.requestDate || response.currentDate,
+            receivedDateForDisplay:
+              prev.sampleOrderItems?.receivedDateForDisplay ||
+              response.currentDate,
             receivedTime:
-              response.sampleOrderItems?.receivedTime || getCurrentTime(),
+              prev.sampleOrderItems?.receivedTime ||
+              response.sampleOrderItems?.receivedTime ||
+              getCurrentTime(),
             paymentOptions: response.sampleOrderItems?.paymentOptions || [],
-            paymentOptionSelection: "",
+            paymentOptionSelection:
+              prev.sampleOrderItems?.paymentOptionSelection || "",
             referringSiteList:
               response.sampleOrderItems?.referringSiteList || [],
             providersList: response.sampleOrderItems?.providersList || [],
@@ -1333,8 +1339,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           currentDate: response.currentDate,
           sampleOrderItems: {
             ...prev.sampleOrderItems,
-            requestDate: response.currentDate,
-            receivedDateForDisplay: response.currentDate,
+            requestDate:
+              prev.sampleOrderItems?.requestDate || response.currentDate,
+            receivedDateForDisplay:
+              prev.sampleOrderItems?.receivedDateForDisplay ||
+              response.currentDate,
             receivedTime:
               prev.sampleOrderItems?.receivedTime ||
               response.sampleOrderItems?.receivedTime ||
@@ -1342,7 +1351,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             // Use payment options from API if available
             paymentOptions: response.sampleOrderItems?.paymentOptions || [],
             // Keep paymentOptionSelection empty (not "free")
-            paymentOptionSelection: "",
+            paymentOptionSelection:
+              prev.sampleOrderItems?.paymentOptionSelection || "",
             // Copy other reference data from API
             referringSiteList:
               response.sampleOrderItems?.referringSiteList || [],

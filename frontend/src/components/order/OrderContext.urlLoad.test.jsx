@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConfigurationContext } from "../layout/Layout";
@@ -190,5 +190,73 @@ describe("OrderContext — values filled in on load are not edits (OGC-1192)", (
 
     fireEvent.click(screen.getByText("edit"));
     expect(screen.getByTestId("dirty")).toHaveTextContent("true");
+  });
+});
+
+const DatesProbe = () => {
+  const { labNumber, orderData } = useOrderContext();
+  const items = orderData?.sampleOrderItems || {};
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="received">
+        {`${items.receivedDateForDisplay || ""} ${items.receivedTime || ""}`}
+      </span>
+      <span data-testid="requested">{items.requestDate || ""}</span>
+    </div>
+  );
+};
+
+describe("OrderContext — form defaults arriving after the order (OGC-1192)", () => {
+  let answerDefaults;
+
+  beforeEach(() => {
+    answerDefaults = null;
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation((url, callback) => {
+      if (url === "/rest/SamplePatientEntry") {
+        answerDefaults = () =>
+          callback({
+            currentDate: "28/09/2026",
+            sampleOrderItems: { receivedTime: "20:45" },
+          });
+      } else if (url.startsWith("/rest/order/search?labNumber=")) {
+        callback({
+          ...orderResponse("DEV-7"),
+          sampleOrderItems: {
+            environmentalFields: { workflowType: "environmental" },
+            receivedDateForDisplay: "27/09/2026",
+            receivedTime: "09:15",
+            requestDate: "26/09/2026",
+          },
+        });
+      } else if (typeof callback === "function") {
+        callback({});
+      }
+    });
+  });
+
+  it("keeps the loaded order's received and request dates", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/enter?labNumber=DEV-7"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DatesProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-7")).toBeTruthy();
+
+    act(() => answerDefaults());
+
+    expect(screen.getByTestId("received")).toHaveTextContent(
+      "27/09/2026 09:15",
+    );
+    expect(screen.getByTestId("requested")).toHaveTextContent("26/09/2026");
   });
 });
