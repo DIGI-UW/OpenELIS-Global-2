@@ -110,7 +110,8 @@ public class TransformServiceDelegationParityTest extends BaseWebContextSensitiv
         ServiceRequest viaService = serviceRequestTransformService.transformToServiceRequest(ANALYSIS_ID);
         assertNotNull(viaOrchestrator.getAuthoredOn());
         assertNotNull(viaService.getAuthoredOn());
-        // Each call generates its own current timestamp; compare the stable resource content.
+        // Each call generates its own current timestamp; compare the stable resource
+        // content.
         viaOrchestrator.setAuthoredOn(null);
         viaService.setAuthoredOn(null);
         assertSameResource(viaOrchestrator, viaService);

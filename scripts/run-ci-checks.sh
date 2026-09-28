@@ -38,6 +38,18 @@ fi
 for command in git mvn node npm python3 docker; do
   command -v "$command" >/dev/null || { echo "Missing prerequisite: $command" >&2; exit 2; }
 done
+# GitHub runs application checks on Node 20 and the deployment contract on Node 22.
+if command -v fnm >/dev/null; then
+  NODE20_BIN="$(fnm exec --using=20 which node)"
+  NODE22_BIN="$(fnm exec --using=22 which node)"
+  export PATH="$(dirname "$NODE20_BIN"):$PATH"
+else
+  [[ "$(node -p 'process.versions.node.split(".")[0]')" == 20 ]] || {
+    echo 'Node 20 is required (or install fnm with Node 20 and 22).' >&2
+    exit 2
+  }
+  NODE22_BIN="${OE_CI_NODE22_BIN:?Set OE_CI_NODE22_BIN to the Node 22 executable for the deployment contract.}"
+fi
 if [[ -z "$ARTIFACT_DIR" ]]; then
   ARTIFACT_DIR="${TMPDIR:-/tmp}/oe-full-ci-${HEAD_SHA:0:10}-$(date -u +%Y%m%d%H%M%S)-$$"
 fi
@@ -76,7 +88,7 @@ run_backend() {
   local root="$ARTIFACT_DIR/checkouts/backend"
   cd "$root"
   scripts/run-java21 mvn spotless:check
-  node --test .github/scripts/publish-checkpoints.test.cjs
+  "$NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
   python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
   (cd dataexport && ../scripts/run-java21 mvn clean install)
   scripts/run-java21 mvn clean install -Dspotless.check.skip=true
@@ -147,6 +159,7 @@ run_e2e() {
   cd "$root"
   run_e2e_step e2e-scope node --test .github/scripts/e2e-scope.test.cjs || failed=1
   run_e2e_step shared-build-plugins run_shared_build || failed=1
+  run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps" || failed=1
   run_e2e_step core-playwright scripts/run-e2e-like-ci.sh --cleanup || failed=1
   run_e2e_step analyzer-foundational projects/analyzer-harness/ci-parity-test.sh --build --project harness-foundational --artifact-dir "$ARTIFACT_DIR/analyzer-foundational" || failed=1
   run_e2e_step analyzer-demo projects/analyzer-harness/ci-parity-test.sh --project harness-demo --artifact-dir "$ARTIFACT_DIR/analyzer-demo" || failed=1
@@ -157,6 +170,13 @@ run_e2e() {
 }
 
 pids=()
+interrupt_lanes() {
+  trap - INT TERM
+  for pid in "${pids[@]}"; do kill -TERM "$pid" 2>/dev/null || true; done
+  for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  exit 130
+}
+trap interrupt_lanes INT TERM
 for lane in backend frontend e2e; do
   (
     set -e
@@ -173,7 +193,7 @@ set -e
 
 failed=0
 printf '\nLocal CI result for %s\n' "$HEAD_SHA"
-for lane in backend frontend e2e-scope shared-build-plugins core-playwright analyzer-foundational analyzer-demo cypress-core cypress-admin cypress-independent; do
+for lane in backend frontend e2e-scope shared-build-plugins e2e-frontend-deps core-playwright analyzer-foundational analyzer-demo cypress-core cypress-admin cypress-independent; do
   if [[ -f "$ARTIFACT_DIR/$lane.status" ]]; then
     result="$(cat "$ARTIFACT_DIR/$lane.status")"
   elif [[ -f "$ARTIFACT_DIR/$lane.exit" ]]; then
