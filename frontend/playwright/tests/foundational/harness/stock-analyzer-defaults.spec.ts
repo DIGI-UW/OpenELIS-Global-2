@@ -35,6 +35,13 @@ const cases = [
     specimenName: "Respiratory Swab",
     expectedMappedValue: "NEGATIVE",
   },
+  {
+    profileId: "fluorocycler-xt",
+    sourceCode: "VIH-1",
+    expectedTestName: "HIV Viral Load",
+    expectedLoinc: "20447-9",
+    specimenName: "Plasma",
+  },
 ] as const;
 
 for (const scenario of cases) {

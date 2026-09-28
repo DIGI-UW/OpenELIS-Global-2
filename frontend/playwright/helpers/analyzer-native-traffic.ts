@@ -117,3 +117,27 @@ export async function sendGeneXpertAstm(
   });
   return destination;
 }
+
+export async function writeFluoroCyclerFile(
+  request: APIRequestContext,
+  targetDirectory: string,
+  sampleIds: string[],
+): Promise<Array<{ sampleId: string; result: string }>> {
+  const response = await request.post(
+    `${mockUrl}/simulate/file/hain_fluorocycler`,
+    {
+      data: { target_dir: targetDirectory, sample_ids: sampleIds },
+    },
+  );
+  expect(
+    response.ok(),
+    `FluoroCycler mock: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
+  const result = (await response.json()) as {
+    written_path: string;
+    metadata: { results: Array<{ sampleId: string; result: string }> };
+  };
+  expect(result.written_path).toContain(targetDirectory);
+  expect(result.metadata.results.length).toBeGreaterThan(0);
+  return result.metadata.results;
+}

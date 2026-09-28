@@ -4,7 +4,10 @@ import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { deactivateAnalyzerByName } from "../../../helpers/deactivate-analyzer";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
-import { sendGeneXpertAstm } from "../../../helpers/analyzer-native-traffic";
+import {
+  sendGeneXpertAstm,
+  writeFluoroCyclerFile,
+} from "../../../helpers/analyzer-native-traffic";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -497,6 +500,125 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     } finally {
       for (const name of createdNames)
         await deactivateAnalyzerByName(page, name);
+    }
+  });
+  test("FluoroCycler imports a watched file for the correct clinical orders", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const analyzerName = `E2E FluoroCycler ${Date.now()}`;
+    const directory = "/data/analyzer-imports/fluorocycler-xt/incoming";
+    const values = ["1250", "450"];
+    const list = new AnalyzerListPage(page);
+    const setup = new AnalyzerSetupPage(page);
+    await list.goto();
+    await list.clickAdd();
+    await setup.selectProfile("Bruker FluoroCycler XT");
+    await setup.fillName(analyzerName);
+    await setup.selectLabUnit("Molecular Biology");
+    await setup.continueToVerify();
+    const verifyUrl = page.url();
+    const analyzer = await analyzerByName(
+      page,
+      analyzerName,
+      "fluorocycler-xt",
+    );
+    try {
+      const orders = [];
+      for (const _value of values) {
+        orders.push(
+          await createAnalyzerClinicalOrder(page, {
+            profileId: analyzer.profileId,
+            profileRevision: analyzer.profileRevision,
+            sourceCode: "VIH-1",
+            expectedTestName: "HIV Viral Load",
+            expectedLoinc: "20447-9",
+            specimenName: "Plasma",
+          }),
+        );
+      }
+      await confirmShippedMapping(page, analyzer);
+      await capture(page, testInfo, "file-shipped-mapping-confirmed");
+      await page.goto(verifyUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT,
+      });
+      await setup.continueToConnect();
+      await setup.fillImportDirectory(directory);
+      await page.getByRole("button", { name: "Finish and activate" }).click();
+      await expect(
+        page.getByTestId(`analyzer-row-${analyzer.id}`),
+      ).toContainText("Active", { timeout: LONG_TIMEOUT });
+      await capture(page, testInfo, "file-watch-directory-configured");
+      const emitted = await writeFluoroCyclerFile(
+        page.request,
+        directory,
+        orders.map((order) => order.accession),
+      );
+      expect(emitted).toHaveLength(2);
+      for (const [index, order] of orders.entries()) {
+        expect(emitted[index]).toMatchObject({
+          sampleId: order.accession,
+          result: values[index],
+        });
+      }
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(
+              `${API}/AnalyzerResults?id=${analyzer.id}`,
+            );
+            if (!response.ok()) return false;
+            const data = await response.json();
+            return orders.every((order) =>
+              data.resultList?.some(
+                (row: { accessionNumber: string }) =>
+                  row.accessionNumber === order.accession,
+              ),
+            );
+          },
+          { timeout: LONG_TIMEOUT },
+        )
+        .toBe(true);
+      await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT,
+      });
+      for (const [index, order] of orders.entries()) {
+        const row = page.getByRole("row", {
+          name: new RegExp(order.accession),
+        });
+        await expect(row.locator('input[id$=".result"]')).toHaveValue(
+          new RegExp(`^${values[index]}(?:\\.0+)?$`),
+        );
+        await row.locator('label[for$=".isAccepted"]').click();
+      }
+      await capture(page, testInfo, "file-received-results");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      for (const [index, order] of orders.entries()) {
+        await expectClinicalReadback(
+          page,
+          order,
+          new RegExp(`^${values[index]}(?:\\.0+)?$`),
+          "copies/ml",
+        );
+        await page.goto(
+          `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+          { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT },
+        );
+        const row = page.getByRole("row", {
+          name: new RegExp(order.accession),
+        });
+        await expect(row).toContainText("HIV Viral Load");
+        await expect(row).toContainText(values[index]);
+        await capture(
+          page,
+          testInfo,
+          `file-clinical-result-${index + 1}-saved`,
+        );
+      }
+    } finally {
+      await deactivateAnalyzerByName(page, analyzerName);
     }
   });
 });
