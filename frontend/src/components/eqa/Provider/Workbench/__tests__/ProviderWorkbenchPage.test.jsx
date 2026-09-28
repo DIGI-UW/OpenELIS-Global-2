@@ -176,7 +176,7 @@ describe("ProviderWorkbenchPage", () => {
 
     expect(
       screen.getByText(
-        "1 sample x 1 participant + 0 held in reserve = 1 aliquot needed; 1 aliquot dispatched so far.",
+        "Aliquots needed: 1 sample x 1 participant + 0 held in reserve = 1 aliquot; 1 aliquot dispatched so far.",
       ),
     ).toBeInTheDocument();
   });
