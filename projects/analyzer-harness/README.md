@@ -41,6 +41,26 @@ The registered Playwright tests read the startup catalog and fail visibly when a
 shipped profile cannot resolve its intended clinical test. The seeder does not
 select or confirm those mappings for CI.
 
+## Durable Bridge state
+
+The shared CI/local base mounts `bridge-data` at
+`/data/openelis-analyzer-bridge`. Connections, pinned profile revisions, the
+delivery outbox and FILE processing state survive container replacement and
+ordinary stack shutdown. `scripts/dev-stack down --volumes --yes` explicitly
+removes them along with the worktree's other persistent data.
+
+Use `scripts/dev-stack up --skip-build --no-scenarios` to apply changed
+configuration without rebuilding the application. Refresh
+`scripts/dev-stack env` after recreation because published local ports can
+change.
+
+When adopting this storage configuration on an existing harness, stop Bridge and
+copy its old `/data/openelis-analyzer-bridge` volume and both SQLite databases
+(including any WAL files) from `/tmp/openelis-analyzer-bridge` into
+`bridge-data` before recreating it. Preserve the originals until readback
+confirms the transfer. A clean disposable stack requires no transfer. Do not
+treat this harness procedure as a production upgrade migration.
+
 ## Local Compose Layers
 
 Local harness startup now uses the same canonical service identities as CI, with
