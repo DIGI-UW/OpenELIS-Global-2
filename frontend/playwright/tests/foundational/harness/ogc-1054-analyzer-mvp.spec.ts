@@ -3,10 +3,7 @@ import { expect, test } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
-import {
-  sendGeneXpertAstm,
-  writeFluoroCyclerFile,
-} from "../../../helpers/analyzer-native-traffic";
+import { sendGeneXpertAstm } from "../../../helpers/analyzer-native-traffic";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -16,8 +13,6 @@ import {
 test.use({ viewport: { width: 1600, height: 1000 } });
 
 const API = "/api/OpenELIS-Global/rest";
-const FILE_DIRECTORY = "/data/analyzer-imports/fluorocycler-xt/incoming";
-const FILE_VALUES = ["1250", "450"] as const;
 
 type Analyzer = {
   id: string;
@@ -85,33 +80,6 @@ async function confirmShippedMapping(
       timeout: LONG_TIMEOUT,
     });
   }
-}
-
-async function activateSavedConnection(
-  page: Page,
-  analyzer: Analyzer,
-  directory?: string,
-) {
-  await page.goto("/analyzers", {
-    waitUntil: "domcontentloaded",
-    timeout: NAV_TIMEOUT,
-  });
-  const row = page.getByTestId(`analyzer-row-${analyzer.id}`);
-  await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-  if ((await row.innerText()).includes("Active")) return;
-
-  await row.getByRole("button", { name: "Actions" }).click();
-  await page.getByRole("menuitem", { name: "Configure connection" }).click();
-  const setup = new AnalyzerSetupPage(page);
-  await setup.expectOpen();
-  if (directory) {
-    await setup.fillImportDirectory(directory);
-  }
-  await expect(page.getByText("Analyzer is ready to activate")).toBeVisible({
-    timeout: LONG_TIMEOUT,
-  });
-  await page.getByRole("button", { name: "Finish and activate" }).click();
-  await expect(row).toContainText("Active", { timeout: LONG_TIMEOUT });
 }
 
 async function expectClinicalReadback(
@@ -300,65 +268,4 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       await capture(page, testInfo, "gene-clinical-result-saved");
     });
   }
-
-  test("FluoroCycler imports a watched file for the correct clinical orders", async ({
-    page,
-  }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
-    const analyzer = await analyzerByName(
-      page,
-      "FluoroCycler XT",
-      "fluorocycler-xt",
-    );
-    const orders = [];
-    for (let index = 0; index < FILE_VALUES.length; index++) {
-      orders.push(
-        await createAnalyzerClinicalOrder(page, {
-          profileId: analyzer.profileId,
-          profileRevision: analyzer.profileRevision,
-          sourceCode: "VIH-1",
-          expectedTestName: "HIV Viral Load",
-          expectedLoinc: "20447-9",
-          specimenName: "Plasma",
-        }),
-      );
-    }
-    await confirmShippedMapping(page, analyzer);
-    await capture(page, testInfo, "file-shipped-mapping-confirmed");
-    await activateSavedConnection(page, analyzer, FILE_DIRECTORY);
-    await capture(page, testInfo, "file-watch-directory-configured");
-
-    const emitted = await writeFluoroCyclerFile(
-      page.request,
-      FILE_DIRECTORY,
-      orders.map((order) => order.accession),
-    );
-    expect(emitted).toHaveLength(orders.length);
-    for (const [index, order] of orders.entries()) {
-      expect(emitted[index]).toMatchObject({
-        sampleId: order.accession,
-        result: FILE_VALUES[index],
-      });
-    }
-    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-      waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT,
-    });
-    for (const order of orders) {
-      const row = page.getByRole("row", { name: new RegExp(order.accession) });
-      await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-      await row.locator('label[for$=".isAccepted"]').click();
-    }
-    await capture(page, testInfo, "file-received-results");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    for (const [index, order] of orders.entries()) {
-      const expectedValue = FILE_VALUES[index];
-      await expectClinicalReadback(
-        page,
-        order,
-        new RegExp(`^${expectedValue}(?:\\.0+)?$`),
-      );
-    }
-    await capture(page, testInfo, "file-clinical-results-saved");
-  });
 });

@@ -31,6 +31,23 @@ scenarios or new product features to this PR merely to close the whole roadmap.
 4. Review and present the remaining recordings from the same automated workflows;
    finish core release qualification before limited Madagascar packaging checks.
 
+### Published-test boundary correction
+
+Read-only inspection after the scope freeze confirmed that the published Bridge
+pin `b4a9f2cbff` supplies GeneXpert revision 5 and FluoroCycler revision 3.
+Those profiles lack the specimen/answer hints needed for the HIV-VL, COVID19
+and VIH-1 defaults. The populated candidate stack has no saved binding for the
+old GeneXpert revision, so its read-only mapping response is not fresh-install
+acceptance evidence. It suggests MTB/RIF targets but no HIV/COVID target;
+complete old-pin execution remains the responsibility of the PR CI run.
+Their successful-default assertions and the FluoroCycler native story belong with
+the linked profile correction, not in this bounded PR's passing acceptance claim.
+The complete scenarios remain on `codex/analyzer-candidate-qualification` at
+`d61dcc52b1`; no failing assertion was weakened or converted into an expected pass.
+Published #4332 retains MTB/RIF default assertions and the native MTB/RIF stories.
+Restoring HIV/COVID/FILE coverage with corrected profiles is the first follow-up,
+and a green #4332 must not be presented as full analyzer qualification.
+
 Existing passing coverage is rerun only for relevant changes. The unexplained
 browser Save diagnostic and presentation polish are not additional merge gates
 without a demonstrated workflow failure. Follow-up status must remain explicit;

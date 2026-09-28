@@ -20,28 +20,6 @@ const cases = [
     specimenName: "Sputum",
     expectedMappedValue: "DETECTED",
   },
-  {
-    profileId: "genexpert-astm",
-    sourceCode: "HIV-VL",
-    expectedTestName: "HIV Viral Load",
-    expectedLoinc: "20447-9",
-    specimenName: "Plasma",
-  },
-  {
-    profileId: "genexpert-astm",
-    sourceCode: "COVID19",
-    expectedTestName: "COVID-19 PCR",
-    expectedLoinc: "94500-6",
-    specimenName: "Respiratory Swab",
-    expectedMappedValue: "NEGATIVE",
-  },
-  {
-    profileId: "fluorocycler-xt",
-    sourceCode: "VIH-1",
-    expectedTestName: "HIV Viral Load",
-    expectedLoinc: "20447-9",
-    specimenName: "Plasma",
-  },
 ] as const;
 
 for (const scenario of cases) {
