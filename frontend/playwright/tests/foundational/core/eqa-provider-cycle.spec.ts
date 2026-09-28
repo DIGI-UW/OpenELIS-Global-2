@@ -111,8 +111,8 @@ test.describe("EQA provider cycle lifecycle", () => {
       await page.locator("#panel-name").fill(`E2E ${RUN} panel`);
       await page.locator("#sample-code-0").fill(`S-${RUN}-1`);
       await page.locator("select#sample-test-0").selectOption({ index: 1 });
+      await expect(page.locator("select#sample-test-0")).not.toHaveValue("");
       panelTestId = await page.locator("select#sample-test-0").inputValue();
-      expect(panelTestId).not.toBe("");
       await page.locator("#sample-target-0").fill("100");
       await page.locator("#sample-unit-0").fill("mg");
       await page.locator("#sample-low-0").fill("90");
