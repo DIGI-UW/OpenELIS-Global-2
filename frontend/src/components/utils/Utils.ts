@@ -794,6 +794,26 @@ export const patchToOpenElisServerJsonResponse = <
     });
 };
 
+/**
+ * The accession a lab number search should send. Strips only the legacy
+ * two-segment pattern BASE-SUFFIX where SUFFIX is numeric (analysis ordinal).
+ * Multi-segment accessions (e.g. harness HARN-QS7-2026-00001, or an in-house
+ * EQA blind code such as IH-2-01) must stay intact.
+ */
+export const labNumberForSearch = (
+  accessionNumber: string | null | undefined,
+): string => {
+  if (!accessionNumber) {
+    return "";
+  }
+  const trimmed = accessionNumber.trim();
+  const parts = trimmed.split("-");
+  if (parts.length === 2 && /^\d+$/.test(parts[1])) {
+    return parts[0];
+  }
+  return trimmed;
+};
+
 export const convertAlphaNumLabNumForDisplay = (
   labNumber: string | null | undefined,
 ): string | null | undefined => {
