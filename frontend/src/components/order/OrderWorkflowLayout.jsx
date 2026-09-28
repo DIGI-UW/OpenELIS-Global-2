@@ -16,6 +16,7 @@ import OrderStepper, {
   VECTOR_ORDER_STEPS,
 } from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
+import RangeNotAppliedWarning from "./RangeNotAppliedWarning";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
 import { useOrderContext, SaveStatus } from "./OrderContext";
@@ -143,8 +144,15 @@ const OrderWorkflowLayout = ({
   showSaveButtons = true,
 }) => {
   const location = useLocation();
-  const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
-    useOrderContext();
+  const {
+    isReadOnly,
+    isEditMode,
+    enableEditMode,
+    labNumber,
+    orderData,
+    rangeNotApplied,
+  } = useOrderContext();
+  const currentLabNumber = labNumber || orderData?.sampleOrderItems?.labNo;
 
   // Infer step set from URL prefix — no workflowType context read needed.
   const steps = (() => {
@@ -248,6 +256,14 @@ const OrderWorkflowLayout = ({
           {(labNumber || orderData?.sampleOrderItems?.labNo) && (
             <OrderContextCard className="order-context-section" />
           )}
+
+          {rangeNotApplied?.labNumber &&
+            rangeNotApplied.labNumber === currentLabNumber && (
+              <RangeNotAppliedWarning
+                tests={rangeNotApplied.tests}
+                labNumber={currentLabNumber}
+              />
+            )}
 
           <SavedNextAction steps={steps} activeStep={activeStep} />
 

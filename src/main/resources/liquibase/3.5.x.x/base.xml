@@ -587,4 +587,7 @@
   <!-- Audit history rows for tables keyed by a UUID string (qc_control_lot). -->
   <include relativeToChangelogFile="true" file="109-history-reference-key.xml"/>
 
+  <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
+  <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
+
 </databaseChangeLog>

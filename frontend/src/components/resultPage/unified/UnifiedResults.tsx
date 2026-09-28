@@ -89,6 +89,7 @@ import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
   const query = urlState.toString();
@@ -134,6 +135,7 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   patientName?: string;
   sampleType?: string;
   normalRange?: string;
+  rangeNotAppliedReason?: string | null;
   analysisStatusId?: string;
   analysisLastupdated?: string;
   testResultComponentId?: string;
@@ -1460,8 +1462,10 @@ const UnifiedResults: React.FC = () => {
                           {row.sampleType || "—"}
                         </TableCell>
                         <TableCell>
-                          {row.normalRange}{" "}
-                          {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
+                          {displayRange(intl, row)}{" "}
+                          {row.unitsOfMeasure && !rangeNotAppliedKey(row)
+                            ? row.unitsOfMeasure
+                            : ""}
                         </TableCell>
                         <TableCell className="unifiedResultsValueCell">
                           <span className={accentClass(flag)}>

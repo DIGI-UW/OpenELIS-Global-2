@@ -467,7 +467,7 @@ const OrderQA = () => {
                     <StructuredListCell>
                       <FormattedMessage
                         id="patient.gender"
-                        defaultMessage="Gender"
+                        defaultMessage="Sex"
                       />
                     </StructuredListCell>
                     <StructuredListCell>

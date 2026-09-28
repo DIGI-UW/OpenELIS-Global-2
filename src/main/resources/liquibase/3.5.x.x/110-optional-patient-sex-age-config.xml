@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Order Entry Configuration switches letting reception leave patient sex
+         or date of birth blank. Both default to true, so upgrades keep today's
+         required fields. -->
+
+    <changeSet author="mozzy11" id="OGC-1362-patient-sex-required">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.site_information WHERE name = 'Patient sex required'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add patient sex required configuration for patient entry</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Patient sex required" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, patient sex is required when a patient is created or edited" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.patient.sex.required" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1362-patient-age-required">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.site_information WHERE name = 'Patient age required'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add patient age/DOB required configuration for patient entry</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Patient age required" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, patient date of birth is required when a patient is created or edited" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.patient.age.required" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

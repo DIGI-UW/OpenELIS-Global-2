@@ -130,6 +130,8 @@ public class TestResultItem implements ResultItem, Serializable {
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
     // Authored critical bounds, null when the range has none (OGC-1121).
     private Double lowerCritical;
     private Double higherCritical;
@@ -1447,5 +1449,13 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setAnalysisNotes(List<AnalysisNote> analysisNotes) {
         this.analysisNotes = analysisNotes;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
     }
 }

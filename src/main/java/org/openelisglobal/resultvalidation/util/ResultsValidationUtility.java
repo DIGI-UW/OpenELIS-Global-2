@@ -83,6 +83,7 @@ import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
@@ -566,8 +567,9 @@ public class ResultsValidationUtility {
         // The same range selection Results Entry uses: the component's own range on a
         // multi-component test, else the test-level one, both chosen for the patient
         // and scoped to this specimen.
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(analysis,
-                result, currentPatient);
+        ResultLimitSelection rangeSelection = SpringContext.getBean(ResultLimitService.class)
+                .selectResultLimitForResult(analysis, result, currentPatient, null);
+        ResultLimit resultLimit = rangeSelection.getResultLimit();
         ResultValidationItem testItem = new ResultValidationItem();
 
         testItem.setAccessionNumber(accessionNumber);
@@ -576,6 +578,8 @@ public class ResultsValidationUtility {
         testItem.setTestName(displayTestName);
         testItem.setTestId(test.getId());
         setResultLimitDependencies(resultLimit, testItem, testResults);
+        testItem.setRangeNotAppliedReason(
+                rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
         testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
@@ -866,6 +870,7 @@ public class ResultsValidationUtility {
      */
     private void populateReviewSummary(AnalysisItem analysisResultItem, ResultValidationItem testResultItem) {
         analysisResultItem.setCriticalRange(testResultItem.getCriticalRange());
+        analysisResultItem.setRangeNotAppliedReason(testResultItem.getRangeNotAppliedReason());
         Analysis analysis = testResultItem.getAnalysis();
         Result result = testResultItem.getResult();
         if (result != null) {

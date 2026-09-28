@@ -507,7 +507,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                       defaultSelected=""
                       legendText={intl.formatMessage({
                         id: "patient.gender",
-                        defaultMessage: "Gender",
+                        defaultMessage: "Sex",
                       })}
                       name={field.name}
                       id={fieldId("search_patient_gender")}

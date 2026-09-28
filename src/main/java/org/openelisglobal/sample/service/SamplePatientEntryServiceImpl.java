@@ -59,7 +59,10 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationContact;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
@@ -70,6 +73,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.requester.service.SampleRequesterService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -92,6 +96,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -174,6 +179,55 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private MicroOrderRoutingService microOrderRoutingService;
     @Autowired(required = false)
     private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
+    @Lazy
+    @Autowired
+    private ResultLimitService resultLimitService;
+    @Lazy
+    @Autowired
+    private PanelItemService panelItemService;
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<String> getTestNamesWithRangeNotApplied(org.openelisglobal.sample.valueholder.Sample sample) {
+        Patient patient = sample == null ? null : sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return new ArrayList<>();
+        }
+        List<ResultLimitService.OrderedTest> ordered = new ArrayList<>();
+        for (Analysis analysis : analysisService.getAnalysesBySampleId(sample.getId())) {
+            if (analysis.getTest() != null) {
+                ordered.add(new ResultLimitService.OrderedTest(analysis.getTest().getId(),
+                        analysis.getSampleItem() == null ? null : analysis.getSampleItem().getTypeOfSampleId()));
+            }
+        }
+        for (SampleTypeRequest request : sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId())) {
+            String sampleTypeId = request.getTypeOfSample() == null ? null : request.getTypeOfSample().getId();
+            for (String testId : splitIds(request.getRequestedTests())) {
+                ordered.add(new ResultLimitService.OrderedTest(testId, sampleTypeId));
+            }
+            for (String panelId : splitIds(request.getRequestedPanels())) {
+                for (PanelItem item : panelItemService.getPanelItemsForPanel(panelId)) {
+                    if (item.getTest() != null) {
+                        ordered.add(new ResultLimitService.OrderedTest(item.getTest().getId(), sampleTypeId));
+                    }
+                }
+            }
+        }
+        return resultLimitService.getTestNamesWithRangeNotApplied(ordered, patient);
+    }
+
+    private static List<String> splitIds(String ids) {
+        List<String> split = new ArrayList<>();
+        if (ids == null) {
+            return split;
+        }
+        for (String id : ids.split(",")) {
+            if (!id.trim().isEmpty()) {
+                split.add(id.trim());
+            }
+        }
+        return split;
+    }
 
     @Transactional
     @Override

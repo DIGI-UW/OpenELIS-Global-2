@@ -262,7 +262,7 @@ public final class ValidationSignals {
         if (row == null) {
             return false;
         }
-        boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange());
+        boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange()) && !row.isRangeNotApplied();
         return isClear(rangeKnown, row.isNormal(), row.getQcStatus(), row.isNceOpen(), row.isModified(),
                 row.isCritical(), row.isNonconforming(), row.isAckPending());
     }

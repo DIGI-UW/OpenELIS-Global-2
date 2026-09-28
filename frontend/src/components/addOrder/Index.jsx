@@ -24,6 +24,7 @@ import {
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
 import EQAOrderForm from "../eqa/EQAOrderForm";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -1024,6 +1025,9 @@ const Index = () => {
                     setPage={handleResetToFirstStep}
                     saveResponse={saveResponse}
                   />
+                )}
+                {isLastStep && !isOnSuccess && (
+                  <OrderEntryMissingFieldsNotice errors={errors} />
                 )}
                 <div className="navigationButtonsLayout">
                   {!isFirstStep && !isOnSuccess && (

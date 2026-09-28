@@ -31,6 +31,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -319,8 +320,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                     tests = resultsLoadUtility.getGroupedTestsForPatient(patient);
                     patientName = patientService.getLastFirstName(patient);
-                    patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
-                            + patient.getBirthDateForDisplay();
+                    patientInfo = StringUtil.joinNonBlank(", ", patient.getNationalId(), patient.getGender(),
+                            patient.getBirthDateForDisplay());
                 }
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
