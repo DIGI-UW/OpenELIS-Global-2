@@ -72,5 +72,62 @@
         </rollback>
     </changeSet>
 
+    <!-- OGC-1244: the participant side of the same defect. An external PT result
+         was one row per analyte per round, so two panel samples of one test (the
+         provider's multi-level panel) became one row: the second sample's value was
+         dropped, and the provider's score for one sample landed on the other. A row
+         now carries the provider's sample code the laboratory entered with the
+         order, and the target the provider scored it against, which the follow-up
+         register shows. -->
+    <changeSet author="openelisglobal" id="qa-088-add-participant-result-provider-sample">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="eqa_participant_result" columnName="provider_sample_code"
+                    schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>External PT results name the provider sample they answer and keep its target</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_participant_result">
+            <column name="provider_sample_code" type="varchar(100)"/>
+            <column name="provider_target" type="varchar(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="eqa_participant_result" columnName="provider_target"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_participant_result"
+                columnName="provider_sample_code"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-089-participant-result-unique-per-provider-sample">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims' AND indexname = 'uq_eqa_participant_result_round_lab_analyte'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            External PT is one result per analyte per provider sample per round. A result
+            with no sample code keeps the old one-per-analyte rule, because COALESCE maps
+            every missing code to the same key; a bare NULL column would be distinct from
+            every other NULL and stop enforcing it.
+        </comment>
+        <sql>
+            DROP INDEX clinlims.uq_eqa_participant_result_round_lab_analyte;
+
+            CREATE UNIQUE INDEX uq_eqa_participant_result_round_lab_analyte
+            ON clinlims.eqa_participant_result
+            (round_id, lab_enrollment_id, analyte_id, COALESCE(provider_sample_code, ''))
+            WHERE panel_sample_id IS NULL;
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.uq_eqa_participant_result_round_lab_analyte;
+
+                CREATE UNIQUE INDEX uq_eqa_participant_result_round_lab_analyte
+                ON clinlims.eqa_participant_result (round_id, lab_enrollment_id, analyte_id)
+                WHERE panel_sample_id IS NULL;
+            </sql>
+        </rollback>
+    </changeSet>
 
 </databaseChangeLog>

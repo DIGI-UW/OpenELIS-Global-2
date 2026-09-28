@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
@@ -38,8 +37,10 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Getter
 @Setter
 @Entity
-@Table(name = "eqa_participant_result", uniqueConstraints = @UniqueConstraint(name = "uq_eqa_participant_result_round_lab_analyte", columnNames = {
-        "round_id", "lab_enrollment_id", "analyte_id" }))
+// Uniqueness is two partial indexes (qa/027, qa/047): one row per aliquot for
+// in-house panels, and one per analyte per provider sample for external PT. A
+// table-level constraint here would have Hibernate recreate the old single rule.
+@Table(name = "eqa_participant_result")
 public class EQAParticipantResult extends BaseObject<Long> {
 
     @Id
@@ -78,6 +79,23 @@ public class EQAParticipantResult extends BaseObject<Long> {
      */
     @Column(name = "panel_sample_id")
     private Long panelSampleId;
+
+    /**
+     * External PT: the provider's code for the panel sample this result answers, as
+     * the laboratory entered it with the order. Two samples of one analyte are two
+     * results, told apart by this code on the export bundle and the scores the
+     * provider returns. Null where the order named no provider sample.
+     */
+    @Column(name = "provider_sample_code", length = 100)
+    private String providerSampleCode;
+
+    /**
+     * External PT: the target the provider scored this result against, as its
+     * scores reported it. The provider keeps the panel, so this is the only local
+     * record of it.
+     */
+    @Column(name = "provider_target", length = 255)
+    private String providerTarget;
 
     @Column(name = "result_value", length = 255)
     private String resultValue;

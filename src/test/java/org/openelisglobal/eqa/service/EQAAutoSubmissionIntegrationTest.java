@@ -69,6 +69,8 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private static final long SAMPLE = 9901L;
     private static final long SAMPLE_ITEM = 9901L;
     private static final long SAMPLE_EQA = 9901L;
+    /** The second order of a two-sample panel (OGC-1244). */
+    private static final long SECOND_SAMPLE = 9902L;
 
     /**
      * Fixture ids are assigned here rather than from a sequence: the sample_eqa and
@@ -135,7 +137,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         // orders themselves.
         jdbc.update("DELETE FROM clinlims.eqa_participant_result");
         jdbc.update("DELETE FROM clinlims.eqa_lab_enrollment_test_map WHERE enrollment_id = ?", ENROLLMENT);
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         super.cleanEqaTables();
         cleanOrders();
     }
@@ -185,12 +187,12 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     }
 
     private void cleanOrders() {
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         jdbc.update("DELETE FROM clinlims.result WHERE analysis_id BETWEEN 9911 AND 9930");
-        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_item WHERE id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample WHERE id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         // Last, and in this order: the bridge mints a test_analyte link — and for the
         // probe test an analyte too — for a test the catalog never mapped, and the
         // analyses that reference them have to go first. Dropping them keeps the next
@@ -248,12 +250,17 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     }
 
     private long analysis(long testId, long analyteId, String value, AnalysisStatus status, boolean withAnalyte) {
+        return analysisOn(SAMPLE_ITEM, testId, analyteId, value, status, withAnalyte);
+    }
+
+    private long analysisOn(long sampleItemId, long testId, long analyteId, String value, AnalysisStatus status,
+            boolean withAnalyte) {
         long analysisId = nextAnalysisId++;
         jdbc.update(
                 "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision, analysis_type,"
                         + " entry_date, status_id, lastupdated, fhir_uuid)"
                         + " VALUES (?, ?, 9901, ?, 1, 'ROUTINE', now(), ?::numeric, now(), gen_random_uuid())",
-                analysisId, SAMPLE_ITEM, testId, statusService.getStatusID(status));
+                analysisId, sampleItemId, testId, statusService.getStatusID(status));
         if (value != null) {
             // Result type and significant_digits are set the way a configured test
             // sets them. On a numeric result left at 0 digits,
@@ -297,6 +304,138 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private int failureAlerts(Long cycleId) {
         return jdbc.queryForObject("SELECT count(*) FROM clinlims.alert WHERE alert_type = 'EQA_SUBMISSION_FAILED'"
                 + " AND alert_entity_type = 'EQACycle' AND alert_entity_id = ?", Integer.class, cycleId);
+    }
+
+    /**
+     * The two orders of a multi-level panel: the same test on two provider samples,
+     * each order naming the provider's code for its sample as the laboratory
+     * entered it at order entry.
+     */
+    private void twoSampleOrders(EQACycle cycle, Long roundId) {
+        eqaOrder(cycle, roundId);
+        jdbc.update("UPDATE clinlims.sample_eqa SET eqa_provider_sample_id = 'APC-26-6-A' WHERE id = ?", SAMPLE_EQA);
+        jdbc.update(
+                "INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date,"
+                        + " collection_date, lastupdated) VALUES (?, 'EQAT14002', now(), now(), now(), now())",
+                SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_item (id, sort_order, status_id, samp_id, typeosamp_id,"
+                        + " collection_date, lastupdated) VALUES (?, 1, ?::numeric, ?, 9901, now(), now())",
+                SECOND_SAMPLE, statusService.getStatusID(AnalysisStatus.NotStarted), SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_eqa (id, sample_id, is_eqa_sample, eqa_enrollment_id, cycle_id,"
+                        + " round_id, eqa_provider_sample_id, sys_user_id, last_updated)"
+                        + " VALUES (?, ?, true, ?, ?, ?, 'APC-26-6-B', ?, now())",
+                SECOND_SAMPLE, SECOND_SAMPLE, ENROLLMENT, cycle.getId(), roundId, USER);
+        finalizedAnalysis(VL_TEST, VL_ANALYTE, "505");
+        analysisOn(SECOND_SAMPLE, VL_TEST, VL_ANALYTE, "1190", AnalysisStatus.Finalized, true);
+    }
+
+    /** analyte|provider sample|value|status, one line per participant result. */
+    private List<String> rowsBySample(Long cycleId) {
+        return jdbc.query(
+                "SELECT analyte_id, provider_sample_code, result_value, submission_status, provider_target"
+                        + " FROM clinlims.eqa_participant_result WHERE cycle_id = ? ORDER BY provider_sample_code",
+                (rs, i) -> rs.getLong(1) + "|" + rs.getString(2) + "|" + rs.getString(3) + "|" + rs.getString(4) + "|"
+                        + rs.getString(5),
+                cycleId);
+    }
+
+    // ---- OGC-1244: two samples of one analyte ----
+
+    @Test
+    public void twoSamplesOfOneAnalyte_areTwoResultsAndTheBundleNamesEachSample() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 21));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        assertEquals("each sample keeps its own value",
+                List.of(VL_ANALYTE + "|APC-26-6-A|505.00|VALIDATED_PARTIAL|null",
+                        VL_ANALYTE + "|APC-26-6-B|1190.00|VALIDATED_PARTIAL|null"),
+                rowsBySample(cycle.getId()));
+        String[] lines = cycleSubmissionService.exportBundleCsv(cycle.getId(), ENROLLMENT).split("\n");
+        assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
+                + "submission_status,entered_at,sample_code", lines[0]);
+        List<String> valueAndSample = java.util.Arrays.stream(lines).skip(1)
+                .map(line -> line.split(",", -1)[5] + "@" + line.substring(line.lastIndexOf(',') + 1)).sorted()
+                .toList();
+        assertEquals(List.of("1190.00@APC-26-6-B", "505.00@APC-26-6-A"), valueAndSample);
+    }
+
+    @Test
+    public void aScoresFileNamingItsSample_scoresThatSampleAndKeepsTheProvidersTarget() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 22));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        Map<String, Object> outcome = cycleSubmissionService.intakeScoresCsv(cycle.getId(), ENROLLMENT,
+                "analyte_name,result_value,target_value,z_score,performance_status,sample_code\n"
+                        + "HIV viral load,1190,1105,-2.42,QUESTIONABLE,APC-26-6-B\n",
+                USER);
+
+        assertEquals(1, outcome.get("scored"));
+        assertEquals("the score lands on the sample the provider judged, and only there", List
+                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|1105"),
+                rowsBySample(cycle.getId()));
+        String followup = jdbc.queryForObject(
+                "SELECT participant_result_summary_json FROM" + " clinlims.eqa_participant_followup WHERE cycle_id = ?",
+                String.class, cycle.getId());
+        assertTrue("follow-up shows the scored sample's value: " + followup,
+                followup.contains("\"reported\":\"1190.00\""));
+        assertTrue("and the target it was judged against: " + followup, followup.contains("\"target\":\"1105\""));
+        assertTrue("and which sample it was: " + followup, followup.contains("\"sampleCode\":\"APC-26-6-B\""));
+    }
+
+    @Test
+    public void aScoreThatDoesNotNameItsSample_isRefusedWhenTwoSamplesShareTheAnalyte() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 23));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                        List.of(Map.of("analyteId", VL_ANALYTE, "performance", "questionable")), USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("must name its sample_code"));
+        assertEquals("nothing is scored", List.of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null",
+                VL_ANALYTE + "|APC-26-6-B|1190.00|SUBMITTED|null"), rowsBySample(cycle.getId()));
+    }
+
+    /**
+     * Found in the phase B walkthrough: once sample B was scored, a score naming no
+     * sample landed on A by elimination. A resent score for B in the old format
+     * would do the same, so the rule is per analyte, not per unscored row.
+     */
+    @Test
+    public void afterOneSampleIsScored_aScoreThatDoesNotNameItsSampleIsStillRefused() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 24));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+        cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                List.of(Map.of("analyteId", VL_ANALYTE, "performance", "questionable", "sampleCode", "APC-26-6-B")),
+                USER);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                        List.of(Map.of("analyteId", VL_ANALYTE, "performance", "acceptable")), USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("HIV viral load has 2 samples"));
+        assertEquals("sample A is still waiting for its own score", List
+                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|null"),
+                rowsBySample(cycle.getId()));
     }
 
     // ---- the happy path ----
@@ -846,7 +985,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         String[] lines = csv.split("\n");
         assertEquals("header plus one row", 2, lines.length);
         assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
-                + "submission_status,entered_at", lines[0]);
+                + "submission_status,entered_at,sample_code", lines[0]);
         assertTrue("a value with a comma must be quoted, or the column count shifts: " + lines[1],
                 lines[1].contains("\"Positive, weak\""));
         assertTrue(lines[1].startsWith(cycle.getId() + ",,1," + VL_ANALYTE + ","));

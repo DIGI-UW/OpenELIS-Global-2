@@ -163,6 +163,10 @@ public class EQAFhirExchangeServiceImpl implements EQAFhirExchangeService {
             Map<String, Object> score = new LinkedHashMap<>();
             score.put("analyteId", Long.valueOf(analyte.getId()));
             score.put("performance", performance);
+            String sampleCode = sampleCodeOf(observation);
+            if (sampleCode != null) {
+                score.put("sampleCode", sampleCode);
+            }
             BigDecimal z = zScoreOf(observation);
             if (z != null) {
                 score.put("zScore", z);

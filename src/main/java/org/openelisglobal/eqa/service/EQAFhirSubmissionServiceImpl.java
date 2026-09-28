@@ -327,6 +327,10 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         observation
                 .addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/participant_result_uuid",
                         result.getFhirUuid().toString()));
+        if (result.getProviderSampleCode() != null) {
+            observation.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + SAMPLE_CODE_SUFFIX,
+                    result.getProviderSampleCode()));
+        }
         observation.setStatus(ObservationStatus.FINAL);
 
         CodeableConcept code = new CodeableConcept();

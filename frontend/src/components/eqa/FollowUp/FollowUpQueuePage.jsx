@@ -532,6 +532,17 @@ const FollowUpQueuePage = () => {
                                 <TableRow key={result.participantResultId || i}>
                                   <TableCell>
                                     {result.analyteName || "—"}
+                                    {result.sampleCode && (
+                                      <div style={hintStyle}>
+                                        {t(
+                                          "eqa.intake.sample",
+                                          "Sample {code}",
+                                          {
+                                            code: result.sampleCode,
+                                          },
+                                        )}
+                                      </div>
+                                    )}
                                   </TableCell>
                                   <TableCell>
                                     {result.reported || "—"}
