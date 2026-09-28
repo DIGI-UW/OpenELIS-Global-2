@@ -181,6 +181,37 @@ because it is listed here.
   Bridge pin. FluoroCycler specimen/unit interpretation, RIF/COVID answers,
   connection defaults, recovery, upgrades and reviewed videos remain open.
 
+### D3 RIF catalog checkpoint — 27 September 2026
+
+- Corrected the shipped molecular resistance choices to `DETECTED`,
+  `NOT DETECTED` and `Indeterminate`, matching the meaning documented by
+  Cepheid and CDC. No new translation mechanism or analyzer-specific runtime
+  branch is needed for these three values; generic label normalization works.
+- Used new dictionary identities rather than relabeling old clinical choices.
+  Historical results, saved local bindings and uploaded overrides are not
+  rewritten. This fresh-default correction does not migrate existing site
+  mappings or reconcile duplicate catalog records.
+- Expanded the existing real-catalog integration test: normal dictionary and
+  result configuration handlers resolve all three shipped RIF outcomes, and
+  repeat loading retains the same option IDs. All three tests in
+  `AnalyzerCatalogIdentityIntegrationTest` passed.
+- The existing recorded GeneXpert story now covers MTB `NOT DETECTED` plus
+  all three RIF outcomes, with exact clinical value matching and independent
+  patient/order/specimen/test readback. The intake view displays the mapped
+  clinical label; raw `INDETERMINATE` therefore appears as `Indeterminate`.
+- These are synthetic per-outcome checks, not complete assay messages or
+  hardware qualification. Full test outcomes and reviewed recordings are
+  published in the evidence report. COVID answers, FluoroCycler interpretation,
+  new Bridge revision qualification, connection defaults, recovery and upgrade
+  acceptance remain open.
+- Next: resolve the supported COVID outcomes with evidence-backed semantics,
+  keeping error/no-result states distinct; qualify the linked Bridge revision
+  before changing pins. Continue the independent FluoroCycler evidence work
+  without blocking the bounded COVID correction.
+
+See [default catalog evidence](../../docs/analyzers/default-catalog-evidence.md)
+for sources and the fresh-install versus existing-site boundary.
+
 Each checkpoint must name the changed files/PRs, the actual run and outcome,
 remaining failures and the next concrete action. A blocked instrument-evidence
 question applies to that scenario, not to unrelated COVID/HIV work. A failing

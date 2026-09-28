@@ -8,11 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
 import org.openelisglobal.test.service.TestService;
@@ -37,6 +39,17 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
 
     @Autowired
     private AnalyzerMappingDefaults defaults;
+
+    @Autowired
+    private AnalyzerMappingCatalogService mappingCatalog;
+
+    @Autowired
+    @Qualifier("dictionaryConfigurationHandler")
+    private DomainConfigurationHandler dictionaryHandler;
+
+    @Autowired
+    @Qualifier("testResultConfigurationHandler")
+    private DomainConfigurationHandler resultHandler;
 
     @Autowired
     private TestService tests;
@@ -107,7 +120,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
-    public void bundledHivDefaultsResolveToTheExistingPlasmaTestUsingRealSpecimenLinks() throws Exception {
+    public void bundledMolecularDefaultsResolveSpecimenAndReportedResistanceOutcomes() throws Exception {
         var plasma = tests.getTestByDescription("HIVVIRALLOAD(Plasma)");
         var serum = tests.getTestByDescription("HIVVIRALLOAD(Serum)");
         assertNotNull(plasma);
@@ -136,6 +149,34 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         assertEquals("20447-9", tests.get(serumId).getLoinc());
         assertTrue(results.getActiveTestResultsByTest(plasmaId).stream()
                 .anyMatch(result -> "N".equals(result.getTestResultType())));
+        try (InputStream csv = getClass()
+                .getResourceAsStream("/configuration/dictionaries/analyzer-result-options.csv")) {
+            dictionaryHandler.processConfiguration(csv, "analyzer-result-options.csv");
+        }
+        var rif = tests.getTestByDescription("Xpert RIF Resistance");
+        assertNotNull(rif);
+        var shipped = BridgeAnalyzerProfile.from(new ObjectMapper().readTree(
+                Path.of("tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles/genexpert-astm-v5.json")
+                        .toFile()));
+        Map<String, String> firstOptions = null;
+        for (int run = 0; run < 2; run++) {
+            try (InputStream csv = getClass()
+                    .getResourceAsStream("/configuration/test-results/molecular-test-results.csv")) {
+                resultHandler.processConfiguration(csv, "molecular-test-results.csv");
+            }
+            var options = mappingCatalog.getActiveResultOptions(rif.getId()).stream()
+                    .collect(Collectors.toMap(option -> option.label(), option -> option.id()));
+            assertEquals(java.util.Set.of("DETECTED", "NOT DETECTED", "Indeterminate"), options.keySet());
+            if (firstOptions != null)
+                assertEquals(firstOptions, options);
+            firstOptions = options;
+            var draft = defaults.resolve(shipped);
+            var bindings = draft.results().stream().filter(row -> "RIF".equals(row.sourceRowKey()))
+                    .collect(Collectors.toMap(row -> row.rawValue(), row -> row.testResultId()));
+            assertEquals(Map.of("DETECTED", options.get("DETECTED"), "NOT DETECTED", options.get("NOT DETECTED"),
+                    "INDETERMINATE", options.get("Indeterminate")), bindings);
+        }
+
     }
 
     private Map<String, String> catalogIds() {

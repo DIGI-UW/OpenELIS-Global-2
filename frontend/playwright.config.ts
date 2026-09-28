@@ -229,7 +229,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
         trace: "on",
-        video: "on",
+        video: { mode: "on", size: { width: 1600, height: 1000 } },
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
