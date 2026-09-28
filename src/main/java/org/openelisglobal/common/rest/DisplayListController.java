@@ -494,18 +494,29 @@ public class DisplayListController extends BaseRestController {
         return testList;
     }
 
+    /**
+     * OGC-189 (M2): every consumer of this endpoint is a <em>viewer</em> control —
+     * the Workplan test-section picker, the Results and Validation search filters,
+     * the by-unit report selectors and the dashboard — so it lists
+     * {@code isActive OR hasContent}. A lab unit switched off with analyses still
+     * in flight stays selectable until that work is finished, then drops out on its
+     * own; it never widens what the user is authorized to see.
+     *
+     * <p>
+     * Choosers ("assign this test to a lab unit") must not use this endpoint.
+     */
     @GetMapping(value = "user-test-sections/{roleName}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     private List<IdValuePair> createUserTestSectionsList(HttpServletRequest request, @PathVariable String roleName) {
         if (roleName.equals("ALL")) {
-            return userService.getUserTestSections(getSysUserId(request), null);
+            return userService.getUserViewerTestSections(getSysUserId(request), null);
         } else {
             Role role = roleService.getRoleByName(roleName);
             if (role == null) {
                 return new ArrayList<>();
             }
             String resultsRoleId = role.getId();
-            return userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            return userService.getUserViewerTestSections(getSysUserId(request), resultsRoleId);
         }
     }
 

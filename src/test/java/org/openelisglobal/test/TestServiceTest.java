@@ -76,6 +76,34 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, tests.size());
     }
 
+    /**
+     * OGC-189: the viewer variant must NOT hide a deactivated test.
+     *
+     * <p>
+     * The active-only query stranded in-flight work — deactivate a test and its
+     * pending analyses disappeared from results entry, validation, workplan and
+     * reports, still counted by the dashboard but impossible to reach or complete.
+     * Completion and history are never gated on configuration status.
+     */
+    @Test
+    public void getAllTestsByTestSectionIds_includesDeactivatedTests() {
+        // Direct SQL: updating a Test through the service pulls its
+        // Localization graph into the flush.
+        jdbcTemplate.update("update clinlims.test set is_active = 'N' where id = 1");
+
+        List<org.openelisglobal.test.valueholder.Test> activeOnly = testService
+                .getTestsByTestSectionIds(List.of("1", "2"));
+        List<org.openelisglobal.test.valueholder.Test> all = testService.getAllTestsByTestSectionIds(List.of("1", "2"));
+
+        // The picker variant still hides it — that behaviour is deliberate and
+        // is the positive control: without it, a query that ignored the flag
+        // entirely would satisfy the assertion below for the wrong reason.
+        assertEquals(1, activeOnly.size());
+        assertEquals(2, all.size());
+        assertTrue("the deactivated test must still be visible to viewers",
+                all.stream().anyMatch(t -> "1".equals(t.getId())));
+    }
+
     @Test
     public void getTestsByTestSectionId_shouldReturnTestGivenTestSectionId() {
         List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSectionId("1");

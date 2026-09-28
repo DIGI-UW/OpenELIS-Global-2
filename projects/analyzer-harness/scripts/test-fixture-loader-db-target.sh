@@ -16,6 +16,16 @@ cp "$REPO_ROOT/src/test/resources/load-test-fixtures.sh" "$FIXTURE_DIR/"
 touch "$FIXTURE_DIR/e2e-foundational-data.sql"
 touch "$FIXTURE_DIR/fixtures/analyzer-harness-lane-data.sql"
 touch "$FIXTURE_DIR/fixtures/storage-in-progress-order.sql"
+for fixture in \
+  reporting-repeated-results.sql \
+  reporting-field-values.sql \
+  reporting-non-conformance.sql \
+  reporting-referrals.sql \
+  reporting-recovery.sql; do
+  touch "$FIXTURE_DIR/fixtures/$fixture"
+done
+mkdir -p "$TMP_DIR/src/main/resources/reporting"
+printf '%s\n' '{}' > "$TMP_DIR/src/main/resources/reporting/sample-testing.json"
 touch "$FIXTURE_DIR/testdata/storage-e2e.xml"
 touch "$FIXTURE_DIR/testdata/xml-to-sql.py"
 

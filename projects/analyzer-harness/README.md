@@ -11,11 +11,21 @@ The analyzer harness CI gate runs from the repository root using:
 - `.github/ci/ci.analyzer-harness.yml`
 - `.github/workflows/e2e-playwright-reusable.yml`
 
-Use `ci-parity-test.sh` for exact local reproduction of that CI path.
+Use `ci-parity-test.sh` to run that path locally. The extra local Compose
+override keeps CI images and service settings. Each run gets fresh containers,
+networks, volumes, and random loopback ports; its image tags are scoped to the
+worktree.
 
 ```bash
-./projects/analyzer-harness/ci-parity-test.sh
+./projects/analyzer-harness/ci-parity-test.sh --build
 ```
+
+`--build` rebuilds the WAR and isolated images from the current checkout before
+testing. Without it, the runner reuses this worktree's existing parity images;
+use that only when those images are already current. Neither mode stops other
+Docker projects or removes their volumes. The runner removes its own test stack
+and volumes when it exits; pass `--keep-stack` to leave that run available for
+inspection.
 
 The script performs:
 
@@ -91,7 +101,7 @@ changed application services. Frontend changes hot-reload automatically.
 For exact CI parity, prefer:
 
 ```bash
-./projects/analyzer-harness/ci-parity-test.sh
+./projects/analyzer-harness/ci-parity-test.sh --build
 ```
 
 `reset-env.sh` is retained only for legacy CI investigation. It is not a
