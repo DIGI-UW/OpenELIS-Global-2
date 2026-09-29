@@ -52,6 +52,11 @@ For AI-assisted development, prefer this sequence:
 - NEVER use `.catch(() => false)` on `isVisible()` — it returns boolean
   directly.
 - ALWAYS include at least one `expect()` assertion per test.
+- Isolation (Constitution V.7): write and read only data the spec seeded. Scope
+  every list, count, rate, or enabled state to your seeded IDs or assert a
+  before and after delta; a date window is not a scope. Never widen an assertion
+  because other data might be present. Take "today" from the server, never the
+  browser.
 
 ## Execution Invariants
 
