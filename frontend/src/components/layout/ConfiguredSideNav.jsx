@@ -21,6 +21,18 @@ const legacyResults = new Set([
   "menu_results_status",
 ]);
 
+// Menu rows seeded before a page moved still carry its old path; App.jsx
+// redirects that path, and the nav must link to where the page now lives.
+const movedPaths = { "/AuditTrailReport": "/qa/qms/audit-trail" };
+
+export function canonicalMenuUrl(url) {
+  const reporting = canonicalReportingUrl(url);
+  if (!reporting) return reporting;
+  const path = reporting.split(/[?#]/)[0];
+  const moved = movedPaths[path.replace(/\/$/, "")];
+  return moved ? moved + reporting.slice(path.length) : reporting;
+}
+
 export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
   const intl = useIntl();
   const location = useLocation();
@@ -37,7 +49,7 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
           ...item,
           menu: {
             ...item.menu,
-            actionURL: canonicalReportingUrl(item.menu.actionURL),
+            actionURL: canonicalMenuUrl(item.menu.actionURL),
           },
           childMenus: filter(item.childMenus || []),
         }));

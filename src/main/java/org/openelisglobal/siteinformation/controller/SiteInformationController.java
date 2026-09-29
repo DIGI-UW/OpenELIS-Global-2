@@ -20,12 +20,12 @@ import org.openelisglobal.common.util.URLUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.siteinformation.form.SiteInformationForm;
 import org.openelisglobal.siteinformation.service.SiteInformationDomainService;
+import org.openelisglobal.siteinformation.service.SiteInformationInstructions;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.validator.SiteInformationFormValidator;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -210,12 +210,7 @@ public class SiteInformationController extends BaseController {
     }
 
     private String getInstruction(SiteInformation siteInformation) {
-        String instruction = MessageUtil.getMessage(siteInformation.getInstructionKey());
-        if (GenericValidator.isBlankOrNull(instruction)) {
-            instruction = MessageUtil.getMessage(siteInformation.getDescriptionKey());
-        }
-
-        return GenericValidator.isBlankOrNull(instruction) ? siteInformation.getDescription() : instruction;
+        return SiteInformationInstructions.describe(siteInformation);
     }
 
     private void setLocalizationValues(SiteInformationForm form, SiteInformation siteInformation) {

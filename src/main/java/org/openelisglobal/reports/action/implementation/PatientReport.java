@@ -36,6 +36,7 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -82,6 +83,7 @@ import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -131,6 +133,7 @@ public abstract class PatientReport extends Report {
     protected SampleOrganizationService sampleOrganizationService = SpringContext
             .getBean(SampleOrganizationService.class);
     protected UserService userService = SpringContext.getBean(UserService.class);;
+    private Set<String> reportUserTestIds;
     private List<String> handledOrders;
     private List<Analysis> updatedAnalysis = new ArrayList<>();
 
@@ -191,6 +194,34 @@ public abstract class PatientReport extends Report {
 
     protected boolean useReportingDescription() {
         return true;
+    }
+
+    /**
+     * The analyses of one sample that the report's reader may see, keeping only
+     * tests in their Reports lab units.
+     *
+     * <p>
+     * The set of allowed tests is resolved once per report rather than once per
+     * sample: resolving it re-reads every test in the reader's lab units, so a
+     * patient with hundreds of samples read the whole catalogue hundreds of times
+     * and the report took minutes, long past the point where the browser gives up.
+     * A report instance serves a single request, so the set cannot go stale within
+     * one run.
+     */
+    protected List<Analysis> filterAnalysesForReportUser(List<Analysis> analyses) {
+        if (analyses == null) {
+            return new ArrayList<>();
+        }
+        if (reportUserTestIds == null) {
+            reportUserTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_REPORTS);
+        }
+        List<Analysis> allowed = new ArrayList<>(analyses.size());
+        for (Analysis analysis : analyses) {
+            if (analysis.getTest() != null && reportUserTestIds.contains(analysis.getTest().getId())) {
+                allowed.add(analysis);
+            }
+        }
+        return allowed;
     }
 
     protected String convertToAlphaNumericDisplay(Sample currentSample) {
@@ -570,7 +601,8 @@ public abstract class PatientReport extends Report {
         // itself.
         recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
-        String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);
+        String note = withRangeNotAppliedNote(
+                noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true), resultList);
         if (note != null) {
             data.setNote(note);
         }
@@ -610,12 +642,12 @@ public abstract class PatientReport extends Report {
                 boolean perComponent = setAppropriateResults(resultList, data);
                 Result result = resultList.get(0);
                 setCorrectedStatus(result, data);
+                data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
                 if (!perComponent) {
                     setNormalRange(data, test, result);
+                    data.setResult(getAugmentedResult(data, result));
+                    data.setAlerts(getResultFlag(result, null, data));
                 }
-                data.setResult(getAugmentedResult(data, result));
-                data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
-                data.setAlerts(getResultFlag(result, null, data));
             }
         }
 
@@ -746,6 +778,30 @@ public abstract class PatientReport extends Report {
         }
 
         return "";
+    }
+
+    /**
+     * Appends the reason no reference range was applied when the patient's sex or
+     * birth date is missing and the test has a range that depends on it. Evaluated
+     * when the report is built, so recording the missing value later removes it.
+     */
+    protected String withRangeNotAppliedNote(String note, List<Result> resultList) {
+        if (currentAnalysis == null || currentPatient == null || resultList == null || resultList.isEmpty()
+                || resultList.stream().allMatch(result -> GenericValidator.isBlankOrNull(result.getValue()))) {
+            return note;
+        }
+        try {
+            ResultLimitSelection selection = SpringContext.getBean(ResultLimitService.class)
+                    .selectResultLimitForResult(currentAnalysis, resultList.get(0), currentPatient, null);
+            if (!selection.isRangeNotApplied()) {
+                return note;
+            }
+            String reason = MessageUtil.getMessage(selection.getReason().getMessageKey());
+            return GenericValidator.isBlankOrNull(note) ? reason : note + "<br/>" + reason;
+        } catch (RuntimeException e) {
+            LogEvent.logError("No range-not-applied note for analysis " + currentAnalysis.getId(), e);
+            return note;
+        }
     }
 
     /**
@@ -932,6 +988,7 @@ public abstract class PatientReport extends Report {
         StringBuilder results = new StringBuilder();
         StringBuilder uoms = new StringBuilder();
         StringBuilder ranges = new StringBuilder();
+        List<String> alerts = new ArrayList<>();
         for (TestResultComponent component : components) {
             // OGC-1127: a component flagged not to print is omitted from the report.
             // The primary is always kept so the test never renders with no result.
@@ -955,14 +1012,20 @@ public abstract class PatientReport extends Report {
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 continue;
             }
-            results.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+            Result first = componentResults.get(0);
+            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
+                    component.getId());
+            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(), first.getValue(true));
+            alerts.add(letter);
+            results.append(component.getLabel()).append(": ").append(componentValue);
+            if (!letter.isEmpty()) {
+                results.append(" <b>").append(letter).append("</b>");
+            }
+            results.append("\n");
 
             String componentUom = componentUomName(component, unitOfMeasureService);
             uoms.append(GenericValidator.isBlankOrNull(componentUom) ? testUom : componentUom).append("\n");
 
-            Result first = componentResults.get(0);
-            ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
-                    component.getId());
             String significantDigits = first.getTestResult() == null ? "0"
                     : first.getTestResult().getSignificantDigits();
             String range = limit == null ? ""
@@ -978,6 +1041,10 @@ public abstract class PatientReport extends Report {
         data.setUom(uoms.toString());
         data.setTestRefRange(ranges.toString());
         data.setHasRangeAndUOM(ranges.length() > 0 || uoms.length() > 0);
+        if (alerts.stream().anyMatch(letter -> !letter.isEmpty())) {
+            data.setAbnormalResult(Boolean.TRUE);
+            data.setAlerts(" <b>" + ResultAlertFlags.ABNORMAL + "</b>");
+        }
     }
 
     private static void trimTrailingNewline(StringBuilder builder) {

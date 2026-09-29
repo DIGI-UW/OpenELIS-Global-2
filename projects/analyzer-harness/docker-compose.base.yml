@@ -52,6 +52,15 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     tty: true
 
+  # Shared by CI and local development; all durable Bridge state survives
+  # container replacement and ordinary down/up (only --volumes removes it).
+  openelis-analyzer-bridge:
+    volumes:
+      - bridge-data:/data/openelis-analyzer-bridge
+    environment:
+      BRIDGE_OUTBOX_DB_PATH: /data/openelis-analyzer-bridge/outbox.db
+      BRIDGE_FILE_STATE_STORE_PATH: /data/openelis-analyzer-bridge/state.db
+
   proxy:
     container_name: openelisglobal-proxy
     ports:
@@ -63,6 +72,8 @@ networks:
     driver: bridge
 
 volumes:
+  bridge-data:
+  configuration-data:
   db-data:
   key_trust-store-volume:
   certs-vol:

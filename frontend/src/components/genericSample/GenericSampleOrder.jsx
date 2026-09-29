@@ -532,14 +532,13 @@ export default function GenericSampleOrder({
                     }
                     value={selectedNotebookId || ""}
                     onChange={(value) => setSelectedNotebookId(value)}
-                    options={[
-                      { id: "", value: "None - Default Fields Only" },
-                      ...notebooks.map((notebook) => ({
-                        id: notebook.id,
-                        value: notebook.title,
-                      })),
-                    ]}
-                    placeholder="Select a notebook"
+                    options={notebooks.map((notebook) => ({
+                      id: notebook.id,
+                      value: notebook.title,
+                    }))}
+                    placeholder={intl.formatMessage({
+                      id: "notebook.select.none",
+                    })}
                   />
                 </Column>
               </Grid>

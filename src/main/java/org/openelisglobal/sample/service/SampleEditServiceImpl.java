@@ -138,7 +138,14 @@ public class SampleEditServiceImpl implements SampleEditService {
         if (updatedSample == null) {
             updatedSample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
         }
-        updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+        Sample storedSample = new Sample();
+        storedSample.setId(updatedSample.getId());
+        sampleService.getData(storedSample);
+        if (!Objects.equals(updatedSample.getPriority(), form.getSampleOrderItems().getPriority())) {
+            updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+            updatedSample.setSysUserId(sysUserId);
+            sampleChanged = true;
+        }
         String receivedDateForDisplay = updatedSample.getReceivedDateForDisplay();
         String collectionDateFromRecieveDate = null;
         boolean useReceiveDateForCollectionDate = !FormFields.getInstance().useField(Field.CollectionDate);
@@ -220,17 +227,28 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         sampleChanged = sampleChanged || consentChanged;
         Patient patient = sampleService.getPatient(updatedSample);
+        String patientId = patient == null ? null : patient.getId();
         persistProviderData(orderArtifacts);
         SampleHuman sampleHuman = new SampleHuman();
         sampleHuman.setSampleId(updatedSample.getId());
         SampleHuman existingSampleHuman = sampleHumanService.getDataBySample(sampleHuman);
+        boolean newSampleHuman = existingSampleHuman == null;
+        if (newSampleHuman) {
+            existingSampleHuman = new SampleHuman();
+        }
         existingSampleHuman.setSysUserId(sysUserId);
         existingSampleHuman.setSampleId(updatedSample.getId());
-        existingSampleHuman.setPatientId(patient.getId());
+        existingSampleHuman.setPatientId(patientId);
         if (orderArtifacts.getProvider() != null) {
             existingSampleHuman.setProviderId(orderArtifacts.getProvider().getId());
+        } else if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            existingSampleHuman.setProviderId(null);
         }
-        sampleHumanService.update(existingSampleHuman);
+        if (newSampleHuman) {
+            sampleHumanService.insert(existingSampleHuman);
+        } else {
+            sampleHumanService.update(existingSampleHuman);
+        }
 
         for (SampleItem sampleItem : updateSampleItemList) {
             sampleItemService.update(sampleItem);
@@ -262,7 +280,7 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         if (sampleChanged) {
-            sampleService.update(updatedSample);
+            sampleService.updateAgainst(updatedSample, storedSample);
         }
 
         // seems like this is unused
@@ -299,7 +317,7 @@ public class SampleEditServiceImpl implements SampleEditService {
 
             if (sampleTestCollection.initialSampleConditionIdList != null) {
                 for (ObservationHistory observation : sampleTestCollection.initialSampleConditionIdList) {
-                    observation.setPatientId(patient.getId());
+                    observation.setPatientId(patientId);
                     observation.setSampleItemId(sampleTestCollection.item.getId());
                     observation.setSampleId(sampleTestCollection.item.getSample().getId());
                     observation.setSysUserId(sysUserId);
@@ -308,7 +326,7 @@ public class SampleEditServiceImpl implements SampleEditService {
             }
 
             if (sampleTestCollection.sampleNature != null) {
-                sampleTestCollection.sampleNature.setPatientId(patient.getId());
+                sampleTestCollection.sampleNature.setPatientId(patientId);
                 sampleTestCollection.sampleNature.setSampleItemId(sampleTestCollection.item.getId());
                 sampleTestCollection.sampleNature.setSampleId(sampleTestCollection.item.getSample().getId());
                 sampleTestCollection.sampleNature.setSysUserId(sysUserId);
@@ -371,10 +389,14 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleRequesterService.delete(orderArtifacts.getDeletableSampleOrganizationRequester());
         }
 
+        if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            sampleRequesterService.delete(orderArtifacts.getDeletableSamplePersonRequester());
+        }
+
         persistSampleStorageLocation(addedSamples);
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
-        request.getSession().setAttribute("lastPatientId", patient.getId());
+        request.getSession().setAttribute("lastPatientId", patientId);
 
         analysisList = analysisIds;
     }
@@ -438,7 +460,7 @@ public class SampleEditServiceImpl implements SampleEditService {
             testSection = testSectionService.get(userSelectedTestSection); // change
         }
 
-        Panel panel = sampleAddService.getPanelForTest(test);
+        Panel panel = sampleAddService.getPanelForTest(sampleTestCollection, test);
 
         Analysis analysis = new Analysis();
         analysis.setTest(test);

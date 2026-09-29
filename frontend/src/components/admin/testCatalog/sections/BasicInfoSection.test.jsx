@@ -516,3 +516,90 @@ describe("BasicInfoSection duplicate-description conflict (OGC-1180)", () => {
     expect(addNotification.mock.calls[0][0].kind).toBe("success");
   });
 });
+
+/**
+ * OGC-189 (M2) — Lab Unit chooser: grandfathered-select.
+ *
+ * The picker offers only ACTIVE lab units, but a test already assigned to a
+ * deactivated one must keep showing that unit. Otherwise the control renders
+ * blank and the next Save writes the blank back, destroying the assignment —
+ * the same shape as the OGC-1191 loss. QA guard G-3.
+ */
+describe("BasicInfoSection lab unit chooser (OGC-189 M2)", () => {
+  // Chemistry (7) active, Parasitology (9) deactivated; the test under edit is
+  // assigned to the deactivated one.
+  const stubLabUnits = (assignedLabUnitId) => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/domains")) {
+        cb([{ id: "CLINICAL", labelKey: "label.domain.CLINICAL" }]);
+      } else if (url.endsWith("/lab-units")) {
+        cb([
+          { id: "7", name: "Chemistry", isActive: true },
+          { id: "9", name: "Parasitology", isActive: false },
+        ]);
+      } else if (url.endsWith("/sample-types")) {
+        cb([{ id: "2", name: "Serum" }]);
+      } else if (url.endsWith("/completeness")) {
+        cb({ complete: true, messages: [] });
+      } else {
+        cb({
+          name: "Glucose",
+          code: "GLU",
+          description: "",
+          domain: "CLINICAL",
+          sampleTypeIds: ["2"],
+          labUnitId: assignedLabUnitId,
+          antimicrobialResistance: false,
+          active: true,
+          orderable: true,
+        });
+      }
+    });
+  };
+
+  it("keeps a deactivated lab unit as the current value, labelled inactive", async () => {
+    stubLabUnits("9");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    // Rendered, and visibly inactive — not silently blank.
+    expect(
+      screen.getByDisplayValue("Parasitology (inactive)"),
+    ).toBeInTheDocument();
+  });
+
+  it("the grandfathered unit stays selectable, so a re-pick cannot blank it", async () => {
+    stubLabUnits("9");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    const combo = screen.getByRole("combobox", { name: /Lab Unit/i });
+    // Open the menu and re-select the current (deactivated) unit. If the
+    // grandfathered option were filtered out it would be absent here, and the
+    // only reachable outcome would be clearing or switching the assignment —
+    // which is exactly how OGC-1191 destroyed data.
+    fireEvent.click(combo);
+    fireEvent.click(screen.getByText("Parasitology (inactive)"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const payload = JSON.parse(
+      putToOpenElisServerJsonResponse.mock.calls[0][1],
+    );
+    expect(payload.labUnitId).toBe("9");
+  });
+
+  it("does not offer deactivated units as new choices", async () => {
+    stubLabUnits("7");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    // Open the ComboBox; only the active unit may be offered.
+    fireEvent.click(screen.getByRole("combobox", { name: /Lab Unit/i }));
+
+    expect(screen.getByText("Chemistry")).toBeInTheDocument();
+    expect(screen.queryByText(/Parasitology/)).not.toBeInTheDocument();
+  });
+});

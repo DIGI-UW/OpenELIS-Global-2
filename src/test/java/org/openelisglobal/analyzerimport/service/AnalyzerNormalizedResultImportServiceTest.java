@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,12 +26,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingVerificationAssessment;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
@@ -53,6 +57,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Mock
     private AnalyzerSiteBindingService siteBindingService;
     @Mock
+    private AnalyzerSiteBindingConfirmationService confirmationService;
+    @Mock
     private AnalyzerResultsService analyzerResultsService;
     @Mock
     private TestResultService testResultService;
@@ -70,8 +76,11 @@ public class AnalyzerNormalizedResultImportServiceTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
-                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO);
+                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO,
+                confirmationService);
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
+        when(confirmationService.assessCurrent(any(), any()))
+                .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(new AnalyzerSiteBindingConfirmation()));
         analyzer = analyzer("site.mock-hematology", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
@@ -101,6 +110,20 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
+    }
+
+    @Test
+    public void incomingResultIsHeldUntilItsSelectedMappingIsConfirmed() throws IOException {
+        when(confirmationService.assessCurrent(any(), any())).thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+
+        assertEquals(1, summary.resultsHeld());
+        AnalyzerResults row = capturedRow();
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, row.getImportIssueReason());
+        assertNull(row.getTestId());
+        assertEquals("7.5", row.getRawResultValue());
     }
 
     @Test
@@ -181,7 +204,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void nextMessageUsesTheLatestSharedSiteBindingAfterValueResolution() throws IOException {
+    public void incomingResultKeepsTheAdoptedRevisionWhenASharedMappingIsEdited() throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
         AnalyzerSiteBindingRevision acknowledgedRevision = revision;
         AnalyzerSiteBindingRevision currentRevision = new AnalyzerSiteBindingRevision();
         currentRevision.setId("revision-2");
@@ -202,9 +226,53 @@ public class AnalyzerNormalizedResultImportServiceTest {
         service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7");
 
         AnalyzerResults row = capturedRow();
-        assertFalse(row.isReadOnly());
-        assertEquals("9001", row.getResult());
-        verify(siteBindingService, never()).findByRevisionId(acknowledgedRevision.getId());
+        assertTrue(row.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE, row.getImportIssueReason());
+        assertEquals("INDETERMINATE-VENDOR-X", row.getResult());
+        verify(siteBindingService).findByRevisionId(acknowledgedRevision.getId());
+        verify(siteBindingService, never()).findCurrentByProfileBindingId("profile-binding-1");
+    }
+
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public void twoAnalyzersUseTheirOwnAdoptedMappingRevision() throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
+        AnalyzerSiteBindingRevision successor = new AnalyzerSiteBindingRevision();
+        successor.setId("revision-2");
+        successor.setSiteBinding(revision.getSiteBinding());
+        successor.setRevisionNumber(2);
+        successor.setBindingFingerprint("sha256:" + "3".repeat(64));
+        Analyzer second = new Analyzer();
+        second.setId("43");
+        second.setName("Second analyzer");
+        second.setBridgeConnectionId("bridge-connection-second");
+        second.setSiteBindingRevision(successor);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-second"))
+                .thenReturn(Optional.of(second));
+        when(siteBindingService.findByRevisionId("revision-2"))
+                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(successor.getSiteBinding(), successor,
+                        List.of(boundTest(successor, "HIV-INTERP", "601")),
+                        List.of(boundResult(successor, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")))));
+        TestResult option = new TestResult();
+        option.setId("701");
+        option.setValue("9001");
+        option.setTestResultType("D");
+        when(testResultService.get("701")).thenReturn(option);
+        Bundle secondBundle = FHIR.newJsonParser().parseResource(Bundle.class,
+                Files.readString(FIXTURES.resolve("normalized-unknown-value.fhir.json"))
+                        .replace("bridge-connection-7f3c", "bridge-connection-second"));
+
+        assertEquals(1, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals(0, service.importBundle(secondBundle, "7").resultsHeld());
+
+        ArgumentCaptor<List> staged = ArgumentCaptor.forClass(List.class);
+        verify(analyzerResultsService, times(2)).insertAnalyzerResults(staged.capture(), eq("7"));
+        AnalyzerResults firstRow = (AnalyzerResults) staged.getAllValues().get(0).get(0);
+        AnalyzerResults secondRow = (AnalyzerResults) staged.getAllValues().get(1).get(0);
+        assertEquals("42", firstRow.getAnalyzerId());
+        assertEquals("INDETERMINATE-VENDOR-X", firstRow.getResult());
+        assertEquals("43", secondRow.getAnalyzerId());
+        assertEquals("9001", secondRow.getResult());
     }
 
     @Test
@@ -294,6 +362,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         AnalyzerSiteBindingSnapshot snapshot = new AnalyzerSiteBindingSnapshot(revision.getSiteBinding(), revision,
                 tests, results);
         when(siteBindingService.findCurrentByProfileBindingId("profile-binding-1")).thenReturn(Optional.of(snapshot));
+        when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(Optional.of(snapshot));
     }
 
     private AnalyzerSiteBindingTest boundTest(String sourceRowKey, String testId) {

@@ -161,7 +161,7 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
 
         Timestamp collectionDate = reportSample.getCollectionDate();
 
-        if (collectionDate != null) {
+        if (collectionDate != null && reportPatient.getBirthDate() != null) {
             long collectionTime = collectionDate.getTime() - reportPatient.getBirthDate().getTime();
 
             if (collectionTime < THREE_YEARS) {

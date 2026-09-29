@@ -18,6 +18,7 @@ package org.openelisglobal.result.action.util;
 import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisAnchor;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
@@ -78,6 +80,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
@@ -334,15 +337,20 @@ public class ResultsLoadUtility {
             currentPatient = sampleService.getPatient(sample);
 
             String patientName = "";
-            String patientInfo;
-            String nationalId = patientService.getNationalId(currentPatient);
-            if (depersonalize) {
+            String patientInfo = "";
+            // A blinded EQA order has no patient at all. Reading identity off a null
+            // one used to render the literal words "null" into the Sample Info cell
+            // — "nullnull, null, N" — which reads like corrupt data.
+            String nationalId = currentPatient == null ? null : patientService.getNationalId(currentPatient);
+            if (currentPatient == null) {
+                patientInfo = "";
+            } else if (depersonalize) {
                 patientInfo = GenericValidator.isBlankOrNull(nationalId) ? patientService.getExternalId(currentPatient)
                         : nationalId;
             } else {
                 patientName = patientService.getLastFirstName(currentPatient);
-                patientInfo = nationalId + ", " + patientService.getGender(currentPatient) + ", "
-                        + patientService.getBirthdayForDisplay(currentPatient);
+                patientInfo = patientInfo(nationalId, patientService.getGender(currentPatient),
+                        patientService.getBirthdayForDisplay(currentPatient));
             }
 
             currSample = sample;
@@ -548,6 +556,16 @@ public class ResultsLoadUtility {
     private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, String patientName,
             String patientInfo, String nationalId) throws LIMSRuntimeException {
         return getTestResultItemFromAnalysis(analysis, null, patientName, patientInfo, nationalId);
+    }
+
+    /**
+     * The patient's identifier, sex and birth date as one line, leaving out what
+     * the order does not have: an environmental or vector order has no patient, and
+     * showed a row of bare commas.
+     */
+    static String patientInfo(String... parts) {
+        return Arrays.stream(parts).filter(part -> !GenericValidator.isBlankOrNull(part))
+                .collect(Collectors.joining(", "));
     }
 
     private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, AnalysisAnchor anchor,
@@ -925,8 +943,9 @@ public class ResultsLoadUtility {
         // limits (chosen for the patient's age/gender); other rows use the test-level
         // limits. Either way the selection is patient-conditional (OGC-1127/OGC-949).
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-        ResultLimit resultLimit = resultLimitService.getResultLimitForResult(analysis, result, currentPatient,
-                component == null ? null : component.getId());
+        ResultLimitSelection rangeSelection = resultLimitService.selectResultLimitForResult(analysis, result,
+                currentPatient, component == null ? null : component.getId());
+        ResultLimit resultLimit = rangeSelection.getResultLimit();
 
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);
@@ -1048,6 +1067,8 @@ public class ResultsLoadUtility {
         }
         testItem.setResultValue(getFormattedResultValue(result));
         setResultLimitDependencies(resultLimit, testItem, testResults, analysis);
+        testItem.setRangeNotAppliedReason(
+                rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
         testItem.setPatientName(patientName);
         testItem.setPatientInfo(patientInfo);
         testItem.setReportable(testService.isReportable(test));
@@ -1157,6 +1178,12 @@ public class ResultsLoadUtility {
                         testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                     }
                 }
+                // Only schemes that opted in show the Analyst column,
+                // and the scheme id is what its picker reads its eligible list from.
+                sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
+                    testItem.setEqaPerAnalyst(true);
+                    testItem.setEqaSchemeId(String.valueOf(schemeId));
+                });
             }
         } catch (RuntimeException e) {
             String sampleIdStr = eqaSample != null ? eqaSample.getId() : "null";
@@ -1285,7 +1312,7 @@ public class ResultsLoadUtility {
             testItem.setHasQualifiedResult(true);
         }
 
-        testItem.setDictionaryResults(values);
+        testItem.setDictionaryResults(StoredDictionaryResult.withStoredValue(values, result, dictionaryService));
     }
 
     private void setQualifiedValues(TestResultItem testItem, Result result) {

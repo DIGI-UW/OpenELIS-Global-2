@@ -755,57 +755,31 @@ describe("Header Component - M2b Enhancement Tests", () => {
       );
     });
 
-    test("configured Admin group preserves the dashboard and exposes stuck analyzer events", async () => {
+    test("Admin opens its dashboard in one click, with no submenu to expand", async () => {
+      // The shipped menu carries no children under Admin: the dashboard itself
+      // lists the admin destinations, stuck analyzer events among them.
       const configuredAdminMenu = [
         MENU_DATA[0],
         {
           ...MENU_DATA[1],
-          childMenus: [
-            {
-              menu: {
-                elementId: "menu_administration_dashboard",
-                displayKey: "admin.dashboard.title",
-                actionURL: "/MasterListsPage",
-                isActive: true,
-              },
-              childMenus: [],
-            },
-            {
-              menu: {
-                elementId: "menu_administration_stuck_analyzer_events",
-                displayKey: "analyzer.importIssues.events.title",
-                actionURL: "/AnalyzerResults?view=import-issues",
-                isActive: true,
-              },
-              childMenus: [],
-            },
-          ],
+          menu: { ...MENU_DATA[1].menu, actionURL: "/MasterListsPage" },
+          childMenus: [],
         },
       ];
       renderHeader({ menuData: configuredAdminMenu });
 
-      const adminMenu = await screen.findByRole("button", { name: "Admin" });
-      expect(adminMenu).toHaveAttribute("id", "menu_administration");
-      fireEvent.click(adminMenu);
-      const adminDashboard = screen.getByRole("link", {
-        name: "Admin dashboard",
-      });
-      expect(adminDashboard).toHaveAttribute(
-        "id",
-        "menu_administration_dashboard_nav",
-      );
-      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
+      const adminMenu = await screen.findByRole("link", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("href", "/MasterListsPage");
+      expect(
+        screen.queryByRole("button", { name: "Admin" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Stuck analyzer events"),
+      ).not.toBeInTheDocument();
 
-      const stuckEvents = screen.getByRole("link", {
-        name: "Stuck analyzer events",
-      });
-      expect(stuckEvents).toHaveAttribute(
-        "href",
-        "/AnalyzerResults?view=import-issues",
-      );
-      fireEvent.click(stuckEvents);
+      fireEvent.click(adminMenu);
       expect(screen.getByTestId("current-path")).toHaveTextContent(
-        "/AnalyzerResults?view=import-issues",
+        "/MasterListsPage",
       );
     });
 

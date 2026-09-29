@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.resultvalidation.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -242,6 +243,8 @@ public class AnalysisItem implements Serializable {
     private boolean clear = false;
 
     private String criticalRange;
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
 
     private String enteredBy;
 
@@ -1163,5 +1166,18 @@ public class AnalysisItem implements Serializable {
 
     public void setExpandedUncertainty(String expandedUncertainty) {
         this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
+    }
+
+    @JsonIgnore
+    public boolean isRangeNotApplied() {
+        return rangeNotAppliedReason != null;
     }
 }

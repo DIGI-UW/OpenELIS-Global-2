@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
@@ -175,6 +175,40 @@ const BasicInfoSection = ({ testId }) => {
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
+
+  // OGC-189 (M2) — the Lab Unit picker is a *chooser*, so it offers only active
+  // units. The grandfathered-select rule: a test already assigned to a
+  // deactivated unit keeps showing that unit, marked inactive, so the control
+  // never renders blank and never writes that blank back on save. Losing the
+  // assignment this way is the OGC-1191 data-loss class.
+  const labUnitOptionsFor = useCallback(
+    (currentId) => {
+      const active = labUnits.filter((unit) => unit.isActive !== false);
+      const current = labUnits.find((unit) => unit.id === currentId);
+      if (current && current.isActive === false) {
+        return [current, ...active];
+      }
+      return active;
+    },
+    [labUnits],
+  );
+
+  // The grandfathered value is labelled so the inactive state is visible rather
+  // than implied by its absence from the rest of the list.
+  const labUnitItemToString = useCallback(
+    (item) => {
+      if (!item) {
+        return "";
+      }
+      return item.isActive === false
+        ? intl.formatMessage(
+            { id: "label.testCatalog.basicInfo.labUnit.inactive" },
+            { name: item.name },
+          )
+        : item.name;
+    },
+    [intl],
+  );
 
   // OGC-1145 FR-1/2/3 — shared sample-types multi-select with removable chips.
   // Only domain-compatible types are offered; already-selected incompatible ones
@@ -472,8 +506,8 @@ const BasicInfoSection = ({ testId }) => {
           titleText={intl.formatMessage({
             id: "label.testCatalog.basicInfo.labUnit",
           })}
-          items={labUnits}
-          itemToString={(item) => (item ? item.name : "")}
+          items={labUnitOptionsFor(createForm.labUnitId)}
+          itemToString={labUnitItemToString}
           selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
           onChange={({ selectedItem }) =>
             updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
@@ -626,8 +660,8 @@ const BasicInfoSection = ({ testId }) => {
         titleText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.labUnit",
         })}
-        items={labUnits}
-        itemToString={(item) => (item ? item.name : "")}
+        items={labUnitOptionsFor(form.labUnitId)}
+        itemToString={labUnitItemToString}
         selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
         onChange={({ selectedItem }) =>
           update({ labUnitId: selectedItem ? selectedItem.id : "" })

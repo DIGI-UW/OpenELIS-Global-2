@@ -47,6 +47,7 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
@@ -68,6 +69,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private EffectiveTestStatusService effectiveTestStatusService;
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -196,7 +199,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (candidates.size() <= 1) {
             return false;
         }
-        if (IS_RETROCI && item.getAccessionNumber() != null && item.getAccessionNumber().startsWith("LDBS")
+        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null
+                && item.getAccessionNumber().startsWith("LDBS")
                 && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
             return false;
         }
@@ -556,8 +560,16 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
 
             if (analysis == null) {
-                analysis = new Analysis();
                 Test test = testService.get(resultItem.getTestId());
+                // OGC-189 (M4): gate creation only — an analysis that already
+                // exists (the loop above) still accepts its result per D3.
+                if (!effectiveTestStatusService.isEffectivelyActive(test)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistResults",
+                            "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
+                                    + " because its lab unit is inactive (OGC-189).");
+                    continue;
+                }
+                analysis = new Analysis();
                 analysis.setTest(test);
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                 if (typeOfSamples == null) {
@@ -691,8 +703,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             Analysis analysis = getExistingAnalysis(resultItem);
 
             if (analysis == null) {
-                analysis = new Analysis();
                 Test test = testService.get(resultItem.getTestId());
+                // OGC-189 (M4): no NEW analysis for a test whose lab unit is
+                // switched off. Decision D3 draws the line here — this branch
+                // creates work that did not exist, so it is gated; the else
+                // branch below completes an analysis that already exists, which
+                // must keep flowing so an in-flight specimen is never stranded.
+                if (!effectiveTestStatusService.isEffectivelyActive(test)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistAnalyzerResults",
+                            "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
+                                    + " because its lab unit is inactive (OGC-189).");
+                    continue;
+                }
+                analysis = new Analysis();
                 populateAnalysis(resultItem, analysis, test);
             } else {
                 String statusId = statusService
@@ -921,7 +944,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber, String chosenTypeOfSampleId) {
-        if (IS_RETROCI && accessionNumber.startsWith("LDBS")) {
+        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")) {
             List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
                     .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
 
@@ -1004,17 +1027,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private final String DBS_SAMPLE_TYPE_ID;
 
     /**
-     * Constructor — resolves the DBS sample type ID when running in RetroCI mode.
+     * Resolves the DBS sample type ID when running in RetroCI mode. The type is
+     * matched on its local abbreviation first because a catalog import can rewrite
+     * the description; a missing type must not stop the application from starting.
      */
     public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        if (IS_RETROCI) {
-            TypeOfSample typeOfSample = new TypeOfSample();
-            typeOfSample.setDescription("DBS");
-            typeOfSample.setDomain(Domain.CLINICAL.name());
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(typeOfSample, false);
-            DBS_SAMPLE_TYPE_ID = typeOfSample.getId();
-        } else {
-            DBS_SAMPLE_TYPE_ID = null;
+        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
+    }
+
+    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
+        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
+                Domain.CLINICAL.name());
+        if (typeOfSample == null) {
+            TypeOfSample searchType = new TypeOfSample();
+            searchType.setDescription("DBS");
+            searchType.setDomain(Domain.CLINICAL.name());
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
         }
+        if (typeOfSample == null) {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+            return null;
+        }
+        return typeOfSample.getId();
     }
 }

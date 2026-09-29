@@ -590,16 +590,7 @@
     },
     {
       "elementId": "menu_administration",
-      "childMenus": [
-        {
-          "elementId": "menu_administration_dashboard",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_administration_stuck_analyzer_events",
-          "childMenus": []
-        }
-      ]
+      "childMenus": []
     },
     {
       "elementId": "menu_billing",
@@ -682,28 +673,8 @@
     },
     {
       "elementId": "menu_administration",
-      "childMenus": [
-        {
-          "elementId": "menu_administration_dashboard",
-          "actionURL": "/MasterListsPage",
-          "displayKey": "admin.dashboard.title",
-          "toolTipKey": "admin.dashboard.title",
-          "presentationOrder": 1,
-          "isActive": true,
-          "hideInOldUI": true,
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_administration_stuck_analyzer_events",
-          "actionURL": "/AnalyzerResults?view=import-issues",
-          "displayKey": "analyzer.importIssues.events.title",
-          "toolTipKey": "analyzer.importIssues.events.title",
-          "presentationOrder": 2,
-          "isActive": true,
-          "hideInOldUI": true,
-          "childMenus": []
-        }
-      ]
+      "actionURL": "/MasterListsPage",
+      "childMenus": []
     }
   ]
 }

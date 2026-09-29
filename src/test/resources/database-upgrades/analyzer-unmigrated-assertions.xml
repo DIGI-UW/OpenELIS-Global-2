@@ -10,6 +10,10 @@
                 SELECT COUNT(*) FROM analyzer a JOIN analyzer_plugin_config c ON
                 c.analyzer_id = a.id
                 WHERE a.id = 900011 AND a.is_active IS TRUE AND a.status = 'SETUP'
+                AND a.ip_address = '192.0.2.11' AND a.port = 5000
+                AND a.import_directory = '/upgrade/incoming'
+                AND a.bridge_connection_id IS NULL AND a.site_binding_revision_id IS
+                NULL
                 AND c.config::text LIKE '%preserve-me%'
             </sqlCheck>
             <tableExists tableName="analyzer_test_map" />
