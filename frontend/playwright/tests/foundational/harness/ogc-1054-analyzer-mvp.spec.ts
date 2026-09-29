@@ -161,6 +161,22 @@ async function expectClinicalReadback(
 }
 
 test.describe("OGC-1054 stock analyzer result workflow", () => {
+  // A stock catalog test a story deactivated, restored even when the story fails.
+  let deactivatedStockTestId: string | null = null;
+  test.afterEach(async ({ page }) => {
+    if (!deactivatedStockTestId) return;
+    const testId = deactivatedStockTestId;
+    deactivatedStockTestId = null;
+    const restored = await page.request.post(
+      `${API}/test-catalog/tests/${testId}/activate`,
+      { headers: { "X-CSRF-Token": await csrfToken(page) }, data: {} },
+    );
+    expect(
+      restored.ok(),
+      `Reactivate stock test ${testId}: ${restored.status()}`,
+    ).toBeTruthy();
+  });
+
   for (const scenario of [
     {
       code: "MTB-RIF",
@@ -912,8 +928,9 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     );
     expect(
       deactivated.ok(),
-      `Deactivate synthetic RIF test: ${deactivated.status()}`,
+      `Deactivate stock RIF test: ${deactivated.status()}`,
     ).toBeTruthy();
+    deactivatedStockTestId = rifTestId;
     expect(((await deactivated.json()) as { active: boolean }).active).toBe(
       false,
     );
@@ -981,11 +998,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     );
     expect(
       reactivated.ok(),
-      `Reactivate synthetic RIF test: ${reactivated.status()} ${await reactivated.text()}`,
+      `Reactivate stock RIF test: ${reactivated.status()} ${await reactivated.text()}`,
     ).toBeTruthy();
     expect(((await reactivated.json()) as { active: boolean }).active).toBe(
       true,
     );
+    deactivatedStockTestId = null;
     await presentation.chapter({
       eyebrow: "GeneXpert · Correct and retry",
       title: "Restore the clinical test and retry the held row",
