@@ -18,37 +18,24 @@ confirms that the earlier ordinary-startup catalog-overwrite blocker is
 resolved: molecular test/result CSVs are harness-owned, and the repeated-load
 test preserves the existing COVID report label. The review still identifies
 test, runner, harness-configuration and documentation work. Its disposition and
-acceptance checks are recorded below; none of those pending changes is claimed
-as implemented.
+acceptance checks are recorded below; completed code still needs final-head
+validation and workflow evidence.
 
-Completed validation for `760536edb8`: GitHub's backend, frontend and downstream
-E2E checks passed, including its Playwright, Cypress and analyzer jobs. The
-single local runner passed backend, frontend, both analyzer projects and the
-independent Cypress shard; core Playwright failed one WHONET assertion, and
-Cypress core and admin failed 14 and six tests respectively. These are
-contradictory results, not an overall local pass or evidence for a later
-commit. The full local command is `scripts/run-ci-checks.sh`: backend, frontend
-and E2E lanes start in parallel from the same committed source, with E2E suites
-run sequentially on fresh isolated stacks. Maven's dependency cache is reused.
-GitHub publication, security artifacts and checkpoint orchestration still
-require GitHub checks.
+The full local command is `scripts/run-ci-checks.sh`: backend, frontend and E2E
+lanes start from the same committed source, with E2E suites on isolated stacks.
+Maven's dependency cache is reused. Call a revision locally green only when
+every required lane finishes successfully on that revision; compare it with
+GitHub's checks at the same head.
 
-The local core Playwright suite completed with **294
-passed, 16 skipped and one failed**:
-`ogc-782-microbiology-whonet-export.spec.ts`, “previews finalized bacteriology
-and generates CSV.” Diagnosis is pending; this is an unresolved failure, not
-waived as unrelated. The run evidence remains under `/tmp/4332-760536-full-ci/`;
-its source is `760536edb8`. Reconcile the final lane results before any overall
-CI claim.
-
-Earlier baseline validation remains supporting evidence only: `ec925deb72`
-passed 7,614 backend tests with zero failures/errors and eight skips, plus 2,982
-frontend tests with five skips. Subsequent source-built analyzer runs passed
-29/29 foundational tests and guided setup plus authentication (2/2). Those runs
-found and drove fixes for the stale-search dialog race and unreadable mock XLSX
-files. Mock #50's FILE permission fix is released as 0.1.3 (`8c64750`), aligned
-with the OE2 source and image pins. The current source and dependency
-combination still requires completed validation.
+The first full run at #4470 head `a680fd1fb3` was stopped after its defects
+were diagnosed. Frontend, Shared Build preflight and the guided analyzer demo
+passed; core Playwright found failures outside analyzer workflows. The
+foundational analyzer stack reached a proxy whose random host port had changed
+after a restart, while the runner kept its original URL. Backend and Cypress
+core were still running when this superseded run was stopped. This is not an
+overall local pass. The next head needs a complete run and current-head GitHub
+checks. Mock 0.1.3 includes merged mock #50's FILE permission fix, and the OE2
+source and image pins match it.
 
 Analyzer assertions use observable conditions within the existing whole-test
 deadline. Do not add sleeps or raise deadlines to repair a failure. Result
@@ -57,27 +44,20 @@ stack owns their teardown. The dedicated guided-setup story exercises
 deactivation. Review corrections must preserve those isolation and evidence
 boundaries.
 
-Completing the current Bridge/default integration and matching workflow evidence
-belongs to #4332; it must not be deferred merely to make the old dependency
-combination green. Completing it does not close every core analyzer capability
-or qualify Madagascar. Human review is separate from the technical checks
-discussed here.
-
-At #4470 head `44f3ccca27`, GitHub Shared Build failed because its two-file
-Compose image enumeration lacked the `configuration-data` volume declaration.
-The full local run found the guided-setup count assertion matched the entire
-tile rather than its numeric value, and fresh analyzer startup could query a
-restarting proxy before certificate generation finished. It also reported core
-browser failures outside the analyzer suites. The next #4470 revision addresses
-the Compose contract, makes certificate generation a completed one-shot
-dependency, and corrects the exact count assertion. These fixes require a new
-exact-head full local run and GitHub checks; earlier runs are not a pass.
+#4470 now supplies the missing Compose volume declaration, checks the exact
+count value, and makes certificate generation a completed one-shot dependency.
+The subsequent proxy restart showed another startup-contract gap: nginx names
+both frontend and OE2 upstreams, but Compose did not wait for them. The proxy
+now starts after frontend starts and OE2 is healthy. A fresh local seed run
+reached login and created the default analyzer connections with this ordering;
+the full analyzer suites and current-head GitHub checks remain pending.
+Human review is separate from these technical checks.
 
 The [GitHub stack #4472](https://github.com/DIGI-UW/OpenELIS-Global-2/stack/4472)
 records the merge sequence **#4470 → #4448 → #4449**. #4470 targets the
 current `develop` commit `e0c98726ba`; #4448 contains #4470 and targets its
-branch; #4449 contains #4448 and targets its branch. Their stack-relative
-diffs are 21 recovery files and eight mapping-isolation files respectively.
+branch; #4449 contains #4448 and targets its branch. Each PR must retain only
+its own stack-relative changes.
 #4332 established the stable harness catalog and faithful test foundation
 without installing harness clinical CSVs on ordinary OE2 sites. Obsolete demo
 test copies were removed while syncing the follow-ups. #4448 still needs
@@ -86,6 +66,11 @@ instead of its older SQL/mapping-preparation evidence. Broader FILE/HL7 qualific
 outage/replay, populated upgrades and any general catalog additions are separate
 follow-ups. Each PR requires passing current-head checks and focused workflow
 evidence before merge.
+
+#4448 additionally rejects adopting an unconfirmed or stale analyzer binding
+revision in its service layer, matching the UI's Apply guard. Focused service
+tests pass; its full current-head run and clinical recovery evidence are still
+needed. #4449 remains a draft until the preceding layers are qualified.
 
 ## Review disposition and pre-merge acceptance
 

@@ -309,7 +309,7 @@ collect_failure_artifacts() {
   docker compose "${CI_COMPOSE_FILES[@]}" ps \
     > "$ARTIFACT_DIR/docker-logs/compose-ps.txt" 2>&1 || true
 
-  for service in oe.openelis.org openelis-analyzer-bridge astm-simulator; do
+  for service in proxy oe.openelis.org openelis-analyzer-bridge astm-simulator; do
     docker logs "$(container_id "$service")" > "$ARTIFACT_DIR/docker-logs/${service}.log" 2>&1 || true
   done
 
