@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { format } from "date-fns";
+import useServerToday from "./useServerToday";
 import {
   Button,
   DatePicker,
@@ -55,10 +56,20 @@ const InlineNceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // The server's day replaces the browser's unless the date was already picked.
+  useEffect(() => {
+    if (!eventDateEdited.current) {
+      setNceForm((prev) => ({ ...prev, dateOfEvent: today }));
+    }
+  }, [today]);
+
+  const today = useServerToday();
+  const eventDateEdited = useRef(false);
+
   const [nceForm, setNceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: initialDescription || "",
@@ -353,10 +364,11 @@ const InlineNceForm = ({
           datePickerType="single"
           dateFormat="m/d/Y"
           value={nceForm.dateOfEvent}
-          maxDate={format(new Date(), "MM/dd/yyyy")}
+          maxDate={today}
           onChange={(dates) => {
             if (dates && dates[0]) {
               const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
+              eventDateEdited.current = true;
               handleFormChange("dateOfEvent", formatted);
             }
           }}

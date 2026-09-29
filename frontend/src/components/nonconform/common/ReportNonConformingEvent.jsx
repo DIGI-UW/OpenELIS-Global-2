@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { format } from "date-fns";
+import useServerToday from "./useServerToday";
 import {
   Button,
   Column,
@@ -59,10 +60,13 @@ export const ReportNonConformingEvent = () => {
   const intl = useIntl();
   const location = useLocation();
 
+  const today = useServerToday();
+  const eventDateEdited = useRef(false);
+
   const [nceForm, setnceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: "",
@@ -76,6 +80,13 @@ export const ReportNonConformingEvent = () => {
   });
 
   const [errors, setErrors] = useState({});
+
+  // The server's day replaces the browser's unless the date was already picked.
+  useEffect(() => {
+    if (!eventDateEdited.current) {
+      setnceForm((prev) => ({ ...prev, dateOfEvent: today }));
+    }
+  }, [today]);
 
   // Set reporter name from session when available
   useEffect(() => {
@@ -367,10 +378,11 @@ export const ReportNonConformingEvent = () => {
         }),
       });
       // Reset form and reload defaults
+      eventDateEdited.current = false;
       setnceForm({
         nceNumber: "",
         reporterName: "",
-        dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+        dateOfEvent: today,
         reportingUnit: "",
         title: "",
         description: "",
@@ -461,10 +473,11 @@ export const ReportNonConformingEvent = () => {
   };
 
   const handleCancel = () => {
+    eventDateEdited.current = false;
     setnceForm({
       nceNumber: "",
       reporterName: "",
-      dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+      dateOfEvent: today,
       reportingUnit: "",
       title: "",
       description: "",
@@ -581,10 +594,11 @@ export const ReportNonConformingEvent = () => {
                 datePickerType="single"
                 dateFormat="m/d/Y"
                 value={nceForm.dateOfEvent}
-                maxDate={format(new Date(), "MM/dd/yyyy")}
+                maxDate={today}
                 onChange={(dates) => {
                   if (dates && dates[0]) {
                     const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
+                    eventDateEdited.current = true;
                     setnceForm((prev) => ({
                       ...prev,
                       dateOfEvent: formatted,
