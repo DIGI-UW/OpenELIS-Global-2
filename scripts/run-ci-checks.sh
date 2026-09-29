@@ -147,6 +147,11 @@ run_e2e_step() {
 run_shared_build() {
   local root="$ARTIFACT_DIR/checkouts/e2e"
   cd "$root"
+  # GitHub's shared image job reads this exact two-file set.
+  docker buildx bake \
+    -f build.docker-compose.yml \
+    -f .github/ci/ci.analyzer-harness.yml \
+    --print >/dev/null || return
   (cd dataexport/dataexport-core && ../../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
   (cd dataexport && ../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
   scripts/run-java21 mvn clean install -DskipTests -Dspotless.check.skip=true -Drevision=3.2.1.3 || return
