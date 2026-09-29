@@ -645,12 +645,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ? (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
                             <TabList
                               style={{ width: "100%" }}
                               aria-label="List of tabs"

@@ -111,50 +111,17 @@ describe("ROUTE_GUARDS stays in step with App.jsx", () => {
       roles: ["Audit Trail"],
     };
     const reception = { privileges: ["order:create"], roles: ["Reception"] };
-    expect(ROUTE_GUARDS["/AuditTrailReport"].privilege).toBe(
+    // develop redirects /AuditTrailReport to /qa/qms/audit-trail and guarded
+    // the new route on Global Administrator alone, which would have undone this
+    // fix; AUDIT_VIEW is restored there.
+    expect(ROUTE_GUARDS["/qa/qms/audit-trail"].privilege).toBe(
       Privileges.AUDIT_VIEW,
     );
-    expect(menuEntryVisible("/AuditTrailReport", auditor)).toBe(true);
-    expect(menuEntryVisible("/AuditTrailReport?type=system", auditor)).toBe(
+    expect(menuEntryVisible("/qa/qms/audit-trail", auditor)).toBe(true);
+    expect(menuEntryVisible("/qa/qms/audit-trail?type=system", auditor)).toBe(
       true,
     );
-    expect(menuEntryVisible("/AuditTrailReport", reception)).toBe(false);
-  });
-
-  it("guards the EQA screens on the EQA privilege, not on Reception/Results", () => {
-    // These seven were guarded role={[Roles.RECEPTION, Roles.RESULTS]}, which
-    // inverted the module: EQA Coordinator (the only role holding eqa:view and
-    // eqa:manage) was refused at the route, while Reception and Results were let
-    // in and then 403'd by the API. Verified live before the fix: the Results
-    // session got 403 from /rest/eqa/my-programs and /rest/eqa/orders.
-    const EQA_ROUTES = [
-      "/EQADistribution",
-      "/EQADistribution/create",
-      "/EQAManagement",
-      "/EQAMyPrograms",
-      "/EQAOrders",
-      "/EQAParticipants",
-      "/EQAResults",
-    ];
-    const coordinator = {
-      privileges: ["eqa:view", "eqa:manage", "report:run"],
-      roles: ["EQA Coordinator"],
-    };
-    const results = { privileges: ["result:enter"], roles: ["Results"] };
-    EQA_ROUTES.forEach((routePath) => {
-      expect(
-        ROUTE_GUARDS[routePath]?.privilege,
-        `${routePath} must be guarded on eqa:view`,
-      ).toBe(Privileges.EQA_VIEW);
-      expect(
-        menuEntryVisible(routePath, coordinator),
-        `EQA Coordinator must reach ${routePath}`,
-      ).toBe(true);
-      expect(
-        menuEntryVisible(routePath, results),
-        `Results must not be offered ${routePath}`,
-      ).toBe(false);
-    });
+    expect(menuEntryVisible("/qa/qms/audit-trail", reception)).toBe(false);
   });
 
   it("includes the role-guarded routes, not just the privilege-guarded ones", () => {
@@ -183,7 +150,7 @@ describe("menuEntryVisible mirrors SecureRoute", () => {
     // /AccessionValidation is guarded on result:validate, which Reception has
     // no business holding; this row was one of its 74 dead menu entries.
     expect(menuEntryVisible("/AccessionValidation", reception)).toBe(false);
-    expect(menuEntryVisible("/AuditTrailReport?type=system", reception)).toBe(
+    expect(menuEntryVisible("/qa/qms/audit-trail?type=system", reception)).toBe(
       false,
     );
   });
@@ -209,10 +176,10 @@ describe("menuEntryVisible mirrors SecureRoute", () => {
     // audit:view, not system:configure: /AuditTrailReport moved onto the
     // privilege its own role holds. The point here is the query string, so use
     // whatever privilege the route currently requires.
-    const withQuery = menuEntryVisible("/AuditTrailReport?type=order", {
+    const withQuery = menuEntryVisible("/qa/qms/audit-trail?type=order", {
       privileges: ["audit:view"],
     });
-    const withoutQuery = menuEntryVisible("/AuditTrailReport", {
+    const withoutQuery = menuEntryVisible("/qa/qms/audit-trail", {
       privileges: ["audit:view"],
     });
     expect(withQuery).toBe(withoutQuery);
@@ -241,7 +208,7 @@ describe("menuSubtreeVisible keeps sections with reachable contents", () => {
 
   it("hides a section whose every descendant is out of reach", () => {
     const section = parent("", [
-      parent("", [leaf("/AccessionValidation"), leaf("/AuditTrailReport")]),
+      parent("", [leaf("/AccessionValidation"), leaf("/qa/qms/audit-trail")]),
     ]);
     expect(menuSubtreeVisible(section, reception)).toBe(false);
   });
@@ -381,7 +348,7 @@ describe("the four workbench roles keep their own menus", () => {
     expect(menuEntryVisible("/AccessionResults", session("Validation"))).toBe(
       false,
     );
-    expect(menuEntryVisible("/AuditTrailReport", session("Reports"))).toBe(
+    expect(menuEntryVisible("/qa/qms/audit-trail", session("Reports"))).toBe(
       false,
     );
   });

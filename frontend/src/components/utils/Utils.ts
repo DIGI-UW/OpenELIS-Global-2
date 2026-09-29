@@ -915,6 +915,10 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
   EQA_COORDINATOR: "EQA Coordinator",
+  // Used by App.jsx for /qa/qc/reagent-qc but declared on neither side of the
+  // merge: Roles.LAB_SUPERVISOR evaluated to undefined, so that route's guard
+  // matched nobody. The seeded role is "Lab Supervisor".
+  LAB_SUPERVISOR: "Lab Supervisor",
 } as const;
 
 /**
@@ -938,83 +942,158 @@ export const Roles = {
  * matching change here.
  */
 export const ROUTE_GUARDS = {
-  "/AccessionResults": { privilege: Privileges.RESULT_ENTER },
-  "/AccessionValidation": { privilege: Privileges.RESULT_VALIDATE },
-  "/AccessionValidationRange": { privilege: Privileges.RESULT_VALIDATE },
+  "/AccessionResults": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/AccessionValidation": {
+    privilege: Privileges.RESULT_VALIDATE,
+    role: [Roles.VALIDATION],
+  },
+  "/AccessionValidationRange": {
+    privilege: Privileges.RESULT_VALIDATE,
+    role: [Roles.VALIDATION],
+  },
   "/Alerts": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/Aliquot": { privilege: Privileges.ORDER_CREATE },
-  // App.jsx names this ANALYZER_RESULTS_ROLES; inlined because that constant
-  // lives in App.jsx and importing it here would be a cycle (App -> Layout ->
-  // Header -> Utils). menuRouteGuards.test.js asserts the two still agree.
+  "/Aliquot": { privilege: Privileges.ORDER_CREATE, role: [Roles.RECEPTION] },
   "/AnalyzerResults": { role: [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT] },
-  "/AuditTrailReport": { privilege: Privileges.AUDIT_VIEW },
-  "/EQADistribution": { privilege: Privileges.EQA_VIEW },
-  "/EQADistribution/create": { privilege: Privileges.EQA_VIEW },
-  "/EQAManagement": { privilege: Privileges.EQA_VIEW },
-  "/EQAMyPrograms": { privilege: Privileges.EQA_VIEW },
-  "/EQAOrders": { privilege: Privileges.EQA_VIEW },
-  "/EQAParticipants": { privilege: Privileges.EQA_VIEW },
-  "/EQAResults": { privilege: Privileges.EQA_VIEW },
-  "/ElectronicOrders": { privilege: Privileges.ORDER_CREATE },
-  "/EnvironmentalDashboard": { privilege: Privileges.RESULT_ENTER },
+  "/ElectronicOrders": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/EnvironmentalDashboard": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
   "/FreezerMonitoring": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
-  "/GenericSample/Edit": { privilege: Privileges.ORDER_CREATE },
-  "/GenericSample/Import": { privilege: Privileges.ORDER_CREATE },
-  "/GenericSample/Order": { privilege: Privileges.ORDER_CREATE },
-  "/GenericSample/Results": { privilege: Privileges.RESULT_ENTER },
+  "/GenericSample/Edit": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/GenericSample/Import": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/GenericSample/Order": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/GenericSample/Results": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
   "/ImmunohistochemistryCaseView/:immunohistochemistrySampleId": {
     privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
   },
   "/ImmunohistochemistryDashboard": {
     privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
   },
-  "/LaporanHasil": { privilege: Privileges.REPORT_RUN },
-  "/LogbookResults": { privilege: Privileges.RESULT_ENTER },
-  "/MasterListsPage": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/LaporanHasil": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
+  "/LogbookResults": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/MasterListsPage": {
+    privilege: Privileges.SYSTEM_CONFIGURE,
+    role: [Roles.GLOBAL_ADMIN],
+  },
   "/MicrobiologyCaseView/:caseId": {
     role: [Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS],
   },
-  "/ModifyOrder": { privilege: Privileges.ORDER_CREATE },
+  "/ModifyOrder": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
   "/NCECorrectiveAction": { role: [Roles.RECEPTION, Roles.VALIDATION] },
   "/NceDashboard": { role: [Roles.RECEPTION, Roles.VALIDATION] },
   "/NoteBookDashboard": {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
   },
-  "/NoteBookEntryForm": { privilege: Privileges.SYSTEM_CONFIGURE },
-  "/NoteBookEntryForm/:notebookid": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/NoteBookEntryForm": {
+    privilege: Privileges.SYSTEM_CONFIGURE,
+    role: [Roles.GLOBAL_ADMIN],
+  },
+  "/NoteBookEntryForm/:notebookid": {
+    privilege: Privileges.SYSTEM_CONFIGURE,
+    role: [Roles.GLOBAL_ADMIN],
+  },
   "/NoteBookInstanceEditForm/:notebookentryid": {
     privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
   },
   "/NoteBookInstanceEntryForm/:notebookid": {
     privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
   },
-  "/NotebookSampleOrder/:notebookId": { privilege: Privileges.RESULT_ENTER },
+  "/NotebookSampleOrder/:notebookId": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
   "/NotebookSampleOrder/:notebookId/:notebookEntryId": {
     privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
   },
   "/PathologyCaseView/:pathologySampleId": {
     privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
   },
   "/PathologyDashboard": { privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF },
-  "/PatientHistory": { privilege: Privileges.ORDER_CREATE },
-  "/PatientManagement/:patientId?": { privilege: Privileges.ORDER_CREATE },
-  "/PatientMerge": { privilege: Privileges.ORDER_CREATE },
-  "/PatientResults": { privilege: Privileges.RESULT_ENTER },
-  "/PatientResults/:patientId": { privilege: Privileges.ORDER_CREATE },
-  "/PrintBarcode": { privilege: Privileges.ORDER_CREATE },
-  "/RangeResults": { privilege: Privileges.RESULT_ENTER },
-  "/Report": { privilege: Privileges.REPORT_RUN },
+  "/PatientHistory": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/PatientManagement/:patientId?": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/PatientMerge": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/PatientResults": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/PatientResults/:patientId": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/PrintBarcode": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/RangeResults": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/Report": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
   "/ReportNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
-  "/ResultValidation": { privilege: Privileges.RESULT_VALIDATE },
-  "/ResultValidationByTestDate": { privilege: Privileges.RESULT_VALIDATE },
-  "/Results": { privilege: Privileges.RESULT_ENTER },
-  "/RoleManagement": { privilege: Privileges.ROLE_MANAGE },
-  "/RoutineReport": { privilege: Privileges.REPORT_RUN },
-  "/RoutineReports": { privilege: Privileges.REPORT_RUN },
-  "/SampleBatchEntrySetup": { privilege: Privileges.ORDER_CREATE },
-  "/SampleEdit": { privilege: Privileges.ORDER_CREATE },
+  "/ResultValidation": {
+    privilege: Privileges.RESULT_VALIDATE,
+    role: [Roles.VALIDATION],
+  },
+  "/ResultValidationByTestDate": {
+    privilege: Privileges.RESULT_VALIDATE,
+    role: [Roles.VALIDATION],
+  },
+  "/Results": { privilege: Privileges.RESULT_ENTER, role: [Roles.RESULTS] },
+  "/RoutineReport": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
+  "/RoutineReports": {
+    privilege: Privileges.REPORT_RUN,
+    role: [Roles.REPORTS],
+  },
+  "/SampleBatchEntrySetup": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/SampleEdit": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
   "/SampleManagement": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/SamplePatientEntry": { privilege: Privileges.ORDER_CREATE },
+  "/SamplePatientEntry": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
   "/SampleShipment": {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
@@ -1037,57 +1116,170 @@ export const ROUTE_GUARDS = {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/SampleShipment/settings": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
-  "/StatusResults": { privilege: Privileges.RESULT_ENTER },
+  "/StatusResults": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
   "/Storage": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
   "/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)":
     { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
-  "/StudyReport": { privilege: Privileges.REPORT_RUN },
-  "/StudyReports": { privilege: Privileges.REPORT_RUN },
-  "/TATReport": { privilege: Privileges.REPORT_RUN },
-  "/VectorManualEntry": { privilege: Privileges.REPORT_RUN },
-  "/VectorSurveillanceReport": { privilege: Privileges.REPORT_RUN },
+  "/StudyReport": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
+  "/StudyReports": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
+  "/TATReport": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
+  "/VectorManualEntry": {
+    privilege: Privileges.REPORT_RUN,
+    role: [Roles.REPORTS],
+  },
+  "/VectorSurveillanceReport": {
+    privilege: Privileges.REPORT_RUN,
+    role: [Roles.REPORTS],
+  },
   "/ViewNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
-  "/WorkPlanByTestSection": { privilege: Privileges.RESULT_ENTER },
-  "/WorkplanByPanel": { privilege: Privileges.RESULT_ENTER },
-  "/WorkplanByPriority": { privilege: Privileges.RESULT_ENTER },
-  "/WorkplanByTest": { privilege: Privileges.RESULT_ENTER },
-  "/admin": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/WorkPlanByTestSection": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/Workplan": { role: [Roles.RESULTS] },
+  "/WorkplanByPanel": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/WorkplanByPriority": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/WorkplanByTest": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/admin": {
+    privilege: Privileges.SYSTEM_CONFIGURE,
+    role: [Roles.GLOBAL_ADMIN],
+  },
   "/analyzers": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
-  "/analyzers/:id/edit": { privilege: Privileges.SYSTEM_CONFIGURE },
-  "/analyzers/:id/mappings": { privilege: Privileges.ANALYZER_IMPORT },
-  "/analyzers/:id/qc-rules": { privilege: Privileges.SYSTEM_CONFIGURE },
-  "/analyzers/custom-field-types": { privilege: Privileges.ANALYZER_IMPORT },
-  "/analyzers/errors": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
-  "/analyzers/new": { privilege: Privileges.SYSTEM_CONFIGURE },
   "/analyzers/qc/charts/:analyzerId": {
     privilege: Privileges.ANALYZER_CONFIGURE,
+    role: [Roles.LAB_SUPERVISOR],
   },
-  "/analyzers/qc/control-lots": { privilege: Privileges.ANALYZER_CONFIGURE },
   "/analyzers/qc/control-lots/:id": {
     privilege: Privileges.ANALYZER_CONFIGURE,
+    role: [Roles.LAB_SUPERVISOR],
   },
   "/analyzers/qc/control-lots/new": {
     privilege: Privileges.ANALYZER_CONFIGURE,
+    role: [Roles.LAB_SUPERVISOR],
   },
-  "/analyzers/qc/db": { privilege: Privileges.ANALYZER_CONFIGURE },
   "/analyzers/qc/instruments/:instrumentId": {
     privilege: Privileges.ANALYZER_CONFIGURE,
+    role: [Roles.LAB_SUPERVISOR],
   },
-  "/analyzers/qc/rule-config": { privilege: Privileges.ANALYZER_CONFIGURE },
   "/analyzers/types": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
   "/analyzers/types/:profileId/mapping": {
     privilege: Privileges.ANALYZER_IMPORT,
+    role: [Roles.ANALYSER_IMPORT],
   },
-  "/genericProgram": { privilege: Privileges.ORDER_CREATE },
+  "/genericProgram": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
   "/inventory": { role: [Roles.RESULTS, Roles.GLOBAL_ADMIN] },
-  "/order/enter": { privilege: Privileges.ORDER_CREATE },
-  "/order/environmental": { privilege: Privileges.ORDER_CREATE },
-  "/order/vector": { privilege: Privileges.ORDER_CREATE },
-  "/programView/:programSampleId": { privilege: Privileges.ORDER_CREATE },
-  "/result": { privilege: Privileges.RESULT_ENTER },
-  "/validation": { privilege: Privileges.RESULT_VALIDATE },
-  "/vector/deconvolution": { privilege: Privileges.RESULT_ENTER },
-  "/vector/identification": { privilege: Privileges.RESULT_ENTER },
+  "/order/enter": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/order/environmental": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/order/vector": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/programView/:programSampleId": {
+    privilege: Privileges.ORDER_CREATE,
+    role: [Roles.RECEPTION],
+  },
+  "/qa/eqa/analyst-competency": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/follow-up-queue": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/in-house": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/in-house/new": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/lab-performance/coverage": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/lab-performance/recent": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/management": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/my-cycles": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/my-programs": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/participants": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/provider/cycles/:cycleId/workbench": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/provider/follow-ups": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/provider/schemes": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/provider/schemes/:schemeId/cycles/new": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/eqa/provider/schemes/:schemeId/performance": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/qa/overview": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION] },
+  "/qa/qc/alerts": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qc/control-lots": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qc/dashboard": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qc/manual-qc": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qc/reagent-qc": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qc/rule-config": { role: [Roles.LAB_SUPERVISOR] },
+  "/qa/qi/amendment": { role: [Roles.RESULTS, Roles.REPORTS] },
+  "/qa/qi/callback": { role: [Roles.RESULTS, Roles.REPORTS] },
+  "/qa/qi/config": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qi/dashboard": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
+  },
+  "/qa/qi/rejection": { role: [Roles.RESULTS, Roles.REPORTS] },
+  "/qa/qi/tat": { role: [Roles.RESULTS, Roles.REPORTS] },
+  "/qa/qms/accreditation": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qms/audit-trail": {
+    privilege: Privileges.AUDIT_VIEW,
+    role: [Roles.GLOBAL_ADMIN],
+  },
+  "/qa/qms/capa-register": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qms/e-signature-log": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qms/nce-register": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/result": { privilege: Privileges.RESULT_ENTER, role: [Roles.RESULTS] },
+  "/validation": {
+    privilege: Privileges.RESULT_VALIDATE,
+    role: [Roles.VALIDATION],
+  },
+  "/vector/deconvolution": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
+  "/vector/identification": {
+    privilege: Privileges.RESULT_ENTER,
+    role: [Roles.RESULTS],
+  },
 };
 
 /**

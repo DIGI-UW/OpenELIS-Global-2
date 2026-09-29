@@ -183,6 +183,15 @@ jobs:
                | grep -v "AmendmentReportRestController.java" \
                | grep -v "RejectionReportRestController.java" \
                | grep -v "FhirReplayRestController.java" \
+               # develop added six hasRole('RESULTS')/hasAnyRole gates here after
+               # this branch removed them in favour of service-layer gating. They
+               # are left in place rather than stripped: the handlers reach
+               # services whose own gates were not verified as equivalent, and
+               # removing a working gate to satisfy a lint rule is the wrong
+               # trade. Note they carry the inheriting-role problem (a Results
+               # Validator holding result:enter is refused by hasRole('RESULTS')),
+               # tracked with the route-guard debt in routeGuards.test.js.
+               | grep -v "ResultEntryRestController.java" \
                | grep -v "NotificationTriggerConfigRestController.java" || true)
           if [ -n "$violations" ]; then
             echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"

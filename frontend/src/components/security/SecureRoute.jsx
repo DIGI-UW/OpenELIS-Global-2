@@ -81,7 +81,7 @@ function SecureRoute(props) {
   // role=, privilege= (PRIV_*, OGC-384) and permission= (qa.* keys, EQA V2),
   // plus labUnitRole. Kept in Utils so the menu filter and SecureRoute cannot
   // drift: a menu row is shown exactly when this would admit the route.
-  const hasPermission = (userDetails = userSessionDetails) =>
+  const routeAccessAllowed = (userDetails = userSessionDetails) =>
     computeRouteAccess(userDetails, {
       role: props.role,
       privilege: props.privilege,

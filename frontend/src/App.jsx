@@ -457,11 +457,13 @@ export default function App() {
                   path="/admin"
                   render={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
+                  privilege={Privileges.SYSTEM_CONFIGURE}
                 />
                 <SecureRoute
                   path="/MasterListsPage"
                   render={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
+                  privilege={Privileges.SYSTEM_CONFIGURE}
                 />
                 <SecureRoute
                   path="/PathologyDashboard"
@@ -506,12 +508,14 @@ export default function App() {
                   exact
                   render={() => <ProgramDashboard />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/programView/:programSampleId"
                   exact
                   render={() => <ProgramCaseView />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"
@@ -524,42 +528,49 @@ export default function App() {
                   exact
                   render={() => <EnvironmentalDashboard />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   render={() => <NoteBookEntryForm />}
                   role={Roles.GLOBAL_ADMIN}
+                  privilege={Privileges.SYSTEM_CONFIGURE}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm"
                   exact
                   render={() => <NoteBookEntryForm />}
                   role={Roles.GLOBAL_ADMIN}
+                  privilege={Privileges.SYSTEM_CONFIGURE}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   render={() => <NoteBookInstanceEntryForm />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   render={() => <NoteBookInstanceEntryForm />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
                   exact
                   render={() => <NotebookSampleOrder />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId"
                   exact
                   render={() => <NotebookSampleOrder />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
@@ -630,6 +641,7 @@ export default function App() {
                     </Suspense>
                   )}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/GenericSample/Edit"
@@ -640,6 +652,7 @@ export default function App() {
                     </Suspense>
                   )}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/GenericSample/Import"
@@ -650,6 +663,7 @@ export default function App() {
                     </Suspense>
                   )}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
@@ -670,6 +684,7 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 {/* Clinical Order Workflow */}
                 <Route
@@ -710,6 +725,7 @@ export default function App() {
                           exact
                           render={() => <OrderQA />}
                           role={Roles.RECEPTION}
+                          privilege={Privileges.ORDER_CREATE}
                         />
                       </Switch>
                     </OrderProvider>
@@ -748,6 +764,7 @@ export default function App() {
                           exact
                           render={() => <OrderQA />}
                           role={Roles.RECEPTION}
+                          privilege={Privileges.ORDER_CREATE}
                         />
                       </Switch>
                     </OrderProvider>
@@ -792,6 +809,7 @@ export default function App() {
                           exact
                           render={() => <VectorOrderComplete />}
                           role={Roles.RECEPTION}
+                          privilege={Privileges.ORDER_CREATE}
                         />
                       </Switch>
                     </OrderProvider>
@@ -813,24 +831,28 @@ export default function App() {
                   exact
                   render={() => <VectorIdentificationWorklist />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/vector/deconvolution"
                   exact
                   render={() => <VectorDeconvolutionWorklist />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
                   render={() => <ModifyOrder />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/SampleEdit"
                   exact
                   render={() => <FindOrder />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/NceDashboard"
@@ -871,6 +893,7 @@ export default function App() {
                   exact
                   render={() => <SampleBatchEntrySetup />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
 
                 <SecureRoute
@@ -878,18 +901,21 @@ export default function App() {
                   exact
                   render={() => <EOrderPage />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/PrintBarcode"
                   exact
                   render={() => <PrintBarcode />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/PatientManagement/:patientId?"
                   exact
                   render={() => <PatientManagement />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/Alerts"
@@ -1423,12 +1449,14 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={Roles.ANALYSER_IMPORT}
+                  privilege={Privileges.ANALYZER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/instruments/:instrumentId"
                   exact
                   render={() => <InstrumentDetailPage />}
                   role={Roles.LAB_SUPERVISOR}
+                  privilege={Privileges.ANALYZER_CONFIGURE}
                 />
                 {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
                 <SecureRoute
@@ -1456,6 +1484,7 @@ export default function App() {
                   exact
                   render={() => <ControlChartDetail />}
                   role={Roles.LAB_SUPERVISOR}
+                  privilege={Privileges.ANALYZER_CONFIGURE}
                 />
                 <Redirect
                   exact
@@ -1473,12 +1502,14 @@ export default function App() {
                   exact
                   render={() => <ControlLotSetup />}
                   role={Roles.LAB_SUPERVISOR}
+                  privilege={Privileges.ANALYZER_CONFIGURE}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/:id"
                   exact
                   render={() => <ControlLotSetup />}
                   role={Roles.LAB_SUPERVISOR}
+                  privilege={Privileges.ANALYZER_CONFIGURE}
                 />
                 <Redirect
                   exact
@@ -1496,12 +1527,14 @@ export default function App() {
                   exact
                   render={() => <PatientHistory />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/PatientMerge"
                   exact
                   render={() => <PatientMerge />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
                   path="/GenericSample/Results"
@@ -1512,12 +1545,14 @@ export default function App() {
                     </Suspense>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/Aliquot"
                   exact
                   render={() => <Aliquot />}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
 
                 <SecureRoute
@@ -1531,6 +1566,7 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RECEPTION}
+                  privilege={Privileges.ORDER_CREATE}
                 />
 
                 <SecureRoute
@@ -1544,24 +1580,28 @@ export default function App() {
                   exact
                   render={() => <Workplan type="unit" />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/WorkplanByTest"
                   exact
                   render={() => <Workplan type="test" />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/WorkplanByPanel"
                   exact
                   render={() => <Workplan type="panel" />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/WorkplanByPriority"
                   exact
                   render={() => <Workplan type="priority" />}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 {/* OGC-1020 (R1): canonical unified worklist, gated by the
                     results.entry.unifiedRoute site flag */}
@@ -1574,6 +1614,7 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/result"
@@ -1586,6 +1627,7 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/LogbookResults"
@@ -1598,6 +1640,7 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/PatientResults"
@@ -1610,6 +1653,7 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/AccessionResults"
@@ -1622,6 +1666,7 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/StatusResults"
@@ -1634,6 +1679,7 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/RangeResults"
@@ -1646,36 +1692,42 @@ export default function App() {
                     </LegacyResultsGate>
                   )}
                   role={Roles.RESULTS}
+                  privilege={Privileges.RESULT_ENTER}
                 />
                 <SecureRoute
                   path="/RoutineReports"
                   exact
                   render={() => <RoutineReports />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/RoutineReport"
                   exact
                   render={() => <RoutineIndex />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/StudyReports"
                   exact
                   render={() => <StudyReports />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/StudyReport"
                   exact
                   render={() => <StudyIndex />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/Report"
                   exact
                   render={() => <ReportIndex />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 {/* QA v0.5 IA rehome (OGC-690): Audit Trail moved to QMS pillar */}
                 <Route
@@ -1701,24 +1753,28 @@ export default function App() {
                   exact
                   render={() => <TATReport />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/VectorSurveillanceReport"
                   exact
                   render={() => <VectorSurveillanceReport />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/LaporanHasil"
                   exact
                   render={() => <LaporanHasilReport />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 <SecureRoute
                   path="/VectorManualEntry"
                   exact
                   render={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
+                  privilege={Privileges.REPORT_RUN}
                 />
                 {/* Every validation submenu renders the same component, and
                     SearchForm picks its mode from window.location.pathname. The
@@ -1732,18 +1788,21 @@ export default function App() {
                   exact
                   render={() => <StudyValidation key="validation" />}
                   role={Roles.VALIDATION}
+                  privilege={Privileges.RESULT_VALIDATE}
                 />
                 <SecureRoute
                   path="/ResultValidation"
                   exact
                   render={() => <StudyValidation key="ResultValidation" />}
                   role={Roles.VALIDATION}
+                  privilege={Privileges.RESULT_VALIDATE}
                 />
                 <SecureRoute
                   path="/AccessionValidation"
                   exact
                   render={() => <StudyValidation key="AccessionValidation" />}
                   role={Roles.VALIDATION}
+                  privilege={Privileges.RESULT_VALIDATE}
                 />
                 <SecureRoute
                   path="/AccessionValidationRange"
@@ -1752,6 +1811,7 @@ export default function App() {
                     <StudyValidation key="AccessionValidationRange" />
                   )}
                   role={Roles.VALIDATION}
+                  privilege={Privileges.RESULT_VALIDATE}
                 />
                 <SecureRoute
                   path="/ResultValidationByTestDate"
@@ -1760,6 +1820,7 @@ export default function App() {
                     <StudyValidation key="ResultValidationByTestDate" />
                   )}
                   role={Roles.VALIDATION}
+                  privilege={Privileges.RESULT_VALIDATE}
                 />
                 <SecureRoute
                   path="/AnalyzerResults"
