@@ -1013,6 +1013,20 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       },
       "Indeterminate",
     );
+    await page.goto(
+      `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+      { waitUntil: "domcontentloaded" },
+    );
+    const savedRif = page
+      .getByRole("row", { name: new RegExp(order.accession) })
+      .filter({ hasText: "Indeterminate" });
+    await expect(savedRif).toHaveCount(1);
+    await expect(savedRif).toContainText("Xpert RIF Resistance");
+    const savedMtb = page
+      .getByRole("row", { name: new RegExp(order.accession) })
+      .filter({ hasText: "NOT DETECTED" });
+    await expect(savedMtb).toHaveCount(1);
+    await expect(savedMtb).toContainText("Xpert MTB/RIF");
     await capture(page, testInfo, "invalid-binding-recovered-clinical-result");
   });
 });
