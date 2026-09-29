@@ -143,10 +143,29 @@ def compose_command(site_dir, release, override=None):
     return command + (["-f", str(override)] if override else [])
 
 
+def read_env_file(path):
+    """Read KEY=VALUE lines the way Compose reads an env file, minus interpolation."""
+    environment = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.removeprefix("export ").split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        environment[key.strip()] = value
+    return environment
+
+
 def site_settings(site_dir, release):
-    # Let Compose parse quoting and interpolation exactly as it does for the stack.
-    output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
-    environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    # Let Compose parse quoting and interpolation exactly as it does for the stack. Older Compose
+    # releases without `config --environment` fail on it, so read the site's env file there.
+    try:
+        output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
+        environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    except subprocess.CalledProcessError:
+        environment = read_env_file(site_dir / ".env")
     return {
         "TEST_USER": environment.get("TEST_USER") or environment.get("OE_ADMIN_USERNAME") or TEST_USER,
         "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD") or TEST_PASS,

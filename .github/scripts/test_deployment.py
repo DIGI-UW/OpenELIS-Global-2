@@ -281,6 +281,21 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual({self.sha, "previous"}, {path.name for path in releases.iterdir()})
         self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
 
+    def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
+        (self.root / ".env").write_text(
+            "# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='qa pass'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
+
+        def old_compose(args, cwd, capture=False, **kwargs):
+            if args[-2:] == ["config", "--environment"]:
+                raise deployment.subprocess.CalledProcessError(15, args, "unknown flag: --environment")
+            return self.command(args, cwd, capture, **kwargs)
+
+        with patch.object(deployment, "run", side_effect=old_compose):
+            settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "qa pass", "MOCK_URL": "http://127.0.0.1:9085"},
+                         settings)
+
     def test_smoke_accession_is_a_valid_unique_accession(self):
         self.assertEqual("DEV01900361250089391", deployment.smoke_accession("36125008939-1"))
         self.assertEqual(20, len(deployment.smoke_accession("9" * 30 + "-12")))
