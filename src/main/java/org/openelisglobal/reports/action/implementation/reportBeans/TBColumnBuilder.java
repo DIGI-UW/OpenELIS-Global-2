@@ -18,13 +18,9 @@
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.sql.Date;
-import java.util.HashMap;
-import java.util.List;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.reports.action.implementation.reportBeans.CSVRoutineColumnBuilder.SQLConstant;
-import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testresult.valueholder.TestResult;
 
 /**
  * @author pahill (pahill@uw.edu)
@@ -62,19 +58,11 @@ public class TBColumnBuilder extends RoutineColumnBuilder {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
         if (allTests == null) {
             allTests = testService.getTbTest();
         }
-        if (testResultsByTestName == null) {
-            testResultsByTestName = new HashMap<>();
-            List<TestResult> allTestResults = testResultService.getAllTestResults();
-            for (TestResult testResult : allTestResults) {
-                String key = TestServiceImpl.getLocalizedTestNameWithType(testResult.getTest());
-                testResultsByTestName.put(key, testResult);
-            }
-        }
+        super.defineAllTestsAndResults();
     }
 
     @Override
@@ -86,7 +74,7 @@ public class TBColumnBuilder extends RoutineColumnBuilder {
                 + ".* " + " FROM sample_item AS si JOIN \n ");
 
         // Begin cross tab / pivot table
-        query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"
+        query.append(" crosstab( \n" + " 'SELECT si.id, t.id, replace(replace(replace(replace(r.value ,E''\\n"
                 + "'', '' ''), E''\\t'', '' ''), E''\\r" + "'', '' ''),'','',''.'') \n"
                 + " FROM clinlims.analysis AS a join clinlims.test AS t on a.test_id = t.id  \n"
                 + "  JOIN test_section ts ON t.test_section_id = ts.id \n"
@@ -103,21 +91,15 @@ public class TBColumnBuilder extends RoutineColumnBuilder {
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
-                + "\n" + " ORDER BY 1, 2 \n"
-                + " ', 'SELECT t.description FROM test t JOIN test_section ts ON t.test_section_id ="
-                + " ts.id where t.is_active = ''Y'' AND ts.name = ''TB'' ORDER BY 1' ) ");
+                + "\n" + " ORDER BY 1, 2 \n" + " ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
-        // Name the test pivot table columns . We'll name them all after the
-        // resource name, because some tests have fancy characters in them and
-        // somewhere
-        // between iReport, Java and postgres a complex name (e.g. one including
-        // a beta, " HCG Quant") get messed up and isn't found.
+        // One pivot column per test, named after the test id and declared in
+        // allTests order, the same order as the categories.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
-            String testName = TestServiceImpl.getLocalizedTestNameWithType(col);
-            query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
+            query.append("\n, \"" + resultColumnName(col) + "\" varchar(200) ");
         }
         query.append(" ) \n");
         // left join all sample Items from the right sample range to the results table.

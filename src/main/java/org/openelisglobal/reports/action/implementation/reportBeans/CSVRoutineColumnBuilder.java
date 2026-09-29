@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.jdbc.ReturningWork;
@@ -120,7 +121,7 @@ public abstract class CSVRoutineColumnBuilder {
      * TestResult record so we can look at the result type (Dictionary vs. constant
      * etc.)
      */
-    protected Map<String, TestResult> testResultsByTestName;
+    protected Map<String, TestResult> testResultsByColumn;
 
     protected String validStatusId;
 
@@ -145,8 +146,9 @@ public abstract class CSVRoutineColumnBuilder {
     private static final int MAX_POSTGRES_COL_NAME = 55;
 
     /**
-     * the test have to be sorted by the name, because they have to match the pivot
-     * table order in the results
+     * The order of allTests is the order of the result columns in the CSV. The
+     * crosstab takes its categories from the same list, so the order is free to
+     * differ from how Postgres sorts.
      */
     @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
@@ -168,14 +170,33 @@ public abstract class CSVRoutineColumnBuilder {
                 allTests = testService.getAllOrderBy("description");
             }
         }
-        if (testResultsByTestName == null) {
-            testResultsByTestName = new HashMap<>();
+        if (testResultsByColumn == null) {
+            testResultsByColumn = new HashMap<>();
             List<TestResult> allTestResults = testResultService.getAllTestResults();
             for (TestResult testResult : allTestResults) {
-                String key = TestServiceImpl.getLocalizedTestNameWithType(testResult.getTest());
-                testResultsByTestName.put(key, testResult);
+                testResultsByColumn.put(resultColumnName(testResult.getTest()), testResult);
             }
         }
+    }
+
+    /**
+     * Names a test's result column after its id. Display names repeat across a
+     * catalog, and cut to the Postgres column name limit they collide more often.
+     */
+    protected static String resultColumnName(Test test) {
+        return "test_" + test.getId();
+    }
+
+    /**
+     * The crosstab category query: the ids of allTests, in list order, so each
+     * result fills the column declared for its test.
+     */
+    protected String resultCategorySql() {
+        StringJoiner ids = new StringJoiner(",");
+        for (Test test : allTests) {
+            ids.add(test.getId());
+        }
+        return "SELECT id FROM unnest(ARRAY[" + ids + "]) WITH ORDINALITY AS category(id, position) ORDER BY position";
     }
 
     /** map to provide appropriate tag to identify the project. */
@@ -327,15 +348,6 @@ public abstract class CSVRoutineColumnBuilder {
         return result;
     }
 
-    protected String prepareColumnName(String columnName) {
-        // trim and escape the column name so it is more safe from sql injection
-        if (!columnName.matches("(?i)[a-zàâçéèêëîïôûùüÿñæœ0-9_ ()%/\\[\\]+\\-]+")) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "prepareColumnName",
-                    "potentially dangerous character detected in '" + columnName + "'");
-        }
-        return "\"" + trimToPostgresMaxColumnName(columnName = columnName.replace("\"", "\\\"")) + "\"";
-    }
-
     private String trimToPostgresMaxColumnName(String name) {
         if (name.length() <= MAX_POSTGRES_COL_NAME) {
             return name;
@@ -417,7 +429,7 @@ public abstract class CSVRoutineColumnBuilder {
             case DROP_ZERO:
                 return ("0".equals(value) || value == null) ? "" : value;
             case TEST_RESULT:
-                return isBlankOrNull(value) ? "" : translateTestResult(csvName, value);
+                return isBlankOrNull(value) ? "" : translateTestResult(dbName, value);
             case GEND_CD4:
                 return isBlankOrNull(value) ? "" : translateGendResult(getGendCD4CountAnalyteId(), value);
             case LOG:
@@ -495,8 +507,8 @@ public abstract class CSVRoutineColumnBuilder {
          * @return @
          * @throws SQLException
          */
-        public String translateTestResult(String testName, String value) throws SQLException {
-            TestResult testResult = testResultsByTestName.get(testName);
+        public String translateTestResult(String columnName, String value) throws SQLException {
+            TestResult testResult = testResultsByColumn.get(columnName);
             // if it is not in the table then its just a value in the result
             // that was NOT selected from a list, thus no translation
             if (testResult == null) {
@@ -569,29 +581,18 @@ public abstract class CSVRoutineColumnBuilder {
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si JOIN \n ");
         String labUnitFilter = "";
-        String categoryUnitFilter = "";
         if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
             labUnitFilter = " AND ts.id = " + selectedLabUnit;
-            // Drive the inner crosstab category SQL from allTests so the row
-            // count cannot drift from the AS-clause column count.
-            StringBuilder ids = new StringBuilder();
-            for (Test t : allTests) {
-                if (ids.length() > 0) {
-                    ids.append(",");
-                }
-                ids.append(t.getId());
-            }
-            categoryUnitFilter = " AND t.id IN (" + ids + ")";
         }
 
         // Begin cross tab / pivot table
-        query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"
+        query.append(" crosstab( \n" + " 'SELECT si.id, t.id, replace(replace(replace(replace(r.value ,E''\\n"
                 + "'', '' ''), E''\\t'', '' ''), E''\\r" + "'', '' ''),'','',''.'') \n"
                 + " FROM clinlims.result AS r join clinlims.analysis AS a on a.id = r.analysis_id \n"
                 + "  join clinlims.sample_item AS si on si.id = a.sampitem_id \n"
                 + "  join clinlims.sample AS s on s.id = si.samp_id \n"
-                + " join clinlims.test_result AS tr on r.test_result_id = tr.id \n"
-                + " join clinlims.test AS t on tr.test_id = t.id \n"
+                // The analysis names the test: a free-text result has no test_result row.
+                + " join clinlims.test AS t on a.test_id = t.id \n"
                 + " join clinlims.test_section ts on t.test_section_id = ts.id \n"
                 + " left join sample_projects sp on si.samp_id = sp.samp_id \n" + "\n"
                 + " WHERE sp.id IS NULL AND s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate)
@@ -601,21 +602,15 @@ public abstract class CSVRoutineColumnBuilder {
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
-                + labUnitFilter + "\n ORDER BY 1, 2 "
-                + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y''" + categoryUnitFilter
-                + " ORDER BY 1' ) ");
+                + labUnitFilter + "\n ORDER BY 1, 2 " + "\n ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
-        // Name the test pivot table columns . We'll name them all after the
-        // resource name, because some tests have fancy characters in them and
-        // somewhere
-        // between iReport, Java and postgres a complex name (e.g. one including
-        // a beta, " HCG Quant") get messed up and isn't found.
+        // One pivot column per test, named after the test id and declared in
+        // allTests order, the same order as the categories.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
-            String testName = TestServiceImpl.getLocalizedTestNameWithType(col);
-            query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
+            query.append("\n, \"" + resultColumnName(col) + "\" varchar(200) ");
         }
         query.append(" ) \n");
         // left join all sample Items from the right sample range to the results table.
@@ -712,8 +707,7 @@ public abstract class CSVRoutineColumnBuilder {
     /** Generate a column to the list of all columns. One for each possible test. */
     protected void addAllResultsColumns() {
         for (Test test : allTests) {
-            String testTag = TestServiceImpl.getLocalizedTestNameWithType(test);
-            add(testTag, TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
+            add(resultColumnName(test), TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
         }
     }
 
