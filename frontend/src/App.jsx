@@ -910,43 +910,43 @@ export default function App() {
                   path="/EQAOrders"
                   exact
                   render={() => <EQAOrdersPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQAMyPrograms"
                   exact
                   render={() => <MyProgramsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQAManagement"
                   exact
                   render={() => <EQAProgramManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQAResults"
                   exact
                   render={() => <EQAResultsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQAParticipants"
                   exact
                   render={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQADistribution/create"
                   exact
                   render={() => <CreateDistribution />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/EQADistribution"
                   exact
                   render={() => <EQADistributionDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  privilege={Privileges.EQA_VIEW}
                 />
                 <SecureRoute
                   path="/Storage"

@@ -101,6 +101,42 @@ describe("ROUTE_GUARDS stays in step with App.jsx", () => {
     expect(actual).toEqual(expected);
   });
 
+  it("guards the EQA screens on the EQA privilege, not on Reception/Results", () => {
+    // These seven were guarded role={[Roles.RECEPTION, Roles.RESULTS]}, which
+    // inverted the module: EQA Coordinator (the only role holding eqa:view and
+    // eqa:manage) was refused at the route, while Reception and Results were let
+    // in and then 403'd by the API. Verified live before the fix: the Results
+    // session got 403 from /rest/eqa/my-programs and /rest/eqa/orders.
+    const EQA_ROUTES = [
+      "/EQADistribution",
+      "/EQADistribution/create",
+      "/EQAManagement",
+      "/EQAMyPrograms",
+      "/EQAOrders",
+      "/EQAParticipants",
+      "/EQAResults",
+    ];
+    const coordinator = {
+      privileges: ["eqa:view", "eqa:manage", "report:run"],
+      roles: ["EQA Coordinator"],
+    };
+    const results = { privileges: ["result:enter"], roles: ["Results"] };
+    EQA_ROUTES.forEach((routePath) => {
+      expect(
+        ROUTE_GUARDS[routePath]?.privilege,
+        `${routePath} must be guarded on eqa:view`,
+      ).toBe(Privileges.EQA_VIEW);
+      expect(
+        menuEntryVisible(routePath, coordinator),
+        `EQA Coordinator must reach ${routePath}`,
+      ).toBe(true);
+      expect(
+        menuEntryVisible(routePath, results),
+        `Results must not be offered ${routePath}`,
+      ).toBe(false);
+    });
+  });
+
   it("includes the role-guarded routes, not just the privilege-guarded ones", () => {
     // /inventory is guarded by role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}. An
     // earlier version of the map read only `privilege=`, so this route was

@@ -803,6 +803,7 @@ export const RoleEquivalentPrivileges = {
   "User Account Administrator": [Privileges.USER_MANAGE],
   "Audit Trail": [Privileges.AUDIT_VIEW],
   "Analyser Import": [Privileges.ANALYZER_IMPORT],
+  "EQA Coordinator": [Privileges.EQA_VIEW],
   "Global Administrator": [Privileges.SYSTEM_CONFIGURE],
 };
 
@@ -873,13 +874,13 @@ export const ROUTE_GUARDS = {
   // Header -> Utils). menuRouteGuards.test.js asserts the two still agree.
   "/AnalyzerResults": { role: [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT] },
   "/AuditTrailReport": { privilege: Privileges.SYSTEM_CONFIGURE },
-  "/EQADistribution": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQADistribution/create": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQAManagement": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQAMyPrograms": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQAOrders": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQAParticipants": { role: [Roles.RECEPTION, Roles.RESULTS] },
-  "/EQAResults": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/EQADistribution": { privilege: Privileges.EQA_VIEW },
+  "/EQADistribution/create": { privilege: Privileges.EQA_VIEW },
+  "/EQAManagement": { privilege: Privileges.EQA_VIEW },
+  "/EQAMyPrograms": { privilege: Privileges.EQA_VIEW },
+  "/EQAOrders": { privilege: Privileges.EQA_VIEW },
+  "/EQAParticipants": { privilege: Privileges.EQA_VIEW },
+  "/EQAResults": { privilege: Privileges.EQA_VIEW },
   "/ElectronicOrders": { privilege: Privileges.ORDER_CREATE },
   "/EnvironmentalDashboard": { privilege: Privileges.RESULT_ENTER },
   "/FreezerMonitoring": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
