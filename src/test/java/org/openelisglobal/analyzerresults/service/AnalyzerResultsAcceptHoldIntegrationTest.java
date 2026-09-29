@@ -336,6 +336,25 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void releasingAHeldResultKeepsItsStagedCompletionDate() {
+        jdbc.update("UPDATE clinlims.analyzer_results SET complete_date = '2026-09-01 10:00:00' WHERE id = ?::numeric",
+                stagedRowId);
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setCompleteDate("01/01/2000");
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("the analysis carries the analyzer's completion date", "2026-09-01",
+                jdbc.queryForObject(
+                        "SELECT to_char(a.completed_date, 'YYYY-MM-DD') FROM clinlims.analysis a"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
     public void differentSpecimenChoicesForNewTestsOnAnExistingOrderStayHeld() {
         String existingOrder = "123456789";
         long secondMultiType = 97005L;

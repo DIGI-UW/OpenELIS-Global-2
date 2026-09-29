@@ -189,9 +189,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * The staged row owns which order, test, component and analyzer a result
-     * belongs to; the reviewer supplies only the action, specimen choice, note and
-     * result.
+     * Everything the review page derives from the staged row is the staged row's:
+     * order, test, component, control flag, analyzer, completion time, result type
+     * and precision. The reviewer supplies only the action, specimen choice, note,
+     * result and reflex selection.
      */
     private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
         item.setAccessionNumber(staged.getAccessionNumber());
@@ -199,6 +200,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
         item.setAnalyzerId(staged.getAnalyzerId());
+        item.setCompleteDate(staged.getCompleteDateForDisplay());
+        item.setTestResultType(staged.getResultType());
+        item.setTestName(staged.getTestName());
+        item.setSignificantDigits(significantDigitsFor(staged));
+    }
+
+    /** As the review page derives it: the test's first active result definition. */
+    private String significantDigitsFor(AnalyzerResults staged) {
+        if (staged.getTestId() == null || GenericValidator.isBlankOrNull(staged.getResult())) {
+            return null;
+        }
+        List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
+        return testResults == null || testResults.isEmpty() ? null : testResults.get(0).getSignificantDigits();
     }
 
     /**
