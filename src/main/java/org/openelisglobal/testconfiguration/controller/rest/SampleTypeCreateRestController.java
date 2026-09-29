@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SampleTypeCreateRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName",
-            "domain", "whonetCode", "active" };
+            "description", "domain", "whonetCode", "active" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -108,8 +108,8 @@ public class SampleTypeCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
-        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
-                Boolean.TRUE.equals(form.getActive()));
+        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, form.getDescription(), userId,
+                backendDomainCode, form.getWhonetCode(), Boolean.TRUE.equals(form.getActive()));
         if (typeOfSampleService.nameInUse(identifyingName)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
         }
@@ -188,10 +188,10 @@ public class SampleTypeCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TypeOfSample createTypeOfSample(String identifyingName, String userId, String backendDomainCode,
-            String whonetCode, boolean active) {
+    private TypeOfSample createTypeOfSample(String identifyingName, String description, String userId,
+            String backendDomainCode, String whonetCode, boolean active) {
         TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setDescription(identifyingName);
+        typeOfSample.setDescription(description.trim());
         typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
         typeOfSample
                 .setLocalAbbreviation(typeOfSampleService.uniqueLocalAbbreviation(identifyingName, backendDomainCode));

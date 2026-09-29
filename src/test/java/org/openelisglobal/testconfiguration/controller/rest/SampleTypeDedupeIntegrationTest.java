@@ -155,9 +155,9 @@ public class SampleTypeDedupeIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     private org.springframework.test.web.servlet.ResultActions create(String name, String domain) throws Exception {
-        return mockMvc.perform(post("/rest/SampleTypeCreate")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"sampleTypeEnglishName\":\"" + name
-                        + "\",\"sampleTypeFrenchName\":\"" + name + "\",\"domain\":\"" + domain + "\",\"active\":true}")
+        return mockMvc.perform(post("/rest/SampleTypeCreate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sampleTypeEnglishName\":\"" + name + "\",\"sampleTypeFrenchName\":\"" + name
+                        + "\",\"description\":\"" + name + "\",\"domain\":\"" + domain + "\",\"active\":true}")
                 .session(session));
     }
 

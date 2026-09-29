@@ -467,7 +467,7 @@ function SampleTypeManagement({ intl }) {
       const mapped = sampleTypeList.map((item, index) => ({
         id: item.id || index + 1,
         name: item.name || item.description || "",
-        description: item.description || item.name || "",
+        description: item.description || "",
         domain: item.domain || "CLINICAL",
         active: item.isActive !== undefined ? item.isActive : true,
         testCount: item.testCount || 0,
@@ -506,6 +506,7 @@ function SampleTypeManagement({ intl }) {
           formName: "sampleTypeCreateForm",
           sampleTypeEnglishName: editingType.name.trim(),
           sampleTypeFrenchName: editingType.name.trim(),
+          description: editingType.description?.trim() || "",
           domain: editingType.domain || "CLINICAL",
           active: !!editingType.active,
         };
@@ -574,8 +575,7 @@ function SampleTypeManagement({ intl }) {
         const updateData = {
           id: editingType.id,
           name: editingType.name?.trim() || editingType.name,
-          description:
-            editingType.description?.trim() || editingType.name?.trim(),
+          description: editingType.description?.trim() || "",
           domain: editingType.domain || "CLINICAL",
           abbreviation: editingType.abbreviation?.trim() || "",
           isActive:

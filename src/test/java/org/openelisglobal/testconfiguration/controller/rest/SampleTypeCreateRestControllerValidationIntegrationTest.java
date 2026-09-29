@@ -107,7 +107,7 @@ public class SampleTypeCreateRestControllerValidationIntegrationTest extends Bas
     private String body(String name) {
         String json = name.replace("\"", "\\\"");
         return "{\"sampleTypeEnglishName\":\"" + json + "\",\"sampleTypeFrenchName\":\"" + json
-                + "\",\"domain\":\"CLINICAL\",\"active\":true}";
+                + "\",\"description\":\"" + json + "\",\"domain\":\"CLINICAL\",\"active\":true}";
     }
 
     private Integer sampleTypeCount() {
