@@ -499,6 +499,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const presentation = createDemoPresentation(page, testInfo);
+    await presentation.chapter({
+      eyebrow: "OGC-1054 R1 · GeneXpert held-result recovery",
+      title: "Recover the held result without resending",
+      subtitle:
+        "Keep the usable result available while correcting the held sibling.",
+      durationMs: 6500,
+    });
     const runId = randomUUID().slice(0, 8);
     const analyzerName = `E2E Recovery GeneXpert ${runId}`;
     const senderId = `GX-${runId}`;
@@ -597,6 +605,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     await known.locator('label[for$=".isAccepted"]').click();
     await page.locator(`[id="resultList${knownId}.note"]`).fill("Reviewed");
     await capture(page, testInfo, "held-original-result");
+    await presentation.pause(3000);
+    await presentation.chapter({
+      eyebrow: "GeneXpert · One message, two results",
+      title: "The usable MTB result stays reviewable",
+      subtitle: "Only the unmapped RIF observation is held for correction.",
+      durationMs: 5000,
+    });
     await held
       .getByRole("link", { name: "Review Analyzer Type mapping" })
       .click();
@@ -624,6 +639,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         "Current mappings applied to this analyzer. Eligible held results were retried.",
       ),
     ).toBeVisible();
+    await presentation.pause(3000);
 
     await expect(async () => {
       const response = await page.request.get(
@@ -686,6 +702,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     await expect(savedKnown).toHaveCount(1);
     await expect(savedKnown).toContainText("Xpert MTB/RIF");
     await capture(page, testInfo, "recovered-clinical-result-saved");
+    await presentation.chapter({
+      eyebrow: "GeneXpert · Recovery verified",
+      title: "Both original results reached the clinical record",
+      subtitle:
+        "The held row was recovered in place; no analyzer resend was needed.",
+      durationMs: 6000,
+    });
   });
 
   test("FluoroCycler imports a watched file for the correct clinical orders", async ({
