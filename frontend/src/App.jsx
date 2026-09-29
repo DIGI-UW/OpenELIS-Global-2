@@ -1367,7 +1367,7 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   render={() => <AuditTrailReportIndex />}
-                  privilege={Privileges.SYSTEM_CONFIGURE}
+                  privilege={Privileges.AUDIT_VIEW}
                 />
                 <SecureRoute
                   path="/TATReport"

@@ -1111,4 +1111,50 @@
         </rollback>
     </changeSet>
 
+    <!--
+      The reads the system audit log needs, for the role named after it.
+
+      Audit Trail held audit:view and user_role:view and nothing else, so
+      GET /rest/systemAuditEvents returned 403 and the role could not open the
+      one screen it exists for. The event list resolves each event's actor to a
+      name (SystemUserService.getUserById, system_user:view) and renders the
+      entity behind the event, which reaches the order, patient and result
+      reads. Verified live: with these four granted the endpoint returns 200
+      with real events; without system_user:view it denies at getUserById.
+
+      Note system_user:view was granted to NO role before this, the same shape
+      as site_info:view in 012-004n: seeded, gating a shared path, held by
+      nobody, so it denied everyone but Global Administrator whose "*" sentinel
+      hid it.
+
+      Scope: all four are :view reads. The accession-level AuditTrailReport
+      needs about six more (requester, organisation, NCE, status, provider, and
+      a widened ReportTrackingService gate) and is deliberately NOT addressed
+      here; it stays admin-only rather than turning an auditor into a reader of
+      most of the sample domain.
+    -->
+    <changeSet author="openelis" id="012-004s-grant-audit-log-reads">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the system audit log reads to Audit Trail (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Audit Trail'
+              AND p.name IN ('system_user:view', 'order:view', 'patient:view', 'result:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Audit Trail'
+                  AND p.name IN ('system_user:view', 'order:view', 'patient:view', 'result:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

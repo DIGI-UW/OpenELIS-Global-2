@@ -73,8 +73,8 @@ public class UngrantedPrivilegeTest {
             "localization:view", "method:view", "notebook:manage", "notebook:view", "notification:manage",
             "notification:view", "organization:manage", "panel:manage", "panel:view", "program:manage", "program:view",
             "provider:manage", "referral:manage", "report:configure", "sample_type:manage", "shipment:edit",
-            "storage:manage", "system:configure", "system_user:manage", "system_user:view", "test:configure",
-            "testcalc:view", "user_role:manage"));
+            "storage:manage", "system:configure", "system_user:manage", "test:configure", "testcalc:view",
+            "user_role:manage"));
 
     /**
      * BASELINE is an exemption list, so an entry that later gets granted goes stale

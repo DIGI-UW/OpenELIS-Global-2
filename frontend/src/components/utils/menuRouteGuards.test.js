@@ -101,6 +101,26 @@ describe("ROUTE_GUARDS stays in step with App.jsx", () => {
     expect(actual).toEqual(expected);
   });
 
+  it("guards the audit trail report on audit:view, not system:configure", () => {
+    // /AuditTrailReport was guarded on SYSTEM_CONFIGURE, which no seeded role
+    // holds, so the Audit Trail role could not open the screen it is named
+    // for. Verified live before the fix: the role got 403 from
+    // /rest/systemAuditEvents as well, for want of system_user:view.
+    const auditor = {
+      privileges: ["audit:view", "system_user:view", "order:view"],
+      roles: ["Audit Trail"],
+    };
+    const reception = { privileges: ["order:create"], roles: ["Reception"] };
+    expect(ROUTE_GUARDS["/AuditTrailReport"].privilege).toBe(
+      Privileges.AUDIT_VIEW,
+    );
+    expect(menuEntryVisible("/AuditTrailReport", auditor)).toBe(true);
+    expect(menuEntryVisible("/AuditTrailReport?type=system", auditor)).toBe(
+      true,
+    );
+    expect(menuEntryVisible("/AuditTrailReport", reception)).toBe(false);
+  });
+
   it("guards the EQA screens on the EQA privilege, not on Reception/Results", () => {
     // These seven were guarded role={[Roles.RECEPTION, Roles.RESULTS]}, which
     // inverted the module: EQA Coordinator (the only role holding eqa:view and
@@ -186,11 +206,14 @@ describe("menuEntryVisible mirrors SecureRoute", () => {
   });
 
   it("ignores the query string a menu row carries but a route path does not", () => {
+    // audit:view, not system:configure: /AuditTrailReport moved onto the
+    // privilege its own role holds. The point here is the query string, so use
+    // whatever privilege the route currently requires.
     const withQuery = menuEntryVisible("/AuditTrailReport?type=order", {
-      privileges: ["system:configure"],
+      privileges: ["audit:view"],
     });
     const withoutQuery = menuEntryVisible("/AuditTrailReport", {
-      privileges: ["system:configure"],
+      privileges: ["audit:view"],
     });
     expect(withQuery).toBe(withoutQuery);
     expect(withQuery).toBe(true);

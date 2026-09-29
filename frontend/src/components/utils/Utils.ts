@@ -873,7 +873,7 @@ export const ROUTE_GUARDS = {
   // lives in App.jsx and importing it here would be a cycle (App -> Layout ->
   // Header -> Utils). menuRouteGuards.test.js asserts the two still agree.
   "/AnalyzerResults": { role: [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT] },
-  "/AuditTrailReport": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/AuditTrailReport": { privilege: Privileges.AUDIT_VIEW },
   "/EQADistribution": { privilege: Privileges.EQA_VIEW },
   "/EQADistribution/create": { privilege: Privileges.EQA_VIEW },
   "/EQAManagement": { privilege: Privileges.EQA_VIEW },
