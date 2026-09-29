@@ -6,14 +6,19 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Optional;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
+import org.openelisglobal.eqa.service.EQAParticipantResultService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQARound;
@@ -57,6 +62,12 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private EQAParticipantResultService participantResultService;
+
+    @Autowired
+    private EQAPanelSampleDAO eqaPanelSampleDAO;
 
     @Autowired
     private IStatusService statusService;
@@ -206,12 +217,74 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                 row.getAnalyteId());
     }
 
+    // ---- several samples of one analyte ----
+
+    /**
+     * An in-house panel holds several samples of one analyte, one per analyst, so
+     * round, enrollment and analyte name several rows. Each pick must land on the
+     * row for the analysis being entered, not on the first row for the analyte.
+     *
+     * <p>
+     * This is the case that catches it whatever order the rows come back in: the
+     * bench confirms each sample's own analyst, which must change nothing. Picking
+     * "the first row for the analyte" instead writes one analyst onto the other's
+     * row, and because an updated row moves in the database's scan order, the next
+     * save then lands on the other row too.
+     */
+    @Test
+    public void confirmingEachSampleItsOwnAnalystChangesNothing() {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+        long secondAnalysisId = addAnalysis();
+        Long firstRow = insertSealedDraft(fixture, fixture.analysisId, ADMIN_USER_ID);
+        Long secondRow = insertSealedDraft(fixture, secondAnalysisId, OTHER_ANALYST);
+
+        assertFalse("the second sample already names this analyst", cycleSubmissionService
+                .assignAnalyst(analysisService.get(String.valueOf(secondAnalysisId)), OTHER_ANALYST, USER));
+        assertFalse("the first sample already names this analyst", cycleSubmissionService
+                .assignAnalyst(analysisService.get(String.valueOf(fixture.analysisId)), ADMIN_USER_ID, USER));
+
+        assertEquals(Long.valueOf(ADMIN_USER_ID), analystOf(firstRow));
+        assertEquals(Long.valueOf(OTHER_ANALYST), analystOf(secondRow));
+    }
+
+    @Test
+    public void eachAnalysisOfOneAnalyteKeepsItsOwnAnalyst() {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+        long secondAnalysisId = addAnalysis();
+        Long firstRow = insertSealedDraft(fixture, fixture.analysisId, ADMIN_USER_ID);
+        Long secondRow = insertSealedDraft(fixture, secondAnalysisId, OTHER_ANALYST);
+
+        // The two analysts swap, as a bench that ran each other's tubes would.
+        assertTrue(cycleSubmissionService.assignAnalyst(analysisService.get(String.valueOf(fixture.analysisId)),
+                OTHER_ANALYST, USER));
+        assertTrue(cycleSubmissionService.assignAnalyst(analysisService.get(String.valueOf(secondAnalysisId)),
+                ADMIN_USER_ID, USER));
+
+        assertEquals(Long.valueOf(OTHER_ANALYST), analystOf(firstRow));
+        assertEquals(Long.valueOf(ADMIN_USER_ID), analystOf(secondRow));
+        assertEquals("an analysis that already has a row gets no second one", 2, allResults().size());
+    }
+
+    @Test
+    public void theAnalystSealedForAnAnalysisIsReadBackForResultEntry() {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+        long secondAnalysisId = addAnalysis();
+        insertSealedDraft(fixture, fixture.analysisId, ADMIN_USER_ID);
+        insertSealedDraft(fixture, secondAnalysisId, OTHER_ANALYST);
+
+        assertEquals(Optional.of(ADMIN_USER_ID), participantResultService.findAssignedAnalystId(fixture.analysisId));
+        assertEquals(Optional.of(OTHER_ANALYST), participantResultService.findAssignedAnalystId(secondAnalysisId));
+        assertEquals("an analysis with no participant result has nobody to preselect", Optional.empty(),
+                participantResultService.findAssignedAnalystId(secondAnalysisId + 1));
+    }
+
     // ---- fixtures ----
 
     private static final class Fixture {
         EQACycle cycle;
         EQARound round;
         long analysisId;
+        EQAPanel panel;
     }
 
     private EQAProgram perAnalystScheme(String name) {
@@ -259,6 +332,54 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                         + " VALUES (?, ?, ?, 'N', '1200', 1, 0, 'Y', now(), gen_random_uuid())",
                 fixture.analysisId + 500, fixture.analysisId, resultCarriesAnalyte ? ANALYTE : null);
         return fixture;
+    }
+
+    /** A second finalized analysis of the same test on the fixture's specimen. */
+    private long addAnalysis() {
+        long analysisId = nextAnalysisId++;
+        jdbc.update(
+                "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision, analysis_type,"
+                        + " entry_date, status_id, lastupdated, fhir_uuid)"
+                        + " VALUES (?, ?, 9931, ?, 1, 'ROUTINE', now(), ?::numeric, now(), gen_random_uuid())",
+                analysisId, SAMPLE_ITEM, TEST, statusService.getStatusID(AnalysisStatus.Finalized));
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, analyte_id, result_type, value, sort_order,"
+                        + " significant_digits, is_reportable, lastupdated, fhir_uuid)"
+                        + " VALUES (?, ?, ?, 'N', '1200', 1, 0, 'Y', now(), gen_random_uuid())",
+                analysisId + 500, analysisId, ANALYTE);
+        return analysisId;
+    }
+
+    /**
+     * The draft sealing writes: one per panel sample, carrying its analysis and the
+     * analyst assigned to it. The panel sample is what lets several drafts share a
+     * round, enrollment and analyte.
+     */
+    private Long insertSealedDraft(Fixture fixture, long analysisId, long analystId) {
+        if (fixture.panel == null) {
+            fixture.panel = insertPanel(fixture.cycle.getScheme(), panel -> panel.setCycle(fixture.cycle));
+        }
+        EQAPanelSample panelSample = new EQAPanelSample();
+        panelSample.setPanel(fixture.panel);
+        panelSample.setSampleCode("S" + analysisId);
+        panelSample.setAnalyteId(ANALYTE);
+        panelSample.setSysUserId(USER);
+        Long panelSampleId = eqaPanelSampleDAO.insert(panelSample);
+
+        EQAParticipantResult draft = new EQAParticipantResult();
+        draft.setPanelSampleId(panelSampleId);
+        draft.setCycle(fixture.cycle);
+        draft.setRound(fixture.round);
+        draft.setLabEnrollmentId(ENROLLMENT);
+        draft.setAnalyteId(ANALYTE);
+        draft.setAnalysisId(analysisId);
+        draft.setAssignedAnalystId(analystId);
+        draft.setSysUserId(USER);
+        return eqaParticipantResultDAO.insert(draft);
+    }
+
+    private Long analystOf(Long resultId) {
+        return eqaParticipantResultDAO.get(resultId).orElseThrow(AssertionError::new).getAssignedAnalystId();
     }
 
     private void ensureStatus(long id, String name) {

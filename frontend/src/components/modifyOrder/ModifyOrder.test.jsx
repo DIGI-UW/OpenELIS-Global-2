@@ -20,20 +20,27 @@ import messages from "../../languages/en.json";
 // assert on the real ModifyOrder behaviour.
 // ---------------------------------------------------------------------------
 
-const { utilsMock } = vi.hoisted(() => ({
+const { utilsMock, addNotification } = vi.hoisted(() => ({
   utilsMock: {
     getFromOpenElisServer: vi.fn(),
     postToOpenElisServerFullResponse: vi.fn(),
   },
+  addNotification: vi.fn(),
 }));
 
-vi.mock("../utils/Utils", () => utilsMock);
+vi.mock("../utils/Utils", async (importOriginal) => ({
+  ...utilsMock,
+  resolveApiErrorMessage: (await importOriginal()).resolveApiErrorMessage,
+}));
 
 vi.mock("../layout/Layout", () => ({
+  ConfigurationContext: React.createContext({
+    configurationProperties: { REQUESTER_REQUIRED: "true" },
+  }),
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),
-    addNotification: vi.fn(),
+    addNotification,
   }),
 }));
 
@@ -187,6 +194,81 @@ describe("ModifyOrder — successful reassignment switches to the new Lab Number
       "accessionNumber=NEW01260000000000009",
     );
     expect(window.location.search).not.toContain("OLD01260000000000001");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1366 — a refused save showed only "Oops, Server error". A 400 that names
+// a translatable messageKey must show that message instead.
+// ---------------------------------------------------------------------------
+describe("ModifyOrder — a refused save says why (OGC-1366)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerFullResponse.mockReset();
+    addNotification.mockReset();
+  });
+
+  const submitAndAnswer = async (response) => {
+    let submitCallback;
+    utilsMock.postToOpenElisServerFullResponse.mockImplementation(
+      (url, body, cb) => {
+        submitCallback = cb;
+      },
+    );
+    const getLoad = mountAndCaptureLoad();
+    getLoad()({
+      accessionNumber: "DEV01260000000000413",
+      sampleOrderItems: {
+        labNo: "DEV01260000000000413",
+        priority: "STAT",
+        referringSiteName: "QA_AUTO Referring Clinic",
+        referringSiteId: "42",
+        providerLastName: "Doe",
+        providerFirstName: "Jane",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await act(async () => {
+      await submitCallback(response);
+    });
+    return addNotification.mock.calls.map(([n]) => n);
+  };
+
+  test("a 400 with a messageKey shows the translated reason", async () => {
+    const shown = await submitAndAnswer({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        status: 400,
+        messageKey: "error.request.unreadable",
+      }),
+    });
+
+    expect(shown).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["error.request.unreadable"],
+      }),
+    );
+  });
+
+  test("a response with no readable reason keeps the generic message", async () => {
+    const shown = await submitAndAnswer({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new SyntaxError("not json");
+      },
+    });
+
+    expect(shown).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["server.error.msg"],
+      }),
+    );
   });
 });
 

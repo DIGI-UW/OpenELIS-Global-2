@@ -2,6 +2,7 @@ package org.openelisglobal.eqa;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -12,6 +13,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
+import org.openelisglobal.eqa.service.EQAIntakeValue;
 import org.openelisglobal.eqa.service.EQAProviderScoringService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -197,6 +199,105 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
         assertEquals(List.of(), summary.get("unjudgedTests"));
     }
 
+    // ---- OGC-1243: several samples of one test ----
+
+    /**
+     * A multi-level panel: two samples of one test with different targets. Each is
+     * its own intake row, holds its own value, and is judged against its own range.
+     * 260 passes only against the low level and 950 only against the high one, so
+     * any cross-match shows as a wrong verdict.
+     */
+    @Test
+    public void twoSamplesOfOneTestAreEachJudgedAgainstTheirOwnTarget() {
+        Map<String, Long> samples = sealTwoCd4Levels();
+
+        List<Map<String, Object>> cd4Rows = cd4Rows(scoringService.intakeGrid(cycle.getId(), FIRST_ORG));
+        assertEquals("one intake row per panel sample", List.of("T01", "T02"),
+                cd4Rows.stream().map(row -> row.get("sampleCode")).toList());
+
+        scoringService.takeIn(cycle.getId(), FIRST_ORG, List.of(new EQAIntakeValue(TEST_CD4, samples.get("T01"), "260"),
+                new EQAIntakeValue(TEST_CD4, samples.get("T02"), "950")), EQASubmissionMethod.MANUAL, USER);
+        scoringService.scoreCycle(cycle.getId(), USER);
+
+        assertEquals(List.of("T01|260.00000|250.00000|ACCEPTABLE", "T02|950.00000|900.00000|ACCEPTABLE"),
+                storedCd4(FIRST_ORG));
+    }
+
+    @Test
+    public void aValueThatDoesNotSayWhichOfTwoSamplesItAnswersIsRefused() {
+        sealTwoCd4Levels();
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> scoringService
+                .takeIn(cycle.getId(), FIRST_ORG, byTest(Map.of(TEST_CD4, "260")), EQASubmissionMethod.MANUAL, USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("has 2 samples"));
+        assertEquals("nothing is written", 0,
+                (int) jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
+    }
+
+    @Test
+    public void theScoresCsvCarriesOneRowPerSampleWithItsOwnTarget() {
+        Map<String, Long> samples = sealTwoCd4Levels();
+        scoringService.takeIn(cycle.getId(), FIRST_ORG, List.of(new EQAIntakeValue(TEST_CD4, samples.get("T01"), "260"),
+                new EQAIntakeValue(TEST_CD4, samples.get("T02"), "600")), EQASubmissionMethod.MANUAL, USER);
+        scoringService.scoreCycle(cycle.getId(), USER);
+
+        List<String> lines = List.of(scoringService.buildScoreCsv(cycle.getId(), FIRST_ORG).split("\n"));
+        assertEquals("test,analyte_name,result_value,target_value,z_score,performance_status,scored_on,sample_code",
+                lines.get(0));
+        List<String> rows = lines.subList(1, lines.size()).stream()
+                .map(line -> String.join("|", List.of(line.split(",", -1)).subList(2, 6)) + "|"
+                        + line.substring(line.lastIndexOf(',') + 1))
+                .sorted().toList();
+        assertEquals(List.of("260.00000|250.00000||ACCEPTABLE|T01", "600.00000|900.00000||UNACCEPTABLE|T02"), rows);
+    }
+
+    @Test
+    public void aCsvImportMatchesEachRowToItsSampleByCode() {
+        sealTwoCd4Levels();
+
+        Map<String, Object> imported = scoringService.importReportedCsv(cycle.getId(), FIRST_ORG,
+                "analyte_name,result_value,sample_code\nTolerance CD4,260,T01\nTolerance CD4,950,t02\n", USER);
+
+        assertEquals(2, imported.get("imported"));
+        assertEquals(List.of(), imported.get("errors"));
+        scoringService.scoreCycle(cycle.getId(), USER);
+        assertEquals(List.of("T01|260.00000|250.00000|ACCEPTABLE", "T02|950.00000|900.00000|ACCEPTABLE"),
+                storedCd4(FIRST_ORG));
+    }
+
+    @Test
+    public void aCsvRowNamingOnlyTheAnalyteOfTwoSamplesIsRejectedNotGuessed() {
+        sealTwoCd4Levels();
+
+        Map<String, Object> imported = scoringService.importReportedCsv(cycle.getId(), FIRST_ORG,
+                "analyte_name,result_value\nTolerance CD4,260\n", USER);
+
+        assertEquals(0, imported.get("imported"));
+        assertEquals(List.of("Row 2: 'Tolerance CD4' is reported by 2 samples on this cycle's panel;"
+                + " add a sample_code column naming which one"), imported.get("errors"));
+        assertEquals(0, (int) jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
+    }
+
+    /**
+     * Another instance sending over FHIR keys each value by the sample code it was
+     * given, where a one-sample panel would key it by analyte name.
+     */
+    @Test
+    public void valuesKeyedBySampleCodeReachTheirOwnSamples() {
+        sealTwoCd4Levels();
+        Map<String, String> byLabel = new java.util.LinkedHashMap<>();
+        byLabel.put("T01", "260");
+        byLabel.put("T02", "950");
+
+        Map<String, Object> grid = scoringService.takeInByAnalyteName(cycle.getId(), FIRST_ORG, byLabel,
+                EQASubmissionMethod.FHIR, USER);
+
+        assertEquals(List.of(), grid.get("unmapped"));
+        scoringService.scoreCycle(cycle.getId(), USER);
+        assertEquals(List.of("T01|260.00000|250.00000|ACCEPTABLE", "T02|950.00000|900.00000|ACCEPTABLE"),
+                storedCd4(FIRST_ORG));
+    }
+
     // ---- helpers ----
 
     private void sealTarget(String targetValue, BigDecimal low, BigDecimal high) {
@@ -217,8 +318,8 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
 
     private void report(String... values) {
         for (int i = 0; i < values.length; i++) {
-            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, Map.of(TEST_CD4, values[i]), EQASubmissionMethod.MANUAL,
-                    USER);
+            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, byTest(Map.of(TEST_CD4, values[i])),
+                    EQASubmissionMethod.MANUAL, USER);
         }
     }
 
@@ -227,7 +328,7 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
      */
     private void reportBoth(String... values) {
         for (int i = 0; i < values.length; i++) {
-            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, Map.of(TEST_CD4, values[i], TEST_HB, "12"),
+            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, byTest(Map.of(TEST_CD4, values[i], TEST_HB, "12")),
                     EQASubmissionMethod.MANUAL, USER);
         }
     }
@@ -247,5 +348,38 @@ public class EQAProviderTargetToleranceIntegrationTest extends EQASpineTestBase 
         return jdbc.queryForObject(
                 "SELECT target_value FROM clinlims.eqa_result WHERE participant_organization_id = ? AND test_id = ?",
                 BigDecimal.class, organizationId, TEST_CD4);
+    }
+
+    /**
+     * Two CD4 levels on the panel: T01 at 250 (200-300) and T02 at 900 (720-1080).
+     */
+    private Map<String, Long> sealTwoCd4Levels() {
+        sealTargetFor(ANALYTE_CD4, "T01", "250", new BigDecimal("200"), new BigDecimal("300"));
+        sealTargetFor(ANALYTE_CD4, "T02", "900", new BigDecimal("720"), new BigDecimal("1080"));
+        Map<String, Long> ids = new java.util.HashMap<>();
+        jdbc.query("SELECT id, sample_code FROM clinlims.eqa_panel_sample WHERE panel_id = ?", rs -> {
+            ids.put(rs.getString("sample_code"), rs.getLong("id"));
+        }, panel.getId());
+        return ids;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> cd4Rows(Map<String, Object> grid) {
+        return ((List<Map<String, Object>>) grid.get("tests")).stream()
+                .filter(row -> Long.valueOf(TEST_CD4).equals(row.get("testId"))).toList();
+    }
+
+    /**
+     * One laboratory's CD4 results as sample|reported|target|verdict, by sample
+     * code.
+     */
+    private List<String> storedCd4(long organizationId) {
+        return jdbc.query(
+                "SELECT s.sample_code, r.result_value, r.target_value, r.performance_status"
+                        + " FROM clinlims.eqa_result r JOIN clinlims.eqa_panel_sample s ON s.id = r.eqa_panel_sample_id"
+                        + " WHERE r.participant_organization_id = ? AND r.test_id = ? ORDER BY s.sample_code",
+                (rs, i) -> rs.getString(1) + "|" + rs.getBigDecimal(2).toPlainString() + "|"
+                        + rs.getBigDecimal(3).toPlainString() + "|" + rs.getString(4),
+                organizationId, TEST_CD4);
     }
 }

@@ -1,10 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 // Synthetic interface settings; these are not claims about any manufacturer's device.
 for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
@@ -15,7 +11,6 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
     const name = `Synthetic ${protocol} authoring ${Date.now()}`;
     await page.goto("/analyzers/types", {
       waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT,
     });
     await expect(
       page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -146,11 +141,11 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
       .click();
     await expect(
       dialog.getByText("Profile settings saved", { exact: true }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    ).toBeVisible();
     await expect(
       dialog.getByRole("button", { name: "Publish Profile", exact: true }),
     ).toBeDisabled();
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(draftUrl);
     await expect(
       dialog.getByRole("textbox", { name: "Profile name", exact: true }),
@@ -193,7 +188,7 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
       name: "Publish Profile",
       exact: true,
     });
-    await expect(publish).toBeEnabled({ timeout: LONG_TIMEOUT });
+    await expect(publish).toBeEnabled();
     if (protocol === "FILE") {
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(publish).toBeInViewport();
@@ -207,9 +202,9 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
       contentType: "image/png",
     });
     await publish.click();
-    await expect(dialog).not.toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(dialog).not.toBeVisible();
     const row = page.getByRole("row", { name: new RegExp(name) });
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toBeVisible();
     await expect(row).toContainText("Site");
     await expect(row).toContainText("revision 1");
     await expect(row).toContainText(protocol);

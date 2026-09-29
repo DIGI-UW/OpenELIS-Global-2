@@ -281,14 +281,15 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
     }
 
     /**
-     * The target an in-house result was scored against, for the register row. It is
-     * already revealed by the time scoring runs — the unblind pass compared against
-     * it — and external PT keeps its targets at the provider, so this is null
-     * there.
+     * The target a result was scored against, for the register row. An in-house
+     * target is already revealed by the time scoring runs (the unblind pass
+     * compared against it). External PT keeps its panel at the provider, so the
+     * target is the one the provider's scores reported, or null where they carried
+     * none.
      */
     private String sealedTarget(EQAParticipantResult result) {
         if (result.getPanelSampleId() == null) {
-            return null;
+            return result.getProviderTarget();
         }
         return panelSampleDAO.get(result.getPanelSampleId()).map(EQAPanelSample::getTargetValue).orElse(null);
     }

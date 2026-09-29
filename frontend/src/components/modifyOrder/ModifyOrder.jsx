@@ -12,18 +12,19 @@ import EditSample from "./EditSample";
 import AddOrder from "../addOrder/AddOrder";
 import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
   postToOpenElisServerFullResponse,
   getFromOpenElisServer,
+  resolveApiErrorMessage,
 } from "../utils/Utils";
 import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import ModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
+import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
 /**
  * The edit page of the workflow an order was entered in, when that is not the
@@ -52,6 +53,7 @@ const ModifyOrder = () => {
   const componentMounted = useRef(false);
 
   const intl = useIntl();
+  const { configurationProperties = {} } = useContext(ConfigurationContext);
 
   const firstPageNumber = 0;
   const lastPageNumber = 3;
@@ -139,9 +141,10 @@ const ModifyOrder = () => {
   }, []);
 
   useEffect(() => {
-    ModifyOrderEntryValidationSchema.validate(orderFormValues, {
-      abortEarly: false,
-    })
+    createModifyOrderEntryValidationSchema(configurationProperties)
+      .validate(orderFormValues, {
+        abortEarly: false,
+      })
       .then((validData) => {
         setErrors([]);
         console.debug("Valid Data:", validData);
@@ -150,7 +153,7 @@ const ModifyOrder = () => {
         setErrors(errors);
         console.debug("Validation Errors:", errors.errors);
       });
-  }, [changed, orderFormValues]);
+  }, [changed, configurationProperties, orderFormValues]);
 
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
@@ -213,8 +216,8 @@ const ModifyOrder = () => {
   };
 
   // Advance to the success page only after the backend confirms. On 4xx/5xx,
-  // surface the actual reason from the response body (the SampleEdit endpoint
-  // returns {"message":"..."} on errors like "Position B12 is already
+  // surface the actual reason from the response body (a translatable
+  // messageKey, or {"message":"..."} on errors like "Position B12 is already
   // occupied") instead of the generic server.error.msg.
   const handlePost = async (response) => {
     setIsSubmitting(false);
@@ -227,17 +230,16 @@ const ModifyOrder = () => {
       setPage(page + 1);
       return;
     }
-    let backendMessage;
+    let body;
     if (response) {
       try {
-        const body = await response.json();
-        backendMessage = body?.message || body?.error;
+        body = await response.json();
       } catch (_) {
         // Body wasn't JSON — fall through to the generic key.
       }
     }
     showAlertMessage(
-      backendMessage || <FormattedMessage id="server.error.msg" />,
+      resolveApiErrorMessage(intl, body, "server.error.msg"),
       NotificationKinds.error,
     );
   };

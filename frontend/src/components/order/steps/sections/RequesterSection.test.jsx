@@ -12,8 +12,9 @@ const { getFromOpenElisServerMock } = vi.hoisted(() => ({
   getFromOpenElisServerMock: vi.fn(),
 }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
   getFromOpenElisServer: (...args) => getFromOpenElisServerMock(...args),
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
 }));
 
 function renderSection({

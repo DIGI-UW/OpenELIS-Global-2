@@ -30,6 +30,7 @@ public class BridgeAnalyzerProfileTest {
                       "test_code":"RAW-A",
                       "aliases":["RAW-A1","RAW-A2"],
                       "test_name_hint":"First result",
+                      "specimen_type_hint":"Plasma",
                       "loinc":"94500-6",
                       "unit":"copies/mL",
                       "result_type":"qualitative",
@@ -58,6 +59,7 @@ public class BridgeAnalyzerProfileTest {
         assertEquals("RAW-A", first.analyzerCode());
         assertEquals(List.of("RAW-A1", "RAW-A2"), first.aliases());
         assertEquals("First result", first.testNameHint());
+        assertEquals("Plasma", first.specimenTypeHint());
         assertEquals("94500-6", first.loinc());
         assertEquals("copies/mL", first.unit());
         assertEquals("qualitative", first.resultType());

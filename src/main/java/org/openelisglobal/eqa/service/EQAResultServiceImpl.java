@@ -52,12 +52,12 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
         }
 
         requirePlausible(resultValue);
-        return upsert(distribution, organizationId, testId, resultValue, null, method, sysUserId);
+        return upsert(distribution, organizationId, testId, null, resultValue, null, method, sysUserId);
     }
 
     @Override
-    public EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, String reported,
-            EQASubmissionMethod method, String sysUserId) {
+    public EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, Long panelSampleId,
+            String reported, EQASubmissionMethod method, String sysUserId) {
         if (reported == null || reported.isBlank()) {
             throw new IllegalArgumentException("A reported value is required");
         }
@@ -73,8 +73,8 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
         if (numeric != null) {
             requirePlausible(numeric);
         }
-        return upsert(distribution, organizationId, testId, numeric, numeric == null ? trimmed : null, method,
-                sysUserId);
+        return upsert(distribution, organizationId, testId, panelSampleId, numeric, numeric == null ? trimmed : null,
+                method, sysUserId);
     }
 
     // T115: Result value validation — reject biologically implausible values
@@ -85,14 +85,17 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
         }
     }
 
-    private EQAResult upsert(EQADistribution distribution, Long organizationId, Long testId, BigDecimal resultValue,
-            String resultText, EQASubmissionMethod method, String sysUserId) {
+    private EQAResult upsert(EQADistribution distribution, Long organizationId, Long testId, Long panelSampleId,
+            BigDecimal resultValue, String resultText, EQASubmissionMethod method, String sysUserId) {
         Long distributionId = distribution.getId();
         Timestamp now = new Timestamp(System.currentTimeMillis());
 
         // Check for existing result (duplicate handling with overwrite)
-        Optional<EQAResult> existing = eqaResultDAO.findByDistributionAndOrgAndTest(distributionId, organizationId,
-                testId);
+        // A result that answers a panel sample is that sample's row; two samples of
+        // one test are two results, not one overwritten by the other.
+        Optional<EQAResult> existing = panelSampleId != null
+                ? eqaResultDAO.findByDistributionAndOrgAndPanelSample(distributionId, organizationId, panelSampleId)
+                : eqaResultDAO.findByDistributionAndOrgAndTest(distributionId, organizationId, testId);
 
         EQAResult result;
         if (existing.isPresent()) {
@@ -113,6 +116,7 @@ public class EQAResultServiceImpl extends BaseObjectServiceImpl<EQAResult, Long>
             result.setEqaDistribution(distribution);
             result.setParticipantOrganizationId(organizationId);
             result.setTestId(testId);
+            result.setPanelSampleId(panelSampleId);
             result.setResultValue(resultValue);
             result.setResultText(resultText);
             result.setSubmissionMethod(method);

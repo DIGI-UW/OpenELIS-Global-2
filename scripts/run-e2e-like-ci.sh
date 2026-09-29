@@ -37,6 +37,7 @@
 #   ./scripts/run-e2e-like-ci.sh --keep-db          # skip DB recreate (NOT CI parity;
 #                                                   # dirty-DB runs are unsupported)
 #   ./scripts/run-e2e-like-ci.sh -- --grep "US3"    # args after -- go to playwright
+#   ./scripts/run-e2e-like-ci.sh --suite cypress-core --cleanup
 #
 # The analyzer-harness lane has its own parity runner:
 #   ./projects/analyzer-harness/ci-parity-test.sh
@@ -53,14 +54,22 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 KEEP_DB=false
+CLEANUP=false
+SUITE=core
 PW_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --keep-db) KEEP_DB=true; shift ;;
+    --cleanup) CLEANUP=true; shift ;;
+    --suite) SUITE="${2:?--suite needs a value}"; shift 2 ;;
     --) shift; PW_ARGS=("$@"); break ;;
     *) PW_ARGS+=("$1"); shift ;;
   esac
 done
+case "$SUITE" in
+  core|cypress-core|cypress-admin|cypress-independent) ;;
+  *) echo "Unsupported suite: $SUITE" >&2; exit 2 ;;
+esac
 
 # Per-worktree Compose project, mirroring scripts/dev-stack's make_context():
 # a readable slug plus a hash of the absolute path, so two checkouts of this
@@ -73,6 +82,15 @@ export E2E_STACK_PROJECT="oe2-${SLUG:-worktree}-${DIGEST}-e2e"
 COMPOSE=(docker compose -p "$E2E_STACK_PROJECT"
          -f build.docker-compose.yml
          -f build.docker-compose.worktree.yml)
+if [[ "$CLEANUP" == true ]]; then
+  cleanup_stack() {
+    local status=$?
+    trap - EXIT
+    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+    exit "$status"
+  }
+  trap cleanup_stack EXIT
+fi
 
 echo -e "${GREEN}=============================================${NC}"
 echo -e "${GREEN}Playwright Core E2E (CI Replication Mode)${NC}"
@@ -95,6 +113,10 @@ if git submodule status --recursive 2>/dev/null | grep -q '^-'; then
 fi
 echo -e "${GREEN}✓ Submodules ready${NC}"
 echo ""
+
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+fi
 
 # Step 1: Fresh stack. CI builds a brand-new database for every run; a reused
 # db-data volume is the one environment CI can never reproduce. `down -v` is
@@ -135,8 +157,12 @@ fi
 
 # Step 2: Fixtures — the workflow's exact command
 # (.github/workflows/e2e-playwright-reusable.yml, "Load core fixtures").
-echo -e "${YELLOW}[2/4] Loading core fixtures (CI command)...${NC}"
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
+echo -e "${YELLOW}[2/4] Loading $SUITE fixtures (CI command)...${NC}"
+if [[ "$SUITE" == core ]]; then
+  ./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
+else
+  "${COMPOSE[@]}" exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+fi
 echo -e "${GREEN}✓ Fixtures loaded${NC}"
 echo ""
 
@@ -163,30 +189,52 @@ fi
 echo -e "${GREEN}✓ Dependencies ready${NC}"
 echo ""
 
-# Step 4: Run the core lane exactly as CI does (same projects, same env;
-# no --shard locally — one machine runs the full set).
-echo -e "${YELLOW}[4/4] Running Playwright core suites...${NC}"
-export BASE_URL="${BASE_URL:-https://localhost:${PROXY_HTTPS_PORT}}"
+# Step 4: Run the selected CI suite against this run's fresh stack.
 export TEST_USER="${TEST_USER:-admin}"
 export TEST_PASS="${TEST_PASS:-adminADMIN!}"
-echo "  BASE_URL: $BASE_URL"
-CMD=(npm run pw:test -- --project=core-app --project=core-demo)
-CMD+=("${PW_ARGS[@]}")
-printf 'Running: %s\n' "${CMD[*]}"
-echo ""
-
-if "${CMD[@]}"; then
-  echo ""
-  echo -e "${GREEN}=============================================${NC}"
-  echo -e "${GREEN}✓ Core E2E PASSED (CI parity)${NC}"
-  echo -e "${GREEN}=============================================${NC}"
+if [[ "$SUITE" == core ]]; then
+  export BASE_URL="${BASE_URL:-https://localhost:${PROXY_HTTPS_PORT}}"
+  CMD=(npm run pw:test -- --project=core-app --project=core-demo)
+  CMD+=("${PW_ARGS[@]}")
 else
-  echo ""
-  echo -e "${RED}=============================================${NC}"
-  echo -e "${RED}✗ Core E2E FAILED${NC}"
-  echo -e "${RED}=============================================${NC}"
-  echo ""
-  echo "Report: frontend/playwright-report/  Traces: frontend/test-results/"
-  echo "Stack:  docker compose -p $E2E_STACK_PROJECT ... logs"
+  if [[ "${#PW_ARGS[@]}" -gt 0 ]]; then
+    echo 'Playwright arguments after -- are only valid for the core suite' >&2
+    exit 2
+  fi
+  export CYPRESS_BASE_URL="https://localhost:${PROXY_HTTPS_PORT}"
+  export E2E_FAIL_FAST=false
+  export CYPRESS_FAIL_FAST_ENABLED=false
+  SHARD="${SUITE#cypress-}"
+  SPECS="$(python3 - "$SHARD" <<'PYSHARD'
+from pathlib import Path
+import sys
+import yaml
+
+shard = sys.argv[1]
+workflow = yaml.safe_load(Path('../.github/workflows/e2e-cypress-deprecated.yml').read_text())
+entries = workflow['jobs']['e2e-cypress']['strategy']['matrix']['include']
+assigned = set()
+selected = []
+for entry in entries:
+    specs = [spec.strip() for spec in (entry.get('specs') or '').split(',') if spec.strip()]
+    if entry['shard'] != 'independent':
+        assigned.update(specs)
+    if entry['shard'] == shard:
+        selected = specs
+if shard == 'independent':
+    selected = sorted(str(path) for path in Path('cypress/e2e').rglob('*.cy.js') if str(path) not in assigned)
+if not selected:
+    sys.exit(f'No Cypress specs resolved for {shard}')
+print(','.join(selected))
+PYSHARD
+)"
+  CMD=(npm run cy:spec -- "$SPECS")
+fi
+printf 'Running %s at commit %s: %s\n' "$SUITE" "$(git rev-parse --short HEAD)" "${CMD[*]}"
+if "${CMD[@]}"; then
+  echo "PASS: $SUITE"
+else
+  echo "FAIL: $SUITE" >&2
+  echo 'Report: frontend/playwright-report or frontend/cypress/screenshots' >&2
   exit 1
 fi

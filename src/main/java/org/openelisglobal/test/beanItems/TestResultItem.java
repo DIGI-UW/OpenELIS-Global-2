@@ -435,6 +435,12 @@ public class TestResultItem implements ResultItem, Serializable {
     /** The scheme the Analyst picker reads its eligible-analyst list from. */
     private String eqaSchemeId;
 
+    /**
+     * The row's scheme is in-house, so the order is blinded and result entry must
+     * not mark it as EQA.
+     */
+    private boolean eqaInHouse = false;
+
     /** The analyst chosen at result entry; round-trips back on save. */
     private String eqaAnalystId;
 
@@ -1240,6 +1246,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setEqaSchemeId(String eqaSchemeId) {
         this.eqaSchemeId = eqaSchemeId;
+    }
+
+    public boolean getEqaInHouse() {
+        return eqaInHouse;
+    }
+
+    public void setEqaInHouse(boolean eqaInHouse) {
+        this.eqaInHouse = eqaInHouse;
     }
 
     public String getEqaAnalystId() {

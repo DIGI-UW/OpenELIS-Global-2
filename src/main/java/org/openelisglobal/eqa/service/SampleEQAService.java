@@ -36,5 +36,15 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
      */
     Optional<Long> findPerAnalystSchemeId(Long sampleId);
 
+    /**
+     * Whether this sample is an order from an in-house scheme. In-house panels are
+     * blinded, and the analyst running them must not be able to tell them from
+     * patient samples, so result entry does not mark these rows as EQA.
+     *
+     * @return false when the sample is not EQA, names no cycle, or its scheme is
+     *         not in-house
+     */
+    boolean isInHouse(Long sampleId);
+
     String deriveOrderStatus(SampleEQA sampleEQA);
 }

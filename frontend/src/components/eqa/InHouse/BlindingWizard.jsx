@@ -267,7 +267,10 @@ const BlindingWizard = () => {
     return analyst ? analyst.displayName : "—";
   };
 
-  const assignedAnalystNames = assignedAnalysts(samples, roster);
+  // The expanded rows are where the analysts live: `samples` is the
+  // pre-expansion material list and its analystId is null by construction,
+  // so summarising it always reported nobody assigned.
+  const assignedAnalystNames = assignedAnalysts(assigned, roster);
 
   if (sealed) {
     return (

@@ -219,6 +219,23 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   // numbers or words such as "Reactive" — and saving overwrites what is on file.
   const [intake, setIntake] = useState(null);
 
+  // A panel can carry several samples of one test, each its own row: rows are
+  // keyed by panel sample where there is one, by test where there is not.
+  const intakeKey = (test) =>
+    test.panelSampleId
+      ? `${test.testId}-${test.panelSampleId}`
+      : `${test.testId}`;
+
+  const valuesOf = (tests) =>
+    Object.fromEntries(
+      tests.map((test) => [
+        intakeKey(test),
+        test.reported === null || test.reported === undefined
+          ? ""
+          : String(test.reported),
+      ]),
+    );
+
   const openIntake = (row) => {
     setBusy(row.organizationId);
     fetchIntake(cycleId, row.organizationId, (grid) => {
@@ -227,14 +244,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
       setIntake({
         row,
         tests,
-        values: Object.fromEntries(
-          tests.map((test) => [
-            test.testId,
-            test.reported === null || test.reported === undefined
-              ? ""
-              : String(test.reported),
-          ]),
-        ),
+        values: valuesOf(tests),
         csv: "",
         error: null,
         imported: null,
@@ -246,7 +256,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
     intake.tests
       .map((test) => ({
         testId: test.testId,
-        value: intake.values[test.testId] ?? "",
+        panelSampleId: test.panelSampleId ?? null,
+        value: intake.values[intakeKey(test)] ?? "",
       }))
       .filter((entry) => String(entry.value).trim() !== "");
 
@@ -300,14 +311,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
         setIntake({
           ...intake,
           tests,
-          values: Object.fromEntries(
-            tests.map((test) => [
-              test.testId,
-              test.reported === null || test.reported === undefined
-                ? ""
-                : String(test.reported),
-            ]),
-          ),
+          values: valuesOf(tests),
           csv: "",
           error: (body?.errors || []).length ? body.errors.join(" ") : null,
           imported: body?.imported ?? 0,
@@ -657,26 +661,37 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
               </TableHead>
               <TableBody>
                 {intake.tests.map((test) => (
-                  <TableRow key={test.testId}>
+                  <TableRow key={intakeKey(test)}>
                     <TableCell>
                       {test.testName}
+                      {test.sampleCode && (
+                        <div style={hintStyle}>
+                          {t("eqa.intake.sample", "Sample {code}", {
+                            code: test.sampleCode,
+                          })}
+                        </div>
+                      )}
                       {test.analyteName && (
                         <div style={hintStyle}>{test.analyteName}</div>
                       )}
                     </TableCell>
                     <TableCell>
                       <TextInput
-                        id={`intake-${test.testId}`}
-                        labelText={test.testName}
+                        id={`intake-${intakeKey(test)}`}
+                        labelText={
+                          test.sampleCode
+                            ? `${test.testName} ${test.sampleCode}`
+                            : test.testName
+                        }
                         hideLabel
                         size="sm"
-                        value={intake.values[test.testId] ?? ""}
+                        value={intake.values[intakeKey(test)] ?? ""}
                         onChange={(event) =>
                           setIntake({
                             ...intake,
                             values: {
                               ...intake.values,
-                              [test.testId]: event.target.value,
+                              [intakeKey(test)]: event.target.value,
                             },
                           })
                         }

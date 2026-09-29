@@ -16,8 +16,20 @@ vi.mock("../../../utils/Utils", async (importOriginal) => {
   };
 });
 
-// Dates relative to the real clock so the week/24h predicates stay stable
-// whichever day the suite runs.
+// The page asks for three callback windows: the last 30 days, the last 24
+// hours and this week. On a Monday or a Tuesday the 24-hour and week windows
+// start on the same date, the page rightly makes one request for both, and
+// the "3 confirmed" count that renderPage waits for arrives early. Pin the
+// clock (Date only, timers stay real) to a Thursday midday so the windows
+// differ whichever day the suite runs.
+vi.hoisted(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 1, 12, 0, 0));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
+
 const isoDay = toLocalIsoDate;
 const TODAY = isoDay(new Date());
 const LAST_MONTH = isoDay(new Date(Date.now() - 10 * 864e5)); // before any Monday

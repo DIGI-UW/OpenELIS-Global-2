@@ -14,7 +14,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class TestServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired

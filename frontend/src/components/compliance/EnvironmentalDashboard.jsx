@@ -47,15 +47,12 @@ const KPI_KEYS = [
 ];
 
 function todayStr() {
-  // Add 1 day to avoid timezone skew cutting off samples collected today in UTC+N zones
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(new Date());
 }
 function monthsAgoStr(n) {
   const d = new Date();
   d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(d);
 }
 
 export default function EnvironmentalDashboard() {

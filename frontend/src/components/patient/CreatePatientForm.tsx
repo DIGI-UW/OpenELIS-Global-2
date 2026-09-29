@@ -191,6 +191,7 @@ const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
     return { years: "", months: "", days: "" };
   }
   const now = new Date();
+  if (birthDate > now) return { years: "", months: "", days: "" };
   const years = differenceInYears(now, birthDate);
   const months = differenceInMonths(now, addYears(birthDate, years));
   const days = differenceInDays(
@@ -1196,6 +1197,9 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           invalidText={errors.birthDateForDisplay}
                           name={field.name}
                           disallowFutureDate={true}
+                          futureDateText={intl.formatMessage({
+                            id: "patient.dob.future",
+                          })}
                           updateStateValue={true}
                         />
                       )}

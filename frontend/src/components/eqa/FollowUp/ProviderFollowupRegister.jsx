@@ -357,11 +357,28 @@ const ProviderFollowupRegister = () => {
                             </TableHead>
                             <TableBody>
                               {row.results.map((result, index) => (
-                                <TableRow key={result.testId || index}>
+                                <TableRow
+                                  key={
+                                    result.panelSampleId ||
+                                    result.testId ||
+                                    index
+                                  }
+                                >
                                   <TableCell>
                                     {result.testName ||
                                       result.analyteName ||
                                       "—"}
+                                    {result.sampleCode && (
+                                      <div style={hintStyle}>
+                                        {t(
+                                          "eqa.intake.sample",
+                                          "Sample {code}",
+                                          {
+                                            code: result.sampleCode,
+                                          },
+                                        )}
+                                      </div>
+                                    )}
                                   </TableCell>
                                   <TableCell>
                                     {result.reported ?? "—"}

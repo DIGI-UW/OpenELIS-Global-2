@@ -34,17 +34,50 @@ The script performs:
   Playwright)
 - deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
 
+## Workflow wait policy
+
+Analyzer browser tests wait for observable UI, API, and persisted-result states.
+Assertions use the existing whole-test deadline, configured through the harness
+Playwright projects, rather than separate step deadlines. Do not add sleeps or
+increase a test's deadline to repair failures. Diagnose the missing state using
+traces and service logs. Video-only pacing is presentation, never readiness.
+
 ## Startup Catalog
 
-The authoritative harness startup catalog lives under
-`projects/analyzer-harness/config-templates/`.
+The harness mounts its molecular test and result-choice CSVs from
+`projects/analyzer-harness/config-templates/` and loads them through OE's
+ordinary startup configuration service. The harness files are test data, not
+application-wide clinical defaults.
 
-- CI mounts that directory directly into OE's startup configuration path.
-- Local harness bootstrap copies that same directory into the harness volume.
-- Do not add or update harness test catalog CSVs under any other source tree.
+- CI and local parity load the same harness catalog through the normal loader.
+- Local development keeps optional Catalog Import uploads in its worktree-scoped
+  `configuration-data` volume. A clean-install test resets it with the database
+  using `scripts/dev-stack down --volumes --yes`.
+- Other OE2 deployments do not mount the harness files.
 
-`seed-analyzers.sh` now hard-fails if the startup catalog cannot realize the
-required profile mappings for the seeded analyzers.
+The registered Playwright tests read the startup catalog and fail visibly when a
+shipped profile cannot resolve its intended clinical test. The seeder does not
+select or confirm those mappings for CI.
+
+## Durable Bridge state
+
+The shared CI/local base mounts `bridge-data` at
+`/data/openelis-analyzer-bridge`. Connections, pinned profile revisions, the
+delivery outbox and FILE processing state survive container replacement and
+ordinary stack shutdown. `scripts/dev-stack down --volumes --yes` explicitly
+removes them along with the worktree's other persistent data.
+
+Use `scripts/dev-stack up --skip-build --no-scenarios` to apply changed
+configuration without rebuilding the application. Refresh
+`scripts/dev-stack env` after recreation because published local ports can
+change.
+
+When adopting this storage configuration on an existing harness, stop Bridge and
+copy its old `/data/openelis-analyzer-bridge` volume and both SQLite databases
+(including any WAL files) from `/tmp/openelis-analyzer-bridge` into
+`bridge-data` before recreating it. Preserve the originals until readback
+confirms the transfer. A clean disposable stack requires no transfer. Do not
+treat this harness procedure as a production upgrade migration.
 
 ## Local Compose Layers
 
@@ -75,9 +108,9 @@ The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It calls `seed-analyzers.sh --ensure-connections` to create missing
 profile-backed harness connections through authenticated application services.
 Ordinary restarts preserve existing connection configuration, mappings, and
-review data; they do not replay result traffic. The seeder's default mode
-remains the explicit full fixture setup used by CI. Feature-specific scenarios
-follow the same service-layer rule. CI parity is a separate validation command
+review data; they do not replay result traffic. CI uses the same
+`--ensure-connections` mode. The Playwright scenarios own their API-created
+clinical orders and native traffic. CI parity is a separate validation command
 because it intentionally reproduces CI packaging.
 
 To remove this worktree's data explicitly:
@@ -104,8 +137,9 @@ For exact CI parity, prefer:
 ./projects/analyzer-harness/ci-parity-test.sh --build
 ```
 
-`reset-env.sh` is retained only for legacy CI investigation. It is not a
-development startup interface and must not be used to seed feature data.
+The old reset wrapper was removed. Use `scripts/dev-stack down --volumes --yes`
+for an explicit local data reset, then `scripts/dev-stack up`. Use
+`ci-parity-test.sh` to reproduce CI; it is a separate validation command.
 
 ## Let's Encrypt (analyzers.openelis-global.org)
 
