@@ -239,7 +239,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-top"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />
@@ -412,7 +412,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-bottom"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />
