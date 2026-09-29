@@ -296,6 +296,13 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "qa pass", "MOCK_URL": "http://127.0.0.1:9085"},
                          settings)
 
+    def test_env_file_fallback_drops_trailing_comments_like_compose(self):
+        path = self.root / ".env"
+        path.write_text("TEST_USER=qa-admin # site admin\nTEST_PASS=p#ss\nQUOTED='a # b'\n")
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "p#ss", "QUOTED": "a # b"},
+                         deployment.read_env_file(path))
+
     def test_smoke_accession_is_a_valid_unique_accession(self):
         self.assertEqual("DEV01900361250089391", deployment.smoke_accession("36125008939-1"))
         self.assertEqual(20, len(deployment.smoke_accession("9" * 30 + "-12")))

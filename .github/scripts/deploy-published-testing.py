@@ -154,13 +154,16 @@ def read_env_file(path):
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
             value = value[1:-1]
+        else:
+            value = re.sub(r"\s+#.*$", "", value)
         environment[key.strip()] = value
     return environment
 
 
 def site_settings(site_dir, release):
-    # Let Compose parse quoting and interpolation exactly as it does for the stack. Older Compose
-    # releases without `config --environment` fail on it, so read the site's env file there.
+    # Prefer Compose's own parse, which handles quoting and interpolation as it does for the stack.
+    # Older Compose releases without `config --environment` fail on it, so fall back to reading the
+    # site's env file directly: quotes and trailing comments are handled, interpolation is not.
     try:
         output = run(compose_command(site_dir, release) + ["config", "--environment"], site_dir, True)
         environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
