@@ -46,7 +46,8 @@ TEST_PASS_INPUT="${TEST_PASS:-}"
 MODE="parity"
 PLAYWRIGHT_PROJECT=""
 PLAYWRIGHT_TEST_FILE=""
-PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-0}"
+# Empty keeps the video projects' own slowMo default in playwright.config.ts.
+PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
