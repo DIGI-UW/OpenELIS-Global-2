@@ -104,6 +104,16 @@ const renderWorklist = () => {
 
 const acceptBox = () => document.getElementById("resultList1005.isAccepted");
 
+const visitMappingAndReturn = async () => {
+  fireEvent.click(
+    await screen.findByRole("link", { name: "Review Analyzer Type mapping" }),
+  );
+  fireEvent.click(
+    await screen.findByRole("link", { name: "Back to worklist" }),
+  );
+  await waitFor(() => expect(acceptBox()).toBeInTheDocument());
+};
+
 describe("Analyzer worklist review choices across mapping visits", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
@@ -122,17 +132,10 @@ describe("Analyzer worklist review choices across mapping visits", () => {
     fireEvent.click(acceptBox());
     expect(acceptBox()).toBeChecked();
 
-    for (const visit of [1, 2]) {
-      fireEvent.click(
-        await screen.findByRole("link", {
-          name: "Review Analyzer Type mapping",
-        }),
-      );
-      fireEvent.click(
-        await screen.findByRole("link", { name: "Back to worklist" }),
-      );
-      await waitFor(() => expect(acceptBox()).toBeInTheDocument());
-      expect(acceptBox(), `after mapping visit ${visit}`).toBeChecked();
-    }
+    await visitMappingAndReturn();
+    expect(acceptBox()).toBeChecked();
+
+    await visitMappingAndReturn();
+    expect(acceptBox()).toBeChecked();
   });
 });
