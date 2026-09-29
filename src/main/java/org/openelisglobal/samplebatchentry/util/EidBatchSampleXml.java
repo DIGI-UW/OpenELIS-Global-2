@@ -25,7 +25,7 @@ public class EidBatchSampleXml {
     static final String DRY_TUBE = "Dry Tube";
     static final String DRY_BLOOD_SPOT = "DBS";
     static final String DNA_PCR = "DNA PCR";
-    private static final String HUMAN_DOMAIN = "H";
+    private static final String CLINICAL_DOMAIN = "CLINICAL";
 
     private final TestService testService;
     private final TypeOfSampleService typeOfSampleService;
@@ -69,7 +69,7 @@ public class EidBatchSampleXml {
     private TypeOfSample findSpecimen(String description) {
         TypeOfSample query = new TypeOfSample();
         query.setDescription(description);
-        query.setDomain(HUMAN_DOMAIN);
+        query.setDomain(CLINICAL_DOMAIN);
         return typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(query, true);
     }
 }

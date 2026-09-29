@@ -22,11 +22,11 @@
         sort_order="1" />
 
     <type_of_sample id="24" name_localization_id="3"
-        description="Dry Tube" local_abbrev="Dry" domain="H" is_active="true"
-        lastupdated="2024-01-01 00:00:00" />
+        description="Dry Tube" local_abbrev="Dry" domain="CLINICAL"
+        is_active="true" lastupdated="2024-01-01 00:00:00" />
     <type_of_sample id="26" name_localization_id="4"
-        description="DBS" local_abbrev="DBS" domain="H" is_active="true"
-        lastupdated="2024-01-01 00:00:00" />
+        description="DBS" local_abbrev="DBS" domain="CLINICAL"
+        is_active="true" lastupdated="2024-01-01 00:00:00" />
 
     <test_section id="1" name="Virology"
         description="Virology Section" name_localization_id="1"
