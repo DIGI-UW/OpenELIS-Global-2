@@ -8,7 +8,7 @@ module.exports = async function waitForPublishCheckpoints({
   sha,
   buildRunId,
   buildRunAttempt,
-  timeoutMs = 45 * 60 * 1000,
+  timeoutMs = 120 * 60 * 1000,
   pollMs = 30 * 1000,
   now = Date.now,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),

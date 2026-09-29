@@ -109,3 +109,47 @@ test("release publication produces the backend checkpoint required by the gate",
   const workflow = fs.readFileSync(".github/workflows/backend.yml", "utf8");
   assert.match(workflow, /\n  release:\n    types: \[published\]\n/);
 });
+test("the default wait outlasts a backend suite that finishes 70 minutes after E2E", async () => {
+  const minute = 60 * 1000;
+  let clock = 0;
+  await wait({
+    owner: "test",
+    repo: "test",
+    sha,
+    buildRunId: 123,
+    buildRunAttempt: 2,
+    core: { info() {} },
+    github: {
+      rest: {
+        repos: {
+          async listCommitStatusesForRef() {
+            return { data: [{ context: buildContext, state: "success" }] };
+          },
+        },
+        checks: {
+          async listForRef(request) {
+            if (request.check_name === "02 Checkpoint - Frontend") {
+              return {
+                data: {
+                  check_runs: [
+                    { ...backend("success"), name: request.check_name },
+                  ],
+                },
+              };
+            }
+            return {
+              data: {
+                check_runs: clock >= 70 * minute ? [backend("success")] : [],
+              },
+            };
+          },
+        },
+      },
+    },
+    now: () => clock,
+    sleep: async (ms) => {
+      clock += ms;
+    },
+  });
+  assert.ok(clock >= 70 * minute);
+});
