@@ -123,22 +123,30 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await picker.evaluate((input) => input.scrollIntoView({ block: "center" }));
     await picker.click();
     await expect(options).toHaveCount(programs.length);
-    const menu = await page
-      .locator(".program-section .cds--list-box__menu")
-      .evaluate((list) => {
-        const box = list.getBoundingClientRect();
-        const bottomEdge = document.elementFromPoint(
-          box.left + 10,
-          box.bottom - 4,
-        );
-        return {
-          wholeMenuShowing: list.contains(bottomEdge),
-          scrollsWhenLonger:
-            list.scrollHeight <= list.clientHeight ||
-            ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
-        };
-      });
-    expect(menu).toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
+    // Sections above the picker can still be laying out, which pushes the menu
+    // below the viewport. Only the window is scrolled back, so a container
+    // clipping the menu still fails the check.
+    const menu = page.locator(".program-section .cds--list-box__menu");
+    await expect
+      .poll(() =>
+        menu.evaluate((list) => {
+          const input = document.querySelector("#program");
+          const inputBox = input.getBoundingClientRect();
+          window.scrollBy(0, inputBox.top - window.innerHeight / 3);
+          const box = list.getBoundingClientRect();
+          const bottomEdge = document.elementFromPoint(
+            box.left + 10,
+            box.bottom - 4,
+          );
+          return {
+            wholeMenuShowing: list.contains(bottomEdge),
+            scrollsWhenLonger:
+              list.scrollHeight <= list.clientHeight ||
+              ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
+          };
+        }),
+      )
+      .toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
     const last = programs[programs.length - 1].value;
     await options.filter({ hasText: last }).click();
     await expect(picker).toHaveValue(last);
