@@ -2,6 +2,7 @@ package org.openelisglobal.resultvalidation.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
@@ -21,12 +22,14 @@ import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.dao.ValidationQcAcknowledgmentDAO;
+import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
 import org.openelisglobal.resultvalidation.exception.QcAcknowledgmentRequiredException;
 import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +48,8 @@ public class ResultValidationServiceImpl implements ResultValidationService {
     private AuditTrailService auditTrailService;
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public ResultValidationServiceImpl(AnalysisService analysisService, ResultService resultService,
             NoteService noteService, SampleService sampleService, TestNotificationService testNotificationService) {
@@ -121,6 +126,15 @@ public class ResultValidationServiceImpl implements ResultValidationService {
 
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(resultSaveService);
+        }
+
+        publishValidatedSamples(analysisUpdateList);
+    }
+
+    private void publishValidatedSamples(List<Analysis> analysisUpdateList) {
+        Set<Long> sampleIds = ResultsValidatedEvent.finalizedSamples(analysisUpdateList);
+        if (!sampleIds.isEmpty()) {
+            eventPublisher.publishEvent(new ResultsValidatedEvent(sampleIds));
         }
     }
 
