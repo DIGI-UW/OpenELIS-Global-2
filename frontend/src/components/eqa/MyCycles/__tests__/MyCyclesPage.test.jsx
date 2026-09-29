@@ -394,6 +394,22 @@ describe("MyCyclesPage", () => {
     ).toBeTruthy();
   });
 
+  // Carbon's default alertdialog role moves focus to the banner's action button
+  // on every render, so each keystroke in the dialog sent focus back to Review &
+  // submit, and the next space or Enter submitted the cycle.
+  test("the provider's reference field keeps focus beside the Review & submit banner", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("cycle-row-2"));
+    fireEvent.click(screen.getByRole("button", { name: "Submit by hand" }));
+
+    const reference = screen.getByLabelText("Provider's reference");
+    reference.focus();
+    fireEvent.change(reference, { target: { value: "N" } });
+
+    expect(document.activeElement).toBe(reference);
+    expect(reference).toHaveValue("N");
+  });
+
   // A cycle that could not be sent must not read as sent, and the reason the
   // server gives is more use than a generic failure.
   test("a cycle that could not be sent keeps its row and shows why", async () => {
