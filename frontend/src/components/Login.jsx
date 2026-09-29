@@ -29,6 +29,26 @@ import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";
 
+const LOGIN_LOGO_CACHE_KEY = "openelis.loginLogoUrl";
+const readCachedLoginLogoUrl = () => {
+  try {
+    return sessionStorage.getItem(LOGIN_LOGO_CACHE_KEY);
+  } catch {
+    return null;
+  }
+};
+const writeCachedLoginLogoUrl = (url) => {
+  try {
+    if (url) {
+      sessionStorage.setItem(LOGIN_LOGO_CACHE_KEY, url);
+    } else {
+      sessionStorage.removeItem(LOGIN_LOGO_CACHE_KEY);
+    }
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+};
+
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -36,7 +56,12 @@ function Login(props) {
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
-  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
+  const [loginLogoUrl, setLoginLogoUrl] = useState(() =>
+    readCachedLoginLogoUrl(),
+  );
+  const [brandingResolved, setBrandingResolved] = useState(
+    () => readCachedLoginLogoUrl() !== null,
+  );
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
   const samlRedirectInitiatedRef = useRef(false);
   const shouldAutoRedirectToSaml =
@@ -92,16 +117,21 @@ function Login(props) {
   // Colors are handled by App.js
   useEffect(() => {
     getBranding((response) => {
+      let newUrl = null;
       if (response) {
-        // Check useHeaderLogoForLogin flag
         if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
-          setLoginLogoUrl(response.headerLogoUrl);
-          setLogoVersion((prev) => prev + 1);
+          newUrl = response.headerLogoUrl;
         } else if (response.loginLogoUrl) {
-          setLoginLogoUrl(response.loginLogoUrl);
-          setLogoVersion((prev) => prev + 1);
+          newUrl = response.loginLogoUrl;
         }
       }
+      writeCachedLoginLogoUrl(newUrl);
+      if (newUrl !== loginLogoUrl) {
+        setLoginLogoUrl(newUrl);
+        // Only bust the image cache when the logo actually changed
+        setLogoVersion((prev) => prev + 1);
+      }
+      setBrandingResolved(true);
     });
   }, []);
 
@@ -115,25 +145,31 @@ function Login(props) {
     // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl
       ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
-      : `images/openelis_logo_full.png`;
+      : brandingResolved
+        ? `images/openelis_logo_full.png`
+        : null;
 
     return (
       <>
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
-          <picture>
-            <img
-              src={logoSrc}
-              alt="fullsize logo"
-              width="300"
-              height="56"
-              style={{ objectFit: "contain" }}
-              onError={(e) => {
-                // Fallback to default logo if custom logo fails to load
-                e.target.src = `images/openelis_logo_full.png`;
-              }}
-            />
-          </picture>
+          {logoSrc ? (
+            <picture>
+              <img
+                src={logoSrc}
+                alt="fullsize logo"
+                width="300"
+                height="56"
+                style={{ objectFit: "contain" }}
+                onError={(e) => {
+                  // Fallback to default logo if custom logo fails to load
+                  e.target.src = `images/openelis_logo_full.png`;
+                }}
+              />
+            </picture>
+          ) : (
+            <div style={{ width: 300, height: 56 }} aria-hidden="true" />
+          )}
         </Column>
         <Column lg={6} md={0} sm={0} />
         <Column lg={6} md={0} sm={0} />
