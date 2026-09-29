@@ -85,11 +85,35 @@ passes 7/7 locally. #4449 is ready for review.
 
 ## Landing the stack
 
-The three PRs land as one atomic GitHub stack merge (`gh stack merge 4472
---squash`), run from the checkout that tracks stack #4472. Develop is
-`strict` (a PR must be up to date to merge) and requires one approving review;
-stack merge does not bypass either. Every iteration below has an entry
-condition and a gate; do not start the next iteration until the gate passes.
+**Goal.** Stack #4472 (#4470 → #4448 → #4449) is mergeable and ready for the
+maintainer's review: current on `develop`, required checks green on every
+current head, no open review threads, and each PR's claimed workflow shown in a
+paced, presented recording from its final head. Merging is the maintainer's
+action, not a step of this plan.
+
+Acceptance, checked by the agent:
+
+1. Each branch is current on `develop` and carries only its own patches
+   (`git range-diff` against the previous head).
+2. Required checks (Backend, Frontend and E2E checkpoints) pass on each
+   current head; `gh stack view` shows no rebase warning.
+3. No unresolved review thread on any PR, including a Codex review of the
+   final heads.
+4. L1 is resolved: the two-visit test fails before the fix and passes after,
+   or passes on the current code and L1 is dropped as not reproduced.
+5. One `pw:test:harness-demo-video` run from the top of the stack records
+   every registered analyzer workflow at the documented pacing (each video
+   45–90 seconds, with opening, story and outcome cards).
+6. `tools/code-qa/skills/evidence-bundle` has packaged those videos as MP4
+   with a manifest naming the tested commits, and one PR-comment draft per PR
+   is ready. No media is committed.
+7. The R0-REV3 interrupt result is recorded in #4470's thread.
+
+Left to the maintainer: posting the evidence comments, requesting or waiving
+approvals, and the merge itself. An atomic `gh stack merge 4472 --squash`
+needs one approval per PR because stack merge does not bypass review; merging
+each PR separately instead needs one CI cycle per PR, since `develop` is
+`strict`.
 
 **Restack onto #4471/#4478 (29 September).** #4471 landed the same `certs`
 restart policy, `certs`/proxy dependencies and nginx `$http_host` change as
@@ -102,22 +126,38 @@ Each rebased branch's tree equals a merge of its previous head with `develop`,
 so the restack changed ancestry only. When `develop` moves again, update each
 branch in its own worktree, bottom to top, and verify the same tree equality.
 
-| Step | Work                                                                                    | Gate                                                                                                                                                                                                |
-| ---- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L1   | Fix #4448's second mapping hop: restored worklist edits must survive a second visit.    | New component test that fails on the current code, passes after; `AnalyserResults` and `Index` suites green; `history` declared in `frontend/package.json`.                                         |
-| L2   | Done 29 September: restacked onto `develop` `91db9a80aa`, one conflict resolved above.  | No conflict markers; the top branch's tree equals `git merge-tree --write-tree origin/develop <top>`; compose files pass `docker compose config`; Spotless and Prettier clean cold after last edit. |
-| L3   | `gh stack push`; CI runs on all three heads.                                            | Required checks (Backend, Frontend, E2E checkpoints) green on each current head; `gh stack view` shows no rebase warning.                                                                           |
-| L4   | Evidence: link the registered workflow recordings from each PR body.                    | Videos and key-state screenshots are stored somewhere that outlives `frontend/test-results/`, and each link names the tested commit.                                                                |
-| L5   | R0-REV3 interrupt-cleanup proof: interrupt a disposable `scripts/run-ci-checks.sh` run. | No owned child process or Compose project remains, unrelated stacks keep running, and the run reports interrupted. Record the result in the PR thread.                                              |
-| L6   | Approval, then `gh stack merge 4472 --squash`.                                          | One approving review on each PR, all required checks green on current heads, stack up to date with `develop`. If `develop` moves first: restack as in L2, push, wait for L3 again.                  |
-| L7   | `gh stack sync --prune`, prune merged worktrees, refresh this document's table.         | Local branches for merged PRs removed; row 1, 3 and 4 below marked done.                                                                                                                            |
+**Why the earlier recordings were not usable evidence.** Since #4430
+(28 September) the parity runner exports `PLAYWRIGHT_SLOWMO=0` unless one is
+passed, which overrides the video projects' 500 ms default, so harness videos
+recorded at full speed. The analyzer video tests also called none of the
+video-gated presentation helpers, so the video toggle had no cards to show.
+The recordings were 8–10 second test captures, not walkthroughs.
+
+| Step | Work                                                                                                                                                                                                                                                                                                                                                                                                                              | Gate                                                                                                                               | Status                           |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| L1   | Suspected from code reading, not yet reproduced: `AnalyserResults` clears its draft edits whenever results reload, so a choice made before one mapping visit may be lost after a second visit. Write the two-visit component test first; fix only if it fails. Declare `history` in `frontend/package.json`.                                                                                                                      | Test red before the fix and green after; `AnalyserResults` and `Index` suites green.                                               | Open                             |
+| L2   | Restack onto current `develop`.                                                                                                                                                                                                                                                                                                                                                                                                   | Tree equality as above; no conflict markers; formatting clean after the last edit.                                                 | Done 29 September (`91db9a80aa`) |
+| L3   | Evidence prerequisites, one commit set per PR: the runner defaults `PLAYWRIGHT_SLOWMO` to empty so the Playwright config's 500 ms stays the only default (#4470); presentation cards on the registered video tests, each PR carrying its own story (#4470 GeneXpert, FluoroCycler and guided setup; #4448 held-result recovery; #4449 invalid binding); the Playwright README's evidence section names `evidence-bundle` (#4470). | Cards appear only in video projects; `npm run pw:guard` and formatting pass.                                                       | Open                             |
+| L4   | Push all three with `gh stack push`; one CI cycle.                                                                                                                                                                                                                                                                                                                                                                                | Acceptance 1–2.                                                                                                                    | Open                             |
+| L5   | While L4 runs: record once from the top of the stack with `npm run pw:test:harness-demo-video`, check durations and representative frames, package with `evidence-bundle`, draft one PR comment per PR.                                                                                                                                                                                                                           | Acceptance 5–6.                                                                                                                    | Open                             |
+| L6   | R0-REV3 interrupt proof: interrupt a disposable `scripts/run-ci-checks.sh` run after L5 finishes.                                                                                                                                                                                                                                                                                                                                 | No owned process or Compose project remains, unrelated stacks keep running, the run reports interrupted; result in #4470's thread. | Open                             |
+| L7   | Codex review of the final heads; resolve findings in one batch (a fix means re-cascade, push and another CI cycle).                                                                                                                                                                                                                                                                                                               | Acceptance 3.                                                                                                                      | Open                             |
+| L8   | Maintainer: post evidence, approvals or bypass, merge. Afterwards `gh stack sync --prune` and mark rows 1, 3 and 4 below done.                                                                                                                                                                                                                                                                                                    | Merged.                                                                                                                            | Maintainer                       |
+
+Rejected alternatives: detaching worktrees or creating a separate one to run
+`gh stack rebase` (each branch is already checked out in its own worktree and
+is updated there); stashing or committing another agent's uncommitted edits
+without review (they ride through rebases with `--autostash`); hand-built
+evidence pages and ad hoc MP4 conversion (the repo already has
+`evidence-bundle` and a documented evidence format); a hard-coded 500 ms
+runner default (it would duplicate the config's default).
 
 ## Review disposition and pre-merge acceptance
 
 Source:
 [review at `760536edb8`](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332#pullrequestreview-5345266867),
 checked against that source revision on 28 September. Owner for every R0 item
-below: OE2's bounded #4332 review follow-up, #4470. Status: corrections implemented in #4470; R0-REV3 still needs its interrupt-cleanup proof (step L5 below). This is the
+below: OE2's bounded #4332 review follow-up, #4470. Status: corrections implemented in #4470; R0-REV3 still needs its interrupt-cleanup proof (step L6 above). This is the
 bounded correction scope before the final CI/evidence checkpoint; the deferred
 table is not an additional merge gate.
 
@@ -206,9 +246,9 @@ parallel implementations.
 
 | Order | Owner / current state                                  | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
 | ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | R0 — #4332 merged; #4470 stack bottom                  | Catalog Import add/replace/restart and 10/10 recorded analyzer workflows are proved on the preceding head. Pass current-head checks and the L5 interrupt proof; keep F-REV1 through F-REV6 with named owners. Cypress repair is owned elsewhere.                                                                      | Analyzer-controlled local checks and actual downstream GitHub E2E pass on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                           |
+| 1     | R0 — #4332 merged; #4470 stack bottom                  | Catalog Import add/replace/restart and 10/10 recorded analyzer workflows are proved on the preceding head. Pass current-head checks and the L6 interrupt proof; keep F-REV1 through F-REV6 with named owners. Cypress repair is owned elsewhere.                                                                      | Analyzer-controlled local checks and actual downstream GitHub E2E pass on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                           |
 | 2     | R5 — Bridge #69 / mock #49; merged and released        | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
-| 3     | R1/R3 — OE2 #4448; stacked on #4470                    | The recorded native GeneXpert mixed-result workflow passed 11/11; its video and checkpoints are available. The confirmed-binding persistence test now passes 7/7 locally. Fix the second mapping hop (L1) and pass current-head checks while preserving API-based prerequisites and existing demo-test scope.         | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
+| 3     | R1/R3 — OE2 #4448; stacked on #4470                    | The native GeneXpert mixed-result workflow passed 11/11; its paced recording is part of L5. The confirmed-binding persistence test now passes 7/7 locally. Resolve L1 (two-visit test first) and pass current-head checks while preserving API-based prerequisites and existing demo-test scope.                      | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
 | 4     | R2 — OE2 #4449; ready, stacked on #4448                | Its per-observation catalog-validity workflow passed 12/12 with recorded clinical readback. Reuse existing confirmation, catalog validation and recovery services; pass current-head checks before the stack merge.                                                                                                   | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then merge.                                     |
 | 5     | R5 — broader core FILE/HL7 qualification; open         | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
 | 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
@@ -227,7 +267,7 @@ gate.
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OE2 #4336                              | Compare its remaining lifecycle, authorization and query tests with #4332/current develop; retain useful cases in the recovery follow-up, then close or narrow. Do not merge the old implementation wholesale over #4433. |
 | OE2 #4347 / #4421                      | Reuse existing receipts and services for outage/replay proof and durable operator retry/dismiss audit.                                                                                                                    |
-| OE2 #4429                              | Open, and its Backend check fails on an old base. Remove the blanket recognition gate; retain useful nonblocking guidance, or close if no useful delta remains.                                                           |
+| OE2 #4429                              | Open; its last Backend run failed. Remove the blanket recognition gate; retain useful nonblocking guidance, or close if no useful delta remains.                                                                          |
 | OE2 #4072                              | #4430 and #4382 (CI-parity isolation) merged. Reconcile the remaining worktree development stack with the supported dev-stack path; keep CI and interactive entry points separate without competing launchers.            |
 | OE2 #4197 / #3974                      | Compare older workflow work and optional type conversion with current implementation; close superseded work or retain a justified small residual.                                                                         |
 | Bridge #69 / mock #49 and #50          | Merged and released as Bridge 3.2.4 / mock 0.1.3. OE2 sources and image tags align. Broader assay and HL7 qualification remains owned by R5.                                                                              |
