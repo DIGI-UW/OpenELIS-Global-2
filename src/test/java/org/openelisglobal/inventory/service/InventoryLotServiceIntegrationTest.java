@@ -225,18 +225,11 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
         assertEquals("Second lot should expire later", "LOT-2025-001", lots.get(1).getLotNumber());
     }
 
-    /**
-     * An opened vial goes off before its printed date says. Ordering on the printed
-     * date alone handed out the longer-lived lot first and left the shortened one
-     * on the shelf to expire, which is the opposite of what first-expired-first-out
-     * is for.
-     */
     @Test
     public void getAvailableLotsByItemFEFO_shouldOrderByTheEffectiveExpiryNotThePrintedOne() {
         InventoryLot opened = newLot("LOT-2025-FEFO-OPENED", null);
         opened.setQcStatus(QCStatus.PASSED);
         opened.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
-        // Opened last week, so it is usable for another fortnight and no longer.
         opened.setCalculatedExpiryAfterOpening(Timestamp.valueOf("2026-01-15 00:00:00"));
         inventoryLotService.insert(opened);
 

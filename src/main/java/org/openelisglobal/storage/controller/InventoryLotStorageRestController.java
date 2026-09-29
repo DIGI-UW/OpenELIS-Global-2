@@ -27,17 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * InventoryLot assign/move/movements over the occupant-generalized
- * {@link SampleStorageService} (OGC-657).
+ * {@link SampleStorageService} (OGC-657). The role guard matches the /Storage
+ * route in App.jsx.
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")
-/*
- * Guarded to the roles the Storage screens are already routed to. Without this
- * the controller was open to any authenticated user, who could enumerate every
- * reagent lot in the lab and move one to another box — beside ten inventory
- * controllers that do carry a guard, which makes the module easy to read as
- * fully protected when it is not.
- */
 @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class InventoryLotStorageRestController extends BaseRestController {
 

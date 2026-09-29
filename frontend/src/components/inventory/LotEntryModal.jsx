@@ -24,13 +24,7 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 
-/**
- * An expiry or a receipt date is a calendar date, stored in a timestamp column.
- * Sent as midnight UTC so it means the same day everywhere: the local midnight
- * a date picker hands back converts to the previous day for every zone east of
- * Greenwich, and the server renders these as dates rather than instants. The
- * GS1 scan path already stores them this way, so the two agree.
- */
+// Calendar dates are stored as midnight UTC so the day holds in every time zone.
 const toStoredCalendarDate = (date) =>
   date
     ? new Date(
@@ -38,7 +32,6 @@ const toStoredCalendarDate = (date) =>
       ).toISOString()
     : null;
 
-/** The same date read back, so the picker reopens on the day that was saved. */
 const fromStoredCalendarDate = (value) => {
   if (!value) return null;
   const stored = new Date(value);
