@@ -55,9 +55,8 @@ source-built #4470 stack: it added a CSV, replaced that same file, and retained
 the replacement bytes and updated catalog state across a webapp restart. The
 exact-source analyzer run passed 10/10 registered scenarios with separate
 GeneXpert ASTM and FluoroCycler watched-FILE recordings and clinical readback.
-The prior head passed all GitHub checks, including downstream E2E; the stack
-was then rebased onto the latest `develop`, so its new heads need fresh checks.
-Human review is separate from these technical checks.
+Human review is separate from these technical checks. Read current-head check
+state from each PR's checks, not from this document.
 
 The [GitHub stack #4472](https://github.com/DIGI-UW/OpenELIS-Global-2/stack/4472)
 records the merge sequence **#4470 → #4448 → #4449**. #4470 targets `develop`;
@@ -73,8 +72,8 @@ independent clinical readbacks. #4449 passed 12/12 registered scenarios: when
 one confirmed mapping becomes invalid, the valid sibling reaches clinical
 review and the original held row recovers without duplication after correction.
 The recordings show the functional heads; subsequent changes to the persistence
-test fixture and stack ancestry did not alter those runtime paths. The rebased
-heads still require current-head CI. Broader FILE/HL7 qualification,
+test fixture and stack ancestry did not alter those runtime paths. Every head
+that is pushed still requires its own current-head CI. Broader FILE/HL7 qualification,
 outage/replay, populated upgrades and general catalog additions are separate
 follow-ups.
 
@@ -82,15 +81,43 @@ follow-ups.
 revision in its service layer, matching the UI's Apply guard. Its focused
 service tests passed, and the persistence test fixture was corrected to supply
 a real catalog profile and current confirmation; the full persistence class
-passes 7/7 locally. #4449 is ready for review; its current-head GitHub E2E checks still
-need to complete before technical merge readiness is claimed.
+passes 7/7 locally. #4449 is ready for review.
+
+## Landing the stack
+
+The three PRs land as one atomic GitHub stack merge (`gh stack merge 4472
+--squash`), run from the checkout that tracks stack #4472. Develop is
+`strict` (a PR must be up to date to merge) and requires one approving review;
+stack merge does not bypass either. Every iteration below has an entry
+condition and a gate; do not start the next iteration until the gate passes.
+
+**Restack onto #4471/#4478 (29 September).** #4471 landed the same `certs`
+restart policy, `certs`/proxy dependencies and nginx `$http_host` change as
+#4470. A three-way merge of each branch was clean; the commit-by-commit rebase
+stopped once, in `projects/analyzer-harness/docker-compose.base.yml`, and was
+resolved to the union: develop's `certs`, `fhir`, Bridge and proxy dependency
+blocks plus #4470's `harness-catalog-init` service and its dependency on
+`oe.openelis.org`. The duplicated nginx commit dropped as already upstream.
+Each rebased branch's tree equals a merge of its previous head with `develop`,
+so the restack changed ancestry only. When `develop` moves again, update each
+branch in its own worktree, bottom to top, and verify the same tree equality.
+
+| Step | Work                                                                                    | Gate                                                                                                                                                                                                |
+| ---- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L1   | Fix #4448's second mapping hop: restored worklist edits must survive a second visit.    | New component test that fails on the current code, passes after; `AnalyserResults` and `Index` suites green; `history` declared in `frontend/package.json`.                                         |
+| L2   | Done 29 September: restacked onto `develop` `91db9a80aa`, one conflict resolved above.  | No conflict markers; the top branch's tree equals `git merge-tree --write-tree origin/develop <top>`; compose files pass `docker compose config`; Spotless and Prettier clean cold after last edit. |
+| L3   | `gh stack push`; CI runs on all three heads.                                            | Required checks (Backend, Frontend, E2E checkpoints) green on each current head; `gh stack view` shows no rebase warning.                                                                           |
+| L4   | Evidence: link the registered workflow recordings from each PR body.                    | Videos and key-state screenshots are stored somewhere that outlives `frontend/test-results/`, and each link names the tested commit.                                                                |
+| L5   | R0-REV3 interrupt-cleanup proof: interrupt a disposable `scripts/run-ci-checks.sh` run. | No owned child process or Compose project remains, unrelated stacks keep running, and the run reports interrupted. Record the result in the PR thread.                                              |
+| L6   | Approval, then `gh stack merge 4472 --squash`.                                          | One approving review on each PR, all required checks green on current heads, stack up to date with `develop`. If `develop` moves first: restack as in L2, push, wait for L3 again.                  |
+| L7   | `gh stack sync --prune`, prune merged worktrees, refresh this document's table.         | Local branches for merged PRs removed; row 1, 3 and 4 below marked done.                                                                                                                            |
 
 ## Review disposition and pre-merge acceptance
 
 Source:
 [review at `760536edb8`](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332#pullrequestreview-5345266867),
 checked against that source revision on 28 September. Owner for every R0 item
-below: OE2's bounded #4332 review follow-up. Status: **in progress**, unless explicitly noted. This is the
+below: OE2's bounded #4332 review follow-up, #4470. Status: corrections implemented in #4470; R0-REV3 still needs its interrupt-cleanup proof (step L5 below). This is the
 bounded correction scope before the final CI/evidence checkpoint; the deferred
 table is not an additional merge gate.
 
@@ -151,11 +178,11 @@ above.
 
 ## One dependency and evidence boundary
 
-| Use                       | OE2 source                                      | Bridge source / profiles                            | Mock source          | What it proves                                                                                                                                                                                                                                       |
-| ------------------------- | ----------------------------------------------- | --------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current #4332 integration | Reviewed code `760536edb8`; corrections pending | Bridge 3.2.4 `1eff7b4`; GeneXpert 7, FluoroCycler 4 | Mock 0.1.3 `8c64750` | Released pins align. Earlier workflow runs passed; the full local/GitHub run for the reviewed code was incomplete at this checkpoint. R0 review corrections and final-revision checks remain required.                                               |
-| Current result evidence   | Application `dbc266a484`; tests `311af6006e`    | `da675c9`; GeneXpert 7 and FluoroCycler 4           | `2ad1082`            | Nine passing native result recordings: MTB negative, three RIF outcomes, HIV concentration, COVID positive/negative, shared-listener isolation and watched-FILE delivery. Independent clinical readback passes. Five stock-default checks also pass. |
-| Current setup evidence    | Application `dbc266a484`; tests `311af6006e`    | `da675c9`; full GeneXpert 7 duplicated through UI   | `2ad1082`            | Passing first-time confirmation, activation, connection editing, QC navigation and deactivation. Setup plus the nine result workflows provide ten recordings on one application/dependency combination.                                              |
+| Use                       | OE2 source                                   | Bridge source / profiles                            | Mock source          | What it proves                                                                                                                                                                                                                                       |
+| ------------------------- | -------------------------------------------- | --------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current #4332 integration | #4332 merged; corrections in #4470           | Bridge 3.2.4 `1eff7b4`; GeneXpert 7, FluoroCycler 4 | Mock 0.1.3 `8c64750` | Released pins align on `develop` and throughout stack #4472. Current-head checks on each PR are the merge signal.                                                                                                                                    |
+| Current result evidence   | Application `dbc266a484`; tests `311af6006e` | `da675c9`; GeneXpert 7 and FluoroCycler 4           | `2ad1082`            | Nine passing native result recordings: MTB negative, three RIF outcomes, HIV concentration, COVID positive/negative, shared-listener isolation and watched-FILE delivery. Independent clinical readback passes. Five stock-default checks also pass. |
+| Current setup evidence    | Application `dbc266a484`; tests `311af6006e` | `da675c9`; full GeneXpert 7 duplicated through UI   | `2ad1082`            | Passing first-time confirmation, activation, connection editing, QC navigation and deactivation. Setup plus the nine result workflows provide ten recordings on one application/dependency combination.                                              |
 
 Released Bridge 3.2.4 differs from the recorded `da675c9` only in
 acceptance-test readiness and release version metadata. Mock 0.1.2 matched the
@@ -179,10 +206,10 @@ parallel implementations.
 
 | Order | Owner / current state                                  | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
 | ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | R0 — #4332 merged; #4470 review follow-up in progress  | Catalog Import add/replace/restart and 10/10 recorded analyzer workflows are proved on the preceding head. Validate the new rebased head; keep F-REV1 through F-REV6 with named owners. Cypress repair is owned elsewhere.                                                                                            | Analyzer-controlled local checks and actual downstream GitHub E2E pass on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                           |
+| 1     | R0 — #4332 merged; #4470 stack bottom                  | Catalog Import add/replace/restart and 10/10 recorded analyzer workflows are proved on the preceding head. Pass current-head checks and the L5 interrupt proof; keep F-REV1 through F-REV6 with named owners. Cypress repair is owned elsewhere.                                                                      | Analyzer-controlled local checks and actual downstream GitHub E2E pass on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                           |
 | 2     | R5 — Bridge #69 / mock #49; merged and released        | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
-| 3     | R1/R3 — OE2 #4448; stacked on #4470                    | The recorded native GeneXpert mixed-result workflow passed 11/11; its video and checkpoints are available. The confirmed-binding persistence test now passes 7/7 locally. Finish exact rebased-head GitHub CI while preserving API-based prerequisites and existing demo-test scope.                                  | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
-| 4     | R2 — OE2 #4449; ready, stacked on #4448                | Its per-observation catalog-validity workflow passed 12/12 with recorded clinical readback. Reuse existing confirmation, catalog validation and recovery services; finish exact rebased-head GitHub CI before merge.                                                                                                  | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then merge.                                     |
+| 3     | R1/R3 — OE2 #4448; stacked on #4470                    | The recorded native GeneXpert mixed-result workflow passed 11/11; its video and checkpoints are available. The confirmed-binding persistence test now passes 7/7 locally. Fix the second mapping hop (L1) and pass current-head checks while preserving API-based prerequisites and existing demo-test scope.         | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
+| 4     | R2 — OE2 #4449; ready, stacked on #4448                | Its per-observation catalog-validity workflow passed 12/12 with recorded clinical readback. Reuse existing confirmation, catalog validation and recovery services; pass current-head checks before the stack merge.                                                                                                   | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then merge.                                     |
 | 5     | R5 — broader core FILE/HL7 qualification; open         | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
 | 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
 | 7     | R6/R7 — core qualification; open                       | Reconcile remaining PR deltas against merged code, close superseded work with lineage, run supported full workflows and review/present recordings from the same tests.                                                                                                                                                | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video.                                                                                                                                                                      |
@@ -190,7 +217,8 @@ parallel implementations.
 
 ## Remaining PR cleanup ownership
 
-Live PR states were checked on 28 September. The dispositions below are proposed
+OE2, mock and Bridge PR states were rechecked on 29 September; the
+Madagascar-harness and review-tooling rows were not. The dispositions below are proposed
 work, not claims that these PRs have already been cleaned up or closed. They
 follow the ordered work above; none expands the bounded current #4332 merge
 gate.
@@ -199,8 +227,8 @@ gate.
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OE2 #4336                              | Compare its remaining lifecycle, authorization and query tests with #4332/current develop; retain useful cases in the recovery follow-up, then close or narrow. Do not merge the old implementation wholesale over #4433. |
 | OE2 #4347 / #4421                      | Reuse existing receipts and services for outage/replay proof and durable operator retry/dismiss audit.                                                                                                                    |
-| OE2 #4429                              | Remove the blanket recognition gate; retain useful nonblocking guidance, or close if no useful delta remains.                                                                                                             |
-| OE2 #4430 / #4382 / #4072              | Reconcile CI-parity isolation and development tooling with the supported dev-stack path; preserve separate CI and interactive entry points without competing launchers.                                                   |
+| OE2 #4429                              | Open, and its Backend check fails on an old base. Remove the blanket recognition gate; retain useful nonblocking guidance, or close if no useful delta remains.                                                           |
+| OE2 #4072                              | #4430 and #4382 (CI-parity isolation) merged. Reconcile the remaining worktree development stack with the supported dev-stack path; keep CI and interactive entry points separate without competing launchers.            |
 | OE2 #4197 / #3974                      | Compare older workflow work and optional type conversion with current implementation; close superseded work or retain a justified small residual.                                                                         |
 | Bridge #69 / mock #49 and #50          | Merged and released as Bridge 3.2.4 / mock 0.1.3. OE2 sources and image tags align. Broader assay and HL7 qualification remains owned by R5.                                                                              |
 | Mock #39 / #41                         | Compare with merged #47 and close if no useful delta remains.                                                                                                                                                             |

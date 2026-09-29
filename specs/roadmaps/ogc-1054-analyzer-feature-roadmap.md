@@ -1,6 +1,6 @@
 # Core analyzer remediation roadmap
 
-Updated: 29 September 2026. [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332)
+Updated: 29 September 2026 (stack restacked onto `develop` `91db9a80aa`). [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332)
 merged into `develop` as `e0c98726ba`. Current work is its bounded review
 follow-up [#4470](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4470),
 then [#4448](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4448)
@@ -47,8 +47,8 @@ packaged as general OE2 catalog changes. Its obsolete stack grouping was
 removed; the new remediation stack starts at #4470. GitHub checks passed at
 `760536edb8`, including downstream E2E. At #4470's previous head, the actual
 backend, frontend, core Playwright, analyzer harness and Cypress jobs also
-passed. The stack was rebased onto newer `develop`; its new heads need fresh
-checks. Cypress remediation is owned elsewhere and is not analyzer PR scope.
+passed. The stack now sits on current `develop`; each PR's current-head checks
+are the merge signal. Cypress remediation is owned elsewhere and is not analyzer PR scope.
 No deployed or complete analyzer qualification is claimed here.
 
 Bridge and mock source and image pins now match released Bridge 3.2.4 and mock
