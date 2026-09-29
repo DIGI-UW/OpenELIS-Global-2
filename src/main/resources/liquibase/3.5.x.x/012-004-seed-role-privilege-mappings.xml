@@ -1033,4 +1033,82 @@
         </rollback>
     </changeSet>
 
+    <!--
+      patient:view for the pathology sign-off roles.
+
+      Opening a pathology, cytology or immunohistochemistry case reads the
+      patient behind the specimen (PathologyDisplayService ->
+      SampleServiceImpl.getPatient -> SampleHumanService.getPatientForSample),
+      and the case view renders a patient header. Neither role held any
+      patient:* privilege, so GET /rest/pathology/caseView/{id} returned 403 and
+      a pathologist could see the dashboard but never open a case, let alone
+      sign one out.
+
+      Third occurrence of this gate: 012-004i granted it to Results and 012-004l
+      to Validation for the same reason. A diagnostic report is about a named
+      patient by definition.
+    -->
+    <changeSet author="openelis" id="012-004q-grant-patient-view-to-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Pathologist and Cytopathologist so a case can be opened (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist')
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Pathologist', 'Cytopathologist')
+                  AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      The case-header reads the pathology sign-off roles need.
+
+      Opening a pathology, cytology or immunohistochemistry case assembles the
+      same header every other workbench shows: who requested the specimen
+      (sample_requester:view, organization:view via RequesterService), whether it
+      is non-conforming (nce:view) and where it is in the workflow
+      (sample_status:view). None of those were granted, so the case view 403'd
+      one gate at a time behind patient:view (012-004q).
+
+      This is the set Validation and Reports already needed for the same header;
+      all four are :view reads of data the case display already renders. Nothing
+      here lets a pathologist change a requester, an organisation or a
+      non-conformity.
+    -->
+    <changeSet author="openelis" id="012-004r-grant-case-header-reads-to-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the case-header reads to Pathologist and Cytopathologist (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist')
+              AND p.name IN ('sample_requester:view', 'organization:view', 'nce:view', 'sample_status:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Pathologist', 'Cytopathologist')
+                  AND p.name IN ('sample_requester:view', 'organization:view', 'nce:view', 'sample_status:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

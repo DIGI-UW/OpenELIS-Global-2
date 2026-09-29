@@ -89,10 +89,22 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
                 .with(user("a").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isOk());
     }
 
+    /**
+     * The inversion for the 200 cases above: a role without alert:view is refused,
+     * so those assertions are not passing because the gate is absent.
+     *
+     * <p>
+     * This used REPORTS until 012-004o granted that role alert:view for the freezer
+     * audit report, at which point the test failed with 200 - correctly, since
+     * Reports is no longer unrelated to alerts. User Account Administrator is
+     * chosen instead because it administers accounts and has no clinical or
+     * reporting reason to read an alert; if it is ever granted alert:view, pick
+     * another role from the seed rather than deleting this test.
+     */
     @Test
     public void getAlerts_unrelatedRole_returns403() throws Exception {
         mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer")
-                .with(user("rep").authorities(SeededRoleAuthorities.role("REPORTS"))))
+                .with(user("uaa").authorities(SeededRoleAuthorities.role("USER_ACCOUNT_ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 
