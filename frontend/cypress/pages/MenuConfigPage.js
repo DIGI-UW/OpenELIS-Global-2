@@ -11,9 +11,13 @@ class MenuConfigPage {
       addEditPatient: "#menu_patient_add_or_edit",
       patientHistory: "#menu_patienthistory",
       studyPatient: "#menu_patient_create",
+      enterBillingAddress: "#billing_address",
+      billingMenu: "#menu_billing",
       patientCheck: "Patient Menu Active",
+      billingMenuCheck: "Billing Menu Active",
       toggleText: ".cds--toggle__text",
       toggleOn: "div.cds--toggle__switch",
+      toggleOff: "div.cds--toggle label div > div",
     };
   }
 
@@ -35,6 +39,13 @@ class MenuConfigPage {
         cy.get(this.selectors.menuButton).click();
       }
     });
+  }
+
+  turnOffToggleSwitch() {
+    cy.get(this.selectors.toggleOff)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
   }
 
   turnOnToggleSwitch() {
@@ -90,6 +101,25 @@ class MenuConfigPage {
     cy.get(this.selectors.studyPatient).should("exist");
   }
 
+  validateBillingMenuOn() {
+    cy.get(this.selectors.billingMenu).should("exist");
+  }
+
+  validateBillingMenuOff() {
+    cy.get(this.selectors.billingMenu).should("not.exist");
+  }
+
+  billingAddress(value) {
+    cy.get(this.selectors.enterBillingAddress).clear().type(value);
+  }
+
+  uncheckBillingMenu() {
+    cy.contains(".cds--checkbox-label-text", this.selectors.billingMenuCheck)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+  }
+
   submitButton() {
     cy.contains("button", "Submit")
       .scrollIntoView()
@@ -100,10 +130,31 @@ class MenuConfigPage {
   checkMenuItem = function (menuItem) {
     // Map of menu items to their respective checkboxes
     const menuItems = {
+      home: "#menu_home_checkbox",
+      order: "#menu_sample_checkbox",
+      immunoChem: "#menu_immunochem_checkbox",
+      cytology: "#menu_cytology_checkbox",
+      results: "#menu_results_checkbox",
+      validation: "#menu_resultvalidation_checkbox",
+      reports: "#menu_reports_checkbox",
+      study: "#menu_reports_study_checkbox",
+      studyConfig: "#menu_study_checkbox",
+      studySample: "#menu_sample_create_checkbox",
+      studyReports: "#menu_reports_study_checkbox",
+      billing: "#menu_billing_checkbox",
+      billingMenu: "#billing_active",
+      admin: "#menu_administration_checkbox",
+      help: "#menu_help_checkbox",
+      patient: "#menu_patient_checkbox",
       addEditPatient: "#menu_patient_add_or_edit_checkbox",
       patientHistory: "#menu_patienthistory_checkbox",
       studyPatient: "#menu_patient_create_checkbox",
+      nonConform: "#menu_nonconformity_checkbox",
+      reportNCE: "#menu_non_conforming_report_checkbox",
+      viewNCE: "#menu_non_conforming_view_checkbox",
       correctiveAction: "#menu_non_conforming_corrective_actions_checkbox",
+      workplan: "#menu_workplan_checkbox",
+      pathology: "#menu_pathology_checkbox",
     };
 
     // Get the corresponding checkbox selector based on the passed menuItem

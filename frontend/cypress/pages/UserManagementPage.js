@@ -31,6 +31,7 @@ class UserManagementPage {
       filters: "#filters",
       tableData: ".cds--data-table",
       menuButton: "[data-cy='menuButton']",
+      enterLoginName: "#loginName",
       enterPassword: "#password",
       allPermissions: "[data-testid='all-permissions-All-Lab-Units']",
       allBioPermissions: "[data-testid='all-permissions-Biochemistry']",
@@ -45,13 +46,22 @@ class UserManagementPage {
       allPathoPermissions: "[data-testid='all-permissions-Pathology']",
       allImmunoHistoPermissions:
         "[data-testid='all-permissions-Immunohistochemistry']",
+      loginButton: "[data-cy='loginButton']",
       uncheckActiveUser: "#only-active",
       uncheckAdminUser: "#only-administrator",
     };
   }
 
+  enterLoginName(value) {
+    cy.get(this.selectors.enterLoginName).clear().type(value);
+  }
+
   enterPassword(value) {
     cy.get(this.selectors.enterPassword).clear().type(value);
+  }
+
+  loginButton() {
+    cy.get(this.selectors.loginButton).click();
   }
 
   verifyPageTitle() {
@@ -204,6 +214,18 @@ class UserManagementPage {
     cy.get(this.selectors.allImmunoHistoPermissions).check({ force: true });
   }
 
+  reception() {
+    cy.contains(this.selectors.span, "Reception").click();
+  }
+
+  reports() {
+    cy.contains(this.selectors.span, "Reports").click();
+  }
+
+  results() {
+    cy.contains(this.selectors.span, "Results").click();
+  }
+
   saveChanges() {
     cy.get(this.selectors.saveButton).click();
   }
@@ -217,8 +239,24 @@ class UserManagementPage {
     cy.contains(this.selectors.span, "Analyser Import").click();
   }
 
+  auditTrail() {
+    cy.contains(this.selectors.span, "Audit Trail").click({ force: true });
+  }
+
+  cytopathologist() {
+    cy.contains(this.selectors.span, "Cytopathologist").click();
+  }
+
   globalAdministrator() {
     cy.contains(this.selectors.span, "Global Administrator").click();
+  }
+
+  pathologist() {
+    cy.contains(this.selectors.span, "Pathologist").click();
+  }
+
+  userAccountAdmin() {
+    cy.contains(this.selectors.span, "User Account Administrator").click();
   }
 
   watchUserListRequest(alias, matchesRequest) {
@@ -324,6 +362,16 @@ class UserManagementPage {
     // playwright/tests/foundational/core/admin-user-filters.spec.ts, which
     // covers it on a fresh load and after navigating in.
     this.waitForUserListRequest("activeUsers");
+  }
+
+  uncheckActiveUser() {
+    this.watchUserListRequest(
+      "allUsersAfterActiveFilter",
+      (searchParams) =>
+        !(searchParams.get("filter") || "").split(",").includes("isActive"),
+    );
+    this.toggleCheckbox(this.selectors.uncheckActiveUser);
+    this.waitForUserListRequest("allUsersAfterActiveFilter");
   }
 
   checkUser(columnNum, value) {
