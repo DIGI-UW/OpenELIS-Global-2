@@ -693,6 +693,17 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Test> getTestsByLocalCode(String localCode) {
+        if (localCode == null || localCode.isBlank()) {
+            return new ArrayList<>();
+        }
+        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        return entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                .setParameter("localCode", localCode.trim()).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) {
         String prefix = TestDescriptionNormalizer.normalizeText(plainName);
         if (prefix.isEmpty()) {

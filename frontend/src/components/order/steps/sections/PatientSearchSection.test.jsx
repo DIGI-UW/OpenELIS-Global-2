@@ -84,6 +84,12 @@ describe("PatientSearchSection", () => {
     expect(searchFormProps.current.renderNotifications).toBe(false);
   });
 
+  it("leaves the order's lab number in the URL to the order loader", () => {
+    render(<Host />);
+
+    expect(searchFormProps.current.followUrlLabNumber).toBe(false);
+  });
+
   it("puts the picked patient on the order and shows the selection card", async () => {
     const onChange = vi.fn();
     render(<Host onChange={onChange} />);

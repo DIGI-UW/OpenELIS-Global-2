@@ -1,10 +1,11 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.eqa.service.EQAIntakeValue;
 import org.openelisglobal.eqa.service.EQAProviderScoringService;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,9 +37,10 @@ public class EQAResultRestController extends BaseRestController {
 
     /**
      * Provider-side entry of a participant's phoned or emailed results —
-     * {@code {"organizationId": 12, "results": [{"testId": 7, "value":
-     * "Reactive"}]}}. Numbers and qualitative words alike; a blank value leaves the
-     * test untouched.
+     * {@code {"organizationId": 12, "results": [{"testId": 7, "panelSampleId": 31,
+     * "value": "Reactive"}]}}. {@code panelSampleId} names the panel sample a value
+     * answers and may be left out for a test with a single sample. Numbers and
+     * qualitative words alike; a blank value leaves the row untouched.
      */
     @PostMapping(value = "/cycles/{cycleId}/results", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)
@@ -48,12 +50,14 @@ public class EQAResultRestController extends BaseRestController {
         if (organizationId == null) {
             throw new IllegalArgumentException("organizationId is required");
         }
-        Map<Long, String> reported = new LinkedHashMap<>();
+        List<EQAIntakeValue> reported = new ArrayList<>();
         if (body.get("results") instanceof List<?> rows) {
             for (Object row : rows) {
                 if (row instanceof Map<?, ?> cell && cell.get("testId") != null) {
-                    reported.put(Long.valueOf(String.valueOf(cell.get("testId"))),
-                            cell.get("value") == null ? null : String.valueOf(cell.get("value")));
+                    reported.add(new EQAIntakeValue(Long.valueOf(String.valueOf(cell.get("testId"))),
+                            cell.get("panelSampleId") == null ? null
+                                    : Long.valueOf(String.valueOf(cell.get("panelSampleId"))),
+                            cell.get("value") == null ? null : String.valueOf(cell.get("value"))));
                 }
             }
         }

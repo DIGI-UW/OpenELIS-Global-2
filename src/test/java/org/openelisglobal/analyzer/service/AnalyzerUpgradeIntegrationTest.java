@@ -43,8 +43,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Populated upgrade using real persistence/services, with only the remote
- * Bridge boundary replaced.
+ * Migration-service behavior against the current schema and real persistence,
+ * with the remote Bridge boundary replaced. This is not a previous-version
+ * database upgrade test.
  */
 public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest {
     private static final String FINGERPRINT = "sha256:" + "a".repeat(64);
@@ -129,7 +130,7 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void populatedUpgradePreservesIdsSettingsAndMappingsAndRepeatDoesNothing() throws Exception {
+    public void migrationServicePreservesIdsSettingsAndMappingsAndRepeatDoesNothing() throws Exception {
         List<BridgeProfileCatalog.ProfileRevision> revisions = new ArrayList<>();
         for (String protocol : List.of("ASTM", "HL7", "FILE")) {
             String id = addAnalyzer(protocol);

@@ -14,10 +14,12 @@ public interface EQAResultService extends BaseObjectService<EQAResult, Long> {
      * Provider-side intake of a value as the participant reported it: a number
      * lands in result_value, anything else ("Reactive", "Scanty") in result_text.
      * The provider is the authority on what arrived, so a value after the deadline
-     * is recorded as late rather than refused.
+     * is recorded as late rather than refused. {@code panelSampleId} names the
+     * panel sample the value answers, or is null for a test with no sample behind
+     * it.
      */
-    EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, String reported,
-            EQASubmissionMethod method, String sysUserId);
+    EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, Long panelSampleId,
+            String reported, EQASubmissionMethod method, String sysUserId);
 
     List<EQAResult> findByDistributionId(Long distributionId);
 

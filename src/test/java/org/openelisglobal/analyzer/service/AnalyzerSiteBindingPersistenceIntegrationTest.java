@@ -24,7 +24,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
-import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
@@ -111,14 +110,6 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    @Before
-    public void resyncGeneratedSequences() {
-        resyncSequence("analyzer_seq", "analyzer");
-        resyncSequence("analyzer_profile_binding_seq", "analyzer_profile_binding");
-        resyncSequence("analyzer_site_binding_seq", "analyzer_site_binding");
-        resyncSequence("analyzer_site_binding_revision_seq", "analyzer_site_binding_revision");
-    }
 
     @Test
     public void savedCatalogBindingsAndConfirmationReloadFromPostgres() {

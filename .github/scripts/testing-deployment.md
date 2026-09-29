@@ -20,11 +20,12 @@ running containers.
 ## Server configuration
 
 The job builds `deploy-bundle.tgz` (both compose files, `volume/`, the analyzer
-harness catalog and seed scripts, and the Bridge profiles at the submodule pin).
-On the VM, `deploy-published-testing.py` unpacks it into
-`<site>/releases/<sha>/` and runs Compose as project `openelis-testing`, so
-named volumes persist across releases. The site directory (`TESTING_SITE_PATH`,
-default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
+seed script and the Bridge profiles at the submodule pin). Clinical defaults are
+packaged in the application image. On the VM, `deploy-published-testing.py`
+unpacks it into `<site>/releases/<sha>/` and runs Compose as project
+`openelis-testing`, so named volumes persist across releases. The site directory
+(`TESTING_SITE_PATH`, default `/home/ubuntu/openelis-testing`) holds what
+belongs to the host:
 
 - `.env` (required): passed as the Compose env file.
 - `docker-compose.site.yml` (optional): applied after the release's files, for
@@ -32,24 +33,31 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
   resolves its relative paths against the release, so use absolute paths.
 - `lucene/`: the search index, linked into every release.
 - `configuration/backend/`: writable catalog files, linked into every release.
-  The harness catalog is copied here only when the directory does not exist;
-  subsequent deploys preserve uploaded and edited files. The webapp entrypoint
-  grants its Tomcat group write access.
+  New sites leave this directory empty and load the application image’s bundled
+  defaults. Subsequent deploys preserve uploaded and edited files; existing
+  overrides are not removed automatically. The webapp entrypoint grants its
+  Tomcat group write access.
 - `.openelis-ci/`: the image override and `target.json`.
 
-After the application reports ready, the deploy seeds the default analyzers
-(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). Only
-newly created priority connections are activated. An existing shared mapping is
-reused only when already confirmed; it is never rewritten or confirmed by a
-deployment. Existing connections retain their configuration and activation
-state. If setup was interrupted, complete that connection's setup in OpenELIS
-before retrying; deployment does not guess whether an inactive connection was
-intentionally disabled.
+After the application reports ready, the deploy creates missing default
+analyzers
+(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). It
+activates only newly created priority connections whose shipped mapping is
+already confirmed. It never selects, excludes or confirms mapping rows. Existing
+connections retain their configuration and activation state. If the stock
+mapping needs review, the first deployment stops after creating the connection.
+Complete mapping confirmation **and activate that connection** in OpenELIS, then
+retry deployment. Confirmation alone does not activate it:
+`--ensure-connections` preserves existing connections, including inactive ones.
+Deployment does not guess whether a connection was intentionally disabled.
 
 The deploy then sends one GeneXpert result through the mock with an accession
 derived from the run ID. The deployment is ready only when that result appears
-in OpenELIS. If testers have disabled the GeneXpert connection or changed its
-listener from port 9600, the check fails and leaves their settings intact;
+in OpenELIS. The smoke message uses the shared ASTM listener at port 12001 and
+the seeded instrument system name `OE2-TEST-GENEXPERT`. When upgrading an
+existing test connection, set that instrument system name in its connection
+screen before retrying deployment. If testers have disabled the connection or
+changed that sender identity, the check fails and leaves their settings intact;
 restore that connection in OpenELIS when it is ready to receive the deployment
 check. The deploy refuses superseded commits and ports 80/443 owned by any other
 Compose project. After success it keeps the current and previous release and
@@ -92,3 +100,33 @@ The Python tests require PyYAML and use temporary localhost HTTP servers. Docker
 operations are mocked; the tests do not deploy to the testing VM.
 `test_analyzer_overlay.py` needs network access to list the Bridge and mock
 release tags.
+
+### Upgrading a site that used the former harness catalog
+
+Before switching to bundled defaults, inspect `configuration/backend/` on the
+host. A filesystem CSV overrides classpath defaults for its entire domain, so
+leaving old harness exports there can retain obsolete mappings. Older releases
+shipped these files:
+
+- `dictionaries/analyzer-result-options.csv`
+- `sample-types/harness-samples.csv` and
+  `sample-types/molecular-sample-types.csv`
+- `test-results/harness-test-results.csv`
+- `test-sections/harness-sections.csv` and
+  `test-sections/molecular-sections.csv`
+- `tests/harness-tests.csv` and `tests/molecular-tests.csv`
+
+Compare their contents with the prior deployed release before acting. Archive
+only confirmed obsolete harness copies outside `configuration/backend/`; retain
+intentional site edits and other uploaded catalogs. If any CSV remains in a
+domain, that domain still uses filesystem configuration rather than bundled
+defaults. Reload the affected configuration through the supported application
+configuration workflow, or restart the application to run initialization.
+
+Removing a CSV does not delete existing database records or reconcile duplicate
+COVID tests. Inspect the resulting catalog and analyzer bindings; resolve any
+existing duplicates through the supported catalog workflow before claiming
+upgrade success. Do not delete clinical history or repair it with SQL. Run the
+stock-default Playwright checks against the upgraded server, then verify native
+analyzer delivery and clinical result readback. A clean-install pass does not
+prove this populated upgrade.

@@ -12,7 +12,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,7 +21,8 @@ import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.transaction.AfterTransaction;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for QCDashboardService.
@@ -45,6 +45,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <li>Resolved violation on instrument 100 (should not be counted)</li>
  * </ul>
  */
+@Transactional
 public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     /**
@@ -59,9 +60,6 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     private QCDashboardService dashboardService;
 
     @Autowired
-    private DataSource dataSource;
-
-    @Autowired
     private TestSectionService testSectionService;
 
     @Before
@@ -72,6 +70,13 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
         rebaseTimestampsToNow();
     }
 
+    @AfterTransaction
+    public void restoreTestSectionNames() {
+        // The fixture changes the name cache as well as database rows. Refresh
+        // only after rollback so the next test sees names from the restored data.
+        testSectionService.refreshNames();
+    }
+
     /**
      * Shift every timestamp in the QC test tables by the delta between the
      * hardcoded anchor date and "now minus 2 days". This preserves relative
@@ -79,12 +84,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
      * window.
      */
     private void rebaseTimestampsToNow() {
-        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         String interval = "NOW() - INTERVAL '2 days' - TIMESTAMP '" + DATA_ANCHOR + "'";
 
-        jdbc.execute("UPDATE qc_result SET run_date_time = run_date_time + (" + interval + ")");
-        jdbc.execute("UPDATE qc_rule_violation SET violation_date_time = violation_date_time + (" + interval + ")");
-        jdbc.execute("UPDATE qc_rule_violation SET resolved_date_time = resolved_date_time + (" + interval
+        jdbcTemplate.execute("UPDATE qc_result SET run_date_time = run_date_time + (" + interval + ")");
+        jdbcTemplate
+                .execute("UPDATE qc_rule_violation SET violation_date_time = violation_date_time + (" + interval + ")");
+        jdbcTemplate.execute("UPDATE qc_rule_violation SET resolved_date_time = resolved_date_time + (" + interval
                 + ") WHERE resolved_date_time IS NOT NULL");
     }
 

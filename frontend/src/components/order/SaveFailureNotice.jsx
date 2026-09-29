@@ -39,6 +39,15 @@ const withoutOrderLevelField = (text) =>
     : text;
 
 /**
+ * The toast for a failed save. A save the server refused reads as the server's
+ * reason, the same one the inline notice shows, instead of claiming a server
+ * error; only a failure that carries no reason falls back to the generic text.
+ */
+export const saveFailureMessage = (intl, error) =>
+  withoutOrderLevelField(localizeServerMessage(intl, error?.message)) ||
+  intl.formatMessage({ id: "server.error.msg" });
+
+/**
  * What a blocked save asks the user to correct. Fields the screen already marks
  * inline are left out so nothing is reported twice, and the server's summary is
  * left out when it only repeats one of the field errors.

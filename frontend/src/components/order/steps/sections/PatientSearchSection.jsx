@@ -148,6 +148,7 @@ const PatientSearchSection = ({
             idPrefix="order-patient-search"
             getSelectedPatient={handleSelectPatient}
             renderNotifications={false}
+            followUrlLabNumber={false}
           />
         </div>
       )}

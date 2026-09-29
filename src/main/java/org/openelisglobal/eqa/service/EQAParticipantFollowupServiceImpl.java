@@ -584,6 +584,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         Map<String, Object> row = new LinkedHashMap<>();
         row.put(ROW_RESULT_ID, result.getId());
         row.put("analyteId", result.getAnalyteId());
+        row.put("sampleCode", result.getProviderSampleCode());
         row.put("reported", result.getResultValue());
         row.put("target", targetValue);
         row.put("analystId", result.getAssignedAnalystId());

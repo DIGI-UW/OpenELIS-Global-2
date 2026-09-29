@@ -349,9 +349,11 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertTrue("the backdate must actually hit the rows the CSV reads", backdated > 0);
 
         String[] lines = scoringService.buildScoreCsv(cycle.getId(), FIRST_SCORING_ORG).trim().split("\n");
-        assertEquals("scored_on", lines[0].substring(lines[0].lastIndexOf(',') + 1));
+        // Readers find the column by its header name, so the test does too.
+        int column = java.util.List.of(lines[0].split(",")).indexOf("scored_on");
+        assertTrue("the header names a scored_on column", column >= 0);
 
-        String printed = lines[1].substring(lines[1].lastIndexOf(',') + 1);
+        String printed = lines[1].split(",", -1)[column];
         assertEquals("the column carries the scoring date", scoredOn.toString(), printed);
         assertFalse("and not the submission date it used to carry", printed.startsWith("2026-01-15"));
     }

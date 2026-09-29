@@ -3,6 +3,7 @@ import {
   fetchFromOpenElisServer,
   getFromOpenElisServer,
   labNumberForSearch,
+  parseIsoDate,
 } from "./Utils";
 
 const settlePromiseChain = async () => {
@@ -164,5 +165,28 @@ describe("labNumberForSearch", () => {
       "HARN-QS7-2026-00001",
     );
     expect(labNumberForSearch(undefined)).toBe("");
+  });
+});
+
+// Review of #4474: flatpickr's parser read a typed 10/20/2026 as 1 January of
+// the current year, and that date was saved without a warning.
+describe("parseIsoDate", () => {
+  it("reads a real yyyy-MM-dd as that local date", () => {
+    const date = parseIsoDate("2026-12-24");
+    expect(date).toBeInstanceOf(Date);
+    expect(
+      date && [date.getFullYear(), date.getMonth(), date.getDate()],
+    ).toEqual([2026, 11, 24]);
+  });
+
+  it("refuses text in any other shape", () => {
+    ["10/20/2026", "2026-1-5", "24-12-2026", "", "tomorrow"].forEach((text) =>
+      expect(parseIsoDate(text)).toBe(false),
+    );
+  });
+
+  it("refuses a day the month does not have", () => {
+    expect(parseIsoDate("2026-02-30")).toBe(false);
+    expect(parseIsoDate("2026-13-01")).toBe(false);
   });
 });

@@ -54,8 +54,20 @@
     </changeSet>
 
     <changeSet author="openelisglobal" id="qa-057-extend-alert-type-check-for-eqa-submission">
+        <!-- The list below is narrower than the one 3.5.x.x/092 leaves behind, so on a
+             database that already holds FREEZER_HUMIDITY, REFERRAL_* or similar alerts the
+             ADD CONSTRAINT fails and the application never starts (testing, 2026-09-29).
+             qa-084 in qa/045 installs the full union, EQA_SUBMISSION_FAILED included, later
+             in the same update, so skipping this one there loses nothing. Precondition-only
+             edit: the checksum of applied runs is unchanged. -->
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="alert" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.alert WHERE alert_type NOT IN (
+                'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+                'CRITICAL_RESULT', 'EQA_SUBMISSION_FAILED')
+            </sqlCheck>
         </preConditions>
         <comment>
             Extend the alert_type CHECK with EQA_SUBMISSION_FAILED. The Java enum alone is

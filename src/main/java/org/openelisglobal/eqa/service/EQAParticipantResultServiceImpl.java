@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.openelisglobal.analysis.dao.AnalysisDAO;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -85,6 +86,16 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
         existing.setEnteredBy(result.getEnteredBy());
         existing.setSysUserId(result.getSysUserId());
         return eqaParticipantResultDAO.update(existing);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> findAssignedAnalystId(Long analysisId) {
+        if (analysisId == null) {
+            return Optional.empty();
+        }
+        return eqaParticipantResultDAO.getAllMatching("analysisId", analysisId).stream()
+                .map(EQAParticipantResult::getAssignedAnalystId).filter(Objects::nonNull).findFirst();
     }
 
     @Override

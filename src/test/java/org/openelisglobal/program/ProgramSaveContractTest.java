@@ -4,11 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,11 +21,7 @@ import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
-import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.program.controller.EditProgramForm;
 import org.openelisglobal.program.controller.ProgramController;
@@ -38,11 +30,9 @@ import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.test.util.AopTestUtils;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -68,9 +58,6 @@ public class ProgramSaveContractTest extends BaseWebContextSensitiveTest {
     private FhirConfig fhirConfig;
     @Autowired
     private DataSource dataSource;
-    @Autowired
-    @Qualifier("auditTrailService")
-    private AuditTrailService auditTrailServiceMock;
 
     private ProgramController controller;
     private JdbcTemplate jdbc;
@@ -188,29 +175,23 @@ public class ProgramSaveContractTest extends BaseWebContextSensitiveTest {
         assertEquals(1, junctionRows(after.getId()));
     }
 
-    /**
-     * The {@code clinlims.history} INSERT itself cannot be asserted here because
-     * {@code AuditTrailService} is mocked in the Spring test profile; what this
-     * proves is that a program save is audited with the old and new state (the real
-     * row was verified on the dev stack).
-     */
     @Test
     public void domainChange_isAuditedAndAcceptsLegacyCodes() {
         Program created = create("V2THIST", "V2 history", "CLINICAL", true, Collections.singletonList("1"), null);
-        AuditTrailService auditMock = AopTestUtils.getTargetObject(auditTrailServiceMock);
-        reset(auditMock);
 
         EditProgramForm form = identityForm(created);
         form.setDomain("V");
         controller.createProgram(form);
 
         assertEquals("VECTOR", programService.get(created.getId()).getDomain());
-        ArgumentCaptor<BaseObject> newState = ArgumentCaptor.forClass(BaseObject.class);
-        ArgumentCaptor<BaseObject> oldState = ArgumentCaptor.forClass(BaseObject.class);
-        verify(auditMock).saveHistory(newState.capture(), oldState.capture(), anyString(),
-                eq(IActionConstants.AUDIT_TRAIL_UPDATE), argThat(table -> "program".equalsIgnoreCase(table)));
-        assertEquals("VECTOR", ((Program) newState.getValue()).getDomain());
-        assertEquals("CLINICAL", ((Program) oldState.getValue()).getDomain());
+        List<byte[]> changes = jdbc.queryForList(
+                "SELECT h.changes FROM clinlims.history h"
+                        + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
+                        + " WHERE LOWER(r.name) = 'program' AND h.reference_id = ?::numeric AND h.activity = 'U'",
+                byte[].class, created.getId());
+        assertEquals(1, changes.size());
+        String auditXml = new String(changes.get(0), java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(auditXml, auditXml.contains("domain") && auditXml.contains("CLINICAL"));
     }
 
     @Test

@@ -32,6 +32,7 @@ const ProfileTestDefinitions = ({ rows, onChange }) => {
           {[
             ["test_code", "testCode"],
             ["test_name_hint", "testName"],
+            ["specimen_type_hint", "specimenType"],
             ["loinc", "loinc"],
             ["unit", "testUnit"],
           ].map(([key, label]) => (
@@ -82,11 +83,50 @@ const ProfileTestDefinitions = ({ rows, onChange }) => {
               id={`test-${index}-values`}
               label={text("testValues")}
               values={row.values || []}
-              onChange={(values) =>
-                update(index, "values", values.length ? values : undefined)
-              }
+              onChange={(values) => {
+                const hints = Object.fromEntries(
+                  Object.entries(row.result_value_hints || {}).filter(([raw]) =>
+                    values.includes(raw),
+                  ),
+                );
+                const changed = { ...row, values };
+                if (!values.length) delete changed.values;
+                if (Object.keys(hints).length)
+                  changed.result_value_hints = hints;
+                else delete changed.result_value_hints;
+                onChange(
+                  rows.map((item, current) =>
+                    current === index ? changed : item,
+                  ),
+                );
+              }}
             />
           )}
+          {(row.values || [])
+            .filter(
+              (raw, valueIndex, values) =>
+                raw.trim() && values.indexOf(raw) === valueIndex,
+            )
+            .map((raw, valueIndex) => (
+              <TextInput
+                key={raw}
+                id={`profile-test-${index}-result-hint-${valueIndex}`}
+                labelText={text("resultValueHint", { value: raw })}
+                helperText={text("resultValueHintHelp")}
+                value={row.result_value_hints?.[raw] || ""}
+                onChange={(event) => {
+                  const hints = { ...row.result_value_hints };
+                  if (event.target.value.trim())
+                    hints[raw] = event.target.value;
+                  else delete hints[raw];
+                  update(
+                    index,
+                    "result_value_hints",
+                    Object.keys(hints).length ? hints : undefined,
+                  );
+                }}
+              />
+            ))}
           <Button
             kind="ghost"
             size="sm"

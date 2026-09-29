@@ -102,6 +102,8 @@ public interface TestDAO extends BaseDAO<Test, String> {
 
     Test getTestByLocalCode(String localCode) throws LIMSRuntimeException;
 
+    List<Test> getTestsByLocalCode(String localCode) throws LIMSRuntimeException;
+
     /**
      * Tests whose normalized description starts with the normalized form of the
      * plain name (see {@code TestDescriptionNormalizer}), oldest first. Empty when

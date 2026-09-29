@@ -1649,7 +1649,11 @@ export function SearchResults(props) {
                 (row.vectorPoolId
                   ? row.vectorPoolLabel || ""
                   : "-" + row.sequenceNumber)}
-              {row.eqaSample && <EQABadge priority={row.eqaPriority} />}
+              {/* In-house orders are blinded: the analyst must not be able to
+                  tell them from patient samples, so they carry no badge. */}
+              {row.eqaSample && !row.eqaInHouse && (
+                <EQABadge priority={row.eqaPriority} />
+              )}
               {/* Pool-anchored result rows carry the pool size + animal so a
                   reviewer scanning the table sees that multiple test rows
                   belong to one pool. Rows already cluster by accession+sequence,
@@ -2903,6 +2907,10 @@ export function SearchResults(props) {
     (row) =>
       validationState[row.id]?.isCritical &&
       row.resultId &&
+      // EQA material has no patient, so there is nobody to call back. On a
+      // blinded in-house panel the prompt also told the analyst the sample
+      // was not a real one.
+      !row.eqaSample &&
       !loggedCallbackRows[row.id],
   );
 

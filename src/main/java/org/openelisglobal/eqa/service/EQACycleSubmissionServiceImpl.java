@@ -257,7 +257,13 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             String value, Long analystId, String sysUserId) {
         List<EQAParticipantResult> existing = participantResultDAO
                 .getAllMatching(Map.of("round.id", roundId, "labEnrollmentId", enrollmentId, "analyteId", analyteId));
-        EQAParticipantResult row = existing.isEmpty() ? null : existing.get(0);
+        // An in-house panel holds several samples of one analyte, one per analyst, so
+        // this key can name several rows and the analysis says which one is being
+        // entered. Only when the key names a single row (an external scheme's one
+        // result per analyte, or a draft entered by hand) is that row the answer.
+        Long analysisId = Long.valueOf(analysis.getId());
+        EQAParticipantResult row = existing.stream().filter(result -> analysisId.equals(result.getAnalysisId()))
+                .findFirst().orElse(existing.size() == 1 ? existing.get(0) : null);
 
         if (row == null) {
             row = new EQAParticipantResult();
@@ -267,7 +273,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             row.setRound(roundRef);
             row.setLabEnrollmentId(enrollmentId);
             row.setAnalyteId(analyteId);
-            row.setAnalysisId(Long.valueOf(analysis.getId()));
+            row.setAnalysisId(analysisId);
             row.setResultValue(GenericValidator.isBlankOrNull(value) ? null : value.trim());
         } else if (row.getSubmissionStatus() != EQASubmissionStatus.DRAFT) {
             // Refusing is the point, but say so: whoever picked the analyst gets no
@@ -317,7 +323,8 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                 if (!finalizedId.equals(analysis.getStatusId())) {
                     continue;
                 }
-                if (bridgeAnalysis(cycle, roundId, enrollmentId, analysis, schemeAnalytes, sysUserId, tally)) {
+                if (bridgeAnalysis(cycle, roundId, enrollmentId, analysis, providerSampleCode(sample), schemeAnalytes,
+                        sysUserId, tally)) {
                     tally.answered++;
                 }
             }
@@ -330,7 +337,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
      *         result
      */
     private boolean bridgeAnalysis(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis,
-            Map<Long, Long> schemeAnalytes, String sysUserId, Tally tally) {
+            String providerSampleCode, Map<Long, Long> schemeAnalytes, String sysUserId, Tally tally) {
         boolean answered = false;
         for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
             String value = EqaReportedValue.of(resultService, pipelineResult);
@@ -346,7 +353,8 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                         analysis.getId());
                 continue;
             }
-            if (upsert(cycle, roundId, enrollmentId, analysis, analyteId, value.trim(), sysUserId, tally)) {
+            if (upsert(cycle, roundId, enrollmentId, analysis, analyteId, providerSampleCode, value.trim(), sysUserId,
+                    tally)) {
                 answered = true;
             }
         }
@@ -401,11 +409,47 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         }).orElseGet(Map::of);
     }
 
-    private boolean upsert(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
-            String value, String sysUserId, Tally tally) {
+    /**
+     * The provider's code for this order's sample, as the laboratory entered it.
+     */
+    private static String providerSampleCode(SampleEQA sample) {
+        String code = sample.getEqaProviderSampleId();
+        return GenericValidator.isBlankOrNull(code) ? null : code.trim();
+    }
+
+    /**
+     * The row this analysis already answers. Several rows can share a round,
+     * enrollment and analyte (an in-house panel's aliquots, or an external panel's
+     * several samples of one test), so the analysis that produced the value decides
+     * first; an external PT row it has not bridged yet is the one for the same
+     * provider sample. An order that names no provider sample keeps the
+     * one-row-per-analyte rule it always had.
+     */
+    private EQAParticipantResult rowFor(Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
+            String providerSampleCode) {
         List<EQAParticipantResult> existing = participantResultDAO
                 .getAllMatching(Map.of("round.id", roundId, "labEnrollmentId", enrollmentId, "analyteId", analyteId));
-        EQAParticipantResult row = existing.isEmpty() ? null : existing.get(0);
+        Long analysisId = Long.valueOf(analysis.getId());
+        return existing.stream().filter(row -> analysisId.equals(row.getAnalysisId())).findFirst()
+                .orElseGet(() -> existing.stream()
+                        .filter(row -> row.getPanelSampleId() == null
+                                && (providerSampleCode == null ? row.getProviderSampleCode() == null
+                                        : providerSampleCode.equalsIgnoreCase(row.getProviderSampleCode())))
+                        .findFirst().orElse(null));
+    }
+
+    private boolean upsert(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
+            String providerSampleCode, String value, String sysUserId, Tally tally) {
+        EQAParticipantResult row = rowFor(roundId, enrollmentId, analysis, analyteId, providerSampleCode);
+
+        if (row != null && row.getPanelSampleId() == null && row.getProviderSampleCode() == null
+                && providerSampleCode != null && row.getSubmissionStatus() == EQASubmissionStatus.DRAFT) {
+            // A row opened before the value arrived (an analyst picked at result entry)
+            // learns which provider sample it answers.
+            row.setProviderSampleCode(providerSampleCode);
+            row = participantResultService.saveDraft(row);
+            tally.written++;
+        }
 
         if (row == null) {
             row = new EQAParticipantResult();
@@ -416,14 +460,14 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             row.setLabEnrollmentId(enrollmentId);
             row.setAnalyteId(analyteId);
             row.setAnalysisId(Long.valueOf(analysis.getId()));
+            row.setProviderSampleCode(providerSampleCode);
             row.setResultValue(value);
             row.setSysUserId(sysUserId);
             row = participantResultService.saveDraft(row);
             tally.written++;
         } else if (row.getSubmissionStatus() == EQASubmissionStatus.DRAFT && !value.equals(row.getResultValue())) {
-            // External PT is one result per analyte per round, so a second sample
-            // reporting the same analyte updates this row rather than adding one —
-            // the partial unique index would refuse the insert anyway.
+            // The same sample re-reported (a corrected result) updates its row. Another
+            // sample of the same analyte has a row of its own.
             row.setResultValue(value);
             row.setSysUserId(sysUserId);
             row = participantResultService.saveDraft(row);
@@ -658,8 +702,11 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     public String exportBundleCsv(Long cycleId, Long labEnrollmentId) {
         // analyte_name travels with the id: the provider that imports this bundle is
         // another instance whose analyte ids differ, so the name is what it matches on.
+        // sample_code is the provider's code for the panel sample each row answers,
+        // so two samples of one analyte stay apart. It is the last column: readers
+        // find columns by header name, and one that predates it ignores it.
         StringBuilder csv = new StringBuilder("cycle_id,cycle_name,round_number,analyte_id,analyte_name,"
-                + "result_value,result_unit,submission_status,entered_at\n");
+                + "result_value,result_unit,submission_status,entered_at,sample_code\n");
         for (EQAParticipantResult result : results(cycleId, labEnrollmentId)) {
             if (!SUBMITTABLE.contains(result.getSubmissionStatus())) {
                 continue;
@@ -673,7 +720,8 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                     .append(bundleValue(result.getResultValue())).append(',')
                     .append(StringUtil.csvEscape(result.getResultUnit())).append(',')
                     .append(result.getSubmissionStatus().name()).append(',')
-                    .append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append('\n');
+                    .append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append(',')
+                    .append(StringUtil.csvEscape(result.getProviderSampleCode())).append('\n');
         }
         return csv.toString();
     }
@@ -700,6 +748,13 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         int scored = 0;
         for (Map<String, Object> entry : scores) {
             EQAParticipantResult row = resolveScoredRow(cycleId, labEnrollmentId, entry);
+            // Set before the score is recorded: recording it raises the follow-up,
+            // which shows the target the provider judged this sample against.
+            String target = stringOf(entry, "target");
+            if (target != null) {
+                row.setProviderTarget(target);
+                participantResultDAO.update(row);
+            }
             participantResultService.recordScore(row.getId(), verdictOf(entry), decimalOf(entry, "zScore"),
                     longOf(entry, "eqaResultId"), sysUserId);
             scored++;
@@ -726,6 +781,8 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         int nameColumn = EqaCsv.indexOf(header, "analyte_name");
         int verdictColumn = EqaCsv.indexOf(header, "performance_status");
         int zColumn = EqaCsv.indexOf(header, "z_score");
+        int targetColumn = EqaCsv.indexOf(header, "target_value");
+        int sampleColumn = EqaCsv.indexOf(header, "sample_code");
         if (nameColumn < 0 || verdictColumn < 0) {
             throw new IllegalArgumentException(
                     "The CSV needs analyte_name and performance_status columns (the provider's scores CSV)");
@@ -756,6 +813,14 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             if (!z.isEmpty()) {
                 score.put("zScore", z);
             }
+            String target = targetColumn < 0 ? "" : EqaCsv.cell(cells, targetColumn);
+            if (!target.isEmpty()) {
+                score.put("target", target);
+            }
+            String sampleCode = sampleColumn < 0 ? "" : EqaCsv.cell(cells, sampleColumn);
+            if (!sampleCode.isEmpty()) {
+                score.put("sampleCode", sampleCode);
+            }
             scores.add(score);
         }
         if (scores.isEmpty()) {
@@ -777,10 +842,23 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             if (analyteId == null) {
                 throw new IllegalArgumentException("Each score needs a resultId or an analyteId");
             }
-            return results(cycleId, labEnrollmentId).stream().filter(
-                    r -> analyteId.equals(r.getAnalyteId()) && r.getSubmissionStatus() == EQASubmissionStatus.SUBMITTED)
-                    .findFirst().orElseThrow(() -> new IllegalArgumentException(
-                            "No submitted result for analyte " + analyteId + " in cycle " + cycleId));
+            String sampleCode = stringOf(entry, "sampleCode");
+            List<EQAParticipantResult> forAnalyte = results(cycleId, labEnrollmentId).stream()
+                    .filter(r -> analyteId.equals(r.getAnalyteId())).toList();
+            if (sampleCode == null && forAnalyte.size() > 1) {
+                // Two samples of one analyte: a score that does not say which sample it
+                // judged would land on either. Counting every sample, scored or not,
+                // matters: counting only the unscored ones lets a score resent for one
+                // sample land on the other by elimination.
+                String analyte = eqaPanelService.analyteName(analyteId);
+                throw new IllegalArgumentException((analyte == null ? "Analyte " + analyteId : analyte) + " has "
+                        + forAnalyte.size() + " samples in cycle " + cycleId + "; the score must name its sample_code");
+            }
+            return forAnalyte.stream().filter(r -> r.getSubmissionStatus() == EQASubmissionStatus.SUBMITTED)
+                    .filter(r -> sampleCode == null || sampleCode.equalsIgnoreCase(r.getProviderSampleCode()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("No submitted result for analyte " + analyteId
+                            + (sampleCode == null ? "" : " sample " + sampleCode) + " in cycle " + cycleId));
         }
         EQAParticipantResult row = participantResultService.get(resultId);
         if (row.getCycle() == null || !cycleId.equals(row.getCycle().getId())) {
@@ -846,6 +924,11 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(key + " must be a number");
         }
+    }
+
+    private static String stringOf(Map<String, Object> entry, String key) {
+        Object raw = entry.get(key);
+        return raw == null || String.valueOf(raw).isBlank() ? null : String.valueOf(raw).trim();
     }
 
     private BigDecimal decimalOf(Map<String, Object> entry, String key) {

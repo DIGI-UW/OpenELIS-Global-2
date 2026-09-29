@@ -378,14 +378,15 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const params = new URLSearchParams(location.search);
+      const currentLocation = history.location;
+      const params = new URLSearchParams(currentLocation.search);
       if (value.trim()) {
         params.set("search", value.trim());
       } else {
         params.delete("search");
       }
       history.replace({
-        pathname: location.pathname,
+        pathname: currentLocation.pathname,
         search: params.toString(),
       });
     }, 300);

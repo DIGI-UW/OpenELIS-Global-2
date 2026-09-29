@@ -548,17 +548,30 @@ const AnalystCompetencyPage = () => {
                                   </Tag>
                                 </TableCell>
                                 <TableCell>
-                                  {event.failure
-                                    ? t("eqa.competency.countsFail", "Failure")
-                                    : event.counted
+                                  {event.foldedInto === "TRIAGE"
+                                    ? t(
+                                        "eqa.competency.countsFoldedTriage",
+                                        "Decided by triage",
+                                      )
+                                    : event.foldedInto === "SCORE"
                                       ? t(
-                                          "eqa.competency.countsPass",
-                                          "Assessed",
+                                          "eqa.competency.countsFoldedScore",
+                                          "Counted with the score",
                                         )
-                                      : t(
-                                          "eqa.competency.countsExcused",
-                                          "Excused",
-                                        )}
+                                      : event.failure
+                                        ? t(
+                                            "eqa.competency.countsFail",
+                                            "Failure",
+                                          )
+                                        : event.counted
+                                          ? t(
+                                              "eqa.competency.countsPass",
+                                              "Assessed",
+                                            )
+                                          : t(
+                                              "eqa.competency.countsExcused",
+                                              "Excused",
+                                            )}
                                 </TableCell>
                               </TableRow>
                             ))}

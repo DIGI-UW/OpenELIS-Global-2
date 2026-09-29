@@ -612,6 +612,7 @@ const AnalyzerTypeManagement = () => {
                         ) : (
                           carbonRows.map((row) => {
                             const type = typesById.get(row.id);
+                            if (!type) return null;
                             return (
                               <TableRow key={row.id} {...getRowProps({ row })}>
                                 <TableCell>

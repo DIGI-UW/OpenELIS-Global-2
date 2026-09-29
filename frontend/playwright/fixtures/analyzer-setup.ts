@@ -1,5 +1,4 @@
 import { expect, Locator, Page } from "@playwright/test";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -20,7 +19,7 @@ export class AnalyzerSetupPage {
   }
 
   async expectOpen() {
-    await expect(this.surface).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(this.surface).toBeVisible();
     await expect(
       this.surface.getByRole("heading", {
         level: 2,
@@ -50,7 +49,6 @@ export class AnalyzerSetupPage {
       (url) =>
         Boolean(url.searchParams.get("profile")) &&
         Boolean(url.searchParams.get("revision")),
-      { timeout: UI_TIMEOUT },
     );
     await expect(this.typePicker).toHaveValue(
       new RegExp(escapeRegExp(profileName), "i"),
@@ -61,10 +59,10 @@ export class AnalyzerSetupPage {
   async selectFirstLabUnit() {
     await this.labUnitPicker.click();
     const option = this.page.locator('[role="option"]:visible').first();
-    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(option).toBeVisible();
     await option.click();
     await this.nameInput.click();
-    await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(option).not.toBeVisible();
   }
 
   async selectLabUnit(name: string) {
@@ -74,10 +72,10 @@ export class AnalyzerSetupPage {
       .locator('[role="option"]:visible')
       .filter({ hasText: name })
       .first();
-    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(option).toBeVisible();
     await option.click();
     await this.nameInput.click();
-    await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(option).not.toBeVisible();
   }
 
   async continueToVerify() {
@@ -86,7 +84,6 @@ export class AnalyzerSetupPage {
       (url) =>
         url.searchParams.get("setup") === "verify" &&
         Boolean(url.searchParams.get("analyzerId")),
-      { timeout: LONG_TIMEOUT },
     );
   }
 
@@ -94,11 +91,10 @@ export class AnalyzerSetupPage {
     const button = this.page.getByRole("button", {
       name: "Continue to Connect",
     });
-    await expect(button).toBeEnabled({ timeout: LONG_TIMEOUT });
+    await expect(button).toBeEnabled();
     await button.click();
     await expect(this.page).toHaveURL(
       (url) => url.searchParams.get("setup") === "connect",
-      { timeout: UI_TIMEOUT },
     );
   }
 
@@ -108,6 +104,12 @@ export class AnalyzerSetupPage {
         name: /Analyzer (?:source )?address/,
       })
       .fill(address);
+  }
+
+  async fillSenderId(senderId: string) {
+    await this.page
+      .getByRole("textbox", { name: "Instrument system name", exact: true })
+      .fill(senderId);
   }
 
   async fillPort(port: string) {
@@ -123,7 +125,7 @@ export class AnalyzerSetupPage {
 
   async fillImportDirectory(path: string) {
     await this.page
-      .getByRole("textbox", { name: "Analyzer file directory" })
+      .getByRole("textbox", { name: "Directory", exact: true })
       .fill(path);
   }
 
@@ -133,16 +135,14 @@ export class AnalyzerSetupPage {
       .click();
     await expect(
       this.page.getByRole("heading", { name: "Connection evidence" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(this.page.getByText("Connection ready")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeVisible();
+    await expect(this.page.getByText("Connection ready")).toBeVisible();
   }
 
   async close() {
     await this.page
       .getByRole("button", { name: "Close analyzer setup" })
       .click();
-    await expect(this.surface).not.toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(this.surface).not.toBeVisible();
   }
 }

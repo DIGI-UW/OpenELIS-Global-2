@@ -1,11 +1,8 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const PROFILE_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const FILTERED_CATALOG = "/analyzers/types?q=gene&source=SHIPPED";
@@ -17,7 +14,6 @@ function escapeRegExp(value: string) {
 async function openSharedMappingEditor(page: Page): Promise<string> {
   await page.goto(FILTERED_CATALOG, {
     waitUntil: "domcontentloaded",
-    timeout: NAV_TIMEOUT,
   });
   await expect(
     page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -27,9 +23,7 @@ async function openSharedMappingEditor(page: Page): Promise<string> {
     name: new RegExp(escapeRegExp(PROFILE_NAME), "i"),
   });
   await expect(profileRow).toBeVisible();
-  await expect(profileRow).toContainText(/revision [1-9]\d*/, {
-    timeout: LONG_TIMEOUT,
-  });
+  await expect(profileRow).toContainText(/revision [1-9]\d*/);
   const revision = (await profileRow.innerText()).match(
     /\brevision ([1-9]\d*)\b/i,
   )?.[1];
@@ -83,14 +77,8 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     ).toHaveAttribute("href", FILTERED_CATALOG);
 
     const sourceRows = page.getByTestId("analyzer-type-mapping-row");
-    await expect(sourceRows).toHaveCount(5);
-    for (const code of [
-      "MTB-RIF",
-      "RIF",
-      "HIV-VL",
-      "COVID19",
-      "UNMAPPED-MTB",
-    ]) {
+    await expect(sourceRows).toHaveCount(4);
+    for (const code of ["MTB-RIF", "RIF", "HIV-VL", "COVID19"]) {
       await expect(page.getByText(code, { exact: true }).first()).toBeVisible();
     }
 
@@ -119,9 +107,9 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     });
 
     const mappingUrl = page.url();
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(mappingUrl);
-    await expect(sourceRows).toHaveCount(5);
+    await expect(sourceRows).toHaveCount(4);
 
     await breadcrumb
       .getByRole("link", { name: "Analyzer Types", exact: true })
@@ -150,10 +138,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
         name: `${PROFILE_NAME} mappings`,
       }),
     ).toBeVisible();
-    await expect(page.getByTestId("analyzer-type-mapping-row")).toHaveCount(5);
-    await expect(
-      page.getByRole("button", { name: /^UNMAPPED-MTB.*Needs mapping$/ }),
-    ).toBeVisible();
+    await expect(page.getByTestId("analyzer-type-mapping-row")).toHaveCount(4);
     await expect(
       page.getByRole("link", { name: "Duplicate Profile", exact: true }),
     ).toBeVisible();
@@ -182,7 +167,6 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
 
     await page.goto("/analyzers/types", {
       waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT,
     });
     await expect(
       page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -231,20 +215,16 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       page.getByRole("button", { name: /^RIF.*Needs mapping$/ }),
     ).toHaveAttribute("aria-expanded", "true");
 
-    const resistant = rifRow.getByRole("combobox", {
-      name: "OpenELIS result for DETECTED",
-    });
-    await expect(resistant).toBeVisible();
-    await resistant.click();
-    await page.getByRole("option", { name: "Resistant", exact: true }).click();
-
-    const susceptible = rifRow.getByRole("combobox", {
-      name: "OpenELIS result for NOT DETECTED",
-    });
-    await susceptible.click();
-    await page
-      .getByRole("option", { name: "Susceptible", exact: true })
-      .click();
+    await chooseCarbonOption(
+      rifRow.getByRole("combobox", { name: "OpenELIS result for DETECTED" }),
+      "DETECTED",
+    );
+    await chooseCarbonOption(
+      rifRow.getByRole("combobox", {
+        name: "OpenELIS result for NOT DETECTED",
+      }),
+      "NOT DETECTED",
+    );
     const indeterminateRow = rifRow
       .locator(".analyzer-type-mapping__result-row")
       .filter({ has: page.getByText("INDETERMINATE", { exact: true }) });
@@ -257,19 +237,19 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await save.click();
     await expect(page.getByText("Mappings saved")).toBeVisible();
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
       page.getByRole("button", { name: /^MTB-RIF.*Do not receive$/ }),
     ).toBeVisible();
     await page.getByRole("button", { name: /^RIF.*Mapped$/ }).click();
     await expect(
       page.getByRole("combobox", { name: "OpenELIS result for DETECTED" }),
-    ).toHaveAttribute("title", "Resistant");
+    ).toHaveAttribute("title", "DETECTED");
     await expect(
       page.getByRole("combobox", {
         name: "OpenELIS result for NOT DETECTED",
       }),
-    ).toHaveAttribute("title", "Susceptible");
+    ).toHaveAttribute("title", "NOT DETECTED");
 
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
@@ -297,7 +277,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       contentType: "image/png",
     });
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByText("Current confirmation")).toBeVisible();
   });
 });

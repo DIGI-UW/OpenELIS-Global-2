@@ -9,7 +9,14 @@ import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import EditSample from "./EditSample";
 
-vi.mock("../addOrder/SampleType", () => ({ default: () => <div /> }));
+const { sampleTypeProps } = vi.hoisted(() => ({ sampleTypeProps: [] }));
+
+vi.mock("../addOrder/SampleType", () => ({
+  default: (props) => {
+    sampleTypeProps.push(props);
+    return <div />;
+  },
+}));
 vi.mock("../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getFromOpenElisServer: vi.fn() };
@@ -58,5 +65,41 @@ describe("EditSample current tests", () => {
       ),
     ).toBe(false);
     errors.mockRestore();
+  });
+});
+
+describe("EditSample added samples (OGC-1388)", () => {
+  it("an unticked test on an added sample is no longer carried", () => {
+    window.scrollTo = vi.fn();
+    sampleTypeProps.length = 0;
+    const added = {
+      index: 1,
+      sampleTypeId: "37",
+      sampleXML: null,
+      panels: [],
+      tests: [{ id: "322", name: "Histopathology examination" }],
+      referralItems: [],
+    };
+    const setSamples = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <EditSample
+          samples={[added]}
+          setSamples={setSamples}
+          orderFormValues={{ existingTests: [], possibleTests: [] }}
+          setOrderFormValues={vi.fn()}
+          error={() => null}
+        />
+      </IntlProvider>,
+    );
+
+    sampleTypeProps[0].sampleTypeObject({
+      selectedTests: [],
+      sampleObjectIndex: 0,
+    });
+
+    const update = setSamples.mock.calls[0][0];
+    expect(update([added])[0].tests).toEqual([]);
+    expect(added.tests).toHaveLength(1);
   });
 });

@@ -630,20 +630,20 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     private List<Dictionary> getDictionaryResultList(AnalyzerResults result) {
-        if ("N".equals(result.getResultType()) || "A".equals(result.getResultType())
-                || "R".equals(result.getResultType()) || GenericValidator.isBlankOrNull(result.getResultType())
+        if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                 || result.getTestId() == null) {
             return null;
         }
 
         List<Dictionary> dictionaryList = new ArrayList<>();
-
-        List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
-
+        List<TestResult> testResults = GenericValidator.isBlankOrNull(result.getComponentId())
+                ? testResultService.getActiveTestResultsByTest(result.getTestId())
+                : testResultService.getActiveOptionsByComponentId(result.getComponentId());
         for (TestResult testResult : testResults) {
-            dictionaryList.add(dictionaryService.get(testResult.getValue()));
+            if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+                dictionaryList.add(dictionaryService.get(testResult.getValue()));
+            }
         }
-
         return dictionaryList;
     }
 

@@ -266,9 +266,12 @@ const OrderLabel = () => {
   ).length;
 
   // Build patient info for order label
-  const patientName = orderData?.patientProperties
-    ? `${orderData.patientProperties.lastName || ""}, ${orderData.patientProperties.firstName || ""}`.trim()
-    : "---";
+  const patientName = [
+    orderData?.patientProperties?.lastName,
+    orderData?.patientProperties?.firstName,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   // Build label rows - Order label + one row per printable sample.
   //
@@ -300,7 +303,12 @@ const OrderLabel = () => {
       id: "label.type.order",
       defaultMessage: "Order Label",
     }),
-    content: `${labNrPrefix}: ${labNumber || "---"} | ${patientPrefix}: ${patientName}`,
+    content: [
+      `${labNrPrefix}: ${labNumber || "---"}`,
+      patientName ? `${patientPrefix}: ${patientName}` : siteName,
+    ]
+      .filter(Boolean)
+      .join(" | "),
     barcode: labNumber || "---",
   };
 

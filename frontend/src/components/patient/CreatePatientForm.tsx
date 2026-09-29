@@ -191,6 +191,7 @@ const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
     return { years: "", months: "", days: "" };
   }
   const now = new Date();
+  if (birthDate > now) return { years: "", months: "", days: "" };
   const years = differenceInYears(now, birthDate);
   const months = differenceInMonths(now, addYears(birthDate, years));
   const days = differenceInDays(
@@ -281,6 +282,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   // on; saving flips it back. The parent keys this component on patientPK,
   // so loading a different patient remounts (no need for a separate reset).
   const [isEditing, setIsEditing] = useState(false);
+  const [staleSave, setStaleSave] = useState<string | null>(null);
   const isExistingPatient = !!props.selectedPatient?.patientPK;
   const isReadOnly = isExistingPatient && !isEditing;
   const [phoneValidation, setPhoneValidation] = useState({
@@ -752,7 +754,17 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           // Reseed Formik so `dirty` clears, then drop edit mode so the
           // form re-locks. Same-URL history.push wouldn't remount the
           // component, so this is the only way the saved state shows.
-          formikBag.resetForm({ values });
+          // The versions the save produced replace the loaded ones, or the
+          // next save from this screen would be refused as stale.
+          formikBag.resetForm({
+            values: {
+              ...values,
+              patientLastUpdated:
+                response?.patientLastUpdated ?? values.patientLastUpdated,
+              personLastUpdated:
+                response?.personLastUpdated ?? values.personLastUpdated,
+            },
+          });
           setIsEditing(false);
           const savedId =
             props.selectedPatient?.patientPK ||
@@ -764,6 +776,16 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           return;
         }
 
+        if (
+          response?.statusCode === 409 &&
+          response?.messageKey === "error.patient.staleSave"
+        ) {
+          setNotificationVisible(false);
+          setStaleSave(
+            resolveApiErrorMessage(intl, response, "error.save.patient"),
+          );
+          return;
+        }
         // Surface the backend's actual error message rather than a generic
         // "save failed" — recognises messageKey/errorKey for i18n, plain
         // message/error strings, and Spring fieldErrors arrays.
@@ -1196,6 +1218,9 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           invalidText={errors.birthDateForDisplay}
                           name={field.name}
                           disallowFutureDate={true}
+                          futureDateText={intl.formatMessage({
+                            id: "patient.dob.future",
+                          })}
                           updateStateValue={true}
                         />
                       )}
@@ -1958,6 +1983,26 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                   {" "}
                   <br></br>
                 </Column>
+                {props.showActionsButton && !isReadOnly && staleSave && (
+                  <Column lg={16} md={8} sm={4}>
+                    <div data-testid="patient-stale-save">
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({ id: "error.title" })}
+                        subtitle={staleSave}
+                      />
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={() => window.location.reload()}
+                      >
+                        <FormattedMessage id="label.results.refresh" />
+                      </Button>
+                    </div>
+                  </Column>
+                )}
                 {props.showActionsButton && !isReadOnly && (
                   <>
                     <Column lg={4} md={4} sm={4}>
@@ -1966,6 +2011,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         id="submit"
                         disabled={
                           isSubmitting ||
+                          Boolean(staleSave) ||
                           Object.values(phoneValidation).some(
                             (item) => item.status === false,
                           )

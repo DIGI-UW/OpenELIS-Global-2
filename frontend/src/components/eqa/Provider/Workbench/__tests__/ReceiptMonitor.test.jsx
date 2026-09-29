@@ -415,10 +415,63 @@ describe("ReceiptMonitor", () => {
     expect(JSON.parse(body)).toEqual({
       organizationId: 550,
       results: [
-        { testId: 7, value: "250" },
-        { testId: 8, value: "Reactive" },
+        { testId: 7, panelSampleId: null, value: "250" },
+        { testId: 8, panelSampleId: null, value: "Reactive" },
       ],
     });
+  });
+
+  test("Enter results offers one box per panel sample of a test and posts each against its sample", async () => {
+    renderTab();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/results?organizationId=550")) {
+        cb({
+          cycleId: 9,
+          organizationId: 550,
+          tests: [
+            {
+              testId: 7,
+              testName: "CD4 count",
+              panelSampleId: 31,
+              sampleCode: "CD4-01",
+              reported: null,
+            },
+            {
+              testId: 7,
+              testName: "CD4 count",
+              panelSampleId: 32,
+              sampleCode: "CD4-02",
+              reported: null,
+            },
+          ],
+        });
+      } else if (url.includes("/receipts")) cb(RECEIPTS);
+      else if (url.includes("/scores")) cb(SCORES);
+    });
+
+    const mbeya = (await screen.findByText("Mbeya Regional Lab")).closest("tr");
+    fireEvent.click(
+      within(mbeya).getByRole("button", { name: "Enter results" }),
+    );
+    expect(await screen.findByText("Sample CD4-01")).toBeInTheDocument();
+    expect(screen.getByText("Sample CD4-02")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("CD4 count CD4-01"), {
+      target: { value: "260" },
+    });
+    fireEvent.change(screen.getByLabelText("CD4 count CD4-02"), {
+      target: { value: "950" },
+    });
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb(jsonResponse(true, { tests: [] })),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+
+    const [, body] = postToOpenElisServerFullResponse.mock.calls.at(-1);
+    expect(JSON.parse(body).results).toEqual([
+      { testId: 7, panelSampleId: 31, value: "260" },
+      { testId: 7, panelSampleId: 32, value: "950" },
+    ]);
   });
 
   test("Import CSV posts the pasted export bundle and reports what did not map", async () => {

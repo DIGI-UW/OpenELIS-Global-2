@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
 import java.nio.file.Files;
@@ -38,13 +37,8 @@ import org.openelisglobal.analyzer.service.AnalyzerSiteBindingTestDraft;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
-import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
-import org.openelisglobal.history.service.HistoryService;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -67,8 +61,6 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private AnalyzerNormalizedResultImportService importService;
     @Autowired
     private DataSource dataSource;
-    @Autowired
-    private FhirContext fhirContext;
 
     @Autowired
     private AnalyzerSiteBindingService bindings;
@@ -82,27 +74,12 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Autowired
     private PlatformTransactionManager transactionManager;
 
-    @Autowired
-    private HistoryService historyService;
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-    private Object confirmationTarget;
-    private Object previousAuditTrail;
     private JdbcTemplate jdbc;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        when(fhirContext.newJsonParser()).thenAnswer(invocation -> REAL_FHIR.newJsonParser());
-        // Confirmation is valid only with a durable audit event; AppTestConfig mocks
-        // audit.
-        var audit = new AuditTrailServiceImpl();
-        ReflectionTestUtils.setField(audit, "historyService", historyService);
-        ReflectionTestUtils.setField(audit, "referenceTablesService", referenceTablesService);
-        confirmationTarget = AopTestUtils.getUltimateTargetObject(confirmations);
-        previousAuditTrail = ReflectionTestUtils.getField(confirmationTarget, "auditTrailService");
-        ReflectionTestUtils.setField(confirmationTarget, "auditTrailService", audit);
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
         jdbc.update(
@@ -126,13 +103,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @After
     public void tearDown() {
-        try {
-            cleanup();
-        } finally {
-            if (confirmationTarget != null) {
-                ReflectionTestUtils.setField(confirmationTarget, "auditTrailService", previousAuditTrail);
-            }
-        }
+        cleanup();
     }
 
     @Test

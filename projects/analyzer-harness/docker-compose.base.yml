@@ -1,6 +1,7 @@
 services:
   certs:
     container_name: oe-certs
+    restart: "no"
     environment:
       KEYSTORE_PW: '"kspass"'
       TRUSTSTORE_PW: '"tspass"'
@@ -42,6 +43,9 @@ services:
 
   fhir.openelis.org:
     container_name: external-fhir-api
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     ports:
       - "8081:8080"
       - "8444:8443"
@@ -52,8 +56,27 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     tty: true
 
+  # Shared by CI and local development; all durable Bridge state survives
+  # container replacement and ordinary down/up (only --volumes removes it).
+  openelis-analyzer-bridge:
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    volumes:
+      - bridge-data:/data/openelis-analyzer-bridge
+    environment:
+      BRIDGE_OUTBOX_DB_PATH: /data/openelis-analyzer-bridge/outbox.db
+      BRIDGE_FILE_STATE_STORE_PATH: /data/openelis-analyzer-bridge/state.db
+
   proxy:
     container_name: openelisglobal-proxy
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      frontend.openelis.org:
+        condition: service_started
+      oe.openelis.org:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
@@ -63,6 +86,8 @@ networks:
     driver: bridge
 
 volumes:
+  bridge-data:
+  configuration-data:
   db-data:
   key_trust-store-volume:
   certs-vol:

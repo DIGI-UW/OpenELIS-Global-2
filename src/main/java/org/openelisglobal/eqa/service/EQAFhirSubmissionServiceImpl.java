@@ -26,10 +26,12 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQADistributionDAO;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQAResultDAO;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQADistribution;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
@@ -54,6 +56,9 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
     @Autowired
     private EQAResultDAO resultDAO;
+
+    @Autowired
+    private EQAPanelSampleDAO panelSampleDAO;
 
     @Autowired
     private EQACycleDAO cycleDAO;
@@ -322,6 +327,10 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         observation
                 .addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/participant_result_uuid",
                         result.getFhirUuid().toString()));
+        if (result.getProviderSampleCode() != null) {
+            observation.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + SAMPLE_CODE_SUFFIX,
+                    result.getProviderSampleCode()));
+        }
         observation.setStatus(ObservationStatus.FINAL);
 
         CodeableConcept code = new CodeableConcept();
@@ -474,6 +483,11 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
         observation.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/eqa_result_uuid",
                 result.getFhirUuid().toString()));
+        String sampleCode = result.getPanelSampleId() == null ? null
+                : panelSampleDAO.get(result.getPanelSampleId()).map(EQAPanelSample::getSampleCode).orElse(null);
+        if (sampleCode != null) {
+            observation.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + SAMPLE_CODE_SUFFIX, sampleCode));
+        }
 
         observation.setStatus(ObservationStatus.FINAL);
 

@@ -5,7 +5,6 @@ import {
   submitQcFailedAstAnalyzerResults,
   submitUnmatchedAstAnalyzerResults,
 } from "../../../helpers/seed-microbiology-data";
-import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 // Exercise normalized AST review with a real configured harness connection.
 // Instrument parsing and protocol compatibility have their own harness journeys.
@@ -45,7 +44,7 @@ test.describe("Microbiology analyzer AST review", () => {
     const row = page.getByTestId(
       `microbiology-worklist-row-${seeded.astRunId}`,
     );
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toBeVisible();
     await expect(row).toContainText("Awaiting Results");
 
     const browserIngressAttempt = await page.request.post(
@@ -63,7 +62,7 @@ test.describe("Microbiology analyzer AST review", () => {
     await page.goto(`/Microbiology/worklist?${resultsQuery}`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toBeVisible();
     await expect(row).toContainText("QC Failed");
     await row.focus();
     await page.keyboard.press("Enter");
@@ -78,9 +77,9 @@ test.describe("Microbiology analyzer AST review", () => {
       );
     });
 
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
+    await expect(
+      page.getByRole("heading", { name: "Manual AST" }),
+    ).toBeVisible();
     const astCard = page.getByTestId("microbiology-ast-card");
     await expect(astCard.getByText("Analyzer QC failed")).toBeVisible();
     await expect(astCard.getByText(SOURCE_ANALYZER)).toBeVisible();
@@ -131,7 +130,7 @@ test.describe("Microbiology analyzer AST review", () => {
     // Admin opens its dashboard in one click, and the stuck analyzer events
     // are one of its tiles, inside the admin shell.
     const adminMenu = page.getByRole("link", { name: "Admin", exact: true });
-    await expect(adminMenu).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(adminMenu).toBeVisible();
     await adminMenu.click();
     await page
       .getByTestId("admin-dashboard-tile")
@@ -143,7 +142,7 @@ test.describe("Microbiology analyzer AST review", () => {
 
     await expect(
       page.getByRole("heading", { name: "Analyzer import issues" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    ).toBeVisible();
     const row = page.getByRole("row").filter({ hasText: unmatched.sourceId });
     await expect(row).toContainText("AST result available");
     await expect(row).toContainText(
