@@ -223,3 +223,74 @@ describe("groups stay open across navigation", () => {
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
   });
 });
+
+describe("internal links that open in a new window", () => {
+  const renderHelp = () =>
+    render(
+      <MemoryRouter initialEntries={["/Dashboard"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav
+                menus={menus([
+                  {
+                    elementId: "menu_help",
+                    displayKey: "banner.menu.help",
+                    childMenus: [
+                      {
+                        elementId: "menu_help_user_manual",
+                        displayKey: "banner.menu.help.usermanual",
+                        actionURL: "/docs/UserManual",
+                        openInNewWindow: true,
+                      },
+                      {
+                        elementId: "menu_help_form_VL",
+                        displayKey: "banner.menu.help.formVL",
+                        actionURL: "/documentation/VL.pdf",
+                        openInNewWindow: true,
+                      },
+                      {
+                        elementId: "menu_help_same_tab",
+                        displayKey: "banner.menu.help.contact",
+                        actionURL: "/ReleaseNotes",
+                        openInNewWindow: false,
+                      },
+                    ],
+                  },
+                ])}
+                unifiedResultsOn={false}
+              />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("renders them as plain anchors that open a new tab", () => {
+    renderHelp();
+    const manual = document.getElementById("menu_help_user_manual_nav");
+    expect(manual).toHaveAttribute("href", "/docs/UserManual");
+    expect(manual).toHaveAttribute("target", "_blank");
+    expect(manual).toHaveAttribute("rel", "noopener noreferrer");
+    const vl = document.getElementById("menu_help_form_VL_nav");
+    expect(vl).toHaveAttribute("href", "/documentation/VL.pdf");
+    expect(vl).toHaveAttribute("target", "_blank");
+  });
+
+  it("the click is left to the browser instead of the router", () => {
+    renderHelp();
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("menu_help_user_manual_nav").dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(false);
+  });
+
+  it("keeps router links for internal URLs without openInNewWindow", () => {
+    renderHelp();
+    const sameTab = document.getElementById("menu_help_same_tab_nav");
+    expect(sameTab).toHaveAttribute("href", "/ReleaseNotes");
+    expect(sameTab).not.toHaveAttribute("target");
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    sameTab.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+  });
+});

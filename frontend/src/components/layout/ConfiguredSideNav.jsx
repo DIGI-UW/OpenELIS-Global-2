@@ -94,8 +94,12 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
         </SideNavMenu>
       );
     }
+    // A new-window item is left to the browser: a router Link would navigate
+    // the current tab.
     const internal =
-      menu.actionURL?.startsWith("/") && !menu.actionURL.startsWith("//");
+      menu.actionURL?.startsWith("/") &&
+      !menu.actionURL.startsWith("//") &&
+      !menu.openInNewWindow;
     const unavailable = !menu.actionURL;
     const Item = level === 0 ? SideNavLink : SideNavMenuItem;
     const destination = unavailable
