@@ -135,7 +135,8 @@ run_e2e_step() {
   printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
   local checkout="$ARTIFACT_DIR/checkouts/e2e/frontend"
   local evidence="$ARTIFACT_DIR/$name-artifacts"
-  for path in test-results playwright-report cypress/screenshots; do
+  # CI=true selects Playwright's blob reporter, so blob-report holds the report.
+  for path in test-results playwright-report blob-report cypress/screenshots; do
     if [[ -d "$checkout/$path" ]]; then
       mkdir -p "$evidence/$(dirname "$path")"
       cp -R "$checkout/$path" "$evidence/$path" || true
