@@ -18,7 +18,8 @@ vi.mock("../../../layout/Layout", async () => {
   };
 });
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  resolveApiErrorMessage: (await importOriginal()).resolveApiErrorMessage,
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServerJsonResponse: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
@@ -601,5 +602,63 @@ describe("BasicInfoSection lab unit chooser (OGC-189 M2)", () => {
 
     expect(screen.getByText("Chemistry")).toBeInTheDocument();
     expect(screen.queryByText(/Parasitology/)).not.toBeInTheDocument();
+  });
+});
+
+// OGC-1376: an editor opened before someone else saved the test used to save
+// over that change. The server refuses the stale save; the editor says who and
+// when, offers Refresh, and keeps the version each save returns.
+describe("BasicInfoSection stale saves (OGC-1376)", () => {
+  it("a refused stale save names who changed the test, offers Refresh and disables Save", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 409,
+        statusCode: 409,
+        conflict: "stale",
+        testId: "42",
+        messageKey: "error.testCatalog.staleSave",
+        messageArgs: { 0: "ELIS,Open", 1: "29/09/2026 10:57" },
+      }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        "This test was updated by ELIS,Open at 29/09/2026 10:57. Refresh to see the latest version, then make your change again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("the next save carries the version the last save returned", async () => {
+    const loaded = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      loaded(url, (res) =>
+        cb(url.endsWith("/basic-info") ? { ...res, lastupdated: "100" } : res),
+      ),
+    );
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ testId: "42", lastupdated: "200" }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
+
+    const sent = putToOpenElisServerJsonResponse.mock.calls.map(
+      ([, payload]) => JSON.parse(payload).lastupdated,
+    );
+    expect(sent).toEqual(["100", "200"]);
   });
 });

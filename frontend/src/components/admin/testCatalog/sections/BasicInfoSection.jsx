@@ -23,6 +23,7 @@ import {
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import useDomains from "../../../common/useDomains";
@@ -93,6 +94,7 @@ const BasicInfoSection = ({ testId }) => {
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [staleSave, setStaleSave] = useState(null);
   const [form, setForm] = useState(null);
   const [pendingDomain, setPendingDomain] = useState(null);
   const [domainRadioKey, setDomainRadioKey] = useState(0);
@@ -373,6 +375,7 @@ const BasicInfoSection = ({ testId }) => {
         // A successful save echoes the BasicInfo body, which has no status
         // field; the helper folds an error response's status into the JSON.
         if (res && res.testId && !res.status) {
+          setForm((prev) => ({ ...prev, lastupdated: res.lastupdated }));
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -382,6 +385,9 @@ const BasicInfoSection = ({ testId }) => {
               id: "label.testCatalog.basicInfo.saved",
             }),
           });
+        } else if (res && res.status === 409 && res.conflict === "stale") {
+          setNotificationVisible(false);
+          setStaleSave(resolveApiErrorMessage(intl, res, "server.error.msg"));
         } else if (
           res &&
           res.status === 409 &&
@@ -827,11 +833,33 @@ const BasicInfoSection = ({ testId }) => {
         onToggle={(checked) => update({ orderable: checked })}
       />
 
+      {staleSave && (
+        <div data-testid="basic-info-stale-save">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={staleSave}
+          />
+          <Button
+            kind="secondary"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            <FormattedMessage id="label.results.refresh" />
+          </Button>
+        </div>
+      )}
+
       <div>
         <Button
           kind="primary"
           disabled={
-            saving || editSampleTypesMissing || editIncompatibleTypes.length > 0
+            saving ||
+            Boolean(staleSave) ||
+            editSampleTypesMissing ||
+            editIncompatibleTypes.length > 0
           }
           onClick={handleSave}
         >

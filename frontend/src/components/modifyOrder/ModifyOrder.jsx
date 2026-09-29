@@ -64,6 +64,7 @@ const ModifyOrder = () => {
 
   const [page, setPage] = useState(firstPageNumber);
   const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
+  const [staleSave, setStaleSave] = useState(null);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -237,6 +238,13 @@ const ModifyOrder = () => {
       } catch (_) {
         // Body wasn't JSON — fall through to the generic key.
       }
+    }
+    if (
+      response?.status === 409 &&
+      body?.messageKey === "error.order.staleSave"
+    ) {
+      setStaleSave(resolveApiErrorMessage(intl, body, "server.error.msg"));
+      return;
     }
     showAlertMessage(
       resolveApiErrorMessage(intl, body, "server.error.msg"),
@@ -480,6 +488,24 @@ const ModifyOrder = () => {
                         data-cy="modify-order-validation-error"
                       />
                     ))}
+                  {page === orderPageNumber && staleSave && (
+                    <div data-cy="modify-order-stale-save">
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({ id: "error.title" })}
+                        subtitle={staleSave}
+                      />
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={() => window.location.reload()}
+                      >
+                        <FormattedMessage id="label.results.refresh" />
+                      </Button>
+                    </div>
+                  )}
                   <div className="navigationButtonsLayout">
                     {page !== firstPageNumber && page <= orderPageNumber && (
                       <Button
@@ -508,7 +534,9 @@ const ModifyOrder = () => {
                         className="forwardButton"
                         onClick={handleSubmitOrderForm}
                         disabled={
-                          isSubmitting || errors?.errors?.length > 0
+                          isSubmitting ||
+                          Boolean(staleSave) ||
+                          errors?.errors?.length > 0
                             ? true
                             : false
                         }
