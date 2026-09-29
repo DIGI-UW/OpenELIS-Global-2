@@ -40,6 +40,7 @@ import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { programStatusLabel } from "../common/programStatusLabel";
+import { labNow } from "../utils/labClock";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -94,7 +95,7 @@ function ImmunohistochemistryDashboard() {
 
   const getPastWeek = () => {
     // Get the current date
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     // Calculate the date of the past week
     var pastWeekDate = new Date(currentDate);

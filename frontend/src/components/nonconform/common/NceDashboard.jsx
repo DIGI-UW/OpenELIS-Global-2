@@ -37,6 +37,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { useHistory, useLocation } from "react-router-dom";
 import { formatActionType } from "./actionTypes";
 import "./NceDashboard.css";
+import { labNow } from "../../utils/labClock";
 
 const STATUS_CONFIG = {
   Pending: { type: "green", icon: InProgress, labelKey: "nce.status.open" },
@@ -161,7 +162,7 @@ export const NceDashboard = () => {
       overdue: 0,
     };
 
-    const now = new Date();
+    const now = labNow();
     list.forEach((nce) => {
       if (nce.severity === "CRITICAL") counts.critical++;
       else if (nce.severity === "MAJOR") counts.major++;
@@ -246,7 +247,7 @@ export const NceDashboard = () => {
   const getDaysSince = (dateString) => {
     if (!dateString) return null;
     const eventDate = new Date(dateString);
-    const now = new Date();
+    const now = labNow();
     return Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
   };
 

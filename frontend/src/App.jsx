@@ -80,6 +80,7 @@ import {
   UnifiedResultsRoute,
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadLabClock } from "./components/utils/labClock";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { resolveMessagesForLocale } from "./languages";
 import {
@@ -249,6 +250,7 @@ export default function App() {
           const jsonResp = await response.json();
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
+            await loadLabClock();
           }
           setUserSessionDetails(jsonResp);
           setErrorLoadingSessionDetails(false);

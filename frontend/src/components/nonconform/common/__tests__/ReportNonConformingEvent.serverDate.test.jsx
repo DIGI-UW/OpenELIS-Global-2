@@ -7,6 +7,7 @@ import messages from "../../../../languages/en.json";
 import { ReportNonConformingEvent } from "../ReportNonConformingEvent";
 import { NotificationContext } from "../../../layout/Layout";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { loadLabClock, resetLabClock } from "../../../utils/labClock";
 
 vi.mock("../../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
@@ -18,7 +19,9 @@ vi.mock("../../../utils/Utils", async (importOriginal) => {
   };
 });
 
-const SERVER_DATE = "2031-03-05";
+// 11:30 UTC is already 6 March in Kiritimati (UTC+14) and still 5 March in
+// every browser zone from UTC-11 to UTC+12, including the CI runner's.
+const INSTANT = Date.parse("2031-03-05T11:30:00Z");
 
 const renderForm = async () => {
   await act(async () =>
@@ -41,21 +44,29 @@ const renderForm = async () => {
 };
 
 describe("ReportNonConformingEvent event date", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(INSTANT);
     getFromOpenElisServer.mockReset();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/server-time") {
-        callback({ date: SERVER_DATE, time: "08:00" });
+        callback({ timezone: "Pacific/Kiritimati" });
       } else if (url === "/rest/nce/generate-number") {
         callback({ nceNumber: "NCE-1" });
       } else {
         callback([]);
       }
     });
+    await loadLabClock();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetLabClock();
   });
 
   it("defaults the date of event to the lab server's today, not the browser's", async () => {
     await renderForm();
-    expect(document.getElementById("date-of-event")).toHaveValue("03/05/2031");
+    expect(document.getElementById("date-of-event")).toHaveValue("03/06/2031");
   });
 });

@@ -49,6 +49,7 @@ import {
   rememberSectionChoice,
   resetSectionLayout,
 } from "./sectionLayout";
+import { labNow } from "../../utils/labClock";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -109,7 +110,7 @@ export interface RejectDraft {
 
 /** dd/MM/yyyy — the app's date format; FR-F2's "defaults to now". */
 export const todayForReferral = (): string => {
-  const now = new Date();
+  const now = labNow();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${now.getFullYear()}`;

@@ -49,6 +49,7 @@ import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSele
 import IdentificationDocuments from "./IdentificationDocuments";
 import { getPhoneFormatHint } from "./phoneFormatHint";
 import type { AddressHierarchyLevel, PatientRecord, Nullable } from "./types";
+import { labNow } from "../utils/labClock";
 
 type ConfigurationItem = {
   id?: string;
@@ -158,8 +159,8 @@ const computeDobFromFormatter = (
   { years, months, days }: { years?: string; months?: string; days?: string },
   dateLocale?: string,
 ) => {
-  const currentDate = new Date();
-  const pastDate = new Date();
+  const currentDate = labNow();
+  const pastDate = labNow();
   pastDate.setFullYear(currentDate.getFullYear() - (Number(years) || 0));
   pastDate.setMonth(currentDate.getMonth() - (Number(months) || 0));
   pastDate.setDate(currentDate.getDate() - (Number(days) || 0));
@@ -192,7 +193,7 @@ const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
   if (Number.isNaN(birthDate.getTime())) {
     return { years: "", months: "", days: "" };
   }
-  const now = new Date();
+  const now = labNow();
   if (birthDate > now) return { years: "", months: "", days: "" };
   const years = differenceInYears(now, birthDate);
   const months = differenceInMonths(now, addYears(birthDate, years));

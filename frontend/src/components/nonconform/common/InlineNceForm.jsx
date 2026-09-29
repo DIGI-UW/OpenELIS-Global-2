@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
-import useServerToday from "./useServerToday";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   DatePicker,
@@ -56,15 +56,7 @@ const InlineNceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // The server's day replaces the browser's unless the date was already picked.
-  useEffect(() => {
-    if (!eventDateEdited.current) {
-      setNceForm((prev) => ({ ...prev, dateOfEvent: today }));
-    }
-  }, [today]);
-
-  const today = useServerToday();
-  const eventDateEdited = useRef(false);
+  const today = format(labNow(), "MM/dd/yyyy");
 
   const [nceForm, setNceForm] = useState({
     nceNumber: "",
@@ -368,7 +360,6 @@ const InlineNceForm = ({
           onChange={(dates) => {
             if (dates && dates[0]) {
               const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-              eventDateEdited.current = true;
               handleFormChange("dateOfEvent", formatted);
             }
           }}

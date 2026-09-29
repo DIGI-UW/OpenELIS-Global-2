@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
-import useServerToday from "./useServerToday";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   Column,
@@ -60,8 +60,7 @@ export const ReportNonConformingEvent = () => {
   const intl = useIntl();
   const location = useLocation();
 
-  const today = useServerToday();
-  const eventDateEdited = useRef(false);
+  const today = format(labNow(), "MM/dd/yyyy");
 
   const [nceForm, setnceForm] = useState({
     nceNumber: "",
@@ -80,13 +79,6 @@ export const ReportNonConformingEvent = () => {
   });
 
   const [errors, setErrors] = useState({});
-
-  // The server's day replaces the browser's unless the date was already picked.
-  useEffect(() => {
-    if (!eventDateEdited.current) {
-      setnceForm((prev) => ({ ...prev, dateOfEvent: today }));
-    }
-  }, [today]);
 
   // Set reporter name from session when available
   useEffect(() => {
@@ -378,7 +370,6 @@ export const ReportNonConformingEvent = () => {
         }),
       });
       // Reset form and reload defaults
-      eventDateEdited.current = false;
       setnceForm({
         nceNumber: "",
         reporterName: "",
@@ -473,7 +464,6 @@ export const ReportNonConformingEvent = () => {
   };
 
   const handleCancel = () => {
-    eventDateEdited.current = false;
     setnceForm({
       nceNumber: "",
       reporterName: "",
@@ -598,7 +588,6 @@ export const ReportNonConformingEvent = () => {
                 onChange={(dates) => {
                   if (dates && dates[0]) {
                     const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-                    eventDateEdited.current = true;
                     setnceForm((prev) => ({
                       ...prev,
                       dateOfEvent: formatted,

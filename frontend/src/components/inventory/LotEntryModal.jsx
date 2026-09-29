@@ -23,6 +23,7 @@ import {
   getDeepestLocationSelection,
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
+import { labNow } from "../utils/labClock";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -44,7 +45,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     lotNumber: "",
     currentQuantity: 0,
     expirationDate: null,
-    receiptDate: new Date(),
+    receiptDate: labNow(),
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
@@ -94,7 +95,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         expirationDate: lot.expirationDate
           ? new Date(lot.expirationDate)
           : null,
-        receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
+        receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : labNow(),
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",

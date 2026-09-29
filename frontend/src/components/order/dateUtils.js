@@ -5,22 +5,23 @@ import {
   parse,
   parseISO,
 } from "date-fns";
+import { labNow } from "../utils/labClock";
 
 export const configuredDatePattern = (dateLocale) =>
   dateLocale === "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy";
 
 /**
- * Today in the browser's own time zone as `yyyy-MM-dd`.
+ * Today on the lab's clock as `yyyy-MM-dd`.
  *
  * `toISOString()` reports UTC, which puts a lab west of Greenwich a day behind
- * and a lab east of it a day ahead for part of every day. Collection and
- * receipt dates are wall-clock events at the site, so they are stamped from
- * local time.
+ * and a lab east of it a day ahead for part of every day, and the browser's
+ * clock can sit in another zone than the lab. Collection and receipt dates are
+ * wall-clock events at the site, so they are stamped from the lab's clock.
  */
-export const todayLocalIso = (now = new Date()) => format(now, "yyyy-MM-dd");
+export const todayLocalIso = (now = labNow()) => format(now, "yyyy-MM-dd");
 
 /** The current wall-clock time at the site as `HH:mm`. */
-export const currentLocalTime = (now = new Date()) => format(now, "HH:mm");
+export const currentLocalTime = (now = labNow()) => format(now, "HH:mm");
 
 export const formatIsoDateForBackend = (isoDate, dateLocale) => {
   if (!isoDate) {
@@ -40,7 +41,7 @@ export const formatPickerDateForIso = (pickerDate, dateLocale) => {
     return "";
   }
   const pattern = configuredDatePattern(dateLocale);
-  const parsed = parse(pickerDate, pattern, new Date());
+  const parsed = parse(pickerDate, pattern, labNow());
   return isValid(parsed) && format(parsed, pattern) === pickerDate
     ? format(parsed, "yyyy-MM-dd")
     : "";

@@ -1,3 +1,4 @@
+import { labNow } from "../../utils/labClock";
 // The prep gate, in the same words the server uses (EQABlindingServiceImpl
 // #requirePrepEvidence). One rule, one vocabulary: the wizard must not let
 // through what seal-and-distribute would refuse, and must not refuse what it
@@ -133,7 +134,7 @@ const withinDays = (isoDate, days, today) => {
 
 // The four tiles the mockup puts above the list. Counted from the rows already
 // fetched — no second endpoint for arithmetic the client can do.
-export const panelKpis = (panels, today = new Date()) => ({
+export const panelKpis = (panels, today = labNow()) => ({
   awaitingDistribution: panels.filter((p) => p.status === "SEALED").length,
   inTesting: panels.filter((p) => p.status === "DISTRIBUTED").length,
   unblindingSoon: panels.filter(
