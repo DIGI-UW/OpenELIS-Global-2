@@ -571,7 +571,10 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
 
     @Override
     public EQACycle submitAfterReview(Long cycleId, String sysUserId) {
-        EQACycle cycle = cycleDAO.get(cycleId)
+        // Row-locked so a second click waits for the first to commit, then sees
+        // SUBMITTED and is refused below. Unlocked, both passed this check, both
+        // posted to the provider, and the second failed its transition with a 500.
+        EQACycle cycle = cycleDAO.getForUpdate(cycleId)
                 .orElseThrow(() -> new IllegalArgumentException("Cycle not found: " + cycleId));
         if (cycle.getStatus() != READY_TO_SUBMIT) {
             throw new IllegalStateException("Only a cycle that is ready to submit can be reviewed and submitted");

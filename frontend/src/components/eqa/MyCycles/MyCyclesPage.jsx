@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Grid,
   Column,
@@ -254,8 +254,15 @@ const MyCyclesPage = () => {
   const schemeTypeLabel = (type) =>
     t(`eqa.schemeType.${type}`, type.replace(/_/g, " "));
 
+  // A second click while the first is still posting is dropped here; the
+  // server refuses it too, but its refusal would replace the success notice.
+  const submitting = useRef(new Set());
+
   const handleSubmit = (cycle) => {
+    if (submitting.current.has(cycle.id)) return;
+    submitting.current.add(cycle.id);
     submitCycle(cycle.id, (result) => {
+      submitting.current.delete(cycle.id);
       if (result.ok) {
         // The response carries the cycle's new state and nothing else, so the
         // row keeps its own progress and samples.

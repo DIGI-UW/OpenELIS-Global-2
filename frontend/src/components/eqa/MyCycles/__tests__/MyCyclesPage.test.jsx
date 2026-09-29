@@ -394,6 +394,17 @@ describe("MyCyclesPage", () => {
     ).toBeTruthy();
   });
 
+  test("a second Review & submit click while the first is posting sends nothing", () => {
+    // Never answers, so the first request stays in flight.
+    postToOpenElisServerFullResponse.mockImplementation(() => {});
+    renderPage();
+    fireEvent.click(screen.getByTestId("cycle-row-2"));
+    fireEvent.click(screen.getByText("Review & submit"));
+    fireEvent.click(screen.getByText("Review & submit"));
+
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+  });
+
   // Carbon's default alertdialog role moves focus to the banner's action button
   // on every render, so each keystroke in the dialog sent focus back to Review &
   // submit, and the next space or Enter submitted the cycle.

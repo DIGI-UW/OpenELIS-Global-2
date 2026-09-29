@@ -17,6 +17,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -589,6 +596,48 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertTrue(refused.getMessage(), refused.getMessage().contains("ready to submit"));
 
         verify(fhirStub).submitCycleViaFhir(cycle.getId(), ENROLLMENT);
+        assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
+    }
+
+    /**
+     * A double click: the second request arrives while the first is still posting.
+     * The first post is held open until a second post arrives or two seconds pass,
+     * so a second request that gets past the state check is caught posting.
+     */
+    @Test
+    public void reviewSubmit_clickedTwiceAtOnce_postsOnceAndRefusesTheSecond() throws Exception {
+        EQACycle cycle = heldAtTheReviewGate(34);
+        AtomicInteger posts = new AtomicInteger();
+        CountDownLatch firstPosting = new CountDownLatch(1);
+        CountDownLatch secondPosting = new CountDownLatch(1);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenAnswer(call -> {
+            if (posts.incrementAndGet() == 1) {
+                firstPosting.countDown();
+                secondPosting.await(2, TimeUnit.SECONDS);
+            } else {
+                secondPosting.countDown();
+            }
+            return true;
+        });
+
+        ExecutorService clicks = Executors.newFixedThreadPool(2);
+        try {
+            Future<EQACycle> first = clicks
+                    .submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+            assertTrue("the first click never reached the provider", firstPosting.await(10, TimeUnit.SECONDS));
+            Future<EQACycle> second = clicks
+                    .submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+
+            assertEquals(EQACycleStatus.SUBMITTED, first.get(20, TimeUnit.SECONDS).getStatus());
+            ExecutionException refused = assertThrows(ExecutionException.class,
+                    () -> second.get(20, TimeUnit.SECONDS));
+            assertTrue("the second click must be refused as already submitted, not fail: " + refused.getCause(),
+                    refused.getCause() instanceof IllegalStateException);
+        } finally {
+            clicks.shutdownNow();
+        }
+
+        assertEquals("the provider receives the cycle once", 1, posts.get());
         assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
     }
 
