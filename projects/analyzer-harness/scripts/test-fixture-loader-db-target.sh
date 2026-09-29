@@ -14,7 +14,6 @@ mkdir -p "$FIXTURE_DIR/fixtures" "$FIXTURE_DIR/testdata" "$FAKE_BIN"
 
 cp "$REPO_ROOT/src/test/resources/load-test-fixtures.sh" "$FIXTURE_DIR/"
 touch "$FIXTURE_DIR/e2e-foundational-data.sql"
-touch "$FIXTURE_DIR/fixtures/analyzer-harness-lane-data.sql"
 touch "$FIXTURE_DIR/fixtures/storage-in-progress-order.sql"
 for fixture in \
   reporting-repeated-results.sql \

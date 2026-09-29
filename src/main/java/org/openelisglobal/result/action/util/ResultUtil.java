@@ -389,7 +389,8 @@ public class ResultUtil {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");
                 String rejectedReasonId = testResultItem.getRejectReasonId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
+                for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
+                        .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
                         actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                                 NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,

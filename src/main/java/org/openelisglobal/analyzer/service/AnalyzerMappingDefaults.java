@@ -26,6 +26,10 @@ public class AnalyzerMappingDefaults {
         List<AnalyzerSiteBindingResultDraft> results = new ArrayList<>();
         for (var definition : profile.testDefinitions()) {
             var matches = active.stream().filter(test -> test.loincCodes().contains(definition.loinc())).toList();
+            if (definition.specimenTypeHint() != null) {
+                matches = matches.stream().filter(test -> test.specimenTypes().stream()
+                        .anyMatch(specimen -> same(specimen, definition.specimenTypeHint()))).toList();
+            }
             // A matching display name alone is not enough to override conflicting LOINC.
             if (matches.size() > 1) {
                 matches = matches.stream()
@@ -52,6 +56,10 @@ public class AnalyzerMappingDefaults {
                     selected == null ? null : selected.id()));
             for (String raw : definition.resultValues()) {
                 var answers = options.stream().filter(option -> same(raw, option.label())).toList();
+                if (answers.isEmpty()) {
+                    String hint = definition.resultValueHints().get(raw);
+                    answers = options.stream().filter(option -> same(hint, option.label())).toList();
+                }
                 var answer = answers.size() == 1 ? answers.get(0) : null;
                 results.add(new AnalyzerSiteBindingResultDraft(definition.analyzerCode(), raw,
                         answer == null ? AnalyzerSiteBindingMappingState.UNRESOLVED

@@ -376,6 +376,33 @@ describe("AnalyzerTypeManagement", () => {
     ).toBeVisible();
   });
 
+  it("keeps rendering when a refreshed catalog removes a displayed profile", async () => {
+    let deliverCatalog;
+    getAnalyzerTypeCatalog.mockImplementation((callback) => {
+      deliverCatalog = callback;
+      callback(catalog);
+    });
+
+    renderPage();
+    expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
+
+    await act(async () => {
+      deliverCatalog({
+        ...catalog,
+        types: catalog.types.filter(
+          (type) => type.profileId !== "shipped.genexpert",
+        ),
+      });
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Analyzer Types" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Cepheid GeneXpert MTB/RIF"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a Carbon action when the catalog fails and retries visibly", async () => {
     getAnalyzerTypeCatalog
       .mockImplementationOnce((callback) => callback(undefined))
