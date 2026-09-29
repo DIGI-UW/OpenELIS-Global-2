@@ -9349,6 +9349,7 @@
   "notebook.sample.import": "Import",
   "notebook.sample.import.title": "Import Samples",
   "notebook.sample.order.info": "This sample will be associated with the current notebook.",
+  "notebook.sample.order.title": "Create Sample for Notebook",
   "notification.warning": "Warning",
   "order.entry.setup.batch": "Batch Order Entry",
   "order.legend.patient1": "Patient Info",

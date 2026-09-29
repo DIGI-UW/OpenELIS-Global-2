@@ -248,6 +248,21 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
     expect(document.getElementById("test_0_500")).toBeChecked();
   });
 
+  test("the sample is recorded as rejected only while Reject is ticked", () => {
+    render(<Harness initialSamples={[emptySample()]} />);
+    expect(latestSamples[0].sampleRejected).toBe(false);
+
+    act(() => {
+      fireEvent.click(document.getElementById("reject_0"));
+    });
+    expect(latestSamples[0].sampleRejected).toBe(true);
+
+    act(() => {
+      fireEvent.click(document.getElementById("reject_0"));
+    });
+    expect(latestSamples[0].sampleRejected).toBe(false);
+  });
+
   test("the samples it starts from are never modified", () => {
     const initial = emptySample();
     render(<Harness initialSamples={[initial]} />);

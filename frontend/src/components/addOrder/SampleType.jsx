@@ -505,7 +505,7 @@ const SampleType = (props) => {
 
   useEffect(() => {
     props.sampleTypeObject({
-      sampleRejected: rejectionReasonsDisabled,
+      sampleRejected: !rejectionReasonsDisabled,
       sampleObjectIndex: index,
     });
   }, [rejectionReasonsDisabled]);

@@ -1682,6 +1682,10 @@ const NoteBookInstanceEntryForm = () => {
                       id="accession"
                       name="accession"
                       value={accession}
+                      labelText={intl.formatMessage({
+                        id: "notebook.search.byAccession",
+                      })}
+                      hideLabel
                       placeholder={intl.formatMessage({
                         id: "notebook.search.byAccession",
                       })}
@@ -1689,13 +1693,7 @@ const NoteBookInstanceEntryForm = () => {
                     />
                   </Column>
                   <Column lg={8} md={8} sm={4}>
-                    <Button
-                      size="md"
-                      onClick={handleAccesionSearch}
-                      labelText={intl.formatMessage({
-                        id: "label.button.search",
-                      })}
-                    >
+                    <Button size="md" onClick={handleAccesionSearch}>
                       <FormattedMessage id="label.button.search" />
                     </Button>
                   </Column>
@@ -2667,7 +2665,7 @@ const NoteBookInstanceEntryForm = () => {
                 }}
                 disabled={isViewMode}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem
