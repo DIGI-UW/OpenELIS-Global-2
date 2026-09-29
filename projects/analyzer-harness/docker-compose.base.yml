@@ -1,6 +1,7 @@
 services:
   certs:
     container_name: oe-certs
+    restart: "no"
     environment:
       KEYSTORE_PW: '"kspass"'
       TRUSTSTORE_PW: '"tspass"'
