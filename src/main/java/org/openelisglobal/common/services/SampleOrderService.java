@@ -285,6 +285,17 @@ public class SampleOrderService {
             }
         }
 
+        if (providerPerson == null && !GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())) {
+            Person picked = SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId());
+            if (picked != null && sameNames(picked, sampleOrder)) {
+                provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(picked);
+                if (provider != null) {
+                    providerPerson = picked;
+                    providerPerson.setSysUserId(currentUserId);
+                }
+            }
+        }
+
         if (providerPerson == null && noRequesterInformation(sampleOrder)) {
             List<SampleRequester> clearedRequesters = requesterService
                     .getSampleRequestersByType(RequesterService.Requester.PERSON, false);
@@ -336,6 +347,15 @@ public class SampleOrderService {
                 && GenericValidator.isBlankOrNull(sampleOrder.getProviderWorkPhone())
                 && GenericValidator.isBlankOrNull(sampleOrder.getProviderFax())
                 && GenericValidator.isBlankOrNull(sampleOrder.getProviderEmail());
+    }
+
+    /**
+     * A requester picked from the search: the form sends that person's id with the
+     * names it shows, so the existing provider is linked instead of a copy.
+     */
+    private boolean sameNames(Person person, SampleOrderItem sampleOrder) {
+        return StringUtil.compareWithNulls(person.getFirstName(), sampleOrder.getProviderFirstName()) == 0
+                && StringUtil.compareWithNulls(person.getLastName(), sampleOrder.getProviderLastName()) == 0;
     }
 
     private boolean namesDiffer(Person providerPerson, SampleOrderItem sampleOrder) {

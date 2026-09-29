@@ -539,11 +539,11 @@ describe("AddOrder — priority select (OGC-1366)", () => {
       "option",
     );
     expect(options.map((o) => [o.value, o.textContent])).toEqual([
-      ["ROUTINE", messages["order.priority.routine"]],
-      ["ASAP", messages["order.priority.asap"]],
-      ["STAT", messages["order.priority.stat"]],
-      ["TIMED", messages["order.priority.timed"]],
-      ["FUTURE_STAT", messages["order.priority.futureStat"]],
+      ["ROUTINE", messages["sample.priority.ROUTINE"]],
+      ["ASAP", messages["sample.priority.ASAP"]],
+      ["STAT", messages["sample.priority.STAT"]],
+      ["TIMED", messages["sample.priority.TIMED"]],
+      ["FUTURE_STAT", messages["sample.priority.FUTURE_STAT"]],
     ]);
   });
 

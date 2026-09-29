@@ -164,6 +164,27 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(0, personRequesterIds().size());
     }
 
+    /**
+     * Review of #4469: picking an existing requester on an order with none linked
+     * created a copy of that person and provider, so the requester search then
+     * listed them twice.
+     */
+    @Test
+    public void editSample_pickingAnExistingRequester_linksItWithoutACopy() {
+        SampleEditForm picked = modifiedForm();
+        picked.getSampleOrderItems().setProviderPersonId("2");
+        picked.getSampleOrderItems().setProviderFirstName("Test");
+        picked.getSampleOrderItems().setProviderLastName("Clinician");
+        int people = count("clinlims.person");
+        int providers = count("clinlims.provider");
+
+        sampleEditService.editSample(picked, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(people, count("clinlims.person"));
+        assertEquals(providers, count("clinlims.provider"));
+        assertEquals(List.of("2"), personRequesterIds());
+    }
+
     @Test
     public void editSample_clearingTheRequester_unlinksItFromTheOrder() {
         SampleEditForm withRequester = modifiedForm();
