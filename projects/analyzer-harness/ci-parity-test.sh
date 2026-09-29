@@ -454,6 +454,8 @@ if [[ "$BUILD_SOURCE" == true && "$PRECHECK_FAILED" == false ]]; then
     cd "$REPO_ROOT"
     mvn -q clean install -DskipTests -Dmaven.test.skip=true
     docker compose "${CI_COMPOSE_FILES[@]}" build
+    # `build` skips image-only services such as harness-catalog-init.
+    docker compose "${CI_COMPOSE_FILES[@]}" pull --ignore-buildable --quiet
   ) 2>&1 | tee "$ARTIFACT_DIR/build.log"
 fi
 require_images_for_compose
