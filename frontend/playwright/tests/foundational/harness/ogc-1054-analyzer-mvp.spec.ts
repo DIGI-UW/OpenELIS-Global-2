@@ -495,14 +495,15 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     }
   });
 
-  test("GeneXpert recovers a held result through the mapping editor", async ({
+  test("GeneXpert accepts a usable result and recovers its held sibling", async ({
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
     const runId = randomUUID().slice(0, 8);
     const analyzerName = `E2E Recovery GeneXpert ${runId}`;
     const senderId = `GX-${runId}`;
-    const rawValue = "SARS-CoV-2 RNA DETECTED";
+    const knownValue = "NOT DETECTED";
+    const rawValue = "RIF RESISTANCE INDETERMINATE";
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
 
@@ -518,10 +519,21 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     const order = await createAnalyzerClinicalOrder(page, {
       profileId: analyzer.profileId,
       profileRevision: analyzer.profileRevision,
-      sourceCode: "COVID19",
-      expectedTestName: "COVID-19 PCR",
-      expectedLoinc: "94500-6",
-      specimenName: "Respiratory Swab",
+      sourceCode: "MTB-RIF",
+      expectedTestName: "Xpert MTB/RIF",
+      expectedLoinc: "85362-2",
+      specimenName: "Sputum",
+      expectedMappedValue: knownValue,
+      additionalTests: [
+        {
+          profileId: analyzer.profileId,
+          profileRevision: analyzer.profileRevision,
+          sourceCode: "RIF",
+          expectedTestName: "Xpert RIF Resistance",
+          expectedLoinc: "46244-0",
+          specimenName: "Sputum",
+        },
+      ],
     });
     await confirmShippedMapping(page, analyzer);
     await page.goto(verifyUrl, { waitUntil: "domcontentloaded" });
@@ -536,11 +548,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       page.request,
       analyzer.bridgeConnectionId,
       order.accession,
-      "COVID19",
-      rawValue,
+      "MTB-RIF",
+      knownValue,
       senderId,
+      [{ testCode: "RIF", value: rawValue }],
     );
     let originalId: string | undefined;
+    let knownId: string | undefined;
     await expect(async () => {
       const response = await page.request.get(
         `${API}/AnalyzerResults?id=${analyzer.id}`,
@@ -550,6 +564,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         resultList: Array<{
           id: string;
           accessionNumber: string;
+          rawTestCode: string;
           rawResultValue: string;
           importIssueReason: string | null;
         }>;
@@ -557,18 +572,30 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       const rows = payload.resultList.filter(
         (row) => row.accessionNumber === order.accession,
       );
-      expect(rows).toHaveLength(1);
-      expect(rows[0].rawResultValue).toBe(rawValue);
-      expect(rows[0].importIssueReason).toBe("unknown_analyzer_result_value");
-      originalId = rows[0].id;
+      expect(rows).toHaveLength(2);
+      const known = rows.find((row) => row.rawTestCode === "MTB-RIF");
+      const held = rows.find((row) => row.rawTestCode === "RIF");
+      expect(known?.rawResultValue).toBe(knownValue);
+      expect(known?.importIssueReason).toBeFalsy();
+      expect(held?.rawResultValue).toBe(rawValue);
+      expect(held?.importIssueReason).toBe("unknown_analyzer_result_value");
+      knownId = known?.id;
+      originalId = held?.id;
     }).toPass();
     expect(originalId).toBeTruthy();
+    expect(knownId).toBeTruthy();
 
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
       waitUntil: "domcontentloaded",
     });
     const held = page.getByTestId(`held-analyzer-result-${originalId}`);
     await expect(held).toContainText(rawValue);
+    const known = page.getByRole("row").filter({
+      has: page.locator(`[id="resultList${knownId}.isAccepted"]`),
+    });
+    await expect(known).toContainText(knownValue);
+    await known.locator('label[for$=".isAccepted"]').click();
+    await page.locator(`[id="resultList${knownId}.note"]`).fill("Reviewed");
     await capture(page, testInfo, "held-original-result");
     await held
       .getByRole("link", { name: "Review Analyzer Type mapping" })
@@ -578,7 +605,9 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     });
     await expect(picker).toBeVisible();
     await picker.click();
-    await page.getByRole("option", { name: rawValue, exact: true }).click();
+    await page
+      .getByRole("option", { name: "Indeterminate", exact: true })
+      .click();
     await page.getByRole("button", { name: "Update shared mappings" }).click();
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
@@ -611,19 +640,34 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       expect(original[0].importIssueReason).toBeFalsy();
     }).toPass();
 
-    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-      waitUntil: "domcontentloaded",
-    });
-    const recovered = page.getByRole("row", {
-      name: new RegExp(order.accession),
+    await page
+      .locator(".analyzer-type-mapping__heading-actions")
+      .getByRole("link", { name: "Analyzer Types" })
+      .click();
+    await expect(page).toHaveURL(/\/AnalyzerResults\?id=/);
+    await expect(known.locator('[id$=".isAccepted"]')).toBeChecked();
+    await expect(page.locator(`[id="resultList${knownId}.note"]`)).toHaveValue(
+      "Reviewed",
+    );
+    const recovered = page.getByRole("row").filter({
+      has: page.getByRole("cell", { name: "RIF", exact: true }),
     });
     await expect(recovered).toHaveCount(1);
-    await expect(recovered).toContainText(rawValue);
+    await expect(recovered).toContainText("Indeterminate");
     await capture(page, testInfo, "recovered-original-result");
-    await recovered.locator('label[for$=".isAccepted"]').click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(recovered).not.toBeVisible();
-    await expectClinicalReadback(page, order, rawValue);
+    await expect(known).not.toBeVisible();
+    await expectClinicalReadback(page, order, knownValue);
+    await expectClinicalReadback(
+      page,
+      {
+        ...order,
+        testId: order.orderedTests[1].testId,
+        primaryComponentId: order.orderedTests[1].primaryComponentId,
+      },
+      "Indeterminate",
+    );
     await page.goto(
       `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
       { waitUntil: "domcontentloaded" },
@@ -632,10 +676,15 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       .getByRole("row", {
         name: new RegExp(order.accession),
       })
-      .filter({ hasText: rawValue });
+      .filter({ hasText: "Indeterminate" });
     await expect(saved).toHaveCount(1);
-    await expect(saved).toContainText("COVID-19 PCR");
-    await expect(saved).toContainText(rawValue);
+    await expect(saved).toContainText("Xpert RIF Resistance");
+    await expect(saved).toContainText("Indeterminate");
+    const savedKnown = page
+      .getByRole("row", { name: new RegExp(order.accession) })
+      .filter({ hasText: knownValue });
+    await expect(savedKnown).toHaveCount(1);
+    await expect(savedKnown).toContainText("Xpert MTB/RIF");
     await capture(page, testInfo, "recovered-clinical-result-saved");
   });
 
