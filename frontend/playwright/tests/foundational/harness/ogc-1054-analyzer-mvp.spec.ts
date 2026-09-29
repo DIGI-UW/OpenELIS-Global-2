@@ -4,6 +4,7 @@ import { expect, test } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
   sendGeneXpertAstm,
   writeFluoroCyclerFile,
@@ -219,6 +220,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       page,
     }, testInfo) => {
       test.setTimeout(180_000 * TIMEOUT_SCALE);
+      const presentation = createDemoPresentation(page, testInfo);
+      await presentation.chapter({
+        eyebrow: "OGC-1054 R0 · GeneXpert ASTM",
+        title: "From analyzer setup to a clinical result",
+        subtitle:
+          "Confirm the shipped mapping, activate the connection, and receive an instrument result.",
+        durationMs: 7000,
+      });
       const runId = randomUUID().slice(0, 8);
       const analyzerName = `E2E GeneXpert ${runId}`;
       const senderId = `GX-${runId}`;
@@ -248,6 +257,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       });
       await confirmShippedMapping(page, analyzer);
       await capture(page, testInfo, "gene-shipped-mapping-confirmed");
+      await presentation.pause(4000);
       await page.goto(verifyUrl, {
         waitUntil: "domcontentloaded",
       });
@@ -257,6 +267,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       const analyzerRow = page.getByTestId(`analyzer-row-${analyzer.id}`);
       await expect(analyzerRow).toContainText("Active");
       await capture(page, testInfo, "gene-connection-active");
+      await presentation.chapter({
+        eyebrow: "GeneXpert · Connection active",
+        title: "The analyzer is ready",
+        subtitle:
+          "The saved connection is active and ready to receive ASTM traffic.",
+        durationMs: 5000,
+      });
+      await presentation.pause(3000);
 
       await sendGeneXpertAstm(
         page.request,
@@ -308,6 +326,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         await expect(row).toContainText(scenario.result);
       }
       await capture(page, testInfo, "gene-received-result");
+      await presentation.pause(3500);
       await row.locator('label[for$=".isAccepted"]').click();
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(row).not.toBeVisible();
@@ -330,6 +349,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       await expect(clinicalRow).toContainText(scenario.testName);
       await expect(clinicalRow).toContainText(scenario.result);
       await capture(page, testInfo, "gene-clinical-result-saved");
+      await presentation.chapter({
+        eyebrow: "GeneXpert · Verified result",
+        title: "The result reached the ordered test",
+        subtitle:
+          "Playwright checked the patient, order, test, and clinical value.",
+        durationMs: 6500,
+      });
     });
   }
 
@@ -472,6 +498,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const presentation = createDemoPresentation(page, testInfo);
+    await presentation.chapter({
+      eyebrow: "OGC-1054 R0 · FluoroCycler FILE",
+      title: "From watched directory to clinical results",
+      subtitle:
+        "Configure file transport, import two orders, and verify each saved result.",
+      durationMs: 6500,
+    });
     const runId = randomUUID().slice(0, 8);
     const analyzerName = `E2E FluoroCycler ${runId}`;
     const directory = `/data/analyzer-imports/fluorocycler-xt/incoming/${runId}`;
@@ -507,6 +541,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     }
     await confirmShippedMapping(page, analyzer);
     await capture(page, testInfo, "file-shipped-mapping-confirmed");
+    await presentation.pause(3000);
     await page.goto(verifyUrl, {
       waitUntil: "domcontentloaded",
     });
@@ -517,6 +552,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       "Active",
     );
     await capture(page, testInfo, "file-watch-directory-configured");
+    await presentation.chapter({
+      eyebrow: "FluoroCycler · FILE transport",
+      title: "The watched directory is configured",
+      subtitle:
+        "Bridge owns the directory watch and imports the instrument workbook.",
+      durationMs: 5000,
+    });
+    await presentation.pause(3000);
     const emitted = await writeFluoroCyclerFile(
       page.request,
       directory,
@@ -557,6 +600,7 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       await row.locator('label[for$=".isAccepted"]').click();
     }
     await capture(page, testInfo, "file-received-results");
+    await presentation.pause(2000);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     for (const [index, order] of orders.entries()) {
       await expectClinicalReadback(
@@ -575,6 +619,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       await expect(row).toContainText("HIV Viral Load");
       await expect(row).toContainText(values[index]);
       await capture(page, testInfo, `file-clinical-result-${index + 1}-saved`);
+      await presentation.pause(1500);
     }
+    await presentation.chapter({
+      eyebrow: "FluoroCycler · Verified results",
+      title: "Both orders have clinical results",
+      subtitle:
+        "The two workbook results were read back against their separate patient orders.",
+      durationMs: 6000,
+    });
   });
 });
