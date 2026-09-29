@@ -147,6 +147,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         Set<String> skippedResultIds = sampleGroupList.stream().flatMap(group -> group.skippedResultIds.stream())
                 .collect(Collectors.toSet());
         deletableAnalyzerResults.removeIf(staged -> skippedResultIds.contains(staged.getId()));
+        // A grouping whose every row was skipped has nothing to save.
+        sampleGroupList.removeIf(grouping -> grouping.resultList.isEmpty());
         long expectedResults = actionableResults.stream()
                 .filter(item -> !item.getIsDeleted() && !skippedResultIds.contains(item.getId())).count();
         long builtResults = sampleGroupList.stream().mapToLong(group -> group.resultList.size()).sum();
@@ -187,12 +189,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * The staged row owns which order, test and analyzer a result belongs to; the
-     * reviewer supplies only the action, specimen choice, note and result.
+     * The staged row owns which order, test, component and analyzer a result
+     * belongs to; the reviewer supplies only the action, specimen choice, note and
+     * result.
      */
     private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
         item.setAccessionNumber(staged.getAccessionNumber());
         item.setTestId(staged.getTestId());
+        item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
         item.setAnalyzerId(staged.getAnalyzerId());
     }
@@ -263,23 +267,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * Except on an order with an entered sample, a grouping's new analyses share
-     * one new specimen. A specimen choice there must be the only one and must suit
-     * every test that needs a new analysis; otherwise it waits for a decision
+     * A grouping's new analyses are all persisted on its one sample item. A
+     * specimen choice must therefore be the only one among them and must suit every
+     * test that needs a new analysis; otherwise the grouping waits for a decision
      * instead of silently using another type.
      */
     private boolean hasUnusableSpecimenChoice(List<AnalyzerResultItem> grouping) {
-        List<AnalyzerResultItem> accepted = grouping.stream().filter(item -> item.getIsAccepted()
-                && !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId())).toList();
-        if (accepted.isEmpty()) {
-            return false;
-        }
-        String accessionNumber = accepted.get(0).getAccessionNumber();
-        StatusSet statusSet = statusService.getStatusSetForAccessionNumber(accessionNumber);
-        if (!sharesOneNewSpecimen(statusSet, accessionNumber)) {
-            return false;
-        }
-        List<AnalyzerResultItem> newAnalyses = accepted.stream().filter(item -> getExistingAnalysis(item) == null)
+        List<AnalyzerResultItem> newAnalyses = grouping.stream()
+                .filter(item -> item.getIsAccepted() && !item.getIsControl()
+                        && !GenericValidator.isBlankOrNull(item.getTestId()) && getExistingAnalysis(item) == null)
                 .toList();
         Set<String> choices = newAnalyses.stream().map(AnalyzerResultItem::getTypeOfSampleId)
                 .filter(choice -> !GenericValidator.isBlankOrNull(choice)).collect(Collectors.toSet());
@@ -292,15 +288,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             return !candidates.isEmpty()
                     && candidates.stream().noneMatch(candidate -> chosen.equals(candidate.getTypeOfSampleId()));
         });
-    }
-
-    /**
-     * The createRecordsForNewResult paths that build one sample item for the whole
-     * grouping.
-     */
-    private boolean sharesOneNewSpecimen(StatusSet statusSet, String accessionNumber) {
-        return noEntryDone(statusSet, accessionNumber) || statusSet
-                .getSampleRecordStatus() == org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered;
     }
 
     private String groupingSpecimenChoice(List<AnalyzerResultItem> groupedAnalyzerResultItems) {
