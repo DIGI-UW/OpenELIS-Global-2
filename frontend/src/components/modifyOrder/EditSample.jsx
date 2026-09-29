@@ -20,6 +20,10 @@ import {
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "../addOrder/SampleType";
+import {
+  applySampleTypeUpdate,
+  newSampleKey,
+} from "../addOrder/sampleTypeUpdate";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   OrderCurrentTestsHeaders,
@@ -45,6 +49,7 @@ const EditSample = (props) => {
     let updateSamples = [...samples];
     let count = elementsCounter + 1;
     updateSamples.push({
+      key: newSampleKey(),
       index: count,
       sampleRejected: false,
       rejectionReason: "",
@@ -124,42 +129,9 @@ const EditSample = (props) => {
   };
 
   const sampleTypeObject = (object) => {
-    let newState = [...samples];
-    switch (true) {
-      case object.sampleTypeId !== undefined && object.sampleTypeId !== "":
-        newState[object.sampleObjectIndex].sampleTypeId = object.sampleTypeId;
-        break;
-      case object.sampleRejected:
-        newState[object.sampleObjectIndex].sampleRejected =
-          object.sampleRejected;
-        break;
-      case object.rejectionReason !== undefined &&
-        object.rejectionReason !== null:
-        newState[object.sampleObjectIndex].rejectionReason =
-          object.rejectionReason;
-        break;
-      case object.selectedTests !== undefined &&
-        object.selectedTests.length > 0:
-        newState[object.sampleObjectIndex].tests = object.selectedTests;
-        break;
-      case object.selectedPanels !== undefined &&
-        object.selectedPanels.length > 0:
-        newState[object.sampleObjectIndex].panels = object.selectedPanels;
-        break;
-      case object.sampleXML !== undefined && object.sampleXML !== null:
-        newState[object.sampleObjectIndex].sampleXML = object.sampleXML;
-        break;
-      case object.requestReferralEnabled:
-        newState[object.sampleObjectIndex].requestReferralEnabled =
-          object.requestReferralEnabled;
-        break;
-      case object.referralItems !== undefined &&
-        object.referralItems.length > 0:
-        newState[object.sampleObjectIndex].referralItems = object.referralItems;
-        break;
-      default:
-        props.setSamples(newState);
-    }
+    setSamples((currentSamples) =>
+      applySampleTypeUpdate(currentSamples, object),
+    );
   };
 
   const handlePageChange = (pageInfo) => {
@@ -180,11 +152,6 @@ const EditSample = (props) => {
     if (pageSize2 != pageInfo.pageSize) {
       setPageSize2(pageInfo.pageSize);
     }
-  };
-
-  const removeSample = (index) => {
-    let updateSamples = samples.splice(index, 1);
-    setSamples(updateSamples);
   };
 
   const fetchRejectSampleReasons = (res) => {
@@ -478,7 +445,7 @@ const EditSample = (props) => {
           </h3>
           {samples.map((sample, i) => {
             return (
-              <div className="sampleType" key={i}>
+              <div className="sampleType" key={sample.key ?? i}>
                 <h4>
                   <FormattedMessage id="label.button.sample" /> {i + 1}
                 </h4>
@@ -488,7 +455,6 @@ const EditSample = (props) => {
                 <SampleType
                   index={i}
                   rejectSampleReasons={rejectSampleReasons}
-                  removeSample={removeSample}
                   sample={sample}
                   setSample={(newSample) => {
                     let newSamples = [...samples];

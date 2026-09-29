@@ -11,6 +11,7 @@ import {
 } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
+import { newSampleKey } from "./sampleTypeUpdate";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
@@ -569,6 +570,7 @@ const Index = () => {
 
   const newSampleType = (id, name, index) => {
     return {
+      key: newSampleKey(),
       index: index,
       sampleRejected: true,
       rejectionReason: "",
@@ -757,8 +759,8 @@ const Index = () => {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
         let tests = null;
-        let panels = "";
         samples.map((sampleItem) => {
+          let panels = "";
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {

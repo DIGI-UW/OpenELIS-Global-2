@@ -36,30 +36,35 @@ const SampleType = (props) => {
 
   const componentMounted = useRef(false);
   const sampleTypesRef = useRef(null);
+  const sampleTypeTestsFetchRef = useRef(0);
 
-  const { index, rejectSampleReasons, removeSample, sample, domain } = props;
+  const { index, rejectSampleReasons, sample, domain } = props;
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleType, setSelectedSampleType] = useState({
-    id: null,
+    id: sample?.sampleTypeId || null,
     name: "",
     element_index: 0,
   });
   const [sampleTypeTests, setSampleTypeTests] = useState(
     sampleTypeTestsStructure,
   );
-  const [selectedTests, setSelectedTests] = useState([]);
+  const [selectedTests, setSelectedTests] = useState(sample?.tests || []);
   const [searchBoxTests, setSearchBoxTests] = useState([]);
-  const [requestTestReferral, setRequestTestReferral] = useState(false);
+  const [requestTestReferral, setRequestTestReferral] = useState(
+    sample?.requestReferralEnabled === true,
+  );
   const [referralReasons, setReferralReasons] = useState([]);
   const [referralOrganizations, setReferralOrganizations] = useState([]);
   const [testSearchTerm, setTestSearchTerm] = useState("");
-  const [referralRequests, setReferralRequests] = useState([]);
+  const [referralRequests, setReferralRequests] = useState(
+    sample?.referralItems || [],
+  );
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [rejectionReasonsDisabled, setRejectionReasonsDisabled] =
     useState(true);
-  const [selectedPanels, setSelectedPanels] = useState([]);
+  const [selectedPanels, setSelectedPanels] = useState(sample?.panels || []);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchBoxPanels, setSearchBoxPanels] = useState([]);
   const [uomList, setUomList] = useState([]);
@@ -330,8 +335,17 @@ const SampleType = (props) => {
 
   const handleFetchSampleTypeTests = (e, index) => {
     setSelectedTests([]);
+    setSelectedPanels([]);
     setReferralRequests([]);
+    setTestSearchTerm("");
+    setSearchBoxTests([]);
+    setPanelSearchTerm("");
+    setSearchBoxPanels([]);
     const { value } = e.target;
+    if (value === "") {
+      sampleTypeTestsFetchRef.current += 1;
+      setSampleTypeTests(sampleTypeTestsStructure);
+    }
     const selectedSampleTypeOption =
       sampleTypesRef.current.options[sampleTypesRef.current.selectedIndex].text;
     setSelectedSampleType({
@@ -351,12 +365,6 @@ const SampleType = (props) => {
     if (componentMounted.current) {
       setSampleTypes(res);
       setLoading(false);
-    }
-  };
-
-  const fetchSampleTypeTests = (res) => {
-    if (componentMounted.current) {
-      setSampleTypeTests(res);
     }
   };
 
@@ -467,9 +475,17 @@ const SampleType = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     if (selectedSampleType.id !== "" && selectedSampleType.id != null) {
+      const fetchId = ++sampleTypeTestsFetchRef.current;
       getFromOpenElisServer(
         `/rest/sample-type-tests?sampleType=${selectedSampleType.id}`,
-        fetchSampleTypeTests,
+        (res) => {
+          if (
+            componentMounted.current &&
+            fetchId === sampleTypeTestsFetchRef.current
+          ) {
+            setSampleTypeTests(res);
+          }
+        },
       );
     }
     return () => {
@@ -511,16 +527,6 @@ const SampleType = (props) => {
     }
   }, [selectedPanels, sampleTypeTests]);
 
-  const repopulateUI = () => {
-    if (props.sample !== null) {
-      setSelectedTests(props.sample.tests);
-      setSelectedPanels(props.sample.panels);
-      setSelectedSampleType({
-        id: props.sample.sampleTypeId,
-      });
-    }
-  };
-
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
@@ -531,7 +537,6 @@ const SampleType = (props) => {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       displayReferralOrgOptions,
     );
-    repopulateUI();
     const sampleTypesEndpoint =
       domain === "E"
         ? "/rest/environmental-sample-types"
@@ -1006,6 +1011,7 @@ const SampleType = (props) => {
             labelText={intl.formatMessage({
               id: "label.refertest.referencelab",
             })}
+            checked={requestTestReferral}
             onChange={handleReferralRequest}
           />
           {requestTestReferral === true && (
