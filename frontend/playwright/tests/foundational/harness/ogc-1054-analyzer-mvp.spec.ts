@@ -407,18 +407,22 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     // Wait for both deliveries before asserting isolation; an absent result alone
     // would not distinguish correct routing from a message still in transit.
     for (const { analyzer, order } of instruments) {
-      await expect
-        .poll(async () => {
-          const response = await page.request.get(
-            `${API}/AnalyzerResults?id=${analyzer.id}`,
-          );
-          const payload = await response.json();
-          return (payload.resultList ?? []).filter(
+      await expect(async () => {
+        const response = await page.request.get(
+          `${API}/AnalyzerResults?id=${analyzer.id}`,
+        );
+        expect(
+          response.ok(),
+          `Result readback: ${response.status()}`,
+        ).toBeTruthy();
+        const payload = await response.json();
+        expect(
+          (payload.resultList ?? []).filter(
             (result: { accessionNumber: string }) =>
               result.accessionNumber === order.accession,
-          ).length;
-        })
-        .toBe(1);
+          ),
+        ).toHaveLength(1);
+      }).toPass();
     }
     for (const { analyzer, value, order } of instruments) {
       await test.step(`Accept ${value} from ${analyzer.name} on its own order`, async () => {

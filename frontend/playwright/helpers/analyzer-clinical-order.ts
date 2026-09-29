@@ -99,21 +99,6 @@ export async function stockClinicalBinding(
   return expectedTestId;
 }
 
-function nextDateInServerFormat(currentDate: string, isoDate: string): string {
-  const parts = currentDate.split(/[/-]/);
-  const separator = currentDate.includes("/") ? "/" : "-";
-  const [year, month, day] = isoDate.split("-");
-  const tomorrow = new Date(`${isoDate}T12:00:00Z`);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const nextYear = String(tomorrow.getUTCFullYear());
-  const nextMonth = String(tomorrow.getUTCMonth() + 1).padStart(2, "0");
-  const nextDay = String(tomorrow.getUTCDate()).padStart(2, "0");
-  if (parts[0] === year) return [nextYear, nextMonth, nextDay].join(separator);
-  if (parts[0] === month && month !== day)
-    return [nextMonth, nextDay, nextYear].join(separator);
-  return [nextDay, nextMonth, nextYear].join(separator);
-}
-
 /** Create a synthetic patient, specimen and order via the same validated API as entry. */
 export async function createAnalyzerClinicalOrder(
   page: Page,
@@ -179,7 +164,6 @@ export async function createAnalyzerClinicalOrder(
     page,
     "/SamplePatientEntry",
   );
-  const serverTime = await jsonGet<{ date: string }>(page, "/server-time");
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
   const nameSuffix = Array.from(suffix, (digit) =>
     String.fromCharCode(65 + Number.parseInt(digit, 16)),
@@ -214,7 +198,6 @@ export async function createAnalyzerClinicalOrder(
       requestDate: entry.currentDate,
       receivedDateForDisplay: entry.currentDate,
       receivedTime: "09:00",
-      nextVisitDate: nextDateInServerFormat(entry.currentDate, serverTime.date),
       priority: "ROUTINE",
       newRequesterName: "Analyzer workflow test",
       referringSiteId: "",

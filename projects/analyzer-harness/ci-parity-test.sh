@@ -147,6 +147,7 @@ if [[ -z "$ARTIFACT_DIR" ]]; then
   ARTIFACT_DIR="/tmp/oe-ci-parity-$(date +%Y%m%d_%H%M%S)"
 fi
 mkdir -p "$ARTIFACT_DIR"
+printf '%s\n' "$CI_PARITY_COMPOSE_PROJECT" > "$ARTIFACT_DIR/compose-project.txt"
 PRECHECK_LOG="$ARTIFACT_DIR/preflight.log"
 RUN_LOG="$ARTIFACT_DIR/run.log"
 

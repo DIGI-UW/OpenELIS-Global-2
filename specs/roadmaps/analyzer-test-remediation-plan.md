@@ -1,21 +1,132 @@
-# R0 — Finish analyzer test remediation in #4332
+# R0 — Finish the merged #4332 analyzer test foundation
 
-Updated: 28 September 2026. Owner: [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332). Broader scope: [core analyzer roadmap](ogc-1054-analyzer-feature-roadmap.md).
+Updated: 29 September 2026. [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332)
+merged as `e0c98726ba`; its nine accepted review corrections belong to the
+bounded `fix/analyzer-review-followup` branch. Broader
+scope: [core analyzer roadmap](ogc-1054-analyzer-feature-roadmap.md).
 
 ## Implementation and validation
 
-#4332 targets `develop`; the obsolete GitHub stack grouping is removed. Current develop (`b267c32ca1`) was merged in `dba1ddccaa`, retaining transaction-aware fixture loading and incorporating upstream sequence/version repairs. The guided setup test now always exercises first-time confirmation through real profile duplication and publication. The [current PR checks](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332/checks) determine technical merge readiness; passing tests do not establish deployment or full release qualification.
+#4332 merged into `develop`; the obsolete GitHub stack grouping is removed. The
+[merged PR checks](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332/checks)
+passed; passing tests do not establish deployment
+or full release qualification.
 
-Current baseline validation (`ec925deb72`, same application code as `376ef58b8f`): full local backend completed 7,614 tests with zero failures/errors and eight skips; full frontend completed 2,982 passing tests with five skips. Fresh source-build isolated parity passed 29/29 harness tests. GitHub backend and frontend passed, but downstream analyzer E2E exposed two distinct defects:
+The
+[review at `760536edb8`](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332#pullrequestreview-5345266867)
+confirms that the earlier ordinary-startup catalog-overwrite blocker is
+resolved: molecular test/result CSVs are harness-owned, and the repeated-load
+test preserves the existing COVID report label. The review still identifies
+test, runner, harness-configuration and documentation work. Its disposition and
+acceptance checks are recorded below; none of those pending changes is claimed
+as implemented.
 
-- A pending search used stale URL parameters and closed the deactivation dialog. OE2 commit `b62ef4ca92` preserves the current URL; the helper waits for committed search state. The controlled-timer regression fails on the old implementation and passes after the fix; all 29 component tests and a fresh 29-test harness run pass.
-- Generated mock XLSX files retained temporary-file mode `0600`; Bridge's different Linux user could not read them. Merged [mock #50](https://github.com/DIGI-UW/analyzer-mock-server/pull/50) corrects this before atomic publication. OE2 now pins its released `v0.1.3` merge commit `8c64750` and matching published image. The exact mock suite passes 274 tests (five skips); a Linux cross-user check verifies readability as Bridge UID 9257. The published `0.1.3` image manifest and successful tag workflow were verified; the final OE2 source and image combination still needs its own CI run.
+Completed validation for `760536edb8`: GitHub's backend, frontend and downstream
+E2E checks passed, including its Playwright, Cypress and analyzer jobs. The
+single local runner passed backend, frontend, both analyzer projects and the
+independent Cypress shard; core Playwright failed one WHONET assertion, and
+Cypress core and admin failed 14 and six tests respectively. These are
+contradictory results, not an overall local pass or evidence for a later
+commit. The full local command is `scripts/run-ci-checks.sh`: backend, frontend
+and E2E lanes start in parallel from the same committed source, with E2E suites
+run sequentially on fresh isolated stacks. Maven's dependency cache is reused.
+GitHub publication, security artifacts and checkpoint orchestration still
+require GitHub checks.
 
-Neither defect is repaired by increasing timeouts. Analyzer stories now use condition-based assertions within their existing whole-test deadlines, without separate step limits. Result stories use unique sender identities and a unique FILE directory, and no longer depend on UI deactivation during cleanup; the dedicated guided-setup story tests deactivation. Fresh isolated parity for this final cleanup change is pending. Final technical acceptance still requires backend, frontend and actual downstream E2E checks for the submitted commit. Keep live CI state in PR checks and the report status page.
+The local core Playwright suite completed with **294
+passed, 16 skipped and one failed**:
+`ogc-782-microbiology-whonet-export.spec.ts`, “previews finalized bacteriology
+and generates CSV.” Diagnosis is pending; this is an unresolved failure, not
+waived as unrelated. The run evidence remains under `/tmp/4332-760536-full-ci/`;
+its source is `760536edb8`. Reconcile the final lane results before any overall
+CI claim.
 
-Completing the current Bridge/default integration and matching workflow evidence belongs to #4332; it must not be deferred merely to make the old dependency combination green. Completing it does not close every core analyzer capability or qualify Madagascar. Human review is separate from the technical checks discussed here.
+Earlier baseline validation remains supporting evidence only: `ec925deb72`
+passed 7,614 backend tests with zero failures/errors and eight skips, plus 2,982
+frontend tests with five skips. Subsequent source-built analyzer runs passed
+29/29 foundational tests and guided setup plus authentication (2/2). Those runs
+found and drove fixes for the stale-search dialog race and unreadable mock XLSX
+files. Mock #50's FILE permission fix is released as 0.1.3 (`8c64750`), aligned
+with the OE2 source and image pins. The current source and dependency
+combination still requires completed validation.
 
-The immediate merge sequence is **#4332 → #4448 → #4449**. #4332 establishes the stable harness catalog and faithful test foundation without installing harness clinical CSVs on ordinary OE2 sites. Refresh #4448 against that merged foundation, remove superseded display/test changes, and replace its old SQL/mapping-preparation story with the existing production-API/UI setup. Then refresh #4449 on merged #4448 so its review contains only per-observation mapping isolation. Both currently target `develop`; #4449 includes an earlier version of #4448, not all of its latest commits. Broader FILE/HL7 qualification, outage/replay, populated upgrades and any general catalog additions are separate follow-ups. Each PR requires passing current-head checks and focused workflow evidence before merge.
+Analyzer assertions use observable conditions within the existing whole-test
+deadline. Do not add sleeps or raise deadlines to repair a failure. Result
+stories use unique sender identities and watched directories; the disposable
+stack owns their teardown. The dedicated guided-setup story exercises
+deactivation. Review corrections must preserve those isolation and evidence
+boundaries.
+
+Completing the current Bridge/default integration and matching workflow evidence
+belongs to #4332; it must not be deferred merely to make the old dependency
+combination green. Completing it does not close every core analyzer capability
+or qualify Madagascar. Human review is separate from the technical checks
+discussed here.
+
+The remaining merge sequence is **#4332 review follow-up → #4448 → #4449**. #4332 established the
+stable harness catalog and faithful test foundation without installing harness
+clinical CSVs on ordinary OE2 sites. Refresh #4448 against that merged
+foundation, remove superseded display/test changes, and replace its old
+SQL/mapping-preparation story with the existing production-API/UI setup. Then
+refresh #4449 on merged #4448 so its review contains only per-observation
+mapping isolation. Both currently target `develop`; #4449 includes an earlier
+version of #4448, not all of its latest commits. Broader FILE/HL7 qualification,
+outage/replay, populated upgrades and any general catalog additions are separate
+follow-ups. Each PR requires passing current-head checks and focused workflow
+evidence before merge.
+
+## Review disposition and pre-merge acceptance
+
+Source:
+[review at `760536edb8`](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332#pullrequestreview-5345266867),
+checked against that source revision on 28 September. Owner for every R0 item
+below: OE2's bounded #4332 review follow-up. Status: **in progress**, unless explicitly noted. This is the
+bounded correction scope before the final CI/evidence checkpoint; the deferred
+table is not an additional merge gate.
+
+| ID      | Valid finding and decision                                                                                                                                                                     | Smallest remediation                                                                                                                                                                                                                                                              | Acceptance                                                                                                                                                                                                                                                           |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R0-REV1 | Search/count evidence can pass before filtering commits; `toContainText("1")` also matches `21`.                                                                                               | Wait for the committed search URL inside `AnalyzerListPage.search`; use exact count assertions in guided setup.                                                                                                                                                                   | The registered guided-setup story waits for its actual filter and proves exactly one matching analyzer and setup record. No sleep or new step timeout.                                                                                                               |
+| R0-REV2 | Full local runner's language pathspec is relative to `frontend/` and matches no locale files.                                                                                                  | Use a repository-root pathspec and keep the existing translation-source rule.                                                                                                                                                                                                     | A controlled non-English change is rejected; an English-only change is allowed. Missing or failed validation cannot produce overall PASS.                                                                                                                            |
+| R0-REV3 | Cancelling the runner signals lane shells but can leave Maven/Docker descendants using checkouts that cleanup removes.                                                                         | Isolate each lane's process group; stop and wait for its descendants and scoped Compose cleanup before removing its checkout. Keep this inside the existing runner.                                                                                                               | Interrupt a disposable validation run; no owned child processes or Compose projects remain, unrelated stacks remain running, and the run reports interrupted/non-success.                                                                                            |
+| R0-REV4 | Deployment instructions still imply molecular clinical defaults ship in every image; rebase instructions call a deleted script/unsupported option; PR validation text calls an old head final. | Correct catalog packaging and retention guidance, point full validation to the one runner, and link live checks instead of maintaining a moving final-head claim.                                                                                                                 | No instruction removes a still-needed site catalog or calls the deleted runner/removed flag. Deployment smoke proves receipt only unless clinical acceptance/readback is explicitly performed. PR body and roadmap state the same current scope and evidence limits. |
+| R0-REV5 | The shared-listener result poll parses JSON without checking the response and can throw outside retry handling.                                                                                | Use the established response check and retryable assertion pattern; retain useful diagnostics.                                                                                                                                                                                    | Transient unsuccessful/non-JSON responses do not end the poll immediately; valid results still require independent analyzer/order attribution and the exact expected count.                                                                                          |
+| R0-REV6 | Delivery-issue mock cleanup in the test body's `finally` can be interrupted when that body exhausts its deadline.                                                                              | Give the temporary source an owned fixture lifecycle and reliable teardown context.                                                                                                                                                                                               | A failing/timed-out body still removes its temporary source before retry; a passing run does too. Keep the existing whole-test deadline; do not introduce a shorter arbitrary poll deadline.                                                                         |
+| R0-REV7 | Whole-directory read-only catalog mounts prevent supported Catalog Import uploads in the harness.                                                                                              | Initialize the harness's canonical CSVs into its existing writable configuration volume, then use the ordinary OE2 loader. Preserve intentional edits/uploads on a retained development volume. Individual read-only file mounts alone do not support replacement of those files. | Fresh local/CI stacks load the same catalog; normal Catalog Import can add and replace a file; restart retains the supported upload. Fresh CI resets remain isolated. No SQL setup, mapping repair or global loader-precedence change.                               |
+| R0-REV8 | Catalog integration proof reads GeneXpert v5 and manually adds hints already shipped in v7.                                                                                                    | Read the real profile revision from the pinned Bridge catalog and remove the test-only hint patch.                                                                                                                                                                                | Existing catalog/default assertions pass against the actual shipped profile data without manufacturing defaults in the test.                                                                                                                                         |
+| R0-REV9 | The order helper guesses date layout for an optional next-visit date unrelated to analyzer acceptance.                                                                                         | Confirm omission through the production order API, then remove the unnecessary date and guessing helper.                                                                                                                                                                          | The existing native result workflow creates and accepts the intended order without `nextVisitDate`; patient/order/specimen/value assertions stay intact.                                                                                                             |
+
+Execution: first repair the test/runner/doc items, then validate writable
+catalog initialization. Reuse existing tests; add only the focused
+failure/cleanup checks needed to prove the changed behavior. Push each coherent
+revision and run the full local command alongside GitHub for that same revision.
+A run for an earlier revision is supporting evidence only. Do not add competing
+CI entry points. Final acceptance requires all local lanes and actual downstream
+GitHub checks to complete, plus accessible reviewed video from the same
+registered workflow tests when their behavior changes.
+
+## Explicitly deferred review items
+
+These items remain open after #4332; recording them does not claim that a
+follow-up PR or issue has been created. Ownership below names the roadmap
+workstream responsible for creating that bounded follow-up. None justifies
+changing clinical semantics without evidence.
+
+| ID     | Finding / disposition                                                                                                                                                 | Owner and reason for deferral                                                                                                                                                        | Follow-up acceptance                                                                                                                                                                                                    |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-REV1 | Harness filesystem catalogs suppress bundled Horiba CBC/vector CSVs for those domains. Confirmed loader behavior; intended coverage still needs an explicit decision. | R5/R7 core catalog and profile qualification. Current #4332 corpus is bounded molecular coverage. Do not silently merge classpath and site catalogs or expand this PR to all assays. | State the supported corpus; qualify additional profiles against its normal catalog load and native clinical readback. Missing coverage stays visible. Preserve the documented site-override contract.                   |
+| F-REV2 | Transactional TRUNCATE can retain locks that block a second connection or `REQUIRES_NEW` work. Credible risk; no current failing case demonstrated by this review.    | R0 backend test-infrastructure follow-up. Diagnose transaction ownership separately from analyzer browser setup. A lock timeout only improves failure diagnostics.                   | Reproduce the cross-connection case; fix fixture isolation/transaction ownership and verify it finishes or fails diagnostically without hanging a job. Do not solve it by lengthening timeouts.                         |
+| F-REV3 | A single local-code candidate bypasses specimen disambiguation. Behavior confirmed; a defect is not yet established.                                                  | R4 populated-catalog reconciliation. A unique code can legitimately identify a test whose specimen support is being extended.                                                        | Define identity/update semantics with existing catalog-loader expectations; cover valid extension and conflicting identity. Add a restriction only if that contract requires it.                                        |
+| F-REV4 | Repeated `SpringContext.getBean` access and reference-table lookup add indirection/query work.                                                                        | OE2 service-maintenance follow-up under R6. No functional failure or measured performance blocker shown.                                                                             | Prefer injected/context-scoped dependencies where appropriate; verify lifecycle/context correctness and query reduction. Do not restore stale static caches to satisfy a style preference.                              |
+| F-REV5 | Historical 2.3.x seed assigns the COVID LOINC to HIV viral-load variants. Source defect predates this PR; deployed effective values require separate audit.           | R4 general catalog correction. Harness-only CSVs are not a production migration policy; keep broad catalog management out of #4332.                                                  | Verify affected records and intended concept/specimen/unit identities; apply a narrowly scoped supported correction preserving IDs, history, report labels and site activation intent. Prove fresh and populated cases. |
+| F-REV6 | Duplicate raw values render one hint editor because hints are keyed by raw value. Authoring validation improvement; no loss of distinct mappings established.         | R3 profile-authoring follow-up. A second identical key cannot have an independent hint under the existing contract.                                                                  | Explain/reject duplicate value entries visibly while preserving valid values and hints; do not create a second hint contract.                                                                                           |
+
+Already resolved: ordinary installs no longer receive the harness molecular test
+CSVs; the COVID report label is asserted across two loads; the stale-search
+product race, released mock FILE permissions and `nc_event` fixture sequence
+mapping are fixed. The old sequence review thread can be resolved during PR
+housekeeping. These resolved items do not certify the remaining acceptance
+above.
 
 ## What this PR delivers
 
@@ -25,38 +136,53 @@ The immediate merge sequence is **#4332 → #4448 → #4449**. #4332 establishes
 | Harness clinical catalog     | Kept the molecular test and result-choice CSVs inside the harness and mounted them for local and CI runs; corrected COVID fresh-load identity and added generic specimen and answer-hint consumption/editor support.                                                                         | Catalog tests cover fresh/repeated loading and preservation of existing IDs. The harness CSV is test configuration, not a globally packaged catalog update. HIV/COVID hints are supplied by companion Bridge #69; the same dependency combination must pass the native workflow tests. Existing-site duplicate cleanup remains open. |
 | Result visibility            | Corrected mixed numeric/categorical result display so staged COVID observations do not disappear because a numeric definition was interpreted as a dictionary choice.                                                                                                                        | Existing pending rows reappeared locally without resend. This is display evidence, not completion of all recovery paths.                                                                                                                                                                                                             |
 | Persistent harness storage   | Persisted Bridge connections/profiles, delivery queue and FILE state in a named volume through shared local/CI configuration.                                                                                                                                                                | Container replacement retained 26 connections and 15 delivered records. The FILE store was empty; queued retry and processed-file deduplication were not proved. Mock network reattachment required a manual step.                                                                                                                   |
-| Real-service test foundation | Real parsing/history in integration tests, transaction-aware fixture loading, owned audit records, catalog isolation and context-correct service access.                                                                                                                                     | Focused suites passed. Full local backend validation passes; exact-commit GitHub checks remain the merge gate. No failing assertion or required check is waived.                                                                                                                                                                     |
+| Real-service test foundation | Real parsing/history in integration tests, transaction-aware fixture loading, owned audit records, catalog isolation and context-correct service access.                                                                                                                                     | Focused suites passed. Earlier full local backend validation passed; the current full run remains incomplete at this checkpoint. Final-revision local and GitHub checks remain required. No failing assertion or required check is waived.                                                                                           |
 
 ## One dependency and evidence boundary
 
-| Use                       | OE2 source                                   | Bridge source / profiles                            | Mock source          | What it proves                                                                                                                                                                                                                                       |
-| ------------------------- | -------------------------------------------- | --------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current #4332 integration | Current PR head pending cleanup commit       | Bridge 3.2.4 `1eff7b4`; GeneXpert 7, FluoroCycler 4 | Mock 0.1.3 `8c64750` | Earlier dialog and mock fixes passed local parity and cross-user validation. Final cleanup and released-pin parity plus GitHub downstream checks remain required.                                                                                    |
-| Current result evidence   | Application `dbc266a484`; tests `311af6006e` | `da675c9`; GeneXpert 7 and FluoroCycler 4           | `2ad1082`            | Nine passing native result recordings: MTB negative, three RIF outcomes, HIV concentration, COVID positive/negative, shared-listener isolation and watched-FILE delivery. Independent clinical readback passes. Five stock-default checks also pass. |
-| Current setup evidence    | Application `dbc266a484`; tests `311af6006e` | `da675c9`; full GeneXpert 7 duplicated through UI   | `2ad1082`            | Passing first-time confirmation, activation, connection editing, QC navigation and deactivation. Setup plus the nine result workflows provide ten recordings on one application/dependency combination.                                              |
+| Use                       | OE2 source                                      | Bridge source / profiles                            | Mock source          | What it proves                                                                                                                                                                                                                                       |
+| ------------------------- | ----------------------------------------------- | --------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current #4332 integration | Reviewed code `760536edb8`; corrections pending | Bridge 3.2.4 `1eff7b4`; GeneXpert 7, FluoroCycler 4 | Mock 0.1.3 `8c64750` | Released pins align. Earlier workflow runs passed; the full local/GitHub run for the reviewed code was incomplete at this checkpoint. R0 review corrections and final-revision checks remain required.                                               |
+| Current result evidence   | Application `dbc266a484`; tests `311af6006e`    | `da675c9`; GeneXpert 7 and FluoroCycler 4           | `2ad1082`            | Nine passing native result recordings: MTB negative, three RIF outcomes, HIV concentration, COVID positive/negative, shared-listener isolation and watched-FILE delivery. Independent clinical readback passes. Five stock-default checks also pass. |
+| Current setup evidence    | Application `dbc266a484`; tests `311af6006e`    | `da675c9`; full GeneXpert 7 duplicated through UI   | `2ad1082`            | Passing first-time confirmation, activation, connection editing, QC navigation and deactivation. Setup plus the nine result workflows provide ten recordings on one application/dependency combination.                                              |
 
-Released Bridge 3.2.4 differs from the recorded `da675c9` only in acceptance-test readiness and release version metadata. Mock 0.1.2 matched the earlier recorded `2ad1082`; released mock 0.1.3 adds the readable FILE publication fix. The diagnostic showed host health UP six seconds before Bridge forwarding health UP. Waiting for forwarding recovery preserved the assertion that one operator retry delivers once. Operator retry currently grants one delivery attempt after automatic retries are exhausted; resilience of that behavior to another transient failure remains an explicit recovery follow-up.
+Released Bridge 3.2.4 differs from the recorded `da675c9` only in
+acceptance-test readiness and release version metadata. Mock 0.1.2 matched the
+earlier recorded `2ad1082`; released mock 0.1.3 adds the readable FILE
+publication fix. The diagnostic showed host health UP six seconds before Bridge
+forwarding health UP. Waiting for forwarding recovery preserved the assertion
+that one operator retry delivers once. Operator retry currently grants one
+delivery attempt after automatic retries are exhausted; resilience of that
+behavior to another transient failure remains an explicit recovery follow-up.
 
-These are source identities. Attach the actual image IDs/digests and test-run identity to final deployment evidence rather than inferring running images from Git pins. Bridge changes are staged deliberately with their consuming workflows; verify the committed gitlink before deployment.
+These are source identities. Attach the actual image IDs/digests and test-run
+identity to final deployment evidence rather than inferring running images from
+Git pins. Bridge changes are staged deliberately with their consuming workflows;
+verify the committed gitlink before deployment.
 
 ## Ordered remaining work and acceptance
 
-The R labels retain their existing capability ownership; the numbered rows below give the execution order. PR numbers identify existing owners rather than new parallel implementations.
+The R labels retain their existing capability ownership; the numbered rows below
+give the execution order. PR numbers identify existing owners rather than new
+parallel implementations.
 
-| Order | Owner / current state                                  | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
-| ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | R0 — OE2 #4332; GitHub validation ongoing              | Review the passing fresh-build local parity evidence, obtain exact-head GitHub backend/frontend/downstream E2E results, and refresh recordings if the final source differs materially from the recorded run. Keep general catalog changes outside this harness PR.                                                    | Backend/frontend/downstream E2E pass on the submitted pins. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record the limits of numeric FILE coverage explicitly.                                                                                               |
-| 2     | R5 — Bridge #69 / mock #49; merged and released        | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
-| 3     | R1/R3 — OE2 #4448; open                                | After #4332, update from develop and retain only unique recovery changes. Use #4332's production-API prerequisites and UI/native traffic tests; remove the old SQL/mapping-repair setup and obsolete test copies.                                                                                                     | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
-| 4     | R2 — OE2 #4449; draft, depends on #4448                | After #4448, refresh against develop so the diff contains only per-observation catalog validity. Reuse the existing confirmation, catalog validation and recovery services.                                                                                                                                           | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then mark ready and merge.                      |
-| 5     | R5 — broader core FILE/HL7 qualification; open         | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
-| 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
-| 7     | R6/R7 — core qualification; open                       | Reconcile remaining PR deltas against merged code, close superseded work with lineage, run supported full workflows and review/present recordings from the same tests.                                                                                                                                                | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video.                                                                                                                                                                      |
-| 8     | R8 — Madagascar distro; later                          | Publish qualified core versions, update distro pins and run limited packaging/configuration checks.                                                                                                                                                                                                                   | The distro consumes working core profiles/defaults without site-specific mapping repair. Its checks prove packaging differences, not replacement core acceptance.                                                                                                                                                                          |
+| Order | Owner / current state                                   | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
+| ----- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | R0 — #4332 merged; bounded review follow-up in progress | Complete R0-REV1 through R0-REV9 above; reconcile the failed local core/Cypress lanes with GitHub; run the single full local runner alongside GitHub on the final submitted revision, and refresh recordings when tested behavior changes. Keep F-REV1 through F-REV6 with named owners.                              | Every local testing lane and actual downstream GitHub E2E passes on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                                 |
+| 2     | R5 — Bridge #69 / mock #49; merged and released         | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
+| 3     | R1/R3 — OE2 #4448; open                                 | After #4332, update from develop and retain only unique recovery changes. Use #4332's production-API prerequisites and UI/native traffic tests; remove the old SQL/mapping-repair setup and obsolete test copies.                                                                                                     | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
+| 4     | R2 — OE2 #4449; draft, depends on #4448                 | After #4448, refresh against develop so the diff contains only per-observation catalog validity. Reuse the existing confirmation, catalog validation and recovery services.                                                                                                                                           | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then mark ready and merge.                      |
+| 5     | R5 — broader core FILE/HL7 qualification; open          | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
+| 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open  | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
+| 7     | R6/R7 — core qualification; open                        | Reconcile remaining PR deltas against merged code, close superseded work with lineage, run supported full workflows and review/present recordings from the same tests.                                                                                                                                                | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video.                                                                                                                                                                      |
+| 8     | R8 — Madagascar distro; later                           | Publish qualified core versions, update distro pins and run limited packaging/configuration checks.                                                                                                                                                                                                                   | The distro consumes working core profiles/defaults without site-specific mapping repair. Its checks prove packaging differences, not replacement core acceptance.                                                                                                                                                                          |
 
 ## Remaining PR cleanup ownership
 
-Live PR states were checked on 28 September. The dispositions below are proposed work, not claims that these PRs have already been cleaned up or closed. They follow the ordered work above; none expands the bounded current #4332 merge gate.
+Live PR states were checked on 28 September. The dispositions below are proposed
+work, not claims that these PRs have already been cleaned up or closed. They
+follow the ordered work above; none expands the bounded current #4332 merge
+gate.
 
 | PRs                                    | Remaining action                                                                                                                                                                                                          |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -71,19 +197,42 @@ Live PR states were checked on 28 September. The dispositions below are proposed
 | Review tooling #16 / #31               | Compare #16 with merged #17; update #31 evidence manifests to the tested pins.                                                                                                                                            |
 | OE2 #3793 / #4447                      | #3793 remains separate operational-QC planning. #4447 is merged order-entry work, not an analyzer release blocker.                                                                                                        |
 
-#4448 and #4449 remain the explicit recovery and per-observation isolation owners in step 4. Populated upgrade/catalog acceptance uses the existing #4433 migration and normal catalog-loading services; its reconciliation work still needs a bounded follow-up, not a second migration implementation.
+#4448 and #4449 remain the explicit recovery and per-observation isolation
+owners in steps 3 and 4. Populated upgrade/catalog acceptance uses the existing
+#4433 migration and normal catalog-loading services; its reconciliation work
+still needs a bounded follow-up, not a second migration implementation.
 
 ## #4256 closure: useful work and remaining proof
 
-The original manual per-result reprocess endpoint and button were superseded by #4433's adoption-triggered recovery; they should not be restored. Receipt protection landed in #4241 and migration 104. The alternative history-key migration 109 preserves numeric and UUID audit references. Test-foundation work continues in #4332.
+The original manual per-result reprocess endpoint and button were superseded by
+#4433's adoption-triggered recovery; they should not be restored. Receipt
+protection landed in #4241 and migration 104. The alternative history-key
+migration 109 preserves numeric and UUID audit references. Test-foundation work
+continues in the #4332 review follow-up.
 
-#4448 owns useful outstanding recovery behavior, including updated reasons for still-held rows. #4449 owns isolating invalid mappings to affected observations. Preserve two acceptance checks from the old work: recovery must retain the original QC lot across transactions and must not discard unsaved worklist edits. Closing #4256 did not certify complete recovery acceptance.
+#4448 owns useful outstanding recovery behavior, including updated reasons for
+still-held rows. #4449 owns isolating invalid mappings to affected observations.
+Preserve two acceptance checks from the old work: recovery must retain the
+original QC lot across transactions and must not discard unsaved worklist edits.
+Closing #4256 did not certify complete recovery acceptance.
 
 ## Rules for faithful tests and evidence
 
-- Start the ordinary core application/catalog and Bridge-shipped profiles through `scripts/dev-stack`; use CI's supported runner for CI parity.
-- Prepare synthetic patients, orders and specimens through existing validated APIs. Assert expected catalog identity and specimen independently. Do not select, exclude or repair analyzer mappings in fixtures.
-- Exercise the UI for any setup, confirmation, correction, activation or acceptance that the story claims. Supplemental API readiness/readback is allowed; it must not perform the behavior being demonstrated.
-- Keep Bridge responsible for protocols, parsing, listeners, directory watching and delivery. Keep OE2 responsible for clinical catalog bindings, orchestration, review, history and QC.
-- Use the same registered scenarios and assertions for CI and videos. The evidence page presents the current workflow set with exact commit identities and limits; Git retains implementation history. Generating a new file is not evidence review.
-- Track code, CI, merge, deployed build, publication and human acceptance separately. Do not describe a PR as merge-ready while required checks are failing or unknown.
+- Start the ordinary core application/catalog and Bridge-shipped profiles
+  through `scripts/dev-stack`; use CI's supported runner for CI parity.
+- Prepare synthetic patients, orders and specimens through existing validated
+  APIs. Assert expected catalog identity and specimen independently. Do not
+  select, exclude or repair analyzer mappings in fixtures.
+- Exercise the UI for any setup, confirmation, correction, activation or
+  acceptance that the story claims. Supplemental API readiness/readback is
+  allowed; it must not perform the behavior being demonstrated.
+- Keep Bridge responsible for protocols, parsing, listeners, directory watching
+  and delivery. Keep OE2 responsible for clinical catalog bindings,
+  orchestration, review, history and QC.
+- Use the same registered scenarios and assertions for CI and videos. The
+  evidence page presents the current workflow set with exact commit identities
+  and limits; Git retains implementation history. Generating a new file is not
+  evidence review.
+- Track code, CI, merge, deployed build, publication and human acceptance
+  separately. Do not describe a PR as merge-ready while required checks are
+  failing or unknown.

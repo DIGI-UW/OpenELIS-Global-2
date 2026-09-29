@@ -1,4 +1,8 @@
 services:
+  harness-catalog-init:
+    volumes:
+      - ./projects/analyzer-harness/config-templates:/templates:ro
+
   astm-simulator:
     build:
       context: ./tools/analyzer-mock-server
@@ -90,8 +94,7 @@ services:
 
   oe.openelis.org:
     volumes:
-      - ./projects/analyzer-harness/config-templates/tests:/var/lib/openelis-global/configuration/backend/tests:ro
-      - ./projects/analyzer-harness/config-templates/test-results:/var/lib/openelis-global/configuration/backend/test-results:ro
+      - configuration-data:/var/lib/openelis-global/configuration
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
       - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
