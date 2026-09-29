@@ -2,7 +2,8 @@
 
 Updated: 29 September 2026. [OE2 #4332](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4332)
 merged into `develop` as `e0c98726ba`. Current work is its bounded review
-follow-up, then [#4448](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4448)
+follow-up [#4470](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4470),
+then [#4448](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4448)
 and [#4449](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4449). The
 [implementation plan](analyzer-test-remediation-plan.md) is the single source
 for current status, the ordered work table, dependency/evidence identities and
@@ -16,8 +17,11 @@ retains catalog coverage, fixture locking, catalog identity, service lookup,
 historical concept and profile-authoring follow-ups with owners and closure
 criteria. These are one maintained plan, not a separate merge train.
 
-Immediate merge sequence: **#4332 review follow-up → #4448 → #4449**. Refresh each follow-up
-against the merged predecessor and retain only its unique changes. Broader
+Immediate merge sequence: **#4470 → #4448 → #4449** in
+[GitHub stack #4472](https://github.com/DIGI-UW/OpenELIS-Global-2/stack/4472).
+All three branches include current `develop` (`e0c98726ba`); each upper
+branch contains and targets its predecessor. Keep the stack synced when
+`develop` changes and retain only each PR's unique changes. Broader
 profile, outage/replay and upgrade qualification does not block these bounded
 PRs; their focused acceptance and current-head CI still apply.
 
@@ -39,8 +43,9 @@ follows core qualification and checks only its distro/configuration differences.
 #4332 merged the repaired test foundation, API-based clinical prerequisites,
 harness-owned catalog CSVs loaded by OE2's normal configuration service, bounded
 default/display fixes and persistent harness storage. The harness CSVs are not
-packaged as general OE2 catalog changes. It targets `develop`; obsolete stack
-grouping is removed. GitHub checks passed at `760536edb8`, including downstream
+packaged as general OE2 catalog changes. Its obsolete stack grouping was
+removed; the new remediation stack starts at #4470. GitHub checks passed at
+`760536edb8`, including downstream
 E2E. The completed local run passed backend, frontend and both analyzer suites,
 but failed core Playwright and two Cypress shards. The review follow-up must
 resolve that discrepancy and its nine accepted corrections. No deployed or

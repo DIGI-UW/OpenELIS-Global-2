@@ -115,3 +115,6 @@ services:
 networks:
   analyzer-net:
     driver: bridge
+
+volumes:
+  configuration-data:

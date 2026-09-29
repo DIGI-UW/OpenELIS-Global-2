@@ -53,6 +53,8 @@ services:
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
     depends_on:
+      certs:
+        condition: service_completed_successfully
       harness-catalog-init:
         condition: service_completed_successfully
     networks:
