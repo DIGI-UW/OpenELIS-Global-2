@@ -5,6 +5,7 @@ import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { csrfToken } from "../../../helpers/api-session";
 import {
   sendGeneXpertAstm,
   writeFluoroCyclerFile,
@@ -845,5 +846,173 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
         "The two workbook results were read back against their separate patient orders.",
       durationMs: 6000,
     });
+  });
+
+  test("an invalid RIF binding holds only RIF and recovers its original result", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const runId = randomUUID().slice(0, 8);
+    const analyzerName = `E2E Invalid Binding GeneXpert ${runId}`;
+    const senderId = `GX-${runId}`;
+    const list = new AnalyzerListPage(page);
+    const setup = new AnalyzerSetupPage(page);
+
+    await list.goto();
+    await list.clickAdd();
+    await setup.expectOpen();
+    await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
+    await setup.fillName(analyzerName);
+    await setup.selectLabUnit("Molecular Biology");
+    await setup.continueToVerify();
+    const verifyUrl = page.url();
+    const analyzer = await analyzerByName(page, analyzerName, "genexpert-astm");
+    const order = await createAnalyzerClinicalOrder(page, {
+      profileId: analyzer.profileId,
+      profileRevision: analyzer.profileRevision,
+      sourceCode: "MTB-RIF",
+      expectedTestName: "Xpert MTB/RIF",
+      expectedLoinc: "85362-2",
+      specimenName: "Sputum",
+      expectedMappedValue: "NOT DETECTED",
+      additionalTests: [
+        {
+          profileId: analyzer.profileId,
+          profileRevision: analyzer.profileRevision,
+          sourceCode: "RIF",
+          expectedTestName: "Xpert RIF Resistance",
+          expectedLoinc: "46244-0",
+          specimenName: "Sputum",
+          expectedMappedValue: "INDETERMINATE",
+        },
+      ],
+    });
+    await confirmShippedMapping(page, analyzer);
+    await page.goto(verifyUrl, { waitUntil: "domcontentloaded" });
+    await setup.continueToConnect();
+    await setup.fillSenderId(senderId);
+    await page.getByRole("button", { name: "Finish and activate" }).click();
+    await expect(page.getByTestId(`analyzer-row-${analyzer.id}`)).toContainText(
+      "Active",
+    );
+
+    const rifTestId = order.orderedTests[1].testId;
+    const headers = { "X-CSRF-Token": await csrfToken(page) };
+    const deactivated = await page.request.put(
+      `${API}/test-catalog/tests/${rifTestId}/basic-info`,
+      { headers, data: { active: false } },
+    );
+    expect(
+      deactivated.ok(),
+      `Deactivate synthetic RIF test: ${deactivated.status()}`,
+    ).toBeTruthy();
+    expect(((await deactivated.json()) as { active: boolean }).active).toBe(
+      false,
+    );
+
+    await sendGeneXpertAstm(
+      page.request,
+      analyzer.bridgeConnectionId,
+      order.accession,
+      "MTB-RIF",
+      "NOT DETECTED",
+      senderId,
+      [{ testCode: "RIF", value: "INDETERMINATE" }],
+    );
+    let heldId = "";
+    await expect(async () => {
+      const response = await page.request.get(
+        `${API}/AnalyzerResults?id=${analyzer.id}`,
+      );
+      expect(response.ok()).toBeTruthy();
+      const data = (await response.json()) as {
+        resultList: Array<{
+          id: string;
+          accessionNumber: string;
+          rawTestCode: string;
+          importIssueReason: string | null;
+        }>;
+      };
+      const rows = data.resultList.filter(
+        (row) => row.accessionNumber === order.accession,
+      );
+      expect(rows).toHaveLength(2);
+      expect(
+        rows.find((row) => row.rawTestCode === "MTB-RIF")?.importIssueReason,
+      ).toBeFalsy();
+      const rif = rows.find((row) => row.rawTestCode === "RIF");
+      expect(rif?.importIssueReason).toBe("test_mapping_not_ready");
+      heldId = rif?.id || "";
+    }).toPass();
+    expect(heldId).toBeTruthy();
+
+    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const held = page.getByTestId(`held-analyzer-result-${heldId}`);
+    await expect(held).toBeVisible();
+    const usable = page.getByRole("row").filter({ hasText: "NOT DETECTED" });
+    await expect(usable.locator('input[id$=".isAccepted"]')).toHaveCount(1);
+    await capture(page, testInfo, "invalid-binding-only-rif-held");
+    await usable.locator('label[for$=".isAccepted"]').click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(held).toBeVisible();
+    await expectClinicalReadback(page, order, "NOT DETECTED");
+
+    const reactivated = await page.request.post(
+      `${API}/test-catalog/tests/${rifTestId}/activate`,
+      { headers, data: {} },
+    );
+    expect(
+      reactivated.ok(),
+      `Reactivate synthetic RIF test: ${reactivated.status()} ${await reactivated.text()}`,
+    ).toBeTruthy();
+    expect(((await reactivated.json()) as { active: boolean }).active).toBe(
+      true,
+    );
+    await held
+      .getByRole("link", { name: "Review Analyzer Type mapping" })
+      .click();
+    const apply = page.getByRole("button", {
+      name: "Apply mappings and retry held results",
+    });
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect(async () => {
+      const response = await page.request.get(
+        `${API}/AnalyzerResults?id=${analyzer.id}`,
+      );
+      expect(response.ok()).toBeTruthy();
+      const data = (await response.json()) as {
+        resultList: Array<{ id: string; importIssueReason: string | null }>;
+      };
+      const original = data.resultList.filter((row) => row.id === heldId);
+      expect(original).toHaveLength(1);
+      expect(original[0].importIssueReason).toBeFalsy();
+    }).toPass();
+    await apply.click();
+    await page
+      .locator(".analyzer-type-mapping__heading-actions")
+      .getByRole("link", { name: "Analyzer Types" })
+      .click();
+    await expect(page).toHaveURL(/\/AnalyzerResults\?id=/);
+    const recovered = page
+      .getByRole("row")
+      .filter({ hasText: "Indeterminate" });
+    await expect(recovered.locator('input[id$=".isAccepted"]')).toHaveCount(1);
+    await capture(page, testInfo, "original-rif-result-recovered");
+    await recovered.locator('label[for$=".isAccepted"]').click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(recovered).not.toBeVisible();
+    await expectClinicalReadback(
+      page,
+      {
+        ...order,
+        testId: rifTestId,
+        primaryComponentId: order.orderedTests[1].primaryComponentId,
+      },
+      "Indeterminate",
+    );
+    await capture(page, testInfo, "invalid-binding-recovered-clinical-result");
   });
 });
