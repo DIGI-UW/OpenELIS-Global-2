@@ -98,6 +98,26 @@ describe("CustomDatePicker — typed dates outside the allowed range", () => {
     ).toBeInTheDocument();
   });
 
+  test("clearing the box after a refused date drops the message", () => {
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange: vi.fn(),
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+    expect(
+      screen.getByText("Date of birth cannot be in the future."),
+    ).toBeInTheDocument();
+
+    fireEvent.input(findInput(), { target: { value: "" } });
+
+    expect(
+      screen.queryByText("Date of birth cannot be in the future."),
+    ).toBeNull();
+  });
+
   test("a past date is still accepted when only future dates are disallowed", () => {
     const onChange = vi.fn();
     renderWithConfig({

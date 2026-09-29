@@ -61,6 +61,7 @@ const CustomDatePicker = (props) => {
     // without this branch a manual clear silently leaves the prior value in
     // place.
     if (inputValue === "") {
+      setRefused(null);
       setCurrentDate("");
       props.onChange("");
       return;
