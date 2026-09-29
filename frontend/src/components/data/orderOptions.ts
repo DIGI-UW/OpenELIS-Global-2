@@ -1,27 +1,13 @@
 export interface OrderPriorityOption {
   value: string;
-  label: string;
+  labelId: string;
 }
 
+// Values are the backend OrderPriority enum codes; the server rejects anything else.
 export const priorities: OrderPriorityOption[] = [
-  {
-    value: "Routine",
-    label: "ROUTINE",
-  },
-  {
-    value: "ASAP",
-    label: "ASAP",
-  },
-  {
-    value: "STAT",
-    label: "STAT",
-  },
-  {
-    value: "Timed",
-    label: "Timed",
-  },
-  {
-    value: "FUTURE_STAT",
-    label: "Future STAT",
-  },
+  { value: "ROUTINE", labelId: "order.priority.routine" },
+  { value: "ASAP", labelId: "order.priority.asap" },
+  { value: "STAT", labelId: "order.priority.stat" },
+  { value: "TIMED", labelId: "order.priority.timed" },
+  { value: "FUTURE_STAT", labelId: "order.priority.futureStat" },
 ];

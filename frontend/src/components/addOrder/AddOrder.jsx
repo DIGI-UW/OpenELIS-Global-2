@@ -1049,11 +1049,11 @@ const AddOrder = (props) => {
                 onChange={handlePriority}
                 required
               >
-                {priorities.map((priority, index) => {
+                {priorities.map((priority) => {
                   return (
                     <SelectItem
-                      key={index}
-                      text={priority.label}
+                      key={priority.value}
+                      text={intl.formatMessage({ id: priority.labelId })}
                       value={priority.value}
                     />
                   );
