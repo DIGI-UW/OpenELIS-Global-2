@@ -138,4 +138,36 @@ describe("Analyzer worklist review choices across mapping visits", () => {
     await visitMappingAndReturn();
     expect(acceptBox()).toBeChecked();
   });
+
+  it("shows a restored acceptance on the grouping's checkbox after its held row is recovered", async () => {
+    renderWorklist();
+    await waitFor(() => expect(acceptBox()).toBeInTheDocument());
+    fireEvent.click(acceptBox());
+
+    fireEvent.click(
+      await screen.findByRole("link", { name: "Review Analyzer Type mapping" }),
+    );
+    // Correcting the mapping recovers the held row; it now leads its grouping.
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          { ...heldResult, importIssueReason: null, readOnly: false },
+          { ...mappedResult },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("link", { name: "Back to worklist" }),
+    );
+
+    const groupingAccept = await waitFor(() => {
+      const box = document.getElementById("resultList1004.isAccepted");
+      expect(box).toBeInTheDocument();
+      return box;
+    });
+    expect(groupingAccept).toBeChecked();
+    expect(acceptBox()).not.toBeInTheDocument();
+  });
 });

@@ -29,6 +29,8 @@ const importIssuesBreadcrumbs = [
   },
 ];
 
+const groupActionFields = ["isAccepted", "isRejected", "isDeleted"];
+
 const restorableResultFields = [
   "isAccepted",
   "isRejected",
@@ -139,10 +141,58 @@ const Index = () => {
     getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
+  // A grouping's action checkboxes are shown on its representative row, which
+  // changes when a held row is recovered; a restored action moves with it.
+  const moveGroupActionsToRepresentatives = (rows, serverRows, applied) => {
+    const representatives = new Map(
+      extractUniqueGroups(rows).map((row) => [
+        row.sampleGroupingNumber,
+        String(row.id),
+      ]),
+    );
+    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
+    const actionsByGrouping = new Map();
+    rows.forEach((row) => {
+      const edits = applied[String(row.id)] ?? {};
+      groupActionFields.forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(edits, field)) return;
+        const actions = actionsByGrouping.get(row.sampleGroupingNumber) ?? {};
+        if (!Object.prototype.hasOwnProperty.call(actions, field)) {
+          actions[field] = edits[field];
+        }
+        actionsByGrouping.set(row.sampleGroupingNumber, actions);
+      });
+    });
+    return rows.map((row) => {
+      const actions = actionsByGrouping.get(row.sampleGroupingNumber);
+      if (!actions) return row;
+      const id = String(row.id);
+      const isRepresentative =
+        representatives.get(row.sampleGroupingNumber) === id;
+      const moved = { ...row };
+      const edits = { ...applied[id] };
+      Object.entries(actions).forEach(([field, value]) => {
+        if (isRepresentative) {
+          moved[field] = value;
+          edits[field] = value;
+        } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
+          moved[field] = serverById.get(id)?.[field];
+          delete edits[field];
+        }
+      });
+      if (Object.keys(edits).length) {
+        applied[id] = edits;
+      } else {
+        delete applied[id];
+      }
+      return moved;
+    });
+  };
+
   const handleResults = (data) => {
     if (data) {
       const applied = {};
-      const resultList = restoringDraft
+      const restoredList = restoringDraft
         ? data.resultList.map((row) => {
             if (
               row.importIssueReason &&
@@ -165,6 +215,13 @@ const Index = () => {
             return restored;
           })
         : data.resultList;
+      const resultList = restoringDraft
+        ? moveGroupActionsToRepresentatives(
+            restoredList,
+            data.resultList,
+            applied,
+          )
+        : restoredList;
       setRestoredEdits(applied);
       setResults({ ...data, resultList });
       if (restoringDraft) {
