@@ -39,6 +39,7 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { programStatusLabel } from "../common/programStatusLabel";
 
 function CytologyDashboard() {
   const componentMounted = useRef(false);
@@ -150,9 +151,20 @@ function CytologyDashboard() {
           </Button>
         </TableCell>
       );
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
+    if (cell.info.header === "status") {
+      return (
+        <TableCell key={cell.id}>
+          {programStatusLabel(
+            intl,
+            "cytology.status.",
+            cell.value,
+            statuses.find((s) => s.id === cell.value)?.value,
+          )}
+        </TableCell>
+      );
+    }
+    return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
   /** One server page of cases and the page announcement it came with. */
@@ -401,7 +413,12 @@ function CytologyDashboard() {
                 {statuses.map((status, index) => (
                   <SelectItem
                     key={index}
-                    text={status.value}
+                    text={programStatusLabel(
+                      intl,
+                      "cytology.status.",
+                      status.id,
+                      status.value,
+                    )}
                     value={status.id}
                   />
                 ))}
