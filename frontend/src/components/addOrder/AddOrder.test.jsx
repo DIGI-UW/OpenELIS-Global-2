@@ -521,3 +521,47 @@ describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191
     expect(cleared.newAccessionNumber).toBe("");
   });
 });
+
+// ---------------------------------------------------------------------------
+// OGC-1366 — the priority select sent the label "Routine" instead of the enum
+// code ROUTINE, so SampleEdit answered 400 and the order kept its old priority.
+// ---------------------------------------------------------------------------
+describe("AddOrder — priority select (OGC-1366)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  test("offers every OrderPriority code with its translated label", () => {
+    const { container } = renderAddOrder();
+
+    const options = within(container.querySelector("#priorityId")).getAllByRole(
+      "option",
+    );
+    expect(options.map((o) => [o.value, o.textContent])).toEqual([
+      ["ROUTINE", messages["sample.priority.ROUTINE"]],
+      ["ASAP", messages["sample.priority.ASAP"]],
+      ["STAT", messages["sample.priority.STAT"]],
+      ["TIMED", messages["sample.priority.TIMED"]],
+      ["FUTURE_STAT", messages["sample.priority.FUTURE_STAT"]],
+    ]);
+  });
+
+  test("choosing Routine on a STAT order stores the code ROUTINE", () => {
+    const stat = baseOrderFormValues();
+    stat.sampleOrderItems.priority = "STAT";
+    const { setOrderFormValues, container } = renderAddOrder({
+      orderFormValues: stat,
+    });
+
+    fireEvent.change(container.querySelector("#priorityId"), {
+      target: { value: "ROUTINE" },
+    });
+
+    const updated = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .reverse()
+      .find((arg) => arg?.sampleOrderItems?.priority);
+    expect(updated.sampleOrderItems.priority).toBe("ROUTINE");
+  });
+});

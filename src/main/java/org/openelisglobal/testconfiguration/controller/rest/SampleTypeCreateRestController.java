@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SampleTypeCreateRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName",
-            "domain", "whonetCode", "active" };
+            "description", "domain", "whonetCode", "active" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -108,10 +108,15 @@ public class SampleTypeCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
-        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode, form.getWhonetCode(),
-                Boolean.TRUE.equals(form.getActive()));
+        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, form.getDescription(), userId,
+                backendDomainCode, form.getWhonetCode(), Boolean.TRUE.equals(form.getActive()));
         if (typeOfSampleService.nameInUse(identifyingName)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
+        }
+        // type_of_sample.description is unique per domain; conflictingField reports
+        // that clash as "name".
+        if ("name".equals(typeOfSampleService.conflictingField(typeOfSample))) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateDescriptionBody());
         }
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
@@ -154,6 +159,14 @@ public class SampleTypeCreateRestController extends BaseController {
         return body;
     }
 
+    private static Map<String, Object> duplicateDescriptionBody() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "duplicate");
+        body.put("field", "description");
+        body.put("message", "Another sample type in this domain already has this description.");
+        return body;
+    }
+
     private Map<String, Object> validationErrorBody(BindingResult result) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "validation");
@@ -188,10 +201,11 @@ public class SampleTypeCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TypeOfSample createTypeOfSample(String identifyingName, String userId, String backendDomainCode,
-            String whonetCode, boolean active) {
+    private TypeOfSample createTypeOfSample(String identifyingName, String description, String userId,
+            String backendDomainCode, String whonetCode, boolean active) {
         TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setDescription(identifyingName);
+        typeOfSample
+                .setDescription(description == null || description.isBlank() ? identifyingName : description.trim());
         typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
         typeOfSample
                 .setLocalAbbreviation(typeOfSampleService.uniqueLocalAbbreviation(identifyingName, backendDomainCode));
