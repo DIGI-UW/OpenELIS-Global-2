@@ -19,9 +19,9 @@ criteria. These are one maintained plan, not a separate merge train.
 
 Immediate merge sequence: **#4470 → #4448 → #4449** in
 [GitHub stack #4472](https://github.com/DIGI-UW/OpenELIS-Global-2/stack/4472).
-All three branches include current `develop` (`e0c98726ba`); each upper
-branch contains and targets its predecessor. Keep the stack synced when
-`develop` changes and retain only each PR's unique changes. Broader
+The bottom PR targets `develop`; each upper branch contains and targets its
+predecessor. Keep the stack synced when `develop` changes and retain only each
+PR's unique changes. Broader
 profile, outage/replay and upgrade qualification does not block these bounded
 PRs; their focused acceptance and current-head CI still apply.
 
@@ -45,11 +45,11 @@ harness-owned catalog CSVs loaded by OE2's normal configuration service, bounded
 default/display fixes and persistent harness storage. The harness CSVs are not
 packaged as general OE2 catalog changes. Its obsolete stack grouping was
 removed; the new remediation stack starts at #4470. GitHub checks passed at
-`760536edb8`, including downstream
-E2E. The completed local run passed backend, frontend and both analyzer suites,
-but failed core Playwright and two Cypress shards. The review follow-up must
-resolve that discrepancy and its nine accepted corrections. No deployed or
-complete analyzer qualification is claimed here.
+`760536edb8`, including downstream E2E. At #4470's previous head, the actual
+backend, frontend, core Playwright, analyzer harness and Cypress jobs also
+passed. The stack was rebased onto newer `develop`; its new heads need fresh
+checks. Cypress remediation is owned elsewhere and is not analyzer PR scope.
+No deployed or complete analyzer qualification is claimed here.
 
 Bridge and mock source and image pins now match released Bridge 3.2.4 and mock
 0.1.3. Mock 0.1.3 includes the cross-user FILE permissions fix from merged #50.

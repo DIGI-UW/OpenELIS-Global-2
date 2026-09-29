@@ -27,15 +27,15 @@ Maven's dependency cache is reused. Call a revision locally green only when
 every required lane finishes successfully on that revision; compare it with
 GitHub's checks at the same head.
 
-The first full run at #4470 head `a680fd1fb3` was stopped after its defects
-were diagnosed. Frontend, Shared Build preflight and the guided analyzer demo
-passed; core Playwright found failures outside analyzer workflows. The
-foundational analyzer stack reached a proxy whose random host port had changed
-after a restart, while the runner kept its original URL. Backend and Cypress
-core were still running when this superseded run was stopped. This is not an
-overall local pass. The next head needs a complete run and current-head GitHub
-checks. Mock 0.1.3 includes merged mock #50's FILE permission fix, and the OE2
-source and image pins match it.
+The earlier stopped local run diagnosed a proxy redirect that lost its random
+host port; #4470 corrected it. GitHub then passed the actual backend, frontend,
+both core Playwright shards, both analyzer-harness shards and all Cypress jobs
+at #4470 head `99384069e4`. The branch was subsequently rebased onto newer
+`develop`, so that green run supports the change but is not final-head proof.
+The separate Cypress repair is outside this analyzer stack. Do not edit Cypress
+tests here; report its status from required GitHub checks and keep analyzer
+validation focused on the affected workflows. Mock 0.1.3 includes merged mock
+#50's FILE permission fix, and the OE2 source and image pins match it.
 
 Analyzer assertions use observable conditions within the existing whole-test
 deadline. Do not add sleeps or raise deadlines to repair a failure. Result
@@ -49,28 +49,31 @@ count value, and makes certificate generation a completed one-shot dependency.
 The subsequent proxy restart showed another startup-contract gap: nginx names
 both frontend and OE2 upstreams, but Compose did not wait for them. The proxy
 now starts after frontend starts and OE2 is healthy. A fresh local seed run
-reached login and created the default analyzer connections with this ordering;
-the full analyzer suites and current-head GitHub checks remain pending.
-Human review is separate from these technical checks.
+reached login and created the default analyzer connections with this ordering.
+The prior-head GitHub E2E suites passed; Catalog Import add/replace/restart
+proof and rebased-head checks still need closing. Human review is separate from
+these technical checks.
 
 The [GitHub stack #4472](https://github.com/DIGI-UW/OpenELIS-Global-2/stack/4472)
-records the merge sequence **#4470 → #4448 → #4449**. #4470 targets the
-current `develop` commit `e0c98726ba`; #4448 contains #4470 and targets its
-branch; #4449 contains #4448 and targets its branch. Each PR must retain only
-its own stack-relative changes.
+records the merge sequence **#4470 → #4448 → #4449**. #4470 targets `develop`;
+#4448 contains #4470 and targets its branch; #4449 contains #4448 and targets
+its branch. Each PR must retain only its own stack-relative changes and be
+rechecked when `develop` advances.
 #4332 established the stable harness catalog and faithful test foundation
 without installing harness clinical CSVs on ordinary OE2 sites. Obsolete demo
-test copies were removed while syncing the follow-ups. #4448 still needs
-recovery proof using production-API prerequisites and normal UI/native traffic
-instead of its older SQL/mapping-preparation evidence. Broader FILE/HL7 qualification,
-outage/replay, populated upgrades and any general catalog additions are separate
-follow-ups. Each PR requires passing current-head checks and focused workflow
-evidence before merge.
+test copies were removed while syncing the follow-ups. #4448 now has a passing
+recorded 11-test native workflow run using production-API prerequisites and
+normal UI/native traffic, including one usable GeneXpert observation beside a
+held one, mapping correction, preserved review edits and two independent
+clinical readbacks. Its exact rebased head still needs CI; the recorded run
+began before its evidence commit, with the same test contents that were
+committed. Broader FILE/HL7 qualification, outage/replay, populated upgrades
+and any general catalog additions are separate follow-ups. Each PR requires
+passing current-head checks and focused workflow evidence before merge.
 
 #4448 additionally rejects adopting an unconfirmed or stale analyzer binding
 revision in its service layer, matching the UI's Apply guard. Focused service
-tests pass; its full current-head run and clinical recovery evidence are still
-needed. #4449 remains a draft until the preceding layers are qualified.
+tests pass. #4449 remains a draft until the preceding layers are qualified.
 
 ## Review disposition and pre-merge acceptance
 
@@ -96,11 +99,12 @@ table is not an additional merge gate.
 Execution: first repair the test/runner/doc items, then validate writable
 catalog initialization. Reuse existing tests; add only the focused
 failure/cleanup checks needed to prove the changed behavior. Push each coherent
-revision and run the full local command alongside GitHub for that same revision.
-A run for an earlier revision is supporting evidence only. Do not add competing
-CI entry points. Final acceptance requires all local lanes and actual downstream
-GitHub checks to complete, plus accessible reviewed video from the same
-registered workflow tests when their behavior changes.
+revision and run the authorized local lanes alongside GitHub for that same
+revision. A run for an earlier revision is supporting evidence only. Do not add
+competing CI entry points or repair Cypress in this stack. Final acceptance
+requires analyzer-controlled local checks and actual downstream GitHub checks
+to complete, plus accessible reviewed video from the same registered workflow
+tests when their behavior changes.
 
 ## Explicitly deferred review items
 
@@ -163,16 +167,16 @@ The R labels retain their existing capability ownership; the numbered rows below
 give the execution order. PR numbers identify existing owners rather than new
 parallel implementations.
 
-| Order | Owner / current state                                   | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
-| ----- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | R0 — #4332 merged; #4470 review follow-up in progress | Complete R0-REV1 through R0-REV9 above; reconcile the failed local core/Cypress lanes with GitHub; run the single full local runner alongside GitHub on the final submitted revision, and refresh recordings when tested behavior changes. Keep F-REV1 through F-REV6 with named owners.                              | Every local testing lane and actual downstream GitHub E2E passes on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                                 |
-| 2     | R5 — Bridge #69 / mock #49; merged and released         | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
-| 3     | R1/R3 — OE2 #4448; stacked on #4470                                 | Current-develop ancestry and 21-file recovery diff are in place. Replace older SQL/mapping-repair evidence with production-API prerequisites and the current UI/native traffic workflow; prove unique recovery behavior without reviving deleted demo tests.                                                                                                     | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
-| 4     | R2 — OE2 #4449; draft, stacked on #4448                 | Its eight-file diff now contains only per-observation catalog validity. Reuse the existing confirmation, catalog validation and recovery services; complete browser evidence and current-head CI after #4448 is qualified.                                                                                                                                           | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then mark ready and merge.                      |
-| 5     | R5 — broader core FILE/HL7 qualification; open          | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
-| 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open  | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
-| 7     | R6/R7 — core qualification; open                        | Reconcile remaining PR deltas against merged code, close superseded work with lineage, run supported full workflows and review/present recordings from the same tests.                                                                                                                                                | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video.                                                                                                                                                                      |
-| 8     | R8 — Madagascar distro; later                           | Publish qualified core versions, update distro pins and run limited packaging/configuration checks.                                                                                                                                                                                                                   | The distro consumes working core profiles/defaults without site-specific mapping repair. Its checks prove packaging differences, not replacement core acceptance.                                                                                                                                                                          |
+| Order | Owner / current state                                  | Next work                                                                                                                                                                                                                                                                                                             | Acceptance                                                                                                                                                                                                                                                                                                                                 |
+| ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | R0 — #4332 merged; #4470 review follow-up in progress  | Close R0-REV7's Catalog Import add/replace/restart proof, validate the rebased head, and refresh recordings only when tested behavior changes. Keep F-REV1 through F-REV6 with named owners. Cypress repair is owned elsewhere.                                                                                       | Analyzer-controlled local checks and actual downstream GitHub E2E pass on the submitted revision. Setup and clinical readback prove the claimed workflows; a conditional confirmation branch is not first-time setup proof. Record numeric FILE coverage limits.                                                                           |
+| 2     | R5 — Bridge #69 / mock #49; merged and released        | GeneXpert/FluoroCycler numeric compatibility passes across OE2 setup, Bridge runtime and native mock traffic. Bridge 3.2.4 and mock 0.1.3 are released with aligned OE2 source and image pins. Retain the exact recorded source identities; a source-built workflow is not a deployment test of the published images. | Correct profile defaults, specimen/answer hints and shared-listener attribution. Preserve published revisions. No production instrument-specific branches or invented assay semantics.                                                                                                                                                     |
+| 3     | R1/R3 — OE2 #4448; stacked on #4470                    | The recorded native GeneXpert mixed-result workflow now passes with 11/11 tests. Finish exact rebased-head CI and present its focused video/checkpoints; preserve the API-based prerequisites and existing demo-test scope.                                                                                           | Accept a usable observation while its held sibling remains intact; select a valid missing specimen; correct mappings in the UI and recover the original row without resend or duplication. Preserve unsaved worklist edits and the original QC lot when recovering held controls. Passing current-head CI and a recorded focused workflow. |
+| 4     | R2 — OE2 #4449; draft, stacked on #4448                | Its eight-file diff now contains only per-observation catalog validity. Reuse the existing confirmation, catalog validation and recovery services; complete browser evidence and current-head CI after #4448 is qualified.                                                                                            | In a previously confirmed configuration, invalidate one binding: unaffected observations still reach review, only the affected observation is held. Correct it, recover that original observation, and replay without duplicates. Passing current-head CI and a recorded focused workflow; then mark ready and merge.                      |
+| 5     | R5 — broader core FILE/HL7 qualification; open         | The reusable FILE mock and numeric Plasma workflow are complete. Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. This does not delay the three-PR merge sequence.                                                                      | UI directory configuration reaches Bridge watching; native files/HL7 save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass.                                                                                                                                   |
+| 6     | R4 — OE2 #4347/#4421 plus upgrade/catalog owners; open | Prove OE2 queue outage/restart/replay, review operator retry after another transient failure, restore mock attachment after Bridge replacement, reconcile populated catalogs and upgrade a supported previous version.                                                                                                | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery.                                                                                           |
+| 7     | R6/R7 — core qualification; open                       | Reconcile remaining PR deltas against merged code, close superseded work with lineage, run supported full workflows and review/present recordings from the same tests.                                                                                                                                                | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video.                                                                                                                                                                      |
+| 8     | R8 — Madagascar distro; later                          | Publish qualified core versions, update distro pins and run limited packaging/configuration checks.                                                                                                                                                                                                                   | The distro consumes working core profiles/defaults without site-specific mapping repair. Its checks prove packaging differences, not replacement core acceptance.                                                                                                                                                                          |
 
 ## Remaining PR cleanup ownership
 
