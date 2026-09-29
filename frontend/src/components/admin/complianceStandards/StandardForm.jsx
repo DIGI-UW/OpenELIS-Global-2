@@ -24,6 +24,7 @@ import {
   putToOpenElisServer,
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
+  toLocalIsoDate,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
@@ -852,7 +853,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
             value={effectiveDate ? [effectiveDate] : []}
             onChange={(dates) => {
               if (dates && dates[0]) {
-                setEffectiveDate(dates[0].toISOString().slice(0, 10));
+                setEffectiveDate(toLocalIsoDate(dates[0]));
               } else {
                 setEffectiveDate("");
               }
@@ -884,7 +885,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
             value={expiryDate ? [expiryDate] : []}
             onChange={(dates) => {
               if (dates && dates[0]) {
-                setExpiryDate(dates[0].toISOString().slice(0, 10));
+                setExpiryDate(toLocalIsoDate(dates[0]));
               } else {
                 setExpiryDate("");
               }

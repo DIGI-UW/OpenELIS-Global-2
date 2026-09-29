@@ -41,6 +41,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { toLocalIsoDate } from "../utils/Utils";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -576,8 +577,8 @@ function Reports({ devices = [] }) {
       const blob = await downloadReportDirect({
         reportName: reportName,
         format: formatParam,
-        startDate: rangeParams.start.split("T")[0],
-        endDate: rangeParams.end.split("T")[0],
+        startDate: toLocalIsoDate(dateRange[0]),
+        endDate: toLocalIsoDate(dateRange[1]),
         freezerId: selectedFreezerId,
       });
 
@@ -585,7 +586,7 @@ function Reports({ devices = [] }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const dateStr = new Date().toISOString().split("T")[0];
+      const dateStr = toLocalIsoDate(new Date());
       const reportSlug = reportType.toLowerCase().replace(/ /g, "_");
       link.download = `freezer_report_${reportSlug}_${dateStr}.${formatParam.toLowerCase()}`;
       document.body.appendChild(link);

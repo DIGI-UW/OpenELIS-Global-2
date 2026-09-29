@@ -151,7 +151,7 @@ const ControlChartDetail = () => {
         ctx.drawImage(img, 0, 0);
         const pngUrl = canvas.toDataURL("image/png");
         const link = document.createElement("a");
-        link.download = `qc-chart-${analyzerId}-${new Date().toISOString().split("T")[0]}.png`;
+        link.download = `qc-chart-${analyzerId}-${toLocalIsoDate(new Date())}.png`;
         link.href = pngUrl;
         link.click();
       };

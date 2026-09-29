@@ -26,6 +26,7 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
   deleteFromOpenElisServer,
+  toLocalIsoDate,
 } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
@@ -324,12 +325,11 @@ function CalendarManagement() {
                         <TableCell>
                           <DatePicker
                             datePickerType="single"
+                            dateFormat="Y-m-d"
                             onChange={([date]) =>
                               setEditForm((f) => ({
                                 ...f,
-                                date: date
-                                  ? date.toISOString().split("T")[0]
-                                  : "",
+                                date: date ? toLocalIsoDate(date) : "",
                               }))
                             }
                           >
@@ -413,13 +413,12 @@ function CalendarManagement() {
                             <TableCell>
                               <DatePicker
                                 datePickerType="single"
+                                dateFormat="Y-m-d"
                                 value={editForm.date}
                                 onChange={([date]) =>
                                   setEditForm((f) => ({
                                     ...f,
-                                    date: date
-                                      ? date.toISOString().split("T")[0]
-                                      : "",
+                                    date: date ? toLocalIsoDate(date) : "",
                                   }))
                                 }
                               >

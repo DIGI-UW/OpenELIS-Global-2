@@ -19,7 +19,7 @@ import {
   Link,
   Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
 import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
 import { priorities } from "../../../data/orderOptions";
@@ -938,7 +938,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={new Date().toISOString().split("T")[0]}
+              min={toLocalIsoDate(new Date())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({
