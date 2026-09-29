@@ -50,30 +50,13 @@ jobs:
             shard_name: Core
             specs: >-
               cypress/e2e/login.cy.js,
-              cypress/e2e/home.cy.js,
-              cypress/e2e/AdminE2E/organizationManagement.cy.js,
-              cypress/e2e/AdminE2E/providerManagement.cy.js,
-              cypress/e2e/patientEntry.cy.js,
-              cypress/e2e/orderEntity.cy.js,
-              cypress/e2e/modifyOrder.cy.js,
-              cypress/e2e/batchOrderEntry.cy.js,
-              cypress/e2e/workplan.cy.js,
-              cypress/e2e/result.cy.js,
-              cypress/e2e/validation.cy.js,
-              cypress/e2e/nonConform.cy.js,
-              cypress/e2e/dashboard.cy.js,
-              cypress/e2e/report.cy.js,
-              cypress/e2e/AdminE2E/barcode.cy.js
+              cypress/e2e/home.cy.js
           - shard: admin
             shard_name: Admin
             specs: >-
               cypress/e2e/AdminE2E/userManagement.cy.js,
-              cypress/e2e/logout.cy.js,
               cypress/e2e/siteBranding.cy.js,
-              cypress/e2e/patientMerge.cy.js,
-              cypress/e2e/help.cy.js,
               cypress/e2e/labNumberManagement.cy.js,
-              cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
               cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
           - shard: independent

@@ -7,7 +7,6 @@ class TestManagementPage {
       testCatalog: "#TestCatalog",
       toggleSwitch: "div.cds--toggle__switch",
       selectTests: "#carbon-multiselect-example-3-input",
-      checkAll: "#carbon-multiselect-example-3-item-0-item",
       checkAllLabel: "label[for='carbon-multiselect-example-3-item-0-item']",
     };
   }

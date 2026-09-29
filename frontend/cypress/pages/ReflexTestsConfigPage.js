@@ -1,8 +1,6 @@
 class ReflexTestsConfigPage {
   constructor() {
     this.selectors = {
-      calcPage: "[data-cy='calculatedValue']",
-      reflexMgnt: "[data-cy='reflex']",
       ruleName: '[id="0_rulename"]',
       toggleSwitch: ".cds--toggle__switch",
       validateToggle: ".cds--toggle__text",
@@ -17,7 +15,6 @@ class ReflexTestsConfigPage {
       reflexTest: '[id="0_0_reflexTestId"]',
       submit: '[id="submit_0"]',
       secondSample: "[data-cy='selectSample']",
-      addRule: "[data-cy='rule']",
       autosuggestion: ".suggestion-active",
       calcName: '[id="0_name"]',
       removeOperation: '[id="0_removeoperation"]',
@@ -26,13 +23,10 @@ class ReflexTestsConfigPage {
       mathFunctionButton: '[id="0_mathfunction"]',
       mathFunction: '[id="0_1_mathfunction"]',
       secMathFunction: '[id="0_3_mathfunction"]',
-      insertSecOperation: '[id="0_1_addoperation"]',
       integerButton: '[id="0_integer"]',
       integer: '[id="0_4_integer"]',
-      insertThiOperation: '[id="0_2_addoperation"]',
       patientAttributeButton: '[id="0_patientattribute"]',
       patientAttribute: '[id="0_2_patientattribute"]',
-      insertFouOperation: '[id="0_3_addoperation"]',
       thirdSample: '[id="0_sample"]',
       fourthSample: "[data-cy='add-sample']",
       finalResult: '[id="0_finalresult"]',
@@ -105,10 +99,6 @@ class ReflexTestsConfigPage {
 
   submitButton() {
     cy.get(this.selectors.submit).click();
-  }
-
-  addRule() {
-    cy.get(this.selectors.addRule).click();
   }
 
   //Calculated Value Tests Management
