@@ -104,8 +104,9 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
     public void triageWalksTheRegisterRowThroughItsLifecycle() {
         Long followupId = registerRow(false);
 
-        assertEquals(EQAFollowupStatus.RESPONSE_RECEIVED, followupService
-                .transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED, null, USER).getFollowupStatus());
+        assertEquals(EQAFollowupStatus.RESPONSE_RECEIVED,
+                followupService.transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED,
+                        "Pipette out of calibration; replaced and staff retrained", USER).getFollowupStatus());
         assertEquals(EQAFollowupStatus.UNDER_INVESTIGATION, followupService
                 .transitionStatus(followupId, EQAFollowupStatus.UNDER_INVESTIGATION, null, USER).getFollowupStatus());
         assertEquals(EQAFollowupStatus.RESOLVED,
@@ -113,6 +114,22 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                         .transitionStatus(followupId, EQAFollowupStatus.RESOLVED, "Recalibrated and re-tested", USER)
                         .getFollowupStatus());
         assertEquals("Recalibrated and re-tested", followupService.get(followupId).getResolutionNotes());
+        assertEquals("resolving the row keeps what the laboratory said",
+                "Pipette out of calibration; replaced and staff retrained",
+                followupService.getProviderRegisterRows().get(0).get("responseNotes"));
+    }
+
+    @Test
+    public void aResponseIsRecordedOnlyWithWhatTheLaboratorySaid() {
+        Long followupId = registerRow(false);
+
+        try {
+            followupService.transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED, " ", USER);
+            fail("a response with no text records nothing");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("what the laboratory said"));
+        }
+        assertEquals(EQAFollowupStatus.NOTIFIED, followupService.get(followupId).getFollowupStatus());
     }
 
     @Test

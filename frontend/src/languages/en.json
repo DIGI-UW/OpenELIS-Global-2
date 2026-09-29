@@ -11848,5 +11848,8 @@
   "analyzerType.editor.clientProfilePort": "Client connection port stored in this profile (optional)",
   "eqa.intake.sample": "Sample {code}",
   "eqa.competency.countsFoldedTriage": "Decided by triage",
-  "eqa.competency.countsFoldedScore": "Counted with the score"
+  "eqa.competency.countsFoldedScore": "Counted with the score",
+  "eqa.provider.followups.responseText": "What the laboratory said",
+  "eqa.provider.followups.responseHelp": "The root cause the laboratory found and the corrective action it took. Kept with the follow-up.",
+  "eqa.provider.followups.responseShown": "Laboratory's response: {text}"
 }

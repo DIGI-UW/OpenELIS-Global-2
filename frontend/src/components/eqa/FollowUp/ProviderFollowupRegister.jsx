@@ -59,7 +59,14 @@ const STATUS_TAG = {
  * two different wordings for the same enum, so they carry separate keys.
  */
 const TRIAGE = [
-  { target: "RESPONSE_RECEIVED", label: "Record response" },
+  // The response is the laboratory's own words, so it asks for them and
+  // refuses to record an empty one.
+  {
+    target: "RESPONSE_RECEIVED",
+    label: "Record response",
+    needsNotes: true,
+    response: true,
+  },
   { target: "UNDER_INVESTIGATION", label: "Investigate" },
   { target: "RESOLVED", label: "Resolve", needsNotes: true },
   {
@@ -389,6 +396,15 @@ const ProviderFollowupRegister = () => {
                               ))}
                             </TableBody>
                           </Table>
+                          {row.responseNotes && (
+                            <p style={{ ...hintStyle, marginBottom: "0.5rem" }}>
+                              {t(
+                                "eqa.provider.followups.responseShown",
+                                "Laboratory's response: {text}",
+                                { text: row.responseNotes },
+                              )}
+                            </p>
+                          )}
                           {row.resolutionNotes && (
                             <p style={{ ...hintStyle, marginBottom: "0.5rem" }}>
                               {row.resolutionNotes}
@@ -484,7 +500,9 @@ const ProviderFollowupRegister = () => {
           }
           primaryButtonText={t("label.confirm", "Confirm")}
           secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
-          primaryButtonDisabled={busy}
+          primaryButtonDisabled={
+            busy || (prompt.action?.response && !notes.trim())
+          }
           onRequestClose={() => setPrompt(null)}
           onSecondarySubmit={() => setPrompt(null)}
           onRequestSubmit={submitPrompt}
@@ -495,17 +513,27 @@ const ProviderFollowupRegister = () => {
                   "eqa.receipt.repeatHelp",
                   "The repeat comes out of the panel's reserve. If the reserve cannot cover it, a written justification is required before unreserved material is used.",
                 )
-              : t(
-                  "eqa.provider.followups.notesHelp",
-                  "What was agreed with the laboratory. Recorded against the register entry for accreditation trace.",
-                )}
+              : prompt.action.response
+                ? t(
+                    "eqa.provider.followups.responseHelp",
+                    "The root cause the laboratory found and the corrective action it took. Kept with the follow-up.",
+                  )
+                : t(
+                    "eqa.provider.followups.notesHelp",
+                    "What was agreed with the laboratory. Recorded against the register entry for accreditation trace.",
+                  )}
           </p>
           <TextArea
             id="eqa-provider-followup-notes"
             labelText={
               prompt.kind === "repeat"
                 ? t("eqa.receipt.overrideNote", "Override note")
-                : t("eqa.queue.notes", "Notes")
+                : prompt.action.response
+                  ? t(
+                      "eqa.provider.followups.responseText",
+                      "What the laboratory said",
+                    )
+                  : t("eqa.queue.notes", "Notes")
             }
             value={notes}
             onChange={(event) => setNotes(event.target.value)}

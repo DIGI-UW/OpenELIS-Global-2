@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    OGC-1256: "Record response" on the provider's follow-up register only moved
+    the row's status, so the register held no record of what the laboratory
+    said. The response gets its own column: resolution_notes is rewritten when
+    the row is resolved, and the laboratory's answer has to outlive that.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-090-eqa-followup-response-notes">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_participant_followup" columnName="response_notes" />
+            </not>
+        </preConditions>
+        <comment>What the participating laboratory said in response to a follow-up</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_participant_followup">
+            <column name="response_notes" type="TEXT" />
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

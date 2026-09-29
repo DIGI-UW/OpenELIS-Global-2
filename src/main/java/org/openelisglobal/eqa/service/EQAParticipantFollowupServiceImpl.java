@@ -255,6 +255,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             dto.put("responseReceivedAt",
                     followup.getResponseReceivedAt() == null ? null : followup.getResponseReceivedAt().toString());
             dto.put("resolutionNotes", followup.getResolutionNotes());
+            dto.put("responseNotes", followup.getResponseNotes());
             dto.put("persistentFailureFlag", followup.getPersistentFailureFlag());
             dto.put("results", summaryRows(followup));
             rows.add(dto);
@@ -348,7 +349,14 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         if (target == EQAFollowupStatus.RESPONSE_RECEIVED || followup.getResponseReceivedAt() == null) {
             followup.setResponseReceivedAt(DateUtil.getNowAsTimestamp());
         }
-        if (!GenericValidator.isBlankOrNull(notes)) {
+        if (target == EQAFollowupStatus.RESPONSE_RECEIVED) {
+            // A response with nothing in it is a status change, not a record of what
+            // the laboratory said.
+            if (GenericValidator.isBlankOrNull(notes)) {
+                throw new IllegalArgumentException("Recording a response needs what the laboratory said");
+            }
+            followup.setResponseNotes(notes.trim());
+        } else if (!GenericValidator.isBlankOrNull(notes)) {
             followup.setResolutionNotes(notes);
         }
         followup.setFollowupStatus(target);
