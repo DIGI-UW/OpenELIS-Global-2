@@ -191,6 +191,111 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
                         Integer.class, ACCESSION));
     }
 
+    /**
+     * Stages a result and accepts it without a specimen so it is held awaiting one.
+     */
+    private String stageHeldAwaitingSpecimen(String accession, long testId) {
+        String id = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'HoldIT 1145', '42', false,"
+                + " ?, NOW())", id, ANALYZER_ID, accession, testId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setId(id);
+        item.setAccessionNumber(accession);
+        item.setTestId(String.valueOf(testId));
+        acceptService.acceptAndPersist(List.of(item), "1");
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN, jdbc.queryForObject(
+                "SELECT import_issue_reason FROM clinlims.analyzer_results WHERE id = ?::numeric", String.class, id));
+        return id;
+    }
+
+    private String specimenTypeOfResult(String accession, long testId) {
+        return jdbc.queryForObject("SELECT si.typeosamp_id::text FROM clinlims.analysis a"
+                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id JOIN clinlims.sample s ON si.samp_id = s.id"
+                + " WHERE s.accession_number = ? AND a.test_id = ?", String.class, accession, testId);
+    }
+
+    @org.junit.Test
+    public void chosenSpecimenIsUsedForANewTestOnAnExistingOrder() {
+        String existingOrder = "123456789";
+        String heldId = stageHeldAwaitingSpecimen(existingOrder, MULTI_TYPE_TEST);
+
+        AnalyzerResultItem chosen = acceptedItem();
+        chosen.setId(heldId);
+        chosen.setAccessionNumber(existingOrder);
+        chosen.setTypeOfSampleId(String.valueOf(TYPE_B));
+        acceptService.acceptAndPersist(List.of(chosen), "1");
+
+        assertEquals("the reviewer's specimen, not the test's first sample type", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, MULTI_TYPE_TEST));
+    }
+
+    @org.junit.Test
+    public void releasingAHeldResultKeepsItsStagedAccession() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setAccessionNumber("FORGED1145");
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("no order is created under the submitted accession", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.sample WHERE accession_number = 'FORGED1145'", Integer.class));
+        assertEquals("the result is saved on the staged accession", String.valueOf(TYPE_B),
+                specimenTypeOfResult(ACCESSION, MULTI_TYPE_TEST));
+    }
+
+    private long seedSingleTypeTest(long testId, long sampleTypeId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Y', ?, 'CLINICAL', true, NOW())",
+                testId, "Single " + testId, "Single " + testId, UUID.randomUUID().toString());
+        insertJunction(sampleTypeId, testId);
+        return testId;
+    }
+
+    private AnalyzerResultItem stagedSibling(long testId) {
+        String id = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'Single', '5', false, ?, NOW())", id,
+                ANALYZER_ID, ACCESSION, testId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setId(id);
+        item.setTestId(String.valueOf(testId));
+        item.setTestName("Single");
+        item.setResult("5");
+        return item;
+    }
+
+    @org.junit.Test
+    public void aSpecimenChoiceASiblingTestCannotUseKeepsTheNewOrderHeld() {
+        AnalyzerResultItem onlyTypeA = stagedSibling(seedSingleTypeTest(97003L, TYPE_A));
+        AnalyzerResultItem chosenB = acceptedItem();
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeA, chosenB), "1");
+
+        assertEquals("one new specimen cannot be both types, so nothing is saved", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.sample WHERE accession_number = ?", Integer.class,
+                        ACCESSION));
+        assertEquals("both results stay held for a specimen decision", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.analyzer_results WHERE accession_number = ?"
+                                + " AND import_issue_reason = ?",
+                        Integer.class, ACCESSION, AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN));
+    }
+
+    @org.junit.Test
+    public void aSpecimenChoiceEverySiblingCanUseIsSavedForTheNewOrder() {
+        AnalyzerResultItem onlyTypeB = stagedSibling(seedSingleTypeTest(97004L, TYPE_B));
+        AnalyzerResultItem chosenB = acceptedItem();
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeB, chosenB), "1");
+
+        assertEquals(String.valueOf(TYPE_B), specimenTypeOfResult(ACCESSION, MULTI_TYPE_TEST));
+        assertEquals(String.valueOf(TYPE_B), specimenTypeOfResult(ACCESSION, 97004L));
+    }
+
     @org.junit.Test
     public void reviewerChoice_removesTheHold() {
         acceptService.acceptAndPersist(List.of(acceptedItem()), "1");

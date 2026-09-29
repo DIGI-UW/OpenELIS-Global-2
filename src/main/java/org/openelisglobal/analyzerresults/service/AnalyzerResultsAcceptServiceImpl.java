@@ -111,6 +111,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
+        keepGroupingsOnOneOrder(actionableResults);
 
         if (actionableResults.isEmpty()) {
             return;
@@ -167,13 +168,51 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 throw new IllegalStateException("Analyzer result is no longer staged: " + item.getId());
             }
             if (AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(staged.getImportIssueReason())
-                    && item.getIsAccepted() && Objects.equals(staged.getTestId(), item.getTestId())
-                    && !needsSpecimenChoice(item) && staged.getTestId() != null) {
+                    && item.getIsAccepted() && staged.getTestId() != null
+                    && Objects.equals(staged.getTestId(), item.getTestId())) {
+                restoreStagedIdentity(item, staged);
+                if (needsSpecimenChoice(item)) {
+                    return true;
+                }
                 item.setReadOnly(false);
                 return false;
             }
-            return staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
-                    || GenericValidator.isBlankOrNull(staged.getTestId());
+            if (staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
+                    || GenericValidator.isBlankOrNull(staged.getTestId())) {
+                return true;
+            }
+            restoreStagedIdentity(item, staged);
+            return false;
+        });
+    }
+
+    /**
+     * The staged row owns which order, test and analyzer a result belongs to; the
+     * reviewer supplies only the action, specimen choice, note and result.
+     */
+    private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
+        item.setAccessionNumber(staged.getAccessionNumber());
+        item.setTestId(staged.getTestId());
+        item.setIsControl(staged.getIsControl());
+        item.setAnalyzerId(staged.getAnalyzerId());
+    }
+
+    /**
+     * A sample grouping is one order's results; a row whose staged order differs
+     * from the rest of its grouping stays staged rather than joining that order.
+     */
+    private void keepGroupingsOnOneOrder(List<AnalyzerResultItem> actionableResults) {
+        Map<Integer, String> orderByGrouping = new HashMap<>();
+        actionableResults.removeIf(item -> {
+            String order = orderByGrouping.computeIfAbsent(item.getSampleGroupingNumber(),
+                    grouping -> item.getAccessionNumber());
+            if (Objects.equals(order, item.getAccessionNumber())) {
+                return false;
+            }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "keepGroupingsOnOneOrder",
+                    "Analyzer result " + item.getId() + " belongs to order " + item.getAccessionNumber()
+                            + ", not its grouping's order " + order + "; it stays staged.");
+            return true;
         });
     }
 
@@ -188,11 +227,18 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      */
     private void holdGroupsAwaitingSpecimen(List<AnalyzerResultItem> actionableResults, String sysUserId) {
         Set<Integer> heldGroups = new HashSet<>();
+        Map<Integer, List<AnalyzerResultItem>> groupings = new HashMap<>();
         for (AnalyzerResultItem item : actionableResults) {
             if (item.getIsAccepted() && needsSpecimenChoice(item)) {
                 heldGroups.add(item.getSampleGroupingNumber());
             }
+            groupings.computeIfAbsent(item.getSampleGroupingNumber(), grouping -> new ArrayList<>()).add(item);
         }
+        groupings.forEach((grouping, items) -> {
+            if (!heldGroups.contains(grouping) && hasUnusableSpecimenChoice(items)) {
+                heldGroups.add(grouping);
+            }
+        });
         if (heldGroups.isEmpty()) {
             return;
         }
@@ -212,8 +258,54 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
             LogEvent.logWarn(this.getClass().getSimpleName(), "holdGroupsAwaitingSpecimen",
                     "holding accession " + item.getAccessionNumber() + " test " + item.getTestId()
-                            + " awaiting specimen: test runs on several sample types and no sample type was chosen");
+                            + " awaiting specimen: no sample type usable by every result in its grouping was chosen");
         }
+    }
+
+    /**
+     * Except on an order with an entered sample, a grouping's new analyses share
+     * one new specimen. A specimen choice there must be the only one and must suit
+     * every test that needs a new analysis; otherwise it waits for a decision
+     * instead of silently using another type.
+     */
+    private boolean hasUnusableSpecimenChoice(List<AnalyzerResultItem> grouping) {
+        List<AnalyzerResultItem> accepted = grouping.stream().filter(item -> item.getIsAccepted()
+                && !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId())).toList();
+        if (accepted.isEmpty()) {
+            return false;
+        }
+        String accessionNumber = accepted.get(0).getAccessionNumber();
+        StatusSet statusSet = statusService.getStatusSetForAccessionNumber(accessionNumber);
+        if (!sharesOneNewSpecimen(statusSet, accessionNumber)) {
+            return false;
+        }
+        List<AnalyzerResultItem> newAnalyses = accepted.stream().filter(item -> getExistingAnalysis(item) == null)
+                .toList();
+        Set<String> choices = newAnalyses.stream().map(AnalyzerResultItem::getTypeOfSampleId)
+                .filter(choice -> !GenericValidator.isBlankOrNull(choice)).collect(Collectors.toSet());
+        if (choices.size() != 1) {
+            return choices.size() > 1;
+        }
+        String chosen = choices.iterator().next();
+        return newAnalyses.stream().anyMatch(item -> {
+            List<TypeOfSampleTest> candidates = typeOfSampleTestService.getTypeOfSampleTestsForTest(item.getTestId());
+            return !candidates.isEmpty()
+                    && candidates.stream().noneMatch(candidate -> chosen.equals(candidate.getTypeOfSampleId()));
+        });
+    }
+
+    /**
+     * The createRecordsForNewResult paths that build one sample item for the whole
+     * grouping.
+     */
+    private boolean sharesOneNewSpecimen(StatusSet statusSet, String accessionNumber) {
+        return noEntryDone(statusSet, accessionNumber) || statusSet
+                .getSampleRecordStatus() == org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered;
+    }
+
+    private String groupingSpecimenChoice(List<AnalyzerResultItem> groupedAnalyzerResultItems) {
+        return groupedAnalyzerResultItems.stream().map(AnalyzerResultItem::getTypeOfSampleId)
+                .filter(choice -> !GenericValidator.isBlankOrNull(choice)).findFirst().orElse(null);
     }
 
     /**
@@ -490,7 +582,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 .collect(Collectors.toList());
         // OGC-1145 FR-8 — the reviewer's chosen sample type narrows the ambiguous
         // candidate set to exactly that specimen, for both reuse and creation.
-        String chosenTypeOfSampleId = groupedAnalyzerResultItems.get(0).getTypeOfSampleId();
+        String chosenTypeOfSampleId = groupingSpecimenChoice(groupedAnalyzerResultItems);
         if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId) && typeOfSampleIds.contains(chosenTypeOfSampleId)) {
             typeOfSampleIds = List.of(chosenTypeOfSampleId);
         }
@@ -618,6 +710,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 if (typeOfSamples == null) {
                     typeOfSamples = new ArrayList<>();
                 }
+                // OGC-1145 FR-8 — the reviewer's chosen specimen narrows this result's
+                // candidates, for both reuse and creation.
+                String chosenTypeOfSampleId = resultItem.getTypeOfSampleId();
+                if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId)
+                        && typeOfSamples.stream().anyMatch(type -> chosenTypeOfSampleId.equals(type.getId()))) {
+                    typeOfSamples = typeOfSamples.stream().filter(type -> chosenTypeOfSampleId.equals(type.getId()))
+                            .collect(Collectors.toList());
+                }
                 List<SampleItem> sampleItemsForSample = sampleItemService.getSampleItemsBySampleId(sample.getId());
                 List<String> allowedTypeIds = typeOfSamples.stream().map(TypeOfSample::getId)
                         .collect(Collectors.toList());
@@ -716,7 +816,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
 
         addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber(),
-                groupedAnalyzerResultItems.get(0).getTypeOfSampleId());
+                groupingSpecimenChoice(groupedAnalyzerResultItems));
 
         sampleGrouping.sample = sample;
         sampleGrouping.sampleHuman = sampleHuman;
