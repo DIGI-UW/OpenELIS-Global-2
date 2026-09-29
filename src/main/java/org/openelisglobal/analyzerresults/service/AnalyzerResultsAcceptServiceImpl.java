@@ -191,8 +191,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     /**
      * Everything the review page derives from the staged row is the staged row's:
      * order, test, component, control flag, analyzer, completion time, result type
-     * and precision. The reviewer supplies only the action, specimen choice, note,
-     * result and reflex selection.
+     * and precision. It is an analyzer result, never a manual analysis. The
+     * reviewer supplies only the action, specimen choice, note, result and reflex
+     * selection.
      */
     private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
         item.setAccessionNumber(staged.getAccessionNumber());
@@ -204,6 +205,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setTestResultType(staged.getResultType());
         item.setTestName(staged.getTestName());
         item.setSignificantDigits(significantDigitsFor(staged));
+        item.setManual(false);
     }
 
     /** As the review page derives it: the test's first active result definition. */

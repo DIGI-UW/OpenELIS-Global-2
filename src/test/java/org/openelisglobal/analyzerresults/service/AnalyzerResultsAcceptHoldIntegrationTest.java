@@ -355,6 +355,23 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aReleasedAnalyzerResultIsRecordedAsAnAutomaticAnalysis() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setManual(true);
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("analyzer provenance is kept in the analysis type", "AUTO",
+                jdbc.queryForObject(
+                        "SELECT a.analysis_type FROM clinlims.analysis a"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
     public void differentSpecimenChoicesForNewTestsOnAnExistingOrderStayHeld() {
         String existingOrder = "123456789";
         long secondMultiType = 97005L;
