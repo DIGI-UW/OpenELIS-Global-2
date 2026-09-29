@@ -18,6 +18,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -236,6 +237,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserTestSections(String systemUserId, String roleId) {
+        // Self-identity read. This resolves the CALLER's own test sections, a
+        // lookup whose access is already authorized by this method's own
+        // @PreAuthorize gate. Internally it reads the user's own lab-unit roles /
+        // role names / test-section cache, which are gated with ADMIN privileges
+        // (PRIV_USER_ROLE_VIEW, PRIV_ROLE_VIEW, ...) that ordinary
+        // Results/Reports/Validation users do not hold. Run the body in system
+        // context (restore, not clear) so those self-identity reads are not denied.
+        boolean systemWasSet = SystemInitFlag.enter();
+        try {
+            return doGetUserTestSections(systemUserId, roleId);
+        } finally {
+            SystemInitFlag.exit(systemWasSet);
+        }
+    }
+
+    private List<IdValuePair> doGetUserTestSections(String systemUserId, String roleId) {
         Authentication authentication = null;
         // see filter org.openelisglobal.security.AjaxFilter to handle
         // RequestContextHolder for Ajax calls via servlets
@@ -309,7 +326,8 @@ public class UserServiceImpl implements UserService {
                 for (GrantedAuthority authority : authentication.getAuthorities()) {
                     String[] authorityExplode = authority.getAuthority().split("-");
                     if (authorityExplode.length == 3) {
-                        if (roleId == null || roleService.get(Integer.valueOf(roleId)).getName().trim().equals(authorityExplode[1])) {
+                        if (roleId == null || roleService.get(Integer.valueOf(roleId)).getName().trim()
+                                .equals(authorityExplode[1])) {
                             List<IdValuePair> allTestSections = activeTestSections();
                             if (UnifiedSystemUserController.ALL_LAB_UNITS.equals(authorityExplode[2])) {
                                 return allTestSections;

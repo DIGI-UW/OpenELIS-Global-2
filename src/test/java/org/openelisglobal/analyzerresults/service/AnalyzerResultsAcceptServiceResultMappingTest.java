@@ -11,9 +11,9 @@ import org.junit.Test;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerResultsAcceptServiceResultMappingTest {

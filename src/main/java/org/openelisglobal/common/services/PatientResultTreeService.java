@@ -35,8 +35,8 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

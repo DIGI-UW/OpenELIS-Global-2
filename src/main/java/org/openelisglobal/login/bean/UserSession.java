@@ -31,9 +31,9 @@ public class UserSession {
 
     /**
      * Names of the SystemModules the caller's roles grant, i.e. what
-     * ModuleAuthenticationInterceptor checks a URL against. Sent so the sidebar
-     * can hide menu rows that layer would refuse; without it the frontend can
-     * only see the SecureRoute guards and keeps offering pages that redirect to
+     * ModuleAuthenticationInterceptor checks a URL against. Sent so the sidebar can
+     * hide menu rows that layer would refuse; without it the frontend can only see
+     * the SecureRoute guards and keeps offering pages that redirect to
      * /Home?access=denied or load and then 403 their data calls.
      */
     private Set<String> modules;

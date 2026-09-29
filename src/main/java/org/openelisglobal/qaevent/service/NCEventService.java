@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface NCEventService extends BaseObjectService<NcEvent, Integer> {
 

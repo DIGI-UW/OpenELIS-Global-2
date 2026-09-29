@@ -5,8 +5,8 @@ import java.util.List;
 import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Dashboard (T120).

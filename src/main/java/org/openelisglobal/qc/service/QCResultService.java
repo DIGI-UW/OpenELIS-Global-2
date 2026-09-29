@@ -7,8 +7,8 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.valueholder.QCResult;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Result management. Supports User Story 8:

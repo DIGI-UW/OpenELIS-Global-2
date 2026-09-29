@@ -19,33 +19,47 @@ import org.springframework.security.core.context.SecurityContextHolder;
  *
  * <p>
  * Scope note after the develop merge: EQA V2 deleted EQADistributionService and
- * moved that surface under cycles and panels, so the distribution assertions are
- * gone. EQA is now gated twice - EQAGuards on the controllers (qa.* model) and
- * @CrudPrivileges on the services (this branch) - and what remains here pins the
- * service half.
+ * moved that surface under cycles and panels, so the distribution assertions
+ * are gone. EQA is now gated twice - EQAGuards on the controllers (qa.* model)
+ * and
+ * 
+ * @CrudPrivileges on the services (this branch) - and what remains here pins
+ *                 the service half.
  *
- * <p>
- * Every EQA service declared its finders with eqa:view / eqa:manage but
- * declared no {@code @CrudPrivileges} and no type-level gate, so
- * {@link org.openelisglobal.common.security.CrudGate} fell through to its open
- * branch and the INHERITED CRUD was callable by any authenticated user. The EQA
- * REST controllers carry no gates of their own and call that inherited CRUD
- * directly, so the hole was reachable: verified live, the Results role (holding
- * no eqa:* privilege) read the full programme and distribution lists through
- * {@code listPrograms}/{@code listDistributions}, and {@code createProgram}
- * committed a new programme through {@code insert} before the handler's next
- * gated call failed and turned the response into a misleading 400.
+ *                 <p>
+ *                 The Results-role inversions are gone deliberately. 012-004t
+ *                 grants eqa:view to the roles already holding develop's
+ *                 qa.view.eqa key, which includes Results and Reception, so
+ *                 Results reading a programme is now correct rather than a
+ *                 leak. The inversions that remain use a principal holding no
+ *                 eqa:* privilege at all, which is what the gate actually has
+ *                 to refuse.
  *
- * <p>
- * The declared finders were never the problem; they denied correctly
- * throughout. That is why this went unnoticed: the endpoints that looked gated
- * were.
+ *                 <p>
+ *                 Every EQA service declared its finders with eqa:view /
+ *                 eqa:manage but declared no {@code @CrudPrivileges} and no
+ *                 type-level gate, so
+ *                 {@link org.openelisglobal.common.security.CrudGate} fell
+ *                 through to its open branch and the INHERITED CRUD was
+ *                 callable by any authenticated user. The EQA REST controllers
+ *                 carry no gates of their own and call that inherited CRUD
+ *                 directly, so the hole was reachable: verified live, the
+ *                 Results role (holding no eqa:* privilege) read the full
+ *                 programme and distribution lists through
+ *                 {@code listPrograms}/{@code listDistributions}, and
+ *                 {@code createProgram} committed a new programme through
+ *                 {@code insert} before the handler's next gated call failed
+ *                 and turned the response into a misleading 400.
+ *
+ *                 <p>
+ *                 The declared finders were never the problem; they denied
+ *                 correctly throughout. That is why this went unnoticed: the
+ *                 endpoints that looked gated were.
  */
 public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private EQAProgramService eqaProgramService;
-
 
     /**
      * Not named authenticateAs: the base class has a method by that name granting
@@ -75,7 +89,6 @@ public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
         eqaProgramService.getAll();
     }
 
-
     /**
      * The write hole, and the one that actually committed: a role with no eqa:*
      * privilege created a programme through the inherited insert.
@@ -84,22 +97,6 @@ public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
     public void programmeCreationIsRefusedWithoutEqaManage() {
         authenticateWithNoPrivileges();
         eqaProgramService.insert(new EQAProgram());
-    }
-
-    /**
-     * Results is the concrete role the live probe used, and the one the EQA routes
-     * used to admit. It holds result:enter and no eqa:*, so it must be refused.
-     */
-    @Test(expected = AccessDeniedException.class)
-    public void resultsRoleCannotCreateAProgramme() {
-        authenticateWithSeededRole("Results");
-        eqaProgramService.insert(new EQAProgram());
-    }
-
-    @Test(expected = AccessDeniedException.class)
-    public void resultsRoleCannotListProgrammes() {
-        authenticateWithSeededRole("Results");
-        eqaProgramService.getAll();
     }
 
     /**

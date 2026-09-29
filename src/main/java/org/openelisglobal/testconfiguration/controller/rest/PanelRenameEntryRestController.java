@@ -13,7 +13,6 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.testconfiguration.form.PanelRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
