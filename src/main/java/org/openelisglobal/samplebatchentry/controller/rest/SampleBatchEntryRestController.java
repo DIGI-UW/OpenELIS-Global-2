@@ -2,7 +2,10 @@ package org.openelisglobal.samplebatchentry.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -33,13 +36,17 @@ import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntryForm;
+import org.openelisglobal.samplebatchentry.form.SampleBatchEntrySaveForm;
+import org.openelisglobal.samplebatchentry.util.EidBatchSampleXml;
 import org.openelisglobal.samplebatchentry.validator.SampleBatchEntryFormValidator;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
@@ -158,14 +165,20 @@ public class SampleBatchEntryRestController extends BaseController {
 
     @PostMapping(value = "/SamplePatientEntryBatch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SamplePatientEntryForm showSamplePatientEntrySave(HttpServletRequest request,
-            @RequestBody @Validated(SamplePatientEntryForm.SamplePatientEntryBatch.class) SamplePatientEntryForm form,
+    public ResponseEntity<Object> showSamplePatientEntrySave(HttpServletRequest request,
+            @RequestBody @Validated(SamplePatientEntryForm.SamplePatientEntryBatch.class) SampleBatchEntrySaveForm form,
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
+        if (StringUtil.isNullorNill(form.getSampleXML()) && form.getEidSelection() != null) {
+            form.setSampleXML(new EidBatchSampleXml(testService, typeOfSampleService).build(form.getEidSelection(),
+                    form.getCurrentDate()));
+        }
 
         entryFormValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
+            return ResponseEntity.badRequest().body(buildErrorBody(result));
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
@@ -200,6 +213,7 @@ public class SampleBatchEntryRestController extends BaseController {
 
         if (result.hasErrors()) {
             saveErrors(result);
+            return ResponseEntity.badRequest().body(buildErrorBody(result));
         }
 
         try {
@@ -219,10 +233,24 @@ public class SampleBatchEntryRestController extends BaseController {
             LogEvent.logInfo(this.getClass().getSimpleName(), "showSamplePatientEntrySave", result.toString());
             saveErrors(result);
             request.setAttribute(ALLOW_EDITS_KEY, "false");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(buildErrorBody(result));
         }
 
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        return (form);
+        return ResponseEntity.ok(form);
+    }
+
+    private static Map<String, Object> buildErrorBody(BindingResult result) {
+        List<Map<String, String>> fieldErrors = result.getFieldErrors().stream().map(fe -> Map.of("field",
+                fe.getField(), "defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : ""))
+                .collect(Collectors.toList());
+        String message = "Validation failed";
+        if (!fieldErrors.isEmpty()) {
+            message = fieldErrors.get(0).get("field") + ": " + fieldErrors.get(0).get("defaultMessage");
+        } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
+            message = result.getGlobalErrors().get(0).getDefaultMessage();
+        }
+        return Map.of("error", message, "fieldErrors", fieldErrors);
     }
 
     private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,

@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="test section name" />
+    <localization id="2" description="test name" />
+    <localization id="3" description="sample type" />
+    <localization id="4" description="sample type" />
+    <localization id="5" description="organization" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Virology" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="DNA PCR" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="Dry Tube" />
+    <localization_value id="4" localization_id="4"
+        locale="en" value="DBS" />
+    <localization_value id="5" localization_id="5"
+        locale="en" value="Test Org" />
+
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="24" name_localization_id="3"
+        description="Dry Tube" local_abbrev="Dry" domain="H" is_active="true"
+        lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="26" name_localization_id="4"
+        description="DBS" local_abbrev="DBS" domain="H" is_active="true"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <test_section id="1" name="Virology"
+        description="Virology Section" name_localization_id="1"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" sort_order="1"
+        domain="CLINICAL" />
+
+    <test id="1" guid="550e8400-e29b-41d4-a716-446655440010"
+        name="DNA PCR" description="DNA PCR" is_reportable="Y"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" local_code="DNA-PCR"
+        sort_order="1" test_section_id="1" orderable="true"
+        notify_results="true" name_localization_id="2" />
+
+    <organization id="1" name="Test Org" short_name="TO"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" />
+
+    <person id="4" last_name="Infant" first_name="Batch"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <patient id="1" person_id="4" lastupdated="2023-11-01 12:00:00"
+        national_id="EID-BATCH-1" external_id="PAT-EID-1"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440011" />
+</dataset>

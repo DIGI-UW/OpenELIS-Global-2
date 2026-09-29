@@ -69,6 +69,8 @@ interface CreatePatientFormProps {
   >;
   showActionsButton?: boolean;
   showPatientSearch?: boolean;
+  /** False when the host screen already renders the notification toasts. */
+  renderNotifications?: boolean;
   [key: string]: unknown;
 }
 
@@ -809,7 +811,11 @@ function CreatePatientForm(props: CreatePatientFormProps) {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true && props.renderNotifications !== false ? (
+        <AlertDialog />
+      ) : (
+        ""
+      )}
       {props.selectedPatient?.isMerged === true && (
         <InlineNotification
           kind="warning"
