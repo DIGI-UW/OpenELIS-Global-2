@@ -69,7 +69,7 @@ public class ReportingRecoveryIntegrationTest extends BaseWebContextSensitiveTes
                 role.setName(Constants.ROLE_GLOBAL_ADMIN);
                 role.setActive(true);
                 entityManager.persist(role);
-                createdRoleId = role.getId();
+                createdRoleId = String.valueOf(role.getId());
             } else {
                 role = roles.get(0);
             }

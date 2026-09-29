@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.eqa.service.EQADistributionService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +16,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * The EQA module belongs to the EQA Coordinator, and to nobody else.
+ *
+ * <p>
+ * Scope note after the develop merge: EQA V2 deleted EQADistributionService and
+ * moved that surface under cycles and panels, so the distribution assertions are
+ * gone. EQA is now gated twice - EQAGuards on the controllers (qa.* model) and
+ * @CrudPrivileges on the services (this branch) - and what remains here pins the
+ * service half.
  *
  * <p>
  * Every EQA service declared its finders with eqa:view / eqa:manage but
@@ -40,8 +46,6 @@ public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
     @Autowired
     private EQAProgramService eqaProgramService;
 
-    @Autowired
-    private EQADistributionService eqaDistributionService;
 
     /**
      * Not named authenticateAs: the base class has a method by that name granting
@@ -59,10 +63,9 @@ public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void coordinatorReadsProgrammesAndDistributions() {
+    public void coordinatorReadsProgrammes() {
         authenticateWithSeededRole("EQA Coordinator");
         assertNotNull(eqaProgramService.getAll());
-        assertNotNull(eqaDistributionService.getAll());
     }
 
     /** The read hole: getAll is inherited CRUD, not a declared finder. */
@@ -72,11 +75,6 @@ public class EqaModuleAccessTest extends BaseWebContextSensitiveTest {
         eqaProgramService.getAll();
     }
 
-    @Test(expected = AccessDeniedException.class)
-    public void distributionListIsRefusedWithoutEqaView() {
-        authenticateWithNoPrivileges();
-        eqaDistributionService.getAll();
-    }
 
     /**
      * The write hole, and the one that actually committed: a role with no eqa:*

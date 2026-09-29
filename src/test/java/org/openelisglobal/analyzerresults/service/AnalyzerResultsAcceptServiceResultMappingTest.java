@@ -18,6 +18,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerResultsAcceptServiceResultMappingTest {
 
+    @Autowired
+    private AnalyzerResultsAcceptService acceptService;
+
     private TestResultService testResultService;
     private AnalyzerResultsAcceptServiceImpl service;
 
