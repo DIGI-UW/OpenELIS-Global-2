@@ -29,6 +29,17 @@ import {
   OrderCurrentTestsHeaders,
   OrderPossibleTestsHeaders,
 } from "../data/orderCurrentTestsHeaders";
+/**
+ * The row id of a test on Modify Order: the analysis for a current test, the
+ * sample item and test for one that can be added. A test id alone repeats
+ * whenever two samples carry the same test, which made those rows share one
+ * React key and one checkbox, so ticking one ticked the other.
+ */
+export const editTestRowId = (test) =>
+  test.analysisId
+    ? "analysis-" + test.analysisId
+    : "item-" + test.sampleItemId + "-test-" + test.testId;
+
 const EditSample = (props) => {
   const { samples, setSamples, orderFormValues, setOrderFormValues, error } =
     props;
@@ -65,7 +76,7 @@ const EditSample = (props) => {
   };
   const formatTestsObject = (tests) => {
     return tests.map((test) => {
-      test.id = test.testId;
+      test.id = editTestRowId(test);
       if (!test.accessionNumber) {
         test.accessionNumber = "";
       }
@@ -81,13 +92,13 @@ const EditSample = (props) => {
       return test;
     });
   };
-  const handleChecked = (e, testId) => {
+  const handleChecked = (e, rowId) => {
     var tests = [];
     var updatedTests = [];
     if (e.currentTarget.name === "add") {
       tests = orderFormValues.possibleTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, add: e.currentTarget.checked };
         } else {
           return test;
@@ -100,7 +111,7 @@ const EditSample = (props) => {
     } else if (e.currentTarget.name === "removeSample") {
       tests = orderFormValues.existingTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, removeSample: e.currentTarget.checked };
         }
         {
@@ -114,7 +125,7 @@ const EditSample = (props) => {
     } else if (e.currentTarget.name === "canceled") {
       tests = orderFormValues.existingTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, canceled: e.currentTarget.checked };
         }
         {

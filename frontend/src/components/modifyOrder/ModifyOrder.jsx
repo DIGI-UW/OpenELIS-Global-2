@@ -48,6 +48,13 @@ export const nonClinicalEditPath = (order) => {
   return `/order/${workflowType}/enter?labNumber=${encodeURIComponent(order.labNumber)}`;
 };
 
+/**
+ * The configuration used until the site settings load. It is one shared object
+ * because the validation effect depends on it: a fresh default on every render
+ * re-ran that effect without end.
+ */
+const NO_CONFIGURATION = {};
+
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sample.label.search.Order", link: "/SampleEdit" },
@@ -57,7 +64,8 @@ const ModifyOrder = () => {
   const componentMounted = useRef(false);
 
   const intl = useIntl();
-  const { configurationProperties = {} } = useContext(ConfigurationContext);
+  const { configurationProperties = NO_CONFIGURATION } =
+    useContext(ConfigurationContext);
 
   const firstPageNumber = 0;
   const lastPageNumber = 3;
