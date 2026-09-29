@@ -494,6 +494,151 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
       });
     }
   });
+
+  test("GeneXpert recovers a held result through the mapping editor", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const runId = randomUUID().slice(0, 8);
+    const analyzerName = `E2E Recovery GeneXpert ${runId}`;
+    const senderId = `GX-${runId}`;
+    const rawValue = "SARS-CoV-2 RNA DETECTED";
+    const list = new AnalyzerListPage(page);
+    const setup = new AnalyzerSetupPage(page);
+
+    await list.goto();
+    await list.clickAdd();
+    await setup.expectOpen();
+    await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
+    await setup.fillName(analyzerName);
+    await setup.selectLabUnit("Molecular Biology");
+    await setup.continueToVerify();
+    const verifyUrl = page.url();
+    const analyzer = await analyzerByName(page, analyzerName, "genexpert-astm");
+    const order = await createAnalyzerClinicalOrder(page, {
+      profileId: analyzer.profileId,
+      profileRevision: analyzer.profileRevision,
+      sourceCode: "COVID19",
+      expectedTestName: "COVID-19 PCR",
+      expectedLoinc: "94500-6",
+      specimenName: "Respiratory Swab",
+    });
+    await confirmShippedMapping(page, analyzer);
+    await page.goto(verifyUrl, { waitUntil: "domcontentloaded" });
+    await setup.continueToConnect();
+    await setup.fillSenderId(senderId);
+    await page.getByRole("button", { name: "Finish and activate" }).click();
+    await expect(page.getByTestId(`analyzer-row-${analyzer.id}`)).toContainText(
+      "Active",
+    );
+
+    await sendGeneXpertAstm(
+      page.request,
+      analyzer.bridgeConnectionId,
+      order.accession,
+      "COVID19",
+      rawValue,
+      senderId,
+    );
+    let originalId: string | undefined;
+    await expect(async () => {
+      const response = await page.request.get(
+        `${API}/AnalyzerResults?id=${analyzer.id}`,
+      );
+      expect(response.ok()).toBeTruthy();
+      const payload = (await response.json()) as {
+        resultList: Array<{
+          id: string;
+          accessionNumber: string;
+          rawResultValue: string;
+          importIssueReason: string | null;
+        }>;
+      };
+      const rows = payload.resultList.filter(
+        (row) => row.accessionNumber === order.accession,
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0].rawResultValue).toBe(rawValue);
+      expect(rows[0].importIssueReason).toBe("unknown_analyzer_result_value");
+      originalId = rows[0].id;
+    }).toPass();
+    expect(originalId).toBeTruthy();
+
+    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const held = page.getByTestId(`held-analyzer-result-${originalId}`);
+    await expect(held).toContainText(rawValue);
+    await capture(page, testInfo, "held-original-result");
+    await held
+      .getByRole("link", { name: "Review Analyzer Type mapping" })
+      .click();
+    const picker = page.getByRole("combobox", {
+      name: `OpenELIS result for ${rawValue}`,
+    });
+    await expect(picker).toBeVisible();
+    await picker.click();
+    await page.getByRole("option", { name: rawValue, exact: true }).click();
+    await page.getByRole("button", { name: "Update shared mappings" }).click();
+    const confirm = page.getByRole("button", {
+      name: "Confirm mappings and control recognition",
+    });
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    const apply = page.getByRole("button", {
+      name: "Apply mappings and retry held results",
+    });
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect(
+      page.getByText(
+        "Current mappings applied to this analyzer. Eligible held results were retried.",
+      ),
+    ).toBeVisible();
+
+    await expect(async () => {
+      const response = await page.request.get(
+        `${API}/AnalyzerResults?id=${analyzer.id}`,
+      );
+      expect(response.ok()).toBeTruthy();
+      const payload = (await response.json()) as {
+        resultList: Array<{ id: string; importIssueReason: string | null }>;
+      };
+      const original = payload.resultList.filter(
+        (row) => row.id === originalId,
+      );
+      expect(original).toHaveLength(1);
+      expect(original[0].importIssueReason).toBeFalsy();
+    }).toPass();
+
+    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const recovered = page.getByRole("row", {
+      name: new RegExp(order.accession),
+    });
+    await expect(recovered).toHaveCount(1);
+    await expect(recovered).toContainText(rawValue);
+    await capture(page, testInfo, "recovered-original-result");
+    await recovered.locator('label[for$=".isAccepted"]').click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(recovered).not.toBeVisible();
+    await expectClinicalReadback(page, order, rawValue);
+    await page.goto(
+      `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+      { waitUntil: "domcontentloaded" },
+    );
+    const saved = page
+      .getByRole("row", {
+        name: new RegExp(order.accession),
+      })
+      .filter({ hasText: rawValue });
+    await expect(saved).toHaveCount(1);
+    await expect(saved).toContainText("COVID-19 PCR");
+    await expect(saved).toContainText(rawValue);
+    await capture(page, testInfo, "recovered-clinical-result-saved");
+  });
+
   test("FluoroCycler imports a watched file for the correct clinical orders", async ({
     page,
   }, testInfo) => {
