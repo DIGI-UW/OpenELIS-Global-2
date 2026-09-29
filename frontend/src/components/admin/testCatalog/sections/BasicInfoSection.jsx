@@ -436,6 +436,7 @@ const BasicInfoSection = ({ testId }) => {
             ...(res.orderable !== undefined
               ? { orderable: res.orderable }
               : {}),
+            ...(res.lastupdated ? { lastupdated: res.lastupdated } : {}),
           });
           const integrity = res.loincIntegrity;
           setActivationWarnings(

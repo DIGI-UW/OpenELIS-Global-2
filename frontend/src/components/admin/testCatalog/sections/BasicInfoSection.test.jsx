@@ -634,6 +634,37 @@ describe("BasicInfoSection stale saves (OGC-1376)", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
+  it("a save after activating carries the version the activation returned", async () => {
+    const loaded = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      loaded(url, (res) =>
+        cb(
+          url.endsWith("/basic-info")
+            ? { ...res, active: false, lastupdated: "100" }
+            : res,
+        ),
+      ),
+    );
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ testId: "42", active: true, orderable: true, lastupdated: "300" }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).lastupdated,
+    ).toBe("300");
+  });
+
   it("the next save carries the version the last save returned", async () => {
     const loaded = getFromOpenElisServer.getMockImplementation();
     getFromOpenElisServer.mockImplementation((url, cb) =>

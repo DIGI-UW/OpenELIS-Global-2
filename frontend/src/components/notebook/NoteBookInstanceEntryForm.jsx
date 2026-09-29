@@ -271,6 +271,10 @@ const NoteBookInstanceEntryForm = () => {
         "/rest/notebook/samples?accession=" + accession,
         setSampleList,
       );
+      getFromOpenElisServer(
+        "/rest/SampleEdit?accessionNumber=" + accession,
+        loadOrderValues,
+      );
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,

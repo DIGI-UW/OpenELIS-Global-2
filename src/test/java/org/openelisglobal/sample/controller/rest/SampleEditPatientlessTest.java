@@ -162,6 +162,24 @@ public class SampleEditPatientlessTest extends BaseWebContextSensitiveTest {
         assertEquals(200, response.getStatusCode().value());
     }
 
+    /**
+     * Review of #4478: the notebook saves one sample at a time through SampleEdit.
+     * Reloading the form after each save, as it now does, carries the version the
+     * previous save moved to, so the next save is not refused.
+     */
+    @Test
+    public void sampleEdit_aScreenThatReloadsAfterEachSaveIsNeverRefused() throws Exception {
+        ReflectionTestUtils.setField(controller, "formValidator", Mockito.mock(SampleEditFormValidator.class));
+        SampleEditForm first = controller.showSampleEdit(request, PATIENTLESS_ACCESSION, null);
+        assertEquals(200, controller.saveSampleEdit(request, first, new BeanPropertyBindingResult(first, "form"))
+                .getStatusCode().value());
+
+        SampleEditForm reloaded = controller.showSampleEdit(request, PATIENTLESS_ACCESSION, null);
+
+        assertEquals(200, controller.saveSampleEdit(request, reloaded, new BeanPropertyBindingResult(reloaded, "form"))
+                .getStatusCode().value());
+    }
+
     @Test
     public void sampleEdit_stillReportsAMissingSample() throws Exception {
         SampleEditForm form = controller.showSampleEdit(request, "DASH-9999", null);
