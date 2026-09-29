@@ -27,6 +27,7 @@ import {
   putToOpenElisServer,
   deleteFromOpenElisServer,
   toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
@@ -326,6 +327,7 @@ function CalendarManagement() {
                           <DatePicker
                             datePickerType="single"
                             dateFormat="Y-m-d"
+                            parseDate={parseIsoDate}
                             onChange={([date]) =>
                               setEditForm((f) => ({
                                 ...f,
@@ -414,6 +416,7 @@ function CalendarManagement() {
                               <DatePicker
                                 datePickerType="single"
                                 dateFormat="Y-m-d"
+                                parseDate={parseIsoDate}
                                 value={editForm.date}
                                 onChange={([date]) =>
                                   setEditForm((f) => ({

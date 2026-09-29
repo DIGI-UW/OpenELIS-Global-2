@@ -41,6 +41,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { endOfDay, startOfDay } from "date-fns";
 import { toLocalIsoDate } from "../utils/Utils";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
@@ -398,8 +399,8 @@ function Reports({ devices = [] }) {
       return null;
     }
     const [start, end] = dateRange;
-    const startIso = toIsoString(start);
-    const endIso = toIsoString(end);
+    const startIso = toIsoString(start && startOfDay(new Date(start)));
+    const endIso = toIsoString(end && endOfDay(new Date(end)));
     if (!startIso || !endIso) {
       return null;
     }

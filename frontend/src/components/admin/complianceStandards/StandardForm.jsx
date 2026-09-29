@@ -25,6 +25,7 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
   toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
@@ -850,6 +851,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           <DatePicker
             datePickerType="single"
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             value={effectiveDate ? [effectiveDate] : []}
             onChange={(dates) => {
               if (dates && dates[0]) {
@@ -882,6 +884,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           <DatePicker
             datePickerType="single"
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             value={expiryDate ? [expiryDate] : []}
             onChange={(dates) => {
               if (dates && dates[0]) {

@@ -41,7 +41,7 @@ describe("Reports date range east of UTC (OGC-1378)", () => {
     window.URL.revokeObjectURL = vi.fn();
   });
 
-  it("sends the local calendar dates of the default last-seven-days range", async () => {
+  it("covers whole local days, in the preview and in the report", async () => {
     render(
       <IntlProvider locale="en" messages={messages}>
         <NotificationContext.Provider
@@ -62,6 +62,12 @@ describe("Reports date range east of UTC (OGC-1378)", () => {
       );
     });
 
+    expect(fetchReportExcursions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: "2026-09-22T14:00:00.000Z",
+        end: "2026-09-30T13:59:59.999Z",
+      }),
+    );
     expect(downloadReportDirect).toHaveBeenCalledWith(
       expect.objectContaining({
         startDate: "2026-09-23",

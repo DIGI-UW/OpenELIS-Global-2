@@ -34,6 +34,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerForBlob,
   toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
 
 const STATUS_TAG_TYPE = {
@@ -343,6 +344,7 @@ export default function LaporanHasilReport() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateFrom(
@@ -360,6 +362,7 @@ export default function LaporanHasilReport() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateTo(dates[0] ? toLocalIsoDate(dates[0]) : "")
