@@ -205,8 +205,7 @@ function SampleTypeManagement({ intl }) {
             const sampleTypeData = sampleTypeList.map((item, index) => ({
               id: item.id || index + 1,
               name: item.name || item.description || "Unknown Sample Type",
-              description:
-                item.description || item.name || "Sample type from database",
+              description: item.description || "",
               domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
@@ -516,12 +515,17 @@ function SampleTypeManagement({ intl }) {
             JSON.stringify(sampleTypeData),
             (result) => {
               if (result && result.status === 409) {
+                const onDescription = result.field === "description";
                 const duplicate = new Error(
                   intl.formatMessage({
-                    id: "error.sampleType.create.duplicateName",
+                    id: onDescription
+                      ? "error.sampleType.create.duplicateDescription"
+                      : "error.sampleType.create.duplicateName",
                   }),
                 );
-                duplicate.fieldErrors = { name: duplicate.message };
+                duplicate.fieldErrors = onDescription
+                  ? { description: duplicate.message }
+                  : { name: duplicate.message };
                 reject(duplicate);
               } else if (result && result.status === 400) {
                 const nameRefused = (result.fieldErrors || []).some(

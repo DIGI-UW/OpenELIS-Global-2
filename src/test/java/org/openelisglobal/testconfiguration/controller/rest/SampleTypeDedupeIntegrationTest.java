@@ -154,10 +154,59 @@ public class SampleTypeDedupeIntegrationTest extends BaseWebContextSensitiveTest
                 String.class, keepId));
     }
 
-    private org.springframework.test.web.servlet.ResultActions create(String name, String domain) throws Exception {
+    @Test
+    public void aCreate_storesTheTypedDescription_apartFromTheName() throws Exception {
+        createDescribed(PREFIX + " Named", PREFIX + " free-text description", "CLINICAL").andExpect(status().isOk());
+
+        assertEquals(List.of(PREFIX + " free-text description"),
+                jdbc.queryForList(
+                        "SELECT t.description FROM clinlims.type_of_sample t JOIN clinlims.localization l"
+                                + " ON l.id = t.name_localization_id JOIN clinlims.localization_value lv"
+                                + " ON lv.localization_id = l.id AND lv.locale = 'en' WHERE lv.value = ?",
+                        String.class, PREFIX + " Named"));
+    }
+
+    /**
+     * Callers that predate the description field (the legacy create screen, API
+     * scripts) still create; the name stands in as the description.
+     */
+    @Test
+    public void aCreateWithoutADescription_usesTheNameAsTheDescription() throws Exception {
+        mockMvc.perform(
+                post("/rest/SampleTypeCreate")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"sampleTypeEnglishName\":\"" + PREFIX
+                                + " Undescribed\",\"sampleTypeFrenchName\":\"" + PREFIX + " Undescribed\"}")
+                        .session(session))
+                .andExpect(status().isOk());
+
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.type_of_sample WHERE description = ?", Integer.class,
+                        PREFIX + " Undescribed"));
+    }
+
+    @Test
+    public void aDescriptionAnotherTypeInTheDomainHas_isRefusedOnTheDescriptionField() throws Exception {
+        createDescribed(PREFIX + " First", PREFIX + " shared description", "CLINICAL").andExpect(status().isOk());
+        createDescribed(PREFIX + " Second", PREFIX + " shared description", "CLINICAL").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("duplicate")).andExpect(jsonPath("$.field").value("description"));
+
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.type_of_sample WHERE description = ?", Integer.class,
+                        PREFIX + " shared description"));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions createDescribed(String name, String description,
+            String domain) throws Exception {
         return mockMvc.perform(post("/rest/SampleTypeCreate").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"sampleTypeEnglishName\":\"" + name + "\",\"sampleTypeFrenchName\":\"" + name
-                        + "\",\"description\":\"" + name + "\",\"domain\":\"" + domain + "\",\"active\":true}")
+                        + "\",\"description\":\"" + description + "\",\"domain\":\"" + domain + "\",\"active\":true}")
+                .session(session));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions create(String name, String domain) throws Exception {
+        return mockMvc.perform(post("/rest/SampleTypeCreate")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"sampleTypeEnglishName\":\"" + name
+                        + "\",\"sampleTypeFrenchName\":\"" + name + "\",\"domain\":\"" + domain + "\",\"active\":true}")
                 .session(session));
     }
 

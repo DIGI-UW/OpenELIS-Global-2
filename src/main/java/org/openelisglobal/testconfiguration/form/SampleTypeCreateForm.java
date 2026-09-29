@@ -26,7 +26,7 @@ public class SampleTypeCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeFrenchName;
 
-    @NotBlank
+    // Optional: a blank description falls back to the English name.
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String description;
 
