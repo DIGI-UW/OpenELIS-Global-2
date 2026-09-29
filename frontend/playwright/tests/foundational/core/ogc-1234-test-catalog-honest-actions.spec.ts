@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -115,10 +116,7 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
         name: "Copy configuration from test",
       });
       await expect(picker).toBeVisible({ timeout: NAV_TIMEOUT });
-      await picker.fill(source.test.value);
-      await page
-        .getByRole("option", { name: source.test.value, exact: true })
-        .click();
+      await chooseCarbonOption(picker, source.test.value);
       await page.getByRole("button", { name: "Copy from test" }).click();
 
       const dialog = page.getByRole("dialog", {
@@ -153,10 +151,7 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
         timeout: UI_TIMEOUT,
       });
 
-      await picker.fill(source.test.value);
-      await page
-        .getByRole("option", { name: source.test.value, exact: true })
-        .click();
+      await chooseCarbonOption(picker, source.test.value);
       await page.getByRole("button", { name: "Copy from test" }).click();
       await dialog
         .getByRole("button", { name: /Replace configuration/ })
@@ -272,8 +267,7 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
     const picker = page.getByRole("combobox", {
       name: "Copy methods from test",
     });
-    await picker.fill(first.value);
-    await page.getByRole("option", { name: first.value, exact: true }).click();
+    await chooseCarbonOption(picker, first.value);
     await page.getByRole("button", { name: "Copy from Test" }).click();
     await expect(
       page.getByText(
@@ -284,8 +278,7 @@ test.describe("Test Catalog editor actions report what happened (OGC-1234)", () 
       page.getByRole("cell", { name: code, exact: true }),
     ).toBeVisible();
 
-    await picker.fill(first.value);
-    await page.getByRole("option", { name: first.value, exact: true }).click();
+    await chooseCarbonOption(picker, first.value);
     await page.getByRole("button", { name: "Copy from Test" }).click();
     await expect(
       page.getByText(

@@ -1,4 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -246,8 +247,10 @@ test.describe("Server paging through Carbon", () => {
         response.url().includes("status=in_progress") &&
         !response.url().includes("page="),
     );
-    await main.locator("#status-filter").click();
-    await page.getByRole("option", { name: "In Progress" }).click();
+    await chooseCarbonOption(
+      main.locator("#status-filter").getByRole("combobox"),
+      "In Progress",
+    );
     await filtered;
     await expect(carbon.locator(".cds--pagination__right select")).toHaveValue(
       "1",
