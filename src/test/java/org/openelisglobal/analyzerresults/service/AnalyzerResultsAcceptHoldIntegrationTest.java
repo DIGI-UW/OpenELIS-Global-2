@@ -402,6 +402,22 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aNewTestKeepsItsChosenSpecimenBesideAnExistingAnalysis() {
+        String existingOrder = "123456789";
+        long testWithExistingAnalysis = 8000L;
+        // The dataset's analysis has no version stamp; accepting a result updates it.
+        jdbc.update("UPDATE clinlims.analysis SET lastupdated = NOW() WHERE id = 9000");
+        AnalyzerResultItem existing = stagedRow(existingOrder, testWithExistingAnalysis);
+        AnalyzerResultItem chosenB = stagedRow(existingOrder, MULTI_TYPE_TEST);
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(existing, chosenB), "1");
+
+        assertEquals("the new test's specimen, not the existing analysis's", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, MULTI_TYPE_TEST));
+    }
+
+    @org.junit.Test
     public void aGroupingWithOnlyInactiveTestsCreatesNoOrder() {
         long inactiveTest = 97006L;
         jdbc.update(

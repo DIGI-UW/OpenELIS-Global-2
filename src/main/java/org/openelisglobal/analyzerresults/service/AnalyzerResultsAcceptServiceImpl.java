@@ -682,7 +682,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         sample.setEnteredDate(new Date(new java.util.Date().getTime()));
         sample.setSysUserId(sysUserId);
 
-        SampleItem sampleItem = null;
+        // New analyses are persisted on the grouping's sample item; an existing
+        // analysis keeps its own, which serves only when nothing new is added.
+        SampleItem newAnalysisSampleItem = null;
+        SampleItem existingAnalysisSampleItem = null;
         List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
         Patient patient = sampleHumanService.getPatientForSample(sample);
 
@@ -725,34 +728,39 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 List<String> allowedTypeIds = typeOfSamples.stream().map(TypeOfSample::getId)
                         .collect(Collectors.toList());
 
+                SampleItem rowSampleItem = null;
                 for (SampleItem item : sampleItemsForSample) {
                     if (!allowedTypeIds.isEmpty() && item.getTypeOfSample() != null
                             && allowedTypeIds.contains(item.getTypeOfSample().getId())) {
-                        sampleItem = item;
-                        analysis.setSampleItem(sampleItem);
+                        rowSampleItem = item;
                     }
                 }
-                if (sampleItem == null && allowedTypeIds.isEmpty() && !sampleItemsForSample.isEmpty()) {
-                    sampleItem = sampleItemsForSample.get(0);
-                    analysis.setSampleItem(sampleItem);
+                if (rowSampleItem == null && allowedTypeIds.isEmpty() && !sampleItemsForSample.isEmpty()) {
+                    rowSampleItem = sampleItemsForSample.get(0);
                 }
-                if (sampleItem == null) {
-                    sampleItem = new SampleItem();
-                    sampleItem.setSysUserId(sysUserId);
-                    sampleItem.setSortOrder("1");
-                    sampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
-                    sampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
+                if (rowSampleItem == null && newAnalysisSampleItem != null && newAnalysisSampleItem.getId() == null
+                        && (allowedTypeIds.isEmpty() || (newAnalysisSampleItem.getTypeOfSample() != null
+                                && allowedTypeIds.contains(newAnalysisSampleItem.getTypeOfSample().getId())))) {
+                    rowSampleItem = newAnalysisSampleItem;
+                }
+                if (rowSampleItem == null) {
+                    rowSampleItem = new SampleItem();
+                    rowSampleItem.setSortOrder("1");
+                    rowSampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
+                    rowSampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
                     if (!typeOfSamples.isEmpty()) {
-                        sampleItem.setTypeOfSample(typeOfSamples.get(0));
+                        rowSampleItem.setTypeOfSample(typeOfSamples.get(0));
                     }
-                    analysis.setSampleItem(sampleItem);
                 }
+                rowSampleItem.setSysUserId(sysUserId);
+                analysis.setSampleItem(rowSampleItem);
+                newAnalysisSampleItem = rowSampleItem;
             } else {
                 dBAnalysisList.remove(analysis);
-            }
-            if (sampleItem == null) {
-                sampleItem = analysis.getSampleItem();
-                sampleItem.setSysUserId(sysUserId);
+                if (existingAnalysisSampleItem == null) {
+                    existingAnalysisSampleItem = analysis.getSampleItem();
+                    existingAnalysisSampleItem.setSysUserId(sysUserId);
+                }
             }
 
             populateAnalysis(resultItem, analysis, analysis.getTest());
@@ -773,6 +781,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
         }
 
+        SampleItem sampleItem = newAnalysisSampleItem != null ? newAnalysisSampleItem : existingAnalysisSampleItem;
         sampleGrouping.sample = sample;
         sampleGrouping.sampleItem = sampleItem;
         sampleGrouping.analysisList = analysisList;
