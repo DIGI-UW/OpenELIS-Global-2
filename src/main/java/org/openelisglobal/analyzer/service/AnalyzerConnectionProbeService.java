@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 /** Probes the exact saved Bridge connection revision referenced by OpenELIS. */
@@ -35,6 +36,7 @@ public class AnalyzerConnectionProbeService {
         this.requestIdSupplier = requestIdSupplier;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     public AnalyzerConnectionProbeView probe(String analyzerId) {
         String exactAnalyzerId = requireText(analyzerId, "analyzer.testConnection.analyzerIdMissing");
         Analyzer analyzer = analyzerService.getWithBinding(exactAnalyzerId)

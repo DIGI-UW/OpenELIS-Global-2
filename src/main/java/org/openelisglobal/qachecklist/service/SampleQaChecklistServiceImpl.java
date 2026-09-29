@@ -49,6 +49,11 @@ public class SampleQaChecklistServiceImpl extends BaseObjectServiceImpl<SampleQa
     @Transactional(readOnly = true)
     public List<Dictionary> getActiveChecklistItems() {
         // Get all dictionary entries for the QAChecklistItem category
+        // The checklist questions live in the dictionary (dictionary:view, an
+        // administrative privilege). This is read both to render the QA step and,
+        // via checkAllItemsVerified, inside saveOrUpdateChecklist — so an
+        // order-entry role could neither see the checklist nor record answers to
+        // it. Reading the questions is not dictionary administration.
         List<Dictionary> allItems = dictionaryService
                 .getDictionaryEntrysByCategoryNameLocalizedSort(QA_CHECKLIST_CATEGORY_NAME);
 

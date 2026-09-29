@@ -6,8 +6,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,22 +18,44 @@ import org.springframework.stereotype.Component;
  * Handler for loading role configuration files. Supports CSV format with role
  * entries.
  *
- * Expected CSV format:
- * name,description,displayKey,active,editable,isGroupingRole,groupingParent Lab
- * Technician,Basic laboratory technician role,role.lab.tech,Y,Y,N, Results
- * Validator,Can validate test results,role.validator,Y,Y,N,
+ * <p>
+ * Expected CSV header:
  *
- * Notes: - First line is the header (required) - name is required field -
- * description, displayKey, active, editable, isGroupingRole, groupingParent are
- * optional - active and editable default to "Y" if not specified -
- * isGroupingRole defaults to "N" if not specified - groupingParent should be
- * the name of the parent role (will be resolved to role ID)
+ * <pre>
+ * name,description,displayKey,active,editable,isGroupingRole,groupingParent,parentRole
+ * </pre>
+ *
+ * Only {@code name} is required. {@code active} and {@code editable} default to
+ * "Y", {@code isGroupingRole} to "N".
+ *
+ * <p>
+ * The last two columns are independent and easy to confuse:
+ *
+ * <ul>
+ * <li>{@code groupingParent} — UI taxonomy. Names the container row
+ * ({@code isGroupingRole=Y}) whose section of User Management this role renders
+ * under. In practice "Lab Unit Roles" for a role scoped per test section, or
+ * "Global Roles" for one that spans the lab. A role with no groupingParent, or
+ * one pointing at a container the screen does not render, is created but cannot
+ * be assigned to anyone.</li>
+ * <li>{@code parentRole} — privilege inheritance. Names a REAL role whose
+ * privileges this role absorbs, resolved recursively by
+ * {@code PrivilegeServiceImpl}. This is the only way a CSV-defined role gains
+ * privileges: the format has no privileges column, so a role with no parentRole
+ * grants nothing (and is warned about below).</li>
+ * </ul>
+ *
+ * Both are resolved from role NAME to id. See
+ * {@code volume/configuration/backend/roles/example-lab-roles.csv}.
  */
 @Component
 public class RolesConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private PrivilegeService privilegeService;
 
     @Override
     public String getDomainName() {
@@ -68,7 +92,13 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         int activeIndex = findColumnIndex(headers, "active");
         int editableIndex = findColumnIndex(headers, "editable");
         int isGroupingRoleIndex = findColumnIndex(headers, "isGroupingRole");
+        // Two distinct columns, two distinct meanings (spec 012 FR-005):
+        // `groupingParent` places the role under a UI container; `parentRole` names
+        // the role whose privileges it inherits. They used to collapse onto
+        // grouping_parent, which made a role either inheritable-from or assignable
+        // but never both.
         int groupingParentIndex = findColumnIndex(headers, "groupingParent");
+        int parentRoleIndex = findColumnIndex(headers, "parentRole");
 
         List<Role> processedRoles = new ArrayList<>();
         String line;
@@ -84,13 +114,28 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             try {
                 String[] values = parseCsvLine(line);
                 Role role = processCsvLine(values, nameIndex, descriptionIndex, displayKeyIndex, activeIndex,
-                        editableIndex, isGroupingRoleIndex, groupingParentIndex);
+                        editableIndex, isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
                 if (role != null) {
                     processedRoles.add(role);
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Spec 012 T047: a non-grouping role with no effective privileges (direct
+        // or inherited) grants nothing — almost always a configuration mistake.
+        for (Role role : processedRoles) {
+            if (role.getGroupingRole() != null && role.getGroupingRole()) {
+                continue;
+            }
+            Set<String> effective = privilegeService.resolveAllPrivilegesForRole(String.valueOf(role.getId()));
+            if (effective.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                        "Role '" + role.getName().trim() + "' from " + fileName
+                                + " has no effective privileges (direct or inherited) — users assigned"
+                                + " only this role will be denied by every privilege gate");
             }
         }
 
@@ -145,7 +190,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private Role processCsvLine(String[] values, int nameIndex, int descriptionIndex, int displayKeyIndex,
-            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         // Get required field
         String name = getValueOrEmpty(values, nameIndex);
@@ -155,18 +200,20 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             return null;
         }
 
-        // Check if role already exists
+        // Check if role already exists (getRoleByName returns a stub with id=-1 when
+        // not found)
         Role existingRole = roleService.getRoleByName(name);
-        if (existingRole != null) {
+        if (existingRole != null && !Integer.valueOf(-1).equals(existingRole.getId())) {
             // Update existing role
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
-                    isGroupingRoleIndex, groupingParentIndex);
+                    isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
             roleService.update(existingRole);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Updated role: " + name);
             return existingRole;
         } else {
             // Create new role
             return createRole(name, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
-                    isGroupingRoleIndex, groupingParentIndex);
+                    isGroupingRoleIndex, groupingParentIndex, parentRoleIndex);
         }
     }
 
@@ -179,7 +226,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private void updateRoleFromCsv(Role role, String[] values, int descriptionIndex, int displayKeyIndex,
-            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int activeIndex, int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         // Set optional fields
         String description = getValueOrEmpty(values, descriptionIndex);
@@ -217,7 +264,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "updateRoleFromCsv",
@@ -225,10 +272,23 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
+        // Privilege inheritance parent — a REAL role whose privileges this role
+        // absorbs, resolved independently of the UI grouping above.
+        String parentRoleName = getValueOrEmpty(values, parentRoleIndex);
+        if (!parentRoleName.isEmpty()) {
+            Role inheritedFrom = roleService.getRoleByName(parentRoleName);
+            if (inheritedFrom != null && !Integer.valueOf(-1).equals(inheritedFrom.getId())) {
+                role.setParentRoleId(inheritedFrom.getId());
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "updateRoleFromCsv",
+                        "Inheritance parent role '" + parentRoleName + "' not found for role '" + role.getName() + "'");
+            }
+        }
+
     }
 
     private Role createRole(String name, String[] values, int descriptionIndex, int displayKeyIndex, int activeIndex,
-            int editableIndex, int isGroupingRoleIndex, int groupingParentIndex) {
+            int editableIndex, int isGroupingRoleIndex, int groupingParentIndex, int parentRoleIndex) {
 
         Role role = new Role();
         role.setName(name);
@@ -271,7 +331,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
@@ -279,7 +339,22 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        String roleId = roleService.insert(role);
+        // Privilege inheritance parent — a REAL role whose privileges this role
+        // absorbs, resolved independently of the UI grouping above.
+        String parentRoleName = getValueOrEmpty(values, parentRoleIndex);
+        if (!parentRoleName.isEmpty()) {
+            Role inheritedFrom = roleService.getRoleByName(parentRoleName);
+            if (inheritedFrom != null && !Integer.valueOf(-1).equals(inheritedFrom.getId())) {
+                role.setParentRoleId(inheritedFrom.getId());
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
+                        "Inheritance parent role '" + parentRoleName + "' not found for role '" + name + "'");
+            }
+        }
+
+        role.setSysUserId("1"); // System user for configuration loading
+
+        Integer roleId = roleService.insert(role);
         role = roleService.get(roleId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "createRole", "Created new role: " + name);
         return role;

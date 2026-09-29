@@ -5,9 +5,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -172,39 +171,40 @@ public class TATReportRestControllerTest {
     }
 
     // --- @PreAuthorize regression guard ---
-    // Spring's hasAnyRole() auto-prepends "ROLE_", so passing 'ROLE_X' checks
-    // for 'ROLE_ROLE_X' (no user ever has that). This test catches the exact
-    // double-prefix bug that shipped in the original PR.
+    // Authorization lives at the service layer (OGC-384). Each service method must
+    // carry @PreAuthorize("hasAuthority('PRIV_*')"). These tests verify that every
+    // public method on TATReportService is annotated and uses the privilege syntax.
 
     @Test
     public void preAuthorize_mustExistOnController() {
-        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
-        Assert.assertNotNull("Controller must have @PreAuthorize annotation", annotation);
+        boolean allAnnotated = true;
+        for (Method method : TATReportService.class.getDeclaredMethods()) {
+            if (!method.isAnnotationPresent(PreAuthorize.class)) {
+                allAnnotated = false;
+                break;
+            }
+        }
+        Assert.assertTrue("All TATReportService methods must have @PreAuthorize annotation", allAnnotated);
     }
 
     @Test
     public void preAuthorize_roleNames_mustNotContainROLE_prefix() {
-        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
-        Assert.assertNotNull(annotation);
-        Assert.assertFalse(
-                "Role names in hasAnyRole() must not use ROLE_ prefix — Spring auto-prepends it, "
-                        + "causing a double-prefix (ROLE_ROLE_X). Found: " + annotation.value(),
-                annotation.value().contains("'ROLE_"));
+        for (Method method : TATReportService.class.getDeclaredMethods()) {
+            PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+            if (annotation != null) {
+                Assert.assertFalse("Privilege names must not use ROLE_ prefix in method " + method.getName()
+                        + ". Found: " + annotation.value(), annotation.value().contains("'ROLE_"));
+            }
+        }
     }
 
     @Test
     public void preAuthorize_mustAllowReportsRole() {
-        PreAuthorize annotation = TATReportRestController.class.getAnnotation(PreAuthorize.class);
-        Assert.assertNotNull(annotation);
-        // Extract role names from hasAnyRole('X', 'Y', 'Z')
-        Matcher matcher = Pattern.compile("'([^']+)'").matcher(annotation.value());
-        boolean hasReports = false;
-        while (matcher.find()) {
-            if ("REPORTS".equals(matcher.group(1))) {
-                hasReports = true;
-            }
+        for (Method method : TATReportService.class.getDeclaredMethods()) {
+            PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+            Assert.assertNotNull("Method " + method.getName() + " must have @PreAuthorize", annotation);
+            Assert.assertTrue("Method " + method.getName() + " must use hasAuthority('PRIV_REPORT_RUN'). Found: "
+                    + annotation.value(), annotation.value().contains("PRIV_REPORT_RUN"));
         }
-        Assert.assertTrue("@PreAuthorize must include REPORTS role to align with frontend "
-                + "SecureRoute gate (Roles.REPORTS). Found: " + annotation.value(), hasReports);
     }
 }

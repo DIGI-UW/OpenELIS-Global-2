@@ -24,6 +24,7 @@ import org.openelisglobal.datasubmission.valueholder.DataResource;
 import org.openelisglobal.datasubmission.valueholder.DataValue;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -31,6 +32,7 @@ public class DataSubmitter {
 
     private @Autowired SiteInformationService siteInformationService;
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public boolean sendDataIndicator(DataIndicator indicator) throws IOException, ParseException {
         boolean success = true;
         for (DataResource resource : indicator.getResources()) {
@@ -137,6 +139,7 @@ public class DataSubmitter {
     }
 
     // get a resource based on its column-value pairs.
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String sendGet(DataResource resource, String level, List<DataValue> searchKeys)
             throws ClientProtocolException, IOException {
         StringBuilder url = new StringBuilder();
@@ -281,6 +284,7 @@ public class DataSubmitter {
     }
 
     // get a resource based on its column-value pairs.
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String sendGet(String table, List<DataValue> columnValues) throws ClientProtocolException, IOException {
         StringBuilder url = new StringBuilder();
         url.append(getBaseURL());
@@ -330,6 +334,7 @@ public class DataSubmitter {
     }
 
     // get a resource based on its column-value pairs.
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String sendGet(String table, String id) throws ClientProtocolException, IOException {
         StringBuilder url = new StringBuilder();
         url.append(getBaseURL());
@@ -371,6 +376,7 @@ public class DataSubmitter {
     }
 
     // used for talking to VL-DASHBOARD api to update an old entry
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String sendJSONPut(String table, String foreignKey, List<DataValue> values) throws IOException {
         CloseableHttpClient client = null;
         CloseableHttpResponse response = null;
@@ -410,6 +416,7 @@ public class DataSubmitter {
     }
 
     // used for talking to VL-DASHBOARD api to insert a new entry
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public String sendJSONPost(String table, List<DataValue> values) throws ClientProtocolException, IOException {
         CloseableHttpClient client = null;
         CloseableHttpResponse response = null;

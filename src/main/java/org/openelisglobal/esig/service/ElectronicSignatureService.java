@@ -5,6 +5,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.EsigFirstUseCertification;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for electronic signatures per 21 CFR Part 11.
@@ -40,6 +41,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @throws IllegalArgumentException if user not certified or credentials invalid
      * @throws IllegalStateException    if e-signatures are disabled
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     ElectronicSignature executeSignature(String username, String password, SignatureMeaning meaning, String recordType,
             Long recordId, String rejectionReason, String clientIp, String userAgent);
 
@@ -54,6 +56,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param recordId   ID of the record
      * @return list of signatures ordered chronologically
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesForRecord(String recordType, Long recordId);
 
     /**
@@ -62,6 +65,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param userId user ID
      * @return list of signatures ordered by most recent first
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesByUser(Long userId);
 
     /**
@@ -70,6 +74,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param meaning signature meaning to filter by
      * @return list of signatures ordered by most recent first
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning);
 
     // ========================
@@ -82,6 +87,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return true if certified
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean isUserCertified(String username);
 
     /**
@@ -95,6 +101,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @return the created certification record
      * @throws IllegalArgumentException if credentials invalid or already certified
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     EsigFirstUseCertification certifyUser(String username, String password, String certificationText, String clientIp,
             String userAgent);
 
@@ -104,6 +111,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @param username username whose certification to revoke
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     void revokeCertification(String username);
 
     /**
@@ -111,6 +119,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @return list of all certifications
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<EsigFirstUseCertification> getAllCertifications();
 
     // ========================
@@ -123,6 +132,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return true if session is active (user has signed at least once)
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean hasActiveSigningSession(String username);
 
     /**
@@ -131,6 +141,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return count of signatures in session, or 0 if no active session
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     int getSessionSigningCount(String username);
 
     /**
@@ -138,6 +149,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @param username username
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     void clearSigningSession(String username);
 
     // ========================
@@ -149,5 +161,6 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @return true if e-signatures are enabled
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean isEsigEnabled();
 }

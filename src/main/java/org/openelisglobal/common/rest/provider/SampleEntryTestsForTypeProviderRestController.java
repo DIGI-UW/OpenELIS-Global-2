@@ -84,9 +84,28 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    /**
+     * The orderable tests and panels for a sample type — what the order-entry
+     * screen's test picker reads.
+     *
+     * <p>
+     * Gated as the caller. Building this list crosses sample types, panels, panel
+     * items, test methods, test sections, programmes and microbiology culture
+     * setups; every one of those reads accepts {@code PRIV_CATALOGUE_VIEW}, which
+     * each order-entry role holds. It used to run in system context instead,
+     * because those reads were gated on administrative privileges
+     * ({@code result:view}, {@code test:configure}, {@code micro:view}) that
+     * Reception has no business holding, so the only way to show a test picker was
+     * to bypass authorization entirely.
+     *
+     * <p>
+     * This is the test CATALOGUE, not patient or result data, and the response is
+     * further narrowed to the caller's own test sections by
+     * {@code getUserTestSections}. Who may actually place an order remains gated on
+     * the order-creation services this does not touch.
+     */
     public ResponseEntity<Object> processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
         String sampleType = request.getParameter("sampleType");
         if (GenericValidator.isBlankOrNull(sampleType)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
@@ -95,7 +114,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType must be a numeric id");
         }
 
-        String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
+        String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
@@ -119,6 +138,9 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // Gated as the caller: getUserSampleTypes is scoped to the caller's own
+        // assignments by its systemUserId argument and getAllTypeOfSamples is the
+        // sample-type catalogue. Both accept PRIV_CATALOGUE_VIEW.
         List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
         java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
                 .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
@@ -135,6 +157,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEnvironmentalSampleTypes() {
+        // A catalogue read: TypeOfSampleService now accepts catalogue:view, so the
+        // sample-type dropdown is gated rather than bypassed.
         return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
                 .stream().filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
@@ -144,6 +168,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @GetMapping(value = "vector-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getVectorSampleTypes() {
+        // Same as getEnvironmentalSampleTypes, a catalogue read.
         return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.VECTOR).stream()
                 .filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
@@ -154,6 +179,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @ResponseBody
     public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // The caller's own programme assignments, with each programme's code resolved
+        // from the catalogue. Both reads accept PRIV_CATALOGUE_VIEW.
         return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
             Program program = programService.get(option.getId());
             return program == null ? null : new ProgramOption(option.getId(), option.getValue(), program.getCode());

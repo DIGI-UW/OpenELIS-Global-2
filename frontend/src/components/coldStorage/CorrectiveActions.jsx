@@ -49,7 +49,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";
 import { toDate } from "./shared/timeUtils";
-import { hasRole, Roles } from "../utils/Utils";
+import { hasPrivilege, Privileges } from "../utils/Utils";
 
 const getColumns = (intl) => [
   {
@@ -267,7 +267,10 @@ export default function CorrectiveActions() {
   // The retract and create-device writes both require ADMIN, and a denial
   // reaches the browser as HTTP 500 because ControllerSetup resolves
   // AccessDeniedException before Spring Security can translate it.
-  const isAdminUser = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const isAdminUser = hasPrivilege(
+    userSessionDetails,
+    Privileges.COLDSTORAGE_MANAGE,
+  );
 
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {

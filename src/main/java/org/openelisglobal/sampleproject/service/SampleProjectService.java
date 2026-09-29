@@ -4,7 +4,9 @@ import java.sql.Date;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sampleproject.valueholder.SampleProject;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
 public interface SampleProjectService extends BaseObjectService<SampleProject, String> {
     void getData(SampleProject sampleProj);
 

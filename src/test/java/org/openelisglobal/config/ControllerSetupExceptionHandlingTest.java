@@ -1,5 +1,6 @@
 package org.openelisglobal.config;
 
+import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -78,5 +79,35 @@ public class ControllerSetupExceptionHandlingTest {
 
         withColdStorageAdvice.perform(get("/invalid")).andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500)).andExpect(jsonPath("$.message").doesNotExist());
+    }
+
+    /**
+     * The 403 log line must say WHICH gate refused and from WHERE. The gated method
+     * never runs, so it is absent from the stack; the proxy that refused it is
+     * present, and the caller is the first application frame past the security
+     * plumbing. Before this line existed a denied save left nothing behind but a
+     * status code.
+     */
+    @Test
+    public void describeDenial_namesTheRefusedMethodAndItsCaller() {
+        AccessDeniedException ex = new AccessDeniedException("Access Denied");
+        ex.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement(
+                        "org.springframework.security.authorization.method.AuthorizationManagerBeforeMethodInterceptor",
+                        "invoke", "AuthorizationManagerBeforeMethodInterceptor.java", 198),
+                new StackTraceElement("jdk.proxy2.$Proxy248", "insert", null, -1),
+                new StackTraceElement("org.openelisglobal.sample.action.util.SamplePatientUpdateData",
+                        "resolveOrCreateSamplingSiteId", "SamplePatientUpdateData.java", 1165) });
+        assertEquals("denied at insert (called from SamplePatientUpdateData.resolveOrCreateSamplingSiteId:1165)",
+                ControllerSetup.describeDenial(ex));
+    }
+
+    /** Inversion: with no recognisable frames it must say so, not invent names. */
+    @Test
+    public void describeDenial_withoutRecognisableFrames_saysSo() {
+        AccessDeniedException ex = new AccessDeniedException("Access Denied");
+        ex.setStackTrace(
+                new StackTraceElement[] { new StackTraceElement("java.lang.Thread", "run", "Thread.java", 1) });
+        assertEquals("denied at unknown method (called from unknown)", ControllerSetup.describeDenial(ex));
     }
 }

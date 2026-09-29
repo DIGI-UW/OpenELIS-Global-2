@@ -17,6 +17,7 @@ import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,6 +84,7 @@ public class AuditEntitySnapshotService {
      * Restricted by {@link #SNAPSHOT_FIELDS_BY_REF_TABLE} so PII never leaks into
      * rows that already say "edited".
      */
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     public Map<String, String> loadSnapshot(String refTableName, String refId) {
         if (refTableName == null || refId == null || refId.isEmpty()) {
             return Collections.emptyMap();
@@ -101,6 +103,7 @@ public class AuditEntitySnapshotService {
      * they read as a human-friendly name rather than the default
      * {@code ClassName@hash}.
      */
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     public Map<String, String> loadFieldValues(String refTableName, String refId, Set<String> fieldNames) {
         if (refTableName == null || refId == null || refId.isEmpty()) {
             return Collections.emptyMap();

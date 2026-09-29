@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Processes a Bridge-recognized control result in OpenELIS operational QC. */
 public interface QCResultProcessingService {
@@ -23,6 +24,7 @@ public interface QCResultProcessingService {
      * @param unit            Unit of measure
      * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_IMPORT')")
     void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
             String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp);
 }

@@ -37,7 +37,11 @@ import {
   Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
-import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  menuSubtreeVisible,
+  putToOpenElisServer,
+} from "../utils/Utils";
 import SearchBar from "./search/searchBar";
 import { getBranding } from "../utils/BrandingUtils";
 import config from "../../config.json";
@@ -379,8 +383,21 @@ function OEHeader({
       );
     }
 
+    // Skip entries this user could not open. /rest/menu returns every
+    // configured row regardless of privilege, so without this the sidebar
+    // offers links that SecureRoute then refuses with a blank screen: 74 such
+    // rows for Reception, 88 for Results and Validation, 55 for Reports, out
+    // of 153. A parent is hidden only when it has no visible child and is not
+    // itself openable, so a section never disappears while its contents remain
+    // reachable.
+    if (!menuSubtreeVisible(menuItem, userSessionDetails)) {
+      return (
+        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
+      );
+    }
+
     // OGC-1020 (R1): the unified /Results worklist consolidates the legacy
-    // result-entry pages behind the results.entry.unifiedRoute site flag —
+    // result-entry pages behind the results.entry.unifiedRoute site flag -
     // show exactly one of the two menu shapes, never both.
     const unifiedResultsOn =
       configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE === "true";
@@ -502,7 +519,7 @@ function OEHeader({
         // only fires window.open() for true external URLs (http(s)://, mailto:, etc.).
         const isInternalUrl = menuItem.menu.actionURL.startsWith("/");
         if (menuItem.menu.openInNewWindow && !isInternalUrl) {
-          // noopener,noreferrer prevents reverse-tabnabbing — the new tab
+          // noopener,noreferrer prevents reverse-tabnabbing, the new tab
           // can't navigate this app's window via window.opener.
           window.open(menuItem.menu.actionURL, "_blank", "noopener,noreferrer");
         } else {

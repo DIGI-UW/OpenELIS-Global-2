@@ -3,12 +3,14 @@ package org.openelisglobal.dataexchange.fhir.service;
 import java.util.Optional;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Reference;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Service for managing the FHIR Organization resource representing this
  * OpenELIS facility. The facility Organization is created at startup and synced
  * to local and remote FHIR servers.
  */
+@CrossDomainService(callers = "FHIR pipeline, organization sync — internal infrastructure")
 public interface FhirFacilityOrganizationService {
 
     /**

@@ -94,6 +94,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -173,6 +174,7 @@ public class ResultsValidationUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> getResultValidationList(List<String> statusList, String testSectionId,
             String accessionNumber, String date) {
 
@@ -200,6 +202,7 @@ public class ResultsValidationUtility {
         return resultList;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public int getCountResultValidationList(List<String> statusList, String testSectionId) {
 
         // List<AnalysisItem> resultList = new ArrayList<>();
@@ -215,6 +218,7 @@ public class ResultsValidationUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsInTestSection(String sectionId,
             List<String> statusList) {
 
@@ -228,6 +232,7 @@ public class ResultsValidationUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
@@ -239,6 +244,7 @@ public class ResultsValidationUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsByTestDate(String date,
             List<String> statusList) {
 
@@ -289,6 +295,7 @@ public class ResultsValidationUtility {
     }
 
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<String> statusList) {
         return analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusList);
     }
@@ -296,6 +303,7 @@ public class ResultsValidationUtility {
     protected final void sortByAccessionNumberAndOrder(List<AnalysisItem> resultItemList) {
         Collections.sort(resultItemList, new Comparator<AnalysisItem>() {
             @Override
+            @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
             public final int compare(AnalysisItem a, AnalysisItem b) {
                 int accessionComp = a.getAccessionNumber().compareTo(b.getAccessionNumber());
                 return ((accessionComp == 0)
@@ -332,6 +340,7 @@ public class ResultsValidationUtility {
      * quick and dirty fix for workplan and validation using the same code but
      * having different rules
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getGroupedTestsForAnalysisList(Collection<Analysis> filteredAnalysisList,
             boolean ignoreRecordStatus) throws LIMSRuntimeException {
 
@@ -381,6 +390,7 @@ public class ResultsValidationUtility {
         return selectedTestList;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final int getCountGroupedTestsForAnalysisList(Collection<Analysis> filteredAnalysisList,
             boolean ignoreRecordStatus) throws LIMSRuntimeException {
 
@@ -463,11 +473,13 @@ public class ResultsValidationUtility {
         return displayTestName;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
         org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
         return getResultItemFromAnalysis(analysis, anchor);
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis,
             org.openelisglobal.analysis.service.AnalysisAnchor anchor) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
@@ -720,6 +732,7 @@ public class ResultsValidationUtility {
         return testResultType;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final List<AnalysisItem> testResultListToAnalysisItemList(List<ResultValidationItem> testResultList) {
         List<AnalysisItem> analysisResultList = new ArrayList<>();
 
@@ -962,6 +975,7 @@ public class ResultsValidationUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = getUnitsByTestId(testResultItem.getTestId());
@@ -1080,6 +1094,7 @@ public class ResultsValidationUtility {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public final String getUnitsByTestId(String testId) {
 
         String uomName = null;
@@ -1102,6 +1117,7 @@ public class ResultsValidationUtility {
         return uomName;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> getValidationAnalysisBySample(Sample sample) {
         List<AnalysisItem> resultList = new ArrayList<>();
 
@@ -1119,6 +1135,7 @@ public class ResultsValidationUtility {
      * Served read-only behind the queue's "Include auto-validated" toggle; never
      * part of the queue itself, never releasable.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
         String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         List<Analysis> finalized = new ArrayList<>(
@@ -1149,6 +1166,7 @@ public class ResultsValidationUtility {
         return rows;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
         Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
@@ -1182,6 +1200,7 @@ public class ResultsValidationUtility {
      * item qualifies only if it has a {@code SampleItemQcProfile} and at least one
      * of its results carries {@code qcEvaluation = FAIL}.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public List<QcFailureItem> findFailedQcForAccession(String accessionNumber) {
         if (GenericValidator.isBlankOrNull(accessionNumber)) {
             return Collections.emptyList();
@@ -1251,6 +1270,7 @@ public class ResultsValidationUtility {
         return failures;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     public void addIdentifingPatientInfo(Patient patient, PatientInfoForm form) {
 
         if (patient == null) {

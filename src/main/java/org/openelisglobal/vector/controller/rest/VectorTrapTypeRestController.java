@@ -42,6 +42,10 @@ public class VectorTrapTypeRestController {
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorTrapType>> getTrapTypes(@RequestParam(required = false) String sampleTypeId) {
         try {
+            // The trap-type picker on vector order entry. Gated on sample_type:view,
+            // which order-entry roles do not hold, and the broad catch below turned
+            // the denial into a 500 — so the picker was silently empty. Reads only;
+            // creating and editing trap types stay gated.
             List<VectorTrapType> result = sampleTypeId != null ? vectorTrapTypeService.getBySampleTypeId(sampleTypeId)
                     : vectorTrapTypeService.getAll();
             return ResponseEntity.ok(result);

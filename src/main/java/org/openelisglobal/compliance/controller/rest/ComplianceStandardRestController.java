@@ -73,6 +73,9 @@ public class ComplianceStandardRestController extends BaseRestController {
     @GetMapping("/active")
     public ResponseEntity<List<ComplianceStandard>> getActiveStandards() {
         try {
+            // The active-standards list populates a dropdown on environmental order
+            // entry, reference data, so the read accepts PRIV_CATALOGUE_VIEW and runs
+            // as the caller. Creating or archiving a standard stays gated below.
             List<ComplianceStandard> activeStandards = complianceStandardService.getActiveComplianceStandards();
             return ResponseEntity.ok(activeStandards);
         } catch (LIMSRuntimeException e) {

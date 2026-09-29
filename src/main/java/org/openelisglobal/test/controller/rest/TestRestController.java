@@ -33,6 +33,12 @@ public class TestRestController {
     @Autowired
     private TypeOfSampleTestService typeOfSampleTestService;
 
+    /**
+     * Which specimen types a chosen test can be collected into, the collection step
+     * asks this to offer the right containers. Gated as the caller: the test
+     * catalogue and sample-type reads it crosses both accept
+     * {@code PRIV_CATALOGUE_VIEW}, which every order-entry role holds.
+     */
     @GetMapping(value = "/test-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getTestSampleTypes(@RequestParam String testIds) {
         try {

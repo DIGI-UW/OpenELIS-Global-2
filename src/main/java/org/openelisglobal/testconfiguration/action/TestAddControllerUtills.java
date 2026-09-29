@@ -9,6 +9,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -34,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Form-parameter extraction and localization helpers for test creation. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class TestAddControllerUtills {
 
     @Autowired

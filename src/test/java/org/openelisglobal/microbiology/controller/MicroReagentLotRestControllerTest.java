@@ -34,9 +34,18 @@ public class MicroReagentLotRestControllerTest {
     }
 
     @Test
-    public void overviewRequiresBenchRoleBundle() {
-        PreAuthorize authorization = MicroReagentLotRestController.class.getAnnotation(PreAuthorize.class);
+    public void overviewRequiresBenchPrivilege() throws Exception {
+        // Authorization moved from a controller role guard to the service layer
+        // (S011c). The reach is unchanged: BENCH_ACCESS was ADMIN/RESULTS/VALIDATION,
+        // and micro:bench is granted to Results and Validation in Liquibase 012-004d
+        // with Global Admin covered by the privilege sentinel.
+        PreAuthorize read = MicroReagentLotService.class.getMethod("getRequirements", String.class)
+                .getAnnotation(PreAuthorize.class);
+        PreAuthorize write = java.util.stream.Stream.of(MicroReagentLotService.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals("recordSelections")).findFirst().orElseThrow()
+                .getAnnotation(PreAuthorize.class);
 
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')", authorization.value());
+        assertEquals("hasAuthority('PRIV_MICRO_VIEW')", read.value());
+        assertEquals("hasAuthority('PRIV_MICRO_BENCH')", write.value());
     }
 }

@@ -127,10 +127,13 @@ public class MicroAstRestControllerTest {
     }
 
     @Test
-    public void astSurfaceRequiresBenchRoleBundle() {
-        PreAuthorize authorization = MicroAstRestController.class.getAnnotation(PreAuthorize.class);
-
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')", authorization.value());
+    public void astSurfaceRequiresBenchPrivilege() throws Exception {
+        // BENCH_ACCESS (ADMIN/RESULTS/VALIDATION) became micro:bench on the service,
+        // granted to Results and Validation in Liquibase 012-004d.
+        PreAuthorize authorization = java.util.stream.Stream.of(MicroAstService.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals("startRun")).findFirst().orElseThrow()
+                .getAnnotation(PreAuthorize.class);
+        assertEquals("hasAuthority('PRIV_MICRO_BENCH')", authorization.value());
     }
 
     @Test
@@ -211,14 +214,14 @@ public class MicroAstRestControllerTest {
                 org.openelisglobal.microbiology.valueholder.MicroAstInterpretation.RESISTANT, "Clinical exception",
                 "42");
         verify(service).revertOverride("reading-1", "Repeat confirmed original", "84");
-        PreAuthorize overrideGuard = MicroAstRestController.class.getMethod("overrideReading", String.class,
-                MicroAstOverrideRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+        PreAuthorize overrideGuard = java.util.stream.Stream.of(MicroAstService.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals("overrideReading")).findFirst().orElseThrow()
                 .getAnnotation(PreAuthorize.class);
-        PreAuthorize revertGuard = MicroAstRestController.class.getMethod("revertOverride", String.class,
-                MicroAstOverrideRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+        PreAuthorize revertGuard = java.util.stream.Stream.of(MicroAstService.class.getDeclaredMethods())
+                .filter(m -> m.getName().equals("revertOverride")).findFirst().orElseThrow()
                 .getAnnotation(PreAuthorize.class);
-        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", overrideGuard.value());
-        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", revertGuard.value());
+        assertEquals("hasAuthority('PRIV_MICRO_BENCH')", overrideGuard.value());
+        assertEquals("hasAuthority('PRIV_MICRO_BENCH')", revertGuard.value());
     }
 
     private MockHttpServletRequest requestFor(String userId) {

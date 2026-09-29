@@ -88,6 +88,15 @@ public class SampleAddService {
         receivedDate = receiveDate;
     }
 
+    /**
+     * Turns the submitted sample XML into sample items, tests and panels.
+     *
+     * <p>
+     * Every lookup it makes, typeOfSample, panel, panelItem, unitOfMeasure, is a
+     * catalogue read that accepts {@code PRIV_CATALOGUE_VIEW}, so the assembly runs
+     * under the caller's own authorization. It resolves ids the caller just picked
+     * from lists this same screen showed them.
+     */
     public List<SampleTestCollection> createSampleTestCollection() {
         xmlProcessed = true;
         String collectionDateFromRecieveDate = null;
@@ -260,6 +269,8 @@ public class SampleAddService {
             throw new IllegalThreadStateException("createSampleTestCollection must be called first");
         }
 
+        // Which panel (if any) a test on the order belongs to, so the analysis rows
+        // can record it. A catalogue read, accepting PRIV_CATALOGUE_VIEW.
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(test.getId());
 
         for (PanelItem panelItem : panelItems) {

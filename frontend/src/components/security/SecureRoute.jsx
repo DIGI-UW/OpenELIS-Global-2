@@ -7,7 +7,7 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
 import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
-import { Roles } from "../utils/Utils";
+import { Roles, computeRouteAccess } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
@@ -77,31 +77,12 @@ function SecureRoute(props) {
     }
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
-  const hasPermission = (userDetails = userSessionDetails) => {
-    var hasRole =
-      !props.role ||
-      []
-        .concat(props.role)
-        .some((role) => userDetails.roles && userDetails.roles.includes(role));
-    var containsLabUnitRole = false;
-    if (props.labUnitRole) {
-      Object.keys(props.labUnitRole).forEach((labunit) => {
-        if (userDetails.userLabRolesMap) {
-          const userRoles = userDetails.userLabRolesMap["AllLabUnits"]
-            ? userDetails.userLabRolesMap["AllLabUnits"]
-            : userDetails.userLabRolesMap[labunit] || [];
-          const roles = props.labUnitRole[labunit];
-          roles.forEach((r) => {
-            if (userRoles.includes(r)) {
-              containsLabUnitRole = true;
-            }
-          });
-        }
-      });
-    }
-    var hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
-    return hasRole && hasLabUnitRole;
-  };
+  const hasPermission = (userDetails = userSessionDetails) =>
+    computeRouteAccess(userDetails, {
+      role: props.role,
+      privilege: props.privilege,
+      labUnitRole: props.labUnitRole,
+    });
 
   const onIdle = () => {
     setStillThereOpen(false);

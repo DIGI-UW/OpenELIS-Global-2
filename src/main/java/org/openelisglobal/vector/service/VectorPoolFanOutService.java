@@ -3,6 +3,7 @@ package org.openelisglobal.vector.service;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Vector surveillance pool fan-out.
@@ -50,5 +51,6 @@ public interface VectorPoolFanOutService {
      * @return the {@code N} persisted sibling SampleItems (empty list when no
      *         fan-out occurred). Order matches their pool position 1..N.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     List<SampleItem> fanOut(SampleItem original, List<Analysis> originalAnalyses, int poolCount, String sysUserId);
 }

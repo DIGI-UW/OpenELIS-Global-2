@@ -3,6 +3,7 @@ package org.openelisglobal.qc.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Control Lot management. Supports User Story 6:
@@ -17,6 +18,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @return The created control lot with assigned status
      * @throws IllegalArgumentException if validation fails
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCControlLot createControlLot(QCControlLot controlLot) throws IllegalArgumentException;
 
     /**
@@ -25,6 +27,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param controlLotId The ID of the control lot to activate
      * @return The activated control lot
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCControlLot activateControlLot(String controlLotId);
 
     /**
@@ -33,6 +36,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param controlLotId The ID of the control lot to deactivate
      * @return The deactivated control lot
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCControlLot deactivateControlLot(String controlLotId);
 
     /**
@@ -42,6 +46,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param instrumentId The instrument ID
      * @return List of active control lots
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCControlLot> getActiveControlLots(String testId, String instrumentId);
 
     /**
@@ -52,6 +57,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param instrumentId The instrument ID
      * @return List of active control lots for the instrument
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId);
 
     /**
@@ -60,6 +66,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param lotNumber The lot number
      * @return The matching control lot, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCControlLot getControlLotByLotNumber(String lotNumber);
 
     /**
@@ -69,6 +76,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param testId       The test ID to check
      * @param instrumentId The instrument ID to check
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     void checkAndExpireLots(String testId, String instrumentId);
 
     /**
@@ -76,5 +84,6 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      *
      * @return List of all control lots
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCControlLot> getAllControlLots();
 }

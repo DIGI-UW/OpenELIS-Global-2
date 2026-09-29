@@ -16,7 +16,6 @@ import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,12 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
  * <li>{@code GET /rest/api/tests/{id}/labelConfig}</li>
  * <li>{@code PUT /rest/api/tests/{id}/labelConfig}</li>
  * </ul>
- * Secured with {@code @PreAuthorize("hasRole('ADMIN')")} — consistent with
+ * Authorization is enforced on the service interface via
+ * {@code PRIV_BARCODE_MANAGE} (S011c) — consistent with
  * BarcodeConfigurationRestController and existing admin REST endpoints.
  */
 @RestController
 @RequestMapping("/rest/api/tests")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestLabelConfigRestController extends BaseRestController {
 
     @Autowired

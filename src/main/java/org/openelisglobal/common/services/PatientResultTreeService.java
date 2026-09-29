@@ -33,6 +33,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.R
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,6 +90,7 @@ public class PatientResultTreeService {
     private UnitOfMeasureService unitOfMeasureService;
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     public List<ResultTree> getResultTree(String patientId) {
         Patient patient = patientService.get(patientId);
         Map<String, SectionNode> sections = new LinkedHashMap<>();
@@ -137,6 +139,7 @@ public class PatientResultTreeService {
      * one component on one specimen.
      */
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId) {
         Test test = testService.get(testId.trim());
         if (test == null) {

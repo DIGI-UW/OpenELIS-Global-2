@@ -3,6 +3,7 @@ package org.openelisglobal.qc.service;
 import java.util.List;
 import org.openelisglobal.qc.valueholder.QCAlert;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Alert management (T100-T102).
@@ -24,6 +25,7 @@ public interface QCAlertService {
      * @param violation The rule violation to create alerts for
      * @return The created alerts, or empty list if batched/suppressed
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCAlert> createAlertsForViolation(QCRuleViolation violation);
 
     /**
@@ -32,6 +34,7 @@ public interface QCAlertService {
      * @param userId The user ID
      * @return List of alerts for the user
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCAlert> getAlertsForUser(Integer userId);
 
     /**
@@ -40,6 +43,7 @@ public interface QCAlertService {
      * @param userId The user ID
      * @return List of unread alerts
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCAlert> getUnreadAlertsForUser(Integer userId);
 
     /**
@@ -48,6 +52,7 @@ public interface QCAlertService {
      * @param alertId The alert ID
      * @return The updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCAlert markAsRead(String alertId);
 
     /**
@@ -56,6 +61,7 @@ public interface QCAlertService {
      * @param alertIds List of alert IDs
      * @return Number of alerts marked as read
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     int markMultipleAsRead(List<String> alertIds);
 
     /**
@@ -64,6 +70,7 @@ public interface QCAlertService {
      * @param userId The user ID
      * @return Count of unread alerts
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     int getUnreadAlertCount(Integer userId);
 
     /**
@@ -73,5 +80,6 @@ public interface QCAlertService {
      * @param violation The violation to check
      * @return true if the alert should be batched (suppressed)
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean shouldBatchAlert(QCRuleViolation violation);
 }

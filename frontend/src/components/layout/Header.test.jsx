@@ -48,9 +48,29 @@ const localStorageMock = (() => {
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
 // Test configuration
+// Privilege-based RBAC: the sidebar hides rows the user could not open (see
+// menuSubtreeVisible / ROUTE_PRIVILEGES in Utils.ts), so a session fixture
+// listing roles but no privileges describes a user who can reach nothing, and
+// these specs would assert against an empty nav instead of the rendering
+// behaviour they are about. The privilege list below is deliberately broad for
+// that reason; menuRouteGuards.test.js is where the filtering itself is tested.
 const mockUserSessionDetails = {
   authenticated: true,
   roles: ["ROLE_USER"],
+
+  privileges: [
+    "order:create",
+    "order:view",
+    "order:edit",
+    "patient:view",
+    "result:enter",
+    "result:view",
+    "result:validate",
+    "storage:view",
+    "system:configure",
+    "catalogue:view",
+    "report:run",
+  ],
   userId: "1",
   firstName: "Test",
   lastName: "User",
@@ -1029,7 +1049,7 @@ describe("Header Component - M2b Enhancement Tests", () => {
 describe("OEHeader menu items whose children are all deactivated", () => {
   // A parent renders as an expandable SideNavMenu and never navigates, so a
   // parent left holding only deactivated children became an expandable that
-  // opened onto nothing — the Storage Management case.
+  // opened onto nothing, the Storage Management case.
   const MENU_WITH_DEACTIVATED_CHILDREN = [
     {
       menu: {

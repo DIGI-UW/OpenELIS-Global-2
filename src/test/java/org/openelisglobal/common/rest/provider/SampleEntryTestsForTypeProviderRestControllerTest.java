@@ -100,7 +100,7 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     @Test
     public void cultureTestsExposeLinkedMethodChoices() throws Exception {
         Role reception = new Role();
-        reception.setId("3");
+        reception.setId(3);
         when(roleService.getRoleByName(Constants.ROLE_RECEPTION)).thenReturn(reception);
         when(userService.getUserTestSections("17", "3")).thenReturn(List.of(new IdValuePair("9", "Microbiology")));
         when(request.getParameter("sampleType")).thenReturn("5");

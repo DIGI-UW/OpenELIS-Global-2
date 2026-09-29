@@ -3,7 +3,12 @@ package org.openelisglobal.typeofsample.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+// Which panels are offerable for a sample type, read by the order-entry test
+// picker, so the gate also accepts PRIV_CATALOGUE_VIEW. Writes inherit
+// CrudPrivileges and keep PRIV_SAMPLE_TYPE_MANAGE.
+@PreAuthorize("hasAnyAuthority('PRIV_SAMPLE_TYPE_VIEW','PRIV_CATALOGUE_VIEW')")
 public interface TypeOfSamplePanelService extends BaseObjectService<TypeOfSamplePanel, String> {
     void getData(TypeOfSamplePanel typeOfSamplePanel);
 

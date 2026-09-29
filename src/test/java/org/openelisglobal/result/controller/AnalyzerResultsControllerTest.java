@@ -10,6 +10,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +66,8 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void showRestAnalyzerResults_ShouldReturnResultList_WhenQueriedByAnalyzerId() throws Exception {
-        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+        mockMvc.perform(get("/rest/AnalyzerResults")
+                .with(user("admin").authorities(SeededRoleAuthorities.role("ADMIN"))).param("id", "2001"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.resultList").isArray())
                 .andExpect(jsonPath("$.resultList[0].accessionNumber").value("ACC123456"))
                 .andExpect(jsonPath("$.resultList[1].importIssueReason").value("UNKNOWN_RESULT_VALUE"))
@@ -77,13 +79,15 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void showRestAnalyzerResults_RejectsUnrelatedAuthenticatedRole() throws Exception {
-        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("RESULTS")).param("id", "2001"))
+        mockMvc.perform(get("/rest/AnalyzerResults")
+                .with(user("admin").authorities(SeededRoleAuthorities.role("RESULTS"))).param("id", "2001"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void showRestAnalyzerResults_AllowsEstablishedAnalyzerRole() throws Exception {
-        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ANALYSER_IMPORT")).param("id", "2001"))
+        mockMvc.perform(get("/rest/AnalyzerResults")
+                .with(user("admin").authorities(SeededRoleAuthorities.role("ANALYSER_IMPORT"))).param("id", "2001"))
                 .andExpect(status().isOk());
     }
 }

@@ -138,6 +138,39 @@ export default [
     },
   },
 
+  // ─── RBAC: no hardcoded role-name strings (spec 012 T046) ──────────
+  // Role names live in Utils.js (Roles object) only; UI gating should use
+  // hasPrivilege() against the /session privilege set. The list covers the
+  // distinctive role names (generic words like "Results" collide with menu
+  // labels) plus the historical "CytoPathologist" misspelling, which matches
+  // no role and silently disables features.
+  {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
+    // Utils.{js,ts} is the canonical home of the Roles/RoleEquivalentPrivileges
+    // definitions (develop migrated it to TypeScript), so it is exempt.
+    ignores: [
+      "src/components/utils/Utils.{js,ts}",
+      "src/**/*.test.{js,jsx,ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...[
+          "Global Administrator",
+          "User Account Administrator",
+          "Audit Trail",
+          "Analyser Import",
+          "EQA Coordinator",
+          "Cytopathologist",
+          "CytoPathologist",
+        ].map((roleName) => ({
+          selector: `Literal[value="${roleName}"]`,
+          message: `Hardcoded role name "${roleName}" — use Roles.* from Utils, or better, hasPrivilege() with a Privileges.* constant.`,
+        })),
+      ],
+    },
+  },
+
   // ─── Jest unit tests ────────────────────────────────────────────────
   {
     files: ["**/*.test.{js,jsx,ts,tsx}"],

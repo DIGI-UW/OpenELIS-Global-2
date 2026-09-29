@@ -163,7 +163,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
         if (GenericValidator.isBlankOrNull(newPage)) {
 
             // load testSections for drop down
-            String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
+            String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId());
             List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));

@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -85,7 +86,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
         }
 
         // 2. Look up user by username
-        SystemUser user = systemUserService.getDataForLoginUser(username);
+        SystemUser user = resolveSigner(username);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + username);
         }
@@ -184,7 +185,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
             String clientIp, String userAgent) {
 
         // 1. Look up user by username
-        SystemUser user = systemUserService.getDataForLoginUser(username);
+        SystemUser user = resolveSigner(username);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + username);
         }
@@ -226,7 +227,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
         }
         EsigFirstUseCertification certification = electronicSignatureDAO.getCertificationByUserId(userId);
         if (certification == null) {
-            return; // Already not certified — idempotent
+            return; // Already not certified, idempotent
         }
         electronicSignatureDAO.deleteCertification(certification);
     }
@@ -294,11 +295,40 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
         if (username == null || username.isEmpty()) {
             return null;
         }
-        SystemUser user = systemUserService.getDataForLoginUser(username);
+        SystemUser user = resolveSigner(username);
         if (user == null) {
             return null;
         }
         return Long.parseLong(user.getId());
+    }
+
+    /**
+     * The signer's own SystemUser row.
+     *
+     * <p>
+     * Every caller here resolves the identity of the person doing the signing:
+     * {@code ElectronicSignatureRestController} refuses a request whose username is
+     * not the authenticated one, and signing is always done as yourself. That makes
+     * this a self-identity primitive, but {@code getDataForLoginUser} is gated on
+     * {@code PRIV_SYSTEM_USER_VIEW} because two of its other callers look up fixed
+     * service accounts. A technologist holding {@code esig:use} does not hold the
+     * administrative privilege, so every signature attempt failed with a 403 that
+     * surfaced only as "Failed to load signature status" in the dialog.
+     *
+     * <p>
+     * Scoped system context around the lookup alone, restoring rather than
+     * clearing, exactly as {@code UserContextHolder.resolveSystemUser} does for the
+     * same call and the same reason. It widens nothing else: the privilege that
+     * decides whether this person may sign at all is {@code esig:use} on the
+     * methods below.
+     */
+    private SystemUser resolveSigner(String username) {
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            return systemUserService.getDataForLoginUser(username);
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
     }
 
     /**
@@ -322,7 +352,7 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
     /**
      * Atomically advance the session counter and return the new sequence number.
      * Uses ConcurrentHashMap.compute() so concurrent calls for the same username
-     * are serialized — no two threads can get the same sequence number.
+     * are serialized, no two threads can get the same sequence number.
      */
     private int advanceSessionSequence(String username) {
         SigningSessionInfo session = activeSessions.compute(username, (key, existing) -> {

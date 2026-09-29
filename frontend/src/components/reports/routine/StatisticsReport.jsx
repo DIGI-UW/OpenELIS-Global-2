@@ -44,11 +44,13 @@ const StatisticsReport = () => {
     getFromOpenElisServer(
       "/rest/user-test-sections/" + Roles.REPORTS,
       (fetchedTestSections) => {
-        setLabUnits(fetchedTestSections);
+        // Guard: a denied/failed fetch returns a non-array (error body); keep
+        // labUnits an array so the render's labUnits.map() never crashes the page.
+        setLabUnits(Array.isArray(fetchedTestSections) ? fetchedTestSections : []);
       },
     );
     getFromOpenElisServer("/rest/displayList/ORDER_PRIORITY", (fetchedPriorities) => {
-      setPriorities(fetchedPriorities);
+      setPriorities(Array.isArray(fetchedPriorities) ? fetchedPriorities : []);
     });
   }, []);
 

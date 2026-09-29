@@ -39,7 +39,7 @@ public class RoleModuleServiceTest extends BaseWebContextSensitiveTest {
         List<RoleModule> modules = roleModuleService.getAllPermissionModulesByAgentId(3001);
         assertNotNull(modules);
         assertEquals(2, modules.size());
-        assertTrue(modules.stream().allMatch(m -> m.getRole().getId().equals("3001")));
+        assertTrue(modules.stream().allMatch(m -> Integer.valueOf(3001).equals(m.getRole().getId())));
     }
 
     @Test

@@ -11,6 +11,7 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerResultsAcceptServiceResultMappingTest extends BaseWebContextSensitiveTest {
@@ -29,7 +30,10 @@ public class AnalyzerResultsAcceptServiceResultMappingTest extends BaseWebContex
         when(testResultService.getTestResultsByTestAndDictonaryResult("395", "1379"))
                 .thenReturn(separatelyLoadedNotDetected);
 
-        AnalyzerResultsAcceptServiceImpl service = (AnalyzerResultsAcceptServiceImpl) acceptService;
+        // acceptService is now @PreAuthorize-gated, so Spring hands back a JDK
+        // proxy that cannot be cast to the impl. Unwrap to the target before
+        // reflecting on its fields.
+        AnalyzerResultsAcceptServiceImpl service = AopTestUtils.getTargetObject(acceptService);
         TestResultService original = (TestResultService) ReflectionTestUtils.getField(service, "testResultService");
         ReflectionTestUtils.setField(service, "testResultService", testResultService);
         AnalyzerResultItem item = new AnalyzerResultItem();

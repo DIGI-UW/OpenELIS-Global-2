@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,7 +53,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         return Integer.valueOf(sysUserId);
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PostMapping
     public ResponseEntity<CorrectiveActionDTO> createCorrectiveAction(
             @RequestBody CreateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
@@ -80,7 +78,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<CorrectiveActionDTO>> getAllCorrectiveActions(
             @RequestParam(required = false) Long freezerId, @RequestParam(required = false) String status,
@@ -115,7 +112,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<CorrectiveActionDTO> getCorrectiveActionById(@PathVariable Long id) {
         try {
@@ -130,7 +126,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<CorrectiveActionDTO> updateCorrectiveAction(@PathVariable Long id,
             @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
@@ -163,7 +158,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/complete")
     public ResponseEntity<CorrectiveActionDTO> completeCorrectiveAction(@PathVariable Long id,
             @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
@@ -182,7 +176,6 @@ public class CorrectiveActionRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/retract")
     public ResponseEntity<CorrectiveActionDTO> retractCorrectiveAction(@PathVariable Long id,
             @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {

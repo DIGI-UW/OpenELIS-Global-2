@@ -139,7 +139,7 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
     })
     .catch((error) => {
       if (error.name === "AbortError" || signal?.aborted) {
-        return; // Component is unmounting — don't call callback
+        return; // Component is unmounting, don't call callback
       }
       console.error(error);
       callback(undefined);
@@ -354,7 +354,7 @@ export const postToOpenElisServerJsonResponse = <
       if (!response.ok) {
         // For error responses, try to parse JSON. If the body is empty
         // (older endpoints return .build() with no payload) the parse will
-        // fail — preserve the HTTP status so callers can still distinguish
+        // fail, preserve the HTTP status so callers can still distinguish
         // a 409 from a network error.
         return response
           .text()
@@ -662,6 +662,461 @@ export const hasRole = (
   return userSessionDetails.roles.includes(role);
 };
 
+/**
+ * Privilege name constants, mirrors Privileges.java (spec 012 T036). The
+ * /session payload's `privileges` array uses these raw names; gate UI with
+ * hasPrivilege() against them instead of role-name strings.
+ */
+export const Privileges = {
+  ORDER_CREATE: "order:create",
+  ORDER_VIEW: "order:view",
+  ORDER_EDIT: "order:edit",
+  ORDER_DELETE: "order:delete",
+  PANEL_VIEW: "panel:view",
+  PANEL_MANAGE: "panel:manage",
+  ANALYTE_VIEW: "analyte:view",
+  ANALYTE_MANAGE: "analyte:manage",
+  METHOD_VIEW: "method:view",
+  METHOD_MANAGE: "method:manage",
+  SAMPLE_TYPE_VIEW: "sample_type:view",
+  SAMPLE_TYPE_MANAGE: "sample_type:manage",
+  SAMPLE_STATUS_VIEW: "sample_status:view",
+  RESULT_VIEW: "result:view",
+  RESULT_ENTER: "result:enter",
+  RESULT_MODIFY: "result:modify",
+  RESULT_VALIDATE: "result:validate",
+  RESULT_PATHOLOGY_SIGN_OFF: "result:pathology-sign-off",
+  MICRO_VIEW: "micro:view",
+  MICRO_BENCH: "micro:bench",
+  MICRO_SUPERVISE: "micro:supervise",
+  PATIENT_VIEW: "patient:view",
+  PATIENT_CREATE: "patient:create",
+  PATIENT_EDIT: "patient:edit",
+  PATIENT_MANAGE: "patient:manage",
+  REPORT_RUN: "report:run",
+  REPORT_EXPORT: "report:export",
+  NCE_VIEW: "nce:view",
+  NCE_CREATE: "nce:create",
+  NCE_EDIT: "nce:edit",
+  NCE_ASSIGN: "nce:assign",
+  ANALYZER_IMPORT: "analyzer:import",
+  ANALYZER_CONFIGURE: "analyzer:configure",
+  USER_MANAGE: "user:manage",
+  SYSTEM_CONFIGURE: "system:configure",
+  TEST_CONFIGURE: "test:configure",
+  REPORT_CONFIGURE: "report:configure",
+  AUDIT_VIEW: "audit:view",
+  SHIPMENT_VIEW: "shipment:view",
+  SHIPMENT_CREATE: "shipment:create",
+  SHIPMENT_EDIT: "shipment:edit",
+  SHIPMENT_MANAGE: "shipment:manage",
+  SHIPMENT_DELETE: "shipment:delete",
+  EQA_VIEW: "eqa:view",
+  EQA_MANAGE: "eqa:manage",
+  ESIG_USE: "esig:use",
+  ALERT_VIEW: "alert:view",
+  ALERT_MANAGE: "alert:manage",
+  BARCODE_VIEW: "barcode:view",
+  BARCODE_MANAGE: "barcode:manage",
+  CALENDAR_VIEW: "calendar:view",
+  CALENDAR_MANAGE: "calendar:manage",
+  COLDSTORAGE_VIEW: "coldstorage:view",
+  COLDSTORAGE_MANAGE: "coldstorage:manage",
+  DICTIONARY_VIEW: "dictionary:view",
+  DICTIONARY_MANAGE: "dictionary:manage",
+  EXTCONNECTION_VIEW: "extconnection:view",
+  EXTCONNECTION_MANAGE: "extconnection:manage",
+  INVENTORY_VIEW: "inventory:view",
+  INVENTORY_MANAGE: "inventory:manage",
+  LOCALIZATION_VIEW: "localization:view",
+  LOCALIZATION_MANAGE: "localization:manage",
+  NOTEBOOK_VIEW: "notebook:view",
+  NOTEBOOK_MANAGE: "notebook:manage",
+  NOTIFICATION_VIEW: "notification:view",
+  NOTIFICATION_MANAGE: "notification:manage",
+  ORGANIZATION_VIEW: "organization:view",
+  ORGANIZATION_MANAGE: "organization:manage",
+  PROGRAM_VIEW: "program:view",
+  PROGRAM_MANAGE: "program:manage",
+  BRANDING_VIEW: "branding:view",
+  BRANDING_MANAGE: "branding:manage",
+  PROVIDER_VIEW: "provider:view",
+  PROVIDER_MANAGE: "provider:manage",
+  SITE_INFO_VIEW: "site_info:view",
+  REFERRAL_VIEW: "referral:view",
+  REFERRAL_MANAGE: "referral:manage",
+  STORAGE_VIEW: "storage:view",
+  STORAGE_MANAGE: "storage:manage",
+  TESTCALC_VIEW: "testcalc:view",
+  TESTCALC_MANAGE: "testcalc:manage",
+  ROLE_VIEW: "role:view",
+  ROLE_MANAGE: "role:manage",
+  SYSTEM_USER_VIEW: "system_user:view",
+  SYSTEM_USER_MANAGE: "system_user:manage",
+  USER_ROLE_VIEW: "user_role:view",
+  USER_ROLE_MANAGE: "user_role:manage",
+  SAMPLE_REQUESTER_VIEW: "sample_requester:view",
+  SAMPLE_REQUESTER_MANAGE: "sample_requester:manage",
+};
+
+/**
+ * Checks the resolved privilege set from /session (spec 012 T035). Global
+ * Administrator needs no special-casing, the backend expands the sentinel to
+ * the full catalog before it reaches the client.
+ */
+export const hasPrivilege = (userSessionDetails, ...privileges) => {
+  if (!userSessionDetails || !userSessionDetails.privileges) {
+    return false;
+  }
+  return privileges.some((privilege) =>
+    userSessionDetails.privileges.includes(privilege),
+  );
+};
+
+/**
+ * The privilege a legacy role-gated route is really guarding (spec 012 T040).
+ * SecureRoute grants access when the user holds the role OR its equivalent
+ * privilege, so a Validation user (whose seeded set includes result:enter)
+ * reaches Results pages without an explicit Results role assignment.
+ */
+/**
+ * Bridges a role name to the privilege that means the same capability.
+ *
+ * <p>App.jsx no longer guards any route on a role, all 85 role guards were
+ * converted to {@code privilege={Privileges.X}}, so nothing in the routing table
+ * depends on this map any more. It is kept because {@code computeRouteAccess}
+ * still accepts a {@code role} prop, so a caller passing one (including an
+ * external or future component) keeps working and keeps admitting
+ * privilege-holders rather than only exact role-name matches.
+ *
+ * <p>This is a compatibility shim, not part of the access model. Once nothing
+ * passes {@code role} at all, it and the {@code role} branch of
+ * computeRouteAccess can both go.
+ */
+export const RoleEquivalentPrivileges = {
+  Reception: [Privileges.ORDER_CREATE],
+  Results: [Privileges.RESULT_ENTER],
+  Validation: [Privileges.RESULT_VALIDATE],
+  Reports: [Privileges.REPORT_RUN],
+  Pathologist: [Privileges.RESULT_PATHOLOGY_SIGN_OFF],
+  Cytopathologist: [Privileges.RESULT_PATHOLOGY_SIGN_OFF],
+  "User Account Administrator": [Privileges.USER_MANAGE],
+  "Audit Trail": [Privileges.AUDIT_VIEW],
+  "Analyser Import": [Privileges.ANALYZER_IMPORT],
+  "EQA Coordinator": [Privileges.EQA_VIEW],
+  "Global Administrator": [Privileges.SYSTEM_CONFIGURE],
+};
+
+/**
+ * Pure route-access decision used by SecureRoute (extracted so it is unit
+ * testable). Given the session and a route's guard props ({ role, privilege,
+ * labUnitRole }), returns whether access is granted.
+ *
+ * Semantics:
+ * - No guard props at all → granted (an authenticated user may enter).
+ * - An explicit role/privilege is satisfied by holding that role OR the
+ *   privilege it maps to (RoleEquivalentPrivileges) OR an explicitly-listed
+ *   privilege.
+ * - A labUnitRole is satisfied by holding the named lab-unit role (or the
+ *   AllLabUnits wildcard).
+ * - When a route names BOTH an explicit role/privilege AND a labUnitRole,
+ *   EITHER one grants access (OR), e.g. the Pathology dashboard is reachable
+ *   both by a global Pathologist (role / sign-off privilege) and by a
+ *   technician assigned the Pathology unit's Results lab role. When only one
+ *   dimension is named, the unnamed dimension is trivially satisfied (AND).
+ */
+// Declared here, above ROUTE_GUARDS, because that map's entries name
+// Roles.* and the object literal is evaluated at module load: with Roles
+// further down the file, importing Utils threw "Cannot access 'Roles'
+// before initialization" and every consumer failed.
+export const Roles = {
+  GLOBAL_ADMIN: "Global Administrator",
+  USER_ACCOUNT_ADMIN: "User Account Administrator",
+  AUDIT_TRAIL: "Audit Trail",
+  ANALYSER_IMPORT: "Analyser Import",
+  CYTOPATHOLOGIST: "Cytopathologist",
+  PATHOLOGIST: "Pathologist",
+  RECEPTION: "Reception",
+  RESULTS: "Results",
+  VALIDATION: "Validation",
+  REPORTS: "Reports",
+  EQA_COORDINATOR: "EQA Coordinator",
+} as const;
+
+/**
+ * The guard props each SecureRoute in App.jsx carries, keyed by its `path`.
+ *
+ * The sidebar is built from /rest/menu, which returns every menu row the
+ * installation has configured with no reference to the caller's privileges.
+ * SecureRoute then refuses the ones the user cannot open, so roughly half of
+ * each role's menu led to a blank screen: 74 such entries for Reception, 88 for
+ * Results and Validation, 55 for Reports, out of 153.
+ *
+ * The props are stored verbatim and handed straight back to computeRouteAccess
+ * rather than being reduced to a privilege here. 31 routes are still guarded by
+ * `role=` rather than `privilege=` (the privilege conversion did not reach
+ * them), and a role guard is satisfied through RoleEquivalentPrivileges.
+ * Flattening would mean re-implementing that mapping and drifting from it;
+ * passing the props through means the menu and the route cannot disagree.
+ *
+ * This duplicates App.jsx, so it is pinned: `menuRouteGuards.test.js` parses
+ * App.jsx and fails if a guard is added, removed or changed without the
+ * matching change here.
+ */
+export const ROUTE_GUARDS = {
+  "/AccessionResults": { privilege: Privileges.RESULT_ENTER },
+  "/AccessionValidation": { privilege: Privileges.RESULT_VALIDATE },
+  "/AccessionValidationRange": { privilege: Privileges.RESULT_VALIDATE },
+  "/Alerts": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/Aliquot": { privilege: Privileges.ORDER_CREATE },
+  // App.jsx names this ANALYZER_RESULTS_ROLES; inlined because that constant
+  // lives in App.jsx and importing it here would be a cycle (App -> Layout ->
+  // Header -> Utils). menuRouteGuards.test.js asserts the two still agree.
+  "/AnalyzerResults": { role: [Roles.GLOBAL_ADMIN, Roles.ANALYSER_IMPORT] },
+  "/AuditTrailReport": { privilege: Privileges.AUDIT_VIEW },
+  "/EQADistribution": { privilege: Privileges.EQA_VIEW },
+  "/EQADistribution/create": { privilege: Privileges.EQA_VIEW },
+  "/EQAManagement": { privilege: Privileges.EQA_VIEW },
+  "/EQAMyPrograms": { privilege: Privileges.EQA_VIEW },
+  "/EQAOrders": { privilege: Privileges.EQA_VIEW },
+  "/EQAParticipants": { privilege: Privileges.EQA_VIEW },
+  "/EQAResults": { privilege: Privileges.EQA_VIEW },
+  "/ElectronicOrders": { privilege: Privileges.ORDER_CREATE },
+  "/EnvironmentalDashboard": { privilege: Privileges.RESULT_ENTER },
+  "/FreezerMonitoring": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
+  "/GenericSample/Edit": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Import": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Order": { privilege: Privileges.ORDER_CREATE },
+  "/GenericSample/Results": { privilege: Privileges.RESULT_ENTER },
+  "/ImmunohistochemistryCaseView/:immunohistochemistrySampleId": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/ImmunohistochemistryDashboard": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/LaporanHasil": { privilege: Privileges.REPORT_RUN },
+  "/LogbookResults": { privilege: Privileges.RESULT_ENTER },
+  "/MasterListsPage": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/MicrobiologyCaseView/:caseId": {
+    role: [Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS],
+  },
+  "/ModifyOrder": { privilege: Privileges.ORDER_CREATE },
+  "/NCECorrectiveAction": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/NceDashboard": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/NoteBookDashboard": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
+  },
+  "/NoteBookEntryForm": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/NoteBookEntryForm/:notebookid": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/NoteBookInstanceEditForm/:notebookentryid": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/NoteBookInstanceEntryForm/:notebookid": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/NotebookSampleOrder/:notebookId": { privilege: Privileges.RESULT_ENTER },
+  "/NotebookSampleOrder/:notebookId/:notebookEntryId": {
+    privilege: Privileges.RESULT_ENTER,
+  },
+  "/PathologyCaseView/:pathologySampleId": {
+    privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  },
+  "/PathologyDashboard": { privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF },
+  "/PatientHistory": { privilege: Privileges.ORDER_CREATE },
+  "/PatientManagement/:patientId?": { privilege: Privileges.ORDER_CREATE },
+  "/PatientMerge": { privilege: Privileges.ORDER_CREATE },
+  "/PatientResults": { privilege: Privileges.RESULT_ENTER },
+  "/PatientResults/:patientId": { privilege: Privileges.ORDER_CREATE },
+  "/PrintBarcode": { privilege: Privileges.ORDER_CREATE },
+  "/RangeResults": { privilege: Privileges.RESULT_ENTER },
+  "/Report": { privilege: Privileges.REPORT_RUN },
+  "/ReportNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/ResultValidation": { privilege: Privileges.RESULT_VALIDATE },
+  "/ResultValidationByTestDate": { privilege: Privileges.RESULT_VALIDATE },
+  "/Results": { privilege: Privileges.RESULT_ENTER },
+  "/RoleManagement": { privilege: Privileges.ROLE_MANAGE },
+  "/RoutineReport": { privilege: Privileges.REPORT_RUN },
+  "/RoutineReports": { privilege: Privileges.REPORT_RUN },
+  "/SampleBatchEntrySetup": { privilege: Privileges.ORDER_CREATE },
+  "/SampleEdit": { privilege: Privileges.ORDER_CREATE },
+  "/SampleManagement": { role: [Roles.RECEPTION, Roles.RESULTS] },
+  "/SamplePatientEntry": { privilege: Privileges.ORDER_CREATE },
+  "/SampleShipment": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/:tab": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/box/:boxId": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/create-box": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/receive": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/reference-lab-results": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/reports": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+  },
+  "/SampleShipment/settings": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
+  "/StatusResults": { privilege: Privileges.RESULT_ENTER },
+  "/Storage": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)":
+    { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/StudyReport": { privilege: Privileges.REPORT_RUN },
+  "/StudyReports": { privilege: Privileges.REPORT_RUN },
+  "/TATReport": { privilege: Privileges.REPORT_RUN },
+  "/VectorManualEntry": { privilege: Privileges.REPORT_RUN },
+  "/VectorSurveillanceReport": { privilege: Privileges.REPORT_RUN },
+  "/ViewNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/WorkPlanByTestSection": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByPanel": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByPriority": { privilege: Privileges.RESULT_ENTER },
+  "/WorkplanByTest": { privilege: Privileges.RESULT_ENTER },
+  "/admin": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/:id/edit": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/:id/mappings": { privilege: Privileges.ANALYZER_IMPORT },
+  "/analyzers/:id/qc-rules": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/custom-field-types": { privilege: Privileges.ANALYZER_IMPORT },
+  "/analyzers/errors": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/new": { privilege: Privileges.SYSTEM_CONFIGURE },
+  "/analyzers/qc/charts/:analyzerId": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/control-lots": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/qc/control-lots/:id": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/control-lots/new": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/db": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/qc/instruments/:instrumentId": {
+    privilege: Privileges.ANALYZER_CONFIGURE,
+  },
+  "/analyzers/qc/rule-config": { privilege: Privileges.ANALYZER_CONFIGURE },
+  "/analyzers/types": { role: [Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN] },
+  "/analyzers/types/:profileId/mapping": {
+    privilege: Privileges.ANALYZER_IMPORT,
+  },
+  "/genericProgram": { privilege: Privileges.ORDER_CREATE },
+  "/inventory": { role: [Roles.RESULTS, Roles.GLOBAL_ADMIN] },
+  "/order/enter": { privilege: Privileges.ORDER_CREATE },
+  "/order/environmental": { privilege: Privileges.ORDER_CREATE },
+  "/order/vector": { privilege: Privileges.ORDER_CREATE },
+  "/programView/:programSampleId": { privilege: Privileges.ORDER_CREATE },
+  "/result": { privilege: Privileges.RESULT_ENTER },
+  "/validation": { privilege: Privileges.RESULT_VALIDATE },
+  "/vector/deconvolution": { privilege: Privileges.RESULT_ENTER },
+  "/vector/identification": { privilege: Privileges.RESULT_ENTER },
+};
+
+/**
+ * Whether a menu SUBTREE contains anything this user can open.
+ *
+ * The menu nests three deep (Reports -> Aggregate -> a report), so checking
+ * only immediate children would leave an empty parent whose every grandchild
+ * is hidden. Recursing keeps a section visible exactly while something inside
+ * it is reachable.
+ */
+export const menuSubtreeVisible = (menuItem, userSessionDetails) => {
+  if (!menuItem?.menu?.isActive) {
+    return false;
+  }
+  const childVisible = (menuItem.childMenus || []).some((child) =>
+    menuSubtreeVisible(child, userSessionDetails),
+  );
+  if (childVisible) {
+    return true;
+  }
+  // A section header carries no actionURL, and menuEntryVisible treats "no
+  // route" as unguarded. Answering true here would keep every empty section,
+  // so a parent with no openable route of its own stands or falls with its
+  // children.
+  const actionURL = menuItem.menu.actionURL;
+  if (!actionURL || actionURL.length <= 1) {
+    return false;
+  }
+  return menuEntryVisible(actionURL, userSessionDetails);
+};
+
+/**
+ * Whether a menu entry should be shown, given the user's session.
+ *
+ * Mirrors SecureRoute: an unguarded route is open to any authenticated user, a
+ * guarded one needs its privilege (or a role that implies it, via
+ * computeRouteAccess). Query strings are stripped because menu rows carry them
+ * (`/SampleEdit?type=readwrite`) while route paths do not, and `:param`
+ * segments are matched by prefix for the same reason.
+ *
+ * Returning true for anything unrecognised is deliberate: a menu row whose
+ * route is not in the map is one SecureRoute does not guard either, so hiding
+ * it would remove a working link.
+ */
+export const menuEntryVisible = (actionURL, userSessionDetails) => {
+  if (!actionURL) {
+    return true;
+  }
+  const path = actionURL.split("?")[0];
+  let guard = ROUTE_GUARDS[path];
+  if (!guard) {
+    // A parameterised route ("/PathologyCaseView/:id") never matches a menu
+    // row literally; match the portion before the first parameter instead.
+    const match = Object.keys(ROUTE_GUARDS).find((route) => {
+      const base = route.split("/:")[0];
+      return base.length > 1 && (path === base || path.startsWith(base + "/"));
+    });
+    guard = match ? ROUTE_GUARDS[match] : undefined;
+  }
+  if (!guard) {
+    return true;
+  }
+  return computeRouteAccess(userSessionDetails, guard);
+};
+
+export const computeRouteAccess = (userDetails, props = {}) => {
+  const requestedRoles = [].concat(props.role || []);
+  const equivalentPrivileges = requestedRoles.flatMap(
+    (role) => RoleEquivalentPrivileges[role] || [],
+  );
+  const explicitPrivileges = [].concat(props.privilege || []);
+  const explicitAccessRequested =
+    Boolean(props.role) || Boolean(props.privilege);
+  const matchesExplicitRoleOrPrivilege =
+    requestedRoles.some(
+      (role) => userDetails?.roles && userDetails.roles.includes(role),
+    ) ||
+    hasPrivilege(userDetails, ...equivalentPrivileges, ...explicitPrivileges);
+  const hasRole = !explicitAccessRequested || matchesExplicitRoleOrPrivilege;
+
+  let containsLabUnitRole = false;
+  if (props.labUnitRole) {
+    Object.keys(props.labUnitRole).forEach((labunit) => {
+      if (userDetails?.userLabRolesMap) {
+        const userRoles = userDetails.userLabRolesMap["AllLabUnits"]
+          ? userDetails.userLabRolesMap["AllLabUnits"]
+          : userDetails.userLabRolesMap[labunit] || [];
+        props.labUnitRole[labunit].forEach((r) => {
+          if (userRoles.includes(r)) {
+            containsLabUnitRole = true;
+          }
+        });
+      }
+    });
+  }
+  const hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
+
+  if (explicitAccessRequested && props.labUnitRole) {
+    return matchesExplicitRoleOrPrivilege || containsLabUnitRole;
+  }
+  return hasRole && hasLabUnitRole;
+};
+
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
 
@@ -728,7 +1183,7 @@ export const convertAlphaNumLabNumForDisplay = (
   }
   if (labNumber.length > 15) {
     // Longer-than-15 accessions (e.g. 20-char SiteYearNum like
-    // DEV01263000000000001) aren't reformatted — they're opaque IDs.
+    // DEV01263000000000001) aren't reformatted, they're opaque IDs.
     // Return as-is without warning; legacy dashed formatting below is only
     // for the old 12-char Tacoma-style lab numbers.
     return labNumber;
@@ -851,19 +1306,6 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   }
   return outputArray;
 }
-
-export const Roles = {
-  GLOBAL_ADMIN: "Global Administrator",
-  USER_ACCOUNT_ADMIN: "User Account Administrator",
-  AUDIT_TRAIL: "Audit Trail",
-  ANALYSER_IMPORT: "Analyser Import",
-  CYTOPATHOLOGIST: "Cytopathologist",
-  PATHOLOGIST: "Pathologist",
-  RECEPTION: "Reception",
-  RESULTS: "Results",
-  VALIDATION: "Validation",
-  REPORTS: "Reports",
-} as const;
 
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {

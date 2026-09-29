@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.storage.valueholder.StorageRack;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for sample storage assignment and movement operations
@@ -13,6 +14,7 @@ public interface SampleStorageService {
     /**
      * Calculate rack capacity and return warning if threshold exceeded
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     CapacityWarning calculateCapacity(StorageRack rack);
 
     /**
@@ -22,6 +24,7 @@ public interface SampleStorageService {
      * @return List of maps, each containing: id, sampleItemId,
      *         sampleAccessionNumber, type, status, location, assignedBy, date
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> getAllSamplesWithAssignments();
 
     /**
@@ -38,6 +41,7 @@ public interface SampleStorageService {
      * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
      *         shelfCapacityWarning if applicable
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes);
 
@@ -54,9 +58,11 @@ public interface SampleStorageService {
      * @param reason             Optional reason for movement
      * @return Movement ID
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes);
 
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 
@@ -70,6 +76,7 @@ public interface SampleStorageService {
      * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
      * {@code sampleItemDAO.update} directly, bypassing audit emit.
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
             String sysUserId);
 
@@ -89,6 +96,7 @@ public interface SampleStorageService {
      * @return quantity snapshot: sampleItemId, quantity, remainingQuantity,
      *         exhausted
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> recordSampleUsage(String sampleItemId, java.math.BigDecimal amountUsed,
             boolean markUsedUp, String sysUserId);
 
@@ -101,6 +109,7 @@ public interface SampleStorageService {
      * OGC-738a: the controller used to return the raw numeric user id; the View
      * Audit modal showed "Moved By: 42" with no way to identify who.
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.List<java.util.Map<String, Object>> getSampleItemMovementsWithUserNames(String sampleItemId);
 
     /**
@@ -110,6 +119,7 @@ public interface SampleStorageService {
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 
     /**
@@ -118,6 +128,7 @@ public interface SampleStorageService {
      * @param pageable Pagination parameters (page number, page size, sorting)
      * @return Page of SampleStorageAssignment entities
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
             org.springframework.data.domain.Pageable pageable);
 
@@ -135,6 +146,7 @@ public interface SampleStorageService {
      * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
      *         shelfCapacityWarning if applicable
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> assignInventoryLotWithLocation(String inventoryLotId, String locationId,
             String locationType, String positionCoordinate, String notes, String sysUserId);
 
@@ -150,6 +162,7 @@ public interface SampleStorageService {
      * @param sysUserId          The user performing the move
      * @return Movement ID
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String moveInventoryLotWithLocation(String inventoryLotId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes, String sysUserId);
 
@@ -160,18 +173,21 @@ public interface SampleStorageService {
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, Object> getInventoryLotLocation(String inventoryLotId);
 
     /**
      * List storage movements for an InventoryLot with the acting user's display
      * name resolved (OGC-657).
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.List<java.util.Map<String, Object>> getInventoryLotMovementsWithUserNames(String inventoryLotId);
 
     /**
      * Current locations for many InventoryLots in one assignment query, keyed by
      * lot id as a String; lots without an assignment are absent (OGC-657).
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, java.util.Map<String, Object>> getLocationsForInventoryLots(
             java.util.List<Long> inventoryLotIds);
 
@@ -185,6 +201,7 @@ public interface SampleStorageService {
      * @return Map with previousLocation and movementId, empty when there was
      *         nothing to release
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> releaseInventoryLotLocation(String inventoryLotId, String reason, String sysUserId);
 
     /**
@@ -197,6 +214,7 @@ public interface SampleStorageService {
      * @param sysUserId      Acting user
      * @return The disposed lot
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     InventoryLot disposeInventoryLot(Long inventoryLotId, String reason, String notes, String sysUserId);
 
     /**
@@ -208,6 +226,7 @@ public interface SampleStorageService {
      * @param notes              New notes; blank clears them, null leaves them
      * @return Map with assignmentId, positionCoordinate, notes and hierarchicalPath
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> updateInventoryLotAssignmentMetadata(String inventoryLotId, String positionCoordinate,
             String notes);
 
@@ -218,5 +237,6 @@ public interface SampleStorageService {
      * @return List of maps with id, lotNumber, barcode, itemName, quantity, status,
      *         location, assignedBy and date
      */
+    @PreAuthorize("hasAuthority(\'PRIV_STORAGE_VIEW\')")
     java.util.List<java.util.Map<String, Object>> getAllInventoryLotsWithAssignments();
 }

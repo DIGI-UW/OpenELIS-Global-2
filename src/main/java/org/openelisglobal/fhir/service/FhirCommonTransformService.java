@@ -12,6 +12,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.service.TempIdGenerator;
 import org.openelisglobal.note.valueholder.Note;
@@ -21,6 +22,10 @@ import org.openelisglobal.person.valueholder.Person;
  * Building blocks shared by every FHIR transform: references, identifiers, ids
  * and the person-level name/telecom helpers.
  */
+@CrossDomainService(callers = "FHIR transform pipeline — one of the per-resource transformers"
+        + " FhirTransformService (itself @CrossDomainService) was decomposed into. Pure resource"
+        + " mapping invoked by the import/export pipeline and by sibling transformers; no controller"
+        + " references it. The caller's own endpoint carries the privilege gate.")
 public interface FhirCommonTransformService {
 
     List<ContactPoint> transformToTelecom(Person person);

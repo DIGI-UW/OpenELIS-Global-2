@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -170,8 +171,34 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         // for any test whose own fixture doesn't include system_user.
         ensureBaselineSystemUserRows();
 
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A", fullTestAuthorities()));
+    }
+
+    /**
+     * The full role + privilege set granted to the default test principal. Shared
+     * by {@link #setDefaultTestAuthentication()} and
+     * {@link #authenticateAs(String)} so that a test which re-authenticates as a
+     * fixture user keeps the privileges the service-layer {@code @PreAuthorize}
+     * gates require (roles alone are not enough under privilege-based RBAC).
+     */
+    protected static List<SimpleGrantedAuthority> fullTestAuthorities() {
+        // Derived from Privileges.java by reflection rather than hand-listed. The
+        // literal list this replaces had drifted: it was missing five real
+        // privileges (micro:view, micro:bench, micro:supervise, order:delete,
+        // result:cytopathology-sign-off) and still granted three that no longer
+        // exist (PRIV_ADMIN_SYSTEM, PRIV_ORDER_CANCEL, PRIV_SITEINFO_VIEW). The
+        // three micro:* gaps failed 26 microbiology integration tests with
+        // AccessDenied — the gate was right, the test super-user simply did not
+        // hold the new privilege. Deriving the set means adding a privilege
+        // constant can never again silently break unrelated suites.
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        authorities.add(new SimpleGrantedAuthority("ROLE_RESULTS"));
+        for (String priv : org.openelisglobal.security.SeededRoleAuthorities.allPrivilegeAuthorityNames()) {
+            authorities.add(new SimpleGrantedAuthority(priv));
+        }
+        return authorities;
     }
 
     @After
@@ -200,8 +227,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @PreAuthorize-protected paths still pass.
      */
     protected void authenticateAs(String loginName) {
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(loginName, "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(loginName, "N/A", fullTestAuthorities()));
     }
 
     /**

@@ -1,0 +1,1160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Maps each base role to its complete, standalone privilege set.
+
+      BASE ROLES SHIP FLAT, no inheritance between them.
+      Each base role is self-contained: a user assigned only 'Validation'
+      gets exactly and only the privileges listed here for Validation.
+
+      Implementors extend the system by creating NEW roles that:
+        - set parent_role_id to a base role (e.g., Reception) to INHERIT its
+          privileges, NOT grouping_parent, which is UI taxonomy (see 012-005)
+        - set grouping_parent to the container the role renders under:
+          "Lab Unit Roles" when it is scoped per test section, else "Global Roles"
+        - add additional privileges in system_role_privilege
+
+      Example implementor-defined extension:
+        "Receptionist with result view"
+          parent_role_id:   Reception        (inherits all Reception privileges)
+          grouping_parent:  Lab Unit Roles   (renders in the lab-unit picker)
+          adds:             result:view
+          effective:        all Reception privileges + result:view
+
+      This keeps base roles minimal and deployments composable.
+
+      Global Administrator has no rows, it holds ALL privileges implicitly,
+      resolved in the privilege service via a Global Admin shortcut.
+    -->
+
+    <!--
+      EQA Coordinator is referenced in code (Constants.ROLE_EQA_COORDINATOR, and
+      UserService's report-scope handling) and is granted privileges below, but no
+      migration ever created the row, so those grants silently matched nothing.
+      Create it here, before the grants.
+
+      grouping_parent = "Global Roles": the role is not scoped per test section
+      (its work, EQA programme administration and reporting, spans the lab), so
+      it belongs with the other whole-system roles rather than in the lab-unit
+      picker. parent_role_id stays NULL: base roles ship flat (see 012-005).
+    -->
+    <changeSet author="openelis" id="012-004-create-eqa-coordinator-role">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="system_role" schemaName="clinlims"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.system_role WHERE trim(name) = 'EQA Coordinator'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM clinlims.system_role WHERE trim(name) = 'Global Roles'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Create the EQA Coordinator role (Global Roles), referenced in code but never seeded</comment>
+        <sql>
+            INSERT INTO clinlims.system_role (id, name, description, display_key, active, editable, is_grouping_role, grouping_parent)
+            SELECT nextval('clinlims.system_role_seq'), 'EQA Coordinator',
+                   'Administers external quality assessment programmes and their reporting',
+                   'role.eqa.coordinator', true, false, false,
+                   (SELECT id FROM clinlims.system_role WHERE trim(name) = 'Global Roles');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.system_role WHERE trim(name) = 'EQA Coordinator';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-004-seed-role-privilege-mappings">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <!--
+          Seed complete standalone privilege sets for all base roles.
+
+          Each mapping is inserted idempotently (AND NOT EXISTS on the pair) rather
+          than guarding the whole batch on an empty-table precondition. A single
+          pre-existing row (a pilot, a partially-applied migration, a restored DB, a
+          site-specific seed) must NOT cause the batch to be marked-ran and skip the
+          remaining ~50 mappings, that would silently leave every non-admin role with
+          zero PRIV_* authorities and lock those users out post-upgrade. The
+          system_role_privilege_uq unique constraint (012-002) backs this.
+        -->
+        <comment>Seed complete standalone privilege sets for all base roles (idempotent per-row)</comment>
+
+        <!-- ==================== RECEPTION ==================== -->
+        <!--
+          Order intake, patient registration, NCE reporting, shipment handling.
+          No result privileges, a receptionist never touches results.
+          Includes provider:view and organization:view (needed to select
+          requesting clinician and referring organization during order entry),
+          and sample_requester:view (needed to look up existing requesters).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'provider:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'sample_requester:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'shipment:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            -- Label and Store is the third step of order entry: the person who took
+            -- the specimen records where it was put. That screen reads the storage
+            -- tree (rooms, shelves, racks, boxes), so without storage:view the step
+            -- 500s and a receptionist cannot finish the order they started.
+            -- Read only, creating, moving and deleting storage locations stay on
+            -- storage:manage, which Reception does not get.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            -- QA Review is the last step of order entry: the person who received
+            -- the specimen answers the acceptance checklist. That save is gated on
+            -- nce:edit, so without it a receptionist reaches the step but cannot
+            -- record the answers. Reception already holds nce:create and nce:view;
+            -- this completes the set for the checklist they are asked to fill in.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+        </sql>
+
+        <!-- ==================== RESULTS ==================== -->
+        <!--
+          Result entry for lab technicians. Standalone, does not include
+          order or patient management. A lab may assign both Reception and
+          Results to a technician who does both; or Results alone to one
+          who only enters results from existing orders.
+          Includes referral:view (to see referred tests in workplan) and
+          storage:view (to track sample storage during result entry).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:enter'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:modify'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== VALIDATION ==================== -->
+        <!--
+          Biologist/validator role. Standalone, validates results only.
+          Does NOT include result:enter or result:modify by default.
+          A deployment where validators also enter results should assign
+          both Results and Validation roles, or create an extension role.
+          Includes result:view and order:view to support the validation workflow.
+          Includes referral:view to see referred tests during validation.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+        </sql>
+
+        <!-- ==================== PATHOLOGIST ==================== -->
+        <!--
+          Standalone pathologist role. Includes result:view and result:validate
+          because a pathologist must be able to review and approve results,
+          plus the pathology-specific sign-off. Does not include result:enter
+          or result:modify, pathologists review, not enter.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:pathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== CYTOPATHOLOGIST ==================== -->
+        <!--
+          Standalone cytopathologist role. Same pattern as Pathologist
+          but with cytopathology-specific sign-off privilege.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            -- Cytology sign-off runs on result:pathology-sign-off. CytologySampleService
+            -- gates assignTechnician and assignCytoPathologist on
+            -- PRIV_RESULT_PATHOLOGY_SIGN_OFF, so without this grant a Cytopathologist
+            -- is denied their own core action while a Pathologist can perform it.
+            -- One privilege spans both disciplines; the earlier
+            -- result:cytopathology-sign-off was seeded and granted but never enforced
+            -- anywhere, so it was removed rather than wired up as a second gate.
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:pathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== REPORTS ==================== -->
+        <!--
+          Standalone reporting role. Can view orders, results, and patient data
+          for reporting purposes but cannot modify anything.
+          Includes patient:view because most reports include patient demographics.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:export'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== EQA COORDINATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== USER ACCOUNT ADMINISTRATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'User Account Administrator' AND p.name = 'user:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== AUDIT TRAIL ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Audit Trail' AND p.name = 'audit:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== ANALYSER IMPORT ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:import'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:configure'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <rollback>
+            <delete tableName="system_role_privilege" schemaName="clinlims">
+                <where>1=1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Grants organization:view to the roles that already hold referral:view.
+
+      Referring a sample out means picking a referral LAB, and that dropdown is
+      built by DisplayListService.createReferralOrganizationList() ->
+      OrganizationService.getOrganizationsByTypeName(..., "referralLab"), which is
+      gated PRIV_ORGANIZATION_VIEW. 012-004 gives organization:view to Reception
+      only, so Results and Validation, the roles that actually refer samples, and
+      the only ones granted referral:view, got AccessDeniedException from
+      GET /rest/displayList/REFERRAL_ORGANIZATIONS on the result-entry and
+      validation screens (observed as HTTP 500 in E2E run 33568673124).
+
+      Scope note: this is a read of the referral-lab picklist (id + name), not the
+      organization administration surface, organization:manage stays unset for
+      these roles, so they still cannot create or edit organizations.
+    -->
+    <changeSet author="openelis" id="012-004c-grant-organization-view-to-referring-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant organization:view to Results/Validation (referral-lab picklist)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Results', 'Validation')
+              AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'organization:view')
+                  AND system_role_id IN (SELECT id FROM clinlims.system_role WHERE name IN ('Results', 'Validation'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Grants user_role:view to the operational base roles.
+
+      This is a SEPARATE changeset, not extra rows in 012-004 above, so it also
+      applies to databases where 012-004 has already run (a pilot, or anyone who
+      upgraded before this fix).
+
+      Why these roles need it: UserRoleService/UserService#getUserLabUnitRoles is a
+      SELF-scoping read, every one of these callers passes the CALLER'S OWN id:
+
+        MenuController#isGlobalScopeUser            -> GET /rest/menu   (every page load)
+        OrderSearchRestController#isGlobalScopeUser -> order search
+        PatientDashBoardProvider#isGlobalScopeUser  -> patient dashboard
+        LoginPageController                         -> GET /session
+
+      Without the grant those screens throw AccessDeniedException for every
+      non-admin (403 on /rest/menu = no navigation tree at all). The privilege only
+      ever reveals the caller's own lab-unit assignments on these paths; the
+      cross-user administrative surface is gated separately at PRIV_USER_MANAGE on
+      UnifiedSystemUserRestController, and user_role:manage (write) is still
+      Global-Admin-only.
+
+      SelfIdentityMethodsUngatedTest asserts this grant exists.
+    -->
+    <changeSet author="openelis" id="012-004b-grant-user-role-view-to-operational-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant user_role:view to operational base roles (self-scoping lab-unit read)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                             'Reports', 'EQA Coordinator', 'User Account Administrator',
+                             'Audit Trail', 'Analyser Import')
+              AND p.name = 'user_role:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'user_role:view')
+                  AND system_role_id IN (
+                      SELECT id FROM clinlims.system_role
+                      WHERE name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                                     'Reports', 'EQA Coordinator', 'User Account Administrator',
+                                     'Audit Trail', 'Analyser Import'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Grants the microbiology privileges to the roles that already had access.
+
+      Before this PR the microbiology module gated its controllers on
+      MicrobiologyRestControllerSupport.BENCH_ACCESS
+      (hasAnyRole 'ADMIN','RESULTS','VALIDATION') and SUPERVISOR_ACCESS
+      (hasAnyRole 'ADMIN','VALIDATION'). These grants reproduce exactly that
+      reach under the privilege model, so no role gains or loses microbiology
+      access in the migration:
+
+        micro:view      -> Results, Validation   (bench reads)
+        micro:bench     -> Results, Validation   (BENCH_ACCESS)
+        micro:supervise -> Validation            (SUPERVISOR_ACCESS)
+
+      Global Administrator needs no row, it holds everything via the sentinel,
+      which is how 'ADMIN' was satisfied in both expressions above.
+
+      Reference/breakpoint administration is deliberately NOT granted here: it is
+      test-catalog configuration and stays on test:configure, matching where the
+      rest of the catalog editor sits.
+    -->
+    <changeSet author="openelis" id="012-004d-grant-microbiology-privileges">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant micro:view/micro:bench to Results+Validation, micro:supervise to Validation</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Results', 'Validation')
+              AND p.name IN ('micro:view', 'micro:bench')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation'
+              AND p.name = 'micro:supervise'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id IN (SELECT id FROM clinlims.system_privilege
+                                       WHERE name IN ('micro:view', 'micro:bench', 'micro:supervise'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      012-004e: the alerts bell.
+      GET /rest/alerts is gated on alert:view at the service layer (AlertService).
+      Before privilege-based RBAC the endpoint was reachable by Reception, Results
+      and Validation (the controller allowed any authenticated user; only
+      acknowledge/delete were ADMIN). 012-004 granted alert:view to no base role,
+      which turns the bell into a 403 for everyone but Global Admin. Restore the
+      pre-existing reach for the three workbench roles; alert:manage stays
+      admin-only, matching the old acknowledge/delete restriction.
+    -->
+    <changeSet author="openelis" id="012-004e-grant-alert-view-to-workbench-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant alert:view to Reception, Results and Validation</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation')
+              AND p.name = 'alert:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id IN (SELECT id FROM clinlims.system_privilege WHERE name = 'alert:view')
+                  AND system_role_id IN (SELECT id FROM clinlims.system_role WHERE name IN ('Reception', 'Results', 'Validation'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      012-004f: the Analyser Import role's own screen.
+      /rest/AnalyzerResults (review and accept analyzer results) reads results,
+      analyses, orders by accession, sample types and NCE state, and accepting
+      writes results. Before privilege-based RBAC the controller allowed
+      ANALYSER_IMPORT and ADMIN; 012-004 granted the role only analyzer:import and
+      analyzer:configure, so the screen 403s on its first read. Restore the role's
+      pre-existing reach. result:enter/result:modify are the accept path
+      (AnalyzerResultsAcceptService), accepting analyzer results IS result entry
+      by another route; without them the role's primary function is gone.
+    -->
+    <changeSet author="openelis" id="012-004f-grant-analyzer-results-screen-to-analyser-import">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the analyzer-results screen's read and accept privileges to Analyser Import</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import'
+              AND p.name IN ('result:view', 'result:enter', 'result:modify', 'order:view', 'sample_type:view', 'nce:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE system_role_id IN (SELECT id FROM clinlims.system_role WHERE name = 'Analyser Import')
+                  AND privilege_id IN (SELECT id FROM clinlims.system_privilege
+                                       WHERE name IN ('result:view', 'result:enter', 'result:modify', 'order:view', 'sample_type:view', 'nce:view'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      012-004g: role administration for the User Account Administrator.
+
+      The role editor (POST /rest/roles, PUT /rest/roles/{id}/privileges) is gated
+      on role:manage, and its catalogue read on role:view. Both privileges existed
+      but were granted to nobody, so the screen would have been reachable only by
+      Global Administrator.
+
+      DELIBERATE ESCALATION SURFACE: a holder of role:manage can create a role,
+      grant it any privilege in the catalogue, and assign it to themselves through
+      user management, so this grant makes User Account Administrator equivalent
+      to a full administrator. That is the intended trust model here (role
+      authoring sits with the account-administration persona); it is called out so
+      it is never mistaken for an oversight. Deployments wanting separation of
+      duties should remove this changeset and grant role:manage to a dedicated
+      role instead.
+    -->
+    <changeSet author="openelis" id="012-004g-grant-role-administration">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant role:manage and role:view to User Account Administrator</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'User Account Administrator'
+              AND p.name IN ('role:manage', 'role:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE system_role_id IN (SELECT id FROM clinlims.system_role WHERE trim(name) = 'User Account Administrator')
+                  AND privilege_id IN (SELECT id FROM clinlims.system_privilege WHERE name IN ('role:manage', 'role:view'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      catalogue:view grants, as their own changeset.
+
+      012-004-seed-role-privilege-mappings above has already run on every
+      existing database, so an INSERT added inside it never executes there. Any
+      new grant needs a new changeset, same reason as 012-003b.
+
+      Every role that works an order needs to SEE the catalogue it orders from:
+      sample types, tests, panels, methods, units and the dictionary lists
+      behind the dropdowns. Those reads used to be reached by bypassing their
+      admin gates in system context; with catalogue:view they are gated normally
+      and the grant is visible in Role Management. It confers no write, editing
+      any catalogue still needs its own :manage or :configure privilege.
+    -->
+    <changeSet author="openelis" id="012-004h-grant-catalogue-view">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant catalogue:view to the roles that work an order (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation', 'Reports', 'Pathologist',
+                             'Cytopathologist', 'EQA Coordinator', 'Analyser Import')
+              AND p.name = 'catalogue:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_privilege p
+                WHERE srp.privilege_id = p.id AND p.name = 'catalogue:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      patient:view for Results.
+
+      A results technologist works a sample identified by patient: the results
+      list renders patientName and patientInfo on every row, and the menu offers
+      Results -> By Patient. Without this grant every Results search returned 403
+      from SampleHumanService.getPatientForSample, which the list calls to resolve
+      the patient behind each accession number, so the whole Results workflow was
+      unusable for the role whose job it is. The frontend routes are gated on
+      result:enter, which Results holds, so the UI admitted them and the backend
+      then refused.
+
+      Same reason as 012-003b and 012-004h for needing its own changeset:
+      012-004-seed-role-privilege-mappings has already run everywhere, so an
+      INSERT added inside it never executes on an existing database.
+    -->
+    <changeSet author="openelis" id="012-004i-grant-patient-view-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Results so result entry can identify the sample (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results'
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND r.name = 'Results' AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      nce:view for Results.
+
+      The results list attaches notes to each row, and NoteServiceImpl reads the
+      sample's QA events to do it, so without nce:view every Results search
+      returned 403 from SampleQaEventService.getSampleQaEventsBySample. The screen
+      is built for this: it renders a "nonconforming" badge per row and offers the
+      inline NCE form. Validation and Reception already hold the privilege.
+
+      Read-only. Raising a non-conformity needs nce:create and editing one needs
+      nce:edit, neither of which Results is granted here.
+    -->
+    <changeSet author="openelis" id="012-004j-grant-nce-view-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant nce:view to Results so the results list can show non-conformity (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results'
+              AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND r.name = 'Results' AND p.name = 'nce:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      esig:use for Results.
+
+      012-009 seeded esig:use to Pathologist, Cytopathologist and Validation,
+      described there as "the sign-off/validation roles". That misses the
+      technologist: SignatureMeaning.AUTHORED is documented as "Technologist
+      signed upon entering/saving test results", and the setting's own
+      description covers "result entry and validation workflows". With
+      electronicSignatureEnabled=true, saving a result opens the signing dialog,
+      which calls esig/enabled and esig/certified/{user}; without the privilege
+      both return 403, the dialog shows "Failed to load signature status", and the
+      Results role cannot save any result at all.
+
+      The privilege only permits signing as yourself: the controller refuses a
+      certification check for any username other than the authenticated one.
+      Deployments that leave e-signature off (the shipped default) are unaffected
+      either way.
+    -->
+    <changeSet author="openelis" id="012-004k-grant-esig-use-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant esig:use to Results so a technologist can sign results they author (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Results'
+              AND p.name = 'esig:use'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Results' AND p.name = 'esig:use';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      patient:view for Validation.
+
+      A validator reviews a result against the patient it belongs to: the
+      validation screens render patientName (Validation.jsx,
+      ValidationReviewPanel.jsx) and AccessionValidationRestController resolves it
+      through SampleHumanService.getPatientForSample for every row. Without the
+      privilege all five Validation screens (Routine, By Order, By Range, By Date,
+      Study) returned 403, because they share the one AccessionValidation endpoint.
+
+      Same gate and same reasoning as 012-004i for Results; the other privileges
+      that path touches (analyte:view, report:run, system_user:view) are resolved
+      at bean-construction time, when system context applies, or are already
+      caught.
+    -->
+    <changeSet author="openelis" id="012-004l-grant-patient-view-to-validation">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Validation so a validator can see whose result they review (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Validation'
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Validation' AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      organization:view for Reports.
+
+      The patient reports offer "Generate Reports By Site": PatientReport sets
+      useSiteSearch, populates a referring-site list and filters by site and
+      department (findReportSamplesForSite). The department picklist calls
+      /rest/departments-for-site, which reads
+      OrganizationService.getOrganizationsByParentId (organization:view).
+
+      Without the privilege that call 403'd, and because the React form maps over
+      the response without a null guard (PatientStatusReport.jsx), the denial threw
+      inside Formik and WHITE-SCREENED the whole report page. So the symptom was a
+      blank page, not a permission message.
+
+      012-004c already granted organization:view to Results and Validation for
+      their referral-lab picklist; Reports was missed despite being the role whose
+      job is running these reports.
+    -->
+    <changeSet author="openelis" id="012-004m-grant-organization-view-to-reports">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant organization:view to Reports for the by-site report filter (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reports'
+              AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reports' AND p.name = 'organization:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      site_info:view for the roles that generate reports.
+
+      Report.createReportParameters - the abstract base of all 18 report types -
+      puts the lab's header logos into every report via
+      ImageService.getImageBySiteInfoName, which is gated on PRIV_SITE_INFO_VIEW.
+      That privilege was seeded but granted to NO role, so no non-administrator
+      could generate any report at all: the request 403'd after the form had been
+      filled in. Global Administrator was unaffected, because its "*" sentinel
+      expands to whatever privileges exist in the table, which is exactly why the
+      gap survived.
+
+      012-009 renamed the row from siteinfo:view to site_info:view so the gate's
+      PRIV_SITE_INFO_VIEW authority would match it; granting it was never done.
+      This completes that fix.
+
+      Scope, established by inspection rather than assumption: Reports and EQA
+      Coordinator hold report:run, and the Pathologist and Cytopathologist case
+      views POST to /rest/ReportPrint directly (PathologyCaseView.jsx,
+      CytologyCaseView.jsx). Results and Validation offer no printed report, so
+      they are not granted it. This is a READ of the configured site images;
+      editing site information remains administrative.
+    -->
+    <changeSet author="openelis" id="012-004n-grant-site-info-view-to-report-runners">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant site_info:view to the roles that generate reports (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Reports', 'EQA Coordinator', 'Pathologist', 'Cytopathologist')
+              AND p.name = 'site_info:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Reports', 'EQA Coordinator', 'Pathologist', 'Cytopathologist')
+                  AND p.name = 'site_info:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      The domain reads the Reports role's own menu implies.
+
+      Reports is offered 40+ reports spanning every domain, but held only eight
+      privileges, so generating most of them denied. These are not incidental
+      lookups: referral:view IS the Referred Out report, nce:view IS the two
+      non-conformity reports, provider:view and sample_requester:view are the
+      header of every patient report (provider name, requesting organisation),
+      coldstorage:view and alert:view are the freezer audit and excursion reports,
+      analyte:view is the HIV indicator report, and sample_status:view is the
+      sample status printed on the reports.
+
+      Established by auditing all 96 classes under reports/action/implementation
+      against the role's seeded privileges, not by hitting them one at a time.
+
+      Every one is a :view read of data the report already prints. Reports gains
+      no ability to change anything: the corresponding :manage/:edit privileges
+      are untouched, and the one WRITE on this path (marking analyses as printed)
+      is handled on its own method rather than by granting result:enter here.
+    -->
+    <changeSet author="openelis" id="012-004o-grant-report-domain-reads">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the domain reads the Reports role's reports require (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reports'
+              AND p.name IN ('provider:view', 'sample_requester:view', 'referral:view', 'nce:view',
+                             'sample_status:view', 'analyte:view', 'coldstorage:view', 'alert:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reports'
+                  AND p.name IN ('provider:view', 'sample_requester:view', 'referral:view', 'nce:view',
+                                 'sample_status:view', 'analyte:view', 'coldstorage:view', 'alert:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      inventory:view for the bench and reporting roles.
+
+      The Inventory Management page is offered in the menu to every role and
+      reads InventoryItemService / InventoryManagementService, both gated on
+      inventory:view - a privilege granted to no role, so the page failed for
+      everyone. It surfaced as HTTP 500 rather than 403 because those
+      controllers wrap the call in a broad catch that relabels the denial, which
+      is why nothing in the log named a gate.
+
+      Granted to the roles that consume stock or report on it: Results and
+      Validation record reagent usage against results (the microbiology reagent
+      lot history reads the same service), and Reports runs the lot-traceability
+      and usage-trend reports. Editing stock keeps inventory:manage, which stays
+      ungranted; the route itself is guarded in App.jsx so the menu no longer
+      offers the page to roles without the privilege.
+    -->
+    <changeSet author="openelis" id="012-004p-grant-inventory-view">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant inventory:view to the roles that consume or report on stock (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Results', 'Validation', 'Reports')
+              AND p.name = 'inventory:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Results', 'Validation', 'Reports')
+                  AND p.name = 'inventory:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      patient:view for the pathology sign-off roles.
+
+      Opening a pathology, cytology or immunohistochemistry case reads the
+      patient behind the specimen (PathologyDisplayService ->
+      SampleServiceImpl.getPatient -> SampleHumanService.getPatientForSample),
+      and the case view renders a patient header. Neither role held any
+      patient:* privilege, so GET /rest/pathology/caseView/{id} returned 403 and
+      a pathologist could see the dashboard but never open a case, let alone
+      sign one out.
+
+      Third occurrence of this gate: 012-004i granted it to Results and 012-004l
+      to Validation for the same reason. A diagnostic report is about a named
+      patient by definition.
+    -->
+    <changeSet author="openelis" id="012-004q-grant-patient-view-to-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant patient:view to Pathologist and Cytopathologist so a case can be opened (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist')
+              AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Pathologist', 'Cytopathologist')
+                  AND p.name = 'patient:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      The case-header reads the pathology sign-off roles need.
+
+      Opening a pathology, cytology or immunohistochemistry case assembles the
+      same header every other workbench shows: who requested the specimen
+      (sample_requester:view, organization:view via RequesterService), whether it
+      is non-conforming (nce:view) and where it is in the workflow
+      (sample_status:view). None of those were granted, so the case view 403'd
+      one gate at a time behind patient:view (012-004q).
+
+      This is the set Validation and Reports already needed for the same header;
+      all four are :view reads of data the case display already renders. Nothing
+      here lets a pathologist change a requester, an organisation or a
+      non-conformity.
+    -->
+    <changeSet author="openelis" id="012-004r-grant-case-header-reads-to-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the case-header reads to Pathologist and Cytopathologist (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist')
+              AND p.name IN ('sample_requester:view', 'organization:view', 'nce:view', 'sample_status:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Pathologist', 'Cytopathologist')
+                  AND p.name IN ('sample_requester:view', 'organization:view', 'nce:view', 'sample_status:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      The reads the system audit log needs, for the role named after it.
+
+      Audit Trail held audit:view and user_role:view and nothing else, so
+      GET /rest/systemAuditEvents returned 403 and the role could not open the
+      one screen it exists for. The event list resolves each event's actor to a
+      name (SystemUserService.getUserById, system_user:view) and renders the
+      entity behind the event, which reaches the order, patient and result
+      reads. Verified live: with these four granted the endpoint returns 200
+      with real events; without system_user:view it denies at getUserById.
+
+      Note system_user:view was granted to NO role before this, the same shape
+      as site_info:view in 012-004n: seeded, gating a shared path, held by
+      nobody, so it denied everyone but Global Administrator whose "*" sentinel
+      hid it.
+
+      Scope: all four are :view reads. The accession-level AuditTrailReport
+      needs about six more (requester, organisation, NCE, status, provider, and
+      a widened ReportTrackingService gate) and is deliberately NOT addressed
+      here; it stays admin-only rather than turning an auditor into a reader of
+      most of the sample domain.
+    -->
+    <changeSet author="openelis" id="012-004s-grant-audit-log-reads">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the system audit log reads to Audit Trail (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Audit Trail'
+              AND p.name IN ('system_user:view', 'order:view', 'patient:view', 'result:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Audit Trail'
+                  AND p.name IN ('system_user:view', 'order:view', 'patient:view', 'result:view');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

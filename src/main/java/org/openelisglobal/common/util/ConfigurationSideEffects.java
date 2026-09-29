@@ -14,6 +14,7 @@
 package org.openelisglobal.common.util;
 
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
@@ -36,7 +37,7 @@ public class ConfigurationSideEffects {
         }
 
         if (Property.roleRequiredForModifyResults.getDBName().equals(siteInformation.getName())) {
-            Role modifierRole = roleService.getRoleByName("Results modifier");
+            Role modifierRole = roleService.getRoleByName(Constants.LEGACY_ROLE_RESULTS_MODIFIER);
 
             if (modifierRole != null && modifierRole.getId() != null) {
                 modifierRole.setActive("true".equals(siteInformation.getValue()));

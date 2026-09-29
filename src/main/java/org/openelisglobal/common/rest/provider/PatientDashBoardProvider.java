@@ -25,6 +25,7 @@ import org.openelisglobal.common.rest.provider.bean.homedashboard.DashBoardTile;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.OrderDisplayBean;
 import org.openelisglobal.common.rest.provider.form.PatientDashBoardForm;
 import org.openelisglobal.common.rest.util.PatientDashBoardPaging;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
@@ -350,100 +351,119 @@ public class PatientDashBoardProvider {
      */
     @GetMapping(value = "home-dashboard/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    /**
+     * The landing page's tile counts.
+     *
+     * <p>
+     * Assembled in system context. The counts come from AnalysisService methods
+     * gated on {@code PRIV_RESULT_VIEW}, which Reception and other order-facing
+     * roles do not hold — so running them under the caller's authentication made
+     * the landing page 403 and the dashboard crash for those users, where before
+     * privilege-based RBAC every authenticated user saw it. These are workload
+     * totals over the caller's own visible scope (already narrowed by
+     * {@code resolveUserSectionIds} below), not clinical result data, and the
+     * endpoint itself is still reachable only by an authenticated session. Which
+     * individual tiles a role should see is a separate, per-widget decision.
+     *
+     * @see org.openelisglobal.common.services.DisplayListService#refreshLists() for
+     *      the same pattern on reference-data assembly
+     */
     public DashBoardMetrics getDasBoardTiles(HttpServletRequest request) {
+        return SystemContext.callAsSystem(() -> {
 
-        DashBoardMetrics metrics = new DashBoardMetrics();
+            DashBoardMetrics metrics = new DashBoardMetrics();
 
-        String sysUserId = ControllerUtills.getSysUserId(request);
-        List<String> userSectionIds = resolveUserSectionIds(sysUserId);
-        boolean restricted = !isGlobalScopeUser(sysUserId) && !userSectionIds.isEmpty();
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            List<String> userSectionIds = resolveUserSectionIds(sysUserId);
+            boolean restricted = !isGlobalScopeUser(sysUserId) && !userSectionIds.isEmpty();
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles",
-                "sysUserId=" + sysUserId + " restricted=" + restricted + " sectionIds=" + userSectionIds);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles",
+                    "sysUserId=" + sysUserId + " restricted=" + restricted + " sectionIds=" + userSectionIds);
 
-        DashBoardTile.TileType.stream().forEach(type -> {
-            List<String> statusIdList;
-            Set<String> statusIdSet;
-            switch (type) {
-            case ORDERS_IN_PROGRESS:
-                statusIdList = new ArrayList<>();
-                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                // Counts the same set as the ORDERS_IN_PROGRESS list (excluding QC, not
-                // restricted by test section, and not gated on collection date) so the tile
-                // count matches the list.
-                metrics.setOrdersInProgress(
-                        analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
-                break;
-            case ORDERS_READY_FOR_VALIDATION:
-                statusIdList = new ArrayList<>();
-                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-                metrics.setOrdersReadyForValidation(restricted
-                        ? analysisService.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
-                                userSectionIds)
-                        : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
-                break;
-            case ORDERS_COMPLETED_TODAY:
-                statusIdList = new ArrayList<>();
-                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setOrdersCompletedToday(restricted
-                        ? analysisService.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(
-                                DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
-                        : analysisService.getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
-                                statusIdList));
-                break;
-            case ORDERS_PARTIALLY_COMPLETED_TODAY:
-            case ORDERS_PATIALLY_COMPLETED_TODAY:
-                statusIdSet = new HashSet<>();
-                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setPatiallyCompletedToday(restricted
-                        ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
-                                DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
-                        : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
-                                statusIdSet));
-                break;
-            case ORDERS_ENTERED_BY_USER_TODAY:
-                statusIdSet = new HashSet<>();
-                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrderEnterdByUserToday(restricted
-                        ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
-                                DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
-                        : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
-                                statusIdSet));
-                break;
-            case ORDERS_REJECTED_TODAY:
-                statusIdList = new ArrayList<>();
-                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrdersRejectedToday(restricted
-                        ? analysisService.getCountOfAnalysisStartedOnByStatusIdAndTestSections(
-                                DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
-                        : analysisService.getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(),
-                                statusIdList));
-                break;
-            case UN_PRINTED_RESULTS:
-                metrics.setUnPritendResults(unprintedResults().size());
-                break;
-            case INCOMING_ORDERS:
-                List<String> estausIds = new ArrayList<>();
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
-                metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
-                break;
-            case AVERAGE_TURN_AROUND_TIME:
-                metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime());
-                break;
-            case DELAYED_TURN_AROUND:
-                metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime().size());
-                break;
-            default:
-                break;
-            }
+            DashBoardTile.TileType.stream().forEach(type -> {
+                List<String> statusIdList;
+                Set<String> statusIdSet;
+                switch (type) {
+                case ORDERS_IN_PROGRESS:
+                    statusIdList = new ArrayList<>();
+                    statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+                    // Counts the same set as the ORDERS_IN_PROGRESS list (excluding QC, not
+                    // restricted by test section, and not gated on collection date) so the tile
+                    // count matches the list.
+                    metrics.setOrdersInProgress(
+                            analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
+                    break;
+                case ORDERS_READY_FOR_VALIDATION:
+                    statusIdList = new ArrayList<>();
+                    statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+                    metrics.setOrdersReadyForValidation(restricted
+                            ? analysisService.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
+                                    userSectionIds)
+                            : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
+                    break;
+                case ORDERS_COMPLETED_TODAY:
+                    statusIdList = new ArrayList<>();
+                    statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
+                    metrics.setOrdersCompletedToday(restricted
+                            ? analysisService.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(
+                                    DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
+                            : analysisService.getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
+                                    statusIdList));
+                    break;
+                case ORDERS_PARTIALLY_COMPLETED_TODAY:
+                case ORDERS_PATIALLY_COMPLETED_TODAY:
+                    statusIdSet = new HashSet<>();
+                    statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+                    statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
+                    metrics.setPatiallyCompletedToday(restricted
+                            ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
+                                    DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
+                            : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
+                                    statusIdSet));
+                    break;
+                case ORDERS_ENTERED_BY_USER_TODAY:
+                    statusIdSet = new HashSet<>();
+                    statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+                    metrics.setOrderEnterdByUserToday(restricted
+                            ? analysisService.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(
+                                    DateUtil.getNowAsSqlDate(), statusIdSet, userSectionIds)
+                            : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
+                                    statusIdSet));
+                    break;
+                case ORDERS_REJECTED_TODAY:
+                    statusIdList = new ArrayList<>();
+                    statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+                    metrics.setOrdersRejectedToday(restricted
+                            ? analysisService.getCountOfAnalysisStartedOnByStatusIdAndTestSections(
+                                    DateUtil.getNowAsSqlDate(), statusIdList, userSectionIds)
+                            : analysisService.getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(),
+                                    statusIdList));
+                    break;
+                case UN_PRINTED_RESULTS:
+                    metrics.setUnPritendResults(unprintedResults().size());
+                    break;
+                case INCOMING_ORDERS:
+                    List<String> estausIds = new ArrayList<>();
+                    estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
+                    estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+                    estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
+                    metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
+                    break;
+                case AVERAGE_TURN_AROUND_TIME:
+                    metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime());
+                    break;
+                case DELAYED_TURN_AROUND:
+                    metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime().size());
+                    break;
+                default:
+                    break;
+                }
+            });
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles", "metrics=" + metrics);
+
+            return metrics;
         });
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles", "metrics=" + metrics);
-
-        return metrics;
     }
 
     /**

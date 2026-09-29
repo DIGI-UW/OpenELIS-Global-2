@@ -12,7 +12,6 @@ import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/admin/reference")
-@PreAuthorize("hasRole('ADMIN')")
 public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestControllerSupport {
 
     private final MicrobiologyReferenceAdminService service;

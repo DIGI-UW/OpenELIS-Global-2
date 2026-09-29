@@ -28,6 +28,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,6 +75,7 @@ public class ShipmentFhirImportService {
      */
     @Async
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     public void pollAndImportShipments() {
         importShipments();
     }
@@ -83,6 +85,7 @@ public class ShipmentFhirImportService {
      * of boxes imported.
      */
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     public int importShipments() {
         int totalImported = 0;
         for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
@@ -155,6 +158,7 @@ public class ShipmentFhirImportService {
      * @return true if a new box was created
      */
     @Transactional
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     public boolean importSupplyDelivery(SupplyDelivery delivery) {
         try {
             // Extract box identifier

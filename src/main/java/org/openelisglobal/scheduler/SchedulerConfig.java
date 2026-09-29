@@ -8,9 +8,6 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -33,8 +30,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-import org.springframework.security.concurrent.DelegatingSecurityContextScheduledExecutorService;
 
 @Configuration
 @EnableScheduling
@@ -76,16 +73,25 @@ public class SchedulerConfig implements SchedulingConfigurer {
     }
 
     @Bean(destroyMethod = "shutdown")
-    public Executor taskExecutor() {
-        ScheduledExecutorService raw = Executors.newScheduledThreadPool(10);
-        return new DelegatingSecurityContextScheduledExecutorService(raw,
-                daemonContextExecutor.createDaemonSecurityContext());
+    public ThreadPoolTaskScheduler taskExecutor() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(10);
+        scheduler.setThreadNamePrefix("oe-scheduled-");
+        // @Scheduled jobs are system-initiated and have no user to authenticate.
+        // Run them under the daemon IDENTITY rather than the SystemInitFlag blanket
+        // override: SystemAwareSecurityExpressionRoot now satisfies PRIV_* gates for
+        // a caller holding ROLE_SYSTEM, so the token is sufficient — and unlike the
+        // flag it is a real principal, so audited writes attribute to the daemon
+        // system user instead of to nobody.
+        scheduler.setTaskDecorator(runnable -> () -> daemonContextExecutor.executeAsDaemon(runnable));
+        scheduler.initialize();
+        return scheduler;
     }
 
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         // for Spring @Scheduled tasks
-        taskRegistrar.setScheduler(taskExecutor());
+        taskRegistrar.setTaskScheduler(taskExecutor());
 
         // for reloadable tasks using quartz scheduler
         try {

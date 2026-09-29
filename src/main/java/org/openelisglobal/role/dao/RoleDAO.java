@@ -20,7 +20,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.role.valueholder.Role;
 
-public interface RoleDAO extends BaseDAO<Role, String> {
+public interface RoleDAO extends BaseDAO<Role, Integer> {
 
     // public boolean insertData(Role role) throws LIMSRuntimeException;
 
@@ -40,5 +40,5 @@ public interface RoleDAO extends BaseDAO<Role, String> {
 
     Role getRoleByName(String name) throws LIMSRuntimeException;
 
-    Role getRoleById(String roleId) throws LIMSRuntimeException;
+    Role getRoleById(Integer roleId) throws LIMSRuntimeException;
 }

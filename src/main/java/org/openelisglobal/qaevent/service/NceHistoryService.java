@@ -3,6 +3,7 @@ package org.openelisglobal.qaevent.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qaevent.valueholder.NceHistory;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface NceHistoryService extends BaseObjectService<NceHistory, Integer> {
 
@@ -12,6 +13,7 @@ public interface NceHistoryService extends BaseObjectService<NceHistory, Integer
      * @param nceId the NCE ID
      * @return list of history entries ordered by timestamp descending
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<NceHistory> findByNceId(Integer nceId);
 
     /**
@@ -26,6 +28,7 @@ public interface NceHistoryService extends BaseObjectService<NceHistory, Integer
      * @param userId      the user who made the change
      * @return the created history entry
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_CREATE')")
     NceHistory logActivity(Integer nceId, String activity, String description, String oldValue, String newValue,
             Integer userId);
 }

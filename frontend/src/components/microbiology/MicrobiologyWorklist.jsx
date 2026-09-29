@@ -40,7 +40,7 @@ import { Link, useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { hasRole, Roles } from "../utils/Utils";
+import { hasPrivilege, Privileges } from "../utils/Utils";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import {
   getMicrobiologyCaseUrl,
@@ -243,11 +243,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
     referenceNow,
   );
   const isAstGrain = filters.grain === "ast";
-  const canExportWhonet = [
-    Roles.GLOBAL_ADMIN,
-    Roles.RESULTS,
-    Roles.REPORTS,
-  ].some((role) => hasRole(userSessionDetails, role));
+  // The WHONET dataset services are gated on PRIV_MICRO_VIEW, so that is what
+  // decides whether the export can succeed — not which of three roles the user
+  // happens to hold.
+  const canExportWhonet = hasPrivilege(
+    userSessionDetails,
+    Privileges.MICRO_VIEW,
+  );
   const [worklistState, setWorklistState] = useState({
     current: {
       rows: [],
