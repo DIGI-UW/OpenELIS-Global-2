@@ -64,7 +64,7 @@ const emptySample = () => ({
 
 let latestSamples;
 
-function Harness({ initialSamples, showStep = true }) {
+function Harness({ initialSamples, showStep = true, allowReferral }) {
   const [samples, setSamples] = useState(initialSamples);
   latestSamples = samples;
   return (
@@ -75,6 +75,7 @@ function Harness({ initialSamples, showStep = true }) {
           setSamples={setSamples}
           error={() => null}
           domain="C"
+          allowReferral={allowReferral}
         />
       )}
     </IntlProvider>
@@ -261,6 +262,15 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
       fireEvent.click(document.getElementById("reject_0"));
     });
     expect(latestSamples[0].sampleRejected).toBe(false);
+  });
+
+  test("the reference-lab referral is offered unless the screen turns it off", () => {
+    const { unmount } = render(<Harness initialSamples={[emptySample()]} />);
+    expect(document.getElementById("useReferral_0")).toBeInTheDocument();
+    unmount();
+
+    render(<Harness initialSamples={[emptySample()]} allowReferral={false} />);
+    expect(document.getElementById("useReferral_0")).not.toBeInTheDocument();
   });
 
   test("the samples it starts from are never modified", () => {

@@ -6,7 +6,7 @@ import SampleType from "./SampleType";
 import { applySampleTypeUpdate, newSampleKey } from "./sampleTypeUpdate";
 import { FormattedMessage } from "react-intl";
 const AddSample = (props) => {
-  const { samples, setSamples, error, domain } = props;
+  const { samples, setSamples, error, domain, allowReferral } = props;
   const componentMounted = useRef(false);
 
   const [rejectSampleReasons, setRejectSampleReasons] = useState([]);
@@ -90,6 +90,7 @@ const AddSample = (props) => {
                     sampleTypeObject={sampleTypeObject}
                     error={error}
                     domain={domain}
+                    allowReferral={allowReferral}
                   />
                 </div>
               );

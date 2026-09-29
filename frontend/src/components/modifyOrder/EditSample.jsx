@@ -463,6 +463,7 @@ const EditSample = (props) => {
                   }}
                   sampleTypeObject={sampleTypeObject}
                   error={error}
+                  allowReferral={false}
                 />
               </div>
             );

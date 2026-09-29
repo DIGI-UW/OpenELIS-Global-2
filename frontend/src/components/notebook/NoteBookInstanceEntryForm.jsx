@@ -51,6 +51,10 @@ import {
 import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
+import {
+  samplesMissingTests,
+  samplesWithTests,
+} from "../addOrder/orderSamples";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -296,11 +300,11 @@ const NoteBookInstanceEntryForm = () => {
     let sampleXmlString = "";
     let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
         samples.map((sampleItem) => {
+          let tests = null;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -1705,22 +1709,44 @@ const NoteBookInstanceEntryForm = () => {
                     {orderFormValues?.sampleOrderItems.labNo === accession &&
                       accession != "" && (
                         <Accordion>
-                          <AccordionItem title="Add Sample">
+                          <AccordionItem
+                            title={intl.formatMessage({
+                              id: "sample.add.action",
+                            })}
+                          >
                             <Grid className="gridBoundary">
                               <Column lg={16} md={8} sm={4}>
                                 <AddSample
                                   error={elementError}
                                   setSamples={setSamples}
                                   samples={samples}
+                                  allowReferral={false}
                                 />
                               </Column>
                               <Column lg={16} md={8} sm={4}>
+                                {samplesMissingTests(samples).map(
+                                  (sampleNumber) => (
+                                    <InlineNotification
+                                      key={sampleNumber}
+                                      kind="error"
+                                      lowContrast
+                                      hideCloseButton
+                                      title={intl.formatMessage(
+                                        { id: "order.sample.missingTests" },
+                                        { sampleNumber },
+                                      )}
+                                    />
+                                  ),
+                                )}
                                 <Button
                                   data-cy="submit-order"
                                   kind="primary"
                                   className="forwardButton"
                                   onClick={handleSubmitOrderForm}
-                                  disabled={isSubmittingSample}
+                                  disabled={
+                                    isSubmittingSample ||
+                                    samplesMissingTests(samples).length > 0
+                                  }
                                 >
                                   <FormattedMessage id="label.button.submit" />
                                 </Button>

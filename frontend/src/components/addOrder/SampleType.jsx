@@ -38,7 +38,13 @@ const SampleType = (props) => {
   const sampleTypesRef = useRef(null);
   const sampleTypeTestsFetchRef = useRef(0);
 
-  const { index, rejectSampleReasons, sample, domain } = props;
+  const {
+    index,
+    rejectSampleReasons,
+    sample,
+    domain,
+    allowReferral = true,
+  } = props;
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleType, setSelectedSampleType] = useState({
@@ -1005,26 +1011,28 @@ const SampleType = (props) => {
             })}
         </div>
 
-        <div className="requestTestReferral">
-          <Checkbox
-            id={`useReferral_` + index}
-            labelText={intl.formatMessage({
-              id: "label.refertest.referencelab",
-            })}
-            checked={requestTestReferral}
-            onChange={handleReferralRequest}
-          />
-          {requestTestReferral === true && (
-            <OrderReferralRequest
-              index={index}
-              selectedTests={selectedTests}
-              referralReasons={referralReasons}
-              referralOrganizations={referralOrganizations}
-              referralRequests={referralRequests}
-              setReferralRequests={setReferralRequests}
+        {allowReferral && (
+          <div className="requestTestReferral">
+            <Checkbox
+              id={`useReferral_` + index}
+              labelText={intl.formatMessage({
+                id: "label.refertest.referencelab",
+              })}
+              checked={requestTestReferral}
+              onChange={handleReferralRequest}
             />
-          )}
-        </div>
+            {requestTestReferral === true && (
+              <OrderReferralRequest
+                index={index}
+                selectedTests={selectedTests}
+                referralReasons={referralReasons}
+                referralOrganizations={referralOrganizations}
+                referralRequests={referralRequests}
+                setReferralRequests={setReferralRequests}
+              />
+            )}
+          </div>
+        )}
       </div>
     </>
   );

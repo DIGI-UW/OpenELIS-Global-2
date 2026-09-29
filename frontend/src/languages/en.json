@@ -5047,6 +5047,7 @@
   "order.save.requirement.samplingSite": "a sampling site",
   "order.save.requirement.collectionSite": "a collection site",
   "order.save.requirement.requesterOrRequestor": "a requesting organisation or requestor",
+  "order.sample.missingTests": "Sample {sampleNumber} has a sample type but no test. Add a test or remove the sample before saving.",
   "order.save.requirement.sampleType": "at least one sample type",
   "order.save.requirement.site": "a requesting site",
   "order.save.requirement.patientSex": "the patient sex",

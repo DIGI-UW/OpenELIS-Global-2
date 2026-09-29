@@ -26,6 +26,10 @@ import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
+import {
+  samplesMissingTests,
+  samplesWithTests,
+} from "../addOrder/orderSamples";
 /**
  * The edit page of the workflow an order was entered in, when that is not the
  * clinical one. Environmental and vector orders have no patient, so the
@@ -290,15 +294,17 @@ const ModifyOrder = () => {
     }
   }, [page]);
 
+  const missingTestSamples = samplesMissingTests(samples);
+
   const attacheSamplesToFormValues = () => {
     let sampleXmlString = "";
     let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
         samples.map((sampleItem) => {
+          let tests = null;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -488,6 +494,20 @@ const ModifyOrder = () => {
                         data-cy="modify-order-validation-error"
                       />
                     ))}
+                  {page === orderPageNumber &&
+                    missingTestSamples.map((sampleNumber) => (
+                      <InlineNotification
+                        key={sampleNumber}
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage(
+                          { id: "order.sample.missingTests" },
+                          { sampleNumber },
+                        )}
+                        data-cy="modify-order-sample-missing-tests"
+                      />
+                    ))}
                   {page === orderPageNumber && staleSave && (
                     <div data-cy="modify-order-stale-save">
                       <InlineNotification
@@ -536,6 +556,7 @@ const ModifyOrder = () => {
                         disabled={
                           isSubmitting ||
                           Boolean(staleSave) ||
+                          missingTestSamples.length > 0 ||
                           errors?.errors?.length > 0
                             ? true
                             : false
