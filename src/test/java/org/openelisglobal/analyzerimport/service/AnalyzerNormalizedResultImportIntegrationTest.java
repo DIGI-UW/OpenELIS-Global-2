@@ -275,9 +275,10 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 new AnalyzerSiteBindingDraft(List.of(new AnalyzerSiteBindingTestDraft(original.getRawTestCode(),
                         AnalyzerSiteBindingMappingState.BOUND, String.valueOf(TEST_ID))), List.of()),
                 "1");
-        localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
-                updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1");
-        assertTrue("selecting an unconfirmed revision must not release held results",
+        assertThrows(IllegalArgumentException.class,
+                () -> localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
+                        updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1"));
+        assertTrue("rejecting an unconfirmed revision must not release held results",
                 resultsService.get(id).isReadOnly());
 
         confirm(updated, bundle);
