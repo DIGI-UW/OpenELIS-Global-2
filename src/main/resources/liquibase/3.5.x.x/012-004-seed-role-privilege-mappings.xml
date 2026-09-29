@@ -1157,4 +1157,55 @@
         </rollback>
     </changeSet>
 
+    <!--
+      Align the privilege model with the qa.* model for EQA, so the two gates
+      that now guard EQA cannot disagree.
+
+      EQA is defended at both layers after the develop merge: EQA V2 gates its
+      REST controllers on qa.view.eqa / qa.manage.eqa (EQAGuards), and this
+      branch gates the services underneath on PRIV_EQA_VIEW / PRIV_EQA_MANAGE
+      via @CrudPrivileges. A request has to pass both.
+
+      Without this changeset the two disagree about who may pass. develop grants
+      qa.view.eqa to QA Officer, Global Administrator, Reception and Results,
+      and qa.manage.eqa to QA Officer and Global Administrator (liquibase/qa/004
+      and qa/023), while eqa:view and eqa:manage were seeded only to EQA
+      Coordinator. Those roles would clear the controller and then be refused at
+      the service, which reads to a user as EQA V2 silently breaking.
+
+      Granting the matching privilege to exactly the roles that already hold the
+      qa.* key keeps both models enforced and widens access to nobody: every
+      role named here can already reach these endpoints today.
+    -->
+    <changeSet author="openelis" id="012-004t-align-eqa-privileges-with-qa-model">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant eqa:view/eqa:manage to the roles holding the matching qa.* keys (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('QA Officer', 'Global Administrator', 'Reception', 'Results')
+              AND p.name = 'eqa:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('QA Officer', 'Global Administrator')
+              AND p.name = 'eqa:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('QA Officer', 'Global Administrator', 'Reception', 'Results')
+                  AND p.name IN ('eqa:view', 'eqa:manage');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

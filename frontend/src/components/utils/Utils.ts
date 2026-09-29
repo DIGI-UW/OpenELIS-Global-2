@@ -1,4 +1,5 @@
 import config from "../../config.json";
+import { format } from "date-fns";
 import type { IntlShape } from "react-intl";
 
 // This utility is the compatibility boundary for hundreds of legacy JavaScript
@@ -26,6 +27,7 @@ export interface ApiMessagePayload {
 
 interface UserSessionDetails {
   roles?: string[];
+  permissions?: string[];
 }
 
 const csrfToken = (): string => localStorage.getItem("CSRF") as string;
@@ -95,6 +97,90 @@ const handleSessionError = (response: Response): Response => {
       .catch(() => undefined);
   }
   return response;
+};
+
+const DATE_FMT = "yyyy-MM-dd";
+
+/**
+ * Format a Date as a local `yyyy-MM-dd` string. Unlike `Date.toISOString()`,
+ * this reads the browser's LOCAL date components, so a date-only value picked in
+ * a UTC+ timezone is not rolled back a day when sent to the server. Non-Date
+ * input is returned as-is (or "" for null/undefined).
+ */
+export const toLocalIsoDate = (d: Date | string | null | undefined): string =>
+  !(d instanceof Date)
+    ? d || ""
+    : isNaN(d.getTime())
+      ? ""
+      : format(d, DATE_FMT);
+
+/**
+ * Strict parser for a date picker with dateFormat "Y-m-d": a real `yyyy-MM-dd`
+ * becomes that local date; anything else is refused (false). Flatpickr's own
+ * parser turns text in another shape into 1 January, which was then saved.
+ */
+export const parseIsoDate = (text: string | null | undefined): Date | false => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((text || "").trim());
+  if (!match) {
+    return false;
+  }
+  const [year, month, day] = match.slice(1).map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : false;
+};
+
+/**
+ * Turn a date string as CustomDatePicker renders it (`MM/dd/yyyy`, or
+ * `dd/MM/yyyy` under the French locale) back into the `yyyy-MM-dd` the server
+ * reads. Returns "" for anything that is not a three-part date.
+ */
+export const displayDateToIso = (
+  displayed: string | null | undefined,
+  dateLocale?: string,
+): string => {
+  const parts = (displayed || "").split("/");
+  if (parts.length !== 3) return "";
+  const [month, day] =
+    dateLocale === "fr-FR" ? [parts[1], parts[0]] : [parts[0], parts[1]];
+  return `${parts[2]}-${month}-${day}`;
+};
+
+/**
+ * Format a timestamp (epoch millis / ISO string / Date) as local
+ * `yyyy-MM-dd HH:mm`, or "—" when absent. Companion to toLocalIsoDate for
+ * date-time display columns. (Distinct from the legacy `formatTimestamp`
+ * below, which takes Unix SECONDS and renders a UTC AM/PM string.)
+ */
+export const toLocalIsoDateTime = (
+  value: Date | string | number | null | undefined,
+): string => {
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
+};
+
+/**
+ * Render a date-of-record (deadline, due date) as `dd/MM/yyyy`. Such values are
+ * stored as an end-of-day timestamp, so reading LOCAL components rolls them to
+ * the next day for any browser east of the server; the UTC components give the
+ * calendar date that was actually entered. Returns "" for absent values.
+ */
+export const formatDateOnly = (
+  value: Date | string | number | null | undefined,
+): string => {
+  if (!value) {
+    return "";
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${d.getUTCFullYear()}`;
 };
 
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
@@ -212,27 +298,29 @@ export const postToOpenElisServer = <TExtra = unknown>(
     });
 };
 
-export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+/**
+ * The one body shared by every *FullResponse helper. The callback gets the raw
+ * Response, so a 4xx body — a state-machine refusal, a validation message — can
+ * be read and shown instead of being flattened into "it failed".
+ */
+const sendForFullResponse = <TExtra = unknown>(
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   endPoint: string,
-  payLoad: RequestPayload,
+  payLoad: RequestPayload | undefined,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
-        "Accept-Language": getAcceptLanguageHeader(),
-      },
-      body: payLoad as BodyInit,
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
-  )
+    ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
+  })
     .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
@@ -240,6 +328,14 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
       callback(undefined, extraParams);
     });
 };
+
+export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("POST", endPoint, payLoad, callback, extraParams);
 
 export const postToOpenElisServerFormData = <TExtra = unknown>(
   endPoint: string,
@@ -584,25 +680,19 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   payLoad: RequestPayload,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    //includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-    body: payLoad as BodyInit,
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void => sendForFullResponse("PUT", endPoint, payLoad, callback, extraParams);
+
+/**
+ * PATCH counterpart. The JSON-only PATCH variant discards the body on !ok, which
+ * is exactly what a state-machine refusal must not do.
+ */
+export const patchToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("PATCH", endPoint, payLoad, callback, extraParams);
 
 export const deleteFromOpenElisServer = (
   endPoint: string,
@@ -633,24 +723,8 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
   endPoint: string,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void =>
+  sendForFullResponse("DELETE", endPoint, undefined, callback, extraParams);
 
 export const hasRole = (
   userSessionDetails: UserSessionDetails | null | undefined,
@@ -1058,6 +1132,235 @@ export const menuSubtreeVisible = (menuItem, userSessionDetails) => {
  * route is not in the map is one SecureRoute does not guard either, so hiding
  * it would remove a working link.
  */
+/**
+ * Menu paths the legacy module layer gates, and the SystemModules that permit
+ * each one.
+ *
+ * Generated from system_module_url joined to system_module, restricted to the
+ * paths /rest/menu actually serves. A path absent here has no
+ * SystemModuleUrl row, so ModuleAuthenticationInterceptor auto-allows it and
+ * the filter leaves it visible. A path listed here is shown only when the
+ * session holds one of its modules, which is the interceptor's own rule.
+ *
+ * Kept as data rather than inferred at runtime because the mapping lives in
+ * the database and the frontend cannot query it; moduleMapDrift.test.js pins
+ * it against the seed so the two cannot silently diverge.
+ */
+export const MODULE_GUARDED_PATHS: Record<string, string[]> = {
+  "/AccessionResults": ["AccessionResults"],
+  "/AccessionValidation": ["ResultsValidationGeneral"],
+  "/AccessionValidationRange": ["ResultsValidationGeneral"],
+  "/Alerts": ["EQAView"],
+  "/AnalyzerResults": ["AnalyzerResults"],
+  "/AuditTrailReport": ["AuditTrailView"],
+  "/CytologyDashboard": ["Cytology"],
+  "/EQADistribution": ["EQAView"],
+  "/EQAManagement": ["EQAView"],
+  "/EQAMyPrograms": ["EQAView"],
+  "/EQAOrders": ["EQAView"],
+  "/EQAParticipants": ["EQAView"],
+  "/EQAResults": ["EQAView"],
+  "/ElectronicOrders": ["ElectronicOrderView"],
+  "/LogbookResults": [
+    "LogbookResults",
+    "LogbookResults:Biochemistry",
+    "LogbookResults:ECBU",
+    "LogbookResults:EID",
+    "LogbookResults:HIV",
+    "LogbookResults:Hematology",
+    "LogbookResults:Immunology",
+    "LogbookResults:Molecular Biology",
+    "LogbookResults:Parasitology",
+    "LogbookResults:Serology-Immunology",
+    "LogbookResults:VL",
+    "LogbookResults:Virologie",
+    "LogbookResults:bacteriology",
+    "LogbookResults:chem",
+    "LogbookResults:cytobacteriology",
+    "LogbookResults:endocrin",
+    "LogbookResults:hemato-immunology",
+    "LogbookResults:immuno",
+    "LogbookResults:liquidBio",
+    "LogbookResults:mycobacteriology",
+    "LogbookResults:mycology",
+    "LogbookResults:mycrobacteriology",
+    "LogbookResults:serologie",
+    "LogbookResults:serology",
+  ],
+  "/NCECorrectiveAction": ["NonConformity"],
+  "/PathologyDashboard": ["Pathology"],
+  "/PatientEditByProject": [
+    "PatientEditByProject:readonly",
+    "PatientEditByProject:readwrite",
+  ],
+  "/PatientEntryByProject": [
+    "PatientEntryByProject:initial",
+    "PatientEntryByProject:verify",
+  ],
+  "/PatientManagement": ["SamplePatientEntry"],
+  "/PatientResults": ["PatientResults"],
+  "/PrintBarcode": ["PrintBarcode"],
+  "/RangeResults": ["RangeResults"],
+  "/Report": [
+    "Report:RoutineExport",
+    "Report:indicator",
+    "Report:patient",
+    "Report:summary",
+    "ReportCovid",
+  ],
+  "/ReportNonConformingEvent": ["NonConformity"],
+  "/ReportPrint": [
+    "Report:RoutineExport",
+    "Report:indicator",
+    "Report:patient",
+    "Report:summary",
+    "ReportCovid",
+  ],
+  "/ResultValidation": [
+    "ResultValidation",
+    "ResultValidation:Bacteria",
+    "ResultValidation:Biochemistry",
+    "ResultValidation:Cytobacteriologie",
+    "ResultValidation:ECBU",
+    "ResultValidation:EID",
+    "ResultValidation:Endocrinologie",
+    "ResultValidation:Hematology",
+    "ResultValidation:Hemto-Immunology",
+    "ResultValidation:Immunology",
+    "ResultValidation:Liquides biologique",
+    "ResultValidation:Molecular Biology",
+    "ResultValidation:Mycobacteriology",
+    "ResultValidation:Parasitology",
+    "ResultValidation:Serologie",
+    "ResultValidation:Serology-Immunology",
+    "ResultValidation:VCT",
+    "ResultValidation:VL",
+    "ResultValidation:Virologie",
+    "ResultValidation:mycology",
+    "ResultValidation:serology",
+    "ResultValidation:virology",
+  ],
+  "/ResultValidationByTestDate": ["ResultsValidationGeneral"],
+  "/ResultValidationRetroC": [
+    "ResultValidation",
+    "ResultValidation:Bacteria",
+    "ResultValidation:Biochemistry",
+    "ResultValidation:Cytobacteriologie",
+    "ResultValidation:ECBU",
+    "ResultValidation:EID",
+    "ResultValidation:Endocrinologie",
+    "ResultValidation:Hematology",
+    "ResultValidation:Hemto-Immunology",
+    "ResultValidation:Immunology",
+    "ResultValidation:Liquides biologique",
+    "ResultValidation:Molecular Biology",
+    "ResultValidation:Mycobacteriology",
+    "ResultValidation:Parasitology",
+    "ResultValidation:Serologie",
+    "ResultValidation:Serology-Immunology",
+    "ResultValidation:VCT",
+    "ResultValidation:VL",
+    "ResultValidation:Virologie",
+    "ResultValidation:mycology",
+    "ResultValidation:serology",
+    "ResultValidation:virology",
+  ],
+  "/SampleBatchEntrySetup": ["SampleBatchEntry"],
+  "/SampleEdit": ["SampleEdit", "SampleEdit:readonly", "SampleEdit:readwrite"],
+  "/SampleEntryByProject": [
+    "SampleEntryByProject:initial",
+    "SampleEntryByProject:verify",
+  ],
+  "/SamplePatientEntry": ["SamplePatientEntry"],
+  "/SampleShipment": ["SampleShipmentManagement"],
+  "/StatusResults": ["StatusResults"],
+  "/StudyElectronicOrders": ["StudyElectronicOrderView"],
+  "/VectorSurveillanceReport": ["VectorSurveillanceDashboard"],
+  "/ViewNonConformingEvent": ["NonConformity"],
+  "/WorkPlanByPanel": [
+    "Workplan",
+    "Workplan:Biochemistry",
+    "Workplan:ECBU",
+    "Workplan:EID",
+    "Workplan:HIV",
+    "Workplan:Hematology",
+    "Workplan:Immunology",
+    "Workplan:Molecular Biology",
+    "Workplan:Parasitology",
+    "Workplan:Serology",
+    "Workplan:Serology-Immunology",
+    "Workplan:VL",
+    "Workplan:Virologie",
+    "Workplan:bacteriology",
+    "Workplan:chem",
+    "Workplan:cytobacteriology",
+    "Workplan:endocrin",
+    "Workplan:hemato-immunology",
+    "Workplan:immuno",
+    "Workplan:liquidBio",
+    "Workplan:mycology",
+    "Workplan:mycrobacteriology",
+    "Workplan:panel",
+    "Workplan:serologie",
+    "Workplan:test",
+  ],
+  "/WorkPlanByPriority": ["Workplan"],
+  "/WorkPlanByTest": [
+    "Workplan",
+    "Workplan:Biochemistry",
+    "Workplan:ECBU",
+    "Workplan:EID",
+    "Workplan:HIV",
+    "Workplan:Hematology",
+    "Workplan:Immunology",
+    "Workplan:Molecular Biology",
+    "Workplan:Parasitology",
+    "Workplan:Serology",
+    "Workplan:Serology-Immunology",
+    "Workplan:VL",
+    "Workplan:Virologie",
+    "Workplan:bacteriology",
+    "Workplan:chem",
+    "Workplan:cytobacteriology",
+    "Workplan:endocrin",
+    "Workplan:hemato-immunology",
+    "Workplan:immuno",
+    "Workplan:liquidBio",
+    "Workplan:mycology",
+    "Workplan:mycrobacteriology",
+    "Workplan:panel",
+    "Workplan:serologie",
+    "Workplan:test",
+  ],
+  "/WorkPlanByTestSection": [
+    "Workplan",
+    "Workplan:Biochemistry",
+    "Workplan:ECBU",
+    "Workplan:EID",
+    "Workplan:HIV",
+    "Workplan:Hematology",
+    "Workplan:Immunology",
+    "Workplan:Molecular Biology",
+    "Workplan:Parasitology",
+    "Workplan:Serology",
+    "Workplan:Serology-Immunology",
+    "Workplan:VL",
+    "Workplan:Virologie",
+    "Workplan:bacteriology",
+    "Workplan:chem",
+    "Workplan:cytobacteriology",
+    "Workplan:endocrin",
+    "Workplan:hemato-immunology",
+    "Workplan:immuno",
+    "Workplan:liquidBio",
+    "Workplan:mycology",
+    "Workplan:mycrobacteriology",
+    "Workplan:panel",
+    "Workplan:serologie",
+    "Workplan:test",
+  ],
+};
+
 export const menuEntryVisible = (actionURL, userSessionDetails) => {
   if (!actionURL) {
     return true;
@@ -1074,9 +1377,48 @@ export const menuEntryVisible = (actionURL, userSessionDetails) => {
     guard = match ? ROUTE_GUARDS[match] : undefined;
   }
   if (!guard) {
-    return true;
+    // No SecureRoute guard: the React route admits any authenticated user, but
+    // a second, older authorization layer may still refuse the page.
+    // ModuleAuthenticationInterceptor checks the URL against system_module_url
+    // and the caller's permitted modules BEFORE method security runs, and its
+    // denial is invisible here: a full-page redirect to /Home?access=denied for
+    // a server-rendered path, or a page that loads and then 403s its data
+    // calls. That is why Reception was still shown /CytologyDashboard,
+    // /ResultValidationRetroC, /WorkPlanByTest* and /ReportPrint after the
+    // guard-based filter landed.
+    return moduleEntryVisible(path, userSessionDetails);
   }
   return computeRouteAccess(userSessionDetails, guard);
+};
+
+/**
+ * Whether the legacy module layer would admit this path.
+ *
+ * <p>The session carries `modules`, the names of the SystemModules the caller's
+ * roles grant. MODULE_GUARDED_PATHS lists the menu paths that map to at least
+ * one SystemModuleUrl row; a path absent from it has no module mapping and is
+ * auto-allowed by the interceptor, so it stays visible. A listed path is shown
+ * only when the caller holds one of its modules, which is exactly the
+ * interceptor's own rule (any one match permits).
+ *
+ * <p>Global Administrator bypasses the interceptor via isUserAdmin(), so it is
+ * admitted here too.
+ */
+export const moduleEntryVisible = (path, userSessionDetails) => {
+  const required = MODULE_GUARDED_PATHS[path];
+  if (!required) {
+    return true;
+  }
+  if (userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN)) {
+    return true;
+  }
+  const held = userSessionDetails?.modules;
+  if (!Array.isArray(held)) {
+    // The session predates this field: fall back to showing the row rather
+    // than hiding working pages from everyone.
+    return true;
+  }
+  return required.some((moduleName) => held.includes(moduleName));
 };
 
 export const computeRouteAccess = (userDetails, props = {}) => {
@@ -1085,13 +1427,24 @@ export const computeRouteAccess = (userDetails, props = {}) => {
     (role) => RoleEquivalentPrivileges[role] || [],
   );
   const explicitPrivileges = [].concat(props.privilege || []);
+  // qa.* permission keys (EQA V2 / the QA pillar) sit in a separate model from
+  // PRIV_* and arrive on the session as `permissions`. A route naming one is
+  // satisfied by holding it, or by Global Administrator, matching
+  // hasQaPermission and the server-side EQAGuards expressions.
+  const requestedPermissions = [].concat(props.permission || []);
+  const matchesPermission = requestedPermissions.some((permission) =>
+    hasQaPermission(userDetails, permission),
+  );
   const explicitAccessRequested =
-    Boolean(props.role) || Boolean(props.privilege);
+    Boolean(props.role) ||
+    Boolean(props.privilege) ||
+    Boolean(props.permission);
   const matchesExplicitRoleOrPrivilege =
     requestedRoles.some(
       (role) => userDetails?.roles && userDetails.roles.includes(role),
     ) ||
-    hasPrivilege(userDetails, ...equivalentPrivileges, ...explicitPrivileges);
+    hasPrivilege(userDetails, ...equivalentPrivileges, ...explicitPrivileges) ||
+    matchesPermission;
   const hasRole = !explicitAccessRequested || matchesExplicitRoleOrPrivilege;
 
   let containsLabUnitRole = false;
@@ -1116,6 +1469,24 @@ export const computeRouteAccess = (userDetails, props = {}) => {
   }
   return hasRole && hasLabUnitRole;
 };
+/** True when the session carries the named permission. */
+export const hasPermission = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string | null | undefined,
+): boolean =>
+  !!permission && !!userSessionDetails?.permissions?.includes(permission);
+
+/**
+ * The gate feature entry points use: the named permission, or the global
+ * administrator role, which is allowed everything. Server-side @PreAuthorize is
+ * still the real check — this only decides whether to show the entry point.
+ */
+export const hasPermissionOrGlobalAdmin = (
+  userSessionDetails: UserSessionDetails | null | undefined,
+  permission: string,
+): boolean =>
+  hasPermission(userSessionDetails, permission) ||
+  hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
@@ -1221,9 +1592,14 @@ export const convertAlphaNumLabNumForDisplay = (
       labNumberForDisplay +
       labNumberParts[0].slice(labNumberParts[0].length - 3);
   }
-  //re-add dash
+  // Re-add every remaining part, not just the first: keeping only one dropped
+  // the tail of anything with a second dash in it (an EQA blind code such as
+  // IH-2-04 rendered as IH-2, the same for every row on the page).
   if (isAnalysisLabNumber) {
-    labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
+    labNumberForDisplay = [
+      labNumberForDisplay,
+      ...labNumberParts.slice(1),
+    ].join("-");
   }
   return labNumberForDisplay.toUpperCase();
 };
@@ -1306,6 +1682,18 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   }
   return outputArray;
 }
+
+/**
+ * True when the session holds a qa.* permission, with Global Administrator as
+ * the standing fallback. The real gate is @PreAuthorize on the endpoint; this
+ * only hides controls from callers who would get a 403 anyway.
+ */
+export const hasQaPermission = (
+  userSessionDetails: { permissions?: string[]; roles?: string[] } | undefined,
+  permission: string,
+): boolean =>
+  !!userSessionDetails?.permissions?.includes(permission) ||
+  !!userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN);
 
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {

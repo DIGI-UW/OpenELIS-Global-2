@@ -12,15 +12,13 @@
  * - Association with analyzer/test combinations
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Grid,
   Column,
   Form,
   FormGroup,
   TextInput,
-  DatePicker,
-  DatePickerInput,
   Dropdown,
   Button,
   Loading,
@@ -32,9 +30,12 @@ import { useHistory, useParams } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import {
+  displayDateToIso,
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../layout/Layout";
 import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -44,6 +45,20 @@ const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
   const { id: lotId } = useParams();
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  // CustomDatePicker renders and returns the locale display format; the lot
+  // endpoint speaks ISO, so the expiration date is converted at both edges.
+  const dateLocale = configurationProperties?.DEFAULT_DATE_LOCALE;
+  const isoToDisplayDate = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const yyyy = d.getUTCFullYear();
+    return dateLocale === "fr-FR"
+      ? `${dd}/${mm}/${yyyy}`
+      : `${mm}/${dd}/${yyyy}`;
+  };
 
   const isEditMode = !!lotId;
 
@@ -62,6 +77,18 @@ const ControlLotSetup = () => {
     mean: null,
     standardDeviation: null,
   });
+
+  // A bench lot has no analyzer. Modelled as a first-class dropdown entry with an
+  // empty id so the field always shows what will actually be submitted, instead of
+  // reading as a required field the user forgot to fill in.
+  const BENCH_ANALYZER_ID = "";
+  const analyzerOptions = [
+    {
+      id: BENCH_ANALYZER_ID,
+      name: intl.formatMessage({ id: "qc.controlLot.analyzer.bench" }),
+    },
+    ...analyzers,
+  ];
 
   // Control level options (FR-002)
   const controlLevelOptions = [
@@ -92,9 +119,9 @@ const ControlLotSetup = () => {
         id: "qc.controlLot.validation.expirationRequired",
       }),
     ),
-    analyzerId: Yup.string().required(
-      intl.formatMessage({ id: "qc.controlLot.validation.analyzerRequired" }),
-    ),
+    // analyzerId is deliberately absent: a bench control lot for a manual method has
+    // no analyzer (OGC-1147), and the dropdown makes that an explicit choice
+    // rather than a blank field.
     testId: Yup.string().required(
       intl.formatMessage({ id: "qc.controlLot.validation.testRequired" }),
     ),
@@ -155,15 +182,7 @@ const ControlLotSetup = () => {
         lotNumber: existingLot.lotNumber || "",
         controlMaterial: existingLot.productName || "",
         controlLevel: existingLot.controlLevel || "",
-        expirationDate: existingLot.expirationDate
-          ? (() => {
-              const d = new Date(existingLot.expirationDate);
-              const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-              const dd = String(d.getUTCDate()).padStart(2, "0");
-              const yyyy = d.getUTCFullYear();
-              return `${mm}/${dd}/${yyyy}`;
-            })()
-          : "",
+        expirationDate: isoToDisplayDate(existingLot.expirationDate),
         analyzerId:
           existingLot.instrumentId != null
             ? String(existingLot.instrumentId)
@@ -188,16 +207,43 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
+    // Manufacturer-fixed lots need mean + SD, entered via "Configure". Catch it
+    // here so the user gets a clear pointer instead of an opaque backend 400.
+    if (
+      statisticsConfig.calculationMethod === "MANUFACTURER_FIXED" &&
+      (statisticsConfig.mean == null ||
+        statisticsConfig.standardDeviation == null)
+    ) {
+      setError(intl.formatMessage({ id: "qc.controlLot.error.statsRequired" }));
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
+    // Same rule QCControlLotValidator enforces: with no analyzer there is nothing
+    // accumulating runs, so a run-derived method would leave the lot in
+    // ESTABLISHMENT forever. Caught here for a pointed message instead of a 400.
+    if (
+      !values.analyzerId &&
+      statisticsConfig.calculationMethod !== "MANUFACTURER_FIXED"
+    ) {
+      setError(
+        intl.formatMessage({ id: "qc.controlLot.error.benchNeedsFixedStats" }),
+      );
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
     const payload = {
       id: isEditMode ? lotId : undefined,
       productName: values.controlMaterial,
       lotNumber: values.lotNumber,
       controlLevel: values.controlLevel,
       expirationDate: values.expirationDate
-        ? (() => {
-            const [mm, dd, yyyy] = values.expirationDate.split("/");
-            return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
-          })()
+        ? new Date(
+            `${displayDateToIso(values.expirationDate, dateLocale)}T12:00:00`,
+          ).toISOString()
         : undefined,
       instrumentId: values.analyzerId
         ? parseInt(values.analyzerId, 10)
@@ -214,12 +260,18 @@ const ControlLotSetup = () => {
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
       JSON.stringify(payload),
-      (response) => {
-        if (response.ok) {
+      async (response) => {
+        if (response && response.ok) {
           history.push("/analyzers/qc/control-lots");
         } else {
+          // Surface the backend's specific message (it returns the validation
+          // reason as the 400 body) rather than a generic "save failed".
+          const backendMsg = response
+            ? await response.text().catch(() => "")
+            : "";
           setError(
-            intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
+            backendMsg?.trim() ||
+              intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
           );
         }
         setSubmitting(false);
@@ -285,7 +337,7 @@ const ControlLotSetup = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.controlLots.title" }),
@@ -410,35 +462,19 @@ const ControlLotSetup = () => {
               {/* Expiration Date */}
               <Column lg={8} md={4} sm={4}>
                 <FormGroup legendText="">
-                  <DatePicker
-                    datePickerType="single"
-                    dateFormat="m/d/Y"
+                  <CustomDatePicker
+                    id="expiration-date"
+                    labelText={intl.formatMessage({
+                      id: "qc.controlLot.field.expiration",
+                    })}
                     value={values.expirationDate}
-                    onChange={([date]) => {
-                      if (date) {
-                        const mm = String(date.getMonth() + 1).padStart(2, "0");
-                        const dd = String(date.getDate()).padStart(2, "0");
-                        const yyyy = date.getFullYear();
-                        setFieldValue("expirationDate", `${mm}/${dd}/${yyyy}`);
-                      } else {
-                        setFieldValue("expirationDate", "");
-                      }
-                    }}
-                  >
-                    <DatePickerInput
-                      id="expiration-date"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "qc.controlLot.field.expiration",
-                      })}
-                      onBlur={handleBlur("expirationDate")}
-                      invalid={
-                        touched.expirationDate && !!errors.expirationDate
-                      }
-                      invalidText={errors.expirationDate}
-                      data-testid="control-lot-expiration-input"
-                    />
-                  </DatePicker>
+                    updateStateValue
+                    onChange={(displayed) =>
+                      setFieldValue("expirationDate", displayed)
+                    }
+                    invalid={touched.expirationDate && !!errors.expirationDate}
+                    invalidText={errors.expirationDate}
+                  />
                 </FormGroup>
               </Column>
 
@@ -453,17 +489,21 @@ const ControlLotSetup = () => {
                     label={intl.formatMessage({
                       id: "qc.controlLot.field.selectAnalyzer",
                     })}
-                    items={analyzers}
+                    helperText={intl.formatMessage({
+                      id: "qc.controlLot.field.analyzerHelper",
+                    })}
+                    items={analyzerOptions}
                     itemToString={(item) => item?.name || ""}
-                    selectedItem={analyzers.find(
+                    selectedItem={analyzerOptions.find(
                       (a) => a.id === values.analyzerId,
                     )}
                     onChange={({ selectedItem }) => {
-                      setFieldValue("analyzerId", selectedItem?.id || "");
+                      setFieldValue(
+                        "analyzerId",
+                        selectedItem?.id || BENCH_ANALYZER_ID,
+                      );
                       setFieldValue("testId", "");
                     }}
-                    invalid={touched.analyzerId && !!errors.analyzerId}
-                    invalidText={errors.analyzerId}
                     data-testid="control-lot-analyzer-dropdown"
                   />
                 </FormGroup>
@@ -488,7 +528,6 @@ const ControlLotSetup = () => {
                     }
                     invalid={touched.testId && !!errors.testId}
                     invalidText={errors.testId}
-                    disabled={!values.analyzerId}
                     data-testid="control-lot-test-dropdown"
                   />
                 </FormGroup>

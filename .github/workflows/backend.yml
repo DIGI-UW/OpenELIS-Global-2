@@ -103,6 +103,19 @@ jobs:
           # requester, notification, testconfiguration, labunit modules). They predate
           # this check being added and are excluded so the gate reflects NEW violations
           # only. Removing them is tracked separately, not in the RBAC migration.
+          # NOTE: the EQA controllers below arrived from develop with EQA V2
+          # (OGC-608/609), which gates authorization at the controller layer via
+          # EQAGuards against the parallel qa.* permission model. Its 59 guards
+          # express five tiers (read, manage, provider, participant, unblind)
+          # per handler, and EQAGuards.UNBLIND is not a gate at all:
+          # EQAPanelRestController.callerCanUnblind() reads the authority
+          # imperatively and passes the result into
+          # panelService.getSampleDtos(id, canUnblind) to decide whether sealed
+          # proficiency-test targets are revealed. Converting that to a service
+          # annotation would change blinding behaviour, so EQA is exempted here
+          # and tracked for the EQA/RBAC reconciliation instead. The services
+          # underneath still carry @CrudPrivileges, so EQA is gated at both
+          # layers today; 012-004t keeps the two models' grants in step.
           violations=$(grep -rn "^\s*@PreAuthorize" src/main/java \
             --include="*Controller.java" \
             -l | grep -v "LoggingController.java" \
@@ -133,6 +146,43 @@ jobs:
                | grep -v "ReferralSubcontractDispatchRestController.java" \
                | grep -v "DictionaryRestController.java" \
                | grep -v "TestSectionEditRestController.java" \
+               | grep -v "EQAAlertRestController.java" \
+               | grep -v "EQAAnalystCompetencyRestController.java" \
+               | grep -v "EQACycleRestController.java" \
+               | grep -v "EQAEnrollmentRestController.java" \
+               | grep -v "EQAFollowupRestController.java" \
+               | grep -v "EQALabPerformanceRestController.java" \
+               | grep -v "EQAMyProgramsRestController.java" \
+               | grep -v "EQAOrdersRestController.java" \
+               | grep -v "EQAPanelReceiptRestController.java" \
+               | grep -v "EQAPanelRestController.java" \
+               | grep -v "EQAParticipantResultRestController.java" \
+               | grep -v "EQAProgramRestController.java" \
+               | grep -v "EQAResultRestController.java" \
+               | grep -v "EQAShipmentRestController.java" \
+               | grep -v "EQASubmissionRestController.java" \
+               | grep -v "EQADistributionRestController.java" \
+               # Controller gating that arrived with develop's own features (QA,
+               # QC, accreditation, analyzer, reports, menu, esig). Verified
+               # develop-side: this branch carries zero @PreAuthorize on each of
+               # them. Same inherited-debt category as the block above.
+               | grep -v "NceEnhancementRestController.java" \
+               | grep -v "CriticalCallbackRestController.java" \
+               | grep -v "QiConfigRestController.java" \
+               | grep -v "AccreditationRestController.java" \
+               | grep -v "ElectronicSignatureRestController.java" \
+               | grep -v "BatchWorkplanRestController.java" \
+               | grep -v "QaOverviewRestController.java" \
+               | grep -v "MenuController.java" \
+               | grep -v "ProgramController.java" \
+               | grep -v "AnalyzerUpgradeRestController.java" \
+               | grep -v "AnalyzerDeliveryIssuesRestController.java" \
+               | grep -v "BenchQCResultRestController.java" \
+               | grep -v "QCExportRestController.java" \
+               | grep -v "QCRestController.java" \
+               | grep -v "AmendmentReportRestController.java" \
+               | grep -v "RejectionReportRestController.java" \
+               | grep -v "FhirReplayRestController.java" \
                | grep -v "NotificationTriggerConfigRestController.java" || true)
           if [ -n "$violations" ]; then
             echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"

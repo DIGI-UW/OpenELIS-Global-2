@@ -230,6 +230,25 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals("no specimen context evaluates the shared set", 10d, noContext.getLowNormal(), 0.0001);
     }
 
+    // OGC-1266: pH authored for Drinking Water and Surface Water only showed the
+    // Drinking Water range on a plain Water sample.
+    @org.junit.Test
+    public void resultLimitResolution_aSpecimenWithoutARangeBorrowsNone() {
+        String testId = String.valueOf(TEST_ID);
+        RangesResponse body = new RangesResponse();
+        body.ranges.add(range(String.valueOf(CSF_LIKE), 1d, 5d));
+        assertEquals(200, controller.saveRanges(testId, body, authedRequest()).getStatusCode().value());
+
+        Patient patient = new Patient();
+
+        assertEquals(
+                "CSF keeps its own range", 1d, resultLimitService
+                        .getResultLimitForTestAndPatient(testId, patient, String.valueOf(CSF_LIKE)).getLowNormal(),
+                0.0001);
+        assertNull("serum has no range of its own and no shared one",
+                resultLimitService.getResultLimitForTestAndPatient(testId, patient, String.valueOf(SERUM_LIKE)));
+    }
+
     @org.junit.Test
     public void variantSubsystemRetired_tableAndEndpointsGone() {
         assertNull("test_variant_link is dropped by changeset 063",

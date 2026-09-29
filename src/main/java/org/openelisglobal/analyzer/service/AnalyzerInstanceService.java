@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -7,6 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface AnalyzerInstanceService {
 
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
+    AnalyzerInstanceView ensureConnection(String analyzerId, ObjectNode values, String actor);
+
     AnalyzerInstanceView create(AnalyzerInstanceRequest request, String actor);
 
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")

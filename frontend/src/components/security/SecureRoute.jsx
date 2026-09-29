@@ -45,7 +45,7 @@ function SecureRoute(props) {
     }
 
     if (userSessionDetails.authenticated) {
-      const allowed = hasPermission(userSessionDetails);
+      const allowed = routeAccessAllowed(userSessionDetails);
       setPermissionGranted(allowed);
       if (allowed) {
         if (
@@ -77,10 +77,15 @@ function SecureRoute(props) {
     }
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
+  // One decision function for both models: computeRouteAccess understands
+  // role=, privilege= (PRIV_*, OGC-384) and permission= (qa.* keys, EQA V2),
+  // plus labUnitRole. Kept in Utils so the menu filter and SecureRoute cannot
+  // drift: a menu row is shown exactly when this would admit the route.
   const hasPermission = (userDetails = userSessionDetails) =>
     computeRouteAccess(userDetails, {
       role: props.role,
       privilege: props.privilege,
+      permission: props.permission,
       labUnitRole: props.labUnitRole,
     });
 

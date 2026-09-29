@@ -12,7 +12,6 @@ public class UserSession {
 
     private Boolean authenticated;
     private LoginMethod loginMethod;
-    private String sessionId;
     private String userId;
     private String loginName;
     private String firstName;
@@ -26,6 +25,18 @@ public class UserSession {
      * set instead of role-name strings (spec 012, US3/T033).
      */
     private Set<String> privileges;
+    private String sessionId;
+
+    private Set<String> permissions;
+
+    /**
+     * Names of the SystemModules the caller's roles grant, i.e. what
+     * ModuleAuthenticationInterceptor checks a URL against. Sent so the sidebar
+     * can hide menu rows that layer would refuse; without it the frontend can
+     * only see the SecureRoute guards and keeps offering pages that redirect to
+     * /Home?access=denied or load and then 403 their data calls.
+     */
+    private Set<String> modules;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -108,6 +119,22 @@ public class UserSession {
 
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+
+    public Set<String> getModules() {
+        return modules;
+    }
+
+    public void setModules(Set<String> modules) {
+        this.modules = modules;
+    }
+
+    public Set<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Set<String> permissions) {
+        this.permissions = permissions;
     }
 
     public Map<String, List<String>> getUserLabRolesMap() {

@@ -36,4 +36,11 @@ public interface SamplePatientEntryService {
     @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     List<OrderLabelRequest> persistLabelRequests(SamplePatientUpdateData updateData, OrderLabelPersistRequest payload,
             String sysUserId);
+
+    /**
+     * The tests on a saved order whose reference range will not be applied because
+     * the order's patient has no recorded sex or birth date: its analyses, and the
+     * tests and panels still only requested on a sample type.
+     */
+    List<String> getTestNamesWithRangeNotApplied(org.openelisglobal.sample.valueholder.Sample sample);
 }

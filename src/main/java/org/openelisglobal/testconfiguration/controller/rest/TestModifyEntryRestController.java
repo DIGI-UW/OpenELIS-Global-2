@@ -59,6 +59,8 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -506,7 +508,7 @@ public class TestModifyEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestModifyEntry")
-    public TestModifyEntryForm postTestModifyEntry(HttpServletRequest request,
+    public ResponseEntity<?> postTestModifyEntry(HttpServletRequest request,
             @RequestBody @Valid TestModifyEntryForm form, BindingResult result) {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
@@ -524,7 +526,8 @@ public class TestModifyEntryRestController extends BaseController {
         try {
             obj = (JSONObject) parser.parse(changeList);
         } catch (ParseException e) {
-            LogEvent.logError(e);
+            result.reject("error.jsonWad.invalid");
+            return validationRefusal(result);
         }
 
         TestAddParams testAddParams = extractTestAddParms(obj, parser);
@@ -542,13 +545,13 @@ public class TestModifyEntryRestController extends BaseController {
             result.reject("error.hibernate.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return saveFailure(e);
         } catch (Exception e) {
             LogEvent.logError(e);
             result.reject("error.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return saveFailure(e);
         }
 
         testService.refreshTestNames();
@@ -561,7 +564,7 @@ public class TestModifyEntryRestController extends BaseController {
         DisplayListService.getInstance().refreshList(ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void createPanelItems(ArrayList<PanelItem> panelItems, TestAddParams testAddParams) {

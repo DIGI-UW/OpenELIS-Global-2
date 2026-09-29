@@ -152,11 +152,18 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         return body;
     }
 
+    /**
+     * A body Jackson cannot map (a value outside an enum, a malformed date) is the
+     * caller's error, so it stays a 400, with a messageKey the UI can translate
+     * instead of a bare "Failed to read request".
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         LogEvent.logError(ex);
-        return super.handleHttpMessageNotReadable(ex, headers, status, request);
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("messageKey", "error.request.unreadable");
+        return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
     }
 
     @Override

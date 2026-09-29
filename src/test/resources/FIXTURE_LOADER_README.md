@@ -88,8 +88,8 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 - `--profile=core`: analyzer-minimal safety net, core demo patient, analyzer
   cleanup baseline.
-- `--profile=harness`: everything in `core` plus
-  `analyzer-harness-lane-data.sql` (`HARN-*` lanes).
+- `--profile=harness`: the same foundational data as `core`. Analyzer scenarios
+  create their patients, orders and specimens through OpenELIS APIs.
 
 ### 3. Storage + E2E Test Data
 

@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotSame;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -105,8 +106,15 @@ public class TransformServiceDelegationParityTest extends BaseWebContextSensitiv
 
     @Test
     public void serviceRequest_orchestratorMatchesServiceRequestService() throws Exception {
-        assertSameResource(fhirTransformService.transformToServiceRequest(ANALYSIS_ID),
-                serviceRequestTransformService.transformToServiceRequest(ANALYSIS_ID));
+        ServiceRequest viaOrchestrator = fhirTransformService.transformToServiceRequest(ANALYSIS_ID);
+        ServiceRequest viaService = serviceRequestTransformService.transformToServiceRequest(ANALYSIS_ID);
+        assertNotNull(viaOrchestrator.getAuthoredOn());
+        assertNotNull(viaService.getAuthoredOn());
+        // Each call generates its own current timestamp; compare the stable resource
+        // content.
+        viaOrchestrator.setAuthoredOn(null);
+        viaService.setAuthoredOn(null);
+        assertSameResource(viaOrchestrator, viaService);
     }
 
     @Test

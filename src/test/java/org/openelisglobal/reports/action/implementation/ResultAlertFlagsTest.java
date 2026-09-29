@@ -47,4 +47,45 @@ public class ResultAlertFlagsTest {
         assertEquals("", ResultAlertFlags.criticalLetter(criticalBounds(2d, 150d), ""));
         assertEquals("", ResultAlertFlags.criticalLetter(criticalBounds(2d, 150d), "n/a"));
     }
+
+    private static ResultLimit componentRange(double lowNormal, double highNormal) {
+        ResultLimit limit = new ResultLimit();
+        limit.setLowNormal(lowNormal);
+        limit.setHighNormal(highNormal);
+        limit.setLowCritical(Double.NEGATIVE_INFINITY);
+        limit.setHighCritical(Double.POSITIVE_INFINITY);
+        return limit;
+    }
+
+    // OGC-1266: a multi-component result (COVID PCR N2 Ct 33 against 22 - 32)
+    // printed no Alert letter on the patient report.
+    @Test
+    public void componentLetter_numericOutsideItsOwnRange_isBOrE() {
+        assertEquals("E", ResultAlertFlags.componentLetter(componentRange(22d, 32d), "N", "33"));
+        assertEquals("B", ResultAlertFlags.componentLetter(componentRange(22d, 32d), "N", "21.9"));
+        assertEquals("", ResultAlertFlags.componentLetter(componentRange(22d, 32d), "N", "32"));
+    }
+
+    @Test
+    public void componentLetter_criticalBeatsNormal() {
+        ResultLimit range = componentRange(22d, 32d);
+        range.setHighCritical(40d);
+        assertEquals("EE", ResultAlertFlags.componentLetter(range, "N", "41"));
+    }
+
+    @Test
+    public void componentLetter_selectListAnswerOtherThanTheNormalChoice_isStar() {
+        ResultLimit range = new ResultLimit();
+        range.setDictionaryNormalId("1334");
+        assertEquals("*", ResultAlertFlags.componentLetter(range, "D", "1335"));
+        assertEquals("", ResultAlertFlags.componentLetter(range, "D", "1334"));
+        assertEquals("", ResultAlertFlags.componentLetter(new ResultLimit(), "D", "1335"));
+    }
+
+    @Test
+    public void componentLetter_nothingToJudge_isEmpty() {
+        assertEquals("", ResultAlertFlags.componentLetter(null, "N", "33"));
+        assertEquals("", ResultAlertFlags.componentLetter(componentRange(22d, 32d), "N", ""));
+        assertEquals("", ResultAlertFlags.componentLetter(componentRange(22d, 32d), "A", "33"));
+    }
 }

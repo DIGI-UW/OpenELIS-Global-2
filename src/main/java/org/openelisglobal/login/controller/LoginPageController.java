@@ -27,6 +27,7 @@ import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -93,6 +94,9 @@ public class LoginPageController extends BaseController {
     @Autowired
     PrivilegeService privilegeService;
 
+    @Autowired
+    RoleModuleService roleModuleService;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -147,7 +151,6 @@ public class LoginPageController extends BaseController {
         boolean authenticated = !userModuleService.isSessionExpired(request);
         UserSession session = new UserSession();
         session.setAuthenticated(authenticated);
-        session.setSessionId(request.getSession().getId());
         if (authenticated) {
             // Assembling the session view looks the current user up by id and
             // reads their lab-unit/test-section context — session introspection
@@ -177,6 +180,17 @@ public class LoginPageController extends BaseController {
             } finally {
                 SystemInitFlag.exit(wasSet);
             }
+            setLabunitRolesForExistingUser(request, session);
+            // qa.* permission keys derive from the same role names on every
+            // login path — setLabunitRolesForExistingUser populates roles for
+            // form, SAML, and OAuth logins before this line.
+            session.setPermissions(
+                    roleModuleService.getPermittedModuleNames(session.getRoles(), Constants.QA_PERMISSION_PREFIX));
+            // Every module the caller's roles grant, not just the qa.* keys above.
+            // ModuleAuthenticationInterceptor gates URLs against exactly this set,
+            // so the sidebar needs it to stop offering rows that layer refuses
+            // (an empty prefix matches all module names).
+            session.setModules(roleModuleService.getPermittedModuleNames(session.getRoles(), ""));
         }
         return session;
     }

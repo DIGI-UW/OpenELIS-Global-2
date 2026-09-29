@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
+@PreAuthorize(EQAGuards.READ)
 public class EQAEnrollmentRestController extends ControllerUtills {
 
     @Autowired
@@ -41,19 +43,36 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PostMapping(value = "/programs/{programId}/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> createEnrollments(HttpServletRequest request, @PathVariable Long programId,
             @RequestBody Map<String, Object> body) {
         try {
-            @SuppressWarnings("unchecked")
-            List<Number> orgIds = (List<Number>) body.get("organizationIds");
-            if (orgIds == null || orgIds.isEmpty()) {
+            Object rawIds = body.get("organizationIds");
+            if (!(rawIds instanceof List) || ((List<?>) rawIds).isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "organizationIds list is required"));
             }
 
-            List<Long> organizationIds = orgIds.stream().map(Number::longValue).collect(Collectors.toList());
+            List<Long> organizationIds;
+            try {
+                // ids arrive as JSON numbers or as strings depending on the caller - accept
+                // both
+                organizationIds = ((List<?>) rawIds).stream().map(id -> Long.valueOf(String.valueOf(id)))
+                        .collect(Collectors.toList());
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "organizationIds must be numeric"));
+            }
             String sysUserId = getSysUserId(request);
 
             List<EQAProgramEnrollment> enrolled = enrollmentService.bulkEnroll(programId, organizationIds, sysUserId);
+            // Nothing was written because every laboratory named is already enrolled.
+            // Answering Created with an empty list let the caller report a success that
+            // never happened, which is the one thing a roster screen must not do.
+            if (enrolled.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error",
+                                organizationIds.size() == 1 ? "That laboratory is already enrolled in this scheme"
+                                        : "Every laboratory named is already enrolled in this scheme"));
+            }
             List<Map<String, Object>> dtos = enrolled.stream().map(this::toDto).collect(Collectors.toList());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(dtos);
@@ -63,6 +82,7 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/programs/{programId}/enrollments/{enrollmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> updateEnrollmentStatus(HttpServletRequest request, @PathVariable Long programId,
             @PathVariable Long enrollmentId, @RequestBody Map<String, Object> body) {
         try {

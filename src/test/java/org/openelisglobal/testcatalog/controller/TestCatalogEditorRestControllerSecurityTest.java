@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -190,6 +191,11 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
     @EnableWebSecurity
     @EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
+        @Bean
+        public StaleSaveGuard staleSaveGuard() {
+            return mock(StaleSaveGuard.class);
+        }
+
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
             http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())

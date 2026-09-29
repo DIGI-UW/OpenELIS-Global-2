@@ -60,21 +60,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
-
-        // Ensure TestService maps are initialized before tests that use static methods
-        // The TestServiceImpl constructor calls initializeGlobalVariables(), but in
-        // test context
-        // we need to ensure maps are refreshed after test data is loaded
-        org.openelisglobal.test.service.TestService testServiceBean = org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.test.service.TestService.class);
-
-        // Force initialization by calling a static method that triggers
-        // ensureEntityMapInitialized
-        // This ensures entityToMap is created if it doesn't exist
-        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName("1");
-
-        // Now refresh the maps to include the test data we just loaded
-        testServiceBean.refreshTestNames();
+        testService.refreshTestNames();
     }
 
     @Test
@@ -567,9 +553,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void deleteAll_shouldDeleteAllResults() {
 
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         List<Result> results2 = resultService.getAll();
         assertEquals(0, results2.size());
@@ -580,10 +568,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void deleteAllGivenList_shouldDeleteAllResults() {
 
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
 
         List<String> resultIds = List.of("4", "3");
-        resultService.deleteAll(resultIds, "");
+        resultService.deleteAll(resultIds, TEST_SYS_USER_ID);
         List<Result> results = resultService.getAll();
         assertEquals(0, results.size());
     }
@@ -591,9 +580,11 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldDeleteAResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         Result result = resultService.get("4");
         assertNotNull(result);
+        result.setSysUserId(TEST_SYS_USER_ID);
         resultService.delete(result);
         List<Result> results = resultService.getAll();
         assertEquals(1, results.size());
@@ -609,15 +600,18 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void save_shouldSaveResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
         result.setAnalysis(analysisService.get("1"));
         result.setTestResult(testResultService.get("1"));
         result.setAnalyte(analyteService.get("3"));
+        result.setSysUserId(TEST_SYS_USER_ID);
         Result result1 = resultService.save(result);
         List<Result> results2 = resultService.getAll();
         assertNotNull(result1);
@@ -629,15 +623,18 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void insert_shouldInsertResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
+        signatures.forEach(s -> s.setSysUserId(TEST_SYS_USER_ID));
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
         results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
+        results1.forEach(r -> r.setSysUserId(TEST_SYS_USER_ID));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
         result.setAnalysis(analysisService.get("1"));
         result.setTestResult(testResultService.get("1"));
         result.setAnalyte(analyteService.get("3"));
+        result.setSysUserId(TEST_SYS_USER_ID);
         String result1 = resultService.insert(result);
         List<Result> results2 = resultService.getAll();
         assertNotNull(result1);
@@ -651,6 +648,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateResult() {
         Result result = resultService.get("3");
         result.setValue("95.0");
+        result.setSysUserId(TEST_SYS_USER_ID);
         Result updatedResult = resultService.update(result);
         assertNotNull(updatedResult);
         assertEquals("95.0", updatedResult.getValue());

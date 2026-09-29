@@ -86,6 +86,30 @@ describe("the state after the entry step saves", () => {
     expect(push).toHaveBeenCalledWith("/order/clinical/collect");
   });
 
+  it("leaves focus and typing with the form of a reopened saved order", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <OrderWorkflowLayout title="order.step.enter">
+          <label>
+            Collection Date
+            <input />
+          </label>
+        </OrderWorkflowLayout>
+      </IntlProvider>,
+    );
+    const collect = messages["order.step.collect"];
+    expect(screen.getByRole("button", { name: collect })).not.toHaveFocus();
+
+    const user = userEvent.setup();
+    const date = screen.getByRole("textbox", { name: "Collection Date" });
+    await user.click(date);
+    await user.keyboard("2026-09-28{Enter}");
+
+    expect(date).toHaveFocus();
+    expect(date).toHaveValue("2026-09-28");
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it("says nothing while the order is unsaved or has changed since", () => {
     orderContextValue.labNumber = null;
     const first = renderLayout();

@@ -98,6 +98,27 @@ public class StringUtil {
         return string == null || string.equals("") || string.equals("null");
     }
 
+    /**
+     * Escape a value for one CSV cell: guards formula injection (CWE-1236) by
+     * prefixing dangerous leading characters, then quotes when the value contains a
+     * comma, quote, or newline.
+     */
+    public static String csvEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (!value.isEmpty()) {
+            char first = value.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@') {
+                value = "'" + value;
+            }
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
     public static String replaceCharAtIndex(String string, char character, int index) {
         if (index < 0 || string == null || index >= string.length()) {
             return string;
@@ -574,6 +595,25 @@ public class StringUtil {
         }
 
         return constructed.substring(0, constructed.length() - separator.length());
+    }
+
+    /**
+     * The non-blank parts, trimmed and joined with the separator, so a missing
+     * value leaves no empty slot (a patient with no recorded sex reads "ID-1,
+     * 01/01/1990", not "ID-1, , 01/01/1990").
+     */
+    public static String joinNonBlank(String separator, String... parts) {
+        StringBuilder joined = new StringBuilder();
+        for (String part : parts) {
+            if (part == null || part.trim().isEmpty()) {
+                continue;
+            }
+            if (joined.length() > 0) {
+                joined.append(separator);
+            }
+            joined.append(part.trim());
+        }
+        return joined.toString();
     }
 
     public static String replaceTail(String value, String tail) {

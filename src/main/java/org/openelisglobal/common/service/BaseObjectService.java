@@ -269,6 +269,19 @@ public interface BaseObjectService<T extends BaseObject<PK>, PK extends Serializ
     T update(T baseObject);
 
     /**
+     * Updates an entity the caller loaded and changed in place. Re-reading it in
+     * the same session returns the changed instance, so an audited service diffs
+     * against {@code storedState}, a copy taken before the change.
+     *
+     * @param baseObject  the changed entity
+     * @param storedState the entity as stored before the change
+     * @return the baseObject as it was saved to the database
+     */
+    default T updateAgainst(T baseObject, T storedState) {
+        return update(baseObject);
+    }
+
+    /**
      * @param baseObjects the new data to update the database with. Must have an id
      *                    parameter
      * @return the baseObjects as they were saved to the database

@@ -228,4 +228,11 @@ public class StringUtilTest {
     public void countInstances_shouldCountOccurrences() {
         assertEquals(3, StringUtil.countInstances("hello world", 'l'));
     }
+
+    @Test
+    public void joinNonBlank_shouldSkipBlankParts() {
+        assertEquals("ID-1, 01/01/1990", StringUtil.joinNonBlank(", ", "ID-1", "", "01/01/1990"));
+        assertEquals("ID-1, F, 01/01/1990", StringUtil.joinNonBlank(", ", " ID-1 ", "F", "01/01/1990"));
+        assertEquals("", StringUtil.joinNonBlank(", ", null, " ", ""));
+    }
 }

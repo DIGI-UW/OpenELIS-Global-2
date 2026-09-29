@@ -19,9 +19,10 @@ import {
   Link,
   Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
 import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { priorities } from "../../../data/orderOptions";
 import {
   forgetRequester,
   readRememberedRequester,
@@ -187,13 +188,9 @@ const RequesterSection = ({
       ? selectedProvider
       : savedProvider;
 
-  // Priority options - must match backend OrderPriority enum
-  const priorityOptions = [
-    { id: "ROUTINE", value: "Routine" },
-    { id: "STAT", value: "STAT (Urgent)" },
-    { id: "ASAP", value: "ASAP" },
-    { id: "TIMED", value: "Timed" },
-  ];
+  const priorityOptions = ["ROUTINE", "STAT", "ASAP", "TIMED"].map((code) =>
+    priorities.find((priority) => priority.value === code),
+  );
 
   // Component mounted tracking
   useEffect(() => {
@@ -345,6 +342,7 @@ const RequesterSection = ({
     setSelectedSite(site);
     setIsSiteLocked(true);
     setSiteResults([]);
+    setSiteSearchTerm(site.organizationName || "");
 
     setOrderData((prev) => ({
       ...prev,
@@ -395,6 +393,7 @@ const RequesterSection = ({
     }
     setSelectedSite({ organizationName: trimmedName, isNew: true });
     setSiteResults([]);
+    setSiteSearchTerm(trimmedName);
 
     setOrderData((prev) => ({
       ...prev,
@@ -487,6 +486,9 @@ const RequesterSection = ({
     setSelectedRequestor(requestor);
     setIsRequestorLocked(true);
     setRequestorResults([]);
+    setRequestorSearchTerm(
+      [requestor.lastName, requestor.firstName].filter(Boolean).join(", "),
+    );
 
     setOrderData((prev) => ({
       ...prev,
@@ -666,6 +668,12 @@ const RequesterSection = ({
     setSelectedProvider(provider);
     setIsProviderLocked(true);
     setProviderResults([]);
+    setProviderSearch((prev) => ({
+      ...prev,
+      name:
+        provider.name ||
+        [provider.lastName, provider.firstName].filter(Boolean).join(", "),
+    }));
 
     // If personId is already in the search results (after backend rebuild), use it directly
     if (provider.personId) {
@@ -930,7 +938,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={new Date().toISOString().split("T")[0]}
+              min={toLocalIsoDate(new Date())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({
@@ -986,7 +994,7 @@ const RequesterSection = ({
               })}
               value={siteSearchTerm}
               onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || effectiveSelectedSite}
+              disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
           </Column>
           <Column lg={5} md={4} sm={4}>
@@ -1006,7 +1014,11 @@ const RequesterSection = ({
               disabled={isReadOnly}
             >
               {priorityOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.value} />
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  text={intl.formatMessage({ id: opt.labelId })}
+                />
               ))}
             </Select>
           </Column>
@@ -1019,7 +1031,9 @@ const RequesterSection = ({
                 size="md"
                 onClick={handleSiteSearch}
                 disabled={
-                  isSearchingSites || isReadOnly || effectiveSelectedSite
+                  isSearchingSites ||
+                  isReadOnly ||
+                  Boolean(effectiveSelectedSite)
                 }
               >
                 <FormattedMessage
@@ -1384,7 +1398,9 @@ const RequesterSection = ({
                   size="md"
                   onClick={() => handleRequestorSearch()}
                   disabled={
-                    isSearchingRequestors || isReadOnly || selectedRequestor
+                    isSearchingRequestors ||
+                    isReadOnly ||
+                    Boolean(selectedRequestor)
                   }
                 >
                   <FormattedMessage
@@ -1396,7 +1412,7 @@ const RequesterSection = ({
                   kind="ghost"
                   size="md"
                   onClick={handleClearRequestorSearch}
-                  disabled={selectedRequestor}
+                  disabled={Boolean(selectedRequestor)}
                 >
                   <FormattedMessage
                     id="label.button.clear"
@@ -1755,7 +1771,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("name", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
             <Column lg={6} md={4} sm={4}>
@@ -1770,7 +1786,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("phone", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
 
@@ -1784,7 +1800,7 @@ const RequesterSection = ({
                   disabled={
                     isSearchingProviders ||
                     isReadOnly ||
-                    effectiveSelectedProvider
+                    Boolean(effectiveSelectedProvider)
                   }
                 >
                   <FormattedMessage

@@ -39,15 +39,17 @@ export const SIGNAL_KEYS = [
   "modified",
   "ackPending",
   "nonconforming",
+  "rangeNotApplied",
 ];
 
 const isTrue = (value) => value === true;
 
+const hasText = (value) => typeof value === "string" && value.trim().length > 0;
+
 export function deriveSignals(row) {
   const source = row || {};
-  const rangeKnown =
-    typeof source.normalRange === "string" &&
-    source.normalRange.trim().length > 0;
+  const rangeNotApplied = hasText(source.rangeNotAppliedReason);
+  const rangeKnown = !rangeNotApplied && hasText(source.normalRange);
   const qcStatus =
     source.qcStatus === QC_PASS
       ? QC_PASS
@@ -61,6 +63,7 @@ export function deriveSignals(row) {
     ackPending: isTrue(source.ackPending),
     nonconforming: isTrue(source.nonconforming),
     critical: isTrue(source.critical),
+    rangeNotApplied,
     rangeKnown,
     inRange: rangeKnown && source.normal === true,
     abnormal: rangeKnown && source.normal === false,
@@ -130,7 +133,9 @@ function dominantSignals(items) {
  * as every reason that applies with its count, in display order. Empty when the
  * button is usable. A row whose test has no reference value in the catalogue is
  * reported as such rather than as a risk, because the fix for it lives in the
- * Test Catalogue, not in the queue.
+ * Test Catalogue, not in the queue; a row whose range was not applied because
+ * the patient's sex or age is missing is reported apart, since its fix is the
+ * patient record.
  */
 export function bulkUnavailableReasons(triaged, { bulkAllowed = true } = {}) {
   const reasons = [];
@@ -146,13 +151,19 @@ export function bulkUnavailableReasons(triaged, { bulkAllowed = true } = {}) {
     return reasons;
   }
   const withReference = items.filter((item) => item.signals.rangeKnown);
-  const noReference = items.filter((item) => !item.signals.rangeKnown);
+  const rangeNotApplied = items.filter((item) => item.signals.rangeNotApplied);
+  const noReference = items.filter(
+    (item) => !item.signals.rangeKnown && !item.signals.rangeNotApplied,
+  );
   if (withReference.length > 0) {
     reasons.push({
       key: "signals",
       count: withReference.length,
       dominant: dominantSignals(withReference),
     });
+  }
+  if (rangeNotApplied.length > 0) {
+    reasons.push({ key: "rangeNotApplied", count: rangeNotApplied.length });
   }
   if (noReference.length > 0) {
     reasons.push({ key: "noReference", count: noReference.length });

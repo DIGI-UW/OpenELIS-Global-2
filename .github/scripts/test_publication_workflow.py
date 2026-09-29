@@ -23,7 +23,7 @@ class PublicationWorkflowTest(unittest.TestCase):
                                           ("fhir.openelis.org", "-fhir"), ("frontend.openelis.org", "-frontend"),
                                           ("proxy", "-proxy")]}
         env = {**os.environ, "DEPLOY_HOST": "testing.example.org", "DEPLOY_USER": "ubuntu", "DEPLOY_PORT": "22",
-               "DOCKERHUB_NAMESPACE": "test-org", "DEPLOY_PATH": "/srv/openelis-docker", "GITHUB_RUN_ID": "123",
+               "DOCKERHUB_NAMESPACE": "test-org", "SITE_PATH": "/srv/openelis-testing", "GITHUB_RUN_ID": "123",
                "GITHUB_RUN_ATTEMPT": "2", "READINESS_URL": "https://testing.example.org/health",
                "READINESS_TIMEOUT": "300", "READINESS_JSON_KEY": "status", "READINESS_EXPECTED": '"UP"',
                "IMAGE_MANIFEST": json.dumps({"appSha": "a" * 40, "appBranch": "develop", "images": images})}
@@ -42,6 +42,7 @@ class PublicationWorkflowTest(unittest.TestCase):
                     self.assertEqual(0, result.returncode, result.stderr)
                     request = json.loads((root / "request.json").read_text())
                     self.assertEqual("test-org", request["dockerhub_namespace"])
+                    self.assertEqual("/srv/openelis-testing", request["deploy_path"])
                     self.assertEqual(images, request["manifest"]["images"])
 
     def test_publication_does_not_require_an_external_workflow_interface(self):

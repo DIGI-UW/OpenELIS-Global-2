@@ -6,8 +6,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.PanelDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultTree;
@@ -22,6 +24,7 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -32,8 +35,8 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,15 +92,23 @@ public class PatientResultTreeService {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
 
+    @Autowired
+    private UserService userService;
+
     @Transactional(readOnly = true)
+
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
-    public List<ResultTree> getResultTree(String patientId) {
+    public List<ResultTree> getResultTree(String patientId, String systemUserId) {
         Patient patient = patientService.get(patientId);
+        Set<String> visibleTestIds = visibleTestIds(systemUserId);
         Map<String, SectionNode> sections = new LinkedHashMap<>();
         Map<String, List<TestResultComponent>> componentsByTest = new LinkedHashMap<>();
 
         for (Result result : resultsForPatient(patientId)) {
             Analysis analysis = result.getAnalysis();
+            if (!isVisible(analysis, visibleTestIds)) {
+                continue;
+            }
             TestSection section = analysis.getTest().getTestSection();
             TypeOfSample sampleType = analysis.getSampleItem() == null ? null
                     : analysis.getSampleItem().getTypeOfSample();
@@ -140,18 +151,20 @@ public class PatientResultTreeService {
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
-    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId) {
+    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId,
+            String systemUserId) {
         Test test = testService.get(testId.trim());
         if (test == null) {
             return null;
         }
+        Set<String> visibleTestIds = visibleTestIds(systemUserId);
         Patient patient = patientService.get(patientId);
         Map<String, List<TestResultComponent>> componentsByTest = new LinkedHashMap<>();
         Map<String, PanelNode> panels = new LinkedHashMap<>();
 
         for (Result result : resultsForPatient(patientId)) {
             Analysis analysis = result.getAnalysis();
-            if (!test.getId().equals(analysis.getTest().getId())) {
+            if (!test.getId().equals(analysis.getTest().getId()) || !isVisible(analysis, visibleTestIds)) {
                 continue;
             }
             TypeOfSample sampleType = analysis.getSampleItem() == null ? null
@@ -177,6 +190,32 @@ public class PatientResultTreeService {
         panelDisplay.setDisplay(test.getLocalizedName());
         panelDisplay.setSubSets(testDisplays);
         return panelDisplay;
+    }
+
+    /**
+     * The tests whose results the reader may see here, or {@code null} when the
+     * whole lab is theirs.
+     *
+     * <p>
+     * Patient History is read from the patient's record, which is Reception's
+     * screen, so it is scoped by the reader's Reception lab units the way the
+     * incoming orders list is. It used to show every result the patient had,
+     * whichever lab unit produced it.
+     */
+    private Set<String> visibleTestIds(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)
+                || userService.hasAllLabUnits(systemUserId, Constants.ROLE_RECEPTION)) {
+            return null;
+        }
+        return userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_RECEPTION);
+    }
+
+    /** A result belongs to the reader when its test is one of theirs. */
+    private boolean isVisible(Analysis analysis, Set<String> visibleTestIds) {
+        if (visibleTestIds == null) {
+            return true;
+        }
+        return analysis.getTest() != null && visibleTestIds.contains(analysis.getTest().getId());
     }
 
     /**

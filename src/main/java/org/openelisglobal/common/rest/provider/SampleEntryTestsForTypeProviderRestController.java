@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.domain.Domain;
@@ -23,6 +25,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.program.service.ProgramPickerRules;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.qc.dao.TestQcThresholdDAO;
@@ -36,13 +39,16 @@ import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -61,13 +67,15 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private final TestQcThresholdDAO testQcThresholdDAO;
     private final TestService testService;
     private final MicrobiologyReferenceService microbiologyReferenceService;
+    private final TypeOfSampleTestService typeOfSampleTestService;
 
     public SampleEntryTestsForTypeProviderRestController(PanelService panelService,
             TestSectionService testSectionService, TypeOfSamplePanelService samplePanelService,
             PanelItemService panelItemService, TypeOfSampleService typeOfSampleService, UserService userService,
             RoleService roleService, ProgramService programService, TestMethodService testMethodService,
             TestQcThresholdDAO testQcThresholdDAO, TestService testService,
-            MicrobiologyReferenceService microbiologyReferenceService) {
+            MicrobiologyReferenceService microbiologyReferenceService,
+            TypeOfSampleTestService typeOfSampleTestService) {
         this.panelService = panelService;
         this.testSectionService = testSectionService;
         this.samplePanelService = samplePanelService;
@@ -80,32 +88,14 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         this.testQcThresholdDAO = testQcThresholdDAO;
         this.testService = testService;
         this.microbiologyReferenceService = microbiologyReferenceService;
+        this.typeOfSampleTestService = typeOfSampleTestService;
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    /**
-     * The orderable tests and panels for a sample type — what the order-entry
-     * screen's test picker reads.
-     *
-     * <p>
-     * Gated as the caller. Building this list crosses sample types, panels, panel
-     * items, test methods, test sections, programmes and microbiology culture
-     * setups; every one of those reads accepts {@code PRIV_CATALOGUE_VIEW}, which
-     * each order-entry role holds. It used to run in system context instead,
-     * because those reads were gated on administrative privileges
-     * ({@code result:view}, {@code test:configure}, {@code micro:view}) that
-     * Reception has no business holding, so the only way to show a test picker was
-     * to bypass authorization entirely.
-     *
-     * <p>
-     * This is the test CATALOGUE, not patient or result data, and the response is
-     * further narrowed to the caller's own test sections by
-     * {@code getUserTestSections}. Who may actually place an order remains gated on
-     * the order-creation services this does not touch.
-     */
     public ResponseEntity<Object> processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         String sampleType = request.getParameter("sampleType");
         if (GenericValidator.isBlankOrNull(sampleType)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleType is required");
@@ -138,9 +128,6 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Gated as the caller: getUserSampleTypes is scoped to the caller's own
-        // assignments by its systemUserId argument and getAllTypeOfSamples is the
-        // sample-type catalogue. Both accept PRIV_CATALOGUE_VIEW.
         List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
         java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
                 .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
@@ -157,8 +144,6 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEnvironmentalSampleTypes() {
-        // A catalogue read: TypeOfSampleService now accepts catalogue:view, so the
-        // sample-type dropdown is gated rather than bypassed.
         return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
                 .stream().filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
@@ -168,23 +153,39 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @GetMapping(value = "vector-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getVectorSampleTypes() {
-        // Same as getEnvironmentalSampleTypes, a catalogue read.
         return typeOfSampleService
                 .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.VECTOR).stream()
                 .filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
+    /**
+     * Programs the current reception user may file an order under. OGC-781 FR-6:
+     * deactivated programs are never offered, and when the order's {@code domain}
+     * is given (enum name or legacy one-letter code) only programs of that domain
+     * are returned. Without a domain every active program is offered.
+     */
     public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // The caller's own programme assignments, with each programme's code resolved
-        // from the catalogue. Both reads accept PRIV_CATALOGUE_VIEW.
-        return userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION).stream().map(option -> {
+        return getUserSPrograms(request, response, null);
+    }
+
+    @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<ProgramOption> getUserSPrograms(HttpServletRequest request, HttpServletResponse response,
+            @RequestParam(value = "domain", required = false) String domain) throws ServletException, IOException {
+        Domain orderDomain = Domain.fromRaw(domain);
+        List<ProgramOption> options = new ArrayList<>();
+        for (IdValuePair option : userService.getUserPrograms(getSysUserId(request), Constants.ROLE_RECEPTION)) {
             Program program = programService.get(option.getId());
-            return program == null ? null : new ProgramOption(option.getId(), option.getValue(), program.getCode());
-        }).filter(java.util.Objects::nonNull).toList();
+            if (program == null || !ProgramPickerRules.isActive(program)
+                    || !ProgramPickerRules.offerableForDomain(program, orderDomain)) {
+                continue;
+            }
+            options.add(new ProgramOption(option.getId(), option.getValue(), program.getCode(),
+                    Domain.normalize(program.getDomain())));
+        }
+        return options;
     }
 
     private SampleEntryTests createSearchResult(String sampleType, List<String> testUnitIds) {
@@ -192,36 +193,41 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         List<Test> tests = new ArrayList<>(
                 typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true, testUnitIds));
 
-        Collections.sort(tests, new Comparator<Test>() {
-
-            @Override
-            public int compare(Test t1, Test t2) {
-                if (GenericValidator.isBlankOrNull(t1.getSortOrder())
-                        || GenericValidator.isBlankOrNull(t2.getSortOrder())) {
-                    return localizedTestName(t1).compareTo(localizedTestName(t2));
-                }
-
-                try {
-                    int t1Sort = Integer.parseInt(t1.getSortOrder());
-                    int t2Sort = Integer.parseInt(t2.getSortOrder());
-
-                    if (t1Sort > t2Sort) {
-                        return 1;
-                    } else if (t1Sort < t2Sort) {
-                        return -1;
-                    } else {
-                        return 0;
-                    }
-
-                } catch (NumberFormatException e) {
-                    return localizedTestName(t1).compareTo(localizedTestName(t2));
-                }
-            }
-        });
+        tests.sort(orderEntryComparator(sampleType));
 
         List<TypeOfSamplePanel> panelList = getPanelList(sampleType);
         List<PanelTestMap> panelMap = linkTestsToPanels(panelList, tests);
         return new SampleEntryTests(StringUtil.snipToMaxIdLength(sampleType), addPanels(panelMap), addTests(tests));
+    }
+
+    /**
+     * The order a sample type's tests are offered in: the position set on the Test
+     * Catalog's Display Order for this sample type (sampletype_test.display_order),
+     * then the legacy global test sort order, then the name. Tests without a value
+     * at a step sort after those with one.
+     */
+    Comparator<Test> orderEntryComparator(String sampleType) {
+        Map<String, Integer> displayOrderByTestId = new HashMap<>();
+        for (TypeOfSampleTest junction : typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleType)) {
+            if (junction.getDisplayOrder() != null) {
+                displayOrderByTestId.put(junction.getTestId(), junction.getDisplayOrder());
+            }
+        }
+        Comparator<Integer> nullsLast = Comparator.nullsLast(Comparator.naturalOrder());
+        return Comparator.<Test, Integer>comparing(test -> displayOrderByTestId.get(test.getId()), nullsLast)
+                .thenComparing(test -> parseSortOrder(test.getSortOrder()), nullsLast)
+                .thenComparing(this::localizedTestName);
+    }
+
+    private static Integer parseSortOrder(String sortOrder) {
+        if (GenericValidator.isBlankOrNull(sortOrder)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(sortOrder.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private ArrayList<TestMap> addTests(List<Test> tests) {
@@ -302,15 +308,17 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         List<PanelTestMap> selected = new ArrayList<>();
 
         Map<String, String> testIdsByName = new HashMap<>();
+        Set<String> sampleTypeTestIds = new HashSet<>();
 
         for (Test test : tests) {
             testIdsByName.put(localizedTestName(test), test.getId());
+            sampleTypeTestIds.add(test.getId());
         }
 
         for (TypeOfSamplePanel samplePanel : panelList) {
             Panel panel = panelService.getPanelById(samplePanel.getPanelId());
             if ("Y".equals(panel.getIsActive())) {
-                String matchTests = getTestIdsForPanel(samplePanel.getPanelId(), testIdsByName, panelItemService);
+                String matchTests = getTestIdsForPanel(samplePanel.getPanelId(), testIdsByName, sampleTypeTestIds);
                 if (!GenericValidator.isBlankOrNull(matchTests)) {
                     int panelOrder = panelService.getPanelById(samplePanel.getPanelId()).getSortOrderInt();
                     selected.add(new PanelTestMap(samplePanel.getPanelId(), panelOrder, panel.getLocalizedName(),
@@ -322,14 +330,19 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return selected;
     }
 
+    /**
+     * The panel's members that can be ordered on this sample type. Membership is
+     * checked by test id, so a member that shares its name with another test on the
+     * same sample type is still part of the panel.
+     */
     private String getTestIdsForPanel(String panelId, Map<String, String> testIdsByName,
-            PanelItemService panelItemService) {
+            Set<String> sampleTypeTestIds) {
         StringBuilder testIds = new StringBuilder();
         List<PanelItem> items = panelItemService.getPanelItemsForPanel(panelId);
 
         for (PanelItem item : items) {
             String testId = item.getTest() == null ? testIdsByName.get(item.getTestName()) : item.getTest().getId();
-            if (testId != null && testIdsByName.containsValue(testId)) {
+            if (testId != null && sampleTypeTestIds.contains(testId)) {
                 testIds.append(testId).append(",");
             }
         }
@@ -575,11 +588,21 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         private final String id;
         private final String value;
         private final String code;
+        private final String domain;
 
         public ProgramOption(String id, String value, String code) {
+            this(id, value, code, null);
+        }
+
+        public ProgramOption(String id, String value, String code, String domain) {
             this.id = id;
             this.value = value;
             this.code = code;
+            this.domain = domain;
+        }
+
+        public String getDomain() {
+            return domain;
         }
 
         public String getId() {

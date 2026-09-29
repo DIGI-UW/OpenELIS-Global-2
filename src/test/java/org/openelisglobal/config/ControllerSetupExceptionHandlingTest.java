@@ -2,6 +2,7 @@ package org.openelisglobal.config;
 
 import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,10 +10,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.coldstorage.controller.FreezerMonitoringExceptionHandler;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -27,8 +32,17 @@ import org.springframework.web.bind.annotation.RestController;
  */
 public class ControllerSetupExceptionHandlingTest {
 
+    static class PriorityForm {
+        public OrderPriority priority;
+    }
+
     @RestController
     static class ThrowingController {
+
+        @PostMapping("/priority")
+        public String priority(@RequestBody PriorityForm form) {
+            return form.priority.name();
+        }
 
         @GetMapping("/denied")
         public String denied() {
@@ -70,6 +84,19 @@ public class ControllerSetupExceptionHandlingTest {
     public void limsRuntimeException_still500() throws Exception {
         mockMvc.perform(get("/invalid")).andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(500));
+    }
+
+    @Test
+    public void unreadableBody_answers400WithATranslatableMessageKey() throws Exception {
+        mockMvc.perform(post("/priority").contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"Routine\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.messageKey").value("error.request.unreadable"));
+    }
+
+    @Test
+    public void readableBody_isNotRefused() throws Exception {
+        mockMvc.perform(post("/priority").contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"ROUTINE\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test

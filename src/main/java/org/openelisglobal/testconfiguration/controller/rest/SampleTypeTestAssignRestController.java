@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 import javax.validation.Valid;
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.spring.util.SpringContext;
@@ -21,6 +20,8 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -106,13 +107,13 @@ public class SampleTypeTestAssignRestController extends BaseController {
     }
 
     @PostMapping(value = "/SampleTypeTestAssign")
-    public SampleTypeTestAssignForm postSampleTypeTestAssign(HttpServletRequest request,
+    public ResponseEntity<?> postSampleTypeTestAssign(HttpServletRequest request,
             @RequestBody @Valid SampleTypeTestAssignForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
         String testId = form.getTestId();
         String sampleTypeId = form.getSampleTypeId();
@@ -130,7 +131,7 @@ public class SampleTypeTestAssignRestController extends BaseController {
         // they are moving it from
         if (sampleTypeId.equals(deactivateSampleTypeId)) {
             // return findForward(FWD_SUCCESS_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         }
 
         List<TypeOfSampleTest> typeOfSampleTestOld = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId);
@@ -166,7 +167,7 @@ public class SampleTypeTestAssignRestController extends BaseController {
             sampleTypeTestAssignService.update(typeOfSample, testId, typeOfSamplesTestID, sampleTypeId,
                     deleteExistingTypeOfSampleTest, updateTypeOfSample, deActivateTypeOfSample, systemUserId);
         } catch (HibernateException e) {
-            LogEvent.logError(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
@@ -174,6 +175,6 @@ public class SampleTypeTestAssignRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 }

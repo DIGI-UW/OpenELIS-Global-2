@@ -12,6 +12,8 @@ import {
   Pagination,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { serverPageArrowsProps } from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 
 const SEVERITY_TAG_MAP = {
   CRITICAL: "red",
@@ -33,6 +35,16 @@ const AlertsTable = ({
   onAcknowledge,
 }) => {
   const intl = useIntl();
+
+  // The endpoint pages by page + pageSize, so the arrows above the table and
+  // Carbon's pagination below it move through the same pages.
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page + 1,
+      totalPages: Math.max(Math.ceil((totalCount || 0) / (pageSize || 1)), 1),
+    },
+    onPageRequest: (pageNumber) => onPageChange(pageNumber - 1, pageSize),
+  });
 
   const headers = [
     {
@@ -88,6 +100,7 @@ const AlertsTable = ({
 
   return (
     <>
+      {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable rows={rows} headers={headers}>
         {({
           rows: tableRows,

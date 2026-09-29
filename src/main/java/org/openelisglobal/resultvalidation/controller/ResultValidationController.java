@@ -160,7 +160,8 @@ public class ResultValidationController extends BaseResultValidationController {
 
             // load testSections for drop down
             String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId());
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request),
+                    resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
@@ -374,6 +375,10 @@ public class ResultValidationController extends BaseResultValidationController {
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        // This legacy endpoint finalizes analyses exactly like the REST save, so it
+        // takes the same QC hold.
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
+
         List<String> analysisIdList = new ArrayList<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
@@ -384,7 +389,10 @@ public class ResultValidationController extends BaseResultValidationController {
 
                 if (!analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    if (analysisItem.getIsAccepted() && blocked.contains(analysis.getId())) {
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    } else if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));

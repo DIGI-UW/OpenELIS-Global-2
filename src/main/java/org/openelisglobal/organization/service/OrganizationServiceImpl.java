@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -108,6 +109,9 @@ public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Orga
         if (organization.getIsActive().equals(IActionConstants.YES)
                 && getBaseObjectDAO().duplicateOrganizationExists(organization)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + organization.getOrganizationName());
+        }
+        if (organization.getFhirUuid() == null) {
+            organization.setFhirUuid(UUID.randomUUID());
         }
         return super.insert(organization);
     }

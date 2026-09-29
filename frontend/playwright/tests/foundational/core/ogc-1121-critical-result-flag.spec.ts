@@ -1,8 +1,6 @@
-import { test, expect, Page } from "../../../helpers/test-base";
-import {
-  SettingsMenu,
-  SiteInformationPage,
-} from "../../../fixtures/esig-admin";
+import { Page } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import { isSettingOn, setSetting } from "../../../fixtures/esig-admin";
 import { createSampleOrder } from "../../../helpers/seed-tat-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -134,26 +132,6 @@ async function createTestWithCriticalRange(page: Page): Promise<CriticalTest> {
     "critical-range test setup must succeed",
   ).toBeUndefined();
   return { testId: result.testId as string, name };
-}
-
-// The unified-route flag lives in the result configuration domain, the
-// e-signature flag in site identity; each is edited on its own admin menu.
-const SETTING_MENU: Record<string, SettingsMenu> = {
-  [UNIFIED_ROUTE_SETTING]: "ResultConfigurationMenu",
-  [ESIG_SETTING]: "SiteInformationMenu",
-};
-
-async function isSettingOn(page: Page, setting: string): Promise<boolean> {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  const value = await menu.getSettingValue(setting);
-  return /true/i.test(value);
-}
-
-async function setSetting(page: Page, setting: string, on: boolean) {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  await menu.setBooleanSetting(setting, on);
 }
 
 async function orderTest(page: Page, testId: string): Promise<string> {

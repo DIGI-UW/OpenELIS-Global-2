@@ -89,4 +89,36 @@ describe("Admin", () => {
       "/MasterListsPage/userManagement",
     );
   });
+
+  test("the stuck analyzer events tile stays inside the admin route family", () => {
+    // Opening it from the admin shell must not drop the reader back to the
+    // main navigation, so it has an admin route of its own.
+    render(
+      <MemoryRouter initialEntries={["/MasterListsPage"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <AdminDashboard basePath="/MasterListsPage" />
+          <Route
+            path="*"
+            render={({ location }) => (
+              <span data-testid="current-path">{location.pathname}</span>
+            )}
+          />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const tile = screen
+      .getByText(messages["analyzer.importIssues.events.title"])
+      .closest("a");
+    expect(tile).toHaveAttribute(
+      "href",
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
+
+    fireEvent.click(tile);
+
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
+  });
 });

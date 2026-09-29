@@ -27,6 +27,8 @@ import org.openelisglobal.testconfiguration.validator.TestActivationFormValidato
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,14 +141,14 @@ public class TestActivationRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestActivation")
-    public TestActivationForm postTestActivation(HttpServletRequest request,
-            @RequestBody @Valid TestActivationForm form, BindingResult result) throws ParseException {
+    public ResponseEntity<?> postTestActivation(HttpServletRequest request, @RequestBody @Valid TestActivationForm form,
+            BindingResult result) throws ParseException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String changeList = form.getJsonChangeList();
@@ -168,7 +170,7 @@ public class TestActivationRestController extends BaseController {
         try {
             testActivationService.updateAll(deactivateTests, activateTests, deactivateSampleTypes, activateSampleTypes);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         List<TestActivationBean> activeTestList = createTestList(true, true);
@@ -177,7 +179,7 @@ public class TestActivationRestController extends BaseController {
         form.setInactiveTestList(inactiveTestList);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private List<Test> getDeactivatedTests(List<String> testIds) {

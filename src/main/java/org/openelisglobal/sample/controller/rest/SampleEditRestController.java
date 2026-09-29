@@ -20,6 +20,7 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleOrderService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -116,6 +117,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private SampleEditService sampleEditService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
 
     @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -153,6 +156,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 setAddableTestInfo(form, sampleItemList, accessionNumber);
                 setAddableSampleTypes(form, request);
                 setSampleOrderInfo(form, sample);
+                form.setSampleLastupdated(StaleSaveGuard.token(sample.getLastupdated()));
                 form.setAbleToCancelResults(hasResults(currentTestList, allowedToCancelResults));
                 String maxAccessionNumber;
                 if (sampleItemList.size() > 0) {
@@ -218,6 +222,10 @@ public class SampleEditRestController extends BaseSampleEntryController {
     public ResponseEntity<?> saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        Sample stored = getSample(form.getAccessionNumber());
+        if (stored != null && StaleSaveGuard.isStale(form.getSampleLastupdated(), stored.getLastupdated())) {
+            return staleSaveGuard.conflict("error.order.staleSave", "SAMPLE", stored.getId(), stored.getLastupdated());
+        }
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);

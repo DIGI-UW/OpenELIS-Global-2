@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ShippingBoxService {
 
@@ -15,7 +14,6 @@ public interface ShippingBoxService {
      *
      * @return List of active shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getAllActiveBoxes();
 
     /**
@@ -23,7 +21,6 @@ public interface ShippingBoxService {
      *
      * @return List of outbound shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getActiveOutboundBoxes();
 
     /**
@@ -31,7 +28,6 @@ public interface ShippingBoxService {
      *
      * @return List of incoming shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getIncomingBoxes();
 
     /**
@@ -40,7 +36,6 @@ public interface ShippingBoxService {
      * @param id Box ID
      * @return ShippingBox or null if not found
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxById(Integer id);
 
     /**
@@ -49,7 +44,6 @@ public interface ShippingBoxService {
      * @param boxId Box identifier string
      * @return ShippingBox or null if not found
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxByBoxId(String boxId);
 
     /**
@@ -58,7 +52,6 @@ public interface ShippingBoxService {
      * @param fhirUuid FHIR resource UUID
      * @return ShippingBox or null if not found
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxByFhirUuid(UUID fhirUuid);
 
     /**
@@ -67,8 +60,18 @@ public interface ShippingBoxService {
      * @param state Box state
      * @return List of shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByState(BoxState state);
+
+    /**
+     * Get the boxes distributing one EQA cycle's panel material, each with its
+     * shipment already loaded. Destination facilities are deliberately left lazy:
+     * the EQA workbench names participants from its own enrollment rows, which it
+     * needs whether or not a box exists yet.
+     *
+     * @param eqaCycleId EQA cycle id
+     * @return List of shipping boxes
+     */
+    List<ShippingBox> getBoxesByEqaCycle(Long eqaCycleId);
 
     /**
      * Get shipping boxes by destination facility
@@ -76,7 +79,6 @@ public interface ShippingBoxService {
      * @param facilityId Destination facility ID
      * @return List of shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByDestinationFacility(Integer facilityId);
 
     /**
@@ -86,7 +88,6 @@ public interface ShippingBoxService {
      * @param endDate   End date
      * @return List of shipping boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByCreatedDateRange(Timestamp startDate, Timestamp endDate);
 
     /**
@@ -95,7 +96,6 @@ public interface ShippingBoxService {
      * @param box ShippingBox to create
      * @return Created ShippingBox with ID
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox createBox(ShippingBox box);
 
     /**
@@ -104,7 +104,6 @@ public interface ShippingBoxService {
      * @param box ShippingBox to update
      * @return Updated ShippingBox
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox updateBox(ShippingBox box);
 
     /**
@@ -113,7 +112,6 @@ public interface ShippingBoxService {
      * @param id           Box ID
      * @param systemUserId System user ID for audit trail
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     void deleteBox(Integer id, Integer systemUserId);
 
     /**
@@ -124,18 +122,18 @@ public interface ShippingBoxService {
      * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId);
 
     /**
-     * Mark box as ready to send (validates box has at least one sample)
+     * Mark box as ready to send (validates the box holds at least one item of
+     * contents — a patient sample item or EQA panel material)
      *
-     * @param id Box ID
+     * @param id           Box ID
+     * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      * @throws IllegalStateException if box is empty
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
-    ShippingBox markReadyToSend(Integer id);
+    ShippingBox markReadyToSend(Integer id, Integer systemUserId);
 
     /**
      * Get boxes for dashboard with sample counts and metadata Services MUST compile
@@ -143,7 +141,6 @@ public interface ShippingBoxService {
      *
      * @return List of box data as Maps
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<Map<String, Object>> getBoxesForDashboard();
 
     /**
@@ -152,6 +149,5 @@ public interface ShippingBoxService {
      * @param state Box state
      * @return Count of boxes
      */
-    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     int countBoxesByState(BoxState state);
 }

@@ -1,45 +1,50 @@
 package org.openelisglobal.eqa.service;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
-import org.springframework.security.access.prepost.PreAuthorize;
 
-/**
- * Inherited CRUD is gated the same way this interface's own methods are:
- * eqa:view to read, eqa:manage to write.
- *
- * <p>
- * Without this, {@link org.openelisglobal.common.security.CrudGate} found
- * neither a {@code @CrudPrivileges} nor a type-level {@code @PreAuthorize} here
- * and fell through to its open branch, so getAll/insert/update/delete were
- * callable by any authenticated user while the declared finders were correctly
- * refused. The EQA REST controllers carry no gates of their own and call that
- * inherited CRUD directly, so the hole was reachable in production. See
- * {@code EQAProgramService} for the case that was verified live, and
- * {@code EqaModuleAccessTest}.
- */
 @CrudPrivileges(read = "PRIV_EQA_VIEW", write = "PRIV_EQA_MANAGE")
 public interface EQALabProgramEnrollmentService extends BaseObjectService<EQALabProgramEnrollment, Long> {
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
+    /**
+     * The three spellings the provider side already uses on eqa_program_enrollment.
+     */
+    String STATUS_ACTIVE = "Active";
+
+    String STATUS_SUSPENDED = "Suspended";
+
+    String STATUS_WITHDRAWN = "Withdrawn";
+
     List<EQALabProgramEnrollment> findAll();
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     List<EQALabProgramEnrollment> findActiveEnrollments();
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
+    /**
+     * @param testAnalytes which analyte each mapped test reports for this scheme,
+     *                     keyed by test id (qa/030). Optional, but a test with no
+     *                     analyte cannot be submitted automatically — see
+     *                     {@link EQACycleSubmissionService}.
+     */
     EQALabProgramEnrollment createEnrollment(EQALabProgramEnrollment enrollment, List<Long> labUnitIds,
-            List<Long> testIds, List<Long> panelIds);
+            List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes);
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     EQALabProgramEnrollment updateEnrollment(Long id, EQALabProgramEnrollment updated, List<Long> labUnitIds,
-            List<Long> testIds, List<Long> panelIds);
+            List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes);
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
+    /**
+     * Moves an enrolment between Active, Suspended and Withdrawn. Withdrawn is
+     * terminal, as it is for a provider's enrolment: a laboratory that comes back
+     * enrols again. The reason and the effective date are both required, and the
+     * prior status, the user and the time are written to the audit history.
+     */
+    EQALabProgramEnrollment updateStatus(Long id, String newStatus, String reason, Date effectiveDate,
+            String sysUserId);
+
     void softDelete(Long id);
 
-    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     List<String> getDistinctProviders();
 }

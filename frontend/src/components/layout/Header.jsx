@@ -16,10 +16,10 @@ import HelpMenu from "./HelpMenu";
 import AdminSideNav from "../admin/AdminSideNav";
 import React, { createRef, useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation, useHistory } from "react-router-dom";
-import { useMenuAutoExpand } from "./useMenuAutoExpand";
+import ConfiguredSideNav from "./ConfiguredSideNav";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
+import "./ApplicationSideNav.scss";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
 import { languages as defaultLanguages } from "../../languages";
@@ -32,8 +32,6 @@ import {
   HeaderPanel,
   SideNav,
   SideNavItems,
-  SideNavMenu,
-  SideNavMenuItem,
   Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
@@ -55,7 +53,6 @@ function OEHeader({
   toggleNavPinned,
   toggleSideNav,
   closeSideNav,
-  storageKeyPrefix = "main",
   navContext = "main",
   showSideNav = true,
 }) {
@@ -71,8 +68,6 @@ function OEHeader({
   const headerPanelRef = createRef();
 
   const intl = useIntl();
-  const location = useLocation();
-  const history = useHistory();
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -80,12 +75,6 @@ function OEHeader({
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
-
-  // Auto-expand menu items based on current route
-  const autoExpandedMenus = useMenuAutoExpand(
-    menus["menu"],
-    `${storageKeyPrefix}ExpandedMap`,
-  );
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -830,12 +819,10 @@ function OEHeader({
               </ul>
             </HeaderPanel>
             {userSessionDetails.authenticated && showSideNav && (
-              <>
+              <Theme theme="white">
                 <SideNav
                   aria-label="Side navigation"
-                  className={
-                    navContext === "admin" ? "admin-shell-side-nav" : undefined
-                  }
+                  className={`application-side-nav${navContext === "admin" ? " admin-shell-side-nav" : ""}`}
                   expanded={navOpen}
                   // Pinned desktop: always-rendered fixed nav;
                   // unpinned desktop + small viewports: overlay drawer
@@ -873,19 +860,17 @@ function OEHeader({
                     />
                   ) : (
                     <SideNavItems>
-                      {autoExpandedMenus.map((childMenuItem, index) => {
-                        return generateMenuItems(
-                          childMenuItem,
-                          index,
-                          0,
-                          "$.menu[" + index + "]",
-                          null, // Top level items have no parent siblings
-                        );
-                      })}
+                      <ConfiguredSideNav
+                        menus={menus.menu}
+                        unifiedResultsOn={
+                          configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE ===
+                          "true"
+                        }
+                      />
                     </SideNavItems>
                   )}
                 </SideNav>
-              </>
+              </Theme>
             )}
           </Header>
           {userSessionDetails.authenticated && (

@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import isEqual from "lodash-es/isEqual";
 
 const hasMessage = (intl, id) =>
   Boolean(id) && Object.prototype.hasOwnProperty.call(intl.messages, id);
@@ -35,7 +36,7 @@ export const initializeConnectionValues = (fields = []) =>
   );
 
 const conditionIncludes = (expected, actual) =>
-  Array.isArray(expected) && expected.some((value) => value === actual);
+  Array.isArray(expected) && expected.some((value) => isEqual(value, actual));
 
 export const isConnectionFieldVisible = (
   field,
@@ -64,13 +65,16 @@ export const isConnectionFieldVisible = (
   const actual = values[condition.fieldKey];
   switch (condition.operator) {
     case "EQUALS":
-      return actual === condition.value;
+      return isEqual(actual, condition.value);
     case "NOT_EQUALS":
-      return actual !== condition.value;
+      return !isEqual(actual, condition.value);
     case "IN":
       return conditionIncludes(condition.value, actual);
     case "NOT_IN":
-      return !conditionIncludes(condition.value, actual);
+      return (
+        Array.isArray(condition.value) &&
+        !conditionIncludes(condition.value, actual)
+      );
     default:
       return false;
   }
@@ -123,7 +127,10 @@ export const serializeConnectionValues = (
         }
         return;
       }
-      serialized[field.key] = typeof value === "string" ? value.trim() : value;
+      serialized[field.key] =
+        typeof value === "string" && field.inputKind !== "SELECT"
+          ? value.trim()
+          : value;
     });
   return serialized;
 };
@@ -177,18 +184,27 @@ const AnalyzerConnectionFields = ({
           };
 
           if (field.inputKind === "SELECT") {
+            const choices = field.choices || [];
+            const selectedIndex = choices.findIndex((choice) =>
+              isEqual(choice.value, values[field.key]),
+            );
+            // DOM option values are strings; indexes preserve the profile's JSON
+            // values, including distinct choices such as false and "false".
             return (
               <Select
                 {...common}
                 key={field.key}
                 labelText={label}
                 helperText={helperText}
-                value={values[field.key] ?? ""}
-                onChange={(event) => onChange(field, event.target.value)}
+                value={selectedIndex < 0 ? "" : String(selectedIndex)}
+                onChange={(event) => {
+                  const choice = choices[Number(event.target.value)];
+                  if (event.target.value !== "" && choice) {
+                    onChange(field, choice.value);
+                  }
+                }}
               >
-                {(values[field.key] === "" ||
-                  values[field.key] === null ||
-                  values[field.key] === undefined) && (
+                {selectedIndex < 0 && (
                   <SelectItem
                     disabled
                     value=""
@@ -197,10 +213,10 @@ const AnalyzerConnectionFields = ({
                     })}
                   />
                 )}
-                {(field.choices || []).map((choice) => (
+                {choices.map((choice, index) => (
                   <SelectItem
-                    key={choice.value}
-                    value={choice.value}
+                    key={index}
+                    value={String(index)}
                     text={
                       hasMessage(intl, choice.labelKey)
                         ? intl.formatMessage({ id: choice.labelKey })

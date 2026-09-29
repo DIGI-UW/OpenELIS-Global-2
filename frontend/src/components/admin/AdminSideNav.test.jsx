@@ -368,4 +368,52 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       container.querySelector('[data-cy="labUnitManagement"]').textContent,
     ).toBe("Lab Units Editor");
   });
+
+  it("offers no sections to pick from on the catalog import screen", () => {
+    // Importing a file edits no single record, so the greyed list that tells a
+    // reader to click a test would be an instruction the page cannot honour.
+    mockLocation = { pathname: "/MasterListsPage/CatalogImport", search: "" };
+    const { container } = renderNav();
+
+    expect(container.querySelectorAll('[aria-disabled="true"]')).toHaveLength(
+      0,
+    );
+    expect(
+      screen.queryByText(
+        messages["sidenav.label.admin.testCatalog.sectionsHelper"],
+      ),
+    ).not.toBeInTheDocument();
+    V1_SECTIONS.forEach((sectionKey) => {
+      expect(
+        container.querySelector(`[data-cy="section-${sectionKey}"]`),
+      ).toBeNull();
+    });
+    // The entity links the screen is reached from stay in place.
+    expect(container.querySelector('[data-cy="catalogImport"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-cy="testCatalogList"]'),
+    ).not.toBeNull();
+  });
+
+  it("keeps the stuck analyzer events inside the admin route family", () => {
+    // Every item in this nav stays in the admin shell; a link out would swap
+    // the whole navigation underneath the reader.
+    mockLocation = { pathname: "/MasterListsPage", search: "" };
+    const { container } = renderNav();
+
+    const link = container.querySelector('[data-cy="stuckAnalyzerEvents"]');
+    expect(link).toHaveAttribute(
+      "href",
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
+    expect(
+      Array.from(container.querySelectorAll("a[href]")).filter(
+        (a) =>
+          !a.getAttribute("href").startsWith("/MasterListsPage") &&
+          !a.getAttribute("href").startsWith("/admin") &&
+          a.getAttribute("target") !== "_blank" &&
+          a.getAttribute("href") !== "/Dashboard",
+      ),
+    ).toHaveLength(0);
+  });
 });

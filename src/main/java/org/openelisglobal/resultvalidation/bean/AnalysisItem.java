@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.resultvalidation.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -191,6 +192,14 @@ public class AnalysisItem implements Serializable {
 
     private boolean nonconforming = false;
 
+    /**
+     * The QC-fail signal (OGC-1147): a control covering this analysis failed and
+     * the resulting non-conformity is still open. Distinct from
+     * {@link #nonconforming}, which is a sample-level QA event — this one is about
+     * the run's quality control.
+     */
+    private boolean qcHold = false;
+
     private String pastNotes;
 
     private String qualifiedDictionaryId;
@@ -234,6 +243,8 @@ public class AnalysisItem implements Serializable {
     private boolean clear = false;
 
     private String criticalRange;
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
 
     private String enteredBy;
 
@@ -813,6 +824,14 @@ public class AnalysisItem implements Serializable {
         this.nonconforming = nonconforming;
     }
 
+    public boolean isQcHold() {
+        return qcHold;
+    }
+
+    public void setQcHold(boolean qcHold) {
+        this.qcHold = qcHold;
+    }
+
     public String getInnoliaResult() {
         return innoliaResult;
     }
@@ -1147,5 +1166,18 @@ public class AnalysisItem implements Serializable {
 
     public void setExpandedUncertainty(String expandedUncertainty) {
         this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
+    }
+
+    @JsonIgnore
+    public boolean isRangeNotApplied() {
+        return rangeNotAppliedReason != null;
     }
 }

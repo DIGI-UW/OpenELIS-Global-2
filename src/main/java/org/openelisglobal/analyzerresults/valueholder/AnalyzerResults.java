@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import java.util.Set;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -95,6 +96,9 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
     public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
+            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;

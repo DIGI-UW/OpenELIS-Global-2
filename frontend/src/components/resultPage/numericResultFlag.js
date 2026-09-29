@@ -22,7 +22,11 @@ const isBound = (bound) =>
 const outsidePair = (numeric, low, high) => {
   const lower = Number(low);
   const upper = Number(high);
-  return lower !== upper && (numeric < lower || numeric > upper);
+  if (lower === upper) {
+    return false;
+  }
+  const upperOpen = upper === 0 && lower > 0;
+  return numeric < lower || (!upperOpen && numeric > upper);
 };
 
 export function classifyNumericResult(value, row) {

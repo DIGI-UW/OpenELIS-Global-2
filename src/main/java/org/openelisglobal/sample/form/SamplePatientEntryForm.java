@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
@@ -34,6 +35,12 @@ public class SamplePatientEntryForm extends BaseForm {
     }
 
     private Boolean rememberSiteAndRequester;
+
+    /**
+     * Set on a successful save: tests on the order whose reference range will not
+     * be applied because the patient's sex or birth date is missing.
+     */
+    private List<String> rangeNotAppliedTests = new ArrayList<>();
 
     @ValidDate(relative = DateRelation.TODAY, groups = { SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String currentDate = "";
@@ -382,5 +389,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setLabelPersistRequest(OrderLabelPersistRequest labelPersistRequest) {
         this.labelPersistRequest = labelPersistRequest;
+    }
+
+    public List<String> getRangeNotAppliedTests() {
+        return rangeNotAppliedTests;
+    }
+
+    public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
+        this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
     }
 }

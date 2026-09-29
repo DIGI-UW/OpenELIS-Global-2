@@ -163,9 +163,14 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
 
     /**
      * Prior revisions of this test on the same sample item — each one is a retest
-     * that this analysis superseded.
+     * that this analysis superseded. A vector pool's analysis is anchored to the
+     * pool, not a sample item, so it has no such revisions; asking would throw
+     * inside a transactional call and roll back the whole timeline read.
      */
     private void addRetestEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        if (analysis.getSampleItem() == null || analysis.getTest() == null) {
+            return;
+        }
         try {
             for (Analysis revision : analysisService
                     .getRevisionHistoryOfAnalysesBySampleAndTest(analysis.getSampleItem(), analysis.getTest(), false)) {

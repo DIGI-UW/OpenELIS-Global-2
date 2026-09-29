@@ -277,8 +277,10 @@ page.getByRole("button", { name: "Save" });
 // Carbon Form Inputs
 page.getByLabel("Patient Name");
 
-// Carbon Dropdowns
-page.getByRole("combobox", { name: "Select Status" });
+// Carbon Dropdowns: locate by role; choose through helpers/carbon-select.ts,
+// which returns only once the control shows the choice
+const status = page.getByRole("combobox", { name: "Select Status" });
+await chooseCarbonOption(status, "Completed");
 
 // Carbon Tabs
 page.getByRole("tab", { name: "Details" });
@@ -506,16 +508,17 @@ python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/t
 These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
 during code review.
 
-| DO NOT                                        | WHY                                                                         | DO INSTEAD                                                       |
-| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
-| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability    | Click the `<label>`: `page.locator('label[for="id"]').click()`   |
-| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors       | Call `isVisible()` directly                                      |
-| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                     | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry      |
-| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                          | Click the `<label>` element                                      |
-| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                | `(await el.count()) > 0 && (await el.isChecked())`               |
-| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                    | Wait for suggestion, click it; Tab only as fallback              |
-| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                           | At least one `expect()` per test                                 |
+| DO NOT                                        | WHY                                                                          | DO INSTEAD                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state  | `waitForResponse` for sync only, then `expect(ui).toBeVisible()`             |
+| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability     | Click the `<label>`: `page.locator('label[for="id"]').click()`               |
+| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors        | Call `isVisible()` directly                                                  |
+| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                      | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry                  |
+| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                           | Click the `<label>` element                                                  |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                 | `(await el.count()) > 0 && (await el.isChecked())`                           |
+| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                     | Wait for suggestion, click it; Tab only as fallback                          |
+| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                            | At least one `expect()` per test                                             |
+| Click a Carbon select `option`, move on       | downshift calls `onChange` after the click returns; next step sees old state | `chooseCarbonOption` / `tickCarbonMultiSelectOption` (helpers/carbon-select) |
 
 ### Structural Anti-Patterns
 

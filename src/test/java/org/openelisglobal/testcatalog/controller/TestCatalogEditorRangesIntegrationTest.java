@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
@@ -307,6 +308,11 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
         // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
         // (dictionary) limit via the service — it must survive a ranges save.
+        // The lowest id, not a bare lookup by code: the Testcontainer is shared across
+        // the suite, and a fixture that remaps this vocabulary to ids of its own
+        // (result-limit.xml loads Dictionary as id 203) leaves the canonical seed row
+        // alongside the fixture's. The canonical seed always holds the lower id, and
+        // it is the row ResultLimitServiceImpl cached at startup.
         Long dictTypeId = ensureDictionaryResultType();
         org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
         dict.setTestId(testId());
@@ -332,6 +338,28 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         Double lowReporting = jdbc.queryForObject("SELECT low_reporting_range FROM clinlims.result_limits WHERE id = ?",
                 Double.class, Long.valueOf(numeric.id));
         assertEquals(1.5d, lowReporting, 1e-9);
+    }
+
+    /**
+     * OGC-1238: the editor lists only the numeric ranges it manages. A dictionary
+     * limit it cannot change is not offered as a row that deleting would appear to
+     * remove.
+     */
+    @org.junit.Test
+    public void getRanges_listsOnlyTheNumericRangesTheEditorManages() {
+        Long dictTypeId = ensureDictionaryResultType();
+        org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
+        dict.setTestId(testId());
+        dict.setResultTypeId(String.valueOf(dictTypeId));
+        dict.setSysUserId("1");
+        resultLimitService.insert(dict);
+        controller.saveRanges(testId(), body(range(null, "M", 0d, 30d)), authedRequest());
+
+        List<RangeDto> listed = controller.getRanges(testId()).getBody().ranges;
+
+        assertEquals(1, listed.size());
+        assertEquals(Double.valueOf(30d), listed.get(0).maxAge);
+        assertTrue(listed.stream().noneMatch(r -> dict.getId().equals(r.id)));
     }
 
     @org.junit.Test

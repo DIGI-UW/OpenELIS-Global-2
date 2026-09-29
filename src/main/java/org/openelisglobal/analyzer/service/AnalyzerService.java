@@ -42,5 +42,7 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId);
 
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
+    Optional<Analyzer> findByIdForUpdate(String id);
+
     List<AnalyzerTestCapability> getCapabilitiesForTest(String testId);
 }

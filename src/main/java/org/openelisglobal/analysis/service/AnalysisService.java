@@ -3,6 +3,7 @@ package org.openelisglobal.analysis.service;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -61,6 +62,44 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
             boolean sortedByDateAndAccession);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * OGC-189 (M2): ids of the lab units (test sections) that still hold in-flight
+     * work — at least one analysis not yet Finalized, Canceled or rejected.
+     *
+     * <p>
+     * Drives the "isActive OR hasContent" rule for viewer controls, so a
+     * deactivated unit stays on worklists until its pending analyses are finished
+     * and then drops out by itself. Never used to gate order entry — choosers
+     * filter on {@code isActive} alone.
+     */
+    Set<String> getTestSectionIdsWithPendingAnalyses();
+
+    /**
+     * OGC-189: ids of the lab units that hold <em>any</em> analysis, whatever its
+     * status — including finalized, canceled and rejected.
+     *
+     * <p>
+     * This is the "hasContent" half of the viewer rule. It deliberately counts
+     * completed work: the guardrail requires that "ALL tests should be able to be
+     * completed, <b>and the historical data viewed</b>, regardless of these
+     * settings" (comment 37313 §2). Counting only pending analyses meant a
+     * finalized result in a deactivated unit became invisible on the results pages
+     * and unreachable for reporting the moment it was entered — the data was there,
+     * and nobody could retrieve it.
+     *
+     * <p>
+     * Consequence, accepted deliberately: a unit that has ever processed work stays
+     * in viewer lists for good. Its results are permanent records, so that is the
+     * correct trade against a shorter dropdown.
+     */
+    Set<String> getTestSectionIdsWithAnyAnalyses();
+
+    /**
+     * OGC-189 (M3): analysis counts for a lab unit's deactivation impact summary.
+     * Index 0 = pending (still in flight), index 1 = historical.
+     */
+    long[] countAnalysesForLabUnit(String testSectionId);
+
     List<Analysis> getMaxRevisionAnalysesBySampleIncludeCanceled(SampleItem sampleItem);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -156,6 +195,20 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate);
+
+    boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before);
+
+    /**
+     * Lab-unit-keyed affected-analysis window for bench controls (OGC-1147).
+     */
+    List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
+            Timestamp lowDate, Timestamp highDate);
+
+    /** Lab-unit-keyed counterpart used for cap-reason accuracy (OGC-1147). */
+    boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before);
+
     List<Analysis> getAnalysesForStatusId(String statusId);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -195,6 +248,11 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * interface.
      */
     @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
+    List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults);
+
+    List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds);
+
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -280,6 +338,10 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     Panel getPanel(Analysis analysis);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analysis's own section when one is assigned, else the test's home
+     * section. Null only when neither is known.
+     */
     TestSection getTestSection(Analysis analysis);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -366,6 +428,14 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      */
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds);
+
+    /**
+     * Test-section-scoped counterpart of
+     * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}. Returns 0
+     * for an empty section list.
+     */
+    int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds);
 
     /**
