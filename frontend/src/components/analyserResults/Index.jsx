@@ -53,6 +53,7 @@ const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
+  const [restoredEdits, setRestoredEdits] = useState({});
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
@@ -140,6 +141,7 @@ const Index = () => {
 
   const handleResults = (data) => {
     if (data) {
+      const applied = {};
       const resultList = restoringDraft
         ? data.resultList.map((row) => {
             if (
@@ -154,11 +156,16 @@ const Index = () => {
             restorableResultFields.forEach((field) => {
               if (Object.prototype.hasOwnProperty.call(edits, field)) {
                 restored[field] = edits[field];
+                applied[String(row.id)] = {
+                  ...applied[String(row.id)],
+                  [field]: edits[field],
+                };
               }
             });
             return restored;
           })
         : data.resultList;
+      setRestoredEdits(applied);
       setResults({ ...data, resultList });
       if (restoringDraft) {
         const remainingState = { ...location.state };
@@ -280,6 +287,7 @@ const Index = () => {
         <AnalyserResults
           analyzerId={queryValue}
           results={results}
+          restoredEdits={restoredEdits}
           sampleGroup={sampleGroup}
           refreshResults={refreshResults}
           serverPageSize={serverPageSize}

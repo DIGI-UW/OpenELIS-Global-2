@@ -93,9 +93,16 @@ const AnalyserResults = (props) => {
     };
   }, []);
 
+  // Edits restored after a mapping visit stay unsaved drafts, so the next
+  // visit carries them again.
   useEffect(() => {
-    draftEdits.current = {};
-  }, [props.results]);
+    draftEdits.current = Object.fromEntries(
+      Object.entries(props.restoredEdits ?? {}).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+  }, [props.results, props.restoredEdits]);
 
   const rememberEdit = (rowId, field, value) => {
     const id = String(rowId);
