@@ -156,6 +156,42 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void acceptingGroupWithInactiveTestSavesSiblingAndKeepsInactiveRowStaged() {
+        long inactiveTest = 97002L;
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, 'Inactive 1145', 'Inactive 1145', 'N', ?, 'CLINICAL', true, NOW())",
+                inactiveTest, UUID.randomUUID().toString());
+        insertJunction(TYPE_B, inactiveTest);
+        String inactiveRowId = String
+                .valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'Inactive 1145', '7', false,"
+                + " ?, NOW())", inactiveRowId, ANALYZER_ID, ACCESSION, inactiveTest);
+
+        AnalyzerResultItem accepted = acceptedItem();
+        accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem inactive = acceptedItem();
+        inactive.setId(inactiveRowId);
+        inactive.setTestId(String.valueOf(inactiveTest));
+        inactive.setTestName("Inactive 1145");
+        inactive.setResult("7");
+        inactive.setTypeOfSampleId(String.valueOf(TYPE_B));
+        acceptService.acceptAndPersist(List.of(accepted, inactive), "1");
+
+        assertEquals("the accepted sibling leaves staging", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, stagedRowId));
+        assertEquals("the result for the inactive test stays staged", Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, inactiveRowId));
+        assertEquals("only the sibling's result is persisted", Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        Integer.class, ACCESSION));
+    }
+
+    @org.junit.Test
     public void reviewerChoice_removesTheHold() {
         acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
         AnalyzerResultItem item = acceptedItem();

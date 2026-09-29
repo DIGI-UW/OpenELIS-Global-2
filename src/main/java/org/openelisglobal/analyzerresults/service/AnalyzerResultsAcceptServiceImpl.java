@@ -142,7 +142,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 "Accept: " + actionableResults.size() + " actionable, " + sampleGroupList.size() + " sample groupings, "
                         + deletableAnalyzerResults.size() + " to delete from staging");
 
-        long expectedResults = actionableResults.stream().filter(item -> !item.getIsDeleted()).count();
+        // A deliberately skipped observation keeps its staging row for later review.
+        Set<String> skippedResultIds = sampleGroupList.stream().flatMap(group -> group.skippedResultIds.stream())
+                .collect(Collectors.toSet());
+        deletableAnalyzerResults.removeIf(staged -> skippedResultIds.contains(staged.getId()));
+        long expectedResults = actionableResults.stream()
+                .filter(item -> !item.getIsDeleted() && !skippedResultIds.contains(item.getId())).count();
         long builtResults = sampleGroupList.stream().mapToLong(group -> group.resultList.size()).sum();
         if (builtResults != expectedResults) {
             throw new IllegalStateException(
@@ -456,7 +461,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient, sysUserId);
+                resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
 
         SampleItem sampleItem = getOrCreateSampleItem(groupedAnalyzerResultItems, sample, sysUserId);
 
@@ -547,7 +552,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient, sysUserId);
+                resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
 
         sampleGrouping.sample = sample;
         sampleGrouping.sampleItem = sampleItem;
@@ -604,6 +609,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     LogEvent.logWarn(this.getClass().getSimpleName(), "persistResults",
                             "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
                                     + " because its lab unit is inactive (OGC-189).");
+                    sampleGrouping.skippedResultIds.add(resultItem.getId());
                     continue;
                 }
                 analysis = new Analysis();
@@ -707,7 +713,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
         Patient patient = PatientUtil.getUnknownPatient();
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient, sysUserId);
+                resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
 
         addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber(),
                 groupedAnalyzerResultItems.get(0).getTypeOfSampleId());
@@ -734,7 +740,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     private void createAndAddItems_Analysis_Results(List<AnalyzerResultItem> groupedAnalyzerResultItems,
             List<Analysis> analysisList, List<Result> resultList, Map<Result, String> resultToUserSelectionMap,
-            List<Note> noteList, Patient patient, String sysUserId) {
+            List<Note> noteList, List<String> skippedResultIds, Patient patient, String sysUserId) {
 
         for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
             Analysis analysis = getExistingAnalysis(resultItem);
@@ -750,6 +756,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     LogEvent.logWarn(this.getClass().getSimpleName(), "persistAnalyzerResults",
                             "Analyzer result skipped: no analysis created for test id " + resultItem.getTestId()
                                     + " because its lab unit is inactive (OGC-189).");
+                    skippedResultIds.add(resultItem.getId());
                     continue;
                 }
                 analysis = new Analysis();
