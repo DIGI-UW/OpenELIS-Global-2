@@ -852,6 +852,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     page,
   }, testInfo) => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
+    const presentation = createDemoPresentation(page, testInfo);
+    await presentation.chapter({
+      eyebrow: "OGC-1054 R2 · Mapping validity",
+      title: "One invalid binding holds one result",
+      subtitle:
+        "The valid sibling remains available while staff correct the RIF test setup.",
+      durationMs: 6500,
+    });
     const runId = randomUUID().slice(0, 8);
     const analyzerName = `E2E Invalid Binding GeneXpert ${runId}`;
     const senderId = `GX-${runId}`;
@@ -954,6 +962,14 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     const usable = page.getByRole("row").filter({ hasText: "NOT DETECTED" });
     await expect(usable.locator('input[id$=".isAccepted"]')).toHaveCount(1);
     await capture(page, testInfo, "invalid-binding-only-rif-held");
+    await presentation.pause(3000);
+    await presentation.chapter({
+      eyebrow: "GeneXpert · Isolated hold",
+      title: "MTB stays usable; RIF is held",
+      subtitle:
+        "The analyzer sent one message. Only the result with an inactive clinical test is held.",
+      durationMs: 5000,
+    });
     await usable.locator('label[for$=".isAccepted"]').click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(held).toBeVisible();
@@ -970,6 +986,13 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     expect(((await reactivated.json()) as { active: boolean }).active).toBe(
       true,
     );
+    await presentation.chapter({
+      eyebrow: "GeneXpert · Correct and retry",
+      title: "Restore the clinical test and retry the held row",
+      subtitle:
+        "The retry acts on the original observation; the analyzer does not resend it.",
+      durationMs: 5000,
+    });
     await held
       .getByRole("link", { name: "Review Analyzer Type mapping" })
       .click();
@@ -1028,5 +1051,12 @@ test.describe("OGC-1054 stock analyzer result workflow", () => {
     await expect(savedMtb).toHaveCount(1);
     await expect(savedMtb).toContainText("Xpert MTB/RIF");
     await capture(page, testInfo, "invalid-binding-recovered-clinical-result");
+    await presentation.chapter({
+      eyebrow: "GeneXpert · Clinical result verified",
+      title: "Both results are in the clinical record",
+      subtitle:
+        "Playwright read back the original recovered RIF row and the still-valid MTB result.",
+      durationMs: 6000,
+    });
   });
 });
