@@ -72,3 +72,72 @@ describe("CustomDatePicker — controlled input contract", () => {
     expect(onChange).toHaveBeenCalledWith("");
   });
 });
+
+// OGC-1375: a typed future date of birth reached the form (negative ages, a
+// silent 400) while the calendar blanked the box. It is refused in the field.
+describe("CustomDatePicker — typed dates outside the allowed range", () => {
+  const nextYear = new Date().getFullYear() + 1;
+  const lastYear = new Date().getFullYear() - 1;
+
+  test("a future date is refused with the caller's message when future dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange,
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+
+    expect(onChange).not.toHaveBeenCalledWith(`01/01/${nextYear}`);
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(
+      screen.getByText("Date of birth cannot be in the future."),
+    ).toBeInTheDocument();
+  });
+
+  test("a past date is still accepted when only future dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "dob",
+      value: "",
+      onChange,
+      disallowFutureDate: true,
+      futureDateText: "Date of birth cannot be in the future.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${lastYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith(`01/01/${lastYear}`);
+    expect(
+      screen.queryByText("Date of birth cannot be in the future."),
+    ).toBeNull();
+  });
+
+  test("a future date is accepted where future dates are allowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({ id: "visit", value: "", onChange });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${nextYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith(`01/01/${nextYear}`);
+  });
+
+  test("a past date is refused where past dates are disallowed", () => {
+    const onChange = vi.fn();
+    renderWithConfig({
+      id: "required-by",
+      value: "",
+      onChange,
+      disallowPastDate: true,
+      pastDateText: "Pick today or a later date.",
+    });
+
+    fireEvent.input(findInput(), { target: { value: `01/01/${lastYear}` } });
+
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(screen.getByText("Pick today or a later date.")).toBeInTheDocument();
+  });
+});

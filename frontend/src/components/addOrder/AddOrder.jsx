@@ -698,7 +698,6 @@ const AddOrder = (props) => {
           ...orderFormValues.sampleOrderItems,
           requestDate: configurationProperties.currentDateAsText,
           receivedDateForDisplay: configurationProperties.currentDateAsText,
-          nextVisitDate: configurationProperties.currentDateAsText,
           receivedTime: configurationProperties.currentTimeAsText,
         },
       });
@@ -1267,6 +1266,10 @@ const AddOrder = (props) => {
                 }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
+                aria-required={
+                  configurationProperties.REQUESTER_REQUIRED === "true" ||
+                  undefined
+                }
               />
             </Column>
 
@@ -1294,6 +1297,10 @@ const AddOrder = (props) => {
                 }
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
+                aria-required={
+                  configurationProperties.REQUESTER_REQUIRED === "true" ||
+                  undefined
+                }
                 invalid={
                   changed["sampleOrderItems.providerLastName"] &&
                   error("sampleOrderItems.providerLastName")

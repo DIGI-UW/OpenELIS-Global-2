@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
+import { ConfigurationContext } from "../layout/Layout";
 
 // ---------------------------------------------------------------------------
 // OGC-285 M5b — AddOrder mounts ONE order-level LabelsSection (API mode), fed by
@@ -563,5 +564,101 @@ describe("AddOrder — priority select (OGC-1366)", () => {
       .reverse()
       .find((arg) => arg?.sampleOrderItems?.priority);
     expect(updated.sampleOrderItems.priority).toBe("ROUTINE");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1375 — requester names are marked for assistive technology when the site
+// requires them, and a blank "Date of next visit" is not filled in with today.
+// ---------------------------------------------------------------------------
+describe("AddOrder — requester marking and next visit default (OGC-1375)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  const renderWithRequesterRequired = (requesterRequired) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              REQUESTER_REQUIRED: requesterRequired,
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={vi.fn()}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+  test("requester names carry aria-required when REQUESTER_REQUIRED is on", () => {
+    const { container } = renderWithRequesterRequired("true");
+
+    expect(container.querySelector("#requesterFirstName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    expect(container.querySelector("#requesterLastName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
+
+  test("requester names are not marked when REQUESTER_REQUIRED is off", () => {
+    const { container } = renderWithRequesterRequired("false");
+
+    expect(container.querySelector("#requesterFirstName")).not.toHaveAttribute(
+      "aria-required",
+    );
+  });
+
+  test("the first render fills request and received dates but leaves next visit blank", () => {
+    const setOrderFormValues = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={setOrderFormValues}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    const initialised = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .find((arg) => arg?.sampleOrderItems?.requestDate === "29/09/2026");
+    expect(initialised).toBeDefined();
+    expect(initialised.sampleOrderItems.receivedDateForDisplay).toBe(
+      "29/09/2026",
+    );
+    expect(initialised.sampleOrderItems.nextVisitDate || "").toBe("");
   });
 });
