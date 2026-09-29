@@ -192,7 +192,15 @@ jobs:
           else
             SPECS="${{ matrix.specs }}"
           fi
-          echo "Running specs: $SPECS"
+          # The folded matrix lists join with ", "; Cypress does not trim spec
+          # paths, so an untrimmed entry matches no file and is skipped silently.
+          SPECS=$(printf '%s' "$SPECS" | tr -d '[:space:]')
+          missing=0
+          for spec in $(printf '%s' "$SPECS" | tr ',' ' '); do
+            [ -f "$spec" ] || { echo "::error::Listed spec not found: $spec"; missing=1; }
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Running $(printf '%s' "$SPECS" | tr ',' '\n' | grep -c .) specs: $SPECS"
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:
