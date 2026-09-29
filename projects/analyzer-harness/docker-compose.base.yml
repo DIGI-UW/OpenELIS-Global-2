@@ -42,6 +42,9 @@ services:
 
   fhir.openelis.org:
     container_name: external-fhir-api
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     ports:
       - "8081:8080"
       - "8444:8443"
@@ -55,6 +58,9 @@ services:
   # Shared by CI and local development; all durable Bridge state survives
   # container replacement and ordinary down/up (only --volumes removes it).
   openelis-analyzer-bridge:
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     volumes:
       - bridge-data:/data/openelis-analyzer-bridge
     environment:
@@ -63,6 +69,13 @@ services:
 
   proxy:
     container_name: openelisglobal-proxy
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      frontend.openelis.org:
+        condition: service_started
+      oe.openelis.org:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
