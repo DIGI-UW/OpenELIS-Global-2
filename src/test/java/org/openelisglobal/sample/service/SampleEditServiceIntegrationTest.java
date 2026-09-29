@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +37,8 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -65,13 +68,25 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private SampleHumanService sampleHumanService;
 
-    @Autowired
     private AuditTrailService auditTrailService;
+
+    private Object sampleServiceTarget;
+
+    private Object originalAuditTrailService;
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement(DATASET_XML);
         jdbcTemplate.update("DELETE FROM clinlims.sample_requester WHERE sample_id = 1");
+        sampleServiceTarget = AopTestUtils.getUltimateTargetObject(sampleService);
+        originalAuditTrailService = ReflectionTestUtils.getField(sampleServiceTarget, "auditTrailService");
+        auditTrailService = Mockito.mock(AuditTrailService.class);
+        ReflectionTestUtils.setField(sampleServiceTarget, "auditTrailService", auditTrailService);
+    }
+
+    @After
+    public void restoreAuditTrailService() {
+        ReflectionTestUtils.setField(sampleServiceTarget, "auditTrailService", originalAuditTrailService);
     }
 
     private SampleEditForm createBaseForm() {
